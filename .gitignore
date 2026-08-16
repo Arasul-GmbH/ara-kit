@@ -1,0 +1,20 @@
+# Alles, was dem Partner gehört, wird vom Kit-Repo nicht verfolgt.
+# Damit kann ein "git pull" niemals Kundendaten oder Zugänge berühren.
+
+.env
+.env.*
+!.env.beispiel
+
+kunden/*
+!kunden/.gitkeep
+
+mein/*
+!mein/.gitkeep
+
+.ara/spiegel/*
+!.ara/spiegel/.gitkeep
+
+# Betriebssystem und Werkzeuge
+.DS_Store
+node_modules/
+*.log
