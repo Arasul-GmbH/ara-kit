@@ -9,16 +9,16 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 
 | Ort | Was dort liegt |
 |---|---|
-| `kunden/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
-| `mein/` | Profil, Firmendaten, Preise, Gelerntes. Gehört dem Partner. |
-| `.ara/wissen/` | **Verfahren** — wie man vorgeht. Keine Produktwerte. |
-| `.ara/vorlagen/` | Gerüste, die du mit echten Daten füllst. |
-| `.ara/werkzeuge/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
-| `.ara/spiegel/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |
+| `customers/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
+| `business/` | Profil, Firmendaten, Preise, Gelerntes. Gehört dem Partner. |
+| `.ara/knowledge/` | **Verfahren** — wie man vorgeht. Keine Produktwerte. |
+| `.ara/templates/` | Gerüste, die du mit echten Daten füllst. |
+| `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
+| `.ara/mirror/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |
 | `.claude/` | Commands, Regeln. |
 | `entwicklung/` | Interne Planung am Kit selbst. Für die Arbeit mit Kunden irrelevant. |
 
-`kunden/`, `mein/`, `.env` und `.ara/spiegel/` sind von der Versionskontrolle
+`customers/`, `business/`, `.env` und `.ara/mirror/` sind von der Versionskontrolle
 ausgenommen — ein Update des Kits fasst sie nie an.
 
 ## Die wichtigste Regel: nichts über das Produkt behaupten
@@ -28,24 +28,24 @@ Versionsnummer aus dem Gedächtnis oder weil er in einer Kit-Datei steht.**
 
 Diese Werte ändern sich im Produkt laufend. Sie stehen an genau drei Stellen:
 
-1. **Der Spiegel** `.ara/spiegel/` — der aktuelle Produktstand. Holen und prüfen mit
-   `node .ara/werkzeuge/spiegel.mjs`.
+1. **Der Spiegel** `.ara/mirror/` — der aktuelle Produktstand. Holen und prüfen mit
+   `node .ara/tools/mirror.mjs`.
 2. **Das Gerät selbst** per SSH — die Wahrheit für genau dieses eine Gerät.
 3. **Sonst nirgends.**
 
 Wenn du einen Wert brauchst und keine der beiden Quellen verfügbar ist: sag das. Rate nicht,
 und schreib nichts Ungeprüftes in eine Kundendatei. Verfahren stehen im Kit, Werte nicht.
 
-Details: `.ara/wissen/live-wissen.md`
+Details: `.ara/knowledge/live-knowledge.md`
 
 ## Commands
 
 | Command | Zweck | Verfahren |
 |---|---|---|
-| `/start` | Einmaliges Onboarding | `.ara/wissen/onboarding.md` |
-| `/customer <name>` | Kunde anlegen oder öffnen | `.ara/wissen/kunden-akte.md` |
-| `/setup <kunde>[/<gerät>]` | Gerät von Karton bis Abnahme | `.ara/wissen/ablauf-setup.md` |
-| `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/wissen/ablauf-wartung.md` |
+| `/start` | Einmaliges Onboarding | `.ara/knowledge/onboarding.md` |
+| `/customer <name>` | Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
+| `/setup <kunde>[/<gerät>]` | Gerät von Karton bis Abnahme | `.ara/knowledge/setup-flow.md` |
+| `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
 
 Alles andere passiert in normaler Sprache. Wenn jemand „zeig mir alle Kunden" oder „rechne
 mir das für zwölf Leute" sagt, tu es einfach — dafür braucht es keinen Command. Für
@@ -54,19 +54,21 @@ passenden Skill.
 
 ## Werkzeuge
 
-Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/werkzeuge/`.
+Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 
 | Werkzeug | Wofür |
 |---|---|
-| `spiegel.mjs` | Aktuellen Produktstand holen und prüfen (`--status`, `--neu`) |
-| `pruefe-umgebung.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
-| `laufzettel.mjs` | Stand einer Einrichtung lesen und fortschreiben |
-| `fern.mjs` | Befehl auf einem Kundengerät ausführen (`--pruefen`, `--protokoll`) |
-| `geraet-finden.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
-| `datentraeger.mjs` | Boot-Medien erkennen, prüfen und schreiben |
-| `selbsttest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
+| `mirror.mjs` | Aktuellen Produktstand holen und prüfen (`--show`, `--refresh`) |
+| `check-environment.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
+| `runsheet.mjs` | Stand einer Einrichtung lesen und fortschreiben |
+| `remote.mjs` | Befehl auf einem Kundengerät ausführen (`--check`, `--log`) |
+| `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
+| `disk.mjs` | Boot-Medien erkennen, prüfen und schreiben |
+| `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
+| `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
+| `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
 
-**Sprich Kundengeräte immer über `fern.mjs` an**, nicht mit selbst gebauten
+**Sprich Kundengeräte immer über `remote.mjs` an**, nicht mit selbst gebauten
 SSH-Befehlen. Das Werkzeug nimmt die Verbindungsdaten aus der Geräteakte — damit kann kein
 Gerät mit den Daten eines anderen Kunden angesprochen werden.
 
@@ -77,7 +79,7 @@ Gerät mit den Daten eines anderen Kunden angesprochen werden.
   nur, wenn der Mensch es ausdrücklich sagt — nie stillschweigend mitten in einer Aufgabe.
 - **Drei Sicherheitsstufen.** Lesen läuft durch. Ändern braucht eine Bestätigung, die
   Absicht, Ziel und Rückweg nennt. Unumkehrbares braucht ein ausdrückliches Ja mit der
-  Konsequenz im Klartext. Details: `.ara/wissen/sicherheit.md`
+  Konsequenz im Klartext. Details: `.ara/knowledge/security.md`
 - **Erst feststellen, dann ändern.** Keine Reparatur ohne vorherige Diagnose, kein
   „probier mal".
 - **Beweisen statt behaupten.** Wenn du etwas eingerichtet hast, prüf nach, dass es
@@ -85,15 +87,25 @@ Gerät mit den Daten eines anderen Kunden angesprochen werden.
 - **Rückfragen bündeln.** Nutze das Interview-Werkzeug für Entscheidungen und stell
   mehrere Fragen auf einmal, statt einzeln nachzuhaken.
 - **Schreib mit.** Was du getan hast, gehört in den Laufzettel des Geräts oder in
-  `kunden/<kunde>/verlauf/`. Nichts Wichtiges lebt nur im Gespräch.
+  `customers/<kunde>/history/`. Nichts Wichtiges lebt nur im Gespräch.
+
+- **Kundenpflege gehört dazu.** Nach jedem Kontakt: Eintrag in `history/`, `last_contact`
+  aktualisieren, `follow_up` setzen. Beginnt eine Sitzung ohne konkretes Anliegen, frag
+  einmal `node .ara/tools/agenda.mjs` ab und sag, was ansteht.
+  Details: `.ara/knowledge/crm.md`
 
 ## Sprache
 
-Alle Inhalte, Dateien und Gespräche auf Deutsch, Du-Anrede. Nur die Commands heißen
-englisch. Keine Emojis. Keine Ausrufezeichen-Begeisterung.
+**Dateien und Ordner heißen englisch, alle Inhalte sind deutsch** — Fließtext, Vorlagen,
+Kundendokumente, Gespräche, Du-Anrede. Auch Frontmatter-Felder und Skript-Argumente sind
+englisch. Keine Emojis, keine Ausrufezeichen-Begeisterung.
 
 ## Zugänge
 
-`.env` enthält Token und Passwörter und ist für dich leseverboten. Skripte dürfen sie
-benutzen — du liest sie nicht aus und zeigst ihren Inhalt nie an. Private SSH-Schlüssel
-liegen in `~/.ssh` und bleiben dort; im Kit steht nur, wie der passende Schlüssel heißt.
+Geheimnisse liegen entweder in einer `.env` im Kit oder im Schlüsselbund des
+Betriebssystems — der Mensch wählt das im Onboarding. Beides erreichst du über
+`node .ara/tools/secrets.mjs`; **du liest Geheimnisse nie selbst aus und zeigst ihre Werte
+nie an.** Die `.env` ist für dich leseverboten, Skripte dürfen sie benutzen.
+
+Private SSH-Schlüssel sind kein Fall für die Geheimnis-Ablage: sie sind Dateien, die `ssh`
+selbst verwaltet, liegen in `~/.ssh` und bleiben dort. Im Kit steht nur ihr Name.

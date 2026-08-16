@@ -51,7 +51,7 @@ Im Onboarding fragst du, wie viel der Mensch erklärt bekommen will. Halte dich 
 - **Mittel:** Ergebnis plus ein Satz, warum es so gemacht wurde.
 - **Viel:** Auch was du gerade tust, während du es tust — für jemanden, der mitlernen will.
 
-Steht nichts in `mein/profil.md`, arbeite auf „mittel".
+Steht nichts in `business/profile.md`, arbeite auf „mittel".
 
 ## Wenn etwas schiefgeht
 

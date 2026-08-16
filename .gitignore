@@ -3,16 +3,16 @@
 
 .env
 .env.*
-!.env.beispiel
+!.env.example
 
-kunden/*
-!kunden/.gitkeep
+customers/*
+!customers/.gitkeep
 
-mein/*
-!mein/.gitkeep
+business/*
+!business/.gitkeep
 
-.ara/spiegel/*
-!.ara/spiegel/.gitkeep
+.ara/mirror/*
+!.ara/mirror/.gitkeep
 
 # Betriebssystem und Werkzeuge
 .DS_Store

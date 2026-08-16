@@ -5,12 +5,12 @@ argument-hint: <kunde> oder <kunde>/<gerät>
 
 Einrichtung für: **$1**
 
-Lies `.ara/wissen/ablauf-setup.md` und arbeite danach.
+Lies `.ara/knowledge/setup-flow.md` und arbeite danach.
 
 **Zuerst, immer:**
 
 ```
-node .ara/werkzeuge/laufzettel.mjs --kunde <kunde> --stand
+node .ara/tools/runsheet.mjs --customer <kunde> --show
 ```
 
 Sag in einem Satz, wo es steht, und mach dort weiter. Fang nicht von vorn an, und lies
