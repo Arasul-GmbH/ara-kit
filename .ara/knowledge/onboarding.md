@@ -37,7 +37,8 @@ node .ara/tools/check-environment.mjs
 ```
 
 Meldet Betriebssystem, Node, git, ssh, vorhandene SSH-Schlüssel, freien Speicher und ob
-der Rechner zum Flashen von Jetson-Geräten taugt.
+der Rechner zum Flashen eingebetteter Geräte taugt (z. B. Jetson Thor; DGX Spark,
+RTX-Workstation und x86-Server brauchen keinen Flash-Rechner).
 
 Sag in zwei bis drei Zeilen, was das bedeutet. Behebe still, was du beheben darfst. Fehlt
 etwas Grundlegendes, nenne den Installationsweg für das erkannte System und mach weiter.

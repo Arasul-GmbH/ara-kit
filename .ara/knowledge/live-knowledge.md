@@ -32,7 +32,7 @@ Was du dort nachschlägst:
 | Welche Geräte kennt das Produkt, mit welchen Eckdaten? | `config/platforms/*.json` |
 | Wie läuft die Einrichtung ab, welche Schritte gibt es? | `scripts/` und die Kommandozeilenwerkzeuge im Wurzelverzeichnis |
 | Was sagt die Produktdokumentation? | `docs/` |
-| Welcher Stand ist das? | `.ara/mirror/STAND.json` |
+| Welcher Stand ist das? | `.ara/mirror/STATE.json` |
 
 **Vorsicht bei `docs/`:** Die Produktdokumentation ist an manchen Stellen älter als der
 Code. Wenn Dokumentation und Skript sich widersprechen, gilt das Skript. Sag dem Menschen,

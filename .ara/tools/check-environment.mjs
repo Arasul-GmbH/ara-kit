@@ -115,7 +115,9 @@ const befund = {
   ssh_schluessel: schluessel,
   env_datei: zugang.datei,
   token_hinterlegt: zugang.token,
-  // Jetson-Geräte lassen sich nur von einem x86-Linux-Rechner aus flashen.
+  // Nur eingebettete Ziele (z. B. Jetson Thor) müssen über Kabel von einem
+  // x86-Linux-Rechner geflasht werden. DGX Spark, RTX-Workstation, DGX Station
+  // und x86-Server brauchen keinen Flash-Rechner (Werk-OS oder USB-Stick).
   flash_host_geeignet: os.kennung === "linux" && arch() === "x64",
 };
 
@@ -139,8 +141,8 @@ const zeilen = [
   `- tar: ${ja(befund.tar)}`,
   `- SSH-Schlüssel: ${schluessel.length ? schluessel.join(", ") : "keiner gefunden"}`,
   `- Zugangsdatei .env: ${ja(befund.env_datei)}, Lizenztoken hinterlegt: ${ja(befund.token_hinterlegt)}`,
-  `- Als Flash-Rechner für Jetson geeignet: ${ja(befund.flash_host_geeignet)}` +
-    (befund.flash_host_geeignet ? "" : "  (dafür braucht es x86-Linux)"),
+  `- Als Flash-Rechner für eingebettete Ziele (z. B. Jetson Thor) geeignet: ${ja(befund.flash_host_geeignet)}` +
+    (befund.flash_host_geeignet ? "" : "  (dafür braucht es x86-Linux; nur für Thor nötig)"),
 ];
 
 const offen = [];
