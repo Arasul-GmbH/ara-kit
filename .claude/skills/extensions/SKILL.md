@@ -7,7 +7,7 @@ Verfahren: `.ara/knowledge/extensions.md`
 
 Kurz:
 
-- **Gebaut wird auf dem Gerät**, in dessen Arbeitsumgebung — nicht auf dem Partner-Laptop.
+- **Gebaut wird auf dem Gerät**, in dessen Arbeitsumgebung, nicht auf dem Partner-Laptop.
   Kundendaten und Kundencode bleiben beim Kunden.
 - Erst den Arbeitsschritt verstehen, nicht die gewünschte Lösung. Entscheidend ist, was
   passiert, wenn das Ergebnis einmal falsch ist.

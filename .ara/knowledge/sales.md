@@ -8,8 +8,7 @@ Was hier verkauft wird, ist kein fertiges Produkt für ein bekanntes Problem, so
 Fundament. Das ist ein Unterschied, der sich im Gespräch durchhalten lässt oder rächt.
 
 **Nicht überversprechen.** Ein Kunde, der etwas anderes erwartet hat, als er bekommt, ist
-teurer als ein Kunde, den man nicht gewonnen hat. Der Partner muss das Gerät danach warten
-— jahrelang.
+teurer als ein Kunde, den man nicht gewonnen hat. Der Partner muss das Gerät danach warten, und zwar jahrelang.
 
 **Vom Arbeitsschritt her denken, nicht von der Technik.** Niemand kauft lokale
 Sprachverarbeitung. Man kauft, dass drei Leute nicht mehr Angebote abtippen.
@@ -20,7 +19,7 @@ Zuhören, bevor du erklärst. Drei Fragen tragen das ganze Gespräch:
 
 1. **Was macht heute Arbeit, die keine sein müsste?** Der konkrete Vorgang, mit Häufigkeit.
 2. **Was passiert heute mit euren Daten?** Damit kommt fast immer von selbst, warum eine
-   Cloudlösung nicht in Frage kommt — und dann muss man es nicht verkaufen.
+   Cloudlösung nicht in Frage kommt, und dann muss man es nicht verkaufen.
 3. **Wer würde damit arbeiten?** Wenn es niemanden gibt, ist es kein Projekt, sondern eine
    Idee.
 
@@ -47,17 +46,17 @@ Ein Einwand ist eine Frage, kein Angriff. Beantworte die Frage dahinter.
 | Was gesagt wird | Worum es meist geht |
 |---|---|
 | „Zu teuer" | Kein Vergleichsmaßstab. Rechne gegen die Arbeitszeit, die heute dafür draufgeht |
-| „Wir nutzen schon eine Cloudlösung" | Dann läuft etwas. Frag, was daran heute nicht geht — Daten, Kosten, Abhängigkeit |
+| „Wir nutzen schon eine Cloudlösung" | Dann läuft etwas. Frag, was daran heute nicht geht. Daten, Kosten, Abhängigkeit |
 | „Können wir das nicht selbst?" | Können sie oft. Die Frage ist, ob sie es in drei Jahren noch warten wollen |
 | „Was, wenn ihr euch auflöst?" | Berechtigt. Es läuft im Haus, die Daten liegen im Haus |
-| „Unser IT-Dienstleister sagt …" | Nicht gegen ihn arbeiten. Ihn dazuholen — er bleibt, der Partner auch |
+| „Unser IT-Dienstleister sagt …" | Nicht gegen ihn arbeiten. Ihn dazuholen, er bleibt, der Partner auch |
 
 Wenn du einen Einwand nicht beantworten kannst, ohne etwas zu behaupten: sag, dass du es
 klärst. Eine erfundene Antwort im Verkaufsgespräch wird bei der Abnahme zum Problem.
 
 ## Angebot
 
-Struktur, keine Textbausteine. Der Partner schreibt in seiner Sprache — du hilfst mit
+Struktur, keine Textbausteine. Der Partner schreibt in seiner Sprache, du hilfst mit
 Aufbau und Vollständigkeit.
 
 1. **Was wir verstanden haben.** Die Ausgangslage in ihren Worten. Wer sich verstanden

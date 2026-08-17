@@ -1,6 +1,6 @@
 # Verfahren: Gerät einrichten
 
-> **Wann brauchst du das?** Bei `/setup` — von der Vorbereitung bis zur Abnahme.
+> **Wann brauchst du das?** Bei `/setup`: von der Vorbereitung bis zur Abnahme.
 
 ## Wie dieser Ablauf funktioniert
 
@@ -43,7 +43,7 @@ gerade wenn es klemmt.
 
 ---
 
-## Phase 0 — Vorbereitung am Schreibtisch
+## Phase 0. Vorbereitung am Schreibtisch
 
 **Ziel:** Vor der Fahrt ist klar, was passieren wird und was schiefgehen kann.
 
@@ -53,7 +53,7 @@ gerade wenn es klemmt.
 - **Laufzettel anlegen:**
   `node .ara/tools/runsheet.mjs --create --customer <k> --device <g>`
 - Gerät bestimmen und Reifegrad prüfen (`.ara/knowledge/identify-device.md`). Ist das Profil
-  im Produkt noch nicht an echter Hardware bestätigt, **sag das jetzt** — nicht beim Kunden.
+  im Produkt noch nicht an echter Hardware bestätigt, **sag das jetzt**: nicht beim Kunden.
 - Spiegel holen und Produktstand notieren.
 - Lizenztoken prüfen: `node .ara/tools/mirror.mjs --show`. Ein abgelaufener Token
   fällt sonst erst beim Kunden auf.
@@ -67,11 +67,11 @@ gerade wenn es klemmt.
   Termin über Mittag.
 
 **Nachweis:** Der Laufzettel enthält Gerät, Profilstand, Netzplan, Voraussetzungen und
-Rückfallplan — so, dass der Mensch ihn vor der Fahrt in zwei Minuten überfliegen kann.
+Rückfallplan, so, dass der Mensch ihn vor der Fahrt in zwei Minuten überfliegen kann.
 
 ---
 
-## Phase 1 — Betriebssystem
+## Phase 1. Betriebssystem
 
 **Ziel:** Das Gerät läuft mit einem Betriebssystem und ist im Netz.
 
@@ -88,7 +88,7 @@ im Netz.
 
 ---
 
-## Phase 2 — Erstkontakt über das Netz
+## Phase 2. Erstkontakt über das Netz
 
 **Ziel:** Du kommst ohne Bildschirm und Tastatur auf das Gerät.
 
@@ -97,19 +97,19 @@ im Netz.
 - Öffentlichen Schlüssel ausrollen. Der private Schlüssel bleibt in `~/.ssh`.
 - Anmeldung mit Schlüssel prüfen, **bevor** irgendetwas gehärtet wird.
 - Adresse, Anmeldename, Port und Schlüsselname in `device.md` eintragen.
-- Ab jetzt läuft jeder Befehl über `node .ara/tools/remote.mjs --customer <k> --command "…"` —
+- Ab jetzt läuft jeder Befehl über `node .ara/tools/remote.mjs --customer <k> --command "…"`,
   damit stimmt das Ziel immer und die Ausführung ist protokollierbar.
 
 **Nachweis:** `node .ara/tools/remote.mjs --customer <k> --check` meldet, dass die
 Verbindung steht.
 
 **Vorsicht:** Erst wenn die Anmeldung mit Schlüssel nachweislich funktioniert, darf in
-Phase 4 die Passwortanmeldung abgeschaltet werden. Diese Reihenfolge ist nicht verhandelbar
-— sonst sperrst du dich aus einem Gerät aus, das beim Kunden im Schrank steht.
+Phase 4 die Passwortanmeldung abgeschaltet werden. Diese Reihenfolge ist nicht verhandelbar.
+Sonst sperrst du dich aus einem Gerät aus, das beim Kunden im Schrank steht.
 
 ---
 
-## Phase 3 — Ara OS installieren
+## Phase 3. Ara OS installieren
 
 **Ziel:** Das Produkt läuft auf dem Gerät.
 
@@ -124,11 +124,11 @@ Phase 4 die Passwortanmeldung abgeschaltet werden. Diese Reihenfolge ist nicht v
   landet. Der Riegel weist dich darauf hin, wenn du es doch versuchst.
 
 **Nachweis:** Die Dienste laufen und melden sich gesund. Wie man das abfragt, steht im
-Produkt — lies es dort nach.
+Produkt, lies es dort nach.
 
 ---
 
-## Phase 4 — Nachbereitung
+## Phase 4. Nachbereitung
 
 **Ziel:** Das Gerät ist abgesichert, vollständig und aus der Ferne erreichbar.
 
@@ -143,19 +143,19 @@ Für jeden Punkt: **erst feststellen, dann handeln, dann nachweisen.**
 - **Namensauflösung im Netz.** Ist das Gerät unter seinem Namen erreichbar oder nur über
   die Adresse? Wenn der Kunde später den Namen benutzen soll, muss er auch funktionieren.
 - **Zugang härten.** Anmeldung nur mit Schlüssel, kein Passwort, eingeschränkter
-  Benutzerkreis. **Erst nachdem die Schlüsselanmeldung nachweislich läuft** — und die
+  Benutzerkreis. **Erst nachdem die Schlüsselanmeldung nachweislich läuft**: und die
   bestehende Sitzung offen lassen, bis die neue geprüft ist.
 - **Netzabsicherung.** Nur die Dienste erreichbar, die erreichbar sein sollen.
 - **Fernzugriff einrichten** (`.ara/knowledge/remote-access.md`).
 
-Ändert sich dabei der Zugangsport oder der Anmeldename, **sofort in `device.md` nachziehen**
-— sonst greift das nächste `remote.mjs` ins Leere.
+Ändert sich dabei der Zugangsport oder der Anmeldename, **sofort in `device.md` nachziehen**.
+Sonst greift das nächste `remote.mjs` ins Leere.
 
 **Nachweis:** Für jeden Punkt ein geprüfter Zustand, nicht eine ausgeführte Handlung.
 
 ---
 
-## Phase 5 — Nachweis
+## Phase 5. Nachweis
 
 **Ziel:** Nachgewiesen ist, dass es wirklich funktioniert. Nicht „müsste jetzt".
 
@@ -168,19 +168,19 @@ Die Prüfliste steht in `.ara/knowledge/handover.md`. Kern:
 
 Der letzte Punkt ist der wichtigste und wird am häufigsten übersprungen. Im Kundennetz
 funktioniert fast immer alles. Prüf ihn über eine Verbindung, die nicht im Kundennetz
-hängt — Mobilfunk reicht.
+hängt. Mobilfunk reicht.
 
 **Nachweis:** Jeder Punkt mit Ergebnis im Laufzettel. Ein nicht geprüfter Punkt wird als
 nicht geprüft eingetragen, nicht weggelassen.
 
 ---
 
-## Phase 6 — Abnahme
+## Phase 6. Abnahme
 
 **Ziel:** Der Kunde hat, was er braucht, und weiß, was er hat.
 
 - `handover.md` aus dem Laufzettel erzeugen (Vorlage: `.ara/templates/handover.md`).
-  Sie entsteht aus dem Protokoll — deshalb kann sie nicht veralten.
+  Sie entsteht aus dem Protokoll, deshalb kann sie nicht veralten.
 - Kurzanleitung für die Mitarbeiter (Vorlage: `.ara/templates/quickstart.md`). Eine
   Seite, in der Sprache der Anwender, ohne Fachbegriffe.
 - Zugangsdaten übergeben. Der Kunde bekommt seine Zugänge, der Partner behält seine

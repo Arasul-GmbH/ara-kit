@@ -19,7 +19,7 @@ node .ara/tools/agenda.mjs --days 30
 ```
 
 **Stell diese Frage von dir aus**, wenn eine Sitzung ohne konkretes Anliegen beginnt oder
-wenn jemand nach dem Stand seines Geschäfts fragt. Nicht bei jeder Gelegenheit — einmal
+wenn jemand nach dem Stand seines Geschäfts fragt. Nicht bei jeder Gelegenheit, einmal
 am Anfang genügt.
 
 ## Die vier Termine, die zählen
@@ -39,7 +39,7 @@ Der Halbsatz ist wichtiger als das Datum. In sechs Wochen weiß niemand mehr, wo
 ### 2. Wartungsvertrag (`maintenance_until` in `device.md`)
 
 Die Verlängerung ist wiederkehrender Umsatz und der Grund, warum sich das Geschäft trägt.
-Sie wird **vor** dem Ablauf besprochen, nicht danach — die Agenda meldet sie zwei Monate
+Sie wird **vor** dem Ablauf besprochen, nicht danach, die Agenda meldet sie zwei Monate
 vorher.
 
 Ein Gerät im Betrieb ohne hinterlegte Laufzeit ist eine Lücke. Die Agenda weist darauf hin.
@@ -69,7 +69,7 @@ Der Status in `customer.md` bildet ab, wo jemand steht:
 | `won` | Beauftragt | Termin planen, Gerät bestellen |
 | `installed` | Läuft, Abnahme erfolgt | Wartungslaufzeit hinterlegen |
 | `maintenance` | In Betreuung | Verlängerung, regelmäßiger Blick |
-| `inactive` | Vorbei oder verloren | nichts — aber die Akte bleibt |
+| `inactive` | Vorbei oder verloren | nichts, aber die Akte bleibt |
 
 **Verlorene Kunden werden nicht gelöscht.** In zwei Jahren fragt jemand wieder an, und
 dann ist die Historie mehr wert als jedes Angebot.
@@ -89,4 +89,4 @@ voller Dateien.
 
 Keine Buchhaltung, keine Rechnungsstellung, keine Zeiterfassung. Dafür haben die meisten
 längst ein Werkzeug, und der Steuerberater will es ohnehin anders. Das Kit hält fest, was
-mit Kunden und ihren Geräten passiert — Zahlen laufen woanders.
+mit Kunden und ihren Geräten passiert. Zahlen laufen woanders.

@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enableAllProjectMcpServers": true,
   "permissions": {
     "allow": [
       "Bash(node .ara/tools/:*)",
@@ -13,6 +14,10 @@
       "Bash(df:*)",
       "Bash(ping:*)",
       "Bash(ssh-keygen -l:*)",
+      "Bash(gh auth status:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh issue list:*)",
+      "mcp__playwright",
       "Read(./customers/**)",
       "Read(./business/**)",
       "Read(./.ara/**)",

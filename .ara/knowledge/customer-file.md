@@ -1,6 +1,6 @@
 # Verfahren: Kundenakte
 
-> **Wann brauchst du das?** Bei `/customer` — anlegen, öffnen und pflegen einer Kundenakte.
+> **Wann brauchst du das?** Bei `/customer`: anlegen, öffnen und pflegen einer Kundenakte.
 
 ## Aufbau
 
@@ -21,22 +21,22 @@ customers/mueller-metallbau/
 Die vollständige Firmierung steht im Frontmatter unter `legal_name`.
 
 **Gerätename:** nach Standort oder Rolle, nicht nach Modell. `zentrale`, `werk2`,
-`praxis-eg` — nicht `spark` oder `thor`. Das Modell steht in der Akte und kann sich ändern,
+`praxis-eg`: nicht `spark` oder `thor`. Das Modell steht in der Akte und kann sich ändern,
 der Standort bleibt.
 
 ## Anlegen
 
-Prüf zuerst, ob es die Akte schon gibt — auch unter ähnlichem Namen. Wenn ja: öffnen.
+Prüf zuerst, ob es die Akte schon gibt, auch unter ähnlichem Namen. Wenn ja: öffnen.
 
 **Vor dem Fragen: nachsehen.** Wenn eine Website genannt wird oder du sie findest, lies
-sie. Branche, Größe, Standorte, Ansprechpartner — das steht meist öffentlich da. Frag
+sie. Branche, Größe, Standorte, Ansprechpartner, das steht meist öffentlich da. Frag
 nicht nach, was du lesen kannst.
 
 Dann **eine** Interview-Runde mit gebündelten Fragen:
 
 1. **Ansprechpartner.** Name, Rolle, wie erreichbar.
 2. **Wer entscheidet.** Wer unterschreibt, wer nutzt es, wer kann es verhindern. Bei
-   kleinen Firmen oft dieselbe Person — dann steht genau das da.
+   kleinen Firmen oft dieselbe Person, dann steht genau das da.
 3. **Was sie vorhaben.** In ihren Worten, ein bis zwei Sätze. Das ist später die Grundlage
    für Abnahme und Schulung.
 4. **Stand.** Erstgespräch, Angebot draußen, beauftragt, Gerät schon da?
@@ -55,11 +55,11 @@ man in drei Monaten vergessen hat (`.ara/knowledge/crm.md`).
 ## Anlegen: was du schreibst
 
 - `customer.md` aus `.ara/templates/customer.md`. Frontmatter vollständig, Freitext in
-  eigenen Worten und lesbar — nicht als Stichpunktliste der Interviewantworten.
+  eigenen Worten und lesbar, nicht als Stichpunktliste der Interviewantworten.
 - `history/JJJJ-MM-TT-erstgespraech.md` mit dem, was besprochen wurde. Auch wenn es kurz
   ist: der erste Eintrag setzt den Rahmen.
 - `devices/<name>/device.md` **nur wenn schon klar ist, welches Gerät es wird.** Sonst
-  nicht — ein leerer Geräteordner suggeriert einen Stand, den es nicht gibt.
+  nicht, ein leerer Geräteordner suggeriert einen Stand, den es nicht gibt.
 
 Danach in drei Zeilen: was angelegt wurde, was noch fehlt, was der nächste Schritt ist.
 
@@ -76,13 +76,13 @@ Dann fragen, was zu tun ist. Kein Vorschlagskatalog.
 
 ## Pflegen
 
-Nach **jedem** Kontakt drei Dinge — das ist die Minute, die den Unterschied macht:
+Nach **jedem** Kontakt drei Dinge, das ist die Minute, die den Unterschied macht:
 
 1. Eintrag unter `history/` (Vorlage: `.ara/templates/history-entry.md`)
 2. `last_contact` aktualisieren
 3. `follow_up` setzen oder `status` ändern
 
-Ändert sich etwas Grundlegendes (Ansprechpartner, Firmierung), pflege es im Frontmatter —
+Ändert sich etwas Grundlegendes (Ansprechpartner, Firmierung), pflege es im Frontmatter,
 nicht nur im Verlaufseintrag.
 
 **Wenn ein Ordner umbenannt wird**, zieh die Verweise nach. Die `id` bleibt unverändert,

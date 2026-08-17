@@ -1,6 +1,6 @@
 # Verfahren: Wartung und Betreuung
 
-> **Wann brauchst du das?** Bei `/maintain` — alles, was nach der Abnahme passiert.
+> **Wann brauchst du das?** Bei `/maintain`: alles, was nach der Abnahme passiert.
 
 ## Einstieg
 
@@ -9,7 +9,7 @@ sehen kannst.
 
 Zuerst immer: **Lagebild in drei Zeilen.** Wer der Kunde ist, welches Gerät, wann zuletzt
 etwas passiert ist (letzter Eintrag im Verlauf), ob es erreichbar ist. Dann die Frage, was
-ansteht — kein Vorschlagskatalog.
+ansteht, kein Vorschlagskatalog.
 
 Bevor du etwas am Gerät tust: `node .ara/tools/remote.mjs --customer <k> --check`.
 Steht die Verbindung nicht, ist das die erste Aufgabe, nicht die zweite.
@@ -25,11 +25,11 @@ Verfahren in `.ara/knowledge/diagnostics.md`. Erst feststellen, dann ändern.
 Wenn niemand ein konkretes Problem hat, aber jemand wissen will, ob alles in Ordnung ist:
 
 - Dienste gesund? Läuft das Gerät seit dem letzten geplanten Start durch?
-- Speicherplatz — der einzige Wert, der still wächst, bis nichts mehr geht
+- Speicherplatz, der einzige Wert, der still wächst, bis nichts mehr geht
 - Fehler in den Protokollen seit dem letzten Blick
 - Sicherungen: laufen sie, und ist eine davon je zurückgespielt worden?
 - Produktstand gegen den aktuellen Stand im Spiegel
-- Fernzugriff **von außen** — nicht nur, ob deine bestehende Sitzung noch offen ist
+- Fernzugriff **von außen**: nicht nur, ob deine bestehende Sitzung noch offen ist
 
 Ergebnis in den Verlauf, auch wenn alles in Ordnung war. Ein Verlauf mit regelmäßigen
 Einträgen ist bei einer Verlängerung mehr wert als jedes Verkaufsgespräch.
@@ -42,7 +42,7 @@ Ein Update ist ein Eingriff, kein Klick.
    Kunden abgesprochen? Ein Update während der Arbeitszeit ist eine Störung.
 2. **Sicherung anlegen und prüfen, dass sie existiert.** Nicht „läuft ja automatisch".
 3. **Einspielen**, dem Weg des Produkts folgend (im Spiegel nachlesen).
-4. **Danach die Nachweise aus `.ara/knowledge/handover.md`** — mindestens: Dienste gesund,
+4. **Danach die Nachweise aus `.ara/knowledge/handover.md`**: mindestens: Dienste gesund,
    fachliche Anfrage beantwortet, Fernzugriff steht. Ein Update, das durchläuft und danach
    ein totes System hinterlässt, ist der Normalfall bei ungeprüften Updates.
 5. **Rückweg kennen**, bevor du anfängst. Wenn es keinen gibt, ist das eine Information für
@@ -58,7 +58,7 @@ Der Teil, mit dem der Partner zusätzlich Geld verdient. Verfahren:
 Das Kit überwacht nichts (bewusst). Der übliche Weg ist: Der Kunde meldet sich.
 
 Dann gilt: **erst zuhören, dann nachsehen.** Was der Kunde beschreibt, ist ein Symptom aus
-seiner Sicht — „das Ding ist kaputt" kann ein abgelaufenes Zertifikat, ein volles
+seiner Sicht, „das Ding ist kaputt" kann ein abgelaufenes Zertifikat, ein volles
 Dateisystem oder ein gezogener Netzstecker sein. Frag nach dem, was er gemacht hat, nicht
 nach dem, was er vermutet.
 
@@ -73,5 +73,5 @@ nach dem, was er vermutet.
 
 Jeder Einsatz erzeugt einen Eintrag unter `customers/<k>/history/JJJJ-MM-TT-thema.md`
 (Vorlage: `.ara/templates/history-entry.md`). Das ist die Nachweisführung, wenn ein Kunde
-fragt, was wann gemacht wurde — und die Grundlage dafür, dass beim nächsten Mal niemand bei
+fragt, was wann gemacht wurde, und die Grundlage dafür, dass beim nächsten Mal niemand bei
 null anfängt.

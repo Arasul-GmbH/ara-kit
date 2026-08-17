@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Agenda — was steht an.
+ * Agenda: was steht an.
  *
  * Sammelt Termine aus allen Kundenakten und Geräten: Wiedervorlagen, auslaufende
  * Wartungsverträge, unterbrochene Einrichtungen, eingeschlafene Kontakte.
  *
- * Nichts davon läuft automatisch. Das Werkzeug antwortet, wenn gefragt wird —
+ * Nichts davon läuft automatisch. Das Werkzeug antwortet, wenn gefragt wird,
  * bewusst kein Wächter, der von selbst Nachrichten schickt.
  *
  *   node .ara/tools/agenda.mjs                 alles, was ansteht
@@ -67,7 +67,7 @@ for (const customer of listCustomers()) {
       days: 0,
       type: "stale",
       customer,
-      text: `${label} — seit ${-lastContact} Tagen kein Kontakt, Stand "${fields.status}"`,
+      text: `${label}, seit ${-lastContact} Tagen kein Kontakt, Stand "${fields.status}"`,
     });
   }
 

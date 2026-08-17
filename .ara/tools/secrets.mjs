@@ -6,7 +6,7 @@
  *   node .ara/tools/secrets.mjs --set ARASUL_TOKEN     Wert wird abgefragt, nicht angezeigt
  *   node .ara/tools/secrets.mjs --store keychain       Ablage wechseln
  *
- * Der Wert wird nie als Argument übergeben — sonst stünde er in der Prozessliste
+ * Der Wert wird nie als Argument übergeben: sonst stünde er in der Prozessliste
  * und im Verlauf der Kommandozeile.
  */
 
@@ -51,7 +51,7 @@ if (typeof arg.store === "string") {
   writeFrontmatter(PROFILE, { secrets_store: wanted });
   console.log(
     `Ablage umgestellt auf: ${storeLabel(wanted)}.\n` +
-      "Bereits hinterlegte Geheimnisse bleiben, wo sie sind — sie werden weiterhin gefunden.\n" +
+      "Bereits hinterlegte Geheimnisse bleiben, wo sie sind, sie werden weiterhin gefunden.\n" +
       "Wenn du sie umziehen willst, setz sie einmal neu."
   );
   process.exit(0);
@@ -85,7 +85,7 @@ if (typeof arg.set === "string") {
     }
   });
 } else if (typeof arg.get === "string") {
-  // Für Skripte. Gibt den Wert aus — im Gespräch nicht verwenden.
+  // Für Skripte. Gibt den Wert aus, im Gespräch nicht verwenden.
   const value = getSecret(arg.get);
   if (!value) process.exit(1);
   process.stdout.write(value);
@@ -99,7 +99,7 @@ if (typeof arg.set === "string") {
     "",
   ];
   for (const entry of KNOWN) {
-    lines.push(`- ${entry.name}: ${hasSecret(entry.name) ? "hinterlegt" : "fehlt"} — ${entry.info}`);
+    lines.push(`- ${entry.name}: ${hasSecret(entry.name) ? "hinterlegt" : "fehlt"}: ${entry.info}`);
   }
   lines.push(
     "",

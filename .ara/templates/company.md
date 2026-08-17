@@ -20,7 +20,7 @@ logo:                     # Pfad zur Datei, falls vorhanden
 
 ## Einkaufspreise
 
-<!-- Vertraulich. Was du selbst zahlst, mit Stand-Datum — die verbindliche
+<!-- Vertraulich. Was du selbst zahlst, mit Stand-Datum, die verbindliche
      Quelle ist immer das Partnerportal.
 
      | Position | Einkauf netto | Stand |

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Gerät finden — ist da etwas, und antwortet es?
+ * Gerät finden: ist da etwas, und antwortet es?
  *
  * Nach dem ersten Start eines Geräts ist die häufigste Frage: unter welcher Adresse
  * ist es erreichbar, und läuft dort schon ein SSH-Dienst. Dieses Werkzeug rät nicht,
@@ -73,7 +73,7 @@ function nachbarn() {
   for (const zeile of zeilen) console.log(`- ${zeile}`);
   console.log(
     "\nDas ist nur die Nachbarschaftstabelle, keine vollständige Netzübersicht." +
-      "\nWenn das gesuchte Gerät fehlt, sprich es einmal direkt an — etwa über den Namen, den es sich gibt."
+      "\nWenn das gesuchte Gerät fehlt, sprich es einmal direkt an, etwa über den Namen, den es sich gibt."
   );
 }
 
@@ -133,7 +133,7 @@ if (!adresse && !erreichbar && !offen.length) {
   zeilen.push(
     "",
     "Erreichbar, aber kein SSH-Dienst auf den üblichen Ports. Entweder läuft er noch nicht,",
-    "oder er hört auf einem anderen Port. Nach der Härtung ist das erwartbar — dann gilt der neue Port."
+    "oder er hört auf einem anderen Port. Nach der Härtung ist das erwartbar, dann gilt der neue Port."
   );
 }
 

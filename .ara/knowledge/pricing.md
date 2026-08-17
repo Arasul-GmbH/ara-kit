@@ -1,6 +1,6 @@
 # Verfahren: Kalkulation
 
-> **Wann brauchst du das?** Wenn jemand wissen will, was etwas kostet — für den Kunden oder
+> **Wann brauchst du das?** Wenn jemand wissen will, was etwas kostet, für den Kunden oder
 > für den Partner selbst.
 
 ## Woher die Zahlen kommen
@@ -10,7 +10,7 @@ teurer als eine Rückfrage.
 
 | Was | Wo es steht |
 |---|---|
-| Einkaufspreise (Lizenz, Wartung, Hardware) | Partnerportal — der Partner sieht seine eigenen |
+| Einkaufspreise (Lizenz, Wartung, Hardware) | Partnerportal, der Partner sieht seine eigenen |
 | Stundensatz, Aufschlag, Zahlungsziel | `business/company.md` |
 | Was dieser Kunde braucht | `customers/<k>/customer.md` |
 
@@ -22,7 +22,7 @@ Kennst du einen Einkaufspreis nicht, sag das und lass ihn dir nennen. Rate nicht
 
 ## Die Posten
 
-Ein vollständiges Angebot besteht aus vier Teilen. Fehlt einer, wird nachverhandelt — und
+Ein vollständiges Angebot besteht aus vier Teilen. Fehlt einer, wird nachverhandelt, und
 das immer zu Lasten des Partners.
 
 1. **Hardware.** Einkauf plus Aufschlag. Lieferzeit nennen, sie ist bei dieser Art Gerät
@@ -32,7 +32,7 @@ das immer zu Lasten des Partners.
    den man zum ersten Mal aufsetzt, dauert länger als die zweite. Wer das nicht einpreist,
    arbeitet den ersten Kunden umsonst.
 4. **Laufendes.** Wartung des Produkts plus die eigene Betreuung. Das ist der Teil, der
-   das Geschäft trägt — er gehört ins erste Angebot, nicht in ein späteres Gespräch.
+   das Geschäft trägt, er gehört ins erste Angebot, nicht in ein späteres Gespräch.
 
 Dazu, wenn zutreffend: Anfahrt, Schulung, Erweiterungen, Datenübernahme.
 
@@ -58,7 +58,7 @@ Bei der Zahl bleibt es nicht. Zwei Dinge gehören dazu:
 ## Für den Partner selbst
 
 Manchmal ist die Frage nicht „was kostet das den Kunden", sondern „was bleibt bei mir
-hängen". Dann rechne die Marge und den Stundenertrag aus — Einkauf gegen Verkauf, Aufwand
+hängen". Dann rechne die Marge und den Stundenertrag aus. Einkauf gegen Verkauf, Aufwand
 gegen Satz. Wenn dabei etwas herauskommt, das sich nicht lohnt, sag es. Ein Auftrag, der
 sich nicht rechnet, ist kein Erfolg.
 

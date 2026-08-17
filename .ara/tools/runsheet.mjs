@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Laufzettel — das Gedächtnis einer Geräteeinrichtung.
+ * Laufzettel: das Gedächtnis einer Geräteeinrichtung.
  *
  * Eine Einrichtung dauert Stunden, wird unterbrochen und überlebt mehrere Sitzungen.
  * Der Laufzettel hält fest, was erledigt ist und was als Nächstes kommt. Er wird
@@ -95,7 +95,7 @@ if (arg.show || (!arg.entry && arg.phase === undefined && !arg.state)) {
     [
       `# Stand: ${target.customer} / ${target.device}`,
       "",
-      `- Phase ${phase} von 6 — ${PHASES[phase] ?? "unbekannt"}`,
+      `- Phase ${phase} von 6: ${PHASES[phase] ?? "unbekannt"}`,
       `- Zustand: ${STATE_LABEL[fields.state] ?? fields.state ?? "unbekannt"}`,
       `- Plattformprofil: ${fields.profile || "noch nicht bestätigt"}`,
       `- Begonnen: ${fields.started || "unbekannt"}, zuletzt: ${fields.updated || "unbekannt"}`,
@@ -124,7 +124,7 @@ const { fields } = readFrontmatter(file);
 const usedPhase = phase ?? Number(fields.phase ?? 0);
 const usedState = state ?? fields.state ?? "running";
 const heading =
-  `### Phase ${usedPhase} — ${PHASES[usedPhase] ?? "unbekannt"} · ` +
+  `### Phase ${usedPhase}: ${PHASES[usedPhase] ?? "unbekannt"} · ` +
   `${STATE_LABEL[usedState] ?? usedState} · ${now()}`;
 
 appendFileSync(file, `\n${heading}\n${arg.entry.trim()}\n`);

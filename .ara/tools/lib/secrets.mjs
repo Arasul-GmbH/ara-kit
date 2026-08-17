@@ -1,5 +1,5 @@
 /**
- * Geheimnisse — zwei Ablagen, eine Schnittstelle.
+ * Geheimnisse: zwei Ablagen, eine Schnittstelle.
  *
  * Der Partner entscheidet im Onboarding, wo seine Geheimnisse liegen:
  *
@@ -47,7 +47,7 @@ export function keychainHint() {
   if (system === "linux") {
     return keychainAvailable()
       ? "Secret Service (secret-tool)"
-      : "Secret Service — dafür fehlt secret-tool (Paket libsecret-tools)";
+      : "Secret Service, dafür fehlt secret-tool (Paket libsecret-tools)";
   }
   return "auf diesem Betriebssystem nicht verfügbar";
 }

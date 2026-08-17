@@ -1,6 +1,6 @@
 # Verfahren: Diagnose
 
-> **Wann brauchst du das?** Wenn etwas nicht funktioniert — bei `/maintain` oder wenn
+> **Wann brauchst du das?** Wenn etwas nicht funktioniert, bei `/maintain` oder wenn
 > jemand „bei Müller geht der Chat nicht" sagt.
 
 ## Der Grundsatz
@@ -9,7 +9,7 @@
 Neustart" als erste Handlung.
 
 Der Grund ist nicht Ordnungsliebe: Ein Neustart löscht die Spur. Wenn du vorher nicht weißt,
-was los war, weißt du es danach nie — und in drei Wochen steht dasselbe Problem wieder da,
+was los war, weißt du es danach nie, und in drei Wochen steht dasselbe Problem wieder da,
 und du fängst von vorn an.
 
 ## Die Kette
@@ -35,7 +35,7 @@ gehst.
    etwas eingerichtet. Ein System, das monatelang lief und plötzlich nicht mehr, hat fast
    immer eine Ursache außerhalb seiner selbst.
 
-Wie man das jeweils abfragt, steht im Produkt — lies es im Spiegel nach, statt Befehle aus
+Wie man das jeweils abfragt, steht im Produkt. Lies es im Spiegel nach, statt Befehle aus
 dem Gedächtnis zu verwenden.
 
 ## Häufige Muster
@@ -43,7 +43,7 @@ dem Gedächtnis zu verwenden.
 | Symptom | Wo du zuerst schaust |
 |---|---|
 | Antwortet gar nicht | Läuft die Sprachverarbeitung? Ist ein Modell geladen? |
-| Antwortet leer oder unsinnig | Meist kein Modell geladen — sieht aus wie ein Denkfehler, ist ein fehlendes Modell |
+| Antwortet leer oder unsinnig | Meist kein Modell geladen, sieht aus wie ein Denkfehler, ist ein fehlendes Modell |
 | Antwortet sehr langsam | Läuft die Berechnung auf der Grafikeinheit oder auf dem Hauptprozessor? |
 | Findet Dokumente nicht | Wurde das Dokument aufgenommen? Ist das Format überhaupt lesbar? |
 | Weboberfläche nicht erreichbar | Netzweg, Zertifikat, oder Dienst dahinter |
@@ -70,7 +70,7 @@ den Vorschlag, mit Rückweg. Erst dann handeln.
 
 ## Danach
 
-Was war, was du getan hast, was es gebracht hat — in `customers/<k>/history/`. Beim nächsten
+Was war, was du getan hast, was es gebracht hat, in `customers/<k>/history/`. Beim nächsten
 Mal ist das der erste Ort, an dem du nachsiehst. Wenn dieselbe Ursache zum zweiten Mal
 auftritt, ist das keine Störung mehr, sondern ein Konstruktionsfehler, und der gehört
 gemeldet.

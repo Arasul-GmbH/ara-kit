@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Selbsttest — prüft, ob das Kit auf diesem Rechner funktioniert.
+ * Selbsttest: prüft, ob das Kit auf diesem Rechner funktioniert.
  *
  * Läuft ohne Kundendaten, ohne Netzzugang zum Portal und ohne Gerät. Nützlich nach
  * einem Update, bei merkwürdigem Verhalten und in der Entwicklung des Kits.
@@ -20,7 +20,7 @@ let failures = 0;
 
 function report(name, ok, hint) {
   // Sofort ausgeben, damit man bei einem hängenden Lauf sieht, wo es klemmt.
-  console.log(`${ok ? "ok  " : "FEHL"} ${name}${hint ? ` — ${hint}` : ""}`);
+  console.log(`${ok ? "ok  " : "FEHL"} ${name}${hint ? `: ${hint}` : ""}`);
   results.push({ name, ok, hint });
   if (!ok) failures++;
 }
@@ -56,7 +56,7 @@ function tool(file, args, input) {
 
 /**
  * Wie tool(), aber ohne die Ereignisschleife zu blockieren. Nötig überall dort,
- * wo im selben Prozess ein Testserver antworten muss — sonst wartet das Kind auf
+ * wo im selben Prozess ein Testserver antworten muss: sonst wartet das Kind auf
  * eine Antwort, die der Elternprozess nicht geben kann.
  */
 function toolAsync(file, args, env = {}) {
@@ -139,7 +139,7 @@ check("Frontmatter lesen und schreiben", () => {
 
 check("Leere Vorlagenfelder liefern keine Kommentartexte", () => {
   // Die Vorlagen erklären ihre Felder mit Kommentaren. Ein leeres Feld muss leer
-  // bleiben — sonst landet der Erklärtext als Adresse oder Schlüsselname im Einsatz.
+  // bleiben, sonst landet der Erklärtext als Adresse oder Schlüsselname im Einsatz.
   const templates = join(ROOT, ".ara", "templates");
   for (const name of readdirSync(templates)) {
     const { fields } = readFrontmatter(join(templates, name));
@@ -352,7 +352,7 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
   );
   assert(
     tracked.length === 0,
-    `würde ins Repository wandern: ${tracked.join(", ")} — .gitignore prüfen`
+    `würde ins Repository wandern: ${tracked.join(", ")}, .gitignore prüfen`
   );
 
   // Umgekehrt: das Werkzeug selbst muss verfolgt werden, sonst fehlt es nach dem Klonen.
@@ -363,6 +363,48 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
   assert(ignored.length === 0, `fehlt nach dem Klonen: ${ignored.join(", ")}`);
 
   return `${mustBeIgnored.length} Pfade geprüft`;
+});
+
+// --- Schreibweise -----------------------------------------------------------
+
+check("Keine Gedankenstriche im Kit", () => {
+  // Ara soll keine Gedankenstriche setzen. Was im Kit steht, ist ihre Vorlage:
+  // steht dort einer, schreibt sie welche.
+  const offenders = [];
+  const scan = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scan(path);
+        continue;
+      }
+      if (!/\.(md|mjs|json)$/.test(entry.name)) continue;
+      const content = readFileSync(path, "utf8");
+      content.split(/\r?\n/).forEach((line, index) => {
+        if (/[\u2014\u2013]/.test(line)) offenders.push(`${relative(ROOT, path)}:${index + 1}`);
+      });
+    }
+  };
+  scan(join(ROOT, ".ara"));
+  scan(join(ROOT, ".claude"));
+  offenders.push(
+    ...(/[\u2014\u2013]/.test(readFileSync(join(ROOT, "README.md"), "utf8")) ? ["README.md"] : [])
+  );
+  assert(offenders.length === 0, `Gedankenstriche in: ${offenders.slice(0, 8).join(", ")}`);
+});
+
+check("Browser-Werkzeug ist eingerichtet", () => {
+  const file = join(ROOT, ".mcp.json");
+  assert(existsSync(file), ".mcp.json fehlt, der Browser steht dann nicht zur Verfügung");
+  const config = JSON.parse(readFileSync(file, "utf8"));
+  assert(config.mcpServers?.playwright, "kein Browser in .mcp.json eingetragen");
+
+  const settings = JSON.parse(readFileSync(join(ROOT, ".claude", "settings.json"), "utf8"));
+  assert(
+    settings.permissions?.allow?.includes("mcp__playwright"),
+    "Browser ist nicht freigegeben, jeder Aufruf wuerde nachfragen"
+  );
 });
 
 // --- Verweise ---------------------------------------------------------------

@@ -9,7 +9,7 @@ contact:                  # Telefon oder E-Mail
 website:
 created:
 last_contact:
-follow_up:                # JJJJ-MM-TT — wann du dich wieder melden willst
+follow_up:                # JJJJ-MM-TT, wann du dich wieder melden willst
 follow_up_note:           # ein Halbsatz, worum es dann geht
 ---
 
@@ -29,7 +29,7 @@ follow_up_note:           # ein Halbsatz, worum es dann geht
 ## Wer entscheidet
 
 <!-- Wer unterschreibt, wer nutzt, wer kann das Projekt verhindern.
-     Bei kleinen Firmen oft dieselbe Person — dann steht das hier. -->
+     Bei kleinen Firmen oft dieselbe Person, dann steht das hier. -->
 
 ## Offene Punkte
 

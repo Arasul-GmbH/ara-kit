@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Spiegel — holt den aktuellen Produktstand als lokalen Zwischenspeicher.
+ * Spiegel: holt den aktuellen Produktstand als lokalen Zwischenspeicher.
  *
  * Das Kit liefert bewusst keine Produktwerte mit (siehe .ara/knowledge/live-knowledge.md).
  * Stattdessen liegt hier der echte Stand, aus dem Modelle, Geräteprofile, Abläufe und
@@ -47,7 +47,7 @@ async function fetchMirror(base, token) {
 
   const response = await fetch(url, { redirect: "follow" });
   if (!response.ok) {
-    // Das Portal begründet Ablehnungen im Klartext — etwa ein beendetes
+    // Das Portal begründet Ablehnungen im Klartext, etwa ein beendetes
     // Wartungs-Abo. Diese Begründung ist wertvoller als eine Statusnummer.
     let reason = "";
     try {

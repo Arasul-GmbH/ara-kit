@@ -1,5 +1,5 @@
 ---
-description: Laufendes Gerät betreuen — Diagnose, Update, Reparatur, Erweiterung
+description: Laufendes Gerät betreuen. Diagnose, Update, Reparatur, Erweiterung
 argument-hint: <kunde> oder <kunde>/<gerät>
 ---
 
@@ -7,7 +7,7 @@ Betreuung für: **$1**
 
 Lies `.ara/knowledge/maintenance-flow.md` und arbeite danach.
 
-**Zuerst:** Lagebild in drei Zeilen — wer, welches Gerät, wann zuletzt etwas passiert ist,
+**Zuerst:** Lagebild in drei Zeilen, wer, welches Gerät, wann zuletzt etwas passiert ist,
 ob es erreichbar ist (`node .ara/tools/remote.mjs --customer <kunde> --check`). Dann fragen,
 was ansteht. Kein Vorschlagskatalog.
 

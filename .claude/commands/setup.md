@@ -1,5 +1,5 @@
 ---
-description: Gerät einrichten — von der Vorbereitung bis zur Abnahme
+description: Gerät einrichten, von der Vorbereitung bis zur Abnahme
 argument-hint: <kunde> oder <kunde>/<gerät>
 ---
 
@@ -21,7 +21,7 @@ existiert (sonst zuerst `/customer`), klär mit dem Menschen, um welches Gerät 
 leg den Laufzettel an.
 
 **Enthält das Argument einen Schrägstrich** (`mueller/werk2`), ist der zweite Teil die
-Gerätebezeichnung. Hat der Kunde mehrere Geräte und es fehlt die Angabe, frag — rate nicht.
+Gerätebezeichnung. Hat der Kunde mehrere Geräte und es fehlt die Angabe, frag, rate nicht.
 
 Halte dich an die Schleife: Vorbedingung prüfen, tun, nachweisen, eintragen. Nach jedem
 abgeschlossenen Schritt schreibst du in den Laufzettel, mit Nachweis. Wenn etwas klemmt,

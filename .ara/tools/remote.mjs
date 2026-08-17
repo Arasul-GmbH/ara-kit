@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fernzugriff — einen Befehl auf einem Kundengerät ausführen und mitschreiben.
+ * Fernzugriff: einen Befehl auf einem Kundengerät ausführen und mitschreiben.
  *
  * Die Verbindungsdaten stehen in der Geräteakte, nicht im Befehl. Damit kann kein
  * Gerät versehentlich mit den Daten eines anderen Kunden angesprochen werden, und
@@ -22,7 +22,7 @@ const arg = parseArgs();
 if (!arg.customer) {
   console.log(
     [
-      "Fernzugriff — Befehl auf einem Kundengerät ausführen",
+      "Fernzugriff. Befehl auf einem Kundengerät ausführen",
       "",
       "  --customer <name>      welcher Kunde (Pflicht)",
       "  --device <name>        welches Gerät (nur nötig, wenn es mehrere gibt)",
@@ -61,7 +61,7 @@ if (key) {
   if (!existsSync(keyPath)) {
     fail(
       `Der Schlüssel ${key} liegt nicht unter ${keyPath}.\n` +
-        "Prüf den Namen in der Geräteakte — im Kit steht nur der Name, der Schlüssel selbst bleibt in ~/.ssh."
+        "Prüf den Namen in der Geräteakte, im Kit steht nur der Name, der Schlüssel selbst bleibt in ~/.ssh."
     );
   }
   sshArgs.push("-i", keyPath);

@@ -1,13 +1,13 @@
 # Live-Wissen: woher Werte kommen
 
 > **Wann brauchst du das?** Immer wenn du etwas Konkretes über Ara OS sagen, prüfen oder
-> ausführen willst — Modelle, Ports, Befehle, Pfade, Geräteprofile, Versionen.
+> ausführen willst. Modelle, Ports, Befehle, Pfade, Geräteprofile, Versionen.
 
 ## Warum es diese Regel gibt
 
 Das Produkt `arasul-jet` entwickelt sich schnell. Modelle, Engines, Geräteprofile und
 Befehle haben sich in wenigen Wochen mehrfach geändert. Ein Kit, das solche Werte als Text
-mitliefert, ist am Tag seiner Auslieferung falsch — und dann liest jemand sie vor einem
+mitliefert, ist am Tag seiner Auslieferung falsch, und dann liest jemand sie vor einem
 Kunden vor.
 
 Deshalb: **Das Kit weiß, wie man vorgeht. Das Produkt weiß, was gilt.**
@@ -22,7 +22,7 @@ node .ara/tools/mirror.mjs --show # nur nachsehen, wie alt er ist
 node .ara/tools/mirror.mjs --refresh    # erzwingen
 ```
 
-Er wird mit dem Lizenztoken aus der `.env` geholt. Ohne Token kein Spiegel — dann sagst du
+Er wird mit dem Lizenztoken aus der `.env` geholt. Ohne Token kein Spiegel, dann sagst du
 das und arbeitest ohne Produktaussagen weiter.
 
 Was du dort nachschlägst:
@@ -36,17 +36,17 @@ Was du dort nachschlägst:
 
 **Vorsicht bei `docs/`:** Die Produktdokumentation ist an manchen Stellen älter als der
 Code. Wenn Dokumentation und Skript sich widersprechen, gilt das Skript. Sag dem Menschen,
-wenn dir so ein Widerspruch auffällt — das ist eine nützliche Rückmeldung ans Produktteam.
+wenn dir so ein Widerspruch auffällt, das ist eine nützliche Rückmeldung ans Produktteam.
 
 ## Quelle 2: Das Gerät
 
-Sobald ein Gerät per SSH erreichbar ist, ist es die genauere Quelle — es sagt dir, was
+Sobald ein Gerät per SSH erreichbar ist, ist es die genauere Quelle, es sagt dir, was
 dort **tatsächlich** läuft, nicht was vorgesehen war.
 
 Frag das Gerät, statt aus dem Spiegel abzuleiten, wenn es um dieses eine Gerät geht:
 welche Plattform erkannt wurde, welches Profil gilt, welche Dienste laufen, welches Modell
 geladen ist, welche Version installiert ist. Die passenden Befehle stehen im Spiegel
-(Kommandozeilenwerkzeug im Wurzelverzeichnis, Abschnitt Hilfe) — lies sie dort nach, statt
+(Kommandozeilenwerkzeug im Wurzelverzeichnis, Abschnitt Hilfe). Lies sie dort nach, statt
 sie auswendig zu verwenden.
 
 ## Quelle 3: Gibt es nicht
@@ -73,5 +73,5 @@ besser als eine Zahl, der jemand glaubt.
 
 Verfahren. Reihenfolgen. Was vor was kommt und warum. Woran man erkennt, dass ein Schritt
 wirklich funktioniert hat. Welche Fehler häufig passieren und wie man sie feststellt. Was
-in einer Abnahme nachgewiesen sein muss. Das ändert sich langsam — Werte ändern sich
+in einer Abnahme nachgewiesen sein muss. Das ändert sich langsam. Werte ändern sich
 schnell.

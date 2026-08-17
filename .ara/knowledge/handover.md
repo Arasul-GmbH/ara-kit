@@ -1,6 +1,6 @@
 # Verfahren: Nachweis und Abnahme
 
-> **Wann brauchst du das?** In Phase 5 und 6 einer Einrichtung — und immer, wenn jemand
+> **Wann brauchst du das?** In Phase 5 und 6 einer Einrichtung, und immer, wenn jemand
 > wissen will, ob ein Gerät wirklich betriebsbereit ist.
 
 ## Der Grundsatz
@@ -9,7 +9,7 @@
 Testanfrage wird in vier Sekunden mit einem sinnvollen Absatz beantwortet" ist ein Ergebnis.
 
 Für die Abnahme zählen nur Ergebnisse. Jeder Punkt wird geprüft, und was dabei
-herauskam, steht im Laufzettel — auch wenn es unangenehm ist.
+herauskam, steht im Laufzettel, auch wenn es unangenehm ist.
 
 ## Die Prüfliste
 
@@ -27,7 +27,7 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
 - Die Antwort muss inhaltlich brauchbar sein. Ein System, das mit einer leeren oder
   offensichtlich unsinnigen Antwort reagiert, hat meist gar kein Modell geladen.
 - Antwortzeit notieren. Der Kunde wird sie mit dem vergleichen, was er aus der Cloud kennt
-  — besser, er hört die Zahl vom Partner als dass er sie selbst entdeckt.
+ , besser, er hört die Zahl vom Partner als dass er sie selbst entdeckt.
 
 ### 3. Dokumente werden gefunden
 - Ein Testdokument aufnehmen, das dem entspricht, was der Kunde wirklich hat.
@@ -41,13 +41,13 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
 - Auch prüfen: Kommt man nach einem Neustart des Geräts noch heran?
 
 ### 5. Der Zugang ist abgesichert
-- Anmeldung mit Passwort wird abgelehnt, mit Schlüssel angenommen — beides geprüft, nicht
+- Anmeldung mit Passwort wird abgelehnt, mit Schlüssel angenommen, beides geprüft, nicht
   angenommen.
 - Nur die Dienste sind erreichbar, die erreichbar sein sollen.
 - Zugangsdaten liegen dort, wo sie hingehören, und nicht in einer Kundendatei.
 
 ### 6. Der Kunde kann selbst handeln
-- Er weiß, wie er die Fernwartung abschaltet — **vorgeführt, nicht erwähnt**.
+- Er weiß, wie er die Fernwartung abschaltet, **vorgeführt, nicht erwähnt**.
 - Er weiß, wen er anruft und was dann passiert.
 - Er hat eine Kurzanleitung, die seine Mitarbeiter verstehen.
 
@@ -55,7 +55,7 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
 
 Dann ist das Gerät **nicht abgenommen**. Das ist kein Drama, sondern eine Aussage:
 
-> Vier von sechs Punkten sind erfüllt. Der Fernzugriff von außen funktioniert nicht — das
+> Vier von sechs Punkten sind erfüllt. Der Fernzugriff von außen funktioniert nicht, das
 > Kundennetz lässt die Verbindung nicht zu. Bis das geklärt ist, kann ich das Gerät nicht
 > aus der Ferne warten. Vorschlag: Ich notiere es als offenen Punkt, du sprichst mit dem
 > Netzbetreuer, und wir holen es nach.

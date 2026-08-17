@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Riegel — letzter Halt vor gefährlichen Befehlen.
+ * Riegel: letzter Halt vor gefährlichen Befehlen.
  *
  * Läuft als PreToolUse-Hook vor jedem Bash-Aufruf. Bekommt den geplanten Befehl auf der
  * Standardeingabe und beendet sich mit Code 2, wenn er blockiert wird. Die Begründung

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Datenträger — Boot-Medien sicher erkennen und beschreiben.
+ * Datenträger: Boot-Medien sicher erkennen und beschreiben.
  *
  * Das Beschreiben eines Datenträgers ist der einzige Schritt der Einrichtung, der sich
  * nicht rückgängig machen lässt: der falsche Anschluss löscht eine fremde Festplatte.
@@ -192,7 +192,7 @@ function schreiben(abbild, zielKennung) {
   if (!arg.execute) {
     console.log(
       "Geprüft und freigegeben, aber nicht ausgeführt.\n" +
-        "Führ die beiden Befehle oben in deinem Terminal aus — dd braucht dein Passwort.\n" +
+        "Führ die beiden Befehle oben in deinem Terminal aus, dd braucht dein Passwort.\n" +
         "Sag mir danach Bescheid, dann prüfe ich den Stick."
     );
     return;

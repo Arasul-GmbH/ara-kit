@@ -11,7 +11,7 @@ Das war es. Ara führt dich durch alles Weitere und richtet sich dabei selbst ei
 
 ## Was du brauchst
 
-- **Claude Code** (oder Cursor/Codex — am besten läuft es in Claude Code)
+- **Claude Code** (oder Cursor/Codex, am besten läuft es in Claude Code)
 - **Node.js** ab Version 20
 - **git** und **ssh** (auf macOS und Linux bereits vorhanden)
 - Deinen **Arasul-Lizenztoken** aus dem Partner-Portal
@@ -38,7 +38,7 @@ Leute", „bei Müller antwortet der Chat nicht".
 | `customers/` | Deine Kunden, ihre Geräte, Laufzettel und Unterlagen |
 | `business/` | Dein Profil, Firmendaten, Preise und Notizen |
 
-Diese beiden Ordner gehören dir. Ein Update des Kits (`git pull`) fasst sie nie an — sie
+Diese beiden Ordner gehören dir. Ein Update des Kits (`git pull`) fasst sie nie an, sie
 sind von der Versionskontrolle ausgenommen. Alles andere ist Werkzeug und wird mit
 Updates erneuert.
 
@@ -63,7 +63,7 @@ Das Kit enthält deine Kundendaten und deine Zugänge. Beides verlässt diesen R
 von selbst. Zwei Dinge sind trotzdem deine Verantwortung:
 
 - **Festplattenverschlüsselung** einschalten, falls noch nicht geschehen.
-- **Sicherung** einrichten — `/start` bietet dir dafür ein eigenes privates Repository an.
+- **Sicherung** einrichten, `/start` bietet dir dafür ein eigenes privates Repository an.
   Ohne läuft deine Arbeit ohne Historie und ohne Rückweg.
 
 Geheimnisse (Lizenztoken, Passwörter) liegen wahlweise in einer `.env` im Kit oder im

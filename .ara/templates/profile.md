@@ -4,10 +4,10 @@ name:
 salutation:               # wie du angesprochen werden willst
 company:
 region:
-detail_level: medium      # low | medium | high — wie viel Ara erklärt
+detail_level: medium      # low | medium | high, wie viel Ara erklärt
 security_level: standard  # standard | relaxed
 experience:               # kurz: linux, ssh, hardware vor ort
-flash_host: unknown       # no | yes | unknown — x86-Linux zum Flashen verfügbar
+flash_host: unknown       # no | yes | unknown, x86-Linux zum Flashen verfügbar
 ssh_key:                  # Name des Schlüssels in ~/.ssh
 secrets_store: env        # env | keychain
 backup_repo:              # wo dieses Kit gesichert wird, falls eingerichtet
@@ -15,7 +15,7 @@ created:
 ---
 
 <!-- Diese Datei gehört dir. Ara schreibt sie in deiner Sprache und spricht dich
-     darin an — nicht über dich. -->
+     darin an, nicht über dich. -->
 
 ## Wie ich arbeiten möchte
 

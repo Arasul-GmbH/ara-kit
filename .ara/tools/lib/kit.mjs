@@ -34,7 +34,7 @@ export function daysUntil(dateString) {
 
 /**
  * Zerlegt eine Markdown-Datei mit Frontmatter.
- * Flache Schlüssel-Wert-Paare, keine Listen — genau das nutzen die Vorlagen.
+ * Flache Schlüssel-Wert-Paare, keine Listen, genau das nutzen die Vorlagen.
  */
 export function readFrontmatter(path) {
   if (!existsSync(path)) return { fields: {}, body: "", exists: false };
@@ -46,7 +46,7 @@ export function readFrontmatter(path) {
   for (const line of match[1].split(/\r?\n/)) {
     const pair = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/);
     if (!pair) continue;
-    // Erläuternde Kommentare abschneiden — auch wenn das Feld leer ist und der
+    // Erläuternde Kommentare abschneiden, auch wenn das Feld leer ist und der
     // Kommentar direkt hinter dem Doppelpunkt steht. Sonst wird der Erklärtext
     // der Vorlage als Wert gelesen.
     let value = pair[2].trim().replace(/(^|\s+)#.*$/, "").trim();
@@ -100,7 +100,7 @@ export function listDevices(customer) {
 
 /**
  * Löst Kunde und Gerät auf. Fehlt die Gerätebezeichnung und es gibt genau eines,
- * wird dieses genommen — bei mehreren ist Raten nicht erlaubt.
+ * wird dieses genommen: bei mehreren ist Raten nicht erlaubt.
  */
 export function resolveDevice(customer, device) {
   if (!customer) throw new Error("Es fehlt die Angabe, um welchen Kunden es geht.");

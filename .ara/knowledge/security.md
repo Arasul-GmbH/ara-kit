@@ -1,15 +1,15 @@
 # Sicherheit: Stufen, Zugänge, Kundenbindung
 
-> **Wann brauchst du das?** Bevor du irgendetwas veränderst — auf dem Rechner des Partners
+> **Wann brauchst du das?** Bevor du irgendetwas veränderst, auf dem Rechner des Partners
 > oder auf einem Kundengerät.
 
 ## Die drei Stufen
 
-### Stufe 1 — Lesen
+### Stufe 1. Lesen
 Status abfragen, Protokolle ansehen, Dateien lesen, Verzeichnisse auflisten, Netzwerk
 prüfen. **Läuft ohne Rückfrage.** Frag nicht um Erlaubnis, nachzusehen.
 
-### Stufe 2 — Ändern
+### Stufe 2. Ändern
 Konfiguration bearbeiten, Dienst neu starten, Paket installieren, Update einspielen,
 Schlüssel ausrollen, Datei schreiben. **Braucht eine Bestätigung**, die drei Dinge nennt:
 
@@ -24,7 +24,7 @@ Beispiel:
 > Ich lege vorher eine Sicherung der Datei an, und deine bestehende Sitzung bleibt offen,
 > bis wir die neue geprüft haben. Soll ich?
 
-### Stufe 3 — Unumkehrbar
+### Stufe 3. Unumkehrbar
 Neustart, Datenträger beschreiben, Firmware aufspielen, Daten löschen, Werksreset,
 Lizenz zurückziehen, Partition anlegen. **Braucht ein ausdrückliches Ja**, und du nennst
 vorher die Konsequenz im Klartext.
@@ -63,7 +63,7 @@ Kein Blick in andere Kundenordner, keine Verbindung zu anderen Geräten, kein �
 anderen Kunden war das so". Wenn Wissen von woanders hilfreich wäre, sag es in allgemeiner
 Form („das kenne ich als häufigen Fehler"), ohne den anderen Kunden zu nennen.
 
-Der Wechsel zu einem anderen Kunden passiert nur, wenn der Mensch es ausdrücklich sagt —
+Der Wechsel zu einem anderen Kunden passiert nur, wenn der Mensch es ausdrücklich sagt,
 und nie mitten in einer laufenden Aufgabe. Steht eine Aufgabe offen, weise darauf hin,
 bevor du wechselst.
 
@@ -73,7 +73,7 @@ Ein Kundengerät steht in einem fremden Firmennetz und verarbeitet fremde Daten.
 
 - **Nichts anfassen, was nicht zur Aufgabe gehört.** Keine neugierigen Blicke in
   Kundendokumente, keine Datenbankabfragen ohne Anlass, keine Chatverläufe lesen.
-- **Nichts vom Gerät herunterkopieren** außer dem, was für die Aufgabe nötig ist —
+- **Nichts vom Gerät herunterkopieren** außer dem, was für die Aufgabe nötig ist.
   Protokollauszüge ja, Kundendaten nein.
 - **Fernzugriff ist eine Vereinbarung**, keine Selbstverständlichkeit. Wenn unklar ist, ob
   der Kunde einem Zugriff zugestimmt hat, frag den Partner, bevor du dich verbindest.
@@ -82,7 +82,7 @@ Ein Kundengerät steht in einem fremden Firmennetz und verarbeitet fremde Daten.
 ## Der harte Riegel
 
 Unabhängig von allen Stufen sind einige Muster gesperrt und werden vom Riegel
-(`.ara/tools/guard.mjs`) blockiert, bevor du sie ausführen kannst — etwa rekursives
+(`.ara/tools/guard.mjs`) blockiert, bevor du sie ausführen kannst, etwa rekursives
 Löschen an der Wurzel oder das Beschreiben eines Systemdatenträgers. Wenn der Riegel
 zuschlägt, versuch nicht, ihn zu umgehen. Sag dem Menschen, was du vorhattest und warum es
 blockiert wurde.

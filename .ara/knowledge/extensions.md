@@ -4,7 +4,7 @@
 
 ## Wo gebaut wird: auf dem Gerät
 
-Das Produkt bringt eine Arbeitsumgebung auf dem Gerät selbst mit — mit Terminal, Ablage und
+Das Produkt bringt eine Arbeitsumgebung auf dem Gerät selbst mit, mit Terminal, Ablage und
 Zugang zu den internen Diensten. **Dort wird gebaut, nicht auf dem Partner-Laptop.**
 
 Drei Gründe:
@@ -37,7 +37,7 @@ wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt.
 Bevor irgendetwas gebaut wird: Was gibt es bereits? Das Produkt hat eine Schnittstelle für
 eigene Anwendungen, einen Baukasten für Erweiterungen und eine Automatisierung für
 Arbeitsabläufe. Was davon vorhanden ist und wie es angesprochen wird, steht im Spiegel und
-auf dem Gerät — die Beschreibung der Schnittstelle liefert das Gerät selbst.
+auf dem Gerät, die Beschreibung der Schnittstelle liefert das Gerät selbst.
 
 Die meisten Kundenwünsche brauchen keine neue Entwicklung, sondern eine Einrichtung.
 
@@ -53,11 +53,11 @@ Nicht: drei Wochen bauen und dann vorführen.
 Eine Erweiterung, die nur der Partner starten kann, ist keine Lösung. Zur Übergabe gehört:
 wie man sie benutzt, wie man sieht, dass sie läuft, was zu tun ist, wenn sie nicht läuft.
 
-Das gehört in den Verlauf des Kunden — was gebaut wurde, warum, und wo es liegt. In einem
+Das gehört in den Verlauf des Kunden, was gebaut wurde, warum, und wo es liegt. In einem
 Jahr fragt jemand danach.
 
 ## Abrechnung
 
 Erweiterungen sind Dienstleistung, keine Lizenz. Sie werden getrennt angeboten und
-abgerechnet. Der Kunde soll vorher wissen, was ihn erwartet — auch, dass eine Erweiterung
+abgerechnet. Der Kunde soll vorher wissen, was ihn erwartet, auch, dass eine Erweiterung
 Pflege braucht, wenn sich das Produkt weiterentwickelt.

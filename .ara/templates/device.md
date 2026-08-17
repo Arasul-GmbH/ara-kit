@@ -2,7 +2,7 @@
 name:                     # Standort oder Rolle, z.B. zentrale, werk2, praxis-eg
 customer:                 # id aus customer.md
 model:                    # wie das Gerät heißt, laut Lieferschein
-profile:                  # Plattformprofil — NUR wenn vom Gerät bestätigt
+profile:                  # Plattformprofil. NUR wenn vom Gerät bestätigt
 serial:
 status: planned           # planned | delivered | installing | live | retired
 location:                 # Raum, Gebäude
@@ -14,7 +14,7 @@ ssh_key:                  # Name des Schlüssels in ~/.ssh, ohne Pfad
 remote_access:            # none | direct | vpn
 secret_ref:               # Name des Eintrags in der Geheimnis-Ablage, kein Wert
 license:                  # Kennzeichnung der Lizenz, kein Token
-maintenance_until:        # JJJJ-MM-TT — Ende des Wartungsvertrags
+maintenance_until:        # JJJJ-MM-TT. Ende des Wartungsvertrags
 delivered_on:
 accepted_on:
 ---

@@ -1,7 +1,7 @@
 ---
 customer:
 device:
-profile:                  # Plattformprofil — nur eintragen, wenn vom Gerät bestätigt
+profile:                  # Plattformprofil, nur eintragen, wenn vom Gerät bestätigt
 phase: 0
 state: open               # open | running | paused | done
 started:
