@@ -45,8 +45,15 @@ Updates erneuert.
 ## Aktualisieren
 
 ```
-git pull
+node .ara/tools/update.mjs
 ```
+
+Holt den aktuellen Stand und ersetzt nur die mitgelieferten Teile. Deine Kunden, deine
+Geschäftsdaten und deine Zugänge bleiben unberührt. Vorher nachsehen, ob es überhaupt
+etwas Neues gibt, geht mit `node .ara/tools/update.mjs --check`.
+
+Wer das Kit mit git geklont hat, kann stattdessen `git pull` benutzen. Beides führt zum
+selben Ergebnis.
 
 ## Wenn etwas merkwürdig ist
 

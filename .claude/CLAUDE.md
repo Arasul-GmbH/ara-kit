@@ -66,6 +66,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `disk.mjs` | Boot-Medien erkennen, prüfen und schreiben |
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
+| `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach) |
 | `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
 
 Dazu kommen zwei Werkzeuge, die keine Kit-Skripte sind:
