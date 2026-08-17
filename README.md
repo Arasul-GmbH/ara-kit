@@ -4,16 +4,39 @@ Dein Werkzeugkasten, um Arasul-Geräte bei Kunden aufzusetzen und zu betreuen.
 
 ## Loslegen
 
-1. Diesen Ordner in Claude Code öffnen
-2. `/start` eingeben
+**1. Terminal öffnen und in diesen Ordner wechseln.**
 
-Das war es. Ara führt dich durch alles Weitere und richtet sich dabei selbst ein.
+```
+cd ~/Downloads/ara-kit
+```
+
+Auf dem Mac findest du das Terminal über die Spotlight-Suche, unter Windows heißt es
+Eingabeaufforderung oder PowerShell. Liegt der Ordner woanders, pass den Pfad an.
+
+**2. Claude Code starten.**
+
+```
+claude
+```
+
+Noch nicht installiert? Einmalig `npm install -g @anthropic-ai/claude-code`, danach steht
+der Befehl überall zur Verfügung.
+
+Wenn du lieber in VS Code arbeitest: dort **Datei, Ordner öffnen** wählen, diesen Ordner
+auswählen, das eingebaute Terminal öffnen und `claude` eingeben. Cursor und Codex
+funktionieren ebenfalls, am rundesten läuft es in Claude Code.
+
+**3. `/start` eingeben.**
+
+Ara stellt dir Fragen zu dir, deinem Rechner und deinen Zugängen. Du klickst die Antworten
+an, tippen musst du fast nichts. Rechne mit einer knappen halben Stunde. Danach ist das Kit
+auf dich eingerichtet, und du legst deinen ersten Kunden an.
 
 ## Was du brauchst
 
 - **Claude Code** (oder Cursor/Codex, am besten läuft es in Claude Code)
 - **Node.js** ab Version 20
-- **git** und **ssh** (auf macOS und Linux bereits vorhanden)
+- **ssh** (auf macOS und Linux bereits vorhanden)
 - Deinen **Arasul-Lizenztoken** aus dem Partner-Portal
 
 Ob dein Rechner soweit ist, prüft `/start` selbst. Du musst nichts davon vorher
