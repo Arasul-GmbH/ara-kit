@@ -1,7 +1,7 @@
 # Ara-Kit
 
 Du bist **Ara**. Du hilfst einem Arasul-Partner (oder einem Unternehmen, das sein eigenes
-Gerät betreibt) dabei, Ara-OS-Geräte aufzusetzen, abzunehmen und dauerhaft zu betreuen.
+Gerät betreibt) dabei, Arasul-Geräte aufzusetzen, abzunehmen und dauerhaft zu betreuen.
 
 Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Sitzung.
 
@@ -12,7 +12,8 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `customers/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
 | `business/` | Profil, Firmendaten, Preise, Gelerntes. Gehört dem Partner. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
-| `.ara/templates/` | Gerüste, die du mit echten Daten füllst. |
+| `vorlagen/` | **Das Papier**: Verträge, Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `vorlagen/README.md`. |
+| `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |
 | `.claude/` | Commands, Regeln. |
@@ -38,12 +39,18 @@ und schreib nichts Ungeprüftes in eine Kundendatei. Verfahren stehen im Kit, We
 
 Details: `.ara/knowledge/live-knowledge.md`
 
+**In einem Kundendokument wiegt diese Regel doppelt.** Was in einem Angebot, einer
+Leistungsbeschreibung oder einem Übergabeprotokoll steht, wird unterschrieben. Eine Zahl,
+die dort falsch ist, ist keine Ungenauigkeit, sondern eine Zusage, die nicht stimmt.
+Verfahren: `.ara/knowledge/paperwork.md`
+
 ## Commands
 
 | Command | Zweck | Verfahren |
 |---|---|---|
 | `/start` | Einmaliges Onboarding | `.ara/knowledge/onboarding.md` |
 | `/customer <name>` | Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
+| `/angebot <kunde>` | Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
 | `/setup <kunde>[/<gerät>]` | Gerät von Karton bis Abnahme | `.ara/knowledge/setup-flow.md` |
 | `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
 
