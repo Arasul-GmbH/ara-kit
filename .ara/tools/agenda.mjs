@@ -2,8 +2,9 @@
 /**
  * Agenda: was steht an.
  *
- * Sammelt Termine aus allen Kundenakten und Geräten: Wiedervorlagen, auslaufende
- * Wartungsverträge, unterbrochene Einrichtungen, eingeschlafene Kontakte.
+ * Sammelt Termine aus allen Kundenakten und Geräten, auch denen ohne Kunden unter
+ * devices/: Wiedervorlagen, auslaufende Wartungsverträge, unterbrochene
+ * Einrichtungen, eingeschlafene Kontakte.
  *
  * Nichts davon läuft automatisch. Das Werkzeug antwortet, wenn gefragt wird,
  * bewusst kein Wächter, der von selbst Nachrichten schickt.
@@ -18,6 +19,7 @@ import { join } from "node:path";
 import {
   customerPath,
   daysUntil,
+  devicePath,
   listCustomers,
   listDevices,
   parseArgs,
@@ -71,9 +73,15 @@ for (const customer of listCustomers()) {
     });
   }
 
+  collectDevices(customer, label);
+}
+
+/** Termine eines Geräts. Ohne Kunden ist customer null und das Gerät liegt unter devices/. */
+function collectDevices(customer, label) {
   for (const device of listDevices(customer)) {
-    const devicePath = join(customerPath(customer), "devices", device);
-    const { fields: dev } = readFrontmatter(join(devicePath, "device.md"));
+    const place = customer ? `${label} / ${device}` : device;
+    const dir = devicePath(customer, device);
+    const { fields: dev } = readFrontmatter(join(dir, "device.md"));
 
     // Wartungsvertrag
     const until = daysUntil(dev.maintenance_until);
@@ -85,13 +93,13 @@ for (const customer of listCustomers()) {
         device,
         text:
           until < 0
-            ? `Wartung ${label} / ${device} ist seit ${-until} Tagen abgelaufen`
-            : `Wartung ${label} / ${device} läuft in ${until} Tagen aus`,
+            ? `Wartung ${place} ist seit ${-until} Tagen abgelaufen`
+            : `Wartung ${place} läuft in ${until} Tagen aus`,
       });
     }
 
     // Unterbrochene Einrichtung
-    const runsheet = join(devicePath, "runsheet.md");
+    const runsheet = join(dir, "runsheet.md");
     if (existsSync(runsheet)) {
       const { fields: run } = readFrontmatter(runsheet);
       if (run.state === "paused") {
@@ -100,7 +108,7 @@ for (const customer of listCustomers()) {
           type: "paused",
           customer,
           device,
-          text: `Einrichtung ${label} / ${device} unterbrochen in Phase ${run.phase ?? "?"} (seit ${run.updated || "unbekannt"})`,
+          text: `Einrichtung ${place} unterbrochen in Phase ${run.phase ?? "?"} (seit ${run.updated || "unbekannt"})`,
         });
       }
     }
@@ -112,11 +120,13 @@ for (const customer of listCustomers()) {
         type: "gap",
         customer,
         device,
-        text: `${label} / ${device} läuft, aber es ist keine Wartungslaufzeit hinterlegt`,
+        text: `${place} läuft, aber es ist keine Wartungslaufzeit hinterlegt`,
       });
     }
   }
 }
+
+collectDevices(null, null);
 
 items.sort((a, b) => a.days - b.days);
 
@@ -127,10 +137,12 @@ if (arg.json) {
 
 if (!items.length) {
   const count = listCustomers().length;
+  const own = listDevices(null).length;
   console.log(
-    count
-      ? `Nichts steht an. ${count} Kunde${count === 1 ? "" : "n"} gepflegt, keine Termine in den nächsten ${horizon} Tagen.`
-      : "Noch kein Kunde angelegt. Leg einen an mit /customer <name>."
+    count || own
+      ? `Nichts steht an. ${count} Kunde${count === 1 ? "" : "n"}, ${own} Gerät${own === 1 ? "" : "e"} ohne Kunden, ` +
+          `keine Termine in den nächsten ${horizon} Tagen.`
+      : "Noch kein Kunde und kein Gerät angelegt. Anlegen mit /customer <name> oder /device <name>."
   );
   process.exit(0);
 }
