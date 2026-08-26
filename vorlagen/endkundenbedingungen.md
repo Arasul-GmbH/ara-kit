@@ -10,13 +10,13 @@
 >
 > **Einbeziehung.** Nach § 305 Abs. 2 BGB ist ein ausdruecklicher Hinweis VOR
 > Vertragsschluss erforderlich. Eine nachtraegliche Einbeziehung, etwa erst beim
-> ersten Start des Geraets, traegt nicht. Der Partner ist dazu nach
-> `vertrag-partner.md` Ziffer 5a verpflichtet, mit Vertragsstrafe.
+> ersten Start des Geraets, traegt nicht. Der Partner ist dazu nach Ziffer 5a
+> seines Partnervertrages mit Arasul verpflichtet, mit Vertragsstrafe.
 >
 > **Neu in Fassung 2:** Ziffer 4 Entwicklungsstand, Ziffer 7 Erweiterungen,
-> salvatorische Klausel. Die Ziffern 4 bis 8 stehen wortgleich in beiden
-> Vertraegen; Quelle ist `vorlagen/bausteine/`, geprueft mit
-> `.claude/scripts/vertrag-bausteine.py`. **Der Text zwischen den Markierungen
+> salvatorische Klausel. Die Ziffern 4 bis 8 stehen wortgleich in den Vertraegen
+> von Arasul; Quelle ist `vorlagen/bausteine/`. Den Abgleich fuehrt Arasul im
+> eigenen Steuerungsordner, nicht im Kit. **Der Text zwischen den Markierungen
 > wird nicht von Hand geaendert.**
 
 ---
@@ -72,8 +72,8 @@ Produkt enthaltene Sicherungsfunktion entbindet ihn davon nicht.
 
 ## 4 Entwicklungsstand und vereinbarte Beschaffenheit
 
-**Wortgleicher Block W1.** Steht in `vertrag-endkunde.md` Ziffer 7 und
-`vertrag-partner.md` Ziffer 9. Nicht von Hand ändern.
+**Wortgleicher Block W1.** Steht im Kaufvertrag von Arasul unter Ziffer 7 und im
+Partnervertrag unter Ziffer 9. Nicht von Hand ändern.
 
 <!-- BAUSTEIN W1 -->
 (1) Die Software befindet sich im Vorserienstand und wird laufend
@@ -103,8 +103,8 @@ geändert werden oder entfallen.
 
 ## 5 Zweckbestimmung und ausgeschlossene Verwendungen
 
-**Wortgleicher Block W3.** Steht in `vertrag-endkunde.md` Ziffer 10 und
-`vertrag-partner.md` Ziffer 11. Nicht von Hand ändern.
+**Wortgleicher Block W3.** Steht im Kaufvertrag von Arasul unter Ziffer 10 und im
+Partnervertrag unter Ziffer 11. Nicht von Hand ändern.
 
 <!-- BAUSTEIN W3 -->
 (1) Die Software erzeugt Ausgaben mit statistischen Verfahren. Ausgaben können
@@ -151,8 +151,8 @@ tritt kraft Gesetzes und ungeachtet abweichender vertraglicher Vereinbarungen ei
 
 ## 6 Haftung
 
-**Wortgleicher Block W2.** Steht in `vertrag-endkunde.md` Ziffer 9 und
-`vertrag-partner.md` Ziffer 10. Nicht von Hand ändern.
+**Wortgleicher Block W2.** Steht im Kaufvertrag von Arasul unter Ziffer 9 und im
+Partnervertrag unter Ziffer 10. Nicht von Hand ändern.
 
 **Diese Ziffer gilt auch zugunsten des Herstellers.** Der Kunde verzichtet
 gegenüber dem Hersteller auf Ansprüche, soweit sie über die nachstehenden Grenzen
@@ -192,8 +192,8 @@ Vertreter, Mitarbeiter und Erfüllungsgehilfen.
 
 ## 7 Erweiterungen
 
-**Wortgleicher Block W4.** Steht in `vertrag-endkunde.md` Ziffer 11 und
-`vertrag-partner.md` Ziffer 12. Nicht von Hand ändern.
+**Wortgleicher Block W4.** Steht im Kaufvertrag von Arasul unter Ziffer 11 und im
+Partnervertrag unter Ziffer 12. Nicht von Hand ändern.
 
 <!-- BAUSTEIN W4 -->
 (1) Die Plattform sieht vor, dass eigene Erweiterungen und Software Dritter
@@ -218,8 +218,8 @@ Ansprüchen Dritter frei, die darauf beruhen.
 
 ## 8 Komponenten Dritter
 
-**Wortgleicher Block W5.** Steht in `vertrag-endkunde.md` Ziffer 12 und
-`vertrag-partner.md` Ziffer 13. Nicht von Hand ändern.
+**Wortgleicher Block W5.** Steht im Kaufvertrag von Arasul unter Ziffer 12 und im
+Partnervertrag unter Ziffer 13. Nicht von Hand ändern.
 
 <!-- BAUSTEIN W5 -->
 Die Software enthält Bestandteile Dritter, die eigenen Lizenzbedingungen

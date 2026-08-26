@@ -365,6 +365,114 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
   return `${mustBeIgnored.length} Pfade geprüft`;
 });
 
+// --- Das Papier -------------------------------------------------------------
+
+check("Kein Absender von Arasul im Papier des Partners", () => {
+  // Am 25.08.2026 trugen vier Vorlagen Arasuls USt-IdNr., Anschrift und
+  // Unterschrift. Gefunden hat das ein Mensch von Hand, kein Test. Diese
+  // Prüfung ersetzt den Menschen, damit der Fehler nicht mit der nächsten
+  // Vorlage zurückkehrt.
+  //
+  // Sie geht über den Inhalt, nicht über Dateinamen: eine Vorlage, die ein
+  // Partner selbst dazulegt, wird genauso geprüft.
+  const markers = [
+    [/DE352463063/i, "USt-IdNr. von Arasul"],
+    [/Seitenstra(?:ss|ß)e\s*1\b/i, "Anschrift von Arasul"],
+    [/kolja\.schoepe/i, "E-Mail-Adresse von Kolja Schoepe"],
+    [/Kolja\s+Sch/i, "Kolja Schoepe als Unterzeichner"],
+  ];
+
+  // Ausgenommen, weil dort Arasul die sprechende Partei ist und beide Orte aus
+  // Arasuls Steuerungsordner gespiegelt werden: vorlagen/bausteine/ und
+  // nachweise/. Letzteres wird hier gar nicht betreten.
+  const mirrored = new Set(["bausteine"]);
+
+  // **Die eine begründete Ausnahme.** vorlagen/endkundenbedingungen.md nennt
+  // Arasul samt Inhaber und Anschrift als Hersteller der Software. Das muss
+  // dort stehen: sonst weiß der Endkunde nicht, wessen Haftungsbegrenzung für
+  // ihn gilt, und Ziffer 6 gilt ausdrücklich auch zugunsten des Herstellers.
+  // Die Ausnahme wird benannt, nicht stillschweigend übersprungen, und sie
+  // gilt nur für den Satz, der den Hersteller nennt.
+  const EXCEPTION_FILE = "endkundenbedingungen.md";
+  const EXCEPTION_ANCHOR = /Hersteller der Software ist Arasul/;
+  let exceptionUsed = false;
+
+  const offenders = [];
+  const scan = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!mirrored.has(entry.name)) scan(join(dir, entry.name));
+        continue;
+      }
+      if (!/\.md$/.test(entry.name)) continue;
+      const path = join(dir, entry.name);
+      const lines = readFileSync(path, "utf8").split(/\r?\n/);
+      lines.forEach((line, index) => {
+        for (const [pattern, what] of markers) {
+          if (!pattern.test(line)) continue;
+          // Der Herstellersatz laeuft ueber mehrere Zeilen, darum das Umfeld.
+          const context = lines.slice(Math.max(0, index - 2), index + 1).join(" ");
+          if (entry.name === EXCEPTION_FILE && EXCEPTION_ANCHOR.test(context)) {
+            exceptionUsed = true;
+            continue;
+          }
+          offenders.push(`${relative(ROOT, path)}:${index + 1} ${what}`);
+        }
+      });
+    }
+  };
+  scan(join(ROOT, "vorlagen"));
+
+  assert(
+    offenders.length === 0,
+    `Arasuls Absender im Papier des Partners:\n    ${offenders.join("\n    ")}`
+  );
+  // Eine Ausnahme, die nichts mehr abdeckt, gehoert weg statt stehenzubleiben.
+  assert(
+    exceptionUsed,
+    `die Ausnahme fuer ${EXCEPTION_FILE} greift nicht mehr, entweder ist der ` +
+      "Herstellersatz weg oder er ist umformuliert. Pruefen und die Ausnahme anpassen"
+  );
+  return "1 begruendete Ausnahme: der Hersteller in den Endkundenbedingungen";
+});
+
+check("PDF-Werkzeug haelt Platzhalter zurueck und druckt sonst", () => {
+  // Der Zweck des Werkzeugs ist, dass kein Angebot mit "{Betrag} Euro" beim
+  // Kunden landet. Also wird genau das geprüft.
+  let run = tool("pdf.mjs", [join(ROOT, "vorlagen", "angebot.md"), "--check"]);
+  assert(run.status !== 0, "ungefuellte Platzhalter fuehren nicht zum Abbruch");
+  assert(/\{Betrag\}/.test(run.stderr), "die gefundenen Platzhalter werden nicht benannt");
+
+  const dir = mkdtempSync(join(tmpdir(), "ara-pdf-test-"));
+  const file = join(dir, "probe.md");
+  try {
+    // Ein Platzhalter mit Zeilenumbruch darin. Genau diese Sorte sind die
+    // laengsten in den Vorlagen, und eine Suche je Zeile findet sie nicht.
+    writeFileSync(file, "# Probe\n\n{Ein Platzhalter, der\nueber zwei Zeilen geht}\n");
+    run = tool("pdf.mjs", [file, "--check"]);
+    assert(run.status !== 0, "umgebrochener Platzhalter wird nicht gefunden");
+
+    // Ohne Platzhalter muss wirklich ein PDF entstehen.
+    writeFileSync(
+      file,
+      "# Probe\n\nEin Satz.\n\nZeile eins\\\nZeile zwei\n\n" +
+        "| A | B |\n| --- | --- |\n| 1 | 2 |\n\n```\nein befehl\n```\n"
+    );
+    const target = join(dir, "probe.pdf");
+    run = tool("pdf.mjs", [file, "--out", target]);
+    if (/Kein Chromium gefunden/.test(run.stderr)) {
+      return "Pruefung lief, gedruckt nicht: kein Chromium auf diesem Rechner";
+    }
+    assert(run.status === 0, `Druck fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(existsSync(target), "es ist kein PDF entstanden");
+    const head = readFileSync(target).subarray(0, 5).toString("latin1");
+    assert(head === "%PDF-", `die erzeugte Datei ist kein PDF, sie beginnt mit "${head}"`);
+    return "geprueft und gedruckt";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // --- Schreibweise -----------------------------------------------------------
 
 check("Keine Gedankenstriche im Kit", () => {
@@ -421,12 +529,17 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   };
   collect(join(ROOT, ".ara"));
   collect(join(ROOT, ".claude"));
+  // Das Papier gehoert mitgeprueft: dort zeigen tote Verweise auf einen
+  // Vertragsbestandteil, den es nicht gibt, und das faellt erst beim Kunden auf.
+  collect(join(ROOT, "vorlagen"));
+  collect(join(ROOT, "nachweise"));
   files.push(join(ROOT, "README.md"));
 
   const missing = [];
   for (const file of files) {
     const content = readFileSync(file, "utf8");
-    for (const match of content.matchAll(/(?:^|[\s`("])(\.(?:ara|claude)\/[A-Za-z0-9._\/-]+)/g)) {
+    const paths = /(?:^|[\s`("])((?:\.(?:ara|claude)|vorlagen|nachweise)\/[A-Za-z0-9._\/-]+)/g;
+    for (const match of content.matchAll(paths)) {
       const target = match[1].replace(/[.,)`]+$/, "");
       if (target.includes("*") || target.endsWith("/")) continue;
       // Alles unter .ara/mirror/ entsteht erst zur Laufzeit.
@@ -437,6 +550,52 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   }
   assert(missing.length === 0, `tote Verweise:\n    ${missing.join("\n    ")}`);
   return `${files.length} Dateien`;
+});
+
+check("Jeder genannte Befehl hat seine Datei", () => {
+  // Die Verweispruefung oben sieht nur Dateipfade in Backticks. Ein Command
+  // heisst aber /angebot und nicht .claude/commands/angebot.md, also ist er ihr
+  // zweimal durchgerutscht: /angebot stand in CLAUDE.md, im README und in den
+  // Vorlagen, und die Datei dazu gab es nie. Ein Partner liest davon, tippt es,
+  // und es passiert nichts.
+  //
+  // Findet die Pruefung einen Befehl, den es absichtlich noch nicht gibt, ist
+  // das eine Aussage ueber das Repo und nicht ueber die Pruefung.
+  const files = [];
+  const collect = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) collect(path);
+      else if (/\.(md|json)$/.test(entry.name)) files.push(path);
+    }
+  };
+  collect(join(ROOT, ".ara"));
+  collect(join(ROOT, ".claude"));
+  collect(join(ROOT, "vorlagen"));
+  collect(join(ROOT, "nachweise"));
+  files.push(join(ROOT, "README.md"));
+
+  // Ein Befehl steht am Wortanfang und hoert vor dem naechsten Schraegstrich
+  // auf. Der Lookahead haelt Pfade wie /dev/disk0 und Verhaeltnisse wie
+  // "und/oder" heraus, das fuehrende Zeichen die Pfade wie .ara/tools.
+  const commandPattern = /(?:^|[\s`("*|,])\/([a-z][a-z0-9-]{2,})(?![\w\/-])/g;
+  const found = new Map();
+  for (const file of files) {
+    for (const match of readFileSync(file, "utf8").matchAll(commandPattern)) {
+      const name = match[1];
+      if (!found.has(name)) found.set(name, new Set());
+      found.get(name).add(relative(ROOT, file));
+    }
+  }
+
+  const missing = [];
+  for (const [name, where] of found) {
+    if (existsSync(join(ROOT, ".claude", "commands", `${name}.md`))) continue;
+    missing.push(`/${name} fehlt als .claude/commands/${name}.md, genannt in ${[...where].join(", ")}`);
+  }
+  assert(missing.length === 0, `Befehle ohne Datei:\n    ${missing.join("\n    ")}`);
+  return `${found.size} Befehle genannt, alle vorhanden`;
 });
 
 console.log(

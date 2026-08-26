@@ -1,3 +1,10 @@
+<!-- gespiegelt-aus-arasul -->
+> **Gespiegelt aus dem Steuerungsordner von Arasul. Hier nicht
+> bearbeiten**, jede Aenderung wird beim naechsten Spiegeln
+> ueberschrieben. Wer etwas geaendert haben will, sagt es Arasul.
+>
+> Quelle: `templates/uebergabeprotokoll.md` · Stand: 2026-08-25
+
 # Übergabeprotokoll
 
 > Vorlage fuer die Abnahme nach einer Geraeteauslieferung.
@@ -96,7 +103,8 @@ Urteil vom 12.05.2026, 4 UKl 3/25, trägt ein solcher Hinweis allein nicht.
 | --- | --- | --- |
 | {konkret} | {Name} | {JJJJ-MM-TT} |
 
-Jeder offene Punkt wandert nach `company/follow-ups.md`, mit demselben Datum.
+Jeder offene Punkt bekommt eine Wiedervorlage mit demselben Datum, beim
+Ausliefernden im eigenen Terminregister. Ein offener Punkt ohne Datum ist keiner.
 
 ## Einweisung
 

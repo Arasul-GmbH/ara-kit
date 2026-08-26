@@ -1,7 +1,8 @@
 > **Anlage "Drittlizenzen".** Fassung 3 vom 24.08.2026.
 >
-> Sie traegt Block W5 in `vertrag-endkunde.md`, `vertrag-partner.md` und
-> `endkundenbedingungen.md`. **Ohne diese Anlage sind alle drei Klauseln wertlos.**
+> Sie traegt Block W5: Ziffer 8 in `endkundenbedingungen.md`, Ziffer 12 im
+> Kaufvertrag von Arasul, Ziffer 13 im Partnervertrag mit Arasul. **Ohne diese
+> Anlage sind alle drei Klauseln wertlos.**
 >
 > **Warum sie existiert.** Ausgeliefert wird fremder Code, darunter mehrere
 > Komponenten unter Copyleft, waehrend das `LICENSE` des Produktrepos das

@@ -12,7 +12,8 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `customers/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
 | `business/` | Profil, Firmendaten, Preise, Gelerntes. Gehört dem Partner. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
-| `vorlagen/` | **Das Papier**: Verträge, Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `vorlagen/README.md`. |
+| `vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `vorlagen/README.md`. |
+| `nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
 | `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |
@@ -72,6 +73,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
 | `disk.mjs` | Boot-Medien erkennen, prüfen und schreiben |
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
+| `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
 | `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach) |
 | `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |

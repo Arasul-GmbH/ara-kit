@@ -6,15 +6,16 @@
 >
 >
 > **Warum es diese Anlage gibt, rechtlich.** Vier Klauseln verwiesen bis zum
-> 24.08.2026 auf ein Dokument, das nicht existierte: Ziffer 6 und Ziffer 10 in
-> `vertrag-endkunde.md`, Ziffer 9a und Ziffer 10 in `vertrag-partner.md`,
+> 24.08.2026 auf ein Dokument, das nicht existierte: Ziffer 6 und Ziffer 10 im
+> Kaufvertrag von Arasul, Ziffer 9a und Ziffer 10 im Partnervertrag mit Arasul,
 > Ziffer 4 in `endkundenbedingungen.md`. Ein Verweis ins Leere vereinbart keine
 > Beschaffenheit. Ohne diese Anlage gilt, was der Kunde nach § 434 Abs. 2 Nr. 2
 > BGB erwarten durfte, im Zweifel also das, was er in einer Vorfuehrung gesehen
 > hat. Sie wirkt damit anders als ein Haftungsausschluss: der nimmt etwas weg und
 > wird nach §§ 305 ff. BGB geprueft, ob er das darf. Diese Anlage legt fest, was
 > geschuldet ist.
-> **So füllst du sie:** `.ara/knowledge/leistungsbeschreibung.md`. Kurzfassung: Spiegel
+> **So füllst du sie:** `.ara/knowledge/paperwork.md`, Abschnitt "Die
+> Leistungsbeschreibung fuellen". Kurzfassung: Spiegel
 > holen, Gerät befragen, Reifegrad je Bereich setzen, Abschnitt 4 und 6 aus dem
 > konkreten Fall füllen, Abschnitt 8 mit dem Kunden durchgehen.
 >
@@ -25,9 +26,9 @@
 
 # Anlage: Leistungsbeschreibung
 
-Zu Vertrag: {Angebotsnummer oder Vertragsdatum} · Kunde: {Firma}
-Gerät: {Modell, Seriennummer} · Softwarestand: {Fassung aus `VERSION`}
-Erhoben am: {JJJJ-MM-TT} · Erhoben gegen: {das gelieferte Gerät}
+Zu Vertrag: {Angebotsnummer oder Vertragsdatum} · Kunde: {Firma}\
+Gerät: {Modell, Seriennummer} · Softwarestand: {Fassung aus `VERSION`}\
+Erhoben am: {JJJJ-MM-TT} · Erhoben gegen: {den Spiegelstand oder das gelieferte Gerät}
 
 ## 1 Gegenstand und Entwicklungsstand
 
@@ -61,8 +62,9 @@ der Stand vom 24.08.2026 und dient nur als Muster. **Vor jedem Angebot neu holen
 
 **Für jede Plattform, die hier nicht als `live` ausgewiesen ist, wird keine
 Leistungsfaehigkeit, Kompatibilitaet oder Funktionsfaehigkeit zugesichert.**
-Wird eine solche Plattform geliefert, ist der Vorbehalt nach Ziffer 2a des
-Kaufvertrages zwingend aufzunehmen.
+Wird eine solche Plattform geliefert, ist der Vorbehalt zwingend aufzunehmen:
+im Angebot unter "Vorbehalte" und im Kaufvertrag, den der Anbieter mit dem
+Kunden schliesst.
 
 Gelieferte Plattform in diesem Fall: **{Plattform}**, Stand der Erprobung
 **{live | emulation | follow-up}**.
@@ -92,7 +94,7 @@ abgeschrieben.** Drei Stufen, und sie bedeuten Verschiedenes:
 | Externe Schnittstelle mit Schluesselauthentifizierung | {Stufe} | Umfang siehe Abschnitt 5 |
 | Datensicherung und Wiederherstellung | {Stufe} | Pflichten des Betreibers siehe Abschnitt 8 |
 | Überwachung und Selbstheilung | {Stufe} | keine Verfuegbarkeitszusage |
-| Fernwartungszugang | {Stufe} | siehe Abschnitt 7 und die Vereinbarung nach `auftragsverarbeitung.md` |
+| Fernwartungszugang | {Stufe} | siehe Abschnitt 7 und die Vereinbarung zur Auftragsverarbeitung nach Ziffer 9 der Endkundenbedingungen |
 | Werksreset | {Stufe} | |
 
 ## 4 Was ausdruecklich nicht Vertragsgegenstand ist
@@ -148,7 +150,7 @@ nur in den folgenden Faellen, und jede lässt sich abschalten:
 | Anlass | Ziel | Abschaltbar |
 | --- | --- | --- |
 | Modelle nachladen | huggingface.co | ja, dann können keine Modelle nachgeladen werden |
-| Fernwartung, wenn eingerichtet | {Vermittlungsnetz, siehe `auftragsverarbeitung.md` Ziffer 7} | ja, Not-Aus beim Betreiber |
+| Fernwartung, wenn eingerichtet | {Vermittlungsnetz, aus der Geraetepruefung} | ja, Not-Aus beim Betreiber |
 | {weitere, aus der Geräteprüfung} | {Ziel} | {ja/nein} |
 
 **Diese Tabelle wird je Lieferung gegen das Gerät gemessen, nicht abgeschrieben.**
@@ -158,7 +160,8 @@ Gegenbeispiel widerlegt, und danach hat der Kunde einen Anknuepfungspunkt für
 
 ## 8 Schutzmaßnahmen, die der Betreiber vor der Inbetriebnahme einrichtet
 
-Diese Liste traegt Ziffer 10 Absatz 3 der Verträge. Ein blosser Hinweis auf die
+Diese Liste traegt Absatz 3 des Blocks W3, in den Endkundenbedingungen Ziffer 5,
+in den Vertraegen von Arasul jeweils Ziffer 10. Ein blosser Hinweis auf die
 Fehlbarkeit von Ausgaben genuegt nach OLG Hamm, Urteil vom 12.05.2026,
 4 UKl 3/25, nicht; es müssen Schutzmaßnahmen daneben stehen. Das Urteil ist
 nicht rechtskraeftig, Revision zum BGH zugelassen.
@@ -174,8 +177,8 @@ nicht rechtskraeftig, Revision zum BGH zugelassen.
       Administratorzugang nur bei denen, die ihn brauchen
 - [ ] **Datensicherung**: Sicherungsprotokoll woechentlich prüfen, Fehlschlaege
       unverzueglich melden, mindestens einmal eine Wiederherstellung erproben
-- [ ] **Ausgeschlossene Verwendungen** nach Ziffer 10 Absatz 4 der Verträge im
-      Haus bekannt gemacht
+- [ ] **Ausgeschlossene Verwendungen** nach Absatz 4 des Blocks W3, in den
+      Endkundenbedingungen Ziffer 5, im Haus bekannt gemacht
 
 Der Betreiber bestaetigt die Einrichtung dieser Maßnahmen im
 Übergabeprotokoll.
