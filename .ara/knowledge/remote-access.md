@@ -58,6 +58,7 @@ wundert sich, warum niemand hilft.
 ## Dokumentieren
 
 In `device.md`:
+
 - unter welcher Adresse und welchem Port,
 - mit welchem Anmeldenamen und welchem Schlüssel (Name, nicht Schlüssel),
 - welcher Weg (direkt oder Vermittlungsnetz),

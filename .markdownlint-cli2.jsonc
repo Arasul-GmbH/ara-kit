@@ -1,0 +1,39 @@
+{
+  // Markdown-Lint fuer das Kit. Es gibt keine CI in diesem Repo, der Nachweis
+  // ist lokal: wer mergt, laesst vorher `npx --yes markdownlint-cli2@0.18.1`
+  // und `node .ara/tools/selftest.mjs` laufen.
+  //
+  // Geprueft wird die Struktur: Leerzeilen um Ueberschriften und Listen,
+  // einheitliche Listenzeichen, keine doppelten Ueberschriften, kein
+  // Leerraum am Zeilenende. Was unten aus ist, ist bewusst aus:
+  "config": {
+    "default": true,
+    // Das Kit bricht Fliesstext bei rund 90 Zeichen um, Tabellen gar nicht.
+    "MD013": false,
+    // Die Vorlagen beginnen mit Hinweisbloecken (Zitatzeilen), die pdf.mjs
+    // vor dem Druck entfernt. Die erste Zeile ist darum keine Ueberschrift.
+    "MD041": false,
+    // Zwei Hinweisbloecke hintereinander sind zwei getrennte Zitate, mit einer
+    // Leerzeile dazwischen. Genau das meldet MD028.
+    "MD028": false,
+    // Befehlsbloecke tragen keine Sprachangabe, sie sind zum Abtippen.
+    "MD040": false,
+    // Platzhalter wie <kunde> in den Vorlagen sehen aus wie HTML und sind keins.
+    "MD033": false,
+    // Der Titel eines Uebergabeprotokolls steht fett, nicht als Ueberschrift,
+    // damit er im Druck nicht wie ein Kapitel aussieht.
+    "MD036": false
+  },
+  "globs": ["**/*.md"],
+  "ignores": [
+    "node_modules",
+    // Gehoert dem Partner, wird vom Kit nie geprueft oder angefasst.
+    "customers",
+    "business",
+    ".ara/mirror",
+    // Interne Planung, liegt nur lokal.
+    "entwicklung",
+    "PHASE.md",
+    "NACHTRAG.md"
+  ]
+}

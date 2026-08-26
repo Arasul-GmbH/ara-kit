@@ -17,12 +17,14 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
 **nicht geprüft**. Es gibt kein „müsste".
 
 ### 1. Das Gerät steht auf eigenen Beinen
+
 - Alle Dienste melden sich gesund.
 - **Nach einem Neustart des Geräts wieder.** Ein System, das nur läuft, weil es gerade
   aufgesetzt wurde, fällt beim ersten Stromausfall aus.
 - Der Neustart-Test ist Pflicht. Er dauert Minuten und erspart Rückfahrten.
 
 ### 2. Die Kernfunktion antwortet fachlich
+
 - Eine echte Frage aus dem Arbeitsalltag des Kunden, keine Testphrase.
 - Die Antwort muss inhaltlich brauchbar sein. Ein System, das mit einer leeren oder
   offensichtlich unsinnigen Antwort reagiert, hat meist gar kein Modell geladen.
@@ -30,23 +32,27 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
  , besser, er hört die Zahl vom Partner als dass er sie selbst entdeckt.
 
 ### 3. Dokumente werden gefunden
+
 - Ein Testdokument aufnehmen, das dem entspricht, was der Kunde wirklich hat.
 - Danach eine Frage stellen, deren Antwort nur in diesem Dokument steht.
 - Testdokument danach wieder entfernen, wenn es nicht zum Kunden gehört.
 
 ### 4. Der Fernzugriff funktioniert von außen
+
 - **Von außerhalb des Kundennetzes geprüft.** Mobilfunk genügt.
 - Im Kundennetz funktioniert fast immer alles. Dieser Punkt ist der häufigste Grund, warum
   eine Wartung Wochen später nicht möglich ist.
 - Auch prüfen: Kommt man nach einem Neustart des Geräts noch heran?
 
 ### 5. Der Zugang ist abgesichert
+
 - Anmeldung mit Passwort wird abgelehnt, mit Schlüssel angenommen, beides geprüft, nicht
   angenommen.
 - Nur die Dienste sind erreichbar, die erreichbar sein sollen.
 - Zugangsdaten liegen dort, wo sie hingehören, und nicht in einer Kundendatei.
 
 ### 6. Der Kunde kann selbst handeln
+
 - Er weiß, wie er die Fernwartung abschaltet, **vorgeführt, nicht erwähnt**.
 - Er weiß, wen er anruft und was dann passiert.
 - Er hat eine Kurzanleitung, die seine Mitarbeiter verstehen.

@@ -604,6 +604,34 @@ check("Keine Gedankenstriche im Kit", () => {
   assert(offenders.length === 0, `Gedankenstriche in: ${offenders.slice(0, 8).join(", ")}`);
 });
 
+check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
+  // Dateien und Ordner heissen englisch und klein, das steht in CLAUDE.md. Was
+  // dagegen verstoesst, faellt erst auf, wenn ein Verweis auf einem Rechner mit
+  // anderer Gross- und Kleinschreibung ins Leere zeigt, oder wenn ein Umlaut
+  // im Namen auf einem Runner anders kodiert ankommt als auf dem Mac. Geprueft
+  // wird, was im Repository liegt, nicht, was der Partner dazulegt.
+  const listed = spawnSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "utf8" });
+  if (listed.status !== 0) return "uebersprungen, kein Git-Repository";
+  const files = listed.stdout.split("\0").filter(Boolean);
+
+  // Feste Namen, die Werkzeuge so erwarten: README, CLAUDE.md, SKILL.md.
+  const fixed = new Set(["README.md", "CLAUDE.md", "SKILL.md", "LICENSE", ".gitkeep"]);
+  // Die Bausteine werden aus Arasuls Steuerungsordner gespiegelt und tragen
+  // dessen Nummern (W1 bis W5). Sie heissen hier so, wie sie dort heissen.
+  const mirrored = /^vorlagen\/bausteine\//;
+
+  const offenders = files.filter((path) => {
+    const parts = path.split("/");
+    const name = parts.pop();
+    if (parts.some((dir) => !/^[a-z0-9._-]+$/.test(dir))) return true;
+    if (fixed.has(name)) return false;
+    if (mirrored.test(path)) return /[^A-Za-z0-9._-]/.test(name);
+    return !/^[a-z0-9._-]+$/.test(name);
+  });
+  assert(offenders.length === 0, `passt nicht zur Schreibweise: ${offenders.slice(0, 8).join(", ")}`);
+  return `${files.length} Dateien`;
+});
+
 check("Browser-Werkzeug ist eingerichtet", () => {
   const file = join(ROOT, ".mcp.json");
   assert(existsSync(file), ".mcp.json fehlt, der Browser steht dann nicht zur Verfügung");
