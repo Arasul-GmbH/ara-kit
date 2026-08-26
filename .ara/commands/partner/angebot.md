@@ -6,7 +6,11 @@ argument-hint: <kunde>
 Angebot für: **$1**
 
 Lies `.ara/knowledge/paperwork.md` und arbeite danach. Was hier steht, ist der Weg
-durch dieses Verfahren, nicht ein zweites daneben.
+durch dieses Verfahren, nicht ein zweites daneben. Wissen, das dieser Befehl lädt:
+`.ara/knowledge/paperwork.md`, `.ara/knowledge/leistungsbeschreibung.md`,
+`.ara/knowledge/pricing.md`, `.ara/knowledge/sales.md`, `.ara/knowledge/crm.md`,
+`.ara/knowledge/live-knowledge.md` für jeden Produktwert. Dazu `business/profile.md`
+und `business/company.md` für Absender und Sätze.
 
 Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere
 Kundenordner, auch nicht, um ein altes Angebot als Muster zu nehmen.
