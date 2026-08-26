@@ -85,6 +85,22 @@ Drei Dinge, jedes Mal:
 Das dauert eine Minute und ist der Unterschied zwischen einer Kundenakte und einem Ordner
 voller Dateien.
 
+## Gelerntes: `business/notes/`
+
+Hierhin gehört, was **über einen Kunden hinaus** gilt und beim nächsten Angebot oder der
+nächsten Einrichtung Zeit spart: welcher Einwand womit entkräftet wurde, wie lange ein
+Gerätetyp beim ersten Mal wirklich gebraucht hat, welcher Lieferant liefert, welche
+Pauschale zu knapp war. Eine Datei je Thema, `business/notes/<thema>.md`, ein Satz und ein
+Datum genügen.
+
+Nicht hierhin gehört, was zu **einem** Kunden gehört, denn das steht in seiner Akte, und
+nichts, was aus dem Produkt kommt. Ein Modellname oder eine Fassungsnummer ist hier morgen
+falsch und wird von hier aus abgeschrieben. Produktwerte kommen aus dem Spiegel oder vom
+Gerät, siehe `.ara/knowledge/live-knowledge.md`.
+
+Der Ordner gehört dem Partner und ist von der Versionskontrolle ausgenommen, wie alles
+unter `business/`.
+
 ## Was das Kit nicht ist
 
 Keine Buchhaltung, keine Rechnungsstellung, keine Zeiterfassung. Dafür haben die meisten

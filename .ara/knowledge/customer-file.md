@@ -12,9 +12,16 @@ customers/mueller-metallbau/
 │       ├── device.md              Ein Gerät: Typ, Netz, Zugang, Wartung
 │       ├── runsheet.md            Ablaufzustand der Einrichtung (bei /setup)
 │       └── handover.md            Abnahmedokument (am Ende von /setup)
+├── documents/
+│   └── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
 └── history/
-    └── JJJJ-MM-TT-thema.md        Gespräche, Angebote, Störungen, Wartungen
+    └── JJJJ-MM-TT-thema.md        Gespräche, Störungen, Wartungen
 ```
+
+**`documents/` gegen `history/`:** In `documents/` liegt das Papier, das der Kunde
+bekommt, Markdown und PDF nebeneinander. In `history/` steht, was passiert ist, auch dass
+ein Angebot rausgegangen ist. Das eine wird unterschrieben, das andere gelesen.
+Verfahren: `.ara/knowledge/paperwork.md`.
 
 **Ordnername:** sprechend, klein, mit Bindestrichen, ohne Rechtsform.
 `mueller-metallbau`, nicht `Müller Metallbau GmbH` und nicht `kunde-01`.
