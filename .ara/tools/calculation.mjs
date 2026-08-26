@@ -121,7 +121,7 @@ const shown = relative(ROOT, file);
 if (!existsSync(file)) {
   console.error(
     `${shown} gibt es noch nicht, also gibt es kein Kalkulationsblatt.\n` +
-      "Es entsteht im Onboarding: /start, Runde 5."
+      "Es entsteht im Onboarding: /init, Runde 5."
   );
   process.exit(1);
 }

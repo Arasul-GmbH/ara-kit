@@ -1,7 +1,7 @@
 > **Vorlage: Angebot des Partners.**
 >
 > **Der Absender ist dein Unternehmen, nicht Arasul.** Alles im Briefkopf kommt aus
-> `business/company.md`, das `/start` gefuellt hat: `legal_name`, `address`,
+> `business/company.md`, das `/init` gefuellt hat: `legal_name`, `address`,
 > `phone`, `email`, `website`, `vat_id`, `iban`, `payment_terms`, `hourly_rate`,
 > `hardware_markup`, `logo`. Der Name unter der Unterschrift ist `name` aus
 > `business/profile.md`. Kein Wert davon wird aus dem Gedaechtnis geschrieben.

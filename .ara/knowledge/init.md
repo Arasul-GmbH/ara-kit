@@ -1,18 +1,21 @@
-# Verfahren: Onboarding
+# Verfahren: /init
 
-> **Wann brauchst du das?** Bei `/start`: dem einmaligen Einrichten des Kits für einen
-> neuen Menschen.
+> **Wann brauchst du das?** Bei `/init`. Fehlt `business/profile.md`, ist es das erste
+> Mal, und es gilt der lange Teil unten: das Onboarding. Existiert die Datei, gilt der
+> kurze Teil am Ende: Kit nachziehen, Befehle anbieten.
 
-## Ziel
+## Das erste Mal
 
-Nach `/start` gilt: Das Kit weiß, wer damit arbeitet, wie er arbeitet und was er vorhat.
+### Ziel
+
+Nach `/init` gilt: Das Kit weiß, wer damit arbeitet, wie er arbeitet und was er vorhat.
 Der Rechner kann, was er können muss. Zugänge sind hinterlegt. Es gibt einen konkreten
 nächsten Schritt.
 
 Rechne mit einer knappen halben Stunde. Das ist gut investiert, alles, was hier hinterlegt wird,
 muss später nie wieder gefragt werden.
 
-## Zwei Regeln, die dieses Verfahren tragen
+### Zwei Regeln, die dieses Verfahren tragen
 
 **1. Schreib die Dateien in `business/` an den Menschen, nicht über ihn.**
 Sie gehören ihm. Also „Du willst kurz gehalten werden", nicht „Kolja will kurz gehalten
@@ -24,13 +27,13 @@ Wenn jemand eine Runde überspringt, ist das in Ordnung, aber es wird am Ende be
 mit der Folge: „Ohne Stundensatz kann ich nichts kalkulieren." Ein Kit, das halb
 eingerichtet ist und so tut, als wäre alles fertig, fällt beim ersten Kundengespräch auf.
 
-## Vorher
+### Vorher
 
 Existiert `business/profile.md` schon, ist das Onboarding gelaufen. Sag in drei Zeilen, was
 hinterlegt ist und was fehlt, und frag, was geändert werden soll, statt alles neu zu
 erfragen.
 
-## Runde 1: Technikcheck, ohne zu fragen
+### Runde 1: Technikcheck, ohne zu fragen
 
 ```
 node .ara/tools/check-environment.mjs
@@ -45,7 +48,7 @@ etwas Grundlegendes, nenne den Installationsweg für das erkannte System und mac
 
 Merk dir das Ergebnis, es kommt in Runde 10 in `business/profile.md`.
 
-## Runde 2: Wer bist du
+### Runde 2: Wer bist du
 
 Eine Interview-Runde, Fragen gebündelt:
 
@@ -56,7 +59,17 @@ Eine Interview-Runde, Fragen gebündelt:
 
 Ab jetzt sprichst du ihn so an, wie er es gesagt hat.
 
-## Runde 3: Wie du arbeitest
+Die Weiche ist beantwortet, also legst du jetzt die Befehle an, damit alles Weitere
+in dieser Sitzung schon funktioniert:
+
+```
+node .ara/tools/commands.mjs --apply --role <partner|company>
+```
+
+Partner bekommen `alle/` und `partner/` aus `.ara/commands/`, Unternehmen nur `alle/`.
+Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart der Sitzung.
+
+### Runde 3: Wie du arbeitest
 
 1. **Erfahrung:** Linux-Server aufgesetzt, mit SSH gearbeitet, Hardware beim Kunden
    installiert? Ehrliche Antwort hilft, es geht nicht um Bewertung.
@@ -65,7 +78,7 @@ Ab jetzt sprichst du ihn so an, wie er es gesagt hat.
    (`.ara/knowledge/security.md`) und lass den Standard bestätigen. Wer lockern will, kann
    das, dann hältst du fest, **was genau** gelockert wurde und seit wann.
 
-## Runde 4: Was du vorhast
+### Runde 4: Was du vorhast
 
 Diese Runde ist der Grund, warum das Kit später brauchbare Vorschläge macht:
 
@@ -79,7 +92,7 @@ Diese Runde ist der Grund, warum das Kit später brauchbare Vorschläge macht:
 Antworten in Prosa nach `business/profile.md`, Abschnitt „Was ich vorhabe". Nicht als
 Stichpunktliste der Fragen, sondern als zusammenhängender Absatz in Du-Form.
 
-## Runde 5: Geschäftliches
+### Runde 5: Geschäftliches
 
 Nur in der Partner-Rolle. Im Unternehmens-Modus überspringen.
 
@@ -101,7 +114,7 @@ Schritt, wenn Angebote anstehen.
 
 Was fehlt, kommt in die Abschlussliste in Runde 11.
 
-## Runde 6: Zugänge
+### Runde 6: Zugänge
 
 1. **Wo sollen Geheimnisse liegen?** Zwei Möglichkeiten, kurz erklärt:
    - **`.env`-Datei im Kit**: sichtbar, einfach zu sichern, liegt im Kit-Ordner.
@@ -125,7 +138,7 @@ Was fehlt, kommt in die Abschlussliste in Runde 11.
      aus. Ein Schlüssel, der schon woanders benutzt wird, ist eine bewusste Entscheidung.
    - Ins Profil kommt nur der **Name**, nie der Schlüssel selbst.
 
-## Runde 7: Werkzeuge
+### Runde 7: Werkzeuge
 
 Zwei Dinge, die deine Arbeit deutlich einfacher machen, wenn sie da sind.
 
@@ -147,7 +160,7 @@ Zwei Dinge, die deine Arbeit deutlich einfacher machen, wenn sie da sind.
 
 Verfahren dazu: `.ara/knowledge/browser.md`
 
-## Runde 8: Sicherung
+### Runde 8: Sicherung
 
 `customers/` und `business/` liegen bewusst außerhalb des Kit-Repos, ein Update kann sie
 so nicht anfassen. Damit haben sie aber auch keine Historie.
@@ -159,7 +172,7 @@ Geschäftsdaten liegen zusammen.
 Wenn ja: Wo soll es liegen. GitHub oder woanders (eigener Server, GitLab, Festplatte)?
 Richte es ein und erklär in zwei Zeilen, wie gesichert wird.
 
-## Runde 9: Dein eigenes Gerät
+### Runde 9: Dein eigenes Gerät
 
 Fünf von sechs Partnern wollen ein Gerät zum Vorführen. Frag einmal, ob eins ansteht:
 
@@ -192,7 +205,7 @@ kommt.
 
 Sagt er nein, ist das eine Zeile im Profil und keine weitere Frage.
 
-## Runde 10: Profil schreiben
+### Runde 10: Profil schreiben
 
 Jetzt `business/profile.md` aus `.ara/templates/profile.md` anlegen und füllen:
 Frontmatter vollständig, Prosa-Abschnitte in **Du-Form an ihn gerichtet**, Technikstand
@@ -201,7 +214,7 @@ aus Runde 1 mit Datum.
 Lies ihm die zwei bis drei wichtigsten Punkte vor („So arbeite ich ab jetzt mit dir") und
 lass sie bestätigen. Was nicht stimmt, wird gleich korrigiert.
 
-## Runde 11: Erster Schritt und ehrlicher Abschluss
+### Runde 11: Erster Schritt und ehrlicher Abschluss
 
 Frag, ob gerade ein konkreter Kunde oder ein konkretes Gerät ansteht.
 
@@ -230,3 +243,27 @@ Was am Kalkulationsblatt fehlt, liest du dafür ab, statt es aus dem Kopf aufzuz
 `node .ara/tools/calculation.mjs`.
 
 Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.
+
+## Jedes weitere Mal
+
+`business/profile.md` existiert. Dann geht es nicht um den Menschen, sondern um den
+Stand des Kits. Fünf Schritte, in dieser Reihenfolge:
+
+1. **Nachsehen.** `node .ara/tools/update.mjs --check` holt den Stand aus dem Arasul-Repo
+   und zeigt je Datei, was neu, geändert oder entfernt wäre. Nichts Neues: eine Zeile,
+   fertig. Das läuft auch in einem Fork ohne Upstream-Remote, die Quelle ist ein Archiv.
+2. **Einspielen**, mit Bestätigung. `node .ara/tools/update.mjs` ersetzt `.ara/` und das
+   Minimum von `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`).
+   `business/`, `customers/`, `devices/`, `apps/`, der Spiegel, der Merker
+   `.ara/state.json` und die erzeugten Befehle bleiben, wie sie sind. Wer das Kit mit git
+   führt, sieht die Änderung danach in `git status` und committet sie.
+3. **Befehle nachziehen.** `node .ara/tools/commands.mjs` zeigt für den Zweig aus dem
+   Profil, welche Befehle fehlen und welche abweichen. Fehlende legst du an. Abweichende
+   zeigst du erst im Unterschied und ersetzt sie nur mit Zustimmung: entweder ist der
+   Befehl im Kit neuer oder der Mensch hat ihn selbst angepasst, und das zweite darf
+   nicht verloren gehen. Anlegen und ersetzen: `node .ara/tools/commands.mjs --apply`.
+   Was im Ziel liegt und nicht aus dem Kit stammt, bleibt liegen.
+4. **Profil ergänzen**, nur wo es Lücken hat. Braucht ein neuer Befehl eine Angabe, die
+   im Profil fehlt, frag genau diese, gebündelt. Nicht das ganze Onboarding wiederholen.
+5. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
+   Stand auf diesem Rechner belegt.
