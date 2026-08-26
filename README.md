@@ -48,6 +48,7 @@ installieren.
 |---|---|
 | `/start` | Einmalig einrichten |
 | `/customer <name>` | Kunde anlegen oder öffnen |
+| `/angebot <kunde>` | Angebot mit allen fünf Anlagen, als PDF in deinem Namen |
 | `/setup <kunde>` | Gerät einrichten, von der Vorbereitung bis zur Abnahme |
 | `/maintain <kunde>` | Laufendes Gerät betreuen |
 
@@ -64,6 +65,17 @@ Leute", „bei Müller antwortet der Chat nicht".
 Diese beiden Ordner gehören dir. Ein Update des Kits (`git pull`) fasst sie nie an, sie
 sind von der Versionskontrolle ausgenommen. Alles andere ist Werkzeug und wird mit
 Updates erneuert.
+
+Zwei Ordner solltest du kennen, auch wenn du sie nicht bearbeitest:
+
+| Ordner | Inhalt |
+|---|---|
+| `vorlagen/` | Das Papier, das du deinem Kunden gibst: Angebot, Anlagen, Übergabeprotokoll |
+| `nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zu jedem Angebot |
+
+Der Absender im Angebot ist immer deine Firma. Was `/angebot` daraus macht, wird mit
+`node .ara/tools/pdf.mjs` zum PDF, und das weigert sich, solange noch ein ungefüllter
+Platzhalter im Text steht.
 
 ## Aktualisieren
 
