@@ -9,9 +9,9 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 
 | Ort | Was dort liegt |
 |---|---|
-| `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes und die **eigenen Geräte** des Partners unter `business/<modellname>/`. Gehört dem Nutzer. |
+| `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes. Gehört dem Nutzer. |
 | `customers/` | Partner: alles pro Kunde, Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
-| `devices/` | Unternehmen: die eigenen Geräte, weil es keinen Kunden gibt. Gehört dem Nutzer. |
+| `devices/` | Geräte ohne Kunden, in beiden Zweigen: beim Unternehmen alle, beim Partner die eigenen. Gehört dem Nutzer. |
 | `apps/` | Eigene Apps, kundenunabhängig. Gehört dem Nutzer. |
 | `.ara/commands/` | Quelle der Befehle: `alle/` für jeden Zweig, `partner/` nur für Partner. `/init` legt sie nach `.claude/commands/`. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
@@ -56,7 +56,7 @@ Verfahren: `.ara/knowledge/paperwork.md`
 | `/customer <name>` | Nur Partner. Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
 | `/kalkulation` | Nur Partner. Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
 | `/angebot <kunde>` | Nur Partner. Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
-| `/setup <kunde>[/<gerät>]` | Gerät von Karton bis Abnahme | `.ara/knowledge/setup-flow.md` |
+| `/device [<gerät>]` | Gerät anlegen und prüfen: Akte, SSH, Hardware, Urteil, nächste Schritte. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/device.md` |
 | `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
 
 **Jeder Befehl sagt am Anfang, welche Wissensdateien er lädt.** Lies genau die, nicht
@@ -77,6 +77,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 |---|---|
 | `mirror.mjs` | Aktuellen Produktstand holen und prüfen (`--show`, `--refresh`) |
 | `check-environment.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
+| `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen (`--host`, `--name`, `--install`, `--json`) |
 | `runsheet.mjs` | Stand einer Einrichtung lesen und fortschreiben |
 | `remote.mjs` | Befehl auf einem Kundengerät ausführen (`--check`, `--log`) |
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
@@ -103,9 +104,10 @@ Dazu kommen zwei Werkzeuge, die keine Kit-Skripte sind:
 Details und die Reihenfolge, welches Werkzeug wann das richtige ist:
 `.ara/knowledge/browser.md`
 
-**Sprich Kundengeräte immer über `remote.mjs` an**, nicht mit selbst gebauten
-SSH-Befehlen. Das Werkzeug nimmt die Verbindungsdaten aus der Geräteakte, damit kann kein
-Gerät mit den Daten eines anderen Kunden angesprochen werden.
+**Sprich Geräte immer über `remote.mjs` an**, nicht mit selbst gebauten SSH-Befehlen.
+Das Werkzeug nimmt die Verbindungsdaten aus der Geräteakte, damit kann kein Gerät mit
+den Daten eines anderen Kunden angesprochen werden. `device.mjs` ist die eine Ausnahme:
+es baut die Verbindung beim ersten Mal selbst auf, weil es die Akte erst anlegt.
 
 ## Wie du arbeitest
 

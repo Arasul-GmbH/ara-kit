@@ -24,7 +24,7 @@
 > Ausserdem verlangte die Zeile zur Testfrage eine gemessene Antwortzeit ins
 > Protokoll. Ein unterschriebenes Protokoll mit einer Zahl darin ist eine
 > Beschaffenheitsvereinbarung nach § 434 Abs. 2 BGB. Beides behoben.
-> Quelle fuer die Inhalte ist der Laufzettel aus `ara-kit`, erzeugt von `/setup`.
+> Quelle fuer die Inhalte ist der Laufzettel aus `ara-kit`, erzeugt von `/device`.
 
 ---
 

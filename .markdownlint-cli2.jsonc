@@ -30,6 +30,8 @@
     // Gehoert dem Partner, wird vom Kit nie geprueft oder angefasst.
     "customers",
     "business",
+    "devices",
+    "apps",
     ".ara/mirror",
     // Interne Planung, liegt nur lokal.
     "entwicklung",

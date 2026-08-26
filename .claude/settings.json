@@ -20,9 +20,11 @@
       "mcp__playwright",
       "Read(./customers/**)",
       "Read(./business/**)",
+      "Read(./devices/**)",
       "Read(./.ara/**)",
       "Write(./customers/**)",
-      "Write(./business/**)"
+      "Write(./business/**)",
+      "Write(./devices/**)"
     ],
     "deny": [
       "Read(./.env)",
