@@ -552,6 +552,52 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   return `${files.length} Dateien`;
 });
 
+check("Jeder genannte Befehl hat seine Datei", () => {
+  // Die Verweispruefung oben sieht nur Dateipfade in Backticks. Ein Command
+  // heisst aber /angebot und nicht .claude/commands/angebot.md, also ist er ihr
+  // zweimal durchgerutscht: /angebot stand in CLAUDE.md, im README und in den
+  // Vorlagen, und die Datei dazu gab es nie. Ein Partner liest davon, tippt es,
+  // und es passiert nichts.
+  //
+  // Findet die Pruefung einen Befehl, den es absichtlich noch nicht gibt, ist
+  // das eine Aussage ueber das Repo und nicht ueber die Pruefung.
+  const files = [];
+  const collect = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) collect(path);
+      else if (/\.(md|json)$/.test(entry.name)) files.push(path);
+    }
+  };
+  collect(join(ROOT, ".ara"));
+  collect(join(ROOT, ".claude"));
+  collect(join(ROOT, "vorlagen"));
+  collect(join(ROOT, "nachweise"));
+  files.push(join(ROOT, "README.md"));
+
+  // Ein Befehl steht am Wortanfang und hoert vor dem naechsten Schraegstrich
+  // auf. Der Lookahead haelt Pfade wie /dev/disk0 und Verhaeltnisse wie
+  // "und/oder" heraus, das fuehrende Zeichen die Pfade wie .ara/tools.
+  const commandPattern = /(?:^|[\s`("*|,])\/([a-z][a-z0-9-]{2,})(?![\w\/-])/g;
+  const found = new Map();
+  for (const file of files) {
+    for (const match of readFileSync(file, "utf8").matchAll(commandPattern)) {
+      const name = match[1];
+      if (!found.has(name)) found.set(name, new Set());
+      found.get(name).add(relative(ROOT, file));
+    }
+  }
+
+  const missing = [];
+  for (const [name, where] of found) {
+    if (existsSync(join(ROOT, ".claude", "commands", `${name}.md`))) continue;
+    missing.push(`/${name} fehlt als .claude/commands/${name}.md, genannt in ${[...where].join(", ")}`);
+  }
+  assert(missing.length === 0, `Befehle ohne Datei:\n    ${missing.join("\n    ")}`);
+  return `${found.size} Befehle genannt, alle vorhanden`;
+});
+
 console.log(
   `\n${results.length - failures} von ${results.length} Prüfungen bestanden.` +
     (failures ? "\n\nDas Kit ist in diesem Zustand nicht verlässlich." : "")
