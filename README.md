@@ -1,5 +1,7 @@
 # Ara-Kit
 
+Das Kit wird ab dem 26.08.2026 umgebaut: Es wird offen unter Apache 2.0 und arbeitet künftig auch ohne Arasul auf dem Gerät. Bis dahin gilt dieses README mit Vorbehalt.
+
 Dein Werkzeugkasten, um Arasul-Geräte bei Kunden aufzusetzen und zu betreuen.
 
 ## Loslegen
