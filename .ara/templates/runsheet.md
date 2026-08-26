@@ -20,7 +20,7 @@ Die sieben Abschnitte:
 | 0 | Vorbereitung am Schreibtisch |
 | 1 | Betriebssystem |
 | 2 | Erstkontakt über das Netz |
-| 3 | Ara OS installieren |
+| 3 | Arasul installieren |
 | 4 | Nachbereitung |
 | 5 | Nachweis |
 | 6 | Abnahme |

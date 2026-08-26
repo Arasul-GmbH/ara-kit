@@ -78,7 +78,10 @@ dann ist die Historie mehr wert als jedes Angebot.
 
 Drei Dinge, jedes Mal:
 
-1. Eintrag unter `customers/<kunde>/history/JJJJ-MM-TT-thema.md`
+1. Eintrag unter `customers/<kunde>/history/JJJJ-MM-TT-thema.md`. Eine Obergrenze und
+   ein Archivpfad (`history/archiv/<jahr>/`) für diesen Ordner fehlen noch: unvollständig,
+   wird in Phase E5/E6 des Plans ersetzt. Bis dahin wächst er, und beim Öffnen entsteht
+   ein Lagebild statt einer Vorlesung.
 2. `last_contact` aktualisieren
 3. `follow_up` setzen oder den Status ändern
 

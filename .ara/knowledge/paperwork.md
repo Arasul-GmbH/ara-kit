@@ -138,6 +138,10 @@ Sechs Schritte:
    wird.** Eine Zeile, die hier `abgenommen` trägt und dort nicht vorkommt, ist ein
    Widerspruch, und er geht gegen den, der ihn geschrieben hat. Was du nicht am Gerät oder
    im Spiegel belegen kannst, ist `in Erprobung`, nicht `abgenommen`.
+   Dafür gibt es `node .ara/tools/evidence.mjs`: es lässt `abgenommen` nur mit einem
+   geprüften Bild vom Gerät zu und schreibt die Anlage in die Kundenakte. Stand
+   26.08.2026 unvollständig, wird in Phase E5/E6 des Plans ersetzt: das Werkzeug läuft,
+   die Schritte im Browser sind noch nicht als Verfahren beschrieben.
 4. **Abschnitt 4 und 6 aus dem konkreten Fall füllen**: was dieser Kunde ausdrücklich
    nicht bekommt, und welche Erweiterungen bei der Übergabe installiert sind. Steht keine
    drin, schreibst du `keine`, nicht nichts.

@@ -1,6 +1,7 @@
 ---
 name:                     # Standort oder Rolle, z.B. zentrale, werk2, praxis-eg
-customer:                 # id aus customer.md
+                          # Ausnahme: beim eigenen Gerät das Modell, z.B. jetson-thor
+customer:                 # id aus customer.md, oder business beim eigenen Gerät
 model:                    # wie das Gerät heißt, laut Lieferschein
 profile:                  # Plattformprofil. NUR wenn vom Gerät bestätigt
 serial:

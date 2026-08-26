@@ -10,7 +10,7 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | Ort | Was dort liegt |
 |---|---|
 | `customers/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
-| `business/` | Profil, Firmendaten, Preise, Gelerntes. Gehört dem Partner. |
+| `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes und die **eigenen Geräte** des Partners unter `business/<modellname>/`. Gehört dem Partner. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
 | `vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `vorlagen/README.md`. |
 | `nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
@@ -51,6 +51,7 @@ Verfahren: `.ara/knowledge/paperwork.md`
 |---|---|---|
 | `/start` | Einmaliges Onboarding | `.ara/knowledge/onboarding.md` |
 | `/customer <name>` | Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
+| `/kalkulation` | Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
 | `/angebot <kunde>` | Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
 | `/setup <kunde>[/<gerät>]` | Gerät von Karton bis Abnahme | `.ara/knowledge/setup-flow.md` |
 | `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
@@ -73,6 +74,8 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
 | `disk.mjs` | Boot-Medien erkennen, prüfen und schreiben |
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
+| `calculation.mjs` | Kalkulationsblatt: welche Zahl liegt vor, welche fehlt, was geht deshalb nicht |
+| `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Unvollständig, wird in Phase E5/E6 ersetzt |
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
 | `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach) |

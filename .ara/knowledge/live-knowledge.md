@@ -1,6 +1,6 @@
 # Live-Wissen: woher Werte kommen
 
-> **Wann brauchst du das?** Immer wenn du etwas Konkretes über Ara OS sagen, prüfen oder
+> **Wann brauchst du das?** Immer wenn du etwas Konkretes über das Produkt sagen, prüfen oder
 > ausführen willst. Modelle, Ports, Befehle, Pfade, Geräteprofile, Versionen.
 
 ## Warum es diese Regel gibt

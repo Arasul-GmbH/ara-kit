@@ -43,7 +43,7 @@ RTX-Workstation und x86-Server brauchen keinen Flash-Rechner).
 Sag in zwei bis drei Zeilen, was das bedeutet. Behebe still, was du beheben darfst. Fehlt
 etwas Grundlegendes, nenne den Installationsweg für das erkannte System und mach weiter.
 
-Merk dir das Ergebnis, es kommt in Runde 8 in `business/profile.md`.
+Merk dir das Ergebnis, es kommt in Runde 10 in `business/profile.md`.
 
 ## Runde 2: Wer bist du
 
@@ -92,7 +92,14 @@ Bankverbindung, Logo-Pfad. Nach `business/company.md`.
 > nichts kalkulieren, ohne Anschrift kein Angebot erzeugen. Was du jetzt nicht zur Hand
 > hast, holen wir später nach.
 
-Was fehlt, kommt in die Abschlussliste in Runde 9.
+**Die restlichen Preise werden hier nicht abgefragt.** Ein vollständiges Angebot braucht
+zehn Zahlen, drei davon stehen jetzt da. Die anderen sieben, darunter die drei
+Einkaufspreise, holt `/kalkulation`, und das aus einem Grund: die Einkaufspreise sind
+Arasuls Zahlen, sie ändern sich, und in einem Onboarding, das genau einmal stattfindet,
+würden sie still veralten. Sag das in einem Satz und nenne `/kalkulation` als nächsten
+Schritt, wenn Angebote anstehen.
+
+Was fehlt, kommt in die Abschlussliste in Runde 11.
 
 ## Runde 6: Zugänge
 
@@ -152,7 +159,40 @@ Geschäftsdaten liegen zusammen.
 Wenn ja: Wo soll es liegen. GitHub oder woanders (eigener Server, GitLab, Festplatte)?
 Richte es ein und erklär in zwei Zeilen, wie gesichert wird.
 
-## Runde 9: Profil schreiben
+## Runde 9: Dein eigenes Gerät
+
+Fünf von sechs Partnern wollen ein Gerät zum Vorführen. Frag einmal, ob eins ansteht:
+
+1. **Richtest du dir ein eigenes Gerät ein** (zum Vorführen, zum Üben, für den eigenen
+   Betrieb), oder fängst du direkt mit Kundengeräten an?
+2. Wenn ja: **welches Modell**, und steht es schon da oder ist es bestellt?
+
+Sagt er ja, bekommt das Gerät seinen Ort unter `business/<modellname>/`, also
+`business/jetson-thor/` oder `business/dgx-spark/`. Nicht unter `customers/`: ein eigenes
+Gerät gehört keinem Kunden, und ein Scheinkunde dafür verfälscht jede Auswertung und jede
+Agenda.
+
+**Der Name ist hier das Modell, und das ist eine benannte Ausnahme.** Kundengeräte heißen
+nach Standort oder Rolle (`.ara/knowledge/customer-file.md`), weil das Modell sich ändert
+und der Standort bleibt. Bei den eigenen Geräten ist es umgekehrt: sie stehen alle am
+selben Ort, unterscheiden tut sie das Modell.
+
+Angesprochen wird es überall dort, wo sonst ein Kundenname steht, mit `business`:
+
+```
+node .ara/tools/runsheet.mjs --create --customer business --device jetson-thor
+node .ara/tools/remote.mjs --customer business --check
+```
+
+Einrichten läuft danach wie bei jedem anderen Gerät, mit `/setup business/<modellname>`.
+Steht das Gerät noch nicht da, leg jetzt nichts an, sondern halt im Profil fest, dass eins
+kommt.
+
+`business/` ist von der Versionskontrolle ausgenommen, das eigene Gerät also auch.
+
+Sagt er nein, ist das eine Zeile im Profil und keine weitere Frage.
+
+## Runde 10: Profil schreiben
 
 Jetzt `business/profile.md` aus `.ara/templates/profile.md` anlegen und füllen:
 Frontmatter vollständig, Prosa-Abschnitte in **Du-Form an ihn gerichtet**, Technikstand
@@ -161,13 +201,16 @@ aus Runde 1 mit Datum.
 Lies ihm die zwei bis drei wichtigsten Punkte vor („So arbeite ich ab jetzt mit dir") und
 lass sie bestätigen. Was nicht stimmt, wird gleich korrigiert.
 
-## Runde 10: Erster Schritt und ehrlicher Abschluss
+## Runde 11: Erster Schritt und ehrlicher Abschluss
 
 Frag, ob gerade ein konkreter Kunde oder ein konkretes Gerät ansteht.
 
-- **Ja:** direkt weiter mit `/customer <name>`. Der beste Abschluss, er sieht sofort, wie
-  sich das Kit anfühlt.
-- **Unternehmens-Rolle:** die eigene Firma als Akte anlegen, damit das Gerät einen Ort hat.
+- **Ja, ein Kunde:** direkt weiter mit `/customer <name>`. Der beste Abschluss, er sieht
+  sofort, wie sich das Kit anfühlt.
+- **Ja, das eigene Gerät aus Runde 9:** weiter mit `/setup business/<modellname>`.
+- **Unternehmens-Rolle:** hier ist das eigene Gerät der Normalfall, nicht die Ausnahme. Es
+  liegt unter `business/<modellname>/`, eine Akte für die eigene Firma braucht es dafür
+  nicht.
 - **Nein:** sagen, was als Nächstes sinnvoll wäre.
 
 Zum Schluss, kurz und ohne Beschönigung:
@@ -182,5 +225,8 @@ Beispiel:
 > Es fehlen: Lizenztoken (ohne ihn keine Installation und keine Produktaussagen) und
 > Stundensatz (ohne ihn keine Kalkulation).
 > Nächster Schritt: Token aus dem Portal holen, dann legen wir deinen ersten Kunden an.
+
+Was am Kalkulationsblatt fehlt, liest du dafür ab, statt es aus dem Kopf aufzuzählen:
+`node .ara/tools/calculation.mjs`.
 
 Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.

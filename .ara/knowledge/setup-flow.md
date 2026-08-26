@@ -25,6 +25,22 @@ Gibt es noch keinen Laufzettel, leg ihn an:
 node .ara/tools/runsheet.mjs --create --customer <k> --device <g>
 ```
 
+### Ein eigenes Gerät des Partners
+
+Läuft die Einrichtung nicht für einen Kunden, sondern für ein eigenes Gerät (Vorführung,
+Übung, eigener Betrieb), steht überall `business` an der Stelle des Kunden:
+
+```
+node .ara/tools/runsheet.mjs --create --customer business --device jetson-thor
+node .ara/tools/runsheet.mjs --customer business --show
+```
+
+Das Gerät liegt dann unter `business/<gerätename>/` und heißt nach dem Modell. Das ist die
+benannte Ausnahme von der Benennungsregel, sie steht in
+`.ara/knowledge/customer-file.md`. Sonst ändert sich an diesem Ablauf nichts: dieselben
+sieben Phasen, dieselbe Schleife, derselbe Nachweis. Nur die Abnahme in Phase 6 fällt
+kürzer aus, es gibt niemanden, dem übergeben wird.
+
 ### Immer nach jedem Schritt: eintragen
 
 ```
@@ -49,7 +65,8 @@ gerade wenn es klemmt.
 
 - **Geräteakte anlegen**, falls es sie noch nicht gibt: `.ara/templates/device.md` nach
   `customers/<k>/devices/<g>/device.md` kopieren und ausfüllen, soweit bekannt. Die
-  Gerätebezeichnung benennt Standort oder Rolle, nicht das Modell.
+  Gerätebezeichnung benennt Standort oder Rolle, nicht das Modell. Beim eigenen Gerät des
+  Partners nach `business/<gerätename>/device.md`, und dort heißt es nach dem Modell.
 - **Laufzettel anlegen:**
   `node .ara/tools/runsheet.mjs --create --customer <k> --device <g>`
 - Gerät bestimmen und Reifegrad prüfen (`.ara/knowledge/identify-device.md`). Ist das Profil
@@ -109,7 +126,7 @@ Sonst sperrst du dich aus einem Gerät aus, das beim Kunden im Schrank steht.
 
 ---
 
-## Phase 3. Ara OS installieren
+## Phase 3. Arasul installieren
 
 **Ziel:** Das Produkt läuft auf dem Gerät.
 
@@ -189,6 +206,11 @@ nicht geprüft eingetragen, nicht weggelassen.
   wie. Das gehört vorgeführt, nicht erwähnt.
 - Status in `customer.md` und `device.md` auf den Betriebszustand setzen,
   Abnahmedatum eintragen, Laufzettel auf `fertig`.
+
+Beim eigenen Gerät gibt es keine `customer.md`, keine Übergabe und keine Abnahme durch
+einen Dritten. Es bleibt: `device.md` auf den Betriebszustand, Laufzettel auf `fertig`,
+und der Nachweis aus Phase 5. Den brauchst du hier sogar besonders, an einem Vorführgerät
+zeigst du ihn her.
 
 **Nachweis:** Der Kunde kann in eigenen Worten sagen, was das Gerät für ihn tut und an wen
 er sich wendet, wenn es klemmt.

@@ -3,7 +3,7 @@
 > bearbeiten**, jede Aenderung wird beim naechsten Spiegeln
 > ueberschrieben. Wer etwas geaendert haben will, sagt es Arasul.
 >
-> Quelle: `templates/legal/nachweise/datenverarbeitung.md` · Stand: 2026-08-25
+> Quelle: `templates/legal/nachweise/datenverarbeitung.md` · Stand: 2026-08-26
 
 # Nachweis: was das Gerät verarbeitet und was es nach außen gibt
 
@@ -52,7 +52,7 @@ kein Inhalt das Gerät.
 | Softwarestand | `{aus dem Gerät}` |
 | Gemessen am | `{JJJJ-MM-TT hh:mm}` |
 | Verbindungen nach außen während des Betriebs | `{Anzahl und Ziel, oder "keine"}` |
-| Fernwartungszugang | `{direkt | Vermittlungsnetz | nicht eingerichtet}` |
+| Fernwartungszugang | `{direkt \| Vermittlungsnetz \| nicht eingerichtet}` |
 
 **Wie gemessen wird.** Auf dem Gerät, während es arbeitet:
 

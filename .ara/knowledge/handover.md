@@ -51,6 +51,21 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
 - Er weiß, wen er anruft und was dann passiert.
 - Er hat eine Kurzanleitung, die seine Mitarbeiter verstehen.
 
+### 7 Das Papier ist vollständig
+
+- Die **Leistungsbeschreibung** liegt vor, mit Datum, gegen dieses Gerät erhoben.
+- **Jede Zeile, die du im Protokoll abzeichnest, steht dort auf "abgenommen", und
+  umgekehrt.** Ein Bereich, der dort zugesagt ist und hier nicht vorgeführt wurde, ist
+  ein Widerspruch in deinen eigenen Papieren.
+- Die **Endkundenbedingungen** sind vereinbart, und zwar **vor** Vertragsschluss.
+  Nachträglich trägt es nicht.
+- Die **Drittlizenzen** liegen bei.
+- Der Kunde hat die **Schutzmaßnahmen** nach Abschnitt 8 der Leistungsbeschreibung
+  eingerichtet und bestätigt das im Protokoll. Ohne diese Bestätigung steht der Hinweis
+  auf die Fehlbarkeit von Ausgaben allein, und allein trägt er nicht.
+
+Verfahren: `.ara/knowledge/paperwork.md`
+
 ## Wenn ein Punkt nicht erfüllt ist
 
 Dann ist das Gerät **nicht abgenommen**. Das ist kein Drama, sondern eine Aussage:

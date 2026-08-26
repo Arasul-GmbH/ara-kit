@@ -50,6 +50,7 @@ installieren.
 |---|---|
 | `/start` | Einmalig einrichten |
 | `/customer <name>` | Kunde anlegen oder öffnen |
+| `/kalkulation` | Deine Preise hinterlegen, einmal, danach rechnet Ara ohne Rückfrage |
 | `/angebot <kunde>` | Angebot mit allen fünf Anlagen, als PDF in deinem Namen |
 | `/setup <kunde>` | Gerät einrichten, von der Vorbereitung bis zur Abnahme |
 | `/maintain <kunde>` | Laufendes Gerät betreuen |
@@ -62,7 +63,7 @@ Leute", „bei Müller antwortet der Chat nicht".
 | Ordner | Inhalt |
 |---|---|
 | `customers/` | Deine Kunden, ihre Geräte, Laufzettel und Unterlagen |
-| `business/` | Dein Profil, Firmendaten, Preise und Notizen |
+| `business/` | Dein Profil, Firmendaten, Preise, Notizen und deine eigenen Geräte |
 
 Diese beiden Ordner gehören dir. Ein Update des Kits (`git pull`) fasst sie nie an, sie
 sind von der Versionskontrolle ausgenommen. Alles andere ist Werkzeug und wird mit
