@@ -10,7 +10,16 @@
 
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
@@ -414,8 +423,14 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     "business/profile.md",
     "business/company.md",
     "business/notes/gelerntes.md",
+    "devices/zentrale/device.md",
+    "apps/urlaubsantrag/app.json",
     ".env",
     ".ara/mirror/VERSION",
+    ".ara/state.json",
+    // Erzeugte Befehle. Nur init.md ist getrackt, siehe unten.
+    ".claude/commands/setup.md",
+    ".claude/commands/eigener.md",
   ];
   const tracked = mustBeIgnored.filter(
     (path) =>
@@ -427,7 +442,16 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
   );
 
   // Umgekehrt: das Werkzeug selbst muss verfolgt werden, sonst fehlt es nach dem Klonen.
-  const mustBeTracked = [".claude/CLAUDE.md", ".ara/tools/selftest.mjs", "README.md"];
+  const mustBeTracked = [
+    ".claude/CLAUDE.md",
+    ".claude/settings.json",
+    ".claude/commands/init.md",
+    ".ara/tools/selftest.mjs",
+    ".ara/commands/alle/setup.md",
+    ".ara/commands/partner/customer.md",
+    "README.md",
+    "LICENSE",
+  ];
   const ignored = mustBeTracked.filter(
     (path) => spawnSync("git", ["check-ignore", "-q", path], { cwd: ROOT }).status === 0
   );
@@ -668,8 +692,8 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
     for (const match of content.matchAll(paths)) {
       const target = match[1].replace(/[.,)`]+$/, "");
       if (target.includes("*") || target.endsWith("/")) continue;
-      // Alles unter .ara/mirror/ entsteht erst zur Laufzeit.
-      if (target.startsWith(".ara/mirror/")) continue;
+      // Der Spiegel und der Merker entstehen erst zur Laufzeit.
+      if (target.startsWith(".ara/mirror/") || target === ".ara/state.json") continue;
       if (existsSync(join(ROOT, target))) continue;
       missing.push(`${relative(ROOT, file)} → ${target}`);
     }
@@ -713,13 +737,151 @@ check("Jeder genannte Befehl hat seine Datei", () => {
     }
   }
 
+  // Quelle der Befehle ist .ara/commands/, nur init.md liegt direkt in
+  // .claude/commands/. Was dort sonst liegt, ist erzeugt und zaehlt nicht.
+  const exists = (name) =>
+    (name === "init" && existsSync(join(ROOT, ".claude", "commands", "init.md"))) ||
+    ["alle", "partner"].some((group) =>
+      existsSync(join(ROOT, ".ara", "commands", group, `${name}.md`))
+    );
   const missing = [];
   for (const [name, where] of found) {
-    if (existsSync(join(ROOT, ".claude", "commands", `${name}.md`))) continue;
-    missing.push(`/${name} fehlt als .claude/commands/${name}.md, genannt in ${[...where].join(", ")}`);
+    if (exists(name)) continue;
+    missing.push(`/${name} fehlt in .ara/commands/, genannt in ${[...where].join(", ")}`);
   }
   assert(missing.length === 0, `Befehle ohne Datei:\n    ${missing.join("\n    ")}`);
   return `${found.size} Befehle genannt, alle vorhanden`;
+});
+
+// --- Update und Befehle in einem Fork ----------------------------------------
+
+await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async () => {
+  // Der Grundriss verspricht: ein Update ersetzt nur, was Arasul gehoert, und es
+  // braucht dafuer kein git-Remote. Geprueft wird das an einem Wegwerf-Fork:
+  // eine Kopie von .ara/ und .claude/, ein eigenes Profil, ein eigener Befehl,
+  // ein Spiegel. Dann kommt ein neuer Stand als Archiv von einem Testserver.
+  const work = mkdtempSync(join(tmpdir(), "ara-fork-"));
+  const fork = join(work, "fork");
+  const copy = (from, to) =>
+    cpSync(from, to, {
+      recursive: true,
+      filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src),
+    });
+  copy(join(ROOT, ".ara"), join(fork, ".ara"));
+  copy(join(ROOT, ".claude"), join(fork, ".claude"));
+  const write = (rel, content) => {
+    mkdirSync(join(fork, rel, ".."), { recursive: true });
+    writeFileSync(join(fork, rel), content);
+  };
+  write("business/profile.md", "---\nrole: partner\nname: Probe\n---\n\nMeins.\n");
+  write(".claude/commands/eigener.md", "---\ndescription: selbst gebaut\n---\n\nMeiner.\n");
+  write(".ara/mirror/STATE.json", '{"version":"probe"}');
+  write(".ara/state.json", '{"customer":"probe"}');
+  rmSync(join(fork, ".claude", "commands", "setup.md"), { force: true });
+  spawnSync("git", ["init", "-q"], { cwd: fork });
+
+  const forkTool = (file, args, env = {}) =>
+    new Promise((done) => {
+      const child = spawn("node", [join(fork, ".ara", "tools", file), ...args], {
+        cwd: fork,
+        env: { ...process.env, ...env },
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => (stdout += d));
+      child.stderr.on("data", (d) => (stderr += d));
+      child.on("close", (status) => done({ status, stdout, stderr }));
+    });
+  const has = (rel) => existsSync(join(fork, rel));
+  const read = (rel) => readFileSync(join(fork, rel), "utf8");
+
+  // Der neue Stand: eine Datei neu, eine geaendert, eine entfernt, ein Befehl
+  // geaendert. Dazu Koeder, die nicht eingespielt werden duerfen.
+  const source = join(work, "src", "ara-kit-main");
+  copy(join(fork, ".ara"), join(source, ".ara"));
+  copy(join(fork, ".claude"), join(source, ".claude"));
+  rmSync(join(source, ".ara", "mirror"), { recursive: true, force: true });
+  rmSync(join(source, ".ara", "state.json"), { force: true });
+  writeFileSync(join(source, ".ara", "knowledge", "probe.md"), "# Probe\n");
+  writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
+  rmSync(join(source, ".ara", "knowledge", "sales.md"));
+  writeFileSync(
+    join(source, ".ara", "commands", "alle", "setup.md"),
+    read(".ara/commands/alle/setup.md") + "\nNeu im Kit.\n"
+  );
+  mkdirSync(join(source, "business"), { recursive: true });
+  writeFileSync(join(source, "business", "profile.md"), "---\nrole: company\n---\n\nKoeder.\n");
+  writeFileSync(join(source, ".claude", "commands", "eigener.md"), "Koeder.\n");
+  writeFileSync(join(source, ".ara", "state.json"), "Koeder.\n");
+  const tar = spawnSync("tar", ["-czf", join(work, "kit.tar.gz"), "-C", join(work, "src"), "ara-kit-main"]);
+  assert(tar.status === 0, "Testarchiv liess sich nicht bauen");
+  const packet = readFileSync(join(work, "kit.tar.gz"));
+  const server = createServer((request, response) => {
+    response.writeHead(200, { "Content-Type": "application/gzip" });
+    response.end(packet);
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const env = { ARA_KIT_SOURCE: `http://127.0.0.1:${server.address().port}/kit.tar.gz` };
+
+  try {
+    // 1. Befehle anlegen, Zweig aus dem Profil.
+    let run = await forkTool("commands.mjs", []);
+    assert(run.status === 0, `Lage fehlgeschlagen: ${run.stderr}`);
+    assert(/fehlt\s+\/setup/.test(run.stdout), "fehlender Befehl wird nicht gemeldet");
+    assert(/eigener\s+\/eigener/.test(run.stdout), "eigener Befehl wird nicht als solcher erkannt");
+    run = await forkTool("commands.mjs", ["--apply"]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}`);
+    assert(has(".claude/commands/setup.md"), "Befehl aus alle/ nicht angelegt");
+    assert(has(".claude/commands/customer.md"), "Befehl aus partner/ nicht angelegt");
+    assert(/Meiner\./.test(read(".claude/commands/eigener.md")), "eigener Befehl ueberschrieben");
+
+    // Ein Unternehmen bekommt die Partnerbefehle nicht.
+    run = await forkTool("commands.mjs", ["--json", "--role", "company"]);
+    const lage = JSON.parse(run.stdout);
+    assert(!lage.commands.some((c) => c.group === "partner"), "Unternehmen bekommt Partnerbefehle");
+    assert(lage.commands.some((c) => c.name === "setup"), "Unternehmen bekommt alle/ nicht");
+
+    // Ohne Profil und ohne --role wird nicht geraten.
+    rmSync(join(fork, "business", "profile.md"));
+    run = await forkTool("commands.mjs", []);
+    assert(run.status !== 0, "ohne Zweig wird geraten");
+    write("business/profile.md", "---\nrole: partner\nname: Probe\n---\n\nMeins.\n");
+
+    // 2. Update nur ansehen: nichts darf sich aendern.
+    run = await forkTool("update.mjs", ["--check"], env);
+    assert(run.status === 0, `--check fehlgeschlagen: ${run.stderr}`);
+    assert(/neu\s+\.ara\/knowledge\/probe\.md/.test(run.stdout), "neue Datei nicht gemeldet");
+    assert(/entfernt\s+\.ara\/knowledge\/sales\.md/.test(run.stdout), "entfernte Datei nicht gemeldet");
+    assert(!has(".ara/knowledge/probe.md"), "--check hat eingespielt");
+
+    // 3. Einspielen.
+    run = await forkTool("update.mjs", [], env);
+    assert(run.status === 0, `Update fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(has(".ara/knowledge/probe.md"), "neue Datei fehlt");
+    assert(!has(".ara/knowledge/sales.md"), "entfernte Datei liegt noch da");
+    assert(/Neu\.\s*$/.test(read(".ara/persona/ara.md")), "geaenderte Datei nicht ersetzt");
+    assert(/Neu im Kit/.test(read(".ara/commands/alle/setup.md")), "Befehlsquelle nicht ersetzt");
+    // Die Koeder.
+    assert(/Meins\./.test(read("business/profile.md")), "business/ wurde angefasst");
+    assert(/Meiner\./.test(read(".claude/commands/eigener.md")), "erzeugter Befehl wurde angefasst");
+    assert(!/Neu im Kit/.test(read(".claude/commands/setup.md")), "erzeugter Befehl wurde ohne Zustimmung ersetzt");
+    assert(/probe/.test(read(".ara/mirror/STATE.json")), "Spiegel wurde angefasst");
+    assert(/customer/.test(read(".ara/state.json")), "Merker wurde angefasst");
+
+    // Ein zweiter Lauf hat nichts mehr zu tun.
+    run = await forkTool("update.mjs", ["--check"], env);
+    assert(/Alles aktuell/.test(run.stdout), "zweiter Lauf meldet Aenderungen");
+
+    // 4. Befehle nachziehen: der geaenderte wird gemeldet und erst mit --apply ersetzt.
+    run = await forkTool("commands.mjs", []);
+    assert(/weicht ab\s+\/setup/.test(run.stdout), "geaenderter Befehl wird nicht gemeldet");
+    run = await forkTool("commands.mjs", ["--apply"]);
+    assert(/Neu im Kit/.test(read(".claude/commands/setup.md")), "geaenderter Befehl nicht ersetzt");
+    return "anlegen, ansehen, einspielen, nachziehen";
+  } finally {
+    server.close();
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 console.log(
