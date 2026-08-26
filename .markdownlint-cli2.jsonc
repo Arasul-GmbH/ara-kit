@@ -1,6 +1,7 @@
 {
-  // Markdown-Lint fuer das Kit. Laeuft in der CI (.github/workflows/ci.yml)
-  // und lokal mit `npx --yes markdownlint-cli2@0.18.1`.
+  // Markdown-Lint fuer das Kit. Es gibt keine CI in diesem Repo, der Nachweis
+  // ist lokal: wer mergt, laesst vorher `npx --yes markdownlint-cli2@0.18.1`
+  // und `node .ara/tools/selftest.mjs` laufen.
   //
   // Geprueft wird die Struktur: Leerzeilen um Ueberschriften und Listen,
   // einheitliche Listenzeichen, keine doppelten Ueberschriften, kein
@@ -32,6 +33,7 @@
     ".ara/mirror",
     // Interne Planung, liegt nur lokal.
     "entwicklung",
-    "PHASE.md"
+    "PHASE.md",
+    "NACHTRAG.md"
   ]
 }
