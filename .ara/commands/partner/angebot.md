@@ -40,7 +40,7 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    und nie aus einem alten Angebot kopiert: ein alter Reifegrad ist beim nächsten
    Produktstand eine falsche Zusage. Die sechs Schritte stehen in
    `.ara/knowledge/paperwork.md` unter "Die Leistungsbeschreibung füllen". Gerüst:
-   `vorlagen/leistungsbeschreibung.md`.
+   `.ara/vorlagen/leistungsbeschreibung.md`.
 
 4. **Rechnen.** Nach `.ara/knowledge/pricing.md`, mit den Werten aus
    `business/company.md` (`hourly_rate`, `hardware_markup`, `payment_terms`) und im Ton
@@ -48,7 +48,7 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    geraten.** Die verbindliche Quelle dafür ist das Partnerportal. Wartung Jahr 1 und
    ab Jahr 2 sind zwei verschiedene Zahlen, rechne beide.
 
-5. **Angebot schreiben.** Gerüst `vorlagen/angebot.md`. Briefkopf, USt-IdNr., IBAN und
+5. **Angebot schreiben.** Gerüst `.ara/vorlagen/angebot.md`. Briefkopf, USt-IdNr., IBAN und
    Zahlungsziel kommen aus `business/company.md`, der Name unter der Unterschrift aus
    `business/profile.md`. **Der Absender ist der Partner, nicht Arasul.** Fehlt ein
    Feld, wird es in `business/company.md` nachgetragen und nicht im Angebot erfunden.
@@ -58,13 +58,13 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
 
    | Nr | Anlage | Woher |
    |---|---|---|
-   | 1 | Leistungsbeschreibung | `vorlagen/leistungsbeschreibung.md`, je Kunde neu |
-   | 2 | Endkundenbedingungen | `vorlagen/endkundenbedingungen.md`, unverändert |
-   | 3 | Drittlizenzen | `vorlagen/drittlizenzen.md`, unverändert |
-   | 4 | Nachweis KI-Einstufung | `nachweise/ki-einstufung.md`, Abrufdatum prüfen |
-   | 5 | Nachweis Datenverarbeitung | `nachweise/datenverarbeitung.md`, Abschnitt 3 |
+   | 1 | Leistungsbeschreibung | `.ara/vorlagen/leistungsbeschreibung.md`, je Kunde neu |
+   | 2 | Endkundenbedingungen | `.ara/vorlagen/endkundenbedingungen.md`, unverändert |
+   | 3 | Drittlizenzen | `.ara/vorlagen/drittlizenzen.md`, unverändert |
+   | 4 | Nachweis KI-Einstufung | `.ara/nachweise/ki-einstufung.md`, Abrufdatum prüfen |
+   | 5 | Nachweis Datenverarbeitung | `.ara/nachweise/datenverarbeitung.md`, Abschnitt 3 |
 
-   `nachweise/` und `vorlagen/bausteine/` werden aus Arasuls Steuerungsordner
+   `.ara/nachweise/` und `.ara/vorlagen/bausteine/` werden aus Arasuls Steuerungsordner
    gespiegelt. **Hier nicht bearbeiten.** Wer darin einen Fehler findet, sagt es Arasul.
 
    Der Nachweis Datenverarbeitung ist ein **Gerüst**, kein ausgefülltes Blatt.

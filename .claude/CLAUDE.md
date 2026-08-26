@@ -9,18 +9,21 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 
 | Ort | Was dort liegt |
 |---|---|
-| `customers/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
-| `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes und die **eigenen Geräte** des Partners unter `business/<modellname>/`. Gehört dem Partner. |
+| `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes und die **eigenen Geräte** des Partners unter `business/<modellname>/`. Gehört dem Nutzer. |
+| `customers/` | Partner: alles pro Kunde, Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
+| `devices/` | Unternehmen: die eigenen Geräte, weil es keinen Kunden gibt. Gehört dem Nutzer. |
+| `apps/` | Eigene Apps, kundenunabhängig. Gehört dem Nutzer. |
+| `.ara/commands/` | Quelle der Befehle: `alle/` für jeden Zweig, `partner/` nur für Partner. `/init` legt sie nach `.claude/commands/`. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
-| `vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `vorlagen/README.md`. |
-| `nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
+| `.ara/vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `.ara/vorlagen/README.md`. |
+| `.ara/nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
 | `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |
-| `.claude/` | Commands, Regeln. |
-| `entwicklung/` | Interne Planung am Kit selbst. Für die Arbeit mit Kunden irrelevant. |
+| `.claude/` | Regeln, Skills und die erzeugten Befehle. Getrackt sind nur `CLAUDE.md`, `settings.json`, `skills/` und `commands/init.md`. |
 
-`customers/`, `business/`, `.env` und `.ara/mirror/` sind von der Versionskontrolle
+`business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`
+und die erzeugten Befehle unter `.claude/commands/` sind von der Versionskontrolle
 ausgenommen, ein Update des Kits fasst sie nie an.
 
 ## Die wichtigste Regel: nichts über das Produkt behaupten
@@ -49,7 +52,7 @@ Verfahren: `.ara/knowledge/paperwork.md`
 
 | Command | Zweck | Verfahren |
 |---|---|---|
-| `/start` | Einmaliges Onboarding | `.ara/knowledge/onboarding.md` |
+| `/init` | Erstes Mal: Onboarding. Danach: Kit nachziehen, Befehle anbieten | `.ara/knowledge/init.md` |
 | `/customer <name>` | Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
 | `/kalkulation` | Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
 | `/angebot <kunde>` | Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
@@ -78,7 +81,8 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Unvollständig, wird in Phase E5/E6 ersetzt |
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
-| `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach) |
+| `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach), fasst Nutzerordner nicht an |
+| `commands.mjs` | Befehle aus `.ara/commands/` nach `.claude/commands/` legen, je nach Zweig (`--apply`, `--role`) |
 | `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
 
 Dazu kommen zwei Werkzeuge, die keine Kit-Skripte sind:

@@ -21,10 +21,10 @@ Zwei Unternehmen schreiben Papier, und sie werden leicht verwechselt.
 
 | Papier | Absender | Wo es liegt |
 |---|---|---|
-| Angebot an den Endkunden | **der Partner** | `vorlagen/angebot.md` |
-| Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen | der Partner gibt sie weiter | `vorlagen/` |
-| Nachweise zu KI-Einstufung und Datenverarbeitung | Arasul verfasst, der Partner legt sie bei | `nachweise/` |
-| Übergabeprotokoll | Partner und Kunde zeichnen | `vorlagen/uebergabeprotokoll.md` |
+| Angebot an den Endkunden | **der Partner** | `.ara/vorlagen/angebot.md` |
+| Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen | der Partner gibt sie weiter | `.ara/vorlagen/` |
+| Nachweise zu KI-Einstufung und Datenverarbeitung | Arasul verfasst, der Partner legt sie bei | `.ara/nachweise/` |
+| Übergabeprotokoll | Partner und Kunde zeichnen | `.ara/vorlagen/uebergabeprotokoll.md` |
 | Partnervertrag, Kaufvertrag, Vereinbarung zur Auftragsverarbeitung | **Arasul** | nicht im Kit |
 
 Die drei letzten Zeilen sind der häufigste Irrtum. **Der Partnervertrag ist ein Papier,
@@ -48,7 +48,7 @@ verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
    entsteht kein Angebot, weil sonst Plattform und Erprobungsstand geraten wären.
 3. **Leistungsbeschreibung füllen.** Sie kommt vor dem Angebot, nicht danach. Sie legt
    fest, was geschuldet ist, und das Angebot verweist auf sie. Verfahren unten.
-4. **Angebot schreiben.** `vorlagen/angebot.md` als Gerüst, Absender aus
+4. **Angebot schreiben.** `.ara/vorlagen/angebot.md` als Gerüst, Absender aus
    `business/company.md`.
 5. **Anlagen zusammenstellen.** Fünf, siehe unten. Alle fünf, oder das Angebot geht nicht
    raus.
@@ -69,18 +69,18 @@ geschuldet ist, und die letzten beiden beantworten, was der Kunde fragen wird.
 
 | Nr | Anlage | Woher | Je Kunde neu? |
 |---|---|---|---|
-| 1 | Leistungsbeschreibung | `vorlagen/leistungsbeschreibung.md` | ja, gegen Spiegel und Gerät |
-| 2 | Endkundenbedingungen | `vorlagen/endkundenbedingungen.md` | nein, unverändert weitergeben |
-| 3 | Drittlizenzen | `vorlagen/drittlizenzen.md` | nein, unverändert weitergeben |
-| 4 | Nachweis KI-Einstufung | `nachweise/ki-einstufung.md` | nein, aber Abrufdatum prüfen |
-| 5 | Nachweis Datenverarbeitung | `nachweise/datenverarbeitung.md` | **ja, Abschnitt 3 wird gemessen** |
+| 1 | Leistungsbeschreibung | `.ara/vorlagen/leistungsbeschreibung.md` | ja, gegen Spiegel und Gerät |
+| 2 | Endkundenbedingungen | `.ara/vorlagen/endkundenbedingungen.md` | nein, unverändert weitergeben |
+| 3 | Drittlizenzen | `.ara/vorlagen/drittlizenzen.md` | nein, unverändert weitergeben |
+| 4 | Nachweis KI-Einstufung | `.ara/nachweise/ki-einstufung.md` | nein, aber Abrufdatum prüfen |
+| 5 | Nachweis Datenverarbeitung | `.ara/nachweise/datenverarbeitung.md` | **ja, Abschnitt 3 wird gemessen** |
 
 **Die beiden Nachweise sind nicht Beiwerk.** In der Partnerumfrage vom 24.08.2026
 verlangen fünf von sechs Befragten Datenschutzunterlagen und vier von sechs Nachweise zum
 AI Act. Ein Angebot ohne sie kommt mit genau diesen zwei Fragen zurück, und dann
 verhandelt der Partner nicht mehr über Nutzen, sondern über eine Lücke.
 
-`nachweise/` und `vorlagen/bausteine/` werden aus dem Steuerungsordner von Arasul
+`.ara/nachweise/` und `.ara/vorlagen/bausteine/` werden aus dem Steuerungsordner von Arasul
 gespiegelt. **Hier nicht bearbeiten.** Wer darin einen Fehler findet, sagt es Arasul.
 
 ### Was passiert, wenn eines fehlt
@@ -97,7 +97,7 @@ Keine Formalien. Was in dieser Spalte steht, ist die Folge, die tatsächlich ein
 
 ### Der Nachweis Datenverarbeitung ist ein Gerüst
 
-`nachweise/datenverarbeitung.md` ist **kein ausgefülltes Blatt.** Abschnitt 3 trägt
+`.ara/nachweise/datenverarbeitung.md` ist **kein ausgefülltes Blatt.** Abschnitt 3 trägt
 Platzhalter, weil die Zahlen je Auslieferung am konkreten Gerät gemessen werden, mit den
 Befehlen, die dort stehen, und mit Datum und Uhrzeit.
 
@@ -199,7 +199,7 @@ dann ist die Quelle mehr wert als das PDF.
 
 ## Zwei Papiere heißen fast gleich
 
-`vorlagen/uebergabeprotokoll.md` ist das rechtliche Papier mit Unterschrift.
+`.ara/vorlagen/uebergabeprotokoll.md` ist das rechtliche Papier mit Unterschrift.
 `.ara/templates/handover.md` ist die technische Abnahme aus dem Laufzettel. Beide
 entstehen bei derselben Übergabe, keines ersetzt das andere. Näheres in
-`vorlagen/README.md`.
+`.ara/vorlagen/README.md`.

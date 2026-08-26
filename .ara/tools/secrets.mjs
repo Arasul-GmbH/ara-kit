@@ -46,7 +46,7 @@ if (typeof arg.store === "string") {
     );
   }
   if (!existsSync(PROFILE)) {
-    fail("business/profile.md gibt es noch nicht. Lauf zuerst durch /start.");
+    fail("business/profile.md gibt es noch nicht. Lauf zuerst durch /init.");
   }
   writeFrontmatter(PROFILE, { secrets_store: wanted });
   console.log(

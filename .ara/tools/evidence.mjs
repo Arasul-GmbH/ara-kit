@@ -40,7 +40,7 @@ import {
   today,
 } from "./lib/kit.mjs";
 
-const VORLAGE = join(ROOT, "vorlagen", "leistungsbeschreibung.md");
+const VORLAGE = join(ROOT, ".ara", "vorlagen", "leistungsbeschreibung.md");
 const MIRROR = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
 
 /** Die drei Stufen aus Abschnitt 3. Argumente englisch, Dokument deutsch. */
@@ -183,7 +183,7 @@ function readLedger(place, lines) {
   return {
     customer: place.customer,
     device: place.device,
-    source: "vorlagen/leistungsbeschreibung.md, Abschnitt 3",
+    source: ".ara/vorlagen/leistungsbeschreibung.md, Abschnitt 3",
     lines: merged,
     retired: retired.length ? retired : undefined,
     updated: stored.updated ?? null,
@@ -876,7 +876,7 @@ function commandRender(place, lines, ledger) {
       reste.length ? `\nNoch Platzhalter im Text: ${reste.join(", ")}` : "",
       "",
       "Jede Zeile mit \"abgenommen\" muss im Übergabeprotokoll vorgeführt und abgezeichnet",
-      "werden (vorlagen/uebergabeprotokoll.md). Sonst ist es ein Widerspruch zu Lasten von Arasul.",
+      "werden (.ara/vorlagen/uebergabeprotokoll.md). Sonst ist es ein Widerspruch zu Lasten von Arasul.",
     ].join("\n")
   );
 }

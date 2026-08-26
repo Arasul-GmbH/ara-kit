@@ -15,7 +15,7 @@
 >
 > **Neu in Fassung 2:** Ziffer 4 Entwicklungsstand, Ziffer 7 Erweiterungen,
 > salvatorische Klausel. Die Ziffern 4 bis 8 stehen wortgleich in den Vertraegen
-> von Arasul; Quelle ist `vorlagen/bausteine/`. Den Abgleich fuehrt Arasul im
+> von Arasul; Quelle ist `.ara/vorlagen/bausteine/`. Den Abgleich fuehrt Arasul im
 > eigenen Steuerungsordner, nicht im Kit. **Der Text zwischen den Markierungen
 > wird nicht von Hand geaendert.**
 

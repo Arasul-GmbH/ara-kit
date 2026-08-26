@@ -1,18 +1,24 @@
-# Alles, was dem Partner gehört, wird vom Kit-Repo nicht verfolgt.
-# Damit kann ein "git pull" niemals Kundendaten oder Zugänge berühren.
+# Was dem Nutzer gehoert, verfolgt das Kit-Repo nicht. Ein Update oder ein
+# git pull kann so nie Kundendaten, Geraeteakten, Apps oder Zugaenge beruehren.
+
+business/
+customers/
+devices/
+apps/
 
 .env
 .env.*
 !.env.example
 
-customers/*
-!customers/.gitkeep
+# Befehle werden von /init aus .ara/commands/ erzeugt, je nach Zweig
+# (Partner oder Unternehmen). Getrackt ist nur init.md selbst.
+.claude/commands/*
+!.claude/commands/init.md
 
-business/*
-!business/.gitkeep
-
+# Zwischenspeicher des Produktstands und der Merker fuer zuletzt genutzte Akten.
 .ara/mirror/*
 !.ara/mirror/.gitkeep
+.ara/state.json
 
 # Betriebssystem und Werkzeuge
 .DS_Store
