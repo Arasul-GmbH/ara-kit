@@ -223,10 +223,10 @@ Schritt, wenn Angebote anstehen.
 2. **Erstes Gerät.**
    - **Partner:** Richtest du dir ein eigenes Gerät ein, zum Vorführen oder Üben, oder
      fängst du direkt mit Kundengeräten an? Wenn ja: welches Modell, steht es schon da
-     oder ist es bestellt? Ein eigenes Gerät bekommt seinen Ort unter
-     `business/<modellname>/`, nicht unter `customers/`: ein Scheinkunde dafür verfälscht
-     jede Auswertung. Der Name ist hier das Modell, und das ist eine benannte Ausnahme,
-     Kundengeräte heißen nach Standort (`.ara/knowledge/customer-file.md`).
+     oder ist es bestellt? Ein eigenes Gerät bekommt seinen Ort unter `devices/<gerät>/`,
+     nicht unter `customers/`: ein Scheinkunde dafür verfälscht jede Auswertung. Der
+     Name ist hier meist das Modell, Kundengeräte heißen nach Standort
+     (`.ara/knowledge/device.md`).
    - **Unternehmen:** Hier ist das eigene Gerät der Normalfall. Welches Modell, steht es
      schon da oder ist es bestellt?
 
@@ -258,7 +258,7 @@ Zum Schluss, kurz und ohne Beschönigung:
 - der nächste sinnvolle Schritt:
   - **Partner mit konkretem Kunden:** `/customer <name>`. Der beste Abschluss, er sieht
     sofort, wie sich das Kit anfühlt.
-  - **Eigenes Gerät steht da:** `/setup business/<modellname>`.
+  - **Eigenes Gerät steht da:** `/device <gerät>`.
   - **Gerät bestellt:** sagen, was bis dahin vorbereitet werden kann.
   - **Nichts davon:** sagen, was als Nächstes sinnvoll wäre.
 

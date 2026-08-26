@@ -10,9 +10,9 @@
  *   node .ara/tools/remote.mjs --customer mueller --command "uptime"
  *   node .ara/tools/remote.mjs --customer mueller --device werk2 --command "df -h" --log
  *
- * Für ein eigenes Gerät des Partners steht `business` an der Stelle des Kunden:
+ * Ein Gerät ohne Kunden liegt unter devices/<gerät>/, dann fällt --customer weg:
  *
- *   node .ara/tools/remote.mjs --customer business --device jetson-thor --check
+ *   node .ara/tools/remote.mjs --device zentrale --check
  */
 
 import { spawnSync } from "node:child_process";
@@ -23,12 +23,12 @@ import { ROOT, fail, parseArgs, readDevice } from "./lib/kit.mjs";
 
 const arg = parseArgs();
 
-if (!arg.customer) {
+if (typeof arg.customer !== "string" && typeof arg.device !== "string") {
   console.log(
     [
-      "Fernzugriff. Befehl auf einem Kundengerät ausführen",
+      "Fernzugriff. Befehl auf einem Gerät ausführen",
       "",
-      "  --customer <name>      welcher Kunde (Pflicht)",
+      "  --customer <name>      welcher Kunde. Ohne Kunden gilt devices/",
       "  --device <name>        welches Gerät (nur nötig, wenn es mehrere gibt)",
       "  --check                nur die Verbindung testen",
       '  --command "<befehl>"   auf dem Gerät ausführen',
@@ -40,7 +40,10 @@ if (!arg.customer) {
 
 let device;
 try {
-  device = readDevice(arg.customer, typeof arg.device === "string" ? arg.device : null);
+  device = readDevice(
+    typeof arg.customer === "string" ? arg.customer : null,
+    typeof arg.device === "string" ? arg.device : null
+  );
 } catch (error) {
   fail(error.message);
 }
@@ -73,19 +76,20 @@ if (key) {
 
 sshArgs.push(`${user}@${host}`);
 const label = `${user}@${host}:${port}`;
+const place = device.customer ? `${device.customer}/${device.device}` : device.device;
 
 if (arg.check || !arg.command) {
   const probe = spawnSync("ssh", [...sshArgs, "-o", "BatchMode=yes", "echo bereit"], {
     encoding: "utf8",
   });
   if (probe.status === 0 && /bereit/.test(probe.stdout || "")) {
-    console.log(`Verbindung steht: ${label} (${device.customer}/${device.device})`);
+    console.log(`Verbindung steht: ${label} (${place})`);
     process.exit(0);
   }
   const message = (probe.stderr || "").trim().split("\n").slice(0, 4).join("\n");
   console.log(
     [
-      `Keine Verbindung zu ${label} (${device.customer}/${device.device}).`,
+      `Keine Verbindung zu ${label} (${place}).`,
       message ? `\nMeldung:\n${message}` : "",
       "",
       "Häufige Gründe: Gerät nicht erreichbar, falscher Port nach der Härtung,",
@@ -114,8 +118,7 @@ if (arg.log) {
     "node",
     [
       join(ROOT, ".ara", "tools", "runsheet.mjs"),
-      "--customer",
-      device.customer,
+      ...(device.customer ? ["--customer", device.customer] : []),
       "--device",
       device.device,
       "--entry",

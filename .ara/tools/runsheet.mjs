@@ -11,16 +11,18 @@
  *   node .ara/tools/runsheet.mjs --customer mueller --phase 3 --state done \
  *        --entry "Installation gelaufen. Nachweis: alle Dienste gesund."
  *
- * Für ein eigenes Gerät des Partners steht `business` an der Stelle des Kunden:
+ * Ein Gerät ohne Kunden (Unternehmen, oder das eigene Gerät des Partners) liegt
+ * unter devices/<gerät>/. Dann fällt --customer weg:
  *
- *   node .ara/tools/runsheet.mjs --create --customer business --device jetson-thor
+ *   node .ara/tools/runsheet.mjs --create --device zentrale
+ *   node .ara/tools/runsheet.mjs --device zentrale --show
  */
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import {
-  OWN,
   ROOT,
+  devicePath,
   ensureDir,
   fail,
   now,
@@ -52,22 +54,17 @@ const STATE_LABEL = {
 const arg = parseArgs();
 
 if (arg.create) {
-  if (!arg.customer || !arg.device) {
-    fail("Zum Anlegen brauche ich --customer und --device.");
+  if (typeof arg.device !== "string") {
+    fail("Zum Anlegen brauche ich --device, bei einem Kundengerät dazu --customer.");
   }
-  // Eigene Geräte liegen flach unter business/<gerät>/, Kundengeräte unter
-  // customers/<k>/devices/<g>/. Sonst ist der Ablauf derselbe.
-  const dir = ensureDir(
-    arg.customer === OWN
-      ? join(ROOT, OWN, arg.device)
-      : join(ROOT, "customers", arg.customer, "devices", arg.device)
-  );
+  const customer = typeof arg.customer === "string" ? arg.customer : null;
+  const dir = ensureDir(devicePath(customer, arg.device));
   const file = join(dir, "runsheet.md");
   if (existsSync(file)) fail(`Es gibt schon einen Laufzettel: ${file}`);
 
   writeFileSync(file, readFileSync(join(ROOT, ".ara", "templates", "runsheet.md"), "utf8"));
   writeFrontmatter(file, {
-    customer: arg.customer,
+    customer: customer || "",
     device: arg.device,
     profile: typeof arg.profile === "string" ? arg.profile : "",
     phase: 0,
@@ -81,16 +78,21 @@ if (arg.create) {
 
 let target;
 try {
-  target = resolveDevice(arg.customer, typeof arg.device === "string" ? arg.device : null);
+  target = resolveDevice(
+    typeof arg.customer === "string" ? arg.customer : null,
+    typeof arg.device === "string" ? arg.device : null
+  );
 } catch (error) {
   fail(error.message);
 }
 
+const label = target.customer ? `${target.customer}/${target.device}` : target.device;
 const file = join(target.path, "runsheet.md");
 if (!existsSync(file)) {
   fail(
-    `Für ${target.customer}/${target.device} gibt es noch keinen Laufzettel.\n` +
-      `Anlegen mit: node .ara/tools/runsheet.mjs --create --customer ${target.customer} --device ${target.device}`
+    `Für ${label} gibt es noch keinen Laufzettel.\n` +
+      `Anlegen mit: node .ara/tools/runsheet.mjs --create` +
+      `${target.customer ? ` --customer ${target.customer}` : ""} --device ${target.device}`
   );
 }
 
@@ -104,7 +106,7 @@ if (arg.show || (!arg.entry && arg.phase === undefined && !arg.state)) {
 
   console.log(
     [
-      `# Stand: ${target.customer} / ${target.device}`,
+      `# Stand: ${label}`,
       "",
       `- Phase ${phase} von 6: ${PHASES[phase] ?? "unbekannt"}`,
       `- Zustand: ${STATE_LABEL[fields.state] ?? fields.state ?? "unbekannt"}`,
@@ -142,5 +144,5 @@ appendFileSync(file, `\n${heading}\n${arg.entry.trim()}\n`);
 writeFrontmatter(file, { phase: usedPhase, state: usedState, updated: now() });
 
 console.log(
-  `Eingetragen bei ${target.customer}/${target.device}: Phase ${usedPhase}, ${STATE_LABEL[usedState] ?? usedState}.`
+  `Eingetragen bei ${label}: Phase ${usedPhase}, ${STATE_LABEL[usedState] ?? usedState}.`
 );

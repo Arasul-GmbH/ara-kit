@@ -22,6 +22,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import { judge, parseProbe, services } from "./lib/device.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 
 const results = [];
@@ -204,6 +205,123 @@ check("Werkzeuge verweigern fremde und mehrdeutige Ziele", () => {
 
   run = tool("remote.mjs", ["--customer", "gibt-es-nicht", "--check"]);
   assert(run.status !== 0, "Fernzugriff auf unbekannten Kunden wurde akzeptiert");
+
+  run = tool("remote.mjs", ["--device", "gibt-es-nicht", "--check"]);
+  assert(run.status !== 0, "Fernzugriff auf unbekanntes Gerät ohne Kunden wurde akzeptiert");
+  assert(/devices\//.test(run.stderr), "die Meldung nennt nicht, wo gesucht wurde");
+});
+
+check("Laufzettel für ein Gerät ohne Kunden liegt unter devices/", () => {
+  const device = "_selftest-probe";
+  const dir = join(ROOT, "devices", device);
+  rmSync(dir, { recursive: true, force: true });
+  try {
+    let run = tool("runsheet.mjs", ["--create", "--device", device]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(existsSync(join(dir, "runsheet.md")), "Laufzettel liegt nicht unter devices/");
+    run = tool("runsheet.mjs", ["--device", device, "--phase", "2", "--entry", "SSH steht. Nachweis: echo bereit."]);
+    assert(run.status === 0, `Eintrag fehlgeschlagen: ${run.stderr}`);
+    run = tool("runsheet.mjs", ["--device", device, "--show"]);
+    assert(/Phase 2 von 6/.test(run.stdout), "Anzeige zeigt die falsche Phase");
+    assert(!/undefined|null/.test(run.stdout), "ohne Kunden steht Unsinn in der Kopfzeile");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- Gerät -------------------------------------------------------------------
+
+check("Urteil über ein Gerät folgt der Unterstützungsregel", () => {
+  // Orin und Thor tragen Arasul, DGX Spark und andere NVIDIA-Rechner sind
+  // angekündigt, ein Mac wird vorgemerkt. Die Befunde sind erfunden, aber so
+  // geschnitten, wie das Prüfskript sie liefert.
+  const cases = [
+    ["@uname=Linux 5.15 aarch64\n@dt_model=NVIDIA Jetson AGX Orin Developer Kit\n@tegra=# R36", "supported"],
+    ["@uname=Linux 6.8 aarch64\n@dt_model=NVIDIA Jetson AGX Thor Developer Kit", "supported"],
+    ["@uname=Linux 6.11 aarch64\n@dmi_model=NVIDIA DGX Spark\n@gpu=NVIDIA GB10", "soon"],
+    ["@uname=Linux 6.8 x86_64\n@dmi_model=ThinkStation P3\n@gpu=NVIDIA RTX 6000 Ada Generation", "soon"],
+    ["@uname=Darwin 24.6.0 arm64\n@macos=15.6.1\n@hw_model=Mac14,2\n@mem_bytes=17179869184", "unsupported"],
+    ["@uname=Linux 6.8 x86_64\n@os_release=Debian GNU/Linux 12\n@dmi_model=OptiPlex 7010", "unsupported"],
+  ];
+  for (const [probe, expected] of cases) {
+    const found = judge(parseProbe(probe));
+    assert(found.verdict === expected, `${probe.split("\n")[1]}: ${found.verdict} statt ${expected}`);
+    assert(found.verdictText, "Urteil ohne Satz");
+  }
+  const mac = judge(parseProbe(cases[4][0]));
+  assert(mac.os === "macOS 15.6.1" && mac.arch === "arm64" && mac.memoryGb === 16, "Mac-Befund falsch gelesen");
+  assert(/orin/i.test(judge(parseProbe(cases[0][0])).hardware), "Hardware nicht aus dem Gerätebaum übernommen");
+  return `${cases.length} Befunde`;
+});
+
+check("Docker, Ollama und Arasul werden aus dem Befund erkannt", () => {
+  const facts = parseProbe(
+    "@docker_bin=/usr/bin/docker\n@docker_server=27.1.1\n@docker_names=dashboard-backend arasul-flows-sandbox n8n\n" +
+      "@ollama_bin=/usr/local/bin/ollama\n@ollama_version=ollama version is 0.5.1\n@arasul_dir=/opt/arasul\n@arasul_dir=/home/x/arasul\n@sudo=ohne Passwort"
+  );
+  const svc = services(facts);
+  assert(svc.docker.state === "running" && /27\.1\.1/.test(svc.docker.text), "laufendes Docker nicht erkannt");
+  assert(svc.ollama.state === "present", "Ollama nicht erkannt");
+  assert(svc.arasul.state === "found" && /arasul-flows-sandbox/.test(svc.arasul.text), "Arasul-Container nicht als Hinweis");
+  assert(/\/opt\/arasul.*\/home\/x\/arasul/.test(svc.arasul.text), "mehrere Ordner nicht gesammelt");
+  assert(svc.sudo === true, "sudo ohne Passwort nicht erkannt");
+
+  const bare = services(parseProbe("@docker_bin=/usr/local/bin/docker\n@user=probe"));
+  assert(bare.docker.state === "present", "Docker ohne Dienst gilt nicht als vorhanden");
+  assert(bare.ollama.state === "missing" && bare.arasul.state === "none", "leerer Befund liefert Funde");
+});
+
+check("device.mjs legt die Akte an, urteilt und merkt sich das Gerät", () => {
+  // Zwei Ziele: eines, das nicht antwortet (Akte trotzdem, ssh: refused), und
+  // dieser Rechner selbst mit abgelehntem SSH-Port, dann prüft das Werkzeug lokal.
+  // Der Merker des Nutzers wird vorher gesichert und danach zurückgelegt.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const names = ["selftest-stumm", "selftest-lokal"];
+  for (const n of names) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+  try {
+    let run = tool("device.mjs", ["--host", "127.0.0.2", "--port", "1", "--user", "probe", "--name", names[0], "--json"]);
+    assert(run.status !== 0, "ohne Verbindung endet das Werkzeug mit Erfolg");
+    let out = JSON.parse(run.stdout);
+    assert(out.transport === "none" && out.fresh === true, "stummes Ziel nicht als solches gemeldet");
+    let { fields } = readFrontmatter(join(ROOT, "devices", names[0], "device.md"));
+    assert(fields.ssh === "refused" && fields.address === "127.0.0.2", "Akte ohne Verbindung fehlt oder ist unvollständig");
+    assert(!fields.verdict, "ohne Befund steht ein Urteil in der Akte");
+    assert(out.next.some((s) => /find-device/.test(s)), "der nächste Schritt nennt nicht den Weg zum Zugang");
+
+    run = tool("device.mjs", ["--host", "localhost", "--port", "1", "--name", names[1], "--json"]);
+    assert(run.status === 0, `lokale Prüfung fehlgeschlagen: ${run.stderr || run.stdout}`);
+    out = JSON.parse(run.stdout);
+    assert(out.transport === "local", "lokaler Umweg bei abgelehntem SSH auf localhost fehlt");
+    assert(["supported", "soon", "unsupported"].includes(out.verdict), `unbekanntes Urteil ${out.verdict}`);
+    assert(out.os && out.os !== "unbekannt", "Betriebssystem nicht erkannt");
+    ({ fields } = readFrontmatter(join(ROOT, "devices", names[1], "device.md")));
+    assert(fields.ssh === "local" && fields.verdict === out.verdict, "Akte trägt den Befund nicht");
+    assert(fields.verdict === "supported" || /^\d{4}-\d{2}-\d{2}$/.test(fields.noted_on), "nicht unterstütztes Gerät wurde nicht vorgemerkt");
+    const body = readFileSync(join(ROOT, "devices", names[1], "device.md"), "utf8");
+    assert(/## Prüfungen[\s\S]*### .*lokal/.test(body), "Prüfung nicht ins Protokoll geschrieben");
+    assert(JSON.parse(readFileSync(stateFile, "utf8")).device === names[1], "Merker nicht gesetzt");
+    assert(!/^customer: $/m.test(body), "leeres Feld hinterlässt ein Leerzeichen am Zeilenende");
+
+    // Zweiter Lauf ohne --host: Adresse und Port kommen aus der Akte.
+    run = tool("device.mjs", ["--name", names[1], "--json"]);
+    out = JSON.parse(run.stdout);
+    assert(run.status === 0 && out.fresh === false && out.port === "1", "zweiter Lauf liest die Akte nicht");
+
+    // Ohne --name und mit zwei Akten entscheidet der Merker.
+    run = tool("device.mjs", ["--json"]);
+    assert(JSON.parse(run.stdout).name === names[1], "ohne Argument greift der Merker nicht");
+
+    run = tool("device.mjs", ["--name", "Falscher Name", "--host", "localhost"]);
+    assert(run.status !== 0, "ein unbrauchbarer Gerätename wurde akzeptiert");
+    run = tool("device.mjs", ["--name", names[1], "--install", "irgendwas"]);
+    assert(run.status !== 0, "--install mit Unbekanntem wurde akzeptiert");
+    return `lokal: ${out.verdictText}`;
+  } finally {
+    for (const n of names) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
 });
 
 // --- Agenda -----------------------------------------------------------------
@@ -226,17 +344,26 @@ check("Agenda erkennt Termine und Lücken", () => {
       `---\nname: probe\ncustomer: ${customer}\nstatus: live\n---\n\nProbe.\n`
     );
 
+    // Ein Gerät ohne Kunden mit auslaufender Wartung.
+    const ownDir = join(ROOT, "devices", "_selftest-own");
+    rmSync(ownDir, { recursive: true, force: true });
+    spawnSync("mkdir", ["-p", ownDir]);
+    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    writeFileSync(join(ownDir, "device.md"), `---\nname: _selftest-own\nstatus: live\nmaintenance_until: ${soon}\n---\n`);
+
     const run = tool("agenda.mjs", []);
     assert(run.status === 0, `Agenda fehlgeschlagen: ${run.stderr}`);
     assert(/Überfällig/.test(run.stdout), "überfällige Wiedervorlage nicht erkannt");
     assert(/nachfassen/.test(run.stdout), "Notiz zur Wiedervorlage fehlt");
     assert(/keine Wartungslaufzeit/.test(run.stdout), "fehlende Wartungslaufzeit nicht bemerkt");
+    assert(/Wartung _selftest-own läuft in 10 Tagen/.test(run.stdout), "Gerät ohne Kunden fehlt in der Agenda");
 
     const json = tool("agenda.mjs", ["--json"]);
     const items = JSON.parse(json.stdout);
-    assert(Array.isArray(items) && items.length >= 2, "JSON-Ausgabe unvollständig");
+    assert(Array.isArray(items) && items.length >= 3, "JSON-Ausgabe unvollständig");
   } finally {
     rmSync(dir, { recursive: true, force: true });
+    rmSync(join(ROOT, "devices", "_selftest-own"), { recursive: true, force: true });
   }
 });
 
@@ -429,7 +556,7 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".ara/mirror/VERSION",
     ".ara/state.json",
     // Erzeugte Befehle. Nur init.md ist getrackt, siehe unten.
-    ".claude/commands/setup.md",
+    ".claude/commands/device.md",
     ".claude/commands/eigener.md",
     ".claude/commands/.sources.json",
   ];
@@ -448,7 +575,7 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".claude/settings.json",
     ".claude/commands/init.md",
     ".ara/tools/selftest.mjs",
-    ".ara/commands/alle/setup.md",
+    ".ara/commands/alle/device.md",
     ".ara/commands/partner/customer.md",
     "README.md",
     "LICENSE",
@@ -795,7 +922,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   write(".claude/commands/eigener.md", "---\ndescription: selbst gebaut\n---\n\nMeiner.\n");
   write(".ara/mirror/STATE.json", '{"version":"probe"}');
   write(".ara/state.json", '{"customer":"probe"}');
-  rmSync(join(fork, ".claude", "commands", "setup.md"), { force: true });
+  rmSync(join(fork, ".claude", "commands", "device.md"), { force: true });
   spawnSync("git", ["init", "-q"], { cwd: fork });
 
   const forkTool = (file, args, env = {}) =>
@@ -824,8 +951,8 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
   rmSync(join(source, ".ara", "knowledge", "sales.md"));
   writeFileSync(
-    join(source, ".ara", "commands", "alle", "setup.md"),
-    read(".ara/commands/alle/setup.md") + "\nNeu im Kit.\n"
+    join(source, ".ara", "commands", "alle", "device.md"),
+    read(".ara/commands/alle/device.md") + "\nNeu im Kit.\n"
   );
   mkdirSync(join(source, "business"), { recursive: true });
   writeFileSync(join(source, "business", "profile.md"), "---\nrole: company\n---\n\nKoeder.\n");
@@ -845,11 +972,11 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     // 1. Befehle anlegen, Zweig aus dem Profil.
     let run = await forkTool("commands.mjs", []);
     assert(run.status === 0, `Lage fehlgeschlagen: ${run.stderr}`);
-    assert(/fehlt\s+\/setup/.test(run.stdout), "fehlender Befehl wird nicht gemeldet");
+    assert(/fehlt\s+\/device/.test(run.stdout), "fehlender Befehl wird nicht gemeldet");
     assert(/eigener\s+\/eigener/.test(run.stdout), "eigener Befehl wird nicht als solcher erkannt");
     run = await forkTool("commands.mjs", ["--apply"]);
     assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}`);
-    assert(has(".claude/commands/setup.md"), "Befehl aus alle/ nicht angelegt");
+    assert(has(".claude/commands/device.md"), "Befehl aus alle/ nicht angelegt");
     assert(has(".claude/commands/customer.md"), "Befehl aus partner/ nicht angelegt");
     assert(/Meiner\./.test(read(".claude/commands/eigener.md")), "eigener Befehl ueberschrieben");
 
@@ -857,7 +984,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     run = await forkTool("commands.mjs", ["--json", "--role", "company"]);
     const lage = JSON.parse(run.stdout);
     assert(!lage.commands.some((c) => c.group === "partner"), "Unternehmen bekommt Partnerbefehle");
-    assert(lage.commands.some((c) => c.name === "setup"), "Unternehmen bekommt alle/ nicht");
+    assert(lage.commands.some((c) => c.name === "device"), "Unternehmen bekommt alle/ nicht");
 
     // Ohne Profil und ohne --role wird nicht geraten.
     rmSync(join(fork, "business", "profile.md"));
@@ -878,11 +1005,11 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(has(".ara/knowledge/probe.md"), "neue Datei fehlt");
     assert(!has(".ara/knowledge/sales.md"), "entfernte Datei liegt noch da");
     assert(/Neu\.\s*$/.test(read(".ara/persona/ara.md")), "geaenderte Datei nicht ersetzt");
-    assert(/Neu im Kit/.test(read(".ara/commands/alle/setup.md")), "Befehlsquelle nicht ersetzt");
+    assert(/Neu im Kit/.test(read(".ara/commands/alle/device.md")), "Befehlsquelle nicht ersetzt");
     // Die Koeder.
     assert(/Meins\./.test(read("business/profile.md")), "business/ wurde angefasst");
     assert(/Meiner\./.test(read(".claude/commands/eigener.md")), "erzeugter Befehl wurde angefasst");
-    assert(!/Neu im Kit/.test(read(".claude/commands/setup.md")), "erzeugter Befehl wurde ohne Zustimmung ersetzt");
+    assert(!/Neu im Kit/.test(read(".claude/commands/device.md")), "erzeugter Befehl wurde ohne Zustimmung ersetzt");
     assert(/probe/.test(read(".ara/mirror/STATE.json")), "Spiegel wurde angefasst");
     assert(/customer/.test(read(".ara/state.json")), "Merker wurde angefasst");
 
@@ -892,9 +1019,9 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
 
     // 4. Befehle nachziehen: der im Kit geaenderte wird gemeldet und erst mit --apply ersetzt.
     run = await forkTool("commands.mjs", []);
-    assert(/neu im Kit\s+\/setup/.test(run.stdout), "im Kit geaenderter Befehl wird nicht gemeldet");
+    assert(/neu im Kit\s+\/device/.test(run.stdout), "im Kit geaenderter Befehl wird nicht gemeldet");
     run = await forkTool("commands.mjs", ["--apply"]);
-    assert(/Neu im Kit/.test(read(".claude/commands/setup.md")), "geaenderter Befehl nicht ersetzt");
+    assert(/Neu im Kit/.test(read(".claude/commands/device.md")), "geaenderter Befehl nicht ersetzt");
 
     // 5. Von Hand geaendert: bleibt bei --apply liegen, nur --replace ersetzt.
     write(".claude/commands/customer.md", read(".claude/commands/customer.md") + "\nMeine Zeile.\n");
@@ -926,7 +1053,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/^## Was ich vorhabe\n\nDas Geraet/m.test(read("business/profile.md")), "Unternehmen: Prosa nicht eingesetzt");
     assert(!/<!--[\s\S]*Wo du hin willst/.test(read("business/profile.md")), "Unternehmen: Vorlagenkommentar steht noch im Profil");
     assert(/Technikstand dieses Rechners\n\nStand \d{4}-\d{2}-\d{2}:/.test(read("business/profile.md")), "Unternehmen: Technikstand fehlt");
-    assert(has(".claude/commands/setup.md"), "Unternehmen: Befehle nicht angelegt");
+    assert(has(".claude/commands/device.md"), "Unternehmen: Befehle nicht angelegt");
     assert(!has(".claude/commands/customer.md"), "Unternehmen: bekommt den Kundenbefehl");
     run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.json")]);
     assert(run.status !== 0, "zweiter Lauf ueberschreibt das Profil ohne --force");

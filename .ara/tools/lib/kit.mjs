@@ -56,6 +56,12 @@ export function readFrontmatter(path) {
   return { fields, body: match[2], exists: true };
 }
 
+/** Eine Frontmatter-Zeile. Ein leerer Wert lässt kein Leerzeichen am Zeilenende zurück. */
+function field(key, value) {
+  const text = value === undefined || value === null ? "" : String(value);
+  return text === "" ? `${key}:` : `${key}: ${text}`;
+}
+
 /** Schreibt Frontmatter-Felder zurück, ohne Reihenfolge oder Rumpf zu verlieren. */
 export function writeFrontmatter(path, changes) {
   const content = readFileSync(path, "utf8");
@@ -67,46 +73,29 @@ export function writeFrontmatter(path, changes) {
     const pair = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/);
     if (!pair || !pending.has(pair[1])) return line;
     pending.delete(pair[1]);
-    return `${pair[1]}: ${changes[pair[1]]}`;
+    return field(pair[1], changes[pair[1]]);
   });
-  for (const key of pending) lines.push(`${key}: ${changes[key]}`);
+  for (const key of pending) lines.push(field(key, changes[key]));
 
   writeFileSync(path, match[1] + lines.join("\n") + match[3] + match[4]);
 }
 
 /**
- * Der reservierte Name für die eigenen Geräte des Partners.
- *
- * Ein Vorführgerät oder ein Gerät im eigenen Haus gehört keinem Kunden. Es liegt
- * darum nicht unter `customers/`, sondern unter `business/<gerätename>/`, und wird
- * überall dort, wo sonst ein Kundenname steht, mit `business` angesprochen:
- * `--customer business --device jetson-thor`, `/setup business/jetson-thor`.
- *
- * Damit kennen alle Werkzeuge den Ort, ohne einen zweiten Schalter zu brauchen.
- * `business` ist deshalb als Kundenordner gesperrt, siehe resolveDevice().
+ * Geräte ohne Kunden liegen unter devices/<gerät>/, in beiden Zweigen: beim
+ * Unternehmen ist das der Normalfall, beim Partner sind es die eigenen Geräte
+ * (Vorführung, Übung). Kundengeräte liegen unter customers/<kunde>/devices/<gerät>/.
+ * Überall dort, wo ein Kunde stehen kann, heißt "kein Kunde" darum: devices/.
  */
-export const OWN = "business";
+export const DEVICES = join(ROOT, "devices");
 
 /** Pfad zum Kundenordner. Prüft nicht, ob er existiert. */
 export function customerPath(customer) {
   return join(CUSTOMERS, customer);
 }
 
-/**
- * Die eigenen Geräte. Erkannt an der Geräteakte oder dem Laufzettel darin:
- * `business/` enthält auch `notes/`, `profile.md` und `company.md`, und die sind
- * keine Geräte. Beide Dateien zählen, weil je nach Weg mal die eine und mal die
- * andere zuerst entsteht.
- */
-export function listOwnDevices() {
-  if (!existsSync(BUSINESS)) return [];
-  return readdirSync(BUSINESS, { withFileTypes: true })
-    .filter((e) => e.isDirectory() && !e.name.startsWith("."))
-    .filter((e) =>
-      ["device.md", "runsheet.md"].some((file) => existsSync(join(BUSINESS, e.name, file)))
-    )
-    .map((e) => e.name)
-    .sort();
+/** Ordner eines Geräts, mit oder ohne Kunden. Prüft nicht, ob er existiert. */
+export function devicePath(customer, device) {
+  return customer ? join(customerPath(customer), "devices", device) : join(DEVICES, device);
 }
 
 /** Alle angelegten Kunden. */
@@ -118,10 +107,9 @@ export function listCustomers() {
     .sort();
 }
 
-/** Alle Geräte eines Kunden, oder die eigenen bei `business`. */
+/** Alle Geräte eines Kunden, oder ohne Kunden die unter devices/. */
 export function listDevices(customer) {
-  if (customer === OWN) return listOwnDevices();
-  const dir = join(customerPath(customer), "devices");
+  const dir = customer ? join(customerPath(customer), "devices") : DEVICES;
   if (!existsSync(dir)) return [];
   return readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory() && !e.name.startsWith("."))
@@ -130,45 +118,15 @@ export function listDevices(customer) {
 }
 
 /**
- * Löst Kunde und Gerät auf. Fehlt die Gerätebezeichnung und es gibt genau eines,
- * wird dieses genommen: bei mehreren ist Raten nicht erlaubt.
+ * Löst Kunde und Gerät auf. Ohne Kunden wird unter devices/ gesucht. Fehlt die
+ * Gerätebezeichnung und es gibt genau eines, wird dieses genommen: bei mehreren
+ * ist Raten nicht erlaubt.
  */
 export function resolveDevice(customer, device) {
-  if (!customer) throw new Error("Es fehlt die Angabe, um welchen Kunden es geht.");
+  customer = customer || null;
+  const where = customer ? `Bei "${customer}"` : "Unter devices/";
 
-  // Die eigenen Geräte. Ein Ordner customers/business würde hier stillschweigend
-  // unerreichbar, darum wird die Kollision benannt statt übergangen.
-  if (customer === OWN) {
-    if (existsSync(customerPath(OWN))) {
-      throw new Error(
-        `Es gibt einen Kundenordner customers/${OWN}/. Der Name ist für deine eigenen ` +
-          "Geräte reserviert, solange er belegt ist, ist keins von beiden sicher " +
-          "erreichbar. Benenn den Kundenordner um."
-      );
-    }
-    const own = listOwnDevices();
-    if (device) {
-      if (!own.includes(device)) {
-        throw new Error(
-          `Unter business/ gibt es kein Gerät "${device}".` +
-            (own.length ? ` Vorhanden: ${own.join(", ")}` : " Es ist noch keins angelegt.")
-        );
-      }
-      return { customer: OWN, device, path: join(BUSINESS, device) };
-    }
-    if (own.length === 0) {
-      throw new Error(
-        "Du hast noch kein eigenes Gerät angelegt. Es liegt unter business/<modellname>/, " +
-          "zum Beispiel business/jetson-thor/."
-      );
-    }
-    if (own.length > 1) {
-      throw new Error(`Du hast mehrere eigene Geräte (${own.join(", ")}). Sag, um welches es geht.`);
-    }
-    return { customer: OWN, device: own[0], path: join(BUSINESS, own[0]) };
-  }
-
-  if (!existsSync(customerPath(customer))) {
+  if (customer && !existsSync(customerPath(customer))) {
     const known = listCustomers();
     throw new Error(
       `Den Kunden "${customer}" gibt es nicht.` +
@@ -180,20 +138,26 @@ export function resolveDevice(customer, device) {
   if (device) {
     if (!devices.includes(device)) {
       throw new Error(
-        `Bei "${customer}" gibt es kein Gerät "${device}".` +
+        `${where} gibt es kein Gerät "${device}".` +
           (devices.length ? ` Vorhanden: ${devices.join(", ")}` : " Es ist noch kein Gerät angelegt.")
       );
     }
-    return { customer, device, path: join(customerPath(customer), "devices", device) };
+    return { customer, device, path: devicePath(customer, device) };
   }
 
-  if (devices.length === 0) throw new Error(`Bei "${customer}" ist noch kein Gerät angelegt.`);
-  if (devices.length > 1) {
+  if (devices.length === 0) {
     throw new Error(
-      `"${customer}" hat mehrere Geräte (${devices.join(", ")}). Sag, um welches es geht.`
+      customer
+        ? `Bei "${customer}" ist noch kein Gerät angelegt.`
+        : "Unter devices/ ist noch kein Gerät angelegt. Anlegen mit /device <name>."
     );
   }
-  return { customer, device: devices[0], path: join(customerPath(customer), "devices", devices[0]) };
+  if (devices.length > 1) {
+    throw new Error(
+      `${customer ? `"${customer}" hat` : "Es gibt"} mehrere Geräte (${devices.join(", ")}). Sag, um welches es geht.`
+    );
+  }
+  return { customer, device: devices[0], path: devicePath(customer, devices[0]) };
 }
 
 /** Liest die Gerätedaten und ergänzt die Pfade der Nachbardateien. */

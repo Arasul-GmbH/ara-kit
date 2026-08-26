@@ -10,8 +10,8 @@ customers/mueller-metallbau/
 ├── devices/
 │   └── zentrale/
 │       ├── device.md              Ein Gerät: Typ, Netz, Zugang, Wartung
-│       ├── runsheet.md            Ablaufzustand der Einrichtung (bei /setup)
-│       └── handover.md            Abnahmedokument (am Ende von /setup)
+│       ├── runsheet.md            Ablaufzustand der Einrichtung (bei /device)
+│       └── handover.md            Abnahmedokument (am Ende von /device)
 ├── documents/
 │   └── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
 └── history/
@@ -27,46 +27,18 @@ Verfahren: `.ara/knowledge/paperwork.md`.
 `mueller-metallbau`, nicht `Müller Metallbau GmbH` und nicht `kunde-01`.
 Die vollständige Firmierung steht im Frontmatter unter `legal_name`.
 
-**`business` ist als Kundenname gesperrt.** Unter diesem Namen erreichen die Werkzeuge die
-eigenen Geräte des Partners, siehe unten. Ein Kundenordner `customers/business/` würde
-beides mehrdeutig machen, die Werkzeuge weisen ihn deshalb mit einer Meldung ab.
-
-**Gerätename:** nach Standort oder Rolle, nicht nach Modell. `zentrale`, `werk2`,
-`praxis-eg`: nicht `spark` oder `thor`. Das Modell steht in der Akte und kann sich ändern,
-der Standort bleibt.
-
-## Die eigenen Geräte des Partners
-
-Ein Vorführgerät, ein Übungsgerät oder das Gerät im eigenen Betrieb gehört keinem Kunden.
-Es liegt darum nicht unter `customers/`, sondern flach unter `business/<gerätename>/`:
+**Die eigenen Geräte des Partners** (Vorführung, Übung, eigener Betrieb) gehören keinem
+Kunden und liegen darum nicht hier, sondern unter `devices/<gerät>/`, wie beim
+Unternehmen. Kein Scheinkunde dafür: ein erfundener Kunde verfälscht jede Auswertung,
+jede Agenda und jede Antwort auf „wie steht mein Geschäft". Angelegt werden sie mit
+`/device <gerät>`, angesprochen ohne `--customer`:
 
 ```
-business/jetson-thor/
-├── device.md
-├── runsheet.md
-└── handover.md        nur, wenn eine Abnahme dazu passt
+node .ara/tools/device.mjs --name orin
+node .ara/tools/remote.mjs --device orin --check
 ```
 
-Kein Scheinkunde dafür. Ein erfundener Kunde verfälscht jede Auswertung, jede Agenda und
-jede Antwort auf „wie steht mein Geschäft".
-
-**Hier heißt das Gerät nach dem Modell, und das ist eine ausdrückliche Ausnahme von der
-Regel oben.** `business/jetson-thor/`, `business/dgx-spark/`. Der Grund: die eigenen Geräte
-stehen alle am selben Ort, der Standort unterscheidet sie also nicht. Das Modell tut es.
-Bei Kundengeräten bleibt es umgekehrt, dort ist der Standort das Bleibende.
-
-Angesprochen wird das Gerät überall dort, wo sonst ein Kundenname steht, mit `business`:
-
-```
-node .ara/tools/runsheet.mjs --create --customer business --device jetson-thor
-node .ara/tools/remote.mjs --customer business --check
-```
-
-Und eingerichtet wird es wie jedes andere Gerät, mit `/setup business/<gerätename>`.
-
-`business/` ist von der Versionskontrolle ausgenommen, wie alles, was dem Partner gehört.
-Das eigene Gerät taucht deshalb in keinem Kit-Update auf und in keinem Repository, außer
-in der Sicherung des Partners.
+Verfahren: `.ara/knowledge/device.md`.
 
 ## Anlegen
 
