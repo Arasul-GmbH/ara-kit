@@ -1,21 +1,29 @@
 # Verfahren: /init
 
 > **Wann brauchst du das?** Bei `/init`. Fehlt `business/profile.md`, ist es das erste
-> Mal, und es gilt der lange Teil unten: das Onboarding. Existiert die Datei, gilt der
-> kurze Teil am Ende: Kit nachziehen, Befehle anbieten.
+> Mal, und es gilt der lange Teil: das Onboarding in zehn Runden. Existiert die Datei,
+> gilt der kurze Teil am Ende: Kit nachziehen, Befehle anbieten, Profil ergänzen.
+>
+> **Wissen dazu:** `.ara/knowledge/security.md` für die drei Stufen in Runde 5,
+> `.ara/knowledge/browser.md` für Runde 8. Sonst nichts, der Rest steht hier.
 
 ## Das erste Mal
 
 ### Ziel
 
-Nach `/init` gilt: Das Kit weiß, wer damit arbeitet, wie er arbeitet und was er vorhat.
-Der Rechner kann, was er können muss. Zugänge sind hinterlegt. Es gibt einen konkreten
-nächsten Schritt.
+Nach `/init` gilt: Das Kit weiß, wer damit arbeitet, was er kann, womit sein Haus
+arbeitet und was er vorhat. Der Rechner kann, was er können muss. Die Befehle für seinen
+Zweig liegen bereit. Es gibt einen konkreten nächsten Schritt.
 
-Rechne mit einer knappen halben Stunde. Das ist gut investiert, alles, was hier hinterlegt wird,
-muss später nie wieder gefragt werden.
+Das Profil ist der Kontext, den jeder andere Befehl liest. Was hier steht, muss später nie
+wieder gefragt werden. Rechne mit einer knappen halben Stunde.
 
-### Zwei Regeln, die dieses Verfahren tragen
+**Kein Token, kein Konto.** Das Onboarding braucht keinen Lizenztoken und kein Portal. Den
+Token holt die Geräteeinrichtung, wenn er gebraucht wird. Wer ihn schon hat, kann ihn
+danach mit `node .ara/tools/secrets.mjs --set ARASUL_TOKEN` hinterlegen, das ist keine
+Runde hier.
+
+### Drei Regeln, die dieses Verfahren tragen
 
 **1. Schreib die Dateien in `business/` an den Menschen, nicht über ihn.**
 Sie gehören ihm. Also „Du willst kurz gehalten werden", nicht „Kolja will kurz gehalten
@@ -27,11 +35,29 @@ Wenn jemand eine Runde überspringt, ist das in Ordnung, aber es wird am Ende be
 mit der Folge: „Ohne Stundensatz kann ich nichts kalkulieren." Ein Kit, das halb
 eingerichtet ist und so tut, als wäre alles fertig, fällt beim ersten Kundengespräch auf.
 
+**3. Jede Runde ist eine gebündelte Frage im Interview-Werkzeug.** Mit einer offenen
+Möglichkeit je Frage. Was der Mensch dort frei schreibt, gilt.
+
+### Der zweite Weg: die Antwortdatei
+
+Wer nicht klicken will, füllt eine Antwortdatei und übergibt sie: `/init <datei>`. Dann
+gibt es kein Interview, und du rufst auf:
+
+```
+node .ara/tools/init.mjs --answers <datei>
+```
+
+Das Werkzeug schreibt `business/profile.md`, für Partner `business/company.md`, trägt den
+Technikstand ein und legt die Befehle an. Beispiele mit allen Feldern, in beiden Zweigen:
+`.ara/templates/init-answers-partner.json` und `.ara/templates/init-answers-company.json`.
+Was das Werkzeug nicht kann, sagt es am Ende: Geheimnisablage, SSH-Schlüssel, Sicherung
+bleiben Handarbeit. Danach weiter bei Runde 10, der Abschluss gilt auch hier.
+
 ### Vorher
 
-Existiert `business/profile.md` schon, ist das Onboarding gelaufen. Sag in drei Zeilen, was
-hinterlegt ist und was fehlt, und frag, was geändert werden soll, statt alles neu zu
-erfragen.
+Existiert `business/profile.md` schon, ist das Onboarding gelaufen. Dann gilt der Teil
+„Jedes weitere Mal" unten. `node .ara/tools/init.mjs --show` sagt in drei Zeilen, was
+hinterlegt ist und was fehlt.
 
 ### Runde 1: Technikcheck, ohne zu fragen
 
@@ -40,27 +66,25 @@ node .ara/tools/check-environment.mjs
 ```
 
 Meldet Betriebssystem, Node, git, ssh, vorhandene SSH-Schlüssel, freien Speicher und ob
-der Rechner zum Flashen eingebetteter Geräte taugt (z. B. Jetson Thor; DGX Spark,
-RTX-Workstation und x86-Server brauchen keinen Flash-Rechner).
+der Rechner zum Flashen eingebetteter Geräte taugt.
 
 Sag in zwei bis drei Zeilen, was das bedeutet. Behebe still, was du beheben darfst. Fehlt
 etwas Grundlegendes, nenne den Installationsweg für das erkannte System und mach weiter.
 
 Merk dir das Ergebnis, es kommt in Runde 10 in `business/profile.md`.
 
-### Runde 2: Wer bist du
+### Runde 2: Die Weiche
 
-Eine Interview-Runde, Fragen gebündelt:
+Eine Frage, und sie entscheidet, wie das Kit aussieht:
 
-1. **Name** und wie du ihn ansprechen sollst (Vorname? Nachname? Etwas anderes?).
-2. **Rolle:** Partner (richtet Geräte für Kunden ein) oder Unternehmen (betreibt ein
-   eigenes Gerät)? Das entscheidet, wie das Kit aussieht.
-3. **Firma und Region.**
+**Partner oder Unternehmen?** Ein Partner richtet Geräte für fremde Kunden ein, mehrere.
+Ein Unternehmen betreibt ein eigenes Gerät für die eigene Firma. Sag zu jeder Option in
+einem Satz, was sie bedeutet: Partner bekommen Kundenakten, Angebote und Kalkulation dazu.
+Unternehmen bekommen nur, was ein eigenes Gerät braucht, und werden nie nach Kunden
+gefragt.
 
-Ab jetzt sprichst du ihn so an, wie er es gesagt hat.
-
-Die Weiche ist beantwortet, also legst du jetzt die Befehle an, damit alles Weitere
-in dieser Sitzung schon funktioniert:
+Sobald die Weiche beantwortet ist, legst du die Befehle an, damit alles Weitere in dieser
+Sitzung schon funktioniert:
 
 ```
 node .ara/tools/commands.mjs --apply --role <partner|company>
@@ -69,7 +93,44 @@ node .ara/tools/commands.mjs --apply --role <partner|company>
 Partner bekommen `alle/` und `partner/` aus `.ara/commands/`, Unternehmen nur `alle/`.
 Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart der Sitzung.
 
-### Runde 3: Wie du arbeitest
+### Runde 3: Wer du bist und was du kannst
+
+Gebündelt:
+
+1. **Name** und wie du ihn ansprechen sollst (Vorname? Nachname? Etwas anderes?).
+2. **Firma und Region.**
+3. **Stärken**, Mehrfachauswahl: Softwareentwicklung, Administration, Fachseite (du kennst
+   die Abläufe im Haus), Vertrieb. Danach richtet sich, wie viel jeder Befehl erklärt: wer
+   Container baut, braucht keine Erklärung, was ein Container ist. Wer die Fachseite
+   kennt, bekommt bei einer App die Fachfragen zuerst.
+
+Ab jetzt sprichst du ihn so an, wie er es gesagt hat. Ins Frontmatter kommen `skills` als
+Liste (`development, administration, domain, sales`), die Prosa in den Abschnitt „Wer ich
+bin und was ich kann".
+
+### Runde 4: Womit dein Haus arbeitet
+
+Für ein Unternehmen ist das die Liste dessen, woran Apps später andocken. Für einen
+Partner ist es der Stack, den er bei Kunden kennt. Frag je Bereich, was heute im Einsatz
+ist, und lass Freitext zu:
+
+- Buchhaltung und Rechnung
+- CRM oder Kundenliste
+- Ticket oder Aufgaben
+- Dateiablage
+- Kommunikation (Mail, Chat)
+- ERP oder Branchensoftware
+
+**Nur Partner, in derselben Runde:** Mit welchem Werkzeug schreibst du Rechnungen, und
+soll das Kit Rechnungen erzeugen können? Drei Antworten: ja, nein, später. Bei nein und
+später bleibt der Rechnungsbefehl weg, bei später fragt das nächste `/init` noch einmal.
+Dazu ein Satz zur E-Rechnungspflicht: Empfang beim Kunden ist seit 2025 Pflicht, die
+Ausgabe kommt stufenweise ab 2027. Ins Frontmatter: `invoice` und `invoice_tool`.
+
+Antworten nach `tools` im Frontmatter (kommagetrennt) und in Prosa nach „Womit mein
+Haus arbeitet".
+
+### Runde 5: Wie du arbeitest
 
 1. **Erfahrung:** Linux-Server aufgesetzt, mit SSH gearbeitet, Hardware beim Kunden
    installiert? Ehrliche Antwort hilft, es geht nicht um Bewertung.
@@ -78,26 +139,35 @@ Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart der Sitzung.
    (`.ara/knowledge/security.md`) und lass den Standard bestätigen. Wer lockern will, kann
    das, dann hältst du fest, **was genau** gelockert wurde und seit wann.
 
-### Runde 4: Was du vorhast
+### Runde 6: Was du vorhast
 
-Diese Runde ist der Grund, warum das Kit später brauchbare Vorschläge macht:
+Diese Runde ist der Grund, warum das Kit später brauchbare Vorschläge macht. Die Fragen
+hängen an der Weiche:
 
-1. **Haupt- oder Nebengeschäft?** Jemand mit zwei Kunden nebenher braucht etwas anderes
-   als jemand, der davon lebt.
-2. **Wie viele Kunden schweben dir vor**, in welchem Zeitraum?
-3. **Welche Branchen** hast du im Blick oder betreust du schon? Kanzleien und Praxen haben
-   besondere Anforderungen, Handwerk und Fertigung andere.
-4. **Was ist dein Engpass**: Kunden finden, Technik, Zeit?
+**Partner:**
 
-Antworten in Prosa nach `business/profile.md`, Abschnitt „Was ich vorhabe". Nicht als
-Stichpunktliste der Fragen, sondern als zusammenhängender Absatz in Du-Form.
+1. Haupt- oder Nebengeschäft? Jemand mit zwei Kunden nebenher braucht etwas anderes als
+   jemand, der davon lebt.
+2. Wie viele Kunden schweben dir vor, in welchem Zeitraum?
+3. Welche Branchen hast du im Blick oder betreust du schon?
+4. Was ist dein Engpass: Kunden finden, Technik, Zeit?
 
-### Runde 5: Geschäftliches
+**Unternehmen:**
 
-Nur in der Partner-Rolle. Im Unternehmens-Modus überspringen.
+1. Wofür soll das Gerät da sein: Suche in den eigenen Unterlagen, Abläufe im Haus,
+   Assistenz für einzelne Abteilungen?
+2. Wer soll es nutzen, welche Abteilungen zuerst?
+3. Was ist dein Engpass: Zeit, Wissen über Linux, Rückhalt im Haus?
 
-Stundensatz, Aufschlag auf Hardware, Zahlungsziel, Firmierung, Anschrift, Steuernummer,
-Bankverbindung, Logo-Pfad. Nach `business/company.md`.
+Antworten in Prosa nach „Was ich vorhabe". Nicht als Stichpunktliste der Fragen, sondern
+als zusammenhängender Absatz in Du-Form.
+
+### Runde 7: Geschäftliches
+
+Nur in der Partner-Rolle. Im Unternehmens-Modus überspringen, ohne es zu erwähnen.
+
+Firmierung, Anschrift, Telefon, Mail, Website, Steuernummer, USt-IdNr., Bankverbindung,
+Logo-Pfad, Stundensatz, Aufschlag auf Hardware, Zahlungsziel. Nach `business/company.md`.
 
 **Sag vorher, wozu das dient**, sonst wirkt es wie ein Formular:
 
@@ -112,9 +182,7 @@ Arasuls Zahlen, sie ändern sich, und in einem Onboarding, das genau einmal stat
 würden sie still veralten. Sag das in einem Satz und nenne `/kalkulation` als nächsten
 Schritt, wenn Angebote anstehen.
 
-Was fehlt, kommt in die Abschlussliste in Runde 11.
-
-### Runde 6: Zugänge
+### Runde 8: Zugänge und Werkzeuge
 
 1. **Wo sollen Geheimnisse liegen?** Zwei Möglichkeiten, kurz erklärt:
    - **`.env`-Datei im Kit**: sichtbar, einfach zu sichern, liegt im Kit-Ordner.
@@ -125,122 +193,81 @@ Was fehlt, kommt in die Abschlussliste in Runde 11.
    überhaupt nutzbar ist, und biete nur an, was geht. Ohne klare Präferenz: `.env`.
    Einstellen mit `node .ara/tools/secrets.mjs --store <env|keychain>`.
 
-2. **Lizenztoken hinterlegen.**
-   `node .ara/tools/secrets.mjs --set ARASUL_TOKEN` fragt den Wert ab, ohne ihn
-   anzuzeigen. **Lass ihn den Wert selbst eingeben**: diktiert er ihn dir, steht er im
-   Gesprächsprotokoll.
-   Danach `node .ara/tools/mirror.mjs`: das ist zugleich die Probe, ob der Token gilt.
-   Kein Token zur Hand? In Ordnung, vermerken und weiter.
-
-3. **SSH-Schlüssel.** Aus Runde 1 weißt du, welche existieren.
+2. **SSH-Schlüssel.** Aus Runde 1 weißt du, welche existieren.
    - Keiner da: einen anlegen anbieten (Ed25519, mit Passphrase, bleibt in `~/.ssh`).
-   - Mehrere da: **frag, welcher für Kundengeräte gedacht ist**: such ihn nicht selbst
-     aus. Ein Schlüssel, der schon woanders benutzt wird, ist eine bewusste Entscheidung.
+   - Mehrere da: **frag, welcher für Geräte gedacht ist**: such ihn nicht selbst aus.
+     Ein Schlüssel, der schon woanders benutzt wird, ist eine bewusste Entscheidung.
    - Ins Profil kommt nur der **Name**, nie der Schlüssel selbst.
 
-### Runde 7: Werkzeuge
-
-Zwei Dinge, die deine Arbeit deutlich einfacher machen, wenn sie da sind.
-
-1. **Browser.** Das Kit bringt einen mit, damit ich Weboberflächen selbst bedienen kann:
-   das Dashboard eines Kundengeräts prüfen, den Chat mit einer echten Frage testen,
-   Bildschirmfotos für die Abnahme machen, Kundenwebsites lesen. Er startet beim ersten
-   Zugriff von selbst, du musst nichts einrichten.
-
+3. **Browser.** Das Kit bringt einen mit, damit du Weboberflächen selbst bedienen kannst:
+   das Dashboard eines Geräts prüfen, den Chat mit einer echten Frage testen,
+   Bildschirmfotos für die Abnahme machen. Er startet beim ersten Zugriff von selbst.
    Erklär das in zwei Sätzen und frag, ob es so recht ist. Wer es nicht will, sagt das
-   einmal, du hältst es in `business/profile.md` fest und fragst nicht wieder.
+   einmal, `browser: no` im Profil, und du fragst nicht wieder.
+   Verfahren: `.ara/knowledge/browser.md`
 
-2. **GitHub.** Prüf mit `gh auth status`, ob die Kommandozeile angemeldet ist. Damit kann
-   ich später die Sicherung deiner Arbeit anlegen, Erweiterungen versionieren und
-   Rückmeldungen ans Kit schicken.
+4. **GitHub.** Prüf mit `gh auth status`, ob die Kommandozeile angemeldet ist. Damit
+   kannst du später die Sicherung anlegen, Erweiterungen versionieren und Rückmeldungen
+   ans Kit schicken. Ist sie nicht angemeldet, nenn den Anmeldebefehl und lass ihn ihn
+   selbst ausführen. Ohne GitHub geht alles andere trotzdem.
 
-   Ist sie nicht angemeldet, nenn den Anmeldebefehl und lass ihn ihn selbst ausführen.
-   Ohne GitHub geht alles andere trotzdem, nur die Sicherung in Runde 8 fällt dann weg
-   oder läuft über einen anderen Ort.
+### Runde 9: Sicherung und erstes Gerät
 
-Verfahren dazu: `.ara/knowledge/browser.md`
+1. **Sicherung.** `business/`, `customers/`, `devices/` und `apps/` liegen bewusst
+   außerhalb des Kit-Repos, ein Update kann sie so nicht anfassen. Damit haben sie aber
+   auch keine Historie. Frag, ob das Kit gesichert werden soll, und biete an, ein eigenes
+   privates Repository dafür einzurichten. **Ein Repository, nicht mehrere.** Wenn ja: wo,
+   GitHub oder woanders. Richte es ein und erklär in zwei Zeilen, wie gesichert wird.
+   Ins Profil: `backup_repo`.
 
-### Runde 8: Sicherung
+2. **Erstes Gerät.**
+   - **Partner:** Richtest du dir ein eigenes Gerät ein, zum Vorführen oder Üben, oder
+     fängst du direkt mit Kundengeräten an? Wenn ja: welches Modell, steht es schon da
+     oder ist es bestellt? Ein eigenes Gerät bekommt seinen Ort unter
+     `business/<modellname>/`, nicht unter `customers/`: ein Scheinkunde dafür verfälscht
+     jede Auswertung. Der Name ist hier das Modell, und das ist eine benannte Ausnahme,
+     Kundengeräte heißen nach Standort (`.ara/knowledge/customer-file.md`).
+   - **Unternehmen:** Hier ist das eigene Gerät der Normalfall. Welches Modell, steht es
+     schon da oder ist es bestellt?
 
-`customers/` und `business/` liegen bewusst außerhalb des Kit-Repos, ein Update kann sie
-so nicht anfassen. Damit haben sie aber auch keine Historie.
+   Steht das Gerät noch nicht da, leg jetzt nichts an. Ins Profil: `first_device` und
+   `first_device_state` (`present`, `ordered`, `none`).
 
-Frag, ob das Kit gesichert werden soll, und biete an, ein eigenes privates Repository
-dafür einzurichten. **Ein Repository, nicht mehrere**: deine Kundenakten und deine
-Geschäftsdaten liegen zusammen.
+3. **Erste App**, ein Satz: was soll sie tun, für wen? Es muss nichts Fertiges sein,
+   „Urlaubsantrag mit Freigabe durch den Meister" reicht. Damit hat der App-Befehl später
+   einen Anfang. Wer noch keine Idee hat, sagt das, und es bleibt leer. Ins Profil:
+   `first_app`.
 
-Wenn ja: Wo soll es liegen. GitHub oder woanders (eigener Server, GitLab, Festplatte)?
-Richte es ein und erklär in zwei Zeilen, wie gesichert wird.
-
-### Runde 9: Dein eigenes Gerät
-
-Fünf von sechs Partnern wollen ein Gerät zum Vorführen. Frag einmal, ob eins ansteht:
-
-1. **Richtest du dir ein eigenes Gerät ein** (zum Vorführen, zum Üben, für den eigenen
-   Betrieb), oder fängst du direkt mit Kundengeräten an?
-2. Wenn ja: **welches Modell**, und steht es schon da oder ist es bestellt?
-
-Sagt er ja, bekommt das Gerät seinen Ort unter `business/<modellname>/`, also
-`business/jetson-thor/` oder `business/dgx-spark/`. Nicht unter `customers/`: ein eigenes
-Gerät gehört keinem Kunden, und ein Scheinkunde dafür verfälscht jede Auswertung und jede
-Agenda.
-
-**Der Name ist hier das Modell, und das ist eine benannte Ausnahme.** Kundengeräte heißen
-nach Standort oder Rolle (`.ara/knowledge/customer-file.md`), weil das Modell sich ändert
-und der Standort bleibt. Bei den eigenen Geräten ist es umgekehrt: sie stehen alle am
-selben Ort, unterscheiden tut sie das Modell.
-
-Angesprochen wird es überall dort, wo sonst ein Kundenname steht, mit `business`:
-
-```
-node .ara/tools/runsheet.mjs --create --customer business --device jetson-thor
-node .ara/tools/remote.mjs --customer business --check
-```
-
-Einrichten läuft danach wie bei jedem anderen Gerät, mit `/setup business/<modellname>`.
-Steht das Gerät noch nicht da, leg jetzt nichts an, sondern halt im Profil fest, dass eins
-kommt.
-
-`business/` ist von der Versionskontrolle ausgenommen, das eigene Gerät also auch.
-
-Sagt er nein, ist das eine Zeile im Profil und keine weitere Frage.
-
-### Runde 10: Profil schreiben
+### Runde 10: Profil schreiben, bestätigen, ehrlich abschließen
 
 Jetzt `business/profile.md` aus `.ara/templates/profile.md` anlegen und füllen:
 Frontmatter vollständig, Prosa-Abschnitte in **Du-Form an ihn gerichtet**, Technikstand
-aus Runde 1 mit Datum.
+aus Runde 1 mit Datum. Partner dazu `business/company.md` aus `.ara/templates/company.md`.
 
 Lies ihm die zwei bis drei wichtigsten Punkte vor („So arbeite ich ab jetzt mit dir") und
 lass sie bestätigen. Was nicht stimmt, wird gleich korrigiert.
 
-### Runde 11: Erster Schritt und ehrlicher Abschluss
-
-Frag, ob gerade ein konkreter Kunde oder ein konkretes Gerät ansteht.
-
-- **Ja, ein Kunde:** direkt weiter mit `/customer <name>`. Der beste Abschluss, er sieht
-  sofort, wie sich das Kit anfühlt.
-- **Ja, das eigene Gerät aus Runde 9:** weiter mit `/setup business/<modellname>`.
-- **Unternehmens-Rolle:** hier ist das eigene Gerät der Normalfall, nicht die Ausnahme. Es
-  liegt unter `business/<modellname>/`, eine Akte für die eigene Firma braucht es dafür
-  nicht.
-- **Nein:** sagen, was als Nächstes sinnvoll wäre.
+Dann `node .ara/tools/init.mjs --show`: das Werkzeug nennt, was fehlt und was deshalb
+nicht geht. Was am Kalkulationsblatt fehlt, liest du mit `node .ara/tools/calculation.mjs`
+ab, statt es aus dem Kopf aufzuzählen.
 
 Zum Schluss, kurz und ohne Beschönigung:
 
 - was eingerichtet ist (zwei Zeilen)
 - **was fehlt und was deshalb nicht geht**: konkret, nicht „einiges fehlt noch"
-- der nächste sinnvolle Schritt
+- der nächste sinnvolle Schritt:
+  - **Partner mit konkretem Kunden:** `/customer <name>`. Der beste Abschluss, er sieht
+    sofort, wie sich das Kit anfühlt.
+  - **Eigenes Gerät steht da:** `/setup business/<modellname>`.
+  - **Gerät bestellt:** sagen, was bis dahin vorbereitet werden kann.
+  - **Nichts davon:** sagen, was als Nächstes sinnvoll wäre.
 
 Beispiel:
 
-> Eingerichtet: Profil, Sicherheitsstufe, SSH-Schlüssel, Sicherung auf GitHub.
-> Es fehlen: Lizenztoken (ohne ihn keine Installation und keine Produktaussagen) und
-> Stundensatz (ohne ihn keine Kalkulation).
-> Nächster Schritt: Token aus dem Portal holen, dann legen wir deinen ersten Kunden an.
-
-Was am Kalkulationsblatt fehlt, liest du dafür ab, statt es aus dem Kopf aufzuzählen:
-`node .ara/tools/calculation.mjs`.
+> Eingerichtet: Profil, Sicherheitsstufe, SSH-Schlüssel, Befehle für den Partnerzweig.
+> Es fehlen: Stundensatz (ohne ihn keine Kalkulation) und die Entscheidung zur Rechnung
+> (solange offen, kein Rechnungsbefehl).
+> Nächster Schritt: deinen ersten Kunden anlegen mit /customer.
 
 Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.
 
@@ -258,12 +285,22 @@ Stand des Kits. Fünf Schritte, in dieser Reihenfolge:
    `.ara/state.json` und die erzeugten Befehle bleiben, wie sie sind. Wer das Kit mit git
    führt, sieht die Änderung danach in `git status` und committet sie.
 3. **Befehle nachziehen.** `node .ara/tools/commands.mjs` zeigt für den Zweig aus dem
-   Profil, welche Befehle fehlen und welche abweichen. Fehlende legst du an. Abweichende
-   zeigst du erst im Unterschied und ersetzt sie nur mit Zustimmung: entweder ist der
-   Befehl im Kit neuer oder der Mensch hat ihn selbst angepasst, und das zweite darf
-   nicht verloren gehen. Anlegen und ersetzen: `node .ara/tools/commands.mjs --apply`.
-   Was im Ziel liegt und nicht aus dem Kit stammt, bleibt liegen.
-4. **Profil ergänzen**, nur wo es Lücken hat. Braucht ein neuer Befehl eine Angabe, die
-   im Profil fehlt, frag genau diese, gebündelt. Nicht das ganze Onboarding wiederholen.
+   Profil je Befehl einen von fünf Zuständen. Das Werkzeug merkt sich beim Anlegen den
+   Hash der Quelle und weiß darum, wer geändert hat:
+
+   | Zustand | Was es heißt | Was du tust |
+   |---|---|---|
+   | fehlt | neu im Kit oder nie angelegt | anbieten, mit `--apply` anlegen |
+   | neu im Kit | Quelle geändert, Kopie unberührt | Unterschied zeigen, mit `--apply` ersetzen |
+   | angepasst | der Mensch hat die Kopie selbst geändert | bleibt liegen, nur auf Wunsch `--replace <name>` |
+   | beides | Kit neuer **und** selbst geändert | Unterschied zeigen, er entscheidet, `--replace <name>` |
+   | unklar | Kopie aus der Zeit vor dem Merker | wie „neu im Kit", vorher vergleichen |
+
+   Vor jedem Ersetzen den Unterschied zeigen (`diff`). Was im Ziel liegt und nicht aus
+   dem Kit stammt, bleibt liegen.
+4. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
+   leeren Felder. Braucht ein neuer Befehl eine Angabe, die im Profil fehlt, frag genau
+   diese, gebündelt. Steht bei einem Partner `invoice: later`, frag noch einmal. Nicht das
+   ganze Onboarding wiederholen.
 5. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
    Stand auf diesem Rechner belegt.

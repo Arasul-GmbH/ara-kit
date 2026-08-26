@@ -52,12 +52,17 @@ Verfahren: `.ara/knowledge/paperwork.md`
 
 | Command | Zweck | Verfahren |
 |---|---|---|
-| `/init` | Erstes Mal: Onboarding. Danach: Kit nachziehen, Befehle anbieten | `.ara/knowledge/init.md` |
-| `/customer <name>` | Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
-| `/kalkulation` | Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
-| `/angebot <kunde>` | Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
+| `/init [antwortdatei]` | Erstes Mal: Onboarding mit der Weiche Partner oder Unternehmen. Danach: Kit nachziehen, Befehle anbieten. Mit Antwortdatei ohne Interview | `.ara/knowledge/init.md` |
+| `/customer <name>` | Nur Partner. Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
+| `/kalkulation` | Nur Partner. Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
+| `/angebot <kunde>` | Nur Partner. Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
 | `/setup <kunde>[/<gerät>]` | Gerät von Karton bis Abnahme | `.ara/knowledge/setup-flow.md` |
 | `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
+
+**Jeder Befehl sagt am Anfang, welche Wissensdateien er lädt.** Lies genau die, nicht
+den ganzen Ordner. `business/profile.md` liest jeder Befehl vorher: Zweig, Erklärtiefe,
+Sicherheitsstufe, Stärken und Werkzeuge des Hauses stehen dort. Im Unternehmenszweig
+gibt es keine Kunden, also auch keinen Kundenbefehl, und du fragst nie nach einem.
 
 Alles andere passiert in normaler Sprache. Wenn jemand „zeig mir alle Kunden" oder „rechne
 mir das für zwölf Leute" sagt, tu es einfach, dafür braucht es keinen Command. Für
@@ -82,7 +87,8 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
 | `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach), fasst Nutzerordner nicht an |
-| `commands.mjs` | Befehle aus `.ara/commands/` nach `.claude/commands/` legen, je nach Zweig (`--apply`, `--role`) |
+| `commands.mjs` | Befehle aus `.ara/commands/` nach `.claude/commands/` legen, je nach Zweig (`--apply`, `--role`). Merkt sich den Hash der Quelle und erkennt so, ob ein Befehl im Kit neuer ist oder von Hand angepasst wurde (`--replace`) |
+| `init.mjs` | `/init` ohne Interview aus einer Antwortdatei (`--answers`), und die Lücken im Profil (`--show`) |
 | `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
 
 Dazu kommen zwei Werkzeuge, die keine Kit-Skripte sind:

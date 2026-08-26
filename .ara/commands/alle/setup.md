@@ -5,7 +5,12 @@ argument-hint: <kunde> oder <kunde>/<gerät>
 
 Einrichtung für: **$1**
 
-Lies `.ara/knowledge/setup-flow.md` und arbeite danach.
+Lies `.ara/knowledge/setup-flow.md` und arbeite danach. Wissen, das dieser Befehl lädt:
+`.ara/knowledge/setup-flow.md`, `.ara/knowledge/security.md`, dazu je Schritt
+`.ara/knowledge/identify-device.md`, `.ara/knowledge/boot-and-flash.md`,
+`.ara/knowledge/remote-access.md`, `.ara/knowledge/handover.md` und
+`.ara/knowledge/live-knowledge.md` für jeden Produktwert. Das Profil in
+`business/profile.md` liest du vorher: Erklärtiefe, Sicherheitsstufe, SSH-Schlüssel.
 
 **Zuerst, immer:**
 
