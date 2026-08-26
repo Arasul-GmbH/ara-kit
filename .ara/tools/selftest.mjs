@@ -176,7 +176,7 @@ check("Laufzettel anlegen, fortschreiben, lesen", () => {
 
     const content = readFileSync(join(dir, "devices", "probe", "runsheet.md"), "utf8");
     assert(/### Phase 3/.test(content), "Eintrag steht nicht im Protokoll");
-    assert(/Ara OS installieren/.test(content), "Phasenname fehlt");
+    assert(/Arasul installieren/.test(content), "Phasenname fehlt");
 
     // Zweiter Eintrag darf den ersten nicht verdrängen.
     tool("runsheet.mjs", ["--customer", customer, "--phase", "4", "--entry", "Zweiter Schritt."]);
@@ -226,6 +226,77 @@ check("Agenda erkennt Termine und Lücken", () => {
     const json = tool("agenda.mjs", ["--json"]);
     const items = JSON.parse(json.stdout);
     assert(Array.isArray(items) && items.length >= 2, "JSON-Ausgabe unvollständig");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- Kalkulation ------------------------------------------------------------
+
+check("Kalkulationsblatt meldet jede fehlende Zahl mit ihrer Folge", () => {
+  // Der Zweck des Werkzeugs ist die Meldung, nicht die Liste: "ohne Stundensatz
+  // keine Kalkulation" ist brauchbar, "einiges fehlt" nicht. Geprüft wird deshalb
+  // beides, die Zählung und dass jede Zahl ihre Folge nennt.
+  const dir = mkdtempSync(join(tmpdir(), "ara-kalk-"));
+  const file = join(dir, "company.md");
+  const day = (offset) =>
+    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
+
+  try {
+    // Das leere Blatt, so wie es aus der Vorlage entsteht.
+    writeFileSync(file, readFileSync(join(ROOT, ".ara", "templates", "company.md"), "utf8"));
+
+    let run = tool("calculation.mjs", ["--file", file]);
+    assert(run.status !== 0, "ein leeres Blatt gilt als ausreichend für ein Angebot");
+    assert(/keine Kalkulation/.test(run.stdout), "die Folge des fehlenden Stundensatzes fehlt");
+    assert(/Nachtragen mit \/kalkulation/.test(run.stdout), "der Weg zum Nachtragen fehlt");
+
+    const empty = JSON.parse(tool("calculation.mjs", ["--file", file, "--json"]).stdout);
+    assert(empty.numbers.length === 10, `${empty.numbers.length} Zahlen statt zehn`);
+    assert(empty.missing.length === 10, `${empty.missing.length} von zehn als fehlend erkannt`);
+    assert(empty.can_quote === false, "ohne jede Zahl hält sich das Blatt für angebotsreif");
+    for (const number of empty.numbers) {
+      assert(number.without, `${number.key} nennt keine Folge, "einiges fehlt" reicht nicht`);
+    }
+
+    // Das gefüllte Blatt. Ein Einkaufspreis ist absichtlich über ein Jahr alt.
+    writeFileSync(
+      file,
+      [
+        "---",
+        "hourly_rate: 95",
+        "hardware_markup: 12",
+        "payment_terms: 14",
+        "setup_hours: 12",
+        "care_yearly: 1200",
+        "travel: 90",
+        "minimum_fee: 450",
+        `rates_asof: ${day(0)}`,
+        "---",
+        "",
+        "## Einkaufspreise",
+        "",
+        "| Position | Einkauf netto | Stand |",
+        "|---|---|---|",
+        `| Lizenz, einmalig | 1400 | ${day(0)} |`,
+        `| Wartung, jährlich | 480 | ${day(-400)} |`,
+        `| Hardware, Jetson Thor | 3900 | ${day(0)} |`,
+        "",
+      ].join("\n")
+    );
+
+    run = tool("calculation.mjs", ["--file", file]);
+    assert(run.status === 0, `gefülltes Blatt wird abgelehnt: ${run.stdout}`);
+
+    const full = JSON.parse(tool("calculation.mjs", ["--file", file, "--json"]).stdout);
+    assert(full.complete, `es fehlt noch: ${full.missing.join(", ")}`);
+    assert(
+      full.stale.includes("maintenance"),
+      "ein über ein Jahr alter Einkaufspreis wird nicht als veraltet gemeldet"
+    );
+    assert(!full.stale.includes("license"), "ein frischer Einkaufspreis gilt als veraltet");
+    assert(full.undated.length === 0, `ohne Not als undatiert gemeldet: ${full.undated.join(", ")}`);
+    return "leeres und gefülltes Blatt";
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -468,6 +539,37 @@ check("PDF-Werkzeug haelt Platzhalter zurueck und druckt sonst", () => {
     const head = readFileSync(target).subarray(0, 5).toString("latin1");
     assert(head === "%PDF-", `die erzeugte Datei ist kein PDF, sie beginnt mit "${head}"`);
     return "geprueft und gedruckt";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("PDF-Werkzeug trennt Tabellenzellen nur am unmaskierten Strich", () => {
+  // Am 26.08.2026 zerlegte ein unmaskierter Strich in nachweise/datenverarbeitung.md
+  // eine zweispaltige Zeile in vier Spalten. Die Quelle ist berichtigt und schreibt
+  // jetzt \|. Das half im Steuerungsordner nichts, weil dessen Druckwerkzeug an jedem
+  // Strich trennte. Diese Pruefung haelt fest, dass pdf.mjs das nicht tut.
+  const dir = mkdtempSync(join(tmpdir(), "ara-pdf-tabelle-"));
+  const file = join(dir, "tabelle.md");
+  try {
+    writeFileSync(
+      file,
+      "# Probe\n\n| Feld | Wert |\n| --- | --- |\n" +
+        "| Fernwartungszugang | direkt \\| Vermittlungsnetz \\| nicht eingerichtet |\n"
+    );
+    const html = join(dir, "tabelle.html");
+    const run = tool("pdf.mjs", [file, "--html", "--out", html]);
+    assert(run.status === 0, `HTML-Ausgabe fehlgeschlagen: ${run.stderr || run.stdout}`);
+
+    const body = readFileSync(html, "utf8").match(/<tbody>([\s\S]*?)<\/tbody>/)?.[1] ?? "";
+    const columns = (body.match(/<td>/g) || []).length;
+    assert(columns === 2, `die Zeile zerfaellt in ${columns} Zellen statt zwei`);
+    assert(
+      /direkt \| Vermittlungsnetz \| nicht eingerichtet/.test(body),
+      "der maskierte Strich steht nicht als Strich in der Zelle"
+    );
+    assert(!/\\/.test(body), "der Rueckstrich der Maskierung wuerde mitgedruckt");
+    return "zwei Zellen, Striche im Text erhalten";
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -10,6 +10,11 @@ iban:
 hourly_rate:              # netto, in Euro
 hardware_markup:          # Prozent
 payment_terms:            # Tage
+setup_hours:              # Stunden für eine Ersteinrichtung, erster Gerätetyp
+care_yearly:              # eigene Betreuung, netto je Jahr und Gerät
+travel:                   # Anfahrt, netto je Fahrt
+minimum_fee:              # Mindestpauschale, netto je Auftrag
+rates_asof:               # JJJJ-MM-TT, Stand der eigenen Sätze
 logo:                     # Pfad zur Datei, falls vorhanden
 ---
 
@@ -20,17 +25,20 @@ logo:                     # Pfad zur Datei, falls vorhanden
 
 ## Einkaufspreise
 
-<!-- Vertraulich. Was du selbst zahlst, mit Stand-Datum, die verbindliche
-     Quelle ist immer das Partnerportal.
+**Vertraulich. Diese Zahlen gehören nie in ein Kundenangebot**, auch nicht in eine
+Zwischensumme, aus der sich die Marge zurückrechnen lässt.
 
-     | Position | Einkauf netto | Stand |
-     |---|---|---|
-     | Lizenz, einmalig | | |
-     | Wartung, jährlich | | |
-     | Hardware <Typ> | | |
+Die verbindliche Quelle ist immer das Partnerportal. Was hier steht, ist eine Abschrift
+mit Datum, keine Preisliste. Eine Zeile je Hardwaretyp, den du anbietest.
 
-     Diese Zahlen gehören nie in ein Kundenangebot. -->
+| Position | Einkauf netto | Stand |
+|---|---|---|
+| Lizenz, einmalig | | |
+| Wartung, jährlich | | |
+| Hardware, {Typ} | | |
 
 ## Notizen zur Kalkulation
 
-<!-- Eigene Regeln: Mindestpauschalen, Anfahrt, Rabattgrenzen, was du nie umsonst machst. -->
+<!-- Eigene Regeln: Rabattgrenzen, was du nie umsonst machst, wie du die
+     Ersteinrichtung an einem neuen Gerätetyp aufschlägst, was du bei Anfahrt
+     über 100 km anders rechnest. Ein Satz je Regel genügt. -->

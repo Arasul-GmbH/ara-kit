@@ -23,6 +23,12 @@ leg den Laufzettel an.
 **Enthält das Argument einen Schrägstrich** (`mueller/werk2`), ist der zweite Teil die
 Gerätebezeichnung. Hat der Kunde mehrere Geräte und es fehlt die Angabe, frag, rate nicht.
 
+**Steht `business` vor dem Schrägstrich** (`business/jetson-thor`), geht es um ein eigenes
+Gerät des Partners, nicht um ein Kundengerät. Es liegt unter `business/<gerätename>/` und
+heißt nach dem Modell. Alle Werkzeuge sprechen es mit `--customer business` an, sonst
+ändert sich am Ablauf nichts. Verfahren: `.ara/knowledge/customer-file.md`, Abschnitt „Die
+eigenen Geräte des Partners".
+
 Halte dich an die Schleife: Vorbedingung prüfen, tun, nachweisen, eintragen. Nach jedem
 abgeschlossenen Schritt schreibst du in den Laufzettel, mit Nachweis. Wenn etwas klemmt,
 trägst du `--status unterbrochen` ein und sagst, was du siehst.

@@ -16,6 +16,7 @@
  *   node .ara/tools/pdf.mjs <datei.md> --check      nur pruefen, nicht drucken
  *   node .ara/tools/pdf.mjs <datei.md> --force      trotz Platzhalter drucken
  *   node .ara/tools/pdf.mjs <datei.md> --keep-notes Vorlagenhinweise mitdrucken
+ *   node .ara/tools/pdf.mjs <datei.md> --html       HTML schreiben statt drucken
  *   node .ara/tools/pdf.mjs --browser              welcher Chromium wird genommen
  *
  * Was nie im PDF landet:
@@ -42,7 +43,7 @@ const arg = parseArgs();
 
 // parseArgs() kann nicht wissen, welche Schalter einen Wert nehmen. Steht die
 // Datei hinter einem Schalter ohne Wert, landet sie sonst als dessen Wert.
-for (const flag of ["check", "force", "keep-notes", "browser"]) {
+for (const flag of ["check", "force", "keep-notes", "browser", "html"]) {
   if (typeof arg[flag] === "string") {
     arg._.push(arg[flag]);
     arg[flag] = true;
@@ -287,13 +288,26 @@ function inline(text) {
 const HARD_BREAK = "";
 const isHardBreak = (raw) => /(\\|[ \t]{2})$/.test(raw.replace(/\r$/, ""));
 
-/** Eine Tabellenzeile in Zellen zerlegen, aussere Striche weg. */
+/**
+ * Eine Tabellenzeile in Zellen zerlegen, aussere Striche weg.
+ *
+ * **Getrennt wird nur am unmaskierten Strich.** Ein Strich, der zum Text
+ * gehoert, wird in Markdown als `\|` geschrieben, und das ist die einzige
+ * Schreibweise, mit der er ueberhaupt in einer Tabelle stehen kann. Wer hier
+ * naiv an jedem Strich trennt, macht aus
+ * `{direkt \| Vermittlungsnetz \| nicht eingerichtet}` vier Spalten in einer
+ * zweispaltigen Tabelle: dann hilft dem Schreibenden die richtige Schreibweise
+ * nichts mehr. Genau dieser Fehler stand am 26.08.2026 in
+ * `nachweise/datenverarbeitung.md` und in Arasuls `dokument-pdf.py`.
+ *
+ * Die Maskierung faellt dabei weg, im Papier steht der Strich selbst.
+ */
 function cells(line) {
   return line
     .replace(/^\s*\|/, "")
-    .replace(/\|\s*$/, "")
-    .split("|")
-    .map((cell) => cell.trim());
+    .replace(/(?<!\\)\|\s*$/, "")
+    .split(/(?<!\\)\|/)
+    .map((cell) => cell.trim().replace(/\\\|/g, "|"));
 }
 
 const isTableRow = (line) => /^\s*\|/.test(line);
@@ -554,8 +568,20 @@ ${renderMarkdown(content)}
 // --- Drucken ----------------------------------------------------------------
 
 const target = resolve(
-  arg.out || join(dirname(sourcePath), `${basename(sourcePath, extname(sourcePath))}.pdf`)
+  arg.out ||
+    join(
+      dirname(sourcePath),
+      `${basename(sourcePath, extname(sourcePath))}.${arg.html ? "html" : "pdf"}`
+    )
 );
+
+// --html: das Zwischenergebnis sichtbar machen, ohne Chromium. Dafuer da, dass
+// man nachsehen kann, was gedruckt wuerde, statt es aus dem PDF zu erraten.
+if (arg.html) {
+  writeFileSync(target, document);
+  console.log(`HTML geschrieben: ${target}\nNicht gedruckt, --html war gesetzt.`);
+  process.exit(0);
+}
 
 let browser;
 try {

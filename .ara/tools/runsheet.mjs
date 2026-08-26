@@ -10,11 +10,16 @@
  *   node .ara/tools/runsheet.mjs --customer mueller --show
  *   node .ara/tools/runsheet.mjs --customer mueller --phase 3 --state done \
  *        --entry "Installation gelaufen. Nachweis: alle Dienste gesund."
+ *
+ * Für ein eigenes Gerät des Partners steht `business` an der Stelle des Kunden:
+ *
+ *   node .ara/tools/runsheet.mjs --create --customer business --device jetson-thor
  */
 
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import {
+  OWN,
   ROOT,
   ensureDir,
   fail,
@@ -29,7 +34,7 @@ const PHASES = [
   "Vorbereitung am Schreibtisch",
   "Betriebssystem",
   "Erstkontakt über das Netz",
-  "Ara OS installieren",
+  "Arasul installieren",
   "Nachbereitung",
   "Nachweis",
   "Abnahme",
@@ -50,7 +55,13 @@ if (arg.create) {
   if (!arg.customer || !arg.device) {
     fail("Zum Anlegen brauche ich --customer und --device.");
   }
-  const dir = ensureDir(join(ROOT, "customers", arg.customer, "devices", arg.device));
+  // Eigene Geräte liegen flach unter business/<gerät>/, Kundengeräte unter
+  // customers/<k>/devices/<g>/. Sonst ist der Ablauf derselbe.
+  const dir = ensureDir(
+    arg.customer === OWN
+      ? join(ROOT, OWN, arg.device)
+      : join(ROOT, "customers", arg.customer, "devices", arg.device)
+  );
   const file = join(dir, "runsheet.md");
   if (existsSync(file)) fail(`Es gibt schon einen Laufzettel: ${file}`);
 
@@ -64,7 +75,7 @@ if (arg.create) {
     started: now(),
     updated: now(),
   });
-  console.log(`Laufzettel angelegt: customers/${arg.customer}/devices/${arg.device}/runsheet.md`);
+  console.log(`Laufzettel angelegt: ${relative(ROOT, file)}`);
   process.exit(0);
 }
 

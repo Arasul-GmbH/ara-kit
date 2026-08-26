@@ -9,6 +9,10 @@
  *   node .ara/tools/remote.mjs --customer mueller --check
  *   node .ara/tools/remote.mjs --customer mueller --command "uptime"
  *   node .ara/tools/remote.mjs --customer mueller --device werk2 --command "df -h" --log
+ *
+ * Für ein eigenes Gerät des Partners steht `business` an der Stelle des Kunden:
+ *
+ *   node .ara/tools/remote.mjs --customer business --device jetson-thor --check
  */
 
 import { spawnSync } from "node:child_process";

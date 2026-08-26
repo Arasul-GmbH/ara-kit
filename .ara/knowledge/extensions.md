@@ -56,6 +56,33 @@ wie man sie benutzt, wie man sieht, dass sie läuft, was zu tun ist, wenn sie ni
 Das gehört in den Verlauf des Kunden, was gebaut wurde, warum, und wo es liegt. In einem
 Jahr fragt jemand danach.
 
+## Wer die Erweiterung lizenziert
+
+**Erweiterungen sind nicht Bestandteil der Lieferung.** Auch dann nicht, wenn die
+Plattform ihre Installation vorsieht oder erleichtert. Das steht so in den Verträgen,
+und es hat eine Folge, die du kennen musst:
+
+**Wer eine Erweiterung installiert, lizenziert sie selbst.** Das gilt für eigene
+Erweiterungen genauso wie für fremde Software, die der Kunde dazuhaben will. Viele
+verbreitete Automatisierungswerkzeuge stehen unter Lizenzen, die eine entgeltliche
+Weitergabe durch Dritte ausschliessen. Wenn du so etwas für einen Kunden installierst,
+schließt **er** die Lizenz mit dem Anbieter, nicht du und nicht Arasul.
+
+Prüf vor der Installation zwei Dinge und schreib das Ergebnis in den Verlauf:
+
+1. **Unter welcher Lizenz steht sie**, und erlaubt die Lizenz den Einsatz, den der Kunde
+   vorhat. Kommerzieller Einsatz im eigenen Betrieb ist meist erlaubt, Weitergabe an
+   Dritte oft nicht.
+2. **Wer laut Lizenz Lizenznehmer ist.** Trag das in die Leistungsbeschreibung
+   Abschnitt 6 ein, damit später klar ist, was bei der Übergabe drauf war und wer
+   dafür einsteht.
+
+Für den Betrieb einer Erweiterung wird weder Funktion noch Verfuegbarkeit noch
+Verträglichkeit mit kuenftigen Fassungen geschuldet. Sag das dem Kunden, bevor du
+etwas installierst, nicht danach.
+
+Verfahren für das Papier: `.ara/knowledge/paperwork.md`
+
 ## Abrechnung
 
 Erweiterungen sind Dienstleistung, keine Lizenz. Sie werden getrennt angeboten und
