@@ -431,6 +431,7 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     // Erzeugte Befehle. Nur init.md ist getrackt, siehe unten.
     ".claude/commands/setup.md",
     ".claude/commands/eigener.md",
+    ".claude/commands/.sources.json",
   ];
   const tracked = mustBeIgnored.filter(
     (path) =>
@@ -753,6 +754,23 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   return `${found.size} Befehle genannt, alle vorhanden`;
 });
 
+check("Jeder Befehl nennt sein Wissen", () => {
+  // Die Wissensdateien sind die Kontextschicht: ein Befehl sagt, welche er laedt,
+  // statt dass Ara den ganzen Ordner liest. Wer keine nennt, laedt entweder alles
+  // oder nichts, und beides ist falsch.
+  const files = [join(ROOT, ".claude", "commands", "init.md")];
+  for (const group of ["alle", "partner"]) {
+    const dir = join(ROOT, ".ara", "commands", group);
+    for (const name of readdirSync(dir)) files.push(join(dir, name));
+  }
+  const silent = files.filter((file) => {
+    const content = readFileSync(file, "utf8");
+    return !/Wissen, das dieser Befehl\s+lädt:/.test(content) || !/\.ara\/knowledge\/[a-z-]+\.md/.test(content);
+  });
+  assert(silent.length === 0, `ohne Wissensangabe: ${silent.map((f) => relative(ROOT, f)).join(", ")}`);
+  return `${files.length} Befehle`;
+});
+
 // --- Update und Befehle in einem Fork ----------------------------------------
 
 await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async () => {
@@ -872,12 +890,55 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     run = await forkTool("update.mjs", ["--check"], env);
     assert(/Alles aktuell/.test(run.stdout), "zweiter Lauf meldet Aenderungen");
 
-    // 4. Befehle nachziehen: der geaenderte wird gemeldet und erst mit --apply ersetzt.
+    // 4. Befehle nachziehen: der im Kit geaenderte wird gemeldet und erst mit --apply ersetzt.
     run = await forkTool("commands.mjs", []);
-    assert(/weicht ab\s+\/setup/.test(run.stdout), "geaenderter Befehl wird nicht gemeldet");
+    assert(/neu im Kit\s+\/setup/.test(run.stdout), "im Kit geaenderter Befehl wird nicht gemeldet");
     run = await forkTool("commands.mjs", ["--apply"]);
     assert(/Neu im Kit/.test(read(".claude/commands/setup.md")), "geaenderter Befehl nicht ersetzt");
-    return "anlegen, ansehen, einspielen, nachziehen";
+
+    // 5. Von Hand geaendert: bleibt bei --apply liegen, nur --replace ersetzt.
+    write(".claude/commands/customer.md", read(".claude/commands/customer.md") + "\nMeine Zeile.\n");
+    run = await forkTool("commands.mjs", []);
+    assert(/angepasst\s+\/customer/.test(run.stdout), "von Hand geaenderter Befehl wird nicht erkannt");
+    run = await forkTool("commands.mjs", ["--apply"]);
+    assert(/Meine Zeile/.test(read(".claude/commands/customer.md")), "--apply hat die eigene Aenderung ueberschrieben");
+    // Kit und Mensch haben beide geaendert.
+    write(".ara/commands/partner/customer.md", read(".ara/commands/partner/customer.md") + "\nAuch neu im Kit.\n");
+    run = await forkTool("commands.mjs", []);
+    assert(/beides\s+\/customer/.test(run.stdout), "beidseitige Aenderung wird nicht erkannt");
+    run = await forkTool("commands.mjs", ["--apply"]);
+    assert(/Meine Zeile/.test(read(".claude/commands/customer.md")), "--apply hat bei beidseitiger Aenderung ersetzt");
+    run = await forkTool("commands.mjs", ["--replace", "customer"]);
+    assert(run.status === 0, `--replace fehlgeschlagen: ${run.stderr}`);
+    assert(/Auch neu im Kit/.test(read(".claude/commands/customer.md")), "--replace hat nicht ersetzt");
+    assert(!/Meine Zeile/.test(read(".claude/commands/customer.md")), "--replace hat die alte Kopie gelassen");
+
+    // 6. /init ohne Interview, beide Zweige. Das Profil aus dem Fork weicht dafuer.
+    rmSync(join(fork, "business"), { recursive: true, force: true });
+    for (const name of readdirSync(join(fork, ".claude", "commands"))) {
+      if (name !== "init.md") rmSync(join(fork, ".claude", "commands", name));
+    }
+    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-company.json")]);
+    assert(run.status === 0, `Unternehmen: init.mjs fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(has("business/profile.md"), "Unternehmen: kein Profil");
+    assert(!has("business/company.md"), "Unternehmen: company.md angelegt, obwohl es keine Angebote gibt");
+    assert(/^role: company$/m.test(read("business/profile.md")), "Unternehmen: Zweig fehlt im Profil");
+    assert(/^## Was ich vorhabe\n\nDas Geraet/m.test(read("business/profile.md")), "Unternehmen: Prosa nicht eingesetzt");
+    assert(!/<!--[\s\S]*Wo du hin willst/.test(read("business/profile.md")), "Unternehmen: Vorlagenkommentar steht noch im Profil");
+    assert(/Technikstand dieses Rechners\n\nStand \d{4}-\d{2}-\d{2}:/.test(read("business/profile.md")), "Unternehmen: Technikstand fehlt");
+    assert(has(".claude/commands/setup.md"), "Unternehmen: Befehle nicht angelegt");
+    assert(!has(".claude/commands/customer.md"), "Unternehmen: bekommt den Kundenbefehl");
+    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.json")]);
+    assert(run.status !== 0, "zweiter Lauf ueberschreibt das Profil ohne --force");
+    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.json"), "--force"]);
+    assert(run.status === 0, `Partner: init.mjs fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(/^role: partner$/m.test(read("business/profile.md")), "Partner: Zweig fehlt im Profil");
+    assert(/^hourly_rate: 95$/m.test(read("business/company.md")), "Partner: Stundensatz nicht in company.md");
+    assert(has(".claude/commands/customer.md"), "Partner: bekommt den Kundenbefehl nicht");
+    run = await forkTool("init.mjs", ["--json"]);
+    const lage2 = JSON.parse(run.stdout);
+    assert(lage2.role === "partner" && lage2.consequences.some((c) => c.key === "invoice"), "offene Rechnungsentscheidung wird nicht gemeldet");
+    return "anlegen, ansehen, einspielen, nachziehen, Hash-Erkennung, /init in beiden Zweigen";
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
