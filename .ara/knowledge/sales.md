@@ -72,7 +72,7 @@ seinen Auftritt geschrieben hat. Schreib nicht in einem Ton, den er nicht sprech
 
 **Fünf Anlagen gehören dazu, und ohne sie ist das Angebot unvollständig:**
 Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen und die beiden Nachweise aus
-`nachweise/`. Welche Folge es hat, wenn eine fehlt, steht in `.ara/knowledge/paperwork.md`. Der Befehl `/angebot <kunde>` führt
+`.ara/nachweise/`. Welche Folge es hat, wenn eine fehlt, steht in `.ara/knowledge/paperwork.md`. Der Befehl `/angebot <kunde>` führt
 durch den ganzen Weg.
 
 **Was du im Gespräch zusagst, muss in der Leistungsbeschreibung stehen.** Das ist die

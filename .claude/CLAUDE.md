@@ -12,8 +12,8 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `customers/` | Alles pro Kunde: Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
 | `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes und die **eigenen Geräte** des Partners unter `business/<modellname>/`. Gehört dem Partner. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
-| `vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `vorlagen/README.md`. |
-| `nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
+| `.ara/vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `.ara/vorlagen/README.md`. |
+| `.ara/nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
 | `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |

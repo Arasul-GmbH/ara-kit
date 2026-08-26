@@ -16,7 +16,7 @@ Das Verfahren, in welcher Reihenfolge welches Papier entsteht, steht in
 | `uebergabeprotokoll.md` | Kunde und Partner bei der Abnahme | **das rechtliche Papier.** Jede Zeile braucht einen Nachweis |
 | `bausteine/W1` bis `W5` | nichts davon allein | Textbloecke, die in mehreren Vertraegen **wortgleich** stehen muessen |
 
-Die Anlagen 4 und 5 liegen nicht hier, sondern in `nachweise/`: der Nachweis zur
+Die Anlagen 4 und 5 liegen nicht hier, sondern in `.ara/nachweise/`: der Nachweis zur
 KI-Einstufung und der Nachweis zur Datenverarbeitung. Sie gehoeren in jedes Angebot.
 
 ## Was hier nicht liegt, und warum
@@ -38,17 +38,17 @@ Partner verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht in
 
 ## Was hier nicht bearbeitet wird
 
-`bausteine/`, `uebergabeprotokoll.md` und der Ordner `nachweise/` werden aus Arasuls
+`bausteine/`, `uebergabeprotokoll.md` und der Ordner `.ara/nachweise/` werden aus Arasuls
 Steuerungsordner gespiegelt. Jede Aenderung daran wird beim naechsten Spiegeln
 ueberschrieben. Wer darin einen Fehler findet, sagt es Arasul, statt ihn hier zu beheben.
 
-`uebergabeprotokoll.md` und die Dateien in `nachweise/` tragen dazu einen Vermerk im Kopf.
+`uebergabeprotokoll.md` und die Dateien in `.ara/nachweise/` tragen dazu einen Vermerk im Kopf.
 Die Bausteine tragen keinen, **weil ihr Text wortgleich in die Vertraege wandert** und ein
 Vermerk dort mitwandern wuerde.
 
 ## Zwei Papiere heissen fast gleich, sind aber verschieden
 
-`vorlagen/uebergabeprotokoll.md` ist das **rechtliche** Papier: was uebergeben
+`.ara/vorlagen/uebergabeprotokoll.md` ist das **rechtliche** Papier: was uebergeben
 wurde, welche Funktion nachgewiesen wurde, mit Unterschrift. Es zaehlt ein Jahr
 spaeter vor Gericht.
 

@@ -11,7 +11,7 @@
  * Gedruckt wird mit dem Chromium, das Playwright ohnehin mitbringt. Keine neue
  * Abhaengigkeit, kein npm install.
  *
- *   node .ara/tools/pdf.mjs vorlagen/angebot.md
+ *   node .ara/tools/pdf.mjs .ara/vorlagen/angebot.md
  *   node .ara/tools/pdf.mjs <datei.md> --out <datei.pdf>
  *   node .ara/tools/pdf.mjs <datei.md> --check      nur pruefen, nicht drucken
  *   node .ara/tools/pdf.mjs <datei.md> --force      trotz Platzhalter drucken
@@ -298,7 +298,7 @@ const isHardBreak = (raw) => /(\\|[ \t]{2})$/.test(raw.replace(/\r$/, ""));
  * `{direkt \| Vermittlungsnetz \| nicht eingerichtet}` vier Spalten in einer
  * zweispaltigen Tabelle: dann hilft dem Schreibenden die richtige Schreibweise
  * nichts mehr. Genau dieser Fehler stand am 26.08.2026 in
- * `nachweise/datenverarbeitung.md` und in Arasuls `dokument-pdf.py`.
+ * `.ara/nachweise/datenverarbeitung.md` und in Arasuls `dokument-pdf.py`.
  *
  * Die Maskierung faellt dabei weg, im Papier steht der Strich selbst.
  */

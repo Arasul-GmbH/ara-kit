@@ -454,11 +454,11 @@ check("Kein Absender von Arasul im Papier des Partners", () => {
   ];
 
   // Ausgenommen, weil dort Arasul die sprechende Partei ist und beide Orte aus
-  // Arasuls Steuerungsordner gespiegelt werden: vorlagen/bausteine/ und
-  // nachweise/. Letzteres wird hier gar nicht betreten.
+  // Arasuls Steuerungsordner gespiegelt werden: .ara/vorlagen/bausteine/ und
+  // .ara/nachweise/. Letzteres wird hier gar nicht betreten.
   const mirrored = new Set(["bausteine"]);
 
-  // **Die eine begründete Ausnahme.** vorlagen/endkundenbedingungen.md nennt
+  // **Die eine begründete Ausnahme.** .ara/vorlagen/endkundenbedingungen.md nennt
   // Arasul samt Inhaber und Anschrift als Hersteller der Software. Das muss
   // dort stehen: sonst weiß der Endkunde nicht, wessen Haftungsbegrenzung für
   // ihn gilt, und Ziffer 6 gilt ausdrücklich auch zugunsten des Herstellers.
@@ -492,7 +492,7 @@ check("Kein Absender von Arasul im Papier des Partners", () => {
       });
     }
   };
-  scan(join(ROOT, "vorlagen"));
+  scan(join(ROOT, ".ara", "vorlagen"));
 
   assert(
     offenders.length === 0,
@@ -510,7 +510,7 @@ check("Kein Absender von Arasul im Papier des Partners", () => {
 check("PDF-Werkzeug haelt Platzhalter zurueck und druckt sonst", () => {
   // Der Zweck des Werkzeugs ist, dass kein Angebot mit "{Betrag} Euro" beim
   // Kunden landet. Also wird genau das geprüft.
-  let run = tool("pdf.mjs", [join(ROOT, "vorlagen", "angebot.md"), "--check"]);
+  let run = tool("pdf.mjs", [join(ROOT, ".ara", "vorlagen", "angebot.md"), "--check"]);
   assert(run.status !== 0, "ungefuellte Platzhalter fuehren nicht zum Abbruch");
   assert(/\{Betrag\}/.test(run.stderr), "die gefundenen Platzhalter werden nicht benannt");
 
@@ -545,7 +545,7 @@ check("PDF-Werkzeug haelt Platzhalter zurueck und druckt sonst", () => {
 });
 
 check("PDF-Werkzeug trennt Tabellenzellen nur am unmaskierten Strich", () => {
-  // Am 26.08.2026 zerlegte ein unmaskierter Strich in nachweise/datenverarbeitung.md
+  // Am 26.08.2026 zerlegte ein unmaskierter Strich in .ara/nachweise/datenverarbeitung.md
   // eine zweispaltige Zeile in vier Spalten. Die Quelle ist berichtigt und schreibt
   // jetzt \|. Das half im Steuerungsordner nichts, weil dessen Druckwerkzeug an jedem
   // Strich trennte. Diese Pruefung haelt fest, dass pdf.mjs das nicht tut.
@@ -618,7 +618,7 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
   const fixed = new Set(["README.md", "CLAUDE.md", "SKILL.md", "LICENSE", ".gitkeep"]);
   // Die Bausteine werden aus Arasuls Steuerungsordner gespiegelt und tragen
   // dessen Nummern (W1 bis W5). Sie heissen hier so, wie sie dort heissen.
-  const mirrored = /^vorlagen\/bausteine\//;
+  const mirrored = /^\.ara\/vorlagen\/bausteine\//;
 
   const offenders = files.filter((path) => {
     const parts = path.split("/");
@@ -659,10 +659,6 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   };
   collect(join(ROOT, ".ara"));
   collect(join(ROOT, ".claude"));
-  // Das Papier gehoert mitgeprueft: dort zeigen tote Verweise auf einen
-  // Vertragsbestandteil, den es nicht gibt, und das faellt erst beim Kunden auf.
-  collect(join(ROOT, "vorlagen"));
-  collect(join(ROOT, "nachweise"));
   files.push(join(ROOT, "README.md"));
 
   const missing = [];
@@ -702,8 +698,6 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   };
   collect(join(ROOT, ".ara"));
   collect(join(ROOT, ".claude"));
-  collect(join(ROOT, "vorlagen"));
-  collect(join(ROOT, "nachweise"));
   files.push(join(ROOT, "README.md"));
 
   // Ein Befehl steht am Wortanfang und hoert vor dem naechsten Schraegstrich
