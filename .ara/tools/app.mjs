@@ -173,6 +173,8 @@ const TEXT_FILE = /\.(json|md|css|js|jsx|mjs|html|conf|txt)$|^Dockerfile$|^\.git
 function copyTemplate(from, to, values) {
   mkdirSync(to, { recursive: true });
   for (const entry of readdirSync(from, { withFileTypes: true })) {
+    // Was in der Vorlage einmal gebaut wurde, gehört nicht in eine neue App.
+    if (entry.name === "node_modules" || entry.name === "dist") continue;
     const source = join(from, entry.name);
     const target = join(to, entry.name);
     if (entry.isDirectory()) {
@@ -396,6 +398,11 @@ function showApp(app) {
 // --- Am Rechner: hier ist Schluss, wenn kein Gerät gemeint ist ----------------
 
 if (!wantsDevice) {
+  // Eine neue App bekommt ihren Namen gesagt. Der Merker zeigt auf die letzte,
+  // und die noch einmal anzulegen wäre nie gemeint.
+  if (arg.new && !str(arg.app)) {
+    fail("Sag, wie die neue App heißen soll: --app <name> --new.");
+  }
   const name = whichApp();
   if (!name) {
     const apps = listApps();
