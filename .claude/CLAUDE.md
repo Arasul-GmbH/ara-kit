@@ -96,6 +96,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
 | `calculation.mjs` | Kalkulationsblatt: welche Zahl liegt vor, welche fehlt, was geht deshalb nicht |
 | `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Läuft, ist aber in kein Verfahren eingebunden, siehe `.ara/knowledge/leistungsbeschreibung.md` |
+| `service-description.mjs` | Leistungsbeschreibung mit Werten vom Gerät: Softwarestand, Kontraktfassung, Modelle, Apps, je Wert mit Quelle. Was ungemessen blieb, bleibt Platzhalter |
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
 | `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach), fasst Nutzerordner nicht an |

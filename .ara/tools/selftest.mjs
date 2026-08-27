@@ -1157,6 +1157,109 @@ await checkAsync("check-docs.mjs prueft jede Route des Wissens am Geraet", async
   }
 });
 
+// --- Leistungsbeschreibung am Geraet -----------------------------------------
+
+await checkAsync("Die Leistungsbeschreibung bekommt ihre Werte vom Geraet", async () => {
+  // Das Papier wird unterschrieben. Geprueft wird darum zweierlei: dass die
+  // gemessenen Werte wirklich hineinkommen, und dass ein Feld, zu dem das Geraet
+  // nichts sagt, leer bleibt und mit einer Begruendung genannt wird.
+  const name = "selftest-papier";
+  const akte = join(ROOT, "devices", name);
+  const datei = join(akte, `leistungsbeschreibung-${new Date().toISOString().slice(0, 10)}.md`);
+
+  // Zwei Geraete in einem: erst eines, das Modelle und Apps aufzaehlt, dann
+  // eines, das beides nicht kennt.
+  const reich = {
+    ...KONTRAKT,
+    arasul: "9.9.9-gespielt",
+    endpunkte: [
+      ...KONTRAKT.endpunkte,
+      { verb: "GET", pfad: "/api/v1/external/apps", bereich: "app:deploy", was: "Welche Apps stehen auf dem Geraet" },
+      { verb: "GET", pfad: "/api/v1/external/models", bereich: "llm:status", was: "Welche Modelle am Geraet sind" },
+    ],
+  };
+  const arm = { ...KONTRAKT, arasul: "9.9.9-gespielt" };
+  const lage = { kontrakt: reich };
+
+  const server = createServer((request, response) => {
+    const pfad = request.url.split("?")[0];
+    const antwort = (status, body) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(body));
+    };
+    if (request.headers["x-api-key"] !== "aras_selbsttest") {
+      return antwort(401, { error: { message: "kein Schluessel" } });
+    }
+    if (pfad === "/api/v1/external/contract") return antwort(200, { data: lage.kontrakt });
+    if (pfad === "/api/v1/external/models" && lage.kontrakt === reich) {
+      return antwort(200, { data: { models: [{ name: "modell-gross:q4" }, "modell-klein:q8"] } });
+    }
+    if (pfad === "/api/v1/external/apps" && lage.kontrakt === reich) {
+      return antwort(200, { data: [{ id: "probeapp", live: { version: "1.2.0" }, test: { version: "1.3.0" } }] });
+    }
+    antwort(404, { error: { message: "kennt dieses Geraet nicht" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST: "aras_selbsttest" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    model: "Gespieltes Geraet A1",
+    serial: "SN-0815",
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST",
+  });
+
+  try {
+    let run = await toolAsync("service-description.mjs", ["--device", name, "--json"], env);
+    assert(run.status === 0, `Erhebung fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    const ergebnis = JSON.parse(run.stdout);
+    assert(ergebnis.measured.arasul === "9.9.9-gespielt", "der Softwarestand kommt nicht vom Geraet");
+    assert(ergebnis.measured.kontrakt === KIT_CONTRACT_VERSION, "die Kontraktfassung fehlt");
+    assert(ergebnis.measured.models.join(",") === "modell-gross:q4,modell-klein:q8", `Modelle falsch gelesen: ${ergebnis.measured.models}`);
+    assert(ergebnis.open.length === 0, `unnoetig offen: ${ergebnis.open.map((o) => o.name).join(", ")}`);
+
+    const papier = readFileSync(datei, "utf8");
+    assert(/Softwarestand: 9\.9\.9-gespielt/.test(papier), "der Softwarestand steht nicht im Papier");
+    assert(new RegExp(`Kontraktfassung des Geräts: ${KIT_CONTRACT_VERSION}`).test(papier), "die Kontraktfassung steht nicht im Papier");
+    assert(/Sprachmodell bei der Übergabe: \*\*modell-gross:q4/.test(papier), "das Modell steht nicht in Abschnitt 5");
+    assert(/installierte Erweiterungen: \*\*probeapp \(live 1\.2\.0\)/.test(papier), "die App steht nicht in Abschnitt 6");
+    assert(/Gemessen am \d{4}-\d{2}-\d{2}/.test(papier), "im Papier steht nicht, wann gemessen wurde");
+    assert(/ERHEBUNG .*Kit-Schlüssel ARASUL_KEY_SELFTEST/.test(papier), "die Herkunft der Werte fehlt");
+    assert(!/aras_selbsttest/.test(papier), "der Schluessel steht im Papier");
+    assert(/\{Stufe\}/.test(papier), "der Reifegrad wurde gefuellt, obwohl ihn niemand gemessen hat");
+
+    // Eine zweite Fassung desselben Tages ersetzt die erste nicht von allein:
+    // in einem Streit zaehlt die Fassung, die bei Vertragsschluss galt.
+    run = await toolAsync("service-description.mjs", ["--device", name], env);
+    assert(run.status !== 0 && /liegt schon/.test(run.stderr), "eine vorhandene Fassung wird ueberschrieben");
+
+    // Ein Geraet, das weder Modelle noch Apps aufzaehlt: beide Felder bleiben
+    // Platzhalter, und es steht dabei, warum.
+    lage.kontrakt = arm;
+    run = await toolAsync("service-description.mjs", ["--device", name, "--json", "--force"], env);
+    assert(run.status === 0, `zweite Erhebung fehlgeschlagen: ${run.stderr}`);
+    const knapp = JSON.parse(run.stdout);
+    const offen = new Map(knapp.open.map((o) => [o.name, o.why]));
+    assert(offen.has("Sprachmodell"), "ohne Modellauskunft wird trotzdem etwas eingetragen");
+    assert(offen.has("Installierte Erweiterungen"), "ohne Auskunft ueber Apps wird trotzdem etwas eingetragen");
+    assert(/keinen Endpunkt|nicht/.test(offen.get("Sprachmodell")), `keine Begruendung: ${offen.get("Sprachmodell")}`);
+    const knappesPapier = readFileSync(datei, "utf8");
+    assert(/\{Kennung und Fassung\}/.test(knappesPapier), "ein ungemessener Wert wurde erfunden");
+    assert(!/\*\*keine\*\*/.test(knappesPapier), "eine leere Antwort wurde zu einem zugesagten keine");
+    return "gemessen, geschrieben, Herkunft je Wert, Ungemessenes bleibt offen";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+  }
+});
+
 // --- Die Akte einer App ------------------------------------------------------
 
 check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () => {

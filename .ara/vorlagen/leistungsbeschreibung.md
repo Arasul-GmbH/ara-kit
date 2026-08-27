@@ -19,6 +19,12 @@
 > holen, Gerät befragen, Reifegrad je Bereich setzen, Abschnitt 4 und 6 aus dem
 > konkreten Fall füllen, Abschnitt 8 mit dem Kunden durchgehen.
 >
+> **Was das Gerät sagen kann, fuellt ein Werkzeug:**
+> `node .ara/tools/service-description.mjs --device <geraet>` traegt
+> Softwarestand, Kontraktfassung, Modelle und installierte Apps ein und schreibt
+> zu jedem Wert dazu, woher er kommt. Was es nicht messen konnte, bleibt als
+> Platzhalter stehen und wird genannt.
+>
 > **Werte kommen vom Gerät oder aus dem Spiegel, nie aus dieser Vorlage.** Die Tabelle
 > in Abschnitt 2 ist ein Beispiel und traegt ein Datum; hol sie frisch.
 
@@ -27,7 +33,8 @@
 # Anlage: Leistungsbeschreibung
 
 Zu Vertrag: {Angebotsnummer oder Vertragsdatum} · Kunde: {Firma}\
-Gerät: {Modell, Seriennummer} · Softwarestand: {Fassung aus `VERSION`}\
+Gerät: {Modell, Seriennummer} · Softwarestand: {Fassung, vom Gerät gelesen}\
+Kontraktfassung des Geräts: {Zahl, vom Gerät gelesen}\
 Erhoben am: {JJJJ-MM-TT} · Erhoben gegen: {den Spiegelstand oder das gelieferte Gerät}
 
 ## 1 Gegenstand und Entwicklungsstand
@@ -204,7 +211,8 @@ VOR DEM VERSENDEN ABARBEITEN:
 - [ ] Abschnitt 6: installierte Erweiterungen aufgefuehrt, oder ausdruecklich
       "keine"
 - [ ] Abschnitt 7: gegen das Geraet gemessen, nicht abgeschrieben
-- [ ] Softwarestand aus VERSION gelesen
+- [ ] Softwarestand und Kontraktfassung vom Geraet gelesen, nicht aus einem
+      aelteren Angebot uebernommen
 - [ ] Kein {Platzhalter} mehr im Text
 
 WARUM DIE STUFE "in Erprobung" EXISTIERT. Ohne sie muesste jede vorhandene

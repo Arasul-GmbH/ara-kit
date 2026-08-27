@@ -127,13 +127,29 @@ Zwei Zeitpunkte, und sie sind verschieden:
   entsteht eine neue Fassung und die liegt dem Übergabeprotokoll bei. Die Fassung, die
   abgezeichnet wird, ist die geschuldete.
 
-Sechs Schritte:
+Sieben Schritte:
 
-1. **Spiegel holen**, `node .ara/tools/mirror.mjs --refresh`. Abschnitt 2 wird komplett
+1. **Am Gerät erheben**, wenn es eines gibt:
+
+   ```
+   node .ara/tools/service-description.mjs --customer <kunde> --device <gerät>
+   ```
+
+   Das Werkzeug legt die Anlage aus der Vorlage an und trägt ein, was das Gerät
+   beantwortet: Softwarestand, Kontraktfassung, die Modelle, die dort liegen, und die
+   Apps, die darauf stehen. Zu jedem Wert schreibt es die Quelle dazu, und was es nicht
+   messen konnte, bleibt Platzhalter und wird genannt. **Es füllt nichts, was eine
+   Entscheidung ist**: Reifegrad, Plattform, Verbindungen nach außen und alles aus dem
+   konkreten Fall bleiben deine Arbeit, und das sind die Schritte danach.
+
+   Steht noch kein Gerät, weil es erst bestellt ist, legst du die Anlage von Hand aus
+   `.ara/vorlagen/leistungsbeschreibung.md` an und schreibst in den Kopf, wogegen erhoben
+   wurde. Vor der Übergabe wird sie am gelieferten Gerät neu erhoben.
+2. **Spiegel holen**, `node .ara/tools/mirror.mjs --refresh`. Abschnitt 2 wird komplett
    daraus ersetzt, die Tabelle in der Vorlage ist ein Muster mit Datum.
-2. **Plattform eintragen** und ihren Erprobungsstand aus dem Spiegel lesen. Steht dort
+3. **Plattform eintragen** und ihren Erprobungsstand aus dem Spiegel lesen. Steht dort
    nicht `live`, ist der Vorbehalt zwingend, siehe unten.
-3. **Reifegrad je Funktionsbereich setzen**, Abschnitt 3. Jede Zeile bekommt eine der drei
+4. **Reifegrad je Funktionsbereich setzen**, Abschnitt 3. Jede Zeile bekommt eine der drei
    Stufen, keine bleibt leer. **`abgenommen` nur, was bei der Übergabe wirklich vorgeführt
    wird.** Eine Zeile, die hier `abgenommen` trägt und dort nicht vorkommt, ist ein
    Widerspruch, und er geht gegen den, der ihn geschrieben hat. Was du nicht am Gerät oder
@@ -143,12 +159,12 @@ Sechs Schritte:
    27.08.2026 unvollständig: das Werkzeug läuft, die Schritte im Browser sind nicht als
    Verfahren beschrieben, und es ist keiner Phase zugeordnet. Bis dahin belegst du
    `abgenommen` von Hand am Gerät und schreibst dazu, womit.
-4. **Abschnitt 4 und 6 aus dem konkreten Fall füllen**: was dieser Kunde ausdrücklich
+5. **Abschnitt 4 und 6 aus dem konkreten Fall füllen**: was dieser Kunde ausdrücklich
    nicht bekommt, und welche Erweiterungen bei der Übergabe installiert sind. Steht keine
    drin, schreibst du `keine`, nicht nichts.
-5. **Abschnitt 7 messen**, nicht abschreiben. Eine absolute Aussage über Verbindungen nach
+6. **Abschnitt 7 messen**, nicht abschreiben. Eine absolute Aussage über Verbindungen nach
    außen ist mit einem einzigen Gegenbeispiel widerlegt.
-6. **Abschnitt 8 mit dem Kunden durchgehen.** Das sind Pflichten, die er selbst einrichtet,
+7. **Abschnitt 8 mit dem Kunden durchgehen.** Das sind Pflichten, die er selbst einrichtet,
    und er bestätigt sie im Übergabeprotokoll. Eine Liste, die er nie gelesen hat, hält bei
    der Abnahme nicht.
 
