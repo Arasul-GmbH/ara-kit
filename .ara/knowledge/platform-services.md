@@ -137,8 +137,8 @@ GET  /api/v1/external/flows/runs/<id>
 ```
 
 Was ein Schlüssel dabei sieht, entscheidet der Schlüssel: der einer App sieht nur ihre
-eigenen Flows in ihrem Stand. Einen Zeitplaner hat das Gerät nicht, wiederkehrende Starts
-kommen von außen über denselben Weg.
+eigenen Flows in ihrem Stand. Wiederkehrende Starts löst du von außen über denselben Weg
+aus, aus einem Zeitplan auf einem Rechner, der ohnehin läuft.
 
 **Ein Flow mit Freigabe-Schritt wird gestartet, ohne auf das Ergebnis zu warten.** Er
 hält an, bis ein Mensch entscheidet, und das kann dauern; ein wartender Aufruf läuft

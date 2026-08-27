@@ -317,4 +317,7 @@ Stand des Kits. Sechs Schritte, in dieser Reihenfolge:
    diese, gebündelt. Steht bei einem Partner `invoice: later`, frag noch einmal. Nicht das
    ganze Onboarding wiederholen.
 6. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
-   Stand auf diesem Rechner belegt.
+   Stand auf diesem Rechner belegt. Ist ein Gerät mit Arasul erreichbar, gehört
+   `node .ara/tools/check-docs.mjs --device <gerät>` dazu: es hält jede Route, die im
+   Wissen steht, gegen den Kontrakt dieses Geräts. Ein neuer Stand des Kits an einem
+   alten Gerät ist genau der Fall, in dem das auffallen soll.
