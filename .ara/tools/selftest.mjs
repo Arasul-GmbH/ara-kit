@@ -717,6 +717,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   const name = "selftest-arasul";
   const akte = join(ROOT, "devices", name);
+  const appDir = join(ROOT, "apps", "probeapp");
   const work = mkdtempSync(join(tmpdir(), "ara-app-"));
   const quelle = join(work, "probeapp");
 
@@ -857,11 +858,31 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     gesehen.paket = false;
     run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--base", base], env);
     assert(run.status !== 0 && !gesehen.paket, "ein ungültiges Manifest wurde eingespielt");
-    return "Kontrakt, Prüfung, Flows im Paket, Teststand, live, zurück, entfernen";
+
+    // Der Weg, den /app geht: nicht ein Ordner, sondern eine App aus apps/.
+    // Geschickt wird ihr Bau, und nichts, was daneben liegt.
+    mkdirSync(join(appDir, "frontend"), { recursive: true });
+    mkdirSync(join(appDir, "plans", "offen"), { recursive: true });
+    writeFileSync(join(appDir, "app.json"), JSON.stringify({ ...MANIFEST, frontend: { verzeichnis: "frontend" } }, null, 2));
+    writeFileSync(join(appDir, "README.md"), "# Probe\n");
+    writeFileSync(join(appDir, "frontend", "index.html"), "<p>Probe</p>\n");
+    writeFileSync(join(appDir, "plans", "offen", "2026-01-01-probe.md"), "---\nstand: offen\n---\n");
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build"], env)).status === 0, "Bau der App fehlgeschlagen");
+    gesehen.paket = false;
+    gesehen.inhalt = [];
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base], env);
+    assert(run.status === 0 && gesehen.paket, `Einspielen aus der App-Akte fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(gesehen.inhalt.includes("./frontend/index.html"), `die Oberfläche fehlt im Paket: ${gesehen.inhalt.join(", ")}`);
+    assert(
+      !gesehen.inhalt.some((eintrag) => /plans|README/.test(eintrag)),
+      `die Arbeit an der App ging mit ins Paket: ${gesehen.inhalt.join(", ")}`
+    );
+    return "Kontrakt, Prüfung, Flows im Paket, Bau einer App, Teststand, live, zurück, entfernen";
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
     rmSync(akte, { recursive: true, force: true });
+    rmSync(appDir, { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
