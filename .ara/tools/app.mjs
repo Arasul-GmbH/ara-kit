@@ -564,7 +564,6 @@ try {
 }
 
 const { base, contract, version } = link;
-const ask = link.ask;
 
 /**
  * Die Regeln für einen Flow aus dem Paket, wörtlich aus dem Kontrakt.
