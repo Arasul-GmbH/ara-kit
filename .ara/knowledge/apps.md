@@ -17,18 +17,42 @@ Grenzen eines Pakets, die Pfade unter `/apps/` und die Liste der Endpunkte mit d
 Bereich, den jeder verlangt. **Schreib nichts davon ab.** Es steht deshalb auch hier
 nicht: was heute gilt, sagt das Gerät, das vor dir steht.
 
-Der Kontrakt trägt eine **Kontraktversion**. Sie ist die Zahl, an der das Kit merkt, dass
-es zu einem Gerät nicht passt. Weichen sie ab, sagt das Werkzeug in welche Richtung:
+Der Kontrakt trägt eine **Kontraktversion**. Das Kit kennt nicht eine Zahl, für die es
+gebaut wäre, sondern die höchste Fassung, die es versteht. Daraus folgen drei Lagen:
 
-- **Das Gerät ist neuer.** Hol den aktuellen Stand des Kits mit `/init`.
-- **Das Kit ist neuer.** Das Gerät braucht ein Update, bevor das Kit sich darauf verlässt.
+- **Das Gerät führt dieselbe oder eine kleinere Zahl.** Es geht weiter. Geprüft wird
+  ohnehin gegen das Schema dieses Geräts, und gerufen wird nur, was in dessen Kontrakt
+  steht. Ein Gerät, das seit einem halben Jahr niemand angefasst hat, ist kein Fehlerfall,
+  sondern der Normalfall in einem Bestand.
+- **Das Gerät führt eine größere Zahl.** Das Kit hört auf und sagt, was ihm fehlt: welche
+  Fassungen es nicht kennt, und welche Felder das Gerät nennt, die es nicht liest. Hol den
+  aktuellen Stand des Kits mit `/init`, dann noch einmal.
+- **Das Gerät nennt gar keine.** Dann ist es älter als der Kontrakt selbst.
 
-In beiden Fällen wird nichts eingespielt. Ein Paket auf gut Glück zu schicken heißt, den
-Fehler am Gerät zu suchen statt vorher.
+Eingespielt wird nur in den ersten beiden Lagen. Ein Paket auf gut Glück zu schicken
+heißt, den Fehler am Gerät zu suchen statt vorher.
 
 **Ohne Kit-Schlüssel geht keiner dieser Aufrufe.** Er steht in der Geräteakte unter
 `api_key_ref`, sein Wert in der Geheimnis-Ablage. Woher er kommt:
 `.ara/knowledge/device.md`, Abschnitt „Der Kit-Schlüssel".
+
+## Was in ein Paket gehört
+
+In der Wurzel liegt `app.json`, daneben die Ordner, die das Manifest selbst benennt.
+**Welche Felder einen Ordner benennen, sagt der Kontrakt** in der Wurzel seines Pakets: er
+schreibt sie als Platzhalter, und jeder Platzhalter zeigt auf das Feld im Manifest, das
+den Ordnernamen trägt. Das Kit liest sie dort und zählt sie nicht selbst auf. Kommt im
+Produkt einer dazu, steht er beim nächsten Aufruf mit im Kontrakt.
+
+**Flows sind eine Lieferung, keine Forderung.** Verspricht das Manifest einen Ordner für
+Flows, bringt das Paket die Dateien mit: eine Datei je Flow, mit einem Kopf im Frontmatter
+und dem Auftrag als Text darunter. Was in den Kopf gehört und was für einen Flow aus einem
+Paket gilt, steht im Kontrakt, und `--contract` gibt beides aus: das Schema des Kopfes und
+die Regeln wörtlich. Schreib sie nicht ab, lies sie an dem Gerät, um das es geht.
+
+Was das Manifest verspricht, prüft das Kit vor dem Packen: dass es den Ordner gibt und
+dass er nicht leer ist. Das ersetzt die Regeln des Kontrakts nicht, es spart den Weg
+über ein abgewiesenes Paket.
 
 ## Ein Paket prüfen, bevor es fliegt
 
@@ -45,7 +69,8 @@ nicht prüfen konnte. Zwei Dinge musst du dabei selbst tun:
    „mit Backend braucht es einen Port" und was sonst dort steht, weist das Gerät ab,
    auch wenn das Schema zufrieden war. Geh sie einzeln durch.
 2. **Nachsehen, was der Kontrakt zum Paket sagt.** Wie gepackt wird, was nicht
-   hineingehört, wie groß es sein darf.
+   hineingehört, wie groß es sein darf, und was für einen Flow aus dem Paket gilt. Auch
+   diese Regeln gibt das Werkzeug wörtlich aus, sobald das Gerät welche nennt.
 
 ## Einspielen
 
@@ -104,5 +129,10 @@ und hol ein ausdrückliches Ja, bevor du es tippst.
   Am Gerät nachsehen, sonst einen neuen anlegen (`/device` mit `--deploy-key`).
 - **Der Endpunkt steht nicht im Kontrakt.** Dann ruft das Kit ihn auch nicht. Das ist kein
   Fehler des Werkzeugs, sondern die Aussage, dass Kit und Gerät nicht zusammenpassen.
+- **Die Schnittstelle liegt woanders als der SSH-Zugang.** Ein Gerät, das nur über einen
+  Tunnel erreichbar ist oder sein Zertifikat unter einem anderen Namen führt, bekommt
+  `api_base` in die Akte: die Adresse, unter der die Schnittstelle antwortet, mit Vorsatz.
+  Sie sticht `address`, und `--base <url>` sticht beide, für den einen Versuch, der nicht
+  in die Akte gehört. Was dauerhaft gilt, gehört in die Akte, nicht in den Aufruf.
 - **Gar keine Antwort.** Erst `node .ara/tools/find-device.mjs --host <adresse>`, dann
   `.ara/knowledge/diagnostics.md`.

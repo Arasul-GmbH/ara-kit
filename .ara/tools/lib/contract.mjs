@@ -12,13 +12,57 @@
  */
 
 /**
- * Die Kontraktversion, gegen die dieses Kit gebaut ist.
+ * Die Fassungen des Kontrakts, die dieses Kit versteht.
  *
- * Sie ist kein Produktwert, sondern die Aussage des Kits über sich selbst:
- * „so weit kenne ich den Vertrag". Meldet ein Gerät eine andere Zahl, sagt das
- * Kit das und behauptet nichts über die Unterschiede.
+ * Kein Produktwert, sondern die Aussage des Kits über sich selbst: „so weit
+ * kenne ich den Vertrag, und das kann ich in jeder Fassung". Je Eintrag steht,
+ * was das Kit ab dieser Zahl tut, nicht, was das Produkt darin geändert hat.
+ * Das ist der Unterschied, der die Liste ehrlich hält: über das Gerät behauptet
+ * sie nichts.
+ *
+ * Sie ist eine Liste und keine einzelne Zahl, weil ein Kit auf zwei Geräte
+ * trifft, die nicht gleich alt sind. Ein Gerät mit einer kleineren Zahl wird
+ * bedient; nur bei einer größeren fehlt dem Kit etwas, und dann soll es sagen,
+ * was.
  */
-export const KIT_CONTRACT_VERSION = 1;
+export const KIT_CONTRACT_VERSIONS = Object.freeze([
+  {
+    version: 1,
+    kann: "app.json gegen das Schema des Geräts prüfen, den Inhalt eines Ordners packen, einspielen, live schalten, zurückschalten, entfernen.",
+  },
+  {
+    version: 2,
+    kann: "Ein Paket bringt Flows mit: das Kit packt jeden Ordner mit ein, den das Manifest verspricht, und prüft vorher, dass es ihn wirklich gibt.",
+  },
+]);
+
+/** Die höchste Fassung, die dieses Kit versteht. */
+export const KIT_CONTRACT_VERSION = Math.max(...KIT_CONTRACT_VERSIONS.map((entry) => entry.version));
+
+/**
+ * Die Felder des Kontrakts, die dieses Kit liest.
+ *
+ * Nennt ein Gerät ein Feld, das hier fehlt, ist das keine Vermutung über einen
+ * Fehler, sondern eine Lücke im Kit: es bekommt etwas gesagt, mit dem es nichts
+ * anfängt. Bei einem neueren Gerät ist das genau die Antwort auf „was fehlt".
+ */
+const READ_FIELDS = new Set([
+  "kontrakt",
+  "arasul",
+  "app_json",
+  "flow_frontmatter",
+  "koepfe",
+  "umgebung",
+  "paket",
+  "apps",
+  "schluessel",
+  "endpunkte",
+]);
+
+/** Was dieses Gerät im Kontrakt nennt und dieses Kit nicht liest. */
+export function unreadFields(contract) {
+  return Object.keys(contract || {}).filter((key) => !READ_FIELDS.has(key));
+}
 
 /** Der eine Pfad, den das Kit auswendig kennt. Alles andere steht im Kontrakt. */
 export const CONTRACT_PATH = "/api/v1/external/contract";
@@ -288,34 +332,72 @@ export function findEndpoint(contract, verb, path) {
 /**
  * Passt dieses Kit zu diesem Gerät?
  *
- * Drei Antworten und keine Zwischentöne: gleich, das Gerät ist neuer, das Kit
- * ist neuer. Was sich zwischen zwei Zahlen geändert hat, weiß das Kit nicht,
- * und es soll auch nicht so tun.
+ * Das Kit kennt die höchste Fassung, die es versteht, und nicht die eine, für
+ * die es gebaut wurde. Daraus folgen drei Antworten:
+ *
+ * - **Gleich oder kleiner:** es arbeitet weiter. Ein älteres Gerät ist kein
+ *   Fehlerfall, sondern der Normalfall in einem Bestand, den niemand an einem
+ *   Tag aktualisiert. Geprüft wird ohnehin gegen das Schema dieses Geräts, und
+ *   gerufen wird nur, was es in seinem Kontrakt nennt.
+ * - **Größer:** es hört auf und sagt, was ihm fehlt: welche Fassungen es nicht
+ *   kennt und welche Felder das Gerät nennt, die es nicht liest. Was in diesen
+ *   Fassungen steht, weiß es nicht, und es tut auch nicht so.
+ * - **Gar keine Zahl:** älter als der Kontrakt selbst.
  */
 export function checkVersion(contract) {
   const device = contract?.kontrakt;
+  const kit = KIT_CONTRACT_VERSION;
   if (typeof device !== "number") {
     return { ok: false, state: "unknown", text: "Dieses Gerät nennt keine Kontraktversion. Es ist älter als der Kontrakt selbst." };
   }
-  if (device === KIT_CONTRACT_VERSION) {
-    return { ok: true, state: "same", text: `Kontraktversion ${device}, das Kit ist dafür gebaut.` };
+  if (device === kit) {
+    return { ok: true, state: "same", text: `Kontraktversion ${device}, dieses Kit versteht sie.` };
   }
-  if (device > KIT_CONTRACT_VERSION) {
+  if (device < kit) {
+    const ungenutzt = KIT_CONTRACT_VERSIONS.filter((entry) => entry.version > device);
     return {
-      ok: false,
-      state: "device-newer",
+      ok: true,
+      state: "device-older",
       text:
-        `Das Gerät führt Kontraktversion ${device}, dieses Kit kennt ${KIT_CONTRACT_VERSION}. ` +
-        "Hol den aktuellen Stand des Kits mit /init, bevor du etwas einspielst.",
+        `Das Gerät führt Kontraktversion ${device}, dieses Kit versteht bis ${kit}. Es arbeitet mit dem, ` +
+        "was dieses Gerät verspricht: geprüft wird gegen dessen Schema, gerufen wird nur, was in dessen Kontrakt steht." +
+        (ungenutzt.length
+          ? ` Ungenutzt bleibt hier, was das Kit erst ab Fassung ${ungenutzt[0].version} tut: ${ungenutzt.map((e) => e.kann).join(" ")}`
+          : ""),
     };
   }
+  const fremd = unreadFields(contract);
   return {
     ok: false,
-    state: "kit-newer",
+    state: "device-newer",
     text:
-      `Das Gerät führt Kontraktversion ${device}, dieses Kit ist für ${KIT_CONTRACT_VERSION} gebaut. ` +
-      "Das Gerät braucht ein Update, bevor sich das Kit darauf verlassen kann.",
+      `Das Gerät führt Kontraktversion ${device}, dieses Kit versteht bis ${kit}. ` +
+      `Was in ${device - kit === 1 ? `Fassung ${device}` : `den Fassungen ${kit + 1} bis ${device}`} steht, kennt es nicht: ` +
+      "es kann weder packen noch prüfen, was dort gefordert wird." +
+      (fremd.length ? ` Das Gerät nennt außerdem ${fremd.join(", ")}, damit fängt dieses Kit nichts an.` : "") +
+      " Hol den aktuellen Stand des Kits mit /init, bevor du etwas einspielst.",
   };
+}
+
+/**
+ * Welche Ordner das Manifest verspricht, und wie sie im Manifest heißen.
+ *
+ * Der Kontrakt zählt die Wurzel des Pakets auf und schreibt die Ordner darin
+ * als Platzhalter: ein Feld des Manifests in spitzen Klammern. Das Kit liest
+ * die Platzhalter und schlägt sie im Manifest nach, statt die Feldnamen zu
+ * kennen. Kommt im Kontrakt ein Ordner dazu, wie die Flows in Fassung 2, muss
+ * hier nichts nachgezogen werden.
+ */
+export function promisedFolders(contract, manifest) {
+  const found = [];
+  for (const entry of contract?.paket?.wurzel || []) {
+    const placeholder = String(entry).match(/^<([A-Za-z0-9_.]+)>\/?$/);
+    if (!placeholder) continue;
+    let node = manifest;
+    for (const step of placeholder[1].split(".")) node = node?.[step];
+    if (typeof node === "string" && node.trim()) found.push({ field: placeholder[1], folder: node.trim() });
+  }
+  return found;
 }
 
 /** Der Kontrakt in wenigen Zeilen, alles davon aus der Antwort des Geräts. */
@@ -329,6 +411,13 @@ export function summarize(contract) {
       (contract?.koepfe?.rollen ? ` (Rollen: ${contract.koepfe.rollen.join(", ")})` : ""),
     `- Schlüsselkopf: ${contract?.schluessel?.kopf ?? "?"}, Bereiche: ${(contract?.schluessel?.bereiche || []).join(", ") || "keine genannt"}`,
   ];
+  const flow = contract?.flow_frontmatter;
+  if (flow) {
+    lines.push(
+      `- Flow-Kopf: ${flow.schema ? "Schema vorhanden" : "kein Schema"}` +
+        `, ${(flow.regeln || []).length} Regeln für einen Flow aus einem Paket`
+    );
+  }
   const paket = contract?.paket;
   if (paket) {
     lines.push(
