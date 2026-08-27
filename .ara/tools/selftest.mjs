@@ -159,14 +159,17 @@ check("Leere Vorlagenfelder liefern keine Kommentartexte", () => {
   // Die Vorlagen erklären ihre Felder mit Kommentaren. Ein leeres Feld muss leer
   // bleiben, sonst landet der Erklärtext als Adresse oder Schlüsselname im Einsatz.
   const templates = join(ROOT, ".ara", "templates");
-  for (const name of readdirSync(templates)) {
+  // Nur die Vorlagen mit Frontmatter. Die Vorlage einer App ist ein Ordner mit
+  // Quelltext darin, kein Formular.
+  const files = readdirSync(templates).filter((name) => name.endsWith(".md"));
+  for (const name of files) {
     const { fields } = readFrontmatter(join(templates, name));
     for (const [key, value] of Object.entries(fields)) {
       assert(!value.startsWith("#"), `${name}: Feld ${key} liest den Kommentar als Wert`);
       assert(!/^\S+\s+#/.test(value), `${name}: Feld ${key} enthält einen Kommentarrest`);
     }
   }
-  return `${readdirSync(templates).length} Vorlagen`;
+  return `${files.length} Vorlagen`;
 });
 
 // --- Laufzettel -------------------------------------------------------------
@@ -1233,7 +1236,11 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   // Findet die Pruefung einen Befehl, den es absichtlich noch nicht gibt, ist
   // das eine Aussage ueber das Repo und nicht ueber die Pruefung.
   const files = [];
+  // Die Vorlage einer App ist Quelltext und keine Anleitung: ein Pfad wie
+  // /gesund im Manifest ist ein Weg in ihrem Backend und kein Befehl.
+  const template = join(ROOT, ".ara", "templates", "app");
   const collect = (dir) => {
+    if (dir === template) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);

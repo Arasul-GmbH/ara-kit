@@ -16,10 +16,8 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
 import { join } from "node:path";
-import { ROOT, fail, parseArgs, readDevice } from "./lib/kit.mjs";
+import { ROOT, fail, parseArgs, readDevice, sshArgs as sshArgsFrom } from "./lib/kit.mjs";
 
 const arg = parseArgs();
 
@@ -48,34 +46,17 @@ try {
   fail(error.message);
 }
 
-const fields = device.fields;
-const host = fields.address || fields.hostname;
-if (!host) {
+let sshArgs;
+let label;
+try {
+  ({ args: sshArgs, label } = sshArgsFrom(device.fields));
+} catch (error) {
   fail(
-    `In ${device.file} steht keine Adresse.\n` +
-      "Trag address (oder hostname) ein, sobald das Gerät im Netz erreichbar ist."
+    `${error.message}\n` +
+      `Nachsehen in ${device.file}: address (oder hostname) gehört dort hinein, ` +
+      "sobald das Gerät im Netz erreichbar ist."
   );
 }
-
-const user = fields.ssh_user || "arasul";
-const port = fields.ssh_port || "22";
-const key = fields.ssh_key;
-
-const sshArgs = ["-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new", "-p", String(port)];
-
-if (key) {
-  const keyPath = key.startsWith("/") ? key : join(homedir(), ".ssh", key);
-  if (!existsSync(keyPath)) {
-    fail(
-      `Der Schlüssel ${key} liegt nicht unter ${keyPath}.\n` +
-        "Prüf den Namen in der Geräteakte, im Kit steht nur der Name, der Schlüssel selbst bleibt in ~/.ssh."
-    );
-  }
-  sshArgs.push("-i", keyPath);
-}
-
-sshArgs.push(`${user}@${host}`);
-const label = `${user}@${host}:${port}`;
 const place = device.customer ? `${device.customer}/${device.device}` : device.device;
 
 if (arg.check || !arg.command) {

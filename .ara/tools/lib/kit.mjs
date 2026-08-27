@@ -4,6 +4,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -166,6 +167,46 @@ export function readDevice(customer, device) {
   const file = join(target.path, "device.md");
   const { fields } = readFrontmatter(file);
   return { ...target, file, runsheet: join(target.path, "runsheet.md"), fields };
+}
+
+/**
+ * Die Aufrufzeile für `ssh` aus einer Geräteakte.
+ *
+ * Die Verbindungsdaten stehen in der Akte und nicht im Befehl: damit kann kein
+ * Gerät mit den Daten eines anderen Kunden angesprochen werden. Der private
+ * Schlüssel bleibt in `~/.ssh`, im Kit steht nur sein Name.
+ *
+ * `batch` heißt: keine Passwortfrage. Für eine Prüfung, die niemand beobachtet,
+ * ist eine Eingabeaufforderung, die auf niemanden trifft, nur eine Wartezeit.
+ */
+export function sshArgs(fields, { batch = false } = {}) {
+  const host = fields.address || fields.hostname;
+  if (!host) throw new Error("In der Geräteakte steht keine Adresse.");
+  const user = fields.ssh_user || "arasul";
+  const port = fields.ssh_port || "22";
+  const args = [
+    "-o",
+    "ConnectTimeout=8",
+    ...(batch ? ["-o", "BatchMode=yes"] : []),
+    "-o",
+    "StrictHostKeyChecking=accept-new",
+    "-p",
+    String(port),
+  ];
+  if (fields.ssh_key) {
+    const path = fields.ssh_key.startsWith("/")
+      ? fields.ssh_key
+      : join(homedir(), ".ssh", fields.ssh_key);
+    if (!existsSync(path)) {
+      throw new Error(
+        `Der Schlüssel ${fields.ssh_key} liegt nicht unter ${path}.\n` +
+          "Prüf den Namen in der Geräteakte, im Kit steht nur der Name, der Schlüssel selbst bleibt in ~/.ssh."
+      );
+    }
+    args.push("-i", path);
+  }
+  args.push(`${user}@${host}`);
+  return { args, label: `${user}@${host}:${port}` };
 }
 
 /** Einfache Auswertung von --key value und --flag. */
