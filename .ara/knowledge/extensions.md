@@ -2,22 +2,27 @@
 
 > **Wann brauchst du das?** Wenn ein Kunde etwas will, das das Produkt nicht ab Werk kann.
 
-## Wo gebaut wird: auf dem Gerät
+## Wo gebaut wird, und wo nicht
 
-Das Produkt bringt eine Arbeitsumgebung auf dem Gerät selbst mit, mit Terminal, Ablage und
-Zugang zu den internen Diensten. **Dort wird gebaut, nicht auf dem Partner-Laptop.**
+**Geschrieben wird beim Partner, gebaut wird am Gerät, und beides hat einen Grund.**
 
-Drei Gründe:
+Der Quelltext einer App liegt beim Partner, nicht beim Kunden: dieselbe App läuft
+vielleicht bei drei Kunden, und dreimal derselbe Code unter drei Geräteakten ist
+dreimal dasselbe Ding, das auseinanderläuft. Das Paket geht als Archiv an das Gerät,
+und **das Gerät baut den Container selbst** aus dem Bauplan darin. Ein fertiges Image
+wäre für eine Architektur gebaut, und niemand merkt es, bis es dort nicht startet.
 
-1. **Die Daten bleiben beim Kunden.** Eine Erweiterung, die man lokal gegen Kundendaten
-   entwickelt, holt diese Daten auf den Laptop des Partners. Das ist genau das, was das
-   Produkt verhindern soll.
-2. **Dieselbe Umgebung.** Was auf dem Gerät gebaut wird, läuft auf dem Gerät. Kein „bei mir
-   ging es".
-3. **Es bleibt beim Kunden.** Auch wenn der Partner wechselt.
+Was daraus folgt, gilt weiter:
 
-Das Kit ist die Ebene darüber: es öffnet die Umgebung, führt die Arbeit, hält fest, was
-gebaut wurde. Es hält keinen Kundencode.
+1. **Die Daten bleiben beim Kunden.** Entwickle nicht gegen Kundendaten auf deinem
+   Laptop. Was du zum Ausprobieren brauchst, sind erfundene Daten; das Echte sieht die
+   App erst am Gerät. Genau das soll das Produkt verhindern.
+2. **Dieselbe Umgebung.** Gebaut wird dort, wo es läuft. Kein „bei mir ging es".
+3. **Es bleibt beim Kunden.** Das Gerät trägt die App, auch wenn der Partner wechselt.
+
+Wie ein Paket auf ein Gerät kommt, in den Teststand und von dort live, steht in
+`.ara/knowledge/apps.md`. Was ein Paket enthalten muss, sagt der Kontrakt des Geräts,
+nicht dieses Blatt.
 
 ## Vorgehen
 
