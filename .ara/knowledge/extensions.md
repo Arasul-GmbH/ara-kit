@@ -45,7 +45,9 @@ wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt.
 Bevor irgendetwas gebaut wird: Was gibt es bereits? Die Beschreibung der Schnittstelle
 liefert das Gerät selbst, in einem Aufruf:
 `node .ara/tools/app.mjs --device <gerät> --contract`. Dort steht, was eine App mitbringen
-muss und welche Endpunkte es gibt. Wie eine App dann auf das Gerät kommt, steht in
+muss und welche Endpunkte es gibt. Wozu die einzelnen Dienste da sind, Anmeldung,
+Freigaben, Flows, Sprachmodell und Dokumente, steht in
+`.ara/knowledge/platform-services.md`. Wie eine App dann auf das Gerät kommt, steht in
 `.ara/knowledge/deploy.md`.
 
 Die meisten Kundenwünsche brauchen keine neue Entwicklung, sondern eine Einrichtung.

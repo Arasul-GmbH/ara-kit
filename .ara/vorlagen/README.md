@@ -10,7 +10,7 @@ Das Verfahren, in welcher Reihenfolge welches Papier entsteht, steht in
 | Datei | Wer unterschreibt | Wofuer |
 | --- | --- | --- |
 | `angebot.md` | der Kunde nimmt an | Angebot des Partners, mit seinen fuenf Anlagen. Absender ist der Partner |
-| `leistungsbeschreibung.md` | niemand, sie ist Anlage 1 | legt fest, was geschuldet ist. Entsteht gegen den Spiegel, nicht am Schreibtisch, und liegt vor der Unterschrift beim Kunden |
+| `leistungsbeschreibung.md` | niemand, sie ist Anlage 1 | legt fest, was geschuldet ist. Entsteht am Gerät und gegen den Spiegel, nicht am Schreibtisch: `node .ara/tools/service-description.mjs --device <gerät>` füllt, was gemessen wurde |
 | `endkundenbedingungen.md` | der Endkunde, Anlage 2 | er hat mit Arasul keinen Vertrag, also braucht es diese Bedingungen |
 | `drittlizenzen.md` | niemand, sie ist Anlage 3 | traegt Block W5 in den Endkundenbedingungen und in den Vertraegen von Arasul |
 | `uebergabeprotokoll.md` | Kunde und Partner bei der Abnahme | **das rechtliche Papier.** Jede Zeile braucht einen Nachweis |

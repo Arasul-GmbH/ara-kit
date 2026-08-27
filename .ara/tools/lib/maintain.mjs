@@ -182,6 +182,32 @@ export function topicEndpoints(contract, stems, verb = "GET") {
   });
 }
 
+/**
+ * Die Kennungen aus der Antwort auf die Modellfrage.
+ *
+ * Wie ein Gerät seine Modelle nennt, weiß das Kit nicht: eine Liste von Namen,
+ * eine Liste von Objekten, ein Umschlag mit einem Feld darin. Gelesen wird
+ * darum, was aussieht wie eine Kennung, und umbenannt wird nichts. Findet sich
+ * nichts, bleibt die Liste leer, und die Zeile daneben sagt, was ankam: eine
+ * geratene Kennung in einer Leistungsbeschreibung wäre eine Zusage, die niemand
+ * geprüft hat.
+ */
+export function modelNames(data) {
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.models)
+      ? data.models
+      : Array.isArray(data?.modelle)
+        ? data.modelle
+        : [];
+  return list
+    .map((entry) =>
+      typeof entry === "string" ? entry : entry?.name || entry?.id || entry?.model || entry?.modell || ""
+    )
+    .map((name) => String(name).trim())
+    .filter(Boolean);
+}
+
 /** Ein Pfad ohne seine Parameter ist nicht aufrufbar. `:id` heißt: da fehlt etwas. */
 export function needsParameter(path) {
   return /(^|\/):[A-Za-z]/.test(String(path || "")) || /<[^>]+>/.test(String(path || ""));

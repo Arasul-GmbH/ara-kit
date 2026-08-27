@@ -8,7 +8,9 @@ Betreuung für: **$1**
 Lies `.ara/knowledge/maintenance-flow.md` und arbeite danach. Wissen, das dieser Befehl
 lädt: `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/security.md`,
 `.ara/knowledge/diagnostics.md` bei einer Störung, `.ara/knowledge/extensions.md` bei
-einer Erweiterung, `.ara/knowledge/live-knowledge.md` für jeden Produktwert. Das Profil
+einer Erweiterung, `.ara/knowledge/platform-services.md`, wenn es um die Sicherung oder
+einen Dienst der Plattform geht, `.ara/knowledge/live-knowledge.md` für jeden
+Produktwert. Das Profil
 in `business/profile.md` liest du vorher.
 
 **Das Argument.** `zentrale` ist ein Gerät ohne Kunden unter `devices/zentrale/`.

@@ -7,8 +7,10 @@ App: **$1**
 
 Lies `.ara/knowledge/app.md` und arbeite danach. Wissen, das dieser Befehl lädt:
 `.ara/knowledge/app.md`, `.ara/knowledge/security.md`, dazu `.ara/knowledge/deploy.md`,
-sobald ein Paket an ein Gerät geht, `.ara/knowledge/extensions.md` beim ersten Interview
-mit einem Kunden und `.ara/knowledge/live-knowledge.md` für jeden Produktwert. Das Profil
+sobald ein Paket an ein Gerät geht, `.ara/knowledge/platform-services.md`, sobald die App
+etwas von der Plattform will (Anmeldung, Freigabe, Flow, Sprachmodell),
+`.ara/knowledge/extensions.md` beim ersten Interview mit einem Kunden und
+`.ara/knowledge/live-knowledge.md` für jeden Produktwert. Das Profil
 in `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, womit das
 Haus arbeitet.
 

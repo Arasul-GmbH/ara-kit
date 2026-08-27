@@ -20,6 +20,7 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst, dazu `app/`: die Vorlage einer App, aus der `/app --new` schöpft. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Das geholte Installationsartefakt, entsteht bei `/device --install arasul`. Nicht bearbeiten. |
+| `.ara/VERSION`, `.ara/CHANGELOG.md` | Der Stand dieses Kits und was sich je Stand geändert hat. `/init` liest beides vor. |
 | `.claude/` | Regeln, Skills und die erzeugten Befehle. Getrackt sind nur `CLAUDE.md`, `settings.json`, `skills/` und `commands/init.md`. |
 
 `business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`
@@ -95,12 +96,14 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
 | `calculation.mjs` | Kalkulationsblatt: welche Zahl liegt vor, welche fehlt, was geht deshalb nicht |
 | `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Läuft, ist aber in kein Verfahren eingebunden, siehe `.ara/knowledge/leistungsbeschreibung.md` |
+| `service-description.mjs` | Leistungsbeschreibung mit Werten vom Gerät: Softwarestand, Kontraktfassung, Modelle, Apps, je Wert mit Quelle. Was ungemessen blieb, bleibt Platzhalter |
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
 | `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach), fasst Nutzerordner nicht an |
 | `commands.mjs` | Befehle aus `.ara/commands/` nach `.claude/commands/` legen, je nach Zweig (`--apply`, `--role`). Merkt sich den Hash der Quelle und erkennt so, ob ein Befehl im Kit neuer ist oder von Hand angepasst wurde (`--replace`) |
 | `init.mjs` | `/init` ohne Interview aus einer Antwortdatei (`--answers`), und die Lücken im Profil (`--show`) |
 | `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
+| `check-docs.mjs` | Doku-Selbsttest: jede Route, die im Wissen steht, gegen ein Gerät prüfen (`--device`). Verändert nichts |
 
 Dazu kommen zwei Werkzeuge, die keine Kit-Skripte sind:
 

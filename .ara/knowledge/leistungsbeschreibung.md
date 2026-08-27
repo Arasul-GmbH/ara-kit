@@ -61,15 +61,22 @@ Kunde kennen müsste.
 ### 2. Das Gerät befragen
 
 ```
-node .ara/tools/remote.mjs <kunde>/<gerät> --check
+node .ara/tools/service-description.mjs --customer <kunde> --device <gerät>
 ```
 
-Vom Gerät kommen, und nur von dort:
+Das Werkzeug legt die Anlage an und trägt ein, was das Gerät über seine Schnittstelle
+beantwortet, mit der Quelle je Wert:
 
-- Der Softwarestand
-- Welches Sprachmodell geladen ist, mit Kennung und Fassung
-- Welche Erweiterungen installiert sind
-- Welche Verbindungen nach außen bestehen
+- Der Softwarestand und die Kontraktfassung, aus dem Kontrakt des Geräts
+- Welche Sprachmodelle dort liegen, mit ihrer Kennung
+- Welche Apps darauf stehen, mit ihrem Stand, für Abschnitt 6
+
+**Was es nicht messen konnte, bleibt Platzhalter** und wird in der Ausgabe genannt. Eine
+leere Antwort auf gefragte Kennungen wird dabei nicht zu einem zugesagten „keine": das
+sagt es und lässt den Platzhalter stehen.
+
+Die Verbindungen nach außen (Abschnitt 7) misst es nicht. Die bleiben Handarbeit am
+Gerät, und ohne sie geht die Anlage nicht raus.
 
 **Nichts davon schreibst du aus dem Gedächtnis oder aus einer Kit-Datei.** Das ist die
 wichtigste Regel des Kits und sie gilt hier doppelt, weil das Dokument unterschrieben
@@ -112,8 +119,11 @@ entsprechende Ziffer des Vertrages nicht erfüllt.
 ### 6. Ablegen
 
 `customers/<kunde>/documents/leistungsbeschreibung-<JJJJ-MM-TT>.md`, mit Datum im
-Namen, wie in `.ara/knowledge/paperwork.md` unter „Wohin es abgelegt wird". Alte Fassungen bleiben liegen. In einem Streit ist die Fassung entscheidend, die
-bei Vertragsschluss galt, und die musst du wiederfinden können.
+Namen, wie in `.ara/knowledge/paperwork.md` unter „Wohin es abgelegt wird". Dorthin legt
+das Werkzeug sie schon in Schritt 2; bei einem Gerät ohne Kunden liegt sie in dessen
+Akte. Alte Fassungen bleiben liegen, und eine zweite Fassung desselben Tages ersetzt die
+erste nur mit `--force`. In einem Streit ist die Fassung entscheidend, die bei
+Vertragsschluss galt, und die musst du wiederfinden können.
 
 Dazu ein Eintrag in `customers/<kunde>/history/`: welche Fassung an welchem Tag rausging.
 

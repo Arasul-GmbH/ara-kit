@@ -161,3 +161,8 @@ aus der `/app` etwas erzeugt, sondern ein Beispiel, das läuft.
 - **Keine Freigabe, die die App selbst erteilt.** Sie liest ihren Stand und entscheidet
   nicht. Entschieden wird in Arasul, von einem Menschen, dem die App freigegeben ist.
 - **Nichts einspielen, was du nicht geprüft hast.** Erst `--check`, dann `--deploy`.
+
+Was eine App von der Plattform bekommt, und wie sie es benutzt, steht in
+`.ara/knowledge/platform-services.md`: Anmeldung, Freigaben, Flows, die KI-Schnittstelle
+mit Schlüssel und der Weg für fremde Werkzeuge. Lies es, bevor du etwas nachbaust, was
+das Gerät schon mitbringt.

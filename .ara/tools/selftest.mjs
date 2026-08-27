@@ -32,6 +32,15 @@ import {
   promisedFolders,
 } from "./lib/contract.mjs";
 import { RETIRED } from "./lib/commands.mjs";
+import {
+  EXTERNAL_PREFIX,
+  bareApiPaths,
+  callable,
+  collectRoutes,
+  judgeRoute,
+  planFor,
+  undocumented,
+} from "./lib/docroutes.mjs";
 import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -42,6 +51,7 @@ import {
   topicEndpoints,
 } from "./lib/maintain.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 
 const results = [];
 let failures = 0;
@@ -562,6 +572,70 @@ await checkAsync("Spiegel holt und packt aus", async () => {
   }
 });
 
+// --- Stand des Kits ----------------------------------------------------------
+
+check("Der Stand des Kits ist lesbar und die Aenderungsliste passt dazu", () => {
+  const version = readFileSync(join(ROOT, ".ara", "VERSION"), "utf8").trim();
+  assert(/^\d+\.\d+\.\d+$/.test(version), `.ara/VERSION ist keine Nummer: ${version}`);
+
+  const entries = parseChangelog(readFileSync(join(ROOT, ".ara", "CHANGELOG.md"), "utf8"));
+  assert(entries.length > 0, "die Aenderungsliste hat keinen einzigen Eintrag in der erwarteten Form");
+  assert(entries[0].version === version, `oberster Eintrag ${entries[0].version}, .ara/VERSION sagt ${version}`);
+  assert(entries[0].lines.length > 0, "der oberste Eintrag nennt keine einzige Aenderung");
+
+  // Die Zeile im Text und die Fassungen im Code sind zwei Aussagen ueber
+  // dasselbe. Laufen sie auseinander, liest ein Partner die falsche.
+  assert(
+    entries[0].contract === KIT_CONTRACT_VERSION,
+    `die Aenderungsliste sagt Kontrakt bis ${entries[0].contract}, der Code versteht bis ${KIT_CONTRACT_VERSION}`
+  );
+
+  // Die Eintraege stehen absteigend, sonst zeigt "neu seit" das Falsche.
+  for (let i = 1; i < entries.length; i++) {
+    assert(
+      compareVersions(entries[i - 1].version, entries[i].version) > 0,
+      `die Aenderungsliste steht nicht absteigend: ${entries[i - 1].version} vor ${entries[i].version}`
+    );
+  }
+  return `${version}, ${entries.length} Eintrag${entries.length === 1 ? "" : "e"}`;
+});
+
+check("Was neu ist, richtet sich nach dem Stand, von dem jemand kommt", () => {
+  const changelog = [
+    "# Kopf, der kein Eintrag ist",
+    "",
+    "## 0.9.0 (2026-09-02)",
+    "",
+    "Kontrakt: bis 4",
+    "",
+    "- Das Neueste.",
+    "",
+    "## 0.8.0 (2026-09-01)",
+    "",
+    "- Das davor.",
+    "",
+    "## Vor 0.8.0",
+    "",
+    "- Diese Zeile ist kein Eintrag.",
+    "",
+  ].join("\n");
+  const entries = parseChangelog(changelog);
+  assert(entries.length === 2, `falsch gelesen: ${entries.map((e) => e.version).join(", ")}`);
+  assert(entries[0].contract === 4 && entries[1].contract === null, "die Kontraktzeile wird nicht je Eintrag gelesen");
+  assert(entriesSince(entries, "0.8.0").length === 1, "ein bekannter Stand bekommt zu viele Eintraege");
+  assert(entriesSince(entries, "0.9.0").length === 0, "der eigene Stand gilt als neu");
+  assert(entriesSince(entries, "").length === 2, "ohne bekannten Stand fehlt etwas");
+  assert(compareVersions("0.10.0", "0.9.0") > 0, "0.10.0 gilt als aelter als 0.9.0");
+
+  const block = standBlock({ version: "0.9.0", changelog, since: "0.8.0" });
+  assert(block.some((z) => /Neu seit 0\.8\.0/.test(z)), "der Herkunftsstand fehlt");
+  assert(block.some((z) => /Das Neueste/.test(z)), "das Neue fehlt");
+  assert(!block.some((z) => /Das davor/.test(z)), "Bekanntes wird noch einmal erzaehlt");
+  assert(block.some((z) => /Kontraktfassungen bis/.test(z)), "die Vertraeglichkeit zum Geraet fehlt");
+  const ohne = standBlock({ version: "0.9.0", changelog, since: "0.9.0" });
+  assert(ohne.some((z) => /nichts/.test(z)), "ohne Neues wird das nicht gesagt");
+});
+
 // --- Kontrakt und Deploy -----------------------------------------------------
 
 /**
@@ -894,6 +968,295 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     rmSync(appDir, { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
+  }
+});
+
+// --- Doku-Selbsttest ---------------------------------------------------------
+
+check("Routen im Wissen werden gefunden, auch die ohne Verb", () => {
+  const files = [
+    {
+      file: "probe.md",
+      text: [
+        "Ein Satz mit `GET /api/v1/external/models` darin.",
+        "",
+        "```",
+        "POST /api/v1/external/flows/<name>/run",
+        "GET  /apps/<id>/api/me",
+        "DELETE /api/v1/external/apps/:id?bestaetigung=<id>",
+        "```",
+        "",
+        "Und ein Weg ohne Verb: `/api/backup/status`.",
+        "Kein Weg: /etc/hosts und /arasul/flows.",
+      ].join("\n"),
+    },
+    { file: "zweite.md", text: "Noch einmal `GET /api/v1/external/models`, andere Datei." },
+  ];
+  const routes = collectRoutes(files);
+  const pfade = routes.map((r) => `${r.verb} ${r.path}`);
+  assert(pfade.includes("GET /api/v1/external/models"), `nicht gefunden: ${pfade.join(", ")}`);
+  assert(pfade.includes("POST /api/v1/external/flows/:wert/run"), "der Platzhalter wird nicht vereinheitlicht");
+  assert(pfade.includes("GET /apps/:wert/api/me"), "ein Weg unter /apps fehlt");
+  assert(pfade.includes("DELETE /api/v1/external/apps/:id"), "die Frage am Pfad wird nicht abgeschnitten");
+  assert(!pfade.some((p) => /etc\/hosts|arasul\/flows/.test(p)), `ein Dateipfad gilt als Route: ${pfade.join(", ")}`);
+  assert(routes.find((r) => r.path === "/api/v1/external/models").files.length === 2, "die zweite Fundstelle fehlt");
+
+  const bare = bareApiPaths(files);
+  assert(bare.length === 1 && bare[0].path === "/api/backup/status", `ohne Verb falsch gelesen: ${JSON.stringify(bare)}`);
+  assert(callable("/apps/:wert/api/me").split("/")[2].length > 0, "ein Platzhalter wird nicht gefuellt");
+  return `${routes.length} Routen, 1 ohne Verb`;
+});
+
+check("Jede Route bekommt den Weg, auf dem sie zu pruefen ist", () => {
+  const lesen = planFor({ verb: "GET", path: "/api/v1/external/apps/:id" }, KONTRAKT);
+  assert(lesen.how === "kontrakt", "ein Weg mit einem Wert darin wird trotzdem gerufen");
+  const schreiben = planFor({ verb: "POST", path: "/api/v1/external/apps" }, KONTRAKT);
+  assert(schreiben.how === "kontrakt", "ein veraendernder Weg wird gerufen");
+  const kontrakt = planFor({ verb: "GET", path: "/api/v1/external/contract" }, KONTRAKT);
+  assert(kontrakt.how === "gerufen", "ein lesender Weg ohne Wert wird nicht gerufen");
+  const sitzung = planFor({ verb: "GET", path: "/api/irgendwas" }, KONTRAKT);
+  assert(sitzung.how === "ohne-schluessel", "ein Weg der Oberflaeche wird mit Schluessel gerufen");
+  const fremd = planFor({ verb: "GET", path: `${EXTERNAL_PREFIX}/gibtsnicht` }, KONTRAKT);
+  assert(fremd.kind === "extern-unbekannt", "ein unbekannter aeusserer Weg faellt nicht auf");
+
+  assert(judgeRoute(kontrakt, { status: 200 }).state === "ok", "200 gilt nicht als Beleg");
+  assert(judgeRoute(kontrakt, { status: 404 }).state === "fehlt", "404 gilt nicht als Gegenbeleg");
+  assert(judgeRoute(kontrakt, { status: 0, error: { message: "tot" } }).state === "unklar", "keine Antwort gilt als Urteil");
+  assert(judgeRoute(sitzung, { status: 401 }).state === "ok", "eine Abweisung gilt nicht als Beleg");
+  assert(judgeRoute(fremd, null).state === "fehlt", "ein Weg ausserhalb des Kontrakts gilt als vorhanden");
+  assert(judgeRoute(schreiben, null).state === "ok", "der Kontrakt selbst gilt nicht als Beleg");
+
+  // Der Kontrakt selbst ist nie "nicht beschrieben": ihn kennt das Kit
+  // auswendig, und kein Verfahren fuehrt ihn als Route auf.
+  const offen = undocumented(KONTRAKT, []);
+  assert(offen.length === KONTRAKT.endpunkte.length - 1, `nicht beschriebene Endpunkte falsch gezaehlt: ${offen.length}`);
+  assert(!offen.some((e) => /contract/.test(e.path)), "der Kontrakt selbst gilt als nicht beschrieben");
+});
+
+await checkAsync("check-docs.mjs prueft jede Route des Wissens am Geraet", async () => {
+  // Gegen ein gespieltes Geraet, dessen Kontrakt genau die aeusseren Routen
+  // nennt, die im Wissen dieses Kits stehen. Damit haengt der Test an keinem
+  // Produktwert: was das Wissen nennt, wird hier zur Erwartung, und das
+  // Werkzeug muss beides zur Deckung bringen.
+  const name = "selftest-doku";
+  const akte = join(ROOT, "devices", name);
+  const knowledge = join(ROOT, ".ara", "knowledge");
+  const files = readdirSync(knowledge)
+    .filter((datei) => datei.endsWith(".md"))
+    .map((datei) => ({ file: datei, text: readFileSync(join(knowledge, datei), "utf8") }));
+  const routes = collectRoutes(files);
+  const aussen = routes.filter((route) => route.path.startsWith(`${EXTERNAL_PREFIX}/`));
+  const innen = routes.filter((route) => !route.path.startsWith(`${EXTERNAL_PREFIX}/`));
+  assert(aussen.length > 0 && innen.length > 0, "das Wissen nennt nicht beide Arten von Weg");
+
+  // Was das Geraet weglaesst: ein aeusserer Weg fehlt in seinem Kontrakt, ein
+  // Weg der Oberflaeche antwortet mit 404. Beides muss auffallen, und nur das.
+  const fehltAussen = aussen[aussen.length - 1];
+  const fehltInnen = innen[innen.length - 1];
+  // Die beiden Luecken sind umschaltbar: derselbe Server spielt erst das Geraet
+  // mit zwei Luecken und danach das heile.
+  const luecke = { aussen: fehltAussen, innen: fehltInnen };
+  const kontrakt = { ...KONTRAKT, endpunkte: [] };
+  const kontraktSchreiben = () => {
+    kontrakt.endpunkte = [
+      { verb: "GET", pfad: "/api/v1/external/contract", bereich: null, was: "Dieser Kontrakt" },
+      ...aussen
+        .filter((route) => route !== luecke.aussen)
+        .map((route) => ({ verb: route.verb, pfad: route.path, bereich: null, was: "aus dem Wissen des Kits" })),
+    ];
+  };
+  kontraktSchreiben();
+
+  const gesehen = [];
+  const server = createServer((request, response) => {
+    const pfad = request.url.split("?")[0];
+    gesehen.push(`${request.method} ${pfad}${request.headers["x-api-key"] ? " +schluessel" : ""}`);
+    const antwort = (status, body) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(body));
+    };
+    if (pfad === "/api/v1/external/contract") {
+      if (request.headers["x-api-key"] !== "aras_selbsttest") return antwort(401, { error: { message: "kein Schluessel" } });
+      return antwort(200, { data: kontrakt });
+    }
+    // Ein Weg der Oberflaeche weist ohne Ausweis ab, das ist der Beleg.
+    if (innen.some((route) => callable(route.path) === pfad && route !== luecke.innen)) {
+      return antwort(401, { error: { message: "Anmeldung noetig" } });
+    }
+    if (aussen.some((route) => callable(route.path) === pfad && route !== luecke.aussen)) {
+      return antwort(200, { data: {} });
+    }
+    antwort(404, { error: { message: "kennt dieses Geraet nicht" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST: "aras_selbsttest" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST",
+  });
+
+  try {
+    // Ohne Geraet: die Liste, und kein Aufruf.
+    let run = await toolAsync("check-docs.mjs", [], env);
+    assert(run.status === 0, `Liste fehlgeschlagen: ${run.stderr}`);
+    assert(new RegExp(`${routes.length} Routen`).test(run.stdout), `die Zahl stimmt nicht: ${run.stdout.split("\n")[0]}`);
+
+    run = await toolAsync("check-docs.mjs", ["--device", name, "--json"], env);
+    const lage = JSON.parse(run.stdout);
+    const urteil = new Map(lage.results.map((r) => [`${r.verb} ${r.path}`, r]));
+    assert(urteil.size === routes.length, `nicht jede Route wurde geprueft: ${urteil.size} von ${routes.length}`);
+
+    const fehlend = lage.results.filter((r) => r.state === "fehlt").map((r) => `${r.verb} ${r.path}`);
+    assert(
+      fehlend.length === 2 &&
+        fehlend.includes(`${fehltAussen.verb} ${fehltAussen.path}`) &&
+        fehlend.includes(`${fehltInnen.verb} ${fehltInnen.path}`),
+      `falsch beurteilt, gemeldet fehlen: ${fehlend.join(", ")}`
+    );
+    assert(run.status === 1, "eine fehlende Route beendet den Lauf nicht mit einem Fehler");
+
+    // An der aeusseren Schnittstelle wurde nichts gerufen, was etwas veraendert:
+    // dort haelt das Kit den Schluessel, und ein Deploy oder ein Entfernen als
+    // Nebenwirkung einer Doku-Pruefung waere ein Schaden.
+    const mitSchluessel = gesehen.filter((zeile) => zeile.includes("+schluessel"));
+    assert(
+      mitSchluessel.every((zeile) => zeile.startsWith("GET ")),
+      `mit Schluessel wurde etwas Veraenderndes gerufen: ${mitSchluessel.join(", ")}`
+    );
+    assert(
+      !gesehen.some((zeile) => !zeile.startsWith("GET ") && zeile.includes(EXTERNAL_PREFIX)),
+      `an der aeusseren Schnittstelle wurde veraendernd gerufen: ${gesehen.join(", ")}`
+    );
+    // Ein Weg der Oberflaeche bekommt keinen Schluessel: das Kit hat dort keine
+    // Sitzung, und die Abweisung ist genau der Beleg, den es sucht.
+    for (const route of innen) {
+      const zeile = gesehen.find((z) => z.startsWith(`${route.verb} ${callable(route.path)}`));
+      assert(zeile, `${route.verb} ${route.path} wurde gar nicht gerufen`);
+      assert(!zeile.includes("+schluessel"), `${route.path} wurde mit Schluessel gerufen: ${zeile}`);
+    }
+
+    // Ohne die beiden Luecken ist alles gruen.
+    luecke.aussen = null;
+    luecke.innen = null;
+    kontraktSchreiben();
+    run = await toolAsync("check-docs.mjs", ["--device", name], env);
+    assert(run.status === 0, `heiles Geraet wird gemeldet: ${run.stdout}`);
+    assert(/Alle \d+ Routen gibt es an diesem Gerät/.test(run.stdout), `kein gruener Satz: ${run.stdout}`);
+    return `${routes.length} Routen, ${aussen.length} ueber den Kontrakt, ${innen.length} ohne Ausweis`;
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+  }
+});
+
+// --- Leistungsbeschreibung am Geraet -----------------------------------------
+
+await checkAsync("Die Leistungsbeschreibung bekommt ihre Werte vom Geraet", async () => {
+  // Das Papier wird unterschrieben. Geprueft wird darum zweierlei: dass die
+  // gemessenen Werte wirklich hineinkommen, und dass ein Feld, zu dem das Geraet
+  // nichts sagt, leer bleibt und mit einer Begruendung genannt wird.
+  const name = "selftest-papier";
+  const akte = join(ROOT, "devices", name);
+  const datei = join(akte, `leistungsbeschreibung-${new Date().toISOString().slice(0, 10)}.md`);
+
+  // Zwei Geraete in einem: erst eines, das Modelle und Apps aufzaehlt, dann
+  // eines, das beides nicht kennt.
+  const reich = {
+    ...KONTRAKT,
+    arasul: "9.9.9-gespielt",
+    endpunkte: [
+      ...KONTRAKT.endpunkte,
+      { verb: "GET", pfad: "/api/v1/external/apps", bereich: "app:deploy", was: "Welche Apps stehen auf dem Geraet" },
+      { verb: "GET", pfad: "/api/v1/external/models", bereich: "llm:status", was: "Welche Modelle am Geraet sind" },
+    ],
+  };
+  const arm = { ...KONTRAKT, arasul: "9.9.9-gespielt" };
+  const lage = { kontrakt: reich };
+
+  const server = createServer((request, response) => {
+    const pfad = request.url.split("?")[0];
+    const antwort = (status, body) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(body));
+    };
+    if (request.headers["x-api-key"] !== "aras_selbsttest") {
+      return antwort(401, { error: { message: "kein Schluessel" } });
+    }
+    if (pfad === "/api/v1/external/contract") return antwort(200, { data: lage.kontrakt });
+    if (pfad === "/api/v1/external/models" && lage.kontrakt === reich) {
+      return antwort(200, { data: { models: [{ name: "modell-gross:q4" }, "modell-klein:q8"] } });
+    }
+    if (pfad === "/api/v1/external/apps" && lage.kontrakt === reich) {
+      return antwort(200, { data: [{ id: "probeapp", live: { version: "1.2.0" }, test: { version: "1.3.0" } }] });
+    }
+    antwort(404, { error: { message: "kennt dieses Geraet nicht" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST: "aras_selbsttest" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    model: "Gespieltes Geraet A1",
+    serial: "SN-0815",
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST",
+  });
+
+  try {
+    let run = await toolAsync("service-description.mjs", ["--device", name, "--json"], env);
+    assert(run.status === 0, `Erhebung fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    const ergebnis = JSON.parse(run.stdout);
+    assert(ergebnis.measured.arasul === "9.9.9-gespielt", "der Softwarestand kommt nicht vom Geraet");
+    assert(ergebnis.measured.kontrakt === KIT_CONTRACT_VERSION, "die Kontraktfassung fehlt");
+    assert(ergebnis.measured.models.join(",") === "modell-gross:q4,modell-klein:q8", `Modelle falsch gelesen: ${ergebnis.measured.models}`);
+    assert(ergebnis.open.length === 0, `unnoetig offen: ${ergebnis.open.map((o) => o.name).join(", ")}`);
+
+    const papier = readFileSync(datei, "utf8");
+    assert(/Softwarestand: 9\.9\.9-gespielt/.test(papier), "der Softwarestand steht nicht im Papier");
+    assert(new RegExp(`Kontraktfassung des Geräts: ${KIT_CONTRACT_VERSION}`).test(papier), "die Kontraktfassung steht nicht im Papier");
+    assert(/Sprachmodell bei der Übergabe: \*\*modell-gross:q4/.test(papier), "das Modell steht nicht in Abschnitt 5");
+    assert(/installierte Erweiterungen: \*\*probeapp \(live 1\.2\.0\)/.test(papier), "die App steht nicht in Abschnitt 6");
+    assert(/Gemessen am \d{4}-\d{2}-\d{2}/.test(papier), "im Papier steht nicht, wann gemessen wurde");
+    assert(/ERHEBUNG .*Kit-Schlüssel ARASUL_KEY_SELFTEST/.test(papier), "die Herkunft der Werte fehlt");
+    assert(!/aras_selbsttest/.test(papier), "der Schluessel steht im Papier");
+    assert(/\{Stufe\}/.test(papier), "der Reifegrad wurde gefuellt, obwohl ihn niemand gemessen hat");
+
+    // Eine zweite Fassung desselben Tages ersetzt die erste nicht von allein:
+    // in einem Streit zaehlt die Fassung, die bei Vertragsschluss galt.
+    run = await toolAsync("service-description.mjs", ["--device", name], env);
+    assert(run.status !== 0 && /liegt schon/.test(run.stderr), "eine vorhandene Fassung wird ueberschrieben");
+
+    // Ein Geraet, das weder Modelle noch Apps aufzaehlt: beide Felder bleiben
+    // Platzhalter, und es steht dabei, warum.
+    lage.kontrakt = arm;
+    run = await toolAsync("service-description.mjs", ["--device", name, "--json", "--force"], env);
+    assert(run.status === 0, `zweite Erhebung fehlgeschlagen: ${run.stderr}`);
+    const knapp = JSON.parse(run.stdout);
+    const offen = new Map(knapp.open.map((o) => [o.name, o.why]));
+    assert(offen.has("Sprachmodell"), "ohne Modellauskunft wird trotzdem etwas eingetragen");
+    assert(offen.has("Installierte Erweiterungen"), "ohne Auskunft ueber Apps wird trotzdem etwas eingetragen");
+    assert(/keinen Endpunkt|nicht/.test(offen.get("Sprachmodell")), `keine Begruendung: ${offen.get("Sprachmodell")}`);
+    const knappesPapier = readFileSync(datei, "utf8");
+    assert(/\{Kennung und Fassung\}/.test(knappesPapier), "ein ungemessener Wert wurde erfunden");
+    assert(!/\*\*keine\*\*/.test(knappesPapier), "eine leere Antwort wurde zu einem zugesagten keine");
+    return "gemessen, geschrieben, Herkunft je Wert, Ungemessenes bleibt offen";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
   }
 });
 
@@ -1806,7 +2169,18 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
   // Feste Namen, die Werkzeuge so erwarten: README, CLAUDE.md, SKILL.md.
   // `Dockerfile` heisst so, weil Docker es so erwartet: es steht im Paket einer
   // App und wird am Geraet gebaut, nicht von einem Kit-Werkzeug gelesen.
-  const fixed = new Set(["README.md", "CLAUDE.md", "SKILL.md", "LICENSE", ".gitkeep", "Dockerfile"]);
+  // `VERSION` und `CHANGELOG.md` sind ueberall im Handwerk grossgeschrieben;
+  // ein Partner sucht sie unter diesem Namen und nicht unter einem eigenen.
+  const fixed = new Set([
+    "README.md",
+    "CLAUDE.md",
+    "SKILL.md",
+    "LICENSE",
+    "VERSION",
+    "CHANGELOG.md",
+    ".gitkeep",
+    "Dockerfile",
+  ]);
   // Die Bausteine werden aus Arasuls Steuerungsordner gespiegelt und tragen
   // dessen Nummern (W1 bis W5). Sie heissen hier so, wie sie dort heissen.
   const mirrored = /^\.ara\/vorlagen\/bausteine\//;
@@ -2007,6 +2381,17 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   rmSync(join(source, ".ara", "mirror"), { recursive: true, force: true });
   rmSync(join(source, ".ara", "state.json"), { force: true });
   writeFileSync(join(source, ".ara", "knowledge", "probe.md"), "# Probe\n");
+  // Ein neuer Stand mit einer neuen Nummer und einem Eintrag dazu: /init soll
+  // vor dem Einspielen sagen koennen, was dazukommt, und nicht nur, welche
+  // Dateien sich aendern.
+  writeFileSync(join(source, ".ara", "VERSION"), "0.8.0\n");
+  writeFileSync(
+    join(source, ".ara", "CHANGELOG.md"),
+    read(".ara/CHANGELOG.md").replace(
+      "## 0.7.0 (",
+      "## 0.8.0 (2026-09-01)\n\nKontrakt: bis 3\n\n- Ein erfundener Punkt fuer den Selbsttest.\n\n## 0.7.0 ("
+    )
+  );
   writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
   rmSync(join(source, ".ara", "knowledge", "sales.md"));
   writeFileSync(
@@ -2057,6 +2442,10 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/neu\s+\.ara\/knowledge\/probe\.md/.test(run.stdout), "neue Datei nicht gemeldet");
     assert(/entfernt\s+\.ara\/knowledge\/sales\.md/.test(run.stdout), "entfernte Datei nicht gemeldet");
     assert(!has(".ara/knowledge/probe.md"), "--check hat eingespielt");
+    assert(/Stand: 0\.8\.0/.test(run.stdout), `der neue Stand wird nicht genannt: ${run.stdout}`);
+    assert(/Neu seit 0\.7\.0/.test(run.stdout), "es wird nicht gesagt, von welchem Stand es kommt");
+    assert(/erfundener Punkt/.test(run.stdout), "der Eintrag der Aenderungsliste fehlt");
+    assert(/Kontraktfassungen bis/.test(run.stdout), "die Vertraeglichkeit zum Geraet fehlt");
 
     // 3. Einspielen.
     run = await forkTool("update.mjs", [], env);

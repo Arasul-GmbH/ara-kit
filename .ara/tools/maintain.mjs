@@ -37,6 +37,7 @@ import { connect, withContract } from "./lib/link.mjs";
 import { reason } from "./lib/arasul.mjs";
 import {
   HEALTH_PROBE,
+  modelNames,
   needsParameter,
   parseHealth,
   readHealth,
@@ -123,6 +124,7 @@ let link = null;
 let platform = null;
 let apps = { state: "ungemessen", source: "", asked: [], found: [], unknown: [], note: "" };
 let backup = { state: "ungemessen", text: "ungemessen" };
+let models = { state: "ungemessen", text: "ungemessen" };
 let apiLogs = null;
 
 if (!arg["no-api"]) {
@@ -229,6 +231,13 @@ if (link) {
   // Fuer die Sicherung kennt das Kit keinen Pfad. Es sucht in der Liste, die das
   // Geraet selbst veroeffentlicht, und ruft nur, was dort steht.
   backup = await fromTopic(link, ["sicherung", "backup"], "Sicherung");
+
+  // --- Welche Modelle am Geraet liegen ---
+  //
+  // Dieselbe Suche im Kontrakt. Der Wert steht im Bericht und geht in die
+  // Leistungsbeschreibung ein: welches Modell bei der Uebergabe lief, ist eine
+  // Angabe, die unterschrieben wird, und sie kommt vom Geraet oder gar nicht.
+  models = await fromTopic(link, ["modell", "model"], "Modelle");
 
   // --- Protokolle ueber die Schnittstelle, falls das Geraet einen Weg nennt ---
   //
@@ -338,6 +347,7 @@ const state = {
   platform,
   apps,
   backup,
+  models,
   logs: apiLogs,
   health,
   missing,
@@ -393,6 +403,10 @@ function render() {
   for (const [key, value] of Object.entries(backup.data || {})) {
     if (value && typeof value === "object") out.push(`  - ${key}: ${JSON.stringify(value)}`);
   }
+
+  out.push("", "## Modelle am Gerät", "");
+  out.push(`- ${models.text}${models.endpoint ? ` (${models.endpoint})` : ""}`);
+  for (const name of modelNames(models.data)) out.push(`  - ${name}`);
 
   out.push("", "## Zustand am Gerät", "");
   if (!health) {
