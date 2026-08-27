@@ -12,6 +12,7 @@ apps/*
 # niemandem, also bleibt er draussen.
 !apps/urlaubsantrag/
 apps/urlaubsantrag/build/
+apps/urlaubsantrag/frontend/dist/
 
 .env
 .env.*
