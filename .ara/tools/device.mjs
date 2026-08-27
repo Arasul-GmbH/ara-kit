@@ -6,17 +6,24 @@
  *   node .ara/tools/device.mjs --host 10.0.0.5 --user arasul --name zentrale
  *   node .ara/tools/device.mjs --name mac                         Akte da: Zustand und nächste Schritte
  *   node .ara/tools/device.mjs --name mac --install docker,ollama Docker und Ollama aufsetzen (Linux)
+ *   node .ara/tools/device.mjs --name orin --install arasul       Arasul installieren (Token nötig)
+ *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
  *   node .ara/tools/device.mjs                                    welche Akten es gibt
  *   node .ara/tools/device.mjs --name mac --json                  dasselbe als JSON
  *
  * Die Akte liegt unter devices/<name>/, in beiden Zweigen. Ein Kundengerät liegt
  * unter customers/<kunde>/devices/<name>/, dann kommt --customer dazu.
  *
- * Das Werkzeug liest auf dem Gerät nur. Es ändert erst mit --install etwas, und
- * das ist ein Eingriff, der vorher bestätigt gehört. Das Urteil folgt der Regel in
- * lib/device.mjs: Orin und Thor tragen Arasul, DGX Spark und andere NVIDIA-Rechner
- * sind angekündigt, alles andere wird vorgemerkt. Werte für das Gerät (Profil,
- * Modell, Engine) stehen weiter nur im Spiegel, nicht hier.
+ * Das Werkzeug liest auf dem Gerät nur. Es ändert erst mit --install oder
+ * --deploy-key etwas, und das ist ein Eingriff, der vorher bestätigt gehört. Das
+ * Urteil folgt der Regel in lib/device.mjs: Orin und Thor tragen Arasul, DGX Spark
+ * und andere NVIDIA-Rechner sind angekündigt, alles andere wird vorgemerkt. Werte
+ * für das Gerät (Profil, Modell, Engine) stehen weiter nur im Spiegel, nicht hier.
+ *
+ * Zwei Wege führen zu einem Gerät mit Arasul, und das Werkzeug kennt beide: eines,
+ * auf dem die Plattform schon läuft, braucht nur noch den Kit-Schlüssel
+ * (--deploy-key); eines ohne bekommt sie mit --install arasul. Wie das abläuft,
+ * steht in lib/install.mjs.
  *
  * Ist das Ziel dieser Rechner selbst (localhost) und SSH abgelehnt, prüft das
  * Werkzeug lokal und schreibt das so in die Akte. Für ein fremdes Gerät gibt es
@@ -41,11 +48,27 @@ import {
   today,
   writeFrontmatter,
 } from "./lib/kit.mjs";
+import { hasSecret, setSecret } from "./lib/secrets.mjs";
+import { TARGET, createKey, fetchMirror, installerEntry, runRemote, scrub, ship } from "./lib/install.mjs";
 
 const STATE = join(ROOT, ".ara", "state.json");
 const TEMPLATE = join(ROOT, ".ara", "templates", "device.md");
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
-const INSTALLABLE = ["docker", "ollama"];
+const INSTALLABLE = ["docker", "ollama", "arasul"];
+/** Was das Prüfskript als Dienst meldet und was deshalb "fehlt" heißen kann. */
+const SERVICES = ["docker", "ollama"];
+
+/**
+ * Die Token-Frage stellt sich genau hier und sonst nirgends: beim Onboarding
+ * gibt es nichts zu installieren, und ohne Installation braucht das Kit kein
+ * Token. Es ist eine Schranke vor dem Download, keine Lizenzprüfung. Am Gerät
+ * prüft Arasul kein Token, und das Kit trägt auch keines dorthin.
+ */
+const TOKEN_QUESTION =
+  "Für den Installer braucht es ein Token aus dem Partnerportal.\n" +
+  "Jeder Partner bekommt dort fünf Download-Token kostenlos, weitere auf Nachfrage per Mail.\n" +
+  "Es ist eine Schranke vor dem Download, keine Lizenzprüfung: am Gerät prüft Arasul kein Token.\n" +
+  "Hinterlegen mit: node .ara/tools/secrets.mjs --set ARASUL_TOKEN";
 
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
@@ -159,12 +182,14 @@ const svc = services(facts);
 
 // --- Optional: Docker und Ollama aufsetzen -----------------------------------
 
-const install = str(arg.install)
+const wanted = str(arg.install)
   ? String(arg.install).split(",").map((s) => s.trim()).filter(Boolean)
   : [];
-for (const what of install) {
-  if (!INSTALLABLE.includes(what)) fail(`--install kennt nur ${INSTALLABLE.join(" und ")}, nicht "${what}".`);
+for (const what of wanted) {
+  if (!INSTALLABLE.includes(what)) fail(`--install kennt nur ${INSTALLABLE.join(", ")}, nicht "${what}".`);
 }
+const wantsArasul = wanted.includes("arasul");
+const install = wanted.filter((what) => what !== "arasul");
 const installed = [];
 if (install.length) {
   if (run.transport === "none") fail("Ohne Verbindung wird nichts aufgesetzt.");
@@ -193,6 +218,116 @@ if (install.length) {
   const again = probe();
   Object.assign(facts, parseProbe(again.output));
   Object.assign(svc, services(facts));
+}
+
+// --- Arasul installieren -----------------------------------------------------
+
+/**
+ * Der zweite Weg zu einem Gerät mit Arasul: die Plattform ist noch nicht drauf.
+ *
+ * Vier Halte, bevor irgendetwas passiert: eine Verbindung, ein unterstütztes
+ * Gerät, Docker, ein Token. Fehlt eines davon, hört das Werkzeug auf und sagt
+ * warum, statt eine halbe Installation zu hinterlassen.
+ */
+async function installArasul() {
+  if (run.transport === "none") fail("Ohne Verbindung wird nichts installiert.");
+  if (found.verdict !== "supported") {
+    fail(
+      `Auf diesem Gerät läuft Arasul nicht: ${found.reason}. Urteil: ${found.verdictText}.\n` +
+        "Vorgemerkt ist es in der Akte, installiert wird nichts."
+    );
+  }
+  if (svc.arasul.state === "found") {
+    fail(
+      `Auf ${place} sind schon Spuren von Arasul: ${svc.arasul.text}.\n` +
+        "Eine zweite Installation darüber wäre kein Aufsetzen, sondern ein Update, und das ist ein anderer Weg.\n" +
+        `Wenn nur der Kit-Schlüssel fehlt: node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --deploy-key`
+    );
+  }
+  if (svc.docker.state === "missing") {
+    fail(
+      "Ohne Docker kein Arasul, die Plattform läuft in Containern.\n" +
+        `Erst: node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --install docker`
+    );
+  }
+  if (!hasSecret("ARASUL_TOKEN")) fail(TOKEN_QUESTION);
+
+  console.log("Installer holen, mit dem Token aus dem Partnerportal. Der Spiegel entsteht genau jetzt.");
+  const fetched = fetchMirror();
+  if (!fetched.ok) fail(`Der Installer ließ sich nicht holen.\n${fetched.message}`);
+  console.log(fetched.message);
+
+  const entry = installerEntry();
+  if (!entry) {
+    fail(
+      "Das geholte Artefakt nennt keinen Weg, sich zu installieren.\n" +
+        "Das Kit rät hier nicht. Sieh in .ara/mirror/ nach, was mitgeliefert wurde, und melde es ans Produktteam."
+    );
+  }
+
+  console.log(`Artefakt an ${label} schieben ...`);
+  const shipped = await ship(sshArgs, run.transport);
+  if (!shipped.ok) fail(`Das Artefakt kam nicht am Gerät an.\n${shipped.message}`);
+
+  console.log(`\nInstaller läuft auf dem Gerät: ${entry}. Das dauert und will mitgelesen werden.\n`);
+  const step = runRemote(sshArgs, run.transport, `cd ${TARGET} && ${entry}`, { interactive: true });
+  const state = fetched.state || {};
+  return {
+    ok: step.status === 0,
+    status: step.status,
+    entry,
+    version: state.version ?? null,
+    source: state.source ?? null,
+    fetched: state.fetched ?? null,
+  };
+}
+
+let arasul = null;
+if (wantsArasul) {
+  arasul = await installArasul();
+  if (!arasul.ok) {
+    console.log(
+      `\nDer Installer ist mit Rückgabecode ${arasul.status} ausgestiegen. Nichts wird schöngeredet:\n` +
+        "lies die letzte Ausgabe, behebe die Ursache und ruf denselben Befehl noch einmal auf."
+    );
+  }
+  const again = probe();
+  Object.assign(facts, parseProbe(again.output));
+  Object.assign(svc, services(facts));
+}
+
+// --- Der Kit-Schlüssel für den Deploy ----------------------------------------
+
+/**
+ * Er entsteht am Gerät und erscheint dort genau einmal. Das Kit legt ihn in die
+ * Geheimnis-Ablage und schreibt nur den Namen des Eintrags in die Akte: ein
+ * Schlüssel im Klartext in einer Datei wäre einer, der mit ihr mitwandert. Im
+ * Portal steht er nie, er gehört dem Administrator des Geräts.
+ */
+function makeDeployKey() {
+  if (run.transport === "none") return { ok: false, message: "Ohne Verbindung gibt es keinen Schlüssel." };
+  const company = readFrontmatter(join(ROOT, "business", "company.md")).fields;
+  const keyName = `Ara-Kit ${company.name || company.company || "Partner"}`;
+  const made = createKey(sshArgs, run.transport, keyName);
+  if (!made.ok) return made;
+  const ref = `ARASUL_KEY_${(customer ? `${customer}_${name}` : name).toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+  try {
+    setSecret(ref, made.key);
+  } catch (error) {
+    return { ok: false, message: `Der Schlüssel ließ sich nicht ablegen: ${error.message}` };
+  }
+  return { ok: true, ref, label: keyName, script: made.script };
+}
+
+let deployKey = null;
+if (arg["deploy-key"] || (arasul && arasul.ok)) {
+  deployKey = makeDeployKey();
+  console.log(
+    deployKey.ok
+      ? `\nKit-Schlüssel angelegt als "${deployKey.label}" und hinterlegt unter ${deployKey.ref}. ` +
+          "Sein Klartext wird nicht angezeigt und steht in keiner Datei des Kits."
+      : `\nKein Kit-Schlüssel: ${scrub(deployKey.message)}`
+  );
 }
 
 // --- Akte -------------------------------------------------------------------
@@ -224,6 +359,9 @@ if (known) {
   if (found.verdict !== "supported" && !existing.noted_on) changes.noted_on = today();
   if (!existing.status || existing.status === "planned") changes.status = "delivered";
 }
+// Der Schlüssel selbst liegt in der Geheimnis-Ablage, die Akte trägt nur seinen Namen.
+if (deployKey?.ok) changes.api_key_ref = deployKey.ref;
+if (arasul?.ok) changes.status = "installing";
 writeFrontmatter(file, changes);
 
 const entry = [
@@ -234,6 +372,20 @@ const entry = [
       `Urteil: ${found.verdictText} (${found.reason}).`
     : `Keine Verbindung. ${run.message || ""}`.trim(),
   ...installed.map((i) => `Aufgesetzt: ${i.what}, ${i.ok ? "Installation durchgelaufen" : "Installation abgebrochen"}.`),
+  ...(arasul
+    ? [
+        `Arasul installiert: ${arasul.ok ? "Installer durchgelaufen" : `Installer abgebrochen, Rückgabecode ${arasul.status}`}. ` +
+          `Artefakt vom ${arasul.fetched || "unbekannt"}, Quelle ${arasul.source || "unbekannt"}, ` +
+          `Fassung ${arasul.version || "unbekannt"}. Aufruf am Gerät: ${arasul.entry}.`,
+      ]
+    : []),
+  ...(deployKey
+    ? [
+        deployKey.ok
+          ? `Kit-Schlüssel angelegt (${deployKey.label}), Bereich app:deploy, hinterlegt unter ${deployKey.ref}. Klartext nur am Gerät, einmalig.`
+          : `Kit-Schlüssel nicht angelegt: ${scrub(deployKey.message)}`,
+      ]
+    : []),
 ].join("\n");
 appendFileSync(file, `\n${entry}\n`);
 
@@ -244,6 +396,9 @@ writeState({ device: name, customer: customer || null });
 const ARASUL_SENTENCE =
   "Mit Arasul bekäme dieses Gerät Anmeldung, Teststand und Live-Schaltung für Apps, " +
   "Freigaben und Flows, dazu Sicherung und Wartung aus einer Hand.";
+
+const keyRef = deployKey?.ok ? deployKey.ref : existing.api_key_ref || "";
+const where = `${customer ? `--customer ${customer} ` : ""}--device ${name}`;
 
 function nextSteps() {
   const steps = [];
@@ -269,15 +424,30 @@ function nextSteps() {
         ".ara/knowledge/remote-access.md."
     );
   } else if (svc.arasul.state === "found") {
-    steps.push(`Arasul ist offenbar da. Betreuung über /maintain ${place}, Produktstand aus dem Spiegel.`);
+    // Das Gerät läuft schon. Was jetzt fehlt, ist der Schlüssel, mit dem das Kit
+    // Apps darauf rollt, und danach der Kontrakt: er sagt, ob beide zueinander passen.
+    if (!keyRef) {
+      steps.push(
+        "Arasul ist da. Damit das Kit Apps darauf rollen kann, braucht es einen Kit-Schlüssel vom Gerät: " +
+          `node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --deploy-key`
+      );
+    } else {
+      steps.push(
+        `Arasul ist da und der Kit-Schlüssel liegt unter ${keyRef}. Passt das Kit zu diesem Gerät? ` +
+          `node .ara/tools/app.mjs ${where} --contract`
+      );
+      steps.push(`Laufender Betrieb: /maintain ${place}.`);
+    }
   } else {
     steps.push(
-      "Arasul installieren: Spiegel holen (node .ara/tools/mirror.mjs), Laufzettel anlegen " +
-        `(node .ara/tools/runsheet.mjs --create${customer ? ` --customer ${customer}` : ""} --device ${name}), ` +
-        "Verfahren in .ara/knowledge/device.md. Die Installation mit Token über /device kommt in einer späteren Kit-Fassung."
+      `Arasul installieren: node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --install arasul. ` +
+        "Das holt den Installer mit dem Token aus dem Portal (fünf je Partner kostenlos), schiebt ihn auf das Gerät " +
+        "und legt danach den Kit-Schlüssel an. Vorher Laufzettel anlegen: " +
+        `node .ara/tools/runsheet.mjs --create${customer ? ` --customer ${customer}` : ""} --device ${name}. ` +
+        "Verfahren in .ara/knowledge/device.md."
     );
   }
-  const missing = INSTALLABLE.filter((w) => svc[w].state === "missing");
+  const missing = SERVICES.filter((w) => svc[w].state === "missing");
   if (missing.length && /linux/i.test(facts.uname || "")) {
     steps.push(
       `Optional, nach Bestätigung: node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} ` +
@@ -307,6 +477,10 @@ if (arg.json) {
         ollama: svc.ollama,
         arasul: svc.arasul,
         installed,
+        // Nie der Wert, nur ob und unter welchem Namen er liegt.
+        api_key_ref: keyRef || null,
+        arasul_install: arasul ? { ok: arasul.ok, version: arasul.version, source: arasul.source } : null,
+        deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
         next: steps,
       },
       null,
@@ -332,6 +506,7 @@ if (known) {
     `- Docker: ${svc.docker.text}`,
     `- Ollama: ${svc.ollama.text}`,
     `- Arasul: ${svc.arasul.text}`,
+    `- Kit-Schlüssel: ${keyRef ? `hinterlegt unter ${keyRef}` : "keiner"}`,
     "",
     `**Urteil: ${VERDICTS[found.verdict]}.** ${found.reason}.`
   );
