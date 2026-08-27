@@ -189,19 +189,41 @@ function readDocuments(customer) {
     .map((n) => ({ file: n, pdf: pdfs.has(n.replace(/\.md$/, "")) }));
 }
 
-/** Der Verlauf, das Neueste zuerst. Gelesen werden Kopf und Überschrift, nicht der Text. */
+/**
+ * Der Verlauf, das Neueste zuerst. Gelesen werden Kopf und Überschrift, nicht
+ * der Text: das Lagebild nennt die letzten Einträge und zählt den Rest.
+ *
+ * Wer alte Jahrgänge nach `history/archive/<jahr>/` legt, verliert sie damit
+ * nicht: von dort wird mitgelesen, nur als `archived` gekennzeichnet. Verschoben
+ * wird nichts von selbst, das ist eine Entscheidung über Kundendaten.
+ */
 function readHistory(customer) {
-  const dir = join(customerPath(customer), "history");
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((n) => n.endsWith(".md"))
-    .sort()
-    .reverse()
-    .map((n) => {
-      const { fields, body } = readFrontmatter(join(dir, n));
-      const heading = (body.match(/^#\s+(.+)$/m) || [])[1] || n.replace(/\.md$/, "");
-      return { file: n, date: fields.date || n.slice(0, 10), type: fields.type || "", heading: heading.trim() };
-    });
+  const base = join(customerPath(customer), "history");
+  if (!existsSync(base)) return [];
+
+  const read = (dir, archived) =>
+    readdirSync(dir)
+      .filter((n) => n.endsWith(".md"))
+      .map((n) => {
+        const { fields, body } = readFrontmatter(join(dir, n));
+        const heading = (body.match(/^#\s+(.+)$/m) || [])[1] || n.replace(/\.md$/, "");
+        return {
+          file: n,
+          date: fields.date || n.slice(0, 10),
+          type: fields.type || "",
+          heading: heading.trim(),
+          archived,
+        };
+      });
+
+  const entries = read(base, false);
+  const archive = join(base, "archive");
+  if (existsSync(archive)) {
+    for (const year of readdirSync(archive, { withFileTypes: true })) {
+      if (year.isDirectory()) entries.push(...read(join(archive, year.name), true));
+    }
+  }
+  return entries.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 }
 
 /** Alles zu einem Kunden an einer Stelle. */
@@ -420,7 +442,11 @@ else {
   for (const entry of history.slice(0, 5)) {
     out.push(`- ${entry.date} ${entry.heading}${entry.type ? ` (${entry.type})` : ""}`);
   }
-  out.push(`${history.length} Eintrag${history.length === 1 ? "" : "e"} insgesamt.`);
+  const archiviert = history.filter((e) => e.archived).length;
+  out.push(
+    `${history.length} ${history.length === 1 ? "Eintrag" : "Einträge"} insgesamt` +
+      `${archiviert ? `, davon ${archiviert} im Archiv` : ""}.`
+  );
 }
 
 if (next.length) out.push("", "## Was ansteht", "", ...next.map((line) => `- ${line}`));

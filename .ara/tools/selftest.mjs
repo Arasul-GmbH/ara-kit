@@ -1319,7 +1319,19 @@ check("customer.mjs legt die Akte an und gibt das Lagebild samt Geräten", () =>
 
     run = tool("customer.mjs", []);
     assert(new RegExp(name).test(run.stdout), "die Übersicht führt den Kunden nicht");
-    return "anlegen, ähnlicher Name, Lagebild mit Gerät, Übersicht";
+
+    // Wer alte Jahrgaenge wegraeumt, verliert sie nicht: aus history/archive/
+    // wird mitgelesen, nur als Archiv gekennzeichnet.
+    mkdirSync(join(dir, "history", "archive", "2025"), { recursive: true });
+    writeFileSync(join(dir, "history", "2026-08-01-anruf.md"), "---\ndate: 2026-08-01\ntype: call\n---\n\n# Anruf\n");
+    writeFileSync(join(dir, "history", "archive", "2025", "2025-03-04-erstkontakt.md"), "---\ndate: 2025-03-04\ntype: call\n---\n\n# Erstkontakt\n");
+    run = tool("customer.mjs", ["--customer", name, "--json"]);
+    const verlauf = JSON.parse(run.stdout).history;
+    assert(verlauf.length === 2, `der Verlauf hat ${verlauf.length} statt zwei Einträge`);
+    assert(verlauf[0].date === "2026-08-01", "der Verlauf steht nicht mit dem Neuesten zuerst");
+    assert(verlauf[1].archived === true, "der archivierte Eintrag ist nicht als solcher gekennzeichnet");
+    assert(/davon 1 im Archiv/.test(tool("customer.mjs", ["--customer", name]).stdout), "das Archiv wird nicht mitgezählt");
+    return "anlegen, ähnlicher Name, Lagebild mit Gerät, Übersicht, Archiv";
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
