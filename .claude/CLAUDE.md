@@ -19,7 +19,7 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `.ara/nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
 | `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
-| `.ara/mirror/` | Zwischenspeicher des aktuellen Produktstands. Nicht bearbeiten. |
+| `.ara/mirror/` | Das geholte Installationsartefakt, entsteht bei `/device --install arasul`. Nicht bearbeiten. |
 | `.claude/` | Regeln, Skills und die erzeugten Befehle. Getrackt sind nur `CLAUDE.md`, `settings.json`, `skills/` und `commands/init.md`. |
 
 `business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`
@@ -33,12 +33,16 @@ Versionsnummer aus dem Gedächtnis oder weil er in einer Kit-Datei steht.**
 
 Diese Werte ändern sich im Produkt laufend. Sie stehen an genau drei Stellen:
 
-1. **Der Spiegel** `.ara/mirror/`: der aktuelle Produktstand. Holen und prüfen mit
-   `node .ara/tools/mirror.mjs`.
+1. **Der Kontrakt des Geräts**: `node .ara/tools/app.mjs --device <gerät> --contract`.
+   Die einzige Quelle für alles, was zwischen Kit und Produkt vereinbart ist: `app.json`,
+   Flow-Kopf, Kopfzeilen, Paketgrenzen, Endpunkte, Kontraktversion.
 2. **Das Gerät selbst** per SSH, die Wahrheit für genau dieses eine Gerät.
-3. **Sonst nirgends.**
+3. **Der Spiegel** `.ara/mirror/`: das Artefakt, mit dem installiert wurde, samt Stand
+   und Quelle. Es entsteht bei der Installation, `node .ara/tools/mirror.mjs --show`
+   sagt, welches es ist.
+4. **Sonst nirgends.**
 
-Wenn du einen Wert brauchst und keine der beiden Quellen verfügbar ist: sag das. Rate nicht,
+Wenn du einen Wert brauchst und keine dieser Quellen verfügbar ist: sag das. Rate nicht,
 und schreib nichts Ungeprüftes in eine Kundendatei. Verfahren stehen im Kit, Werte nicht.
 
 Details: `.ara/knowledge/live-knowledge.md`
@@ -56,7 +60,7 @@ Verfahren: `.ara/knowledge/paperwork.md`
 | `/customer <name>` | Nur Partner. Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
 | `/kalkulation` | Nur Partner. Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
 | `/angebot <kunde>` | Nur Partner. Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
-| `/device [<gerät>]` | Gerät anlegen und prüfen: Akte, SSH, Hardware, Urteil, nächste Schritte. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/device.md` |
+| `/device [<gerät>]` | Gerät anlegen und prüfen: Akte, SSH, Hardware, Urteil, nächste Schritte. Arasul installieren, Kit-Schlüssel holen. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/device.md` |
 | `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
 
 **Jeder Befehl sagt am Anfang, welche Wissensdateien er lädt.** Lies genau die, nicht
@@ -75,9 +79,10 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 
 | Werkzeug | Wofür |
 |---|---|
-| `mirror.mjs` | Aktuellen Produktstand holen und prüfen (`--show`, `--refresh`) |
+| `mirror.mjs` | Das Installationsartefakt holen und ansehen (`--show`, `--refresh`). Ruft `/device` selbst auf |
 | `check-environment.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
-| `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen (`--host`, `--name`, `--install`, `--json`) |
+| `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen, Arasul installieren, Kit-Schlüssel holen (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--json`) |
+| `app.mjs` | Kontrakt eines Geräts lesen, `app.json` dagegen prüfen, Paket in den Teststand, live schalten, zurück, entfernen |
 | `runsheet.mjs` | Stand einer Einrichtung lesen und fortschreiben |
 | `remote.mjs` | Befehl auf einem Kundengerät ausführen (`--check`, `--log`) |
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |

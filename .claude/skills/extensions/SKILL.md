@@ -7,12 +7,14 @@ Verfahren: `.ara/knowledge/extensions.md`
 
 Kurz:
 
-- **Gebaut wird auf dem Gerät**, in dessen Arbeitsumgebung, nicht auf dem Partner-Laptop.
-  Kundendaten und Kundencode bleiben beim Kunden.
+- **Geschrieben wird beim Partner, gebaut wird am Gerät.** Das Paket geht als Archiv
+  hin, den Container baut das Gerät. Entwickelt wird nie gegen Kundendaten auf dem
+  eigenen Laptop.
 - Erst den Arbeitsschritt verstehen, nicht die gewünschte Lösung. Entscheidend ist, was
   passiert, wenn das Ergebnis einmal falsch ist.
-- Vor dem Bauen nachsehen, was das Produkt schon kann. Die meisten Wünsche brauchen
-  Einrichtung, keine Entwicklung.
+- Vor dem Bauen nachsehen, was das Produkt schon kann. Das sagt der Kontrakt des Geräts,
+  `node .ara/tools/app.mjs --device <gerät> --contract`, nicht das Gedächtnis. Die
+  meisten Wünsche brauchen Einrichtung, keine Entwicklung.
 - Klein anfangen: ein Beispiel, das durchläuft und das der Kunde gesehen hat.
 - Übergeben heißt: benutzen, erkennen ob es läuft, wissen was zu tun ist wenn nicht.
 - Dienstleistung, getrennt angeboten und abgerechnet.

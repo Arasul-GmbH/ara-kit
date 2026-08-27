@@ -8,7 +8,8 @@ Gerät: **$1**
 Lies `.ara/knowledge/device.md` und arbeite danach. Wissen, das dieser Befehl lädt:
 `.ara/knowledge/device.md`, `.ara/knowledge/security.md`, dazu erst nach dem Urteil
 und nur bei Bedarf `.ara/knowledge/remote-access.md`, `.ara/knowledge/boot-and-flash.md`,
-`.ara/knowledge/identify-device.md`, `.ara/knowledge/handover.md` und
+`.ara/knowledge/identify-device.md`, `.ara/knowledge/handover.md`,
+`.ara/knowledge/apps.md`, sobald Arasul auf dem Gerät läuft, und
 `.ara/knowledge/live-knowledge.md` für jeden Produktwert. Das Profil in
 `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, SSH-Schlüssel.
 
@@ -39,6 +40,17 @@ und den nächsten Schritt, den es nennt.
 **Docker und Ollama** setzt es nur auf Wunsch auf, mit `--install docker,ollama`. Das
 ist ein Eingriff der Stufe 2: Absicht, Ziel und Rückweg nennen, bestätigen lassen, dann
 aufrufen. Nur auf Linux.
+
+**Arasul installieren** geht mit `--install arasul`, auf einem unterstützten Gerät, das
+noch keins hat. Dafür braucht es zum ersten Mal ein Token aus dem Portal: fünf je Partner
+kostenlos, eine Schranke vor dem Download, keine Lizenzprüfung. Fehlt es, sagt das
+Werkzeug, wie es hinterlegt wird. Auch das ist Stufe 2, es dauert, und die Ausgabe des
+Installers wird mitgelesen.
+
+**Läuft Arasul schon**, fehlt nur der Kit-Schlüssel für den Deploy: `--deploy-key` legt
+ihn am Gerät an und hinterlegt ihn. In der Akte steht nur sein Name, nie sein Wert.
+Danach ist der erste Nachweis der Kontrakt:
+`node .ara/tools/app.mjs --device <gerät> --contract`.
 
 **Ohne Arasul endet es hier.** Das Werkzeug sagt in einem Satz, was Arasul brächte. Mehr
 nicht, kein Verkaufsgespräch. Mit Arasul auf einem unterstützten Gerät geht es nach dem

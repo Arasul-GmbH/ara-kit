@@ -18,10 +18,10 @@ Zweig liegen bereit. Es gibt einen konkreten nächsten Schritt.
 Das Profil ist der Kontext, den jeder andere Befehl liest. Was hier steht, muss später nie
 wieder gefragt werden. Rechne mit einer knappen halben Stunde.
 
-**Kein Token, kein Konto.** Das Onboarding braucht keinen Lizenztoken und kein Portal. Den
-Token holt die Geräteeinrichtung, wenn er gebraucht wird. Wer ihn schon hat, kann ihn
-danach mit `node .ara/tools/secrets.mjs --set ARASUL_TOKEN` hinterlegen, das ist keine
-Runde hier.
+**Kein Token, kein Konto.** Das Onboarding braucht kein Token und kein Portal. Danach
+gefragt wird erst, wenn auf einem Gerät Arasul installiert wird, siehe
+`.ara/knowledge/device.md`. Wer schon eines hat, kann es mit
+`node .ara/tools/secrets.mjs --set ARASUL_TOKEN` hinterlegen, das ist keine Runde hier.
 
 ### Drei Regeln, die dieses Verfahren tragen
 

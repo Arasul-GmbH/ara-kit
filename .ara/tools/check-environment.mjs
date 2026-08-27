@@ -13,6 +13,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir, platform, arch, release, totalmem } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { hasSecret } from "./lib/secrets.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -83,16 +84,8 @@ function freierSpeicher() {
 }
 
 function tokenHinterlegt() {
-  // Prüft nur, OB ein Token gesetzt ist. Der Wert wird nie ausgegeben.
-  const pfad = join(ROOT, ".env");
-  if (!existsSync(pfad)) return { datei: false, token: false };
-  try {
-    const inhalt = readFileSync(pfad, "utf8");
-    const treffer = inhalt.match(/^\s*ARASUL_TOKEN\s*=\s*(.*)$/m);
-    return { datei: true, token: Boolean(treffer && treffer[1].trim()) };
-  } catch {
-    return { datei: true, token: false };
-  }
+  // Prüft nur, OB ein Token gesetzt ist, in beiden Ablagen. Der Wert wird nie ausgegeben.
+  return { datei: existsSync(join(ROOT, ".env")), token: hasSecret("ARASUL_TOKEN") };
 }
 
 const os = betriebssystem();
@@ -140,7 +133,8 @@ const zeilen = [
   `- ssh: ${befund.ssh ?? "fehlt"}`,
   `- tar: ${ja(befund.tar)}`,
   `- SSH-Schlüssel: ${schluessel.length ? schluessel.join(", ") : "keiner gefunden"}`,
-  `- Zugangsdatei .env: ${ja(befund.env_datei)}, Lizenztoken hinterlegt: ${ja(befund.token_hinterlegt)}`,
+  `- Zugangsdatei .env: ${ja(befund.env_datei)}, Download-Token hinterlegt: ${ja(befund.token_hinterlegt)}` +
+    (befund.token_hinterlegt ? "" : "  (erst nötig, wenn auf einem Gerät Arasul installiert wird)"),
   `- Als Flash-Rechner für eingebettete Ziele (z. B. Jetson Thor) geeignet: ${ja(befund.flash_host_geeignet)}` +
     (befund.flash_host_geeignet ? "" : "  (dafür braucht es x86-Linux; nur für Thor nötig)"),
 ];
@@ -151,7 +145,6 @@ if (!befund.git) offen.push("git installieren");
 if (!befund.ssh) offen.push("ssh installieren");
 if (!befund.tar) offen.push("tar installieren");
 if (!schluessel.length) offen.push("SSH-Schlüssel anlegen");
-if (!befund.token_hinterlegt) offen.push("Lizenztoken in .env eintragen");
 
 if (offen.length) {
   zeilen.push("", "## Offen", ...offen.map((punkt) => `- ${punkt}`));

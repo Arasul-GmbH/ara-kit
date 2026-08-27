@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * Spiegel: holt den aktuellen Produktstand als lokalen Zwischenspeicher.
+ * Spiegel: holt das Installationsartefakt und hält es als lokalen Stand.
  *
  * Das Kit liefert bewusst keine Produktwerte mit (siehe .ara/knowledge/live-knowledge.md).
- * Stattdessen liegt hier der echte Stand, aus dem Modelle, Geräteprofile, Abläufe und
- * Befehle gelesen werden.
+ * Stattdessen liegt hier, was das Portal ausgeliefert hat: der Installer, mit dem
+ * /device ein Gerät aufsetzt, und der Stand, aus dem Geräteprofile und Abläufe gelesen
+ * werden. Gerufen wird das im Regelfall von device.mjs, beim --install arasul.
  *
  *   node .ara/tools/mirror.mjs             holen, wenn er fehlt oder zu alt ist
  *   node .ara/tools/mirror.mjs --show      nur nachsehen, nichts holen
@@ -58,7 +59,7 @@ async function fetchMirror(base, token) {
     if (reason) throw new Error(reason);
     if (response.status === 401 || response.status === 403) {
       throw new Error(
-        "Das Portal hat den Token abgelehnt. Prüf im Partnerportal unter Lizenzen, ob er noch gültig ist."
+        "Das Portal hat den Token abgelehnt. Sieh im Partnerportal nach, ob er noch gültig ist."
       );
     }
     throw new Error(`Das Portal antwortet mit Status ${response.status}.`);
@@ -110,17 +111,18 @@ if (arg.show) {
       `- Frisch genug: ${age <= MAX_AGE_HOURS ? "ja" : "nein, neu holen"}`
     );
   }
-  lines.push(`- Lizenztoken hinterlegt: ${token ? "ja" : "nein"}`);
+  lines.push(`- Download-Token hinterlegt: ${token ? "ja" : "nein"}`);
   console.log(lines.join("\n"));
   process.exit(0);
 }
 
 if (!token) {
   console.log(
-    "Kein Lizenztoken hinterlegt. Ohne ihn kann der Produktstand nicht geholt werden.\n" +
+    "Kein Token hinterlegt. Ohne eines liefert das Portal den Installer nicht aus.\n" +
+      "Jeder Partner bekommt im Portal fünf Download-Token kostenlos, weitere auf Nachfrage.\n" +
+      "Es ist eine Schranke vor dem Download, keine Lizenzprüfung.\n" +
       "Hinterlegen mit: node .ara/tools/secrets.mjs --set ARASUL_TOKEN\n" +
-      "Du findest ihn im Partnerportal unter Lizenzen.\n" +
-      "Ohne Spiegel funktioniert alles außer Aussagen über das Produkt und die Installation."
+      "Ohne Artefakt funktioniert alles außer der Installation und Aussagen über das Produkt."
   );
   process.exit(1);
 }
@@ -137,8 +139,9 @@ if (!needsFetch) {
 try {
   const fresh = await fetchMirror(base, token);
   console.log(
-    `Spiegel geholt. Produktversion ${fresh.version ?? "unbekannt"}, Stand ${fresh.fetched}.\n` +
-      "Geräteprofile stehen unter .ara/mirror/config/platforms/."
+    `Spiegel geholt. Produktversion ${fresh.version ?? "unbekannt"}, Stand ${fresh.fetched}, ` +
+      `Quelle ${fresh.source}.\n` +
+      "Was mitgeliefert wurde, liegt unter .ara/mirror/, der Stand dazu in .ara/mirror/STATE.json."
   );
 } catch (error) {
   console.log(`Spiegel konnte nicht geholt werden.\n${error.message}`);

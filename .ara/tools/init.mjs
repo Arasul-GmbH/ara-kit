@@ -241,8 +241,8 @@ if (arg.answers) {
   printConsequences(lage);
   console.log(
     "\nNicht in der Antwortdatei, bleibt Handarbeit: Geheimnisablage prüfen (secrets.mjs --show), " +
-      "SSH-Schlüssel anlegen, falls keiner da ist, Sicherung einrichten. Ein Lizenztoken braucht " +
-      "erst die Geräteeinrichtung, nicht das Profil."
+      "SSH-Schlüssel anlegen, falls keiner da ist, Sicherung einrichten. Ein Token braucht " +
+      "erst die Installation von Arasul, nicht das Profil."
   );
   process.exit(0);
 }

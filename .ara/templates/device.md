@@ -17,9 +17,11 @@ ssh_user:                 # Anmeldename auf dem Gerät
 ssh_port:                 # nach der Härtung der neue Port
 ssh_key:                  # Name des Schlüssels in ~/.ssh, ohne Pfad
 ssh:                      # ok | refused | local, Ergebnis der letzten Prüfung
+tls:                      # selfsigned, wenn das Gerät ein selbst ausgestelltes Zertifikat trägt
 docker:                   # running | present | missing
 ollama:                   # present | missing
 arasul:                   # found | none, Hinweise auf dem Gerät, kein Produktstand
+api_key_ref:              # Kit-Schlüssel (app:deploy) für den Deploy: Name des Eintrags, kein Wert
 checked:                  # Zeitpunkt der letzten Prüfung durch device.mjs
 remote_access:            # none | direct | vpn
 secret_ref:               # Name des Eintrags in der Geheimnis-Ablage, kein Wert

@@ -23,6 +23,8 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { judge, parseProbe, services } from "./lib/device.mjs";
+import { KIT_CONTRACT_VERSION, checkManifest, checkVersion, findEndpoint } from "./lib/contract.mjs";
+import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 
 const results = [];
@@ -529,6 +531,282 @@ await checkAsync("Spiegel holt und packt aus", async () => {
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
+  }
+});
+
+// --- Kontrakt und Deploy -----------------------------------------------------
+
+/**
+ * Ein erfundener Kontrakt, kein abgeschriebener.
+ *
+ * Er hat die Form, die ein Gerät liefert, und trägt bewusst keine Produktwerte:
+ * geprüft wird die Mechanik des Kits, nicht der Stand von Arasul. Was wirklich
+ * gilt, sagt immer das Gerät.
+ */
+const KONTRAKT = {
+  kontrakt: KIT_CONTRACT_VERSION,
+  arasul: "0.0.0-selbsttest",
+  app_json: {
+    schema: {
+      type: "object",
+      properties: {
+        schema: { type: "number", const: 1 },
+        id: { type: "string", pattern: "^[a-z0-9][a-z0-9-]*$" },
+        name: { type: "string", minLength: 1 },
+        version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
+        ports: {
+          type: "object",
+          properties: { backend: { type: "integer", minimum: 1, maximum: 65535 } },
+          required: ["backend"],
+          additionalProperties: false,
+        },
+        modelle: { type: "array", maxItems: 2, items: { type: "string", minLength: 1 } },
+      },
+      required: ["schema", "id", "name", "version"],
+      additionalProperties: false,
+    },
+    regeln: ["Mindestens eines von frontend und backend. Eine App ohne beides ist nichts."],
+  },
+  koepfe: { benutzer: "X-Arasul-User", rolle: "X-Arasul-Role", rollen: ["admin", "mitarbeiter"] },
+  schluessel: { kopf: "X-API-Key", praefix: "aras_", bereiche: ["app:deploy"] },
+  paket: { format: "tar.gz", packen: "tar czf paket.tgz -C <ordner> .", max_archiv_bytes: 200 * 1024 * 1024 },
+  apps: { basis: "/apps/<id>/", teststand: "/apps/<id>/test/" },
+  endpunkte: [
+    { verb: "GET", pfad: "/api/v1/external/contract", bereich: null, was: "Dieser Kontrakt" },
+    { verb: "POST", pfad: "/api/v1/external/apps", bereich: "app:deploy", was: "Ein Paket einspielen" },
+    { verb: "GET", pfad: "/api/v1/external/apps/:id", bereich: "app:deploy", was: "Was das Gerät weiß" },
+    { verb: "POST", pfad: "/api/v1/external/apps/:id/schalten", bereich: "app:deploy", was: "Live schalten" },
+    { verb: "DELETE", pfad: "/api/v1/external/apps/:id?bestaetigung=<id>", bereich: "app:deploy", was: "App weg" },
+  ],
+};
+
+const MANIFEST = { schema: 1, id: "probeapp", name: "Probe", version: "1.0.0", ports: { backend: 8080 } };
+
+check("app.json wird gegen das Schema des Geräts geprüft", () => {
+  const gut = checkManifest(KONTRAKT, MANIFEST);
+  assert(gut.ok, `gültiges Manifest abgelehnt: ${gut.problems.join(" ")}`);
+  assert(gut.rules.length === 1, "die Regeln ohne Schema werden nicht durchgereicht");
+  assert(gut.unchecked.length === 0, `unnötig ungeprüft: ${gut.unchecked.join(", ")}`);
+
+  const faelle = [
+    [{ ...MANIFEST, version: "eins" }, /version.*Muster/],
+    [{ ...MANIFEST, id: "Gross" }, /id.*Muster/],
+    [{ ...MANIFEST, schema: 2 }, /schema.*muss 1 sein/],
+    [{ ...MANIFEST, zusatz: "ja" }, /zusatz.*kennt das Gerät nicht/],
+    [{ ...MANIFEST, ports: { backend: 99999 } }, /ports\.backend.*größer/],
+    [{ ...MANIFEST, ports: {} }, /ports\.backend.*fehlt/],
+    [{ ...MANIFEST, modelle: ["a", "b", "c"] }, /modelle.*mehr als 2/],
+    [{ ...MANIFEST, name: "" }, /name.*zu kurz/],
+    [{ schema: 1, id: "x" }, /name.*fehlt/],
+  ];
+  for (const [manifest, muster] of faelle) {
+    const result = checkManifest(KONTRAKT, manifest);
+    assert(!result.ok, `durchgelassen: ${JSON.stringify(manifest)}`);
+    assert(
+      result.problems.some((p) => muster.test(p)),
+      `falsche Begründung für ${JSON.stringify(manifest)}: ${result.problems.join(" | ")}`
+    );
+  }
+
+  // Was das Kit nicht prüfen kann, gibt es zu, statt es für gültig zu erklären.
+  const fremd = checkManifest(
+    { app_json: { schema: { type: "object", properties: { id: { type: "string", contentEncoding: "base64" } } } } },
+    { id: "x" }
+  );
+  assert(fremd.unchecked.includes("contentEncoding"), "unbekannte Schemaangabe wird stillschweigend übergangen");
+  return `${faelle.length} Abweichungen erkannt`;
+});
+
+check("Das Kit ruft nur, was das Gerät verspricht", () => {
+  assert(findEndpoint(KONTRAKT, "POST", "/api/v1/external/apps"), "bekannter Endpunkt nicht gefunden");
+  assert(findEndpoint(KONTRAKT, "GET", "/api/v1/external/apps/probeapp"), "Pfad mit Parameter nicht erkannt");
+  assert(
+    findEndpoint(KONTRAKT, "DELETE", "/api/v1/external/apps/probeapp?bestaetigung=probeapp"),
+    "Pfad mit Rückfrage nicht erkannt"
+  );
+  assert(!findEndpoint(KONTRAKT, "POST", "/api/v1/external/apps/probeapp"), "unbekannter Endpunkt gilt als bekannt");
+  assert(!findEndpoint(KONTRAKT, "PUT", "/api/v1/external/apps"), "falsches Verb gilt als bekannt");
+
+  assert(checkVersion(KONTRAKT).ok, "gleiche Kontraktversion gilt nicht als passend");
+  const neuer = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION + 1 });
+  assert(!neuer.ok && /init/.test(neuer.text), "neueres Gerät führt nicht zum Hinweis auf das Kit-Update");
+  const aelter = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION - 1 });
+  assert(!aelter.ok && /Gerät braucht ein Update/.test(aelter.text), "älteres Gerät wird nicht benannt");
+  assert(!checkVersion({}).ok, "ein Gerät ohne Kontraktversion gilt als passend");
+});
+
+check("Kein Schlüssel gerät in eine Ausgabe", () => {
+  const text = scrub("  Schluessel  aras_abcdef1234567890\n  Praefix  aras_abcdef1");
+  assert(!/aras_[A-Za-z0-9]/.test(text), `Schlüssel steht noch in der Ausgabe: ${text}`);
+});
+
+await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück", async () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-arasul";
+  const akte = join(ROOT, "devices", name);
+  const work = mkdtempSync(join(tmpdir(), "ara-app-"));
+  const quelle = join(work, "probeapp");
+
+  mkdirSync(quelle, { recursive: true });
+  writeFileSync(join(quelle, "app.json"), JSON.stringify(MANIFEST, null, 2));
+  writeFileSync(join(quelle, "index.html"), "<p>Probe</p>\n");
+
+  // Das Gerät, gespielt. Es prüft den Schlüssel in der Kopfzeile, nimmt genau ein
+  // Multipart-Feld `paket` an und antwortet im Umschlag, den Arasul benutzt.
+  const gesehen = { key: null, paket: false, geschaltet: [], entfernt: null };
+  const server = createServer((request, response) => {
+    const antwort = (status, body) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(body));
+    };
+    gesehen.key = request.headers["x-api-key"] || null;
+    if (gesehen.key !== "aras_selbsttest") {
+      antwort(401, { error: { code: "UNAUTHORIZED", message: "Kein gueltiger Schluessel" } });
+      return;
+    }
+    const [pfad, frage] = request.url.split("?");
+    const teile = [];
+    request.on("data", (chunk) => teile.push(chunk));
+    request.on("end", () => {
+      const rumpf = Buffer.concat(teile);
+      if (pfad === "/api/v1/external/contract") return antwort(200, { data: KONTRAKT });
+      if (pfad === "/api/v1/external/apps" && request.method === "POST") {
+        gesehen.paket =
+          /name="paket"/.test(rumpf.toString("latin1").slice(0, 400)) && rumpf.includes(Buffer.from([0x1f, 0x8b]));
+        return antwort(201, { data: { app_id: "probeapp", version: "1.0.0", stand: "test" } });
+      }
+      if (pfad === "/api/v1/external/apps/probeapp/schalten") {
+        const ziel = JSON.parse(rumpf.toString("utf8")).ziel;
+        gesehen.geschaltet.push(ziel);
+        return antwort(200, { data: { app_id: "probeapp", stand: "live", version: ziel === "live" ? "1.0.0" : "0.9.0" } });
+      }
+      if (pfad === "/api/v1/external/apps/probeapp" && request.method === "DELETE") {
+        gesehen.entfernt = frage;
+        return antwort(200, { data: { app_id: "probeapp", entfernt: true } });
+      }
+      antwort(404, { error: { code: "NOT_FOUND", message: "Endpoint not found" } });
+    });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST: "aras_selbsttest" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST",
+  });
+
+  try {
+    // Ohne hinterlegten Schlüssel geht nichts, und das Werkzeug sagt, wo er herkommt.
+    let run = await toolAsync("app.mjs", ["--device", name, "--contract"], {});
+    assert(run.status !== 0 && /deploy-key/.test(run.stderr), "fehlender Schlüssel wird nicht erklärt");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--contract"], env);
+    assert(run.status === 0, `Kontrakt fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(gesehen.key === "aras_selbsttest", "der Schlüssel kam nicht in der Kopfzeile an");
+    assert(/Kontraktversion 1/.test(run.stdout), "die Kontraktversion fehlt in der Ausgabe");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    assert(run.status === 0, `Prüfung des Manifests fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/Regeln, die kein Schema trägt/.test(run.stdout), "die Regeln des Kontrakts fehlen in der Ausgabe");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(gesehen.paket, "am Gerät kam kein gepacktes Paket im Feld paket an");
+    assert(/Teststand/.test(run.stdout), "der Teststand wird nicht genannt");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--live"], env);
+    assert(run.status === 0, `Live schalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--back"], env);
+    assert(run.status === 0, `Zurückschalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(gesehen.geschaltet.join(",") === "live,zurueck", `falsch geschaltet: ${gesehen.geschaltet}`);
+
+    // Entfernen ist unumkehrbar: ohne die abgetippte Kennung passiert nichts.
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove"], env);
+    assert(run.status !== 0 && gesehen.entfernt === null, "--remove hat ohne Bestätigung entfernt");
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove", "--confirm", "probeapp"], env);
+    assert(run.status === 0 && gesehen.entfernt === "bestaetigung=probeapp", "die Rückfrage wird nicht durchgereicht");
+
+    // Ein Manifest, das das Gerät abweisen würde, wird gar nicht erst geschickt.
+    writeFileSync(join(quelle, "app.json"), JSON.stringify({ ...MANIFEST, version: "eins" }));
+    gesehen.paket = false;
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    assert(run.status !== 0 && !gesehen.paket, "ein ungültiges Manifest wurde eingespielt");
+    return "Kontrakt, Prüfung, Teststand, live, zurück, entfernen";
+  } finally {
+    server.close();
+    rmSync(work, { recursive: true, force: true });
+    rmSync(akte, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+await checkAsync("Das Artefakt geht als Ganzes an das Gerät, oder gar nicht", async () => {
+  const work = mkdtempSync(join(tmpdir(), "ara-artefakt-"));
+  const mirror = join(work, "spiegel");
+  const ziel = join(work, "geraet");
+  const gemerkt = process.env.ARA_MIRROR;
+  mkdirSync(join(mirror, "config", "platforms"), { recursive: true });
+  process.env.ARA_MIRROR = mirror;
+  try {
+    // Ein Artefakt, das nicht sagt, wie es sich installiert: das Kit rät nicht.
+    writeFileSync(join(mirror, "README.md"), "# Irgendetwas\n");
+    assert(installerEntry() === null, "ohne Einstiegspunkt behauptet das Kit einen Weg");
+
+    // Eines, das es sagt.
+    writeFileSync(join(mirror, "arasul"), "#!/bin/sh\n");
+    writeFileSync(join(mirror, "config", "platforms", "probe.json"), "{}\n");
+    writeFileSync(join(mirror, "STATE.json"), JSON.stringify({ fetched: "2026-08-27T10:00:00.000Z", source: "https://probe", version: "9.9.9" }));
+    const entry = installerEntry();
+    assert(typeof entry === "string" && entry.length, "Einstiegspunkt nicht erkannt");
+    assert(mirrorState().version === "9.9.9", "Stand des Artefakts nicht gelesen");
+    assert(mirrorState().source === "https://probe", "Quelle des Artefakts nicht gelesen");
+
+    // Schieben: was im Spiegel liegt, liegt danach am Ziel, samt Unterordnern.
+    const geschoben = await ship(null, "local", JSON.stringify(ziel));
+    assert(geschoben.ok, `Schieben fehlgeschlagen: ${geschoben.message}`);
+    assert(existsSync(join(ziel, "arasul")), "der Einstiegspunkt kam nicht an");
+    assert(existsSync(join(ziel, "config", "platforms", "probe.json")), "Unterordner kamen nicht an");
+    return `${entry}, Stand 9.9.9`;
+  } finally {
+    if (gemerkt === undefined) delete process.env.ARA_MIRROR;
+    else process.env.ARA_MIRROR = gemerkt;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+check("Auf einem Gerät ohne Urteil wird nichts installiert", () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-install";
+  try {
+    // Dieser Rechner selbst, SSH abgelehnt: geprüft wird lokal. Ein Entwicklungsrechner
+    // ist kein unterstütztes Gerät, also endet --install arasul vor dem Download.
+    let run = tool("device.mjs", ["--host", "localhost", "--port", "1", "--name", name, "--json"]);
+    const lage = JSON.parse(run.stdout);
+    run = tool("device.mjs", ["--name", name, "--install", "arasul"]);
+    if (lage.verdict === "supported") return "übersprungen, dieser Rechner ist ein unterstütztes Gerät";
+    assert(run.status !== 0, "auf einem nicht unterstützten Gerät wurde installiert");
+    assert(/läuft Arasul nicht/.test(run.stderr), `unerwartete Begründung: ${run.stderr}`);
+
+    // Der Kit-Schlüssel kommt vom Gerät. Ist dort keine Plattform, sagt das Werkzeug das.
+    run = tool("device.mjs", ["--name", name, "--deploy-key"]);
+    assert(/Kein Kit-Schlüssel/.test(run.stdout), `ohne Plattform kam kein Hinweis: ${run.stdout}`);
+    assert(run.status !== 0, "ein Schlüssel, den es nicht gibt, endet mit Erfolg");
+    const { fields } = readFrontmatter(join(ROOT, "devices", name, "device.md"));
+    assert(!fields.api_key_ref, "ein Schlüsselverweis steht in der Akte, obwohl keiner angelegt wurde");
+    return `Urteil ${lage.verdict}`;
+  } finally {
+    rmSync(join(ROOT, "devices", name), { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
   }
 });
 
