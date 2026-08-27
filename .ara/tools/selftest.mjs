@@ -30,6 +30,7 @@ import {
   findEndpoint,
   promisedFolders,
 } from "./lib/contract.mjs";
+import { RETIRED } from "./lib/commands.mjs";
 import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
@@ -1553,8 +1554,8 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
 
 check("Jeder genannte Befehl hat seine Datei", () => {
   // Die Verweispruefung oben sieht nur Dateipfade in Backticks. Ein Command
-  // heisst aber /angebot und nicht .claude/commands/angebot.md, also ist er ihr
-  // zweimal durchgerutscht: /angebot stand in CLAUDE.md, im README und in den
+  // heisst aber /offer und nicht .claude/commands/offer.md, also ist er ihr
+  // zweimal durchgerutscht: der Angebotsbefehl stand in CLAUDE.md, im README und in den
   // Vorlagen, und die Datei dazu gab es nie. Ein Partner liest davon, tippt es,
   // und es passiert nichts.
   //
@@ -1600,10 +1601,26 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   const missing = [];
   for (const [name, where] of found) {
     if (exists(name)) continue;
+    // Ein abgeloester Befehl hat absichtlich keine Datei. Genannt werden darf er
+    // trotzdem, aber nur zusammen mit dem Namen, unter dem es ihn heute gibt:
+    // sonst liest jemand von einem Befehl, den er nicht aufrufen kann.
+    if (RETIRED[name]) {
+      const ohneNachfolger = [...where].filter(
+        (file) => !new RegExp(`/${RETIRED[name]}\\b`).test(readFileSync(join(ROOT, file), "utf8"))
+      );
+      if (ohneNachfolger.length) {
+        missing.push(
+          `/${name} ist abgeloest durch /${RETIRED[name]}, aber in ${ohneNachfolger.join(", ")} ` +
+            "steht der neue Name nicht daneben"
+        );
+      }
+      continue;
+    }
     missing.push(`/${name} fehlt in .ara/commands/, genannt in ${[...where].join(", ")}`);
   }
   assert(missing.length === 0, `Befehle ohne Datei:\n    ${missing.join("\n    ")}`);
-  return `${found.size} Befehle genannt, alle vorhanden`;
+  const abgeloest = [...found.keys()].filter((name) => RETIRED[name]).length;
+  return `${found.size} Befehle genannt, alle vorhanden${abgeloest ? `, ${abgeloest} abgeloest und mit Nachfolger genannt` : ""}`;
 });
 
 check("Jeder Befehl nennt sein Wissen", () => {

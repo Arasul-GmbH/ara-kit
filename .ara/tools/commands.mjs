@@ -25,14 +25,20 @@
  *   kein gemerkter Hash                     "unklar"       wird mit --apply ersetzt, wie vor
  *                                                           der Einfuehrung des Merkers
  *
+ * Ein Befehl, der im Kit umbenannt wurde, steht in lib/commands.mjs. Seine Kopie raeumt
+ * --apply weg, aber nur, wenn sie unveraendert aus dem Kit stammt: sonst haette
+ * der Partner den alten und den neuen nebeneinander, und der alte fuehrt durch
+ * ein Verfahren, das es nicht mehr gibt.
+ *
  * Getrackt ist nur init.md. Alles andere in .claude/commands/ ist erzeugt und im
  * .gitignore, damit ein Update es nicht ueberschreibt und ein Fork es nicht
  * mitschleppt. Was ein Nutzer dort selbst dazulegt, bleibt unangetastet.
  */
 
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { RETIRED } from "./lib/commands.mjs";
 import { BUSINESS, ROOT, fail, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
 const SOURCE = join(ROOT, ".ara", "commands");
@@ -119,11 +125,21 @@ function survey(branch) {
       expected.push({ name, group, from, to, state: state(from, to, remembered[name]) });
     }
   }
+  // Abgeloeste Befehle, die noch im Ziel liegen. Unveraendert heisst: die Kopie
+  // ist die, die das Kit einmal hingelegt hat, und dann darf sie weg.
+  const retired = [];
+  for (const [name, successor] of Object.entries(RETIRED)) {
+    const to = join(TARGET, `${name}.md`);
+    if (!existsSync(to)) continue;
+    retired.push({ name, successor, to, untouched: remembered[name] === hash(to) });
+  }
+
   const known = new Set(expected.map((e) => e.name));
+  const retiredNames = new Set(retired.map((e) => e.name));
   const foreign = list(TARGET)
     .map((name) => name.replace(/\.md$/, ""))
-    .filter((name) => name !== "init" && !known.has(name));
-  return { role: branch, commands: expected, foreign };
+    .filter((name) => name !== "init" && !known.has(name) && !retiredNames.has(name));
+  return { role: branch, commands: expected, retired, foreign };
 }
 
 const branch = role();
@@ -154,6 +170,17 @@ if (arg.apply || replace.length) {
   // Auch fuer Kopien, die schon aktuell sind, den Hash merken: so bekommt ein
   // Stand aus der Zeit vor dem Merker seinen Eintrag, ohne dass etwas kopiert wird.
   for (const c of by("current")) remembered[c.name] ??= hash(c.from);
+
+  // Abgeloeste Befehle raeumt --apply mit weg, aber nur die unveraenderten.
+  if (arg.apply) {
+    for (const old of lage.retired) {
+      if (!old.untouched) continue;
+      rmSync(old.to);
+      delete remembered[old.name];
+      old.removed = true;
+    }
+  }
+
   writeFileSync(MANIFEST, JSON.stringify(remembered, null, 2) + "\n");
   placed = todo;
 }
@@ -173,6 +200,12 @@ const label = {
 };
 console.log(`Zweig: ${branch === "partner" ? "Partner" : "Unternehmen"}`);
 for (const c of lage.commands) console.log(`${label[c.state]} /${c.name}  (${c.group})`);
+for (const old of lage.retired) {
+  console.log(
+    `${old.removed ? "entfernt   " : "abgeloest  "} /${old.name}  (heisst jetzt /${old.successor}` +
+      `${old.untouched ? "" : ", von Hand geaendert"})`
+  );
+}
 for (const name of lage.foreign) console.log(`eigener     /${name}  (nicht aus dem Kit, bleibt liegen)`);
 
 if (arg.apply || replace.length) {
@@ -188,6 +221,14 @@ if (arg.apply || replace.length) {
     console.log(
       `Nicht angefasst, weil von Hand geaendert: ${kept.map((c) => `/${c.name}`).join(", ")}. ` +
         "Trotzdem ersetzen mit: node .ara/tools/commands.mjs --replace <name>"
+    );
+  }
+  const geblieben = lage.retired.filter((old) => !old.removed);
+  if (geblieben.length) {
+    console.log(
+      `Abgeloest und von Hand geaendert, darum liegen geblieben: ` +
+        `${geblieben.map((old) => `/${old.name} (jetzt /${old.successor})`).join(", ")}. ` +
+        "Vergleichen und selbst loeschen, sonst gibt es den Befehl zweimal."
     );
   }
 } else {
@@ -206,6 +247,12 @@ if (arg.apply || replace.length) {
         "Die bleiben bei --apply liegen. Wer die Kit-Fassung will: --replace <name>, " +
         "vorher mit diff vergleichen." +
         (by("conflict").length ? " Bei \"beides\" ist auch das Kit neuer, dann lohnt der Vergleich doppelt." : "")
+    );
+  }
+  if (lage.retired.length) {
+    console.log(
+      `Abgeloest: ${lage.retired.map((old) => `/${old.name} heisst jetzt /${old.successor}`).join(", ")}. ` +
+        "Die unveraenderten raeumt --apply weg, angepasste bleiben liegen."
     );
   }
 }
