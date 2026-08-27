@@ -31,6 +31,13 @@ import { CONTRACT_PATH, checkManifest, checkVersion, findEndpoint, summarize } f
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 
+// Eine Angabe ohne Wert ist ein Tippfehler, kein Wunsch. Das faellt auf, bevor
+// irgendein Geraet angesprochen wird.
+for (const [name, value] of [["check", arg.check], ["deploy", arg.deploy], ["app", arg.app]]) {
+  if (value === true) fail(`--${name} braucht eine Angabe: --${name} <${name === "app" ? "id" : "ordner"}>.`);
+}
+
+
 if (arg.help || process.argv.length <= 2) {
   console.log(
     [
@@ -196,10 +203,6 @@ function reportManifest(where, result) {
     );
   }
   return lines.join("\n");
-}
-
-for (const [name, value] of [["check", arg.check], ["deploy", arg.deploy], ["app", arg.app]]) {
-  if (value === true) fail(`--${name} braucht eine Angabe: --${name} <${name === "app" ? "id" : "ordner"}>.`);
 }
 
 if (typeof arg.check === "string") {

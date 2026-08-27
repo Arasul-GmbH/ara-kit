@@ -459,6 +459,10 @@ function nextSteps() {
 
 const steps = nextSteps();
 
+// Ein Rückgabecode sagt, ob das gelungen ist, worum gebeten wurde. Eine
+// abgebrochene Installation und ein Schlüssel, den es nicht gibt, sind kein Erfolg.
+const code = run.transport === "none" || (arasul && !arasul.ok) || (deployKey && !deployKey.ok) ? 1 : 0;
+
 if (arg.json) {
   console.log(
     JSON.stringify(
@@ -487,7 +491,7 @@ if (arg.json) {
       2
     )
   );
-  process.exit(run.transport === "none" ? 1 : 0);
+  process.exit(code);
 }
 
 const lines = [
@@ -513,4 +517,4 @@ if (known) {
 }
 lines.push("", "## Nächste Schritte", "", ...steps.map((s) => `- ${s}`));
 console.log(lines.join("\n"));
-process.exit(run.transport === "none" ? 1 : 0);
+process.exit(code);

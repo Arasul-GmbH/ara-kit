@@ -799,6 +799,7 @@ check("Auf einem Gerät ohne Urteil wird nichts installiert", () => {
     // Der Kit-Schlüssel kommt vom Gerät. Ist dort keine Plattform, sagt das Werkzeug das.
     run = tool("device.mjs", ["--name", name, "--deploy-key"]);
     assert(/Kein Kit-Schlüssel/.test(run.stdout), `ohne Plattform kam kein Hinweis: ${run.stdout}`);
+    assert(run.status !== 0, "ein Schlüssel, den es nicht gibt, endet mit Erfolg");
     const { fields } = readFrontmatter(join(ROOT, "devices", name, "device.md"));
     assert(!fields.api_key_ref, "ein Schlüsselverweis steht in der Akte, obwohl keiner angelegt wurde");
     return `Urteil ${lage.verdict}`;
