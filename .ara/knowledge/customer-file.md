@@ -15,7 +15,8 @@ customers/mueller-metallbau/
 │       └── reports/
 │           └── JJJJ-MM-TT-wartung.md   Wartungsberichte (bei /maintain)
 ├── documents/
-│   └── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
+│   ├── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
+│   └── JJJJ-MM-TT-rechnung-JJJJ-NNNN.md   Rechnungen, Markdown und PDF nebeneinander
 └── history/
     └── JJJJ-MM-TT-thema.md        Gespräche, Störungen, Wartungen
 ```
@@ -37,6 +38,11 @@ ins Frontmatter.
 bekommt, Markdown und PDF nebeneinander. In `history/` steht, was passiert ist, auch dass
 ein Angebot rausgegangen ist. Das eine wird unterschrieben, das andere gelesen.
 Verfahren: `.ara/knowledge/paperwork.md`.
+
+**Die Anschrift gehört ins Frontmatter, in drei Felder.** `street`, `postcode` und
+`city`, dazu `country` und `vat_id`, falls es eine gibt. Eine Rechnung braucht sie einzeln
+und vollständig, § 14 Abs. 4 Nr. 1 UStG, und ein Angebot ohne Anschrift geht auch nicht
+raus. Schreib sie hin, sobald du sie hast, nicht erst, wenn ein Dokument darauf wartet.
 
 **Ordnername:** sprechend, klein, mit Bindestrichen, ohne Rechtsform.
 `mueller-metallbau`, nicht `Müller Metallbau GmbH` und nicht `kunde-01`.

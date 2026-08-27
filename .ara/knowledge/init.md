@@ -125,7 +125,10 @@ ist, und lass Freitext zu:
 soll das Kit Rechnungen erzeugen können? Drei Antworten: ja, nein, später. Bei nein und
 später bleibt der Rechnungsbefehl weg, bei später fragt das nächste `/init` noch einmal.
 Dazu ein Satz zur E-Rechnungspflicht: Empfang beim Kunden ist seit 2025 Pflicht, die
-Ausgabe kommt stufenweise ab 2027. Ins Frontmatter: `invoice` und `invoice_tool`.
+Ausgabe kommt stufenweise ab 2027. Ins Frontmatter: `invoice` und `invoice_tool`. Bei ja
+legt das Kit `/invoice` an: Rechnung als ZUGFeRD-PDF, mit eigenem Nummernkreis in
+`business/`. Was dazugehört und was ausdrücklich nicht, steht in
+`.ara/knowledge/invoicing.md`.
 
 Antworten nach `tools` im Frontmatter (kommagetrennt) und in Prosa nach „Womit mein
 Haus arbeitet".

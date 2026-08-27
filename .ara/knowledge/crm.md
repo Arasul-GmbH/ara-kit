@@ -108,6 +108,12 @@ unter `business/`.
 
 ## Was das Kit nicht ist
 
-Keine Buchhaltung, keine Rechnungsstellung, keine Zeiterfassung. Dafür haben die meisten
-längst ein Werkzeug, und der Steuerberater will es ohnehin anders. Das Kit hält fest, was
-mit Kunden und ihren Geräten passiert. Zahlen laufen woanders.
+Keine Buchhaltung und keine Zeiterfassung. Dafür haben die meisten längst ein Werkzeug,
+und der Steuerberater will es ohnehin anders. Das Kit hält fest, was mit Kunden und ihren
+Geräten passiert.
+
+**Die eine Ausnahme ist die Ausgangsrechnung**, und auch die nur, wenn der Partner sie im
+Profil freigegeben hat. Dann schreibt `/invoice` die Rechnung, führt ihren Nummernkreis
+und druckt sie als ZUGFeRD-PDF, siehe `.ara/knowledge/invoicing.md`. Alles danach bleibt
+draußen: Zahlungseingänge, Mahnwesen, Voranmeldung, Eingangsrechnungen. Wer danach fragt,
+bekommt genau diese Antwort und keine Ausrede.
