@@ -61,10 +61,10 @@ Verfahren: `.ara/knowledge/paperwork.md`
 | `/init [antwortdatei]` | Erstes Mal: Onboarding mit der Weiche Partner oder Unternehmen. Danach: Kit nachziehen, Befehle anbieten. Mit Antwortdatei ohne Interview | `.ara/knowledge/init.md` |
 | `/customer <name>` | Nur Partner. Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
 | `/kalkulation` | Nur Partner. Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
-| `/angebot <kunde>` | Nur Partner. Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
+| `/offer <kunde>` | Nur Partner. Angebot mit allen Anlagen, gerechnet aus dem Kalkulationsblatt | `.ara/knowledge/paperwork.md` |
 | `/device [<gerät>]` | Gerät anlegen und prüfen: Akte, SSH, Hardware, Urteil, nächste Schritte. Arasul installieren, Kit-Schlüssel holen. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/device.md` |
 | `/app [<app>]` | App planen, bauen, in den Teststand rollen, live schalten. Liest die Akte und bietet nur die sinnvollen nächsten Schritte | `.ara/knowledge/app.md` |
-| `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
+| `/maintain [<gerät>]` | Laufendes Gerät betreuen. Beginnt mit einer Statuszeile, dann sagst du im Freitext, was ansteht. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/maintenance-flow.md` |
 
 **Jeder Befehl sagt am Anfang, welche Wissensdateien er lädt.** Lies genau die, nicht
 den ganzen Ordner. `business/profile.md` liest jeder Befehl vorher: Zweig, Erklärtiefe,
@@ -86,13 +86,15 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `check-environment.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
 | `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen, Arasul installieren, Kit-Schlüssel holen (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--json`) |
 | `app.mjs` | Zwei Seiten. Ohne `--device`: App aus der Vorlage anlegen, Pläne schieben, bauen, Lage lesen. Mit `--device`: Kontrakt lesen, `app.json` dagegen prüfen, Paket in den Teststand, live schalten, zurück, entfernen, und mit `--compose` auf ein Gerät ohne Arasul |
+| `customer.mjs` | Kundenakte anlegen (`--new`) und das Lagebild lesen: Stand, Geräte mit ihrem Zustand, Papier, Verlauf, was ansteht |
+| `maintain.mjs` | Zustand eines Geräts lesen: Statuszeile und Wartungsbericht, über SSH und über die Schnittstelle. Liest nur, und sagt, was nicht gemessen werden konnte (`--line`, `--report`, `--json`) |
 | `runsheet.mjs` | Stand einer Einrichtung lesen und fortschreiben |
 | `remote.mjs` | Befehl auf einem Kundengerät ausführen (`--check`, `--log`) |
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
 | `disk.mjs` | Boot-Medien erkennen, prüfen und schreiben |
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
 | `calculation.mjs` | Kalkulationsblatt: welche Zahl liegt vor, welche fehlt, was geht deshalb nicht |
-| `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Unvollständig, wird in Phase E5/E6 ersetzt |
+| `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Läuft, ist aber in kein Verfahren eingebunden, siehe `.ara/knowledge/leistungsbeschreibung.md` |
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |
 | `secrets.mjs` | Geheimnisse hinterlegen und nachsehen, was gesetzt ist |
 | `update.mjs` | Kit auf den aktuellen Stand bringen (`--check` sieht nur nach), fasst Nutzerordner nicht an |

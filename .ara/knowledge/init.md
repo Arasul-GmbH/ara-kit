@@ -295,9 +295,16 @@ Stand des Kits. Fünf Schritte, in dieser Reihenfolge:
    | angepasst | der Mensch hat die Kopie selbst geändert | bleibt liegen, nur auf Wunsch `--replace <name>` |
    | beides | Kit neuer **und** selbst geändert | Unterschied zeigen, er entscheidet, `--replace <name>` |
    | unklar | Kopie aus der Zeit vor dem Merker | wie „neu im Kit", vorher vergleichen |
+   | abgelöst | im Kit umbenannt, die alte Kopie liegt noch da | `--apply` räumt die unveränderte weg, eine angepasste bleibt |
 
    Vor jedem Ersetzen den Unterschied zeigen (`diff`). Was im Ziel liegt und nicht aus
    dem Kit stammt, bleibt liegen.
+
+   **Ein abgelöster Befehl ist der einzige Fall, in dem das Werkzeug etwas löscht.**
+   `/angebot` heißt seit Phase E6 `/offer`. Blieben beide liegen, führte der alte weiter
+   durch ein Verfahren, das es nicht mehr gibt. Gelöscht wird nur die unveränderte Kopie,
+   erkennbar am gemerkten Hash; eine, die der Mensch angefasst hat, wird genannt und bleibt.
+   Sag ihm in dem Fall, wie der Befehl heute heißt, und dass er die alte selbst löschen darf.
 4. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
    leeren Felder. Braucht ein neuer Befehl eine Angabe, die im Profil fehlt, frag genau
    diese, gebündelt. Steht bei einem Partner `invoice: later`, frag noch einmal. Nicht das

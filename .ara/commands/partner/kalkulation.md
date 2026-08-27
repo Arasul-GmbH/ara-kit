@@ -42,4 +42,4 @@ Noch einmal `node .ara/tools/calculation.mjs`, dann in zwei bis drei Zeilen: was
 liegt, was fehlt und was deshalb nicht geht. Konkret. „Ohne Einkaufspreis der Wartung
 keine Wartungsposition" ist brauchbar, „einiges fehlt" nicht.
 
-Soll direkt danach gerechnet werden, ist der nächste Schritt `/angebot <kunde>`.
+Soll direkt danach gerechnet werden, ist der nächste Schritt `/offer <kunde>`.

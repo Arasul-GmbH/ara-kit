@@ -78,10 +78,12 @@ dann ist die Historie mehr wert als jedes Angebot.
 
 Drei Dinge, jedes Mal:
 
-1. Eintrag unter `customers/<kunde>/history/JJJJ-MM-TT-thema.md`. Eine Obergrenze und
-   ein Archivpfad (`history/archiv/<jahr>/`) für diesen Ordner fehlen noch: unvollständig,
-   wird in Phase E5/E6 des Plans ersetzt. Bis dahin wächst er, und beim Öffnen entsteht
-   ein Lagebild statt einer Vorlesung.
+1. Eintrag unter `customers/<kunde>/history/JJJJ-MM-TT-thema.md`. Der Ordner wächst,
+   und das ist in Ordnung: `node .ara/tools/customer.mjs --customer <name>` nennt die
+   letzten fünf Einträge und zählt den Rest, es entsteht ein Lagebild statt einer
+   Vorlesung. Wird es dir zu unübersichtlich, verschieb alte Jahrgänge von Hand nach
+   `history/archive/<jahr>/`. Von dort wird mitgelesen und mitgezählt, nur eben als
+   Archiv. **Verschoben wird nichts von selbst**, das sind Kundendaten.
 2. `last_contact` aktualisieren
 3. `follow_up` setzen oder den Status ändern
 

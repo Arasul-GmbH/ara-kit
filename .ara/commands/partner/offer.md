@@ -16,7 +16,8 @@ Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere
 Kundenordner, auch nicht, um ein altes Angebot als Muster zu nehmen.
 
 **Kein Argument angegeben:** Kunden auflisten, je eine Zeile mit Status und letztem
-Kontakt, und fragen, für wen das Angebot ist. Keine Akte vorhanden: zuerst `/customer`.
+Kontakt (`node .ara/tools/customer.mjs`), und fragen, für wen das Angebot ist. Keine
+Akte vorhanden: zuerst `/customer`.
 
 ## Der Grundsatz, bevor die erste Zahl fällt
 
@@ -29,16 +30,39 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
 
 ## Die neun Schritte
 
-1. **Akte lesen.** `customers/$1/customer.md` und die letzten Einträge aus
-   `customers/$1/history/`. Was der Kunde erreichen will, steht dort in seinen Worten,
-   und genau die gehören später in den Abschnitt "Worum es geht". Fehlt dir etwas, das
-   nur der Mensch weiß, frag es gebündelt in einer Runde, nicht Schritt für Schritt.
+1. **Kalkulationsblatt lesen, bevor du fragst.**
 
-2. **Spiegel holen.** `node .ara/tools/mirror.mjs --refresh`. Ohne frischen Spiegel
+   ```
+   node .ara/tools/calculation.mjs
+   ```
+
+   Es sagt, welche der zehn Zahlen vorliegen, welche fehlen und was ohne sie nicht geht.
+   Liegen alle vor, wird nach keiner einzigen gefragt, und zwei Angebote desselben
+   Partners für denselben Gerätetyp kommen auf dieselben Zahlen. Fehlt eine blockierende
+   Zahl, hört das Werkzeug mit Rückgabecode 1 auf: dann gehört sie **in dieselbe
+   Interview-Runde wie Schritt 2** und danach über `/kalkulation` ins Blatt, mit dem
+   Datum, an dem sie bestätigt wurde. Eine Zahl, die nur in diesem einen Angebot steht,
+   ist beim nächsten wieder weg.
+
+   Meldet das Werkzeug eine Zahl als veraltet, ist das ein Hinweis und kein Halt. Frag
+   einmal nach, ob sie noch gilt, und schreib die Antwort ins Blatt.
+
+2. **Akte lesen.** `node .ara/tools/customer.mjs --customer $1` gibt das Lagebild:
+   Stand, Geräte mit ihrem Zustand, vorhandenes Papier, letzter Verlaufseintrag. Was der
+   Kunde erreichen will, steht in `customers/$1/customer.md` und in den letzten Einträgen
+   aus `customers/$1/history/` in seinen Worten, und genau die gehören später in den
+   Abschnitt "Worum es geht". Fehlt dir etwas, das nur der Mensch weiß, frag es gebündelt
+   in einer Runde, nicht Schritt für Schritt.
+
+   **Wofür das Angebot ist, sagt die Akte mit.** Einrichtung eines Geräts, eine App,
+   mehrere Apps, Wartung, oder mehreres zusammen. Steht in der Akte schon ein Gerät, ist
+   die Einrichtung dafür der Normalfall und du fragst nicht, ob es eines geben soll.
+
+3. **Spiegel holen.** `node .ara/tools/mirror.mjs --refresh`. Ohne frischen Spiegel
    entsteht kein Angebot, weil Plattform und Erprobungsstand sonst geraten wären. Ist
    der Spiegel nicht erreichbar, sag das und schreib nichts hin.
 
-3. **Leistungsbeschreibung füllen.** Sie kommt **vor** dem Angebot, nicht danach. Sie
+4. **Leistungsbeschreibung füllen.** Sie kommt **vor** dem Angebot, nicht danach. Sie
    legt fest, was geschuldet ist, und das Angebot verweist nur noch auf sie. Ohne sie
    kein Angebot. Sie entsteht am Gerät und gegen den Spiegel, nicht am Schreibtisch,
    und nie aus einem alten Angebot kopiert: ein alter Reifegrad ist beim nächsten
@@ -46,18 +70,18 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    `.ara/knowledge/paperwork.md` unter "Die Leistungsbeschreibung füllen". Gerüst:
    `.ara/vorlagen/leistungsbeschreibung.md`.
 
-4. **Rechnen.** Nach `.ara/knowledge/pricing.md`, mit den Werten aus
-   `business/company.md` (`hourly_rate`, `hardware_markup`, `payment_terms`) und im Ton
-   aus `.ara/knowledge/sales.md`. **Fehlt ein Einkaufspreis, wird gefragt, nicht
-   geraten.** Die verbindliche Quelle dafür ist das Partnerportal. Wartung Jahr 1 und
-   ab Jahr 2 sind zwei verschiedene Zahlen, rechne beide.
+5. **Rechnen.** Nach `.ara/knowledge/pricing.md`, mit den Zahlen aus Schritt 1 und im Ton
+   aus `.ara/knowledge/sales.md`. **Es wird mit dem gerechnet, was im Blatt steht, und
+   nichts geschätzt.** Die verbindliche Quelle für einen Einkaufspreis ist das
+   Partnerportal. Wartung Jahr 1 und ab Jahr 2 sind zwei verschiedene Zahlen, rechne
+   beide.
 
-5. **Angebot schreiben.** Gerüst `.ara/vorlagen/angebot.md`. Briefkopf, USt-IdNr., IBAN und
+6. **Angebot schreiben.** Gerüst `.ara/vorlagen/angebot.md`. Briefkopf, USt-IdNr., IBAN und
    Zahlungsziel kommen aus `business/company.md`, der Name unter der Unterschrift aus
    `business/profile.md`. **Der Absender ist der Partner, nicht Arasul.** Fehlt ein
    Feld, wird es in `business/company.md` nachgetragen und nicht im Angebot erfunden.
 
-6. **Fünf Anlagen zusammenstellen**, nicht drei. Sie werden Vertragsbestandteil und
+7. **Fünf Anlagen zusammenstellen**, nicht drei. Sie werden Vertragsbestandteil und
    werden im Abschnitt "Anlagen" des Angebots einzeln benannt:
 
    | Nr | Anlage | Woher |
@@ -76,7 +100,7 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    leer und bekommt eine Zeile, dass bei der Übergabe gemessen und das Ergebnis
    nachgereicht wird. Ohne diese Zeile liest der Kunde einen Platzhalter als Aussage.
 
-7. **PDF erzeugen**, für das Angebot und für **jede Anlage einzeln**. Sie sind einzeln
+8. **PDF erzeugen**, für das Angebot und für **jede Anlage einzeln**. Sie sind einzeln
    Vertragsbestandteil und werden einzeln abgelegt.
 
    ```
@@ -88,9 +112,8 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    Text steht. Das ist sein Zweck: `{Betrag} Euro` beim Kunden ist der Fehler, den es
    verhindert.
 
-8. **Prüfliste vorlegen.** Erst danach ist etwas versandfähig. Sie steht unten.
-
-9. **Ablegen und nachhalten.** Markdown und PDF nebeneinander in
+9. **Prüfliste vorlegen, ablegen, nachhalten.** Die Prüfliste steht unten, und erst
+   danach ist etwas versandfähig. Markdown und PDF liegen nebeneinander in
    `customers/$1/documents/`, mit Datum im Dateinamen. Das Markdown bleibt liegen: in
    einem halben Jahr fragt jemand, was zugesagt wurde, und dann ist die Quelle mehr
    wert als das PDF. Dann nach `.ara/knowledge/crm.md`: Eintrag in
@@ -107,6 +130,8 @@ vor und sagst, was noch offen ist. Du verschickst keine Mail und lädst nichts h
 Leg sie dem Menschen vor, bevor etwas rausgeht. Jede Zeile, die du nicht selbst geprüft
 hast, sagst du als ungeprüft an.
 
+- [ ] `node .ara/tools/calculation.mjs` lief, und jede Zahl im Angebot stammt aus dem
+      Blatt. Keine geschätzt, keine nur für dieses eine Angebot erfunden
 - [ ] Briefkopf, USt-IdNr., IBAN und Unterschrift aus `business/company.md` gelesen,
       nicht aus der Vorlage und nicht aus dem Gedächtnis
 - [ ] Kein Einkaufspreis und keine Marge im Dokument, auch nicht in einer Zwischensumme

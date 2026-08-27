@@ -49,16 +49,9 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { ROOT, ensureDir, fail, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
-import { getSecret } from "./lib/secrets.mjs";
-import { baseUrl, call, reason } from "./lib/arasul.mjs";
-import {
-  CONTRACT_PATH,
-  checkManifest,
-  checkVersion,
-  findEndpoint,
-  promisedFolders,
-  summarize,
-} from "./lib/contract.mjs";
+import { reason } from "./lib/arasul.mjs";
+import { connect, withContract } from "./lib/link.mjs";
+import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
 import {
   NOT_IN_PACKAGE,
   appPath,
@@ -557,69 +550,20 @@ if (arg.compose) {
 
 // --- Mit Arasul: die Schnittstelle -------------------------------------------
 
-// Die Schnittstelle liegt nicht immer unter der Adresse, über die SSH läuft: ein
-// Gerät kann hinter einem Tunnel hängen oder sein Zertifikat nur unter einem
-// Namen führen. Dann trägt die Akte `api_base`, und die bleibt dort stehen,
-// statt bei jedem Aufruf mitgetippt zu werden. `--base` sticht beides, für den
-// einen Versuch, der nicht in die Akte gehört.
-let base;
+// Adresse, Schlüssel und Kontrakt stehen in lib/link.mjs, weil maintain.mjs
+// dieselben vier Schritte braucht. `--base` sticht die Akte, für den einen
+// Versuch, der nicht in sie gehört.
+let link;
 try {
-  base = baseUrl(str(arg.base) || fields.api_base || fields.address || fields.hostname);
+  link = await withContract(
+    connect(device, { base: str(arg.base), insecure: Boolean(arg.insecure) }),
+    device
+  );
 } catch (error) {
-  fail(
-    `${error.message}\nTrag address in ${relative(ROOT, device.file)} ein, ` +
-      "oder api_base, wenn die Schnittstelle woanders liegt als der SSH-Zugang."
-  );
+  fail(error.message);
 }
 
-const insecure = Boolean(arg.insecure) || (fields.tls || "").toLowerCase() === "selfsigned";
-
-const keyRef = fields.api_key_ref;
-if (!keyRef) {
-  fail(
-    `Für ${place} ist kein Kit-Schlüssel hinterlegt.\n` +
-      "Am Gerät anlegen und in die Ablage legen:\n" +
-      `  node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device} --deploy-key`
-  );
-}
-const key = getSecret(keyRef);
-if (!key) {
-  fail(
-    `Die Akte nennt den Eintrag ${keyRef}, in der Geheimnis-Ablage steht er nicht.\n` +
-      "Entweder wurde er nie gesetzt oder die Ablage wurde gewechselt. Neu anlegen:\n" +
-      `  node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device} --deploy-key`
-  );
-}
-
-async function ask(options) {
-  try {
-    return await call({ base, key, insecure, ...options });
-  } catch (error) {
-    fail(error.message);
-  }
-}
-
-// --- Der Kontrakt, immer zuerst ---------------------------------------------
-
-const answer = await ask({ method: "GET", path: CONTRACT_PATH });
-if (!answer.ok) {
-  if (answer.status === 401) {
-    fail(
-      `${place} weist den Kit-Schlüssel ab (401). Wurde er am Gerät widerrufen?\n` +
-        "Am Gerät nachsehen mit kit-schluessel.sh liste, sonst einen neuen anlegen:\n" +
-        `  node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device} --deploy-key`
-    );
-  }
-  if (answer.status === 404) {
-    fail(
-      `${place} kennt ${CONTRACT_PATH} nicht. Die Plattform auf diesem Gerät ist älter als der Kontrakt.\n` +
-        "Erst das Gerät aktualisieren, dann noch einmal."
-    );
-  }
-  fail(`Der Kontrakt von ${place} ließ sich nicht lesen.\n${reason(answer)}`);
-}
-const contract = answer.data;
-const version = checkVersion(contract);
+const { base, contract, version } = link;
 
 /**
  * Die Regeln für einen Flow aus dem Paket, wörtlich aus dem Kontrakt.
@@ -645,14 +589,11 @@ function flowSection() {
 
 /** Ruft einen Endpunkt, aber nur, wenn der Kontrakt ihn nennt. */
 async function endpoint(verb, path, options = {}) {
-  const known = findEndpoint(contract, verb, path);
-  if (!known) {
-    fail(
-      `${place} nennt ${verb} ${path} nicht in seinem Kontrakt. ${version.text}\n` +
-        "Das Kit ruft nichts auf, was das Gerät nicht verspricht."
-    );
+  try {
+    return await link.endpoint(verb, path, options);
+  } catch (error) {
+    fail(error.message);
   }
-  return ask({ method: verb, path, ...options });
 }
 
 // --- --contract --------------------------------------------------------------
@@ -815,7 +756,6 @@ if (arg.deploy !== undefined) {
     const sent = await endpoint("POST", "/api/v1/external/apps", {
       file: archive,
       fileField: "paket",
-      keyHeader: contract?.schluessel?.kopf || undefined,
       // Das Gerät baut das Backend, bevor es antwortet. Das dauert Minuten,
       // und in der Zeit fließt nichts über die Leitung.
       timeout: 30 * 60_000,
@@ -849,7 +789,6 @@ const app = whichApp();
 if (!app) {
   fail("Für --status, --live, --back und --remove brauche ich --app <id>.");
 }
-const keyHeader = contract?.schluessel?.kopf || undefined;
 
 function showStand(data) {
   if (arg.json) {
@@ -866,7 +805,7 @@ function showStand(data) {
 }
 
 if (arg.status) {
-  const found = await endpoint("GET", `/api/v1/external/apps/${app}`, { keyHeader });
+  const found = await endpoint("GET", `/api/v1/external/apps/${app}`);
   if (!found.ok) fail(`${place} sagt zu ${app} nichts.\n${reason(found)}`);
   showStand(found.data);
   process.exit(0);
@@ -876,7 +815,6 @@ if (arg.live || arg.back) {
   const ziel = arg.live ? "live" : "zurueck";
   const switched = await endpoint("POST", `/api/v1/external/apps/${app}/schalten`, {
     json: { ziel },
-    keyHeader,
   });
   if (!switched.ok) fail(`${place} hat nicht geschaltet (Status ${switched.status}).\n${reason(switched)}`);
   if (arg.json) {
@@ -902,7 +840,7 @@ if (arg.remove) {
         `Wenn das so gewollt ist, hängs an: --confirm ${app}`
     );
   }
-  const gone = await endpoint("DELETE", `/api/v1/external/apps/${app}?bestaetigung=${app}`, { keyHeader });
+  const gone = await endpoint("DELETE", `/api/v1/external/apps/${app}?bestaetigung=${app}`);
   if (!gone.ok) fail(`${place} hat ${app} nicht entfernt (Status ${gone.status}).\n${reason(gone)}`);
   if (arg.json) showStand(gone.data);
   else console.log(`${app} ist von ${place} entfernt.`);

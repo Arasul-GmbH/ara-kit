@@ -9,14 +9,29 @@ customers/mueller-metallbau/
 ├── customer.md                    Wer das ist, was er vorhat, wo es steht
 ├── devices/
 │   └── zentrale/
-│       ├── device.md              Ein Gerät: Typ, Netz, Zugang, Wartung
+│       ├── device.md              Ein Gerät: Typ, Netz, Zugang, Schnittstelle, Wartung
 │       ├── runsheet.md            Ablaufzustand der Einrichtung (bei /device)
-│       └── handover.md            Abnahmedokument (am Ende von /device)
+│       ├── handover.md            Abnahmedokument (am Ende von /device)
+│       └── reports/
+│           └── JJJJ-MM-TT-wartung.md   Wartungsberichte (bei /maintain)
 ├── documents/
 │   └── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
 └── history/
     └── JJJJ-MM-TT-thema.md        Gespräche, Störungen, Wartungen
 ```
+
+**Nachsehen, statt die Akte zu lesen.** Was hier verteilt liegt, sammelt ein Werkzeug an
+einer Stelle:
+
+```
+node .ara/tools/customer.mjs                          welche Kunden es gibt
+node .ara/tools/customer.mjs --customer mueller       Lagebild eines Kunden
+node .ara/tools/customer.mjs --customer mueller --json
+```
+
+Es liest nur, außer mit `--new`. Es urteilt nicht über den Kunden und schreibt nichts in
+seine Akte: was besprochen wurde, gehört in den Verlauf, und der Stand wandert von Hand
+ins Frontmatter.
 
 **`documents/` gegen `history/`:** In `documents/` liegt das Papier, das der Kunde
 bekommt, Markdown und PDF nebeneinander. In `history/` steht, was passiert ist, auch dass
@@ -70,25 +85,62 @@ man in drei Monaten vergessen hat (`.ara/knowledge/crm.md`).
 
 ## Anlegen: was du schreibst
 
-- `customer.md` aus `.ara/templates/customer.md`. Frontmatter vollständig, Freitext in
-  eigenen Worten und lesbar, nicht als Stichpunktliste der Interviewantworten.
+```
+node .ara/tools/customer.mjs --customer <ordnername> --new --legal-name "<Firmierung>"
+```
+
+Das legt `customer.md` aus der Vorlage an, dazu `history/` und `documents/`, und setzt
+`id`, `status`, `created` und `last_contact`. Gibt es schon eine Akte mit ähnlichem
+Namen, hört es auf und nennt sie: derselbe Kunde ein zweites Mal ist der häufigste Weg zu
+zwei halben Akten. Ist es wirklich ein anderer, geht es mit `--force`.
+
+Danach von Hand, aus dem Gespräch:
+
+- **Das Frontmatter füllen** und den Freitext in eigenen Worten schreiben, lesbar, nicht
+  als Stichpunktliste der Interviewantworten.
 - `history/JJJJ-MM-TT-erstgespraech.md` mit dem, was besprochen wurde. Auch wenn es kurz
   ist: der erste Eintrag setzt den Rahmen.
-- `devices/<name>/device.md` **nur wenn schon klar ist, welches Gerät es wird.** Sonst
-  nicht, ein leerer Geräteordner suggeriert einen Stand, den es nicht gibt.
+- `devices/<name>/device.md` **nur wenn schon klar ist, welches Gerät es wird**, und
+  angelegt wird es mit `/device <kunde>/<gerät>`, nicht von Hand. Sonst gar nicht: ein
+  leerer Geräteordner suggeriert einen Stand, den es nicht gibt.
 
 Danach in drei Zeilen: was angelegt wurde, was noch fehlt, was der nächste Schritt ist.
 
 ## Öffnen
 
-Nicht alles vorlesen. Gib ein Lagebild:
+```
+node .ara/tools/customer.mjs --customer <name>
+```
+
+Das ist deine Grundlage, nicht dein Text. **Nicht vorlesen.** Gib ein Lagebild:
 
 - wer das ist, in einer Zeile
 - wo es steht (Status, letzter Kontakt, wie lange her)
-- welche Geräte es gibt und in welchem Zustand (Laufzettel lesen, nicht raten)
-- was ansteht (Wiedervorlage, Wartungsende)
+- welche Geräte es gibt und in welchem Zustand
+- was ansteht (Wiedervorlage, Wartungsende, unterbrochene Einrichtung, fehlendes Papier)
 
 Dann fragen, was zu tun ist. Kein Vorschlagskatalog.
+
+## Der Kunde und seine Geräte
+
+Ein Kundengerät liegt unter `customers/<kunde>/devices/<gerät>/`. Was in seiner Akte
+steht, entscheidet, ob das Kit es überhaupt ansprechen kann:
+
+| Feld | Wofür |
+|---|---|
+| `address` | die Adresse im Kundennetz, darüber läuft SSH |
+| `api_base` | die Schnittstelle, wenn sie woanders liegt als der SSH-Zugang, etwa hinter einem Tunnel |
+| `tls` | `selfsigned`, wenn das Gerät ein selbst ausgestelltes Zertifikat trägt |
+| `api_key_ref` | der Name des Kit-Schlüssels in der Geheimnis-Ablage, nie sein Wert |
+| `maintenance_until` | Ende des Wartungsvertrags, daraus wird die Wiedervorlage |
+
+**Was das Werkzeug dazu ausgibt, ist eine Aussage über die Akte und keine über das
+Gerät.** Ob es antwortet, wie es ihm geht und welche Apps darauf stehen, sagt das Gerät
+selbst: `/maintain <kunde>/<gerät>`.
+
+Ein Gerät ohne `api_key_ref` kann keine App bekommen, und eines mit einem Namen, hinter
+dem kein Eintrag in der Ablage steht, auch nicht. Beides fällt im Lagebild auf, bevor der
+erste Deploy daran scheitert.
 
 ## Pflegen
 
