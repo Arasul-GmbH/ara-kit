@@ -35,6 +35,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { ROOT, parseArgs } from "./lib/kit.mjs";
+import { standBlock } from "./lib/version.mjs";
 
 const SOURCE =
   process.env.ARA_KIT_SOURCE ||
@@ -143,6 +144,28 @@ async function download(target) {
   });
 }
 
+/** Der Stand eines Kits: die Nummer und die Änderungsliste, aus einem Ordner. */
+function stand(root) {
+  const read = (...parts) => {
+    const file = join(root, ...parts);
+    return existsSync(file) ? readFileSync(file, "utf8") : "";
+  };
+  return { version: read(".ara", "VERSION").trim(), changelog: read(".ara", "CHANGELOG.md") };
+}
+
+/**
+ * Was der neue Stand mitbringt, in Sätzen.
+ *
+ * Eine Liste geänderter Dateien beantwortet die Frage nicht, die ein Partner
+ * vor dem Einspielen hat: was kann es jetzt, und passt es noch zu meinem Gerät.
+ * Beides steht in der Änderungsliste des geholten Standes.
+ */
+function news(fresh, here) {
+  if (!fresh.version) return [];
+  if (fresh.version === here.version) return [`Stand: ${here.version}, unverändert.`];
+  return standBlock({ version: fresh.version, changelog: fresh.changelog, since: here.version || null });
+}
+
 function describe(diff) {
   const lines = [];
   for (const rel of diff.added) lines.push(`neu        ${rel}`);
@@ -163,9 +186,18 @@ try {
 
   const diff = compare(work, ROOT);
   const total = diff.added.length + diff.changed.length + diff.removed.length;
+  const here = stand(ROOT);
+  const fresh = stand(work);
+  const zeilen = news(fresh, here);
 
   if (arg.json) {
-    console.log(JSON.stringify({ source: SOURCE, applied: !arg.check && total > 0, ...diff }, null, 2));
+    console.log(
+      JSON.stringify(
+        { source: SOURCE, version: { hier: here.version, dort: fresh.version }, applied: !arg.check && total > 0, ...diff },
+        null,
+        2
+      )
+    );
     if (arg.check || total === 0) process.exit(0);
   } else if (total === 0) {
     console.log("Alles aktuell. Nichts zu tun.");
@@ -173,11 +205,15 @@ try {
   } else if (arg.check) {
     console.log(
       [
+        ...zeilen,
+        zeilen.length ? "" : null,
         `Es gibt einen neueren Stand, ${total} Datei(en) betroffen:`,
         describe(diff),
         "",
         "Einspielen mit: node .ara/tools/update.mjs",
-      ].join("\n")
+      ]
+        .filter((line) => line !== null)
+        .join("\n")
     );
     process.exit(0);
   }
@@ -187,6 +223,8 @@ try {
   if (!arg.json) {
     console.log(
       [
+        ...zeilen,
+        zeilen.length ? "" : null,
         `Eingespielt, ${total} Datei(en):`,
         describe(diff),
         "",
@@ -195,7 +233,9 @@ try {
         "",
         "Weiter mit: node .ara/tools/commands.mjs   (neue oder geaenderte Befehle)",
         "Pruefen mit: node .ara/tools/selftest.mjs",
-      ].join("\n")
+      ]
+        .filter((line) => line !== null)
+        .join("\n")
     );
   }
 } catch (error) {

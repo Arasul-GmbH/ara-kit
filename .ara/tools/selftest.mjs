@@ -42,6 +42,7 @@ import {
   topicEndpoints,
 } from "./lib/maintain.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 
 const results = [];
 let failures = 0;
@@ -560,6 +561,70 @@ await checkAsync("Spiegel holt und packt aus", async () => {
     server.close();
     rmSync(work, { recursive: true, force: true });
   }
+});
+
+// --- Stand des Kits ----------------------------------------------------------
+
+check("Der Stand des Kits ist lesbar und die Aenderungsliste passt dazu", () => {
+  const version = readFileSync(join(ROOT, ".ara", "VERSION"), "utf8").trim();
+  assert(/^\d+\.\d+\.\d+$/.test(version), `.ara/VERSION ist keine Nummer: ${version}`);
+
+  const entries = parseChangelog(readFileSync(join(ROOT, ".ara", "CHANGELOG.md"), "utf8"));
+  assert(entries.length > 0, "die Aenderungsliste hat keinen einzigen Eintrag in der erwarteten Form");
+  assert(entries[0].version === version, `oberster Eintrag ${entries[0].version}, .ara/VERSION sagt ${version}`);
+  assert(entries[0].lines.length > 0, "der oberste Eintrag nennt keine einzige Aenderung");
+
+  // Die Zeile im Text und die Fassungen im Code sind zwei Aussagen ueber
+  // dasselbe. Laufen sie auseinander, liest ein Partner die falsche.
+  assert(
+    entries[0].contract === KIT_CONTRACT_VERSION,
+    `die Aenderungsliste sagt Kontrakt bis ${entries[0].contract}, der Code versteht bis ${KIT_CONTRACT_VERSION}`
+  );
+
+  // Die Eintraege stehen absteigend, sonst zeigt "neu seit" das Falsche.
+  for (let i = 1; i < entries.length; i++) {
+    assert(
+      compareVersions(entries[i - 1].version, entries[i].version) > 0,
+      `die Aenderungsliste steht nicht absteigend: ${entries[i - 1].version} vor ${entries[i].version}`
+    );
+  }
+  return `${version}, ${entries.length} Eintrag${entries.length === 1 ? "" : "e"}`;
+});
+
+check("Was neu ist, richtet sich nach dem Stand, von dem jemand kommt", () => {
+  const changelog = [
+    "# Kopf, der kein Eintrag ist",
+    "",
+    "## 0.9.0 (2026-09-02)",
+    "",
+    "Kontrakt: bis 4",
+    "",
+    "- Das Neueste.",
+    "",
+    "## 0.8.0 (2026-09-01)",
+    "",
+    "- Das davor.",
+    "",
+    "## Vor 0.8.0",
+    "",
+    "- Diese Zeile ist kein Eintrag.",
+    "",
+  ].join("\n");
+  const entries = parseChangelog(changelog);
+  assert(entries.length === 2, `falsch gelesen: ${entries.map((e) => e.version).join(", ")}`);
+  assert(entries[0].contract === 4 && entries[1].contract === null, "die Kontraktzeile wird nicht je Eintrag gelesen");
+  assert(entriesSince(entries, "0.8.0").length === 1, "ein bekannter Stand bekommt zu viele Eintraege");
+  assert(entriesSince(entries, "0.9.0").length === 0, "der eigene Stand gilt als neu");
+  assert(entriesSince(entries, "").length === 2, "ohne bekannten Stand fehlt etwas");
+  assert(compareVersions("0.10.0", "0.9.0") > 0, "0.10.0 gilt als aelter als 0.9.0");
+
+  const block = standBlock({ version: "0.9.0", changelog, since: "0.8.0" });
+  assert(block.some((z) => /Neu seit 0\.8\.0/.test(z)), "der Herkunftsstand fehlt");
+  assert(block.some((z) => /Das Neueste/.test(z)), "das Neue fehlt");
+  assert(!block.some((z) => /Das davor/.test(z)), "Bekanntes wird noch einmal erzaehlt");
+  assert(block.some((z) => /Kontraktfassungen bis/.test(z)), "die Vertraeglichkeit zum Geraet fehlt");
+  const ohne = standBlock({ version: "0.9.0", changelog, since: "0.9.0" });
+  assert(ohne.some((z) => /nichts/.test(z)), "ohne Neues wird das nicht gesagt");
 });
 
 // --- Kontrakt und Deploy -----------------------------------------------------
@@ -2007,6 +2072,17 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   rmSync(join(source, ".ara", "mirror"), { recursive: true, force: true });
   rmSync(join(source, ".ara", "state.json"), { force: true });
   writeFileSync(join(source, ".ara", "knowledge", "probe.md"), "# Probe\n");
+  // Ein neuer Stand mit einer neuen Nummer und einem Eintrag dazu: /init soll
+  // vor dem Einspielen sagen koennen, was dazukommt, und nicht nur, welche
+  // Dateien sich aendern.
+  writeFileSync(join(source, ".ara", "VERSION"), "0.8.0\n");
+  writeFileSync(
+    join(source, ".ara", "CHANGELOG.md"),
+    read(".ara/CHANGELOG.md").replace(
+      "## 0.7.0 (",
+      "## 0.8.0 (2026-09-01)\n\nKontrakt: bis 3\n\n- Ein erfundener Punkt fuer den Selbsttest.\n\n## 0.7.0 ("
+    )
+  );
   writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
   rmSync(join(source, ".ara", "knowledge", "sales.md"));
   writeFileSync(
@@ -2057,6 +2133,10 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/neu\s+\.ara\/knowledge\/probe\.md/.test(run.stdout), "neue Datei nicht gemeldet");
     assert(/entfernt\s+\.ara\/knowledge\/sales\.md/.test(run.stdout), "entfernte Datei nicht gemeldet");
     assert(!has(".ara/knowledge/probe.md"), "--check hat eingespielt");
+    assert(/Stand: 0\.8\.0/.test(run.stdout), `der neue Stand wird nicht genannt: ${run.stdout}`);
+    assert(/Neu seit 0\.7\.0/.test(run.stdout), "es wird nicht gesagt, von welchem Stand es kommt");
+    assert(/erfundener Punkt/.test(run.stdout), "der Eintrag der Aenderungsliste fehlt");
+    assert(/Kontraktfassungen bis/.test(run.stdout), "die Vertraeglichkeit zum Geraet fehlt");
 
     // 3. Einspielen.
     run = await forkTool("update.mjs", [], env);

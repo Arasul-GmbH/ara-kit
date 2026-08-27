@@ -33,18 +33,21 @@ Kein Token, kein Konto: das Onboarding braucht beides nicht.
 **`business/profile.md` existiert: jedes weitere Mal.** Dann geht es um den Stand des
 Kits, nicht um den Menschen.
 
-1. `node .ara/tools/update.mjs --check` zeigt, was sich ändern würde. Nichts Neues:
-   sag das in einer Zeile und hör auf.
-2. Gibt es etwas Neues, zeig die Liste und lass das Einspielen bestätigen. Dann
+1. `node .ara/tools/init.mjs --show` nennt zuerst den Stand des Kits, was daran neu ist
+   und bis zu welcher Kontraktfassung es mit einem Gerät zusammenarbeitet. Gib das in
+   zwei Sätzen weiter.
+2. `node .ara/tools/update.mjs --check` zeigt, was sich ändern würde, und nennt den Stand,
+   auf den es ginge. Nichts Neues: sag das in einer Zeile und hör auf.
+3. Gibt es etwas Neues, zeig die Liste und lass das Einspielen bestätigen. Dann
    `node .ara/tools/update.mjs`. Es ersetzt nur `.ara/` und das Minimum von `.claude/`,
    deine Ordner fasst es nicht an.
-3. `node .ara/tools/commands.mjs` zeigt je Befehl, ob er fehlt, im Kit neuer ist, von
+4. `node .ara/tools/commands.mjs` zeigt je Befehl, ob er fehlt, im Kit neuer ist, von
    Hand angepasst wurde oder beides. Fehlende und im Kit neuere: Unterschied zeigen,
    dann `node .ara/tools/commands.mjs --apply`. Angepasste bleiben liegen, es sei denn,
    der Mensch will die Kit-Fassung: `--replace <name>`.
-4. `node .ara/tools/init.mjs --show` nennt die Lücken im Profil. Fehlt etwas, das ein
-   neuer Befehl braucht, frag genau das nach, nicht das ganze Profil noch einmal.
-5. `node .ara/tools/selftest.mjs`, damit der neue Stand auf diesem Rechner nachweislich
+5. `node .ara/tools/init.mjs --show` nennt daneben die Lücken im Profil. Fehlt etwas,
+   das ein neuer Befehl braucht, frag genau das nach, nicht das ganze Profil noch einmal.
+6. `node .ara/tools/selftest.mjs`, damit der neue Stand auf diesem Rechner nachweislich
    läuft.
 
 Kurz zur Haltung: mach so viel wie möglich selbst, prüf statt zu fragen, und stell

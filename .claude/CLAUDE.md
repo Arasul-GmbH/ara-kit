@@ -20,6 +20,7 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst, dazu `app/`: die Vorlage einer App, aus der `/app --new` schöpft. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Das geholte Installationsartefakt, entsteht bei `/device --install arasul`. Nicht bearbeiten. |
+| `.ara/VERSION`, `.ara/CHANGELOG.md` | Der Stand dieses Kits und was sich je Stand geändert hat. `/init` liest beides vor. |
 | `.claude/` | Regeln, Skills und die erzeugten Befehle. Getrackt sind nur `CLAUDE.md`, `settings.json`, `skills/` und `commands/init.md`. |
 
 `business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`

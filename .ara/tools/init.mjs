@@ -4,7 +4,7 @@
  *
  *   node .ara/tools/init.mjs --answers <datei.json>   Profil und Befehle aus den Antworten
  *   node .ara/tools/init.mjs --answers <datei> --force vorhandenes Profil ueberschreiben
- *   node .ara/tools/init.mjs --show                    was im Profil steht und was fehlt
+ *   node .ara/tools/init.mjs --show                    Stand des Kits, was im Profil steht und was fehlt
  *   node .ara/tools/init.mjs --json                    dasselbe als JSON
  *
  * Das Interview fuehrt Ara nach .ara/knowledge/init.md. Dieses Werkzeug ist der
@@ -23,8 +23,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { BUSINESS, ROOT, fail, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
+import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
 
 const TEMPLATES = join(ROOT, ".ara", "templates");
+const VERSION_FILE = join(ROOT, ".ara", "VERSION");
+const CHANGELOG = join(ROOT, ".ara", "CHANGELOG.md");
 const PROFILE = join(BUSINESS, "profile.md");
 const COMPANY = join(BUSINESS, "company.md");
 const ROLES = ["partner", "company"];
@@ -227,10 +230,29 @@ function status() {
   return { exists: true, role, name: profile.fields.name, set, missing, consequences, company: company.exists };
 }
 
+/**
+ * Der Stand des Kits: Nummer, das Neue daran, die Verträglichkeit zum Gerät.
+ *
+ * `/init` sagt das vor allem anderen. Ein Partner, der nur eine Liste geänderter
+ * Dateien sieht, weiß danach nicht, ob sein Gerät noch dazu passt.
+ */
+function stand() {
+  const version = existsSync(VERSION_FILE) ? readFileSync(VERSION_FILE, "utf8").trim() : "";
+  const changelog = existsSync(CHANGELOG) ? readFileSync(CHANGELOG, "utf8") : "";
+  const entries = parseChangelog(changelog);
+  return {
+    version,
+    date: entries[0]?.version === version ? entries[0].date : "",
+    news: entries[0]?.version === version ? entries[0].lines : [],
+    contract: compatibility(),
+    lines: standBlock({ version, changelog }),
+  };
+}
+
 if (arg.answers) {
   const answers = readAnswers(arg.answers);
   const result = apply(answers);
-  const lage = status();
+  const lage = { ...status(), stand: stand() };
   if (arg.json) {
     console.log(JSON.stringify({ ...lage, written: result.written }, null, 2));
     process.exit(0);
@@ -247,11 +269,13 @@ if (arg.answers) {
   process.exit(0);
 }
 
-const lage = status();
+const lage = { ...status(), stand: stand() };
 if (arg.json) {
   console.log(JSON.stringify(lage, null, 2));
   process.exit(0);
 }
+for (const line of lage.stand.lines) console.log(line);
+console.log("");
 if (!lage.exists) {
   console.log("Kein Profil. Das ist das erste Mal: /init führt das Interview, oder eine Antwortdatei mit --answers.");
   process.exit(0);

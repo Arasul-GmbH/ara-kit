@@ -274,17 +274,24 @@ Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.
 ## Jedes weitere Mal
 
 `business/profile.md` existiert. Dann geht es nicht um den Menschen, sondern um den
-Stand des Kits. Fünf Schritte, in dieser Reihenfolge:
+Stand des Kits. Sechs Schritte, in dieser Reihenfolge:
 
-1. **Nachsehen.** `node .ara/tools/update.mjs --check` holt den Stand aus dem Arasul-Repo
-   und zeigt je Datei, was neu, geändert oder entfernt wäre. Nichts Neues: eine Zeile,
-   fertig. Das läuft auch in einem Fork ohne Upstream-Remote, die Quelle ist ein Archiv.
-2. **Einspielen**, mit Bestätigung. `node .ara/tools/update.mjs` ersetzt `.ara/` und das
+1. **Sagen, worauf er sitzt.** `node .ara/tools/init.mjs --show` beginnt mit drei
+   Angaben: der Stand aus `.ara/VERSION`, was in diesem Stand neu ist, und bis zu welcher
+   Kontraktfassung dieses Kit mit einem Gerät zusammenarbeitet. Gib sie in zwei Sätzen
+   weiter, bevor irgendetwas geholt wird. Die Verträglichkeit ist eine Aussage über das
+   Kit, nicht über ein Gerät: welche Fassung ein Gerät führt, sagt sein Kontrakt.
+2. **Nachsehen.** `node .ara/tools/update.mjs --check` holt den Stand aus dem Arasul-Repo
+   und zeigt je Datei, was neu, geändert oder entfernt wäre. Es nennt dazu den Stand, auf
+   den es ginge, und aus der Änderungsliste `.ara/CHANGELOG.md` jeden Punkt, der seit dem
+   eigenen dazugekommen ist. Nichts Neues: eine Zeile, fertig. Das läuft auch in einem
+   Fork ohne Upstream-Remote, die Quelle ist ein Archiv.
+3. **Einspielen**, mit Bestätigung. `node .ara/tools/update.mjs` ersetzt `.ara/` und das
    Minimum von `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`).
    `business/`, `customers/`, `devices/`, `apps/`, der Spiegel, der Merker
    `.ara/state.json` und die erzeugten Befehle bleiben, wie sie sind. Wer das Kit mit git
    führt, sieht die Änderung danach in `git status` und committet sie.
-3. **Befehle nachziehen.** `node .ara/tools/commands.mjs` zeigt für den Zweig aus dem
+4. **Befehle nachziehen.** `node .ara/tools/commands.mjs` zeigt für den Zweig aus dem
    Profil je Befehl einen von fünf Zuständen. Das Werkzeug merkt sich beim Anlegen den
    Hash der Quelle und weiß darum, wer geändert hat:
 
@@ -305,9 +312,9 @@ Stand des Kits. Fünf Schritte, in dieser Reihenfolge:
    durch ein Verfahren, das es nicht mehr gibt. Gelöscht wird nur die unveränderte Kopie,
    erkennbar am gemerkten Hash; eine, die der Mensch angefasst hat, wird genannt und bleibt.
    Sag ihm in dem Fall, wie der Befehl heute heißt, und dass er die alte selbst löschen darf.
-4. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
+5. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
    leeren Felder. Braucht ein neuer Befehl eine Angabe, die im Profil fehlt, frag genau
    diese, gebündelt. Steht bei einem Partner `invoice: later`, frag noch einmal. Nicht das
    ganze Onboarding wiederholen.
-5. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
+6. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
    Stand auf diesem Rechner belegt.
