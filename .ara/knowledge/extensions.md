@@ -34,10 +34,11 @@ wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt.
 
 ### 2. Nachsehen, was das Produkt schon kann
 
-Bevor irgendetwas gebaut wird: Was gibt es bereits? Das Produkt hat eine Schnittstelle für
-eigene Anwendungen, einen Baukasten für Erweiterungen und eine Automatisierung für
-Arbeitsabläufe. Was davon vorhanden ist und wie es angesprochen wird, steht im Spiegel und
-auf dem Gerät, die Beschreibung der Schnittstelle liefert das Gerät selbst.
+Bevor irgendetwas gebaut wird: Was gibt es bereits? Die Beschreibung der Schnittstelle
+liefert das Gerät selbst, in einem Aufruf:
+`node .ara/tools/app.mjs --device <gerät> --contract`. Dort steht, was eine App mitbringen
+muss und welche Endpunkte es gibt. Wie eine App dann auf das Gerät kommt, steht in
+`.ara/knowledge/apps.md`.
 
 Die meisten Kundenwünsche brauchen keine neue Entwicklung, sondern eine Einrichtung.
 

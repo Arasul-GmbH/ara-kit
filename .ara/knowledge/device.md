@@ -24,7 +24,8 @@ Bei einem Kundengerät kommt `--customer <kunde>` dazu. Das Werkzeug:
 5. merkt sich das Gerät in `.ara/state.json`,
 6. nennt den nächsten Schritt.
 
-Es liest nur. Der einzige Eingriff ist `--install`, siehe unten.
+Es liest nur. Eingriffe sind `--install` und `--deploy-key`, beide weiter unten, beide
+nur auf Wunsch und nach Bestätigung.
 
 ## Wo die Akte liegt
 
@@ -115,19 +116,19 @@ siehst, nicht über den Fehler hinweg weiterprobieren.
 Die Phasen des Laufzettels und was in jeder gilt:
 
 - **0 Vorbereitung.** Netzfrage klären mit dem, der das Netz betreut: feste Adresse,
-  Internet, Firewall. Spiegel holen (`node .ara/tools/mirror.mjs`), Lizenztoken prüfen.
-  Rückfallplan festlegen: was passiert, wenn es nicht fertig wird. Zeit ehrlich schätzen.
+  Internet, Firewall. Token hinterlegt? `node .ara/tools/secrets.mjs --show` sagt es, ohne
+  den Wert zu zeigen. Rückfallplan festlegen: was passiert, wenn es nicht fertig wird.
+  Zeit ehrlich schätzen.
 - **1 Betriebssystem.** Nur, wenn das Gerät noch keins hat oder ein anderes braucht.
   Verfahren `.ara/knowledge/boot-and-flash.md`. Ein Datenträger wird nur nach
   ausdrücklichem Ja beschrieben.
 - **2 Erstkontakt.** Hat `/device` schon erledigt: SSH steht, die Akte hat Adresse,
   Anmeldename, Port und Schlüsselname. Ab jetzt läuft jeder Befehl über
   `node .ara/tools/remote.mjs --device <gerät> --command "…"`.
-- **3 Arasul installieren.** Den Installationsweg im Spiegel nachlesen, nicht aus dem
-  Gedächtnis. Voraussetzungen prüfen, Ausgabe mitlesen, bei Fehlern anhalten. Das Token
-  gehört nicht in die Befehlszeile. Die Installation mit Token über `/device` selbst
-  kommt in einer späteren Kit-Fassung, bis dahin gilt das Verfahren im Spiegel.
-  Nachweis: die Dienste melden sich gesund, wie man das abfragt, steht im Produkt.
+- **3 Arasul installieren.** Ein Aufruf, siehe „Arasul installieren" weiter unten:
+  `node .ara/tools/device.mjs --name <gerät> --install arasul`. Ausgabe mitlesen, bei
+  Fehlern anhalten. Nachweis: der Kontrakt des Geräts lässt sich lesen und passt zum Kit,
+  `node .ara/tools/app.mjs --device <gerät> --contract`.
 - **4 Nachbereitung.** Erst prüfen, ob etwas fehlt, das Produkt erledigt manches
   selbst. Modell vorhanden, Namensauflösung, Zugang härten (erst wenn die
   Schlüsselanmeldung nachweislich läuft, und die laufende Sitzung offen halten),
@@ -144,7 +145,83 @@ Die Phasen des Laufzettels und was in jeder gilt:
   aus Phase 5.
 
 Trägt das Gerät Arasul schon, wenn `/device` es findet, ist das kein Fall für die
-Einrichtung, sondern für `/maintain`.
+Einrichtung, sondern für den Kit-Schlüssel und danach für `/maintain`.
+
+## Arasul installieren
+
+**Zwei Wege führen zu einem Gerät mit Arasul, und beide enden am selben Punkt:** einem
+Gerät, dessen Kontrakt das Kit lesen kann, und einem Kit-Schlüssel in der Akte.
+
+| Lage | Was zu tun ist |
+| --- | --- |
+| Das Gerät läuft schon (`arasul: found`) | Nur der Schlüssel fehlt: `--deploy-key` |
+| Das Gerät ist unterstützt, aber leer | `--install arasul`, der Schlüssel kommt danach von selbst |
+
+### Das Token
+
+**Die Token-Frage stellt sich hier und sonst nirgends.** Beim Onboarding gibt es nichts
+zu installieren, also braucht `/init` kein Token, und es fragt auch nicht danach.
+
+Das Token kommt aus dem Partnerportal. **Jeder Partner bekommt dort fünf Download-Token
+kostenlos**, weitere auf Nachfrage per Mail. Es ist eine Schranke vor dem Download, keine
+Lizenzprüfung: am Gerät prüft Arasul kein Token, und das Kit trägt auch keines dorthin.
+Wer also nach dem Preis fragt: das Token kostet nichts, die Lizenz regelt der Vertrag.
+
+```
+node .ara/tools/secrets.mjs --set ARASUL_TOKEN
+```
+
+Du liest es nie selbst aus und zeigst seinen Wert nie an.
+
+### Der Ablauf
+
+```
+node .ara/tools/device.mjs --name <gerät> --install arasul
+```
+
+Das ist ein **Eingriff der Stufe 2**, und er dauert. Vorher Absicht, Ziel und Rückweg
+nennen und bestätigen lassen. Das Werkzeug hält vorher an vier Stellen an, und jede ist
+ein Nein und kein Vielleicht: keine Verbindung, kein unterstütztes Gerät, kein Docker,
+kein Token. Dann geht es los:
+
+1. **Der Installer wird geholt**, über `arasul.de/api/download` mit dem Token, und landet
+   als Spiegel in `.ara/mirror/`, mit Stand und Quelle in `STATE.json`. **Der Spiegel
+   entsteht genau hier und sonst nirgends.**
+2. **Er wird an das Gerät geschoben**, über die schon geprüfte SSH-Verbindung, und dort
+   ausgepackt. Das Token bleibt auf dem Rechner des Partners.
+3. **Der Installer läuft auf dem Gerät.** Seine Ausgabe läuft durch, du liest mit. Bricht
+   er ab, wird nichts schöngeredet: Ursache lesen, beheben, denselben Befehl noch einmal.
+4. **Der Kit-Schlüssel wird angelegt**, siehe unten.
+
+### Der Kit-Schlüssel
+
+Damit rollt das Kit später Apps auf das Gerät: **kein SSH, kein Passwort, keine Sitzung,
+nur ein Schlüssel mit dem Bereich `app:deploy`.** Er entsteht am Gerät, gehört dem
+Administrator dort und ist von ihm jederzeit widerrufbar.
+
+```
+node .ara/tools/device.mjs --name <gerät> --deploy-key
+```
+
+Auf einem Gerät, das schon läuft, ist das der einzige Schritt. Nach `--install arasul`
+passiert es von selbst.
+
+**Der Klartext erscheint genau einmal.** Das Werkzeug legt ihn in die Geheimnis-Ablage
+und schreibt nur den Namen des Eintrags in die Akte, unter `api_key_ref`. Er steht in
+keiner Datei des Kits, in keinem Protokoll und **nie im Portal**: das Portal gibt
+Download-Token aus, keine Geräteschlüssel. Ist er verloren, legst du einen neuen an und
+lässt den alten am Gerät widerrufen, nachschlagen geht nicht.
+
+### Der Nachweis
+
+Installiert ist nicht abgenommen. Der erste Nachweis ist der Kontrakt:
+
+```
+node .ara/tools/app.mjs --device <gerät> --contract
+```
+
+Antwortet er, dann steht die Plattform, der Schlüssel gilt und das Kit passt zu diesem
+Gerät. Was dann noch kommt, steht in `.ara/knowledge/apps.md`.
 
 ## Nach dem Urteil: bald
 

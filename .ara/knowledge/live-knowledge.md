@@ -12,31 +12,22 @@ Kunden vor.
 
 Deshalb: **Das Kit weiß, wie man vorgeht. Das Produkt weiß, was gilt.**
 
-## Quelle 1: Der Spiegel
+## Quelle 1: Der Kontrakt des Geräts
 
-Ein lokaler Zwischenspeicher des aktuellen Produktstands unter `.ara/mirror/`.
+Alles, was zwischen Kit und Produkt **vereinbart** ist, sagt das Gerät selbst:
 
 ```
-node .ara/tools/mirror.mjs          # holen, wenn nötig
-node .ara/tools/mirror.mjs --show # nur nachsehen, wie alt er ist
-node .ara/tools/mirror.mjs --refresh    # erzwingen
+node .ara/tools/app.mjs --device <gerät> --contract
 ```
 
-Er wird mit dem Lizenztoken aus der `.env` geholt. Ohne Token kein Spiegel, dann sagst du
-das und arbeitest ohne Produktaussagen weiter.
+Von dort kommen das Schema für `app.json`, die Regeln, die kein Schema trägt, der Kopf
+einer Flow-Datei, die Namen der Kopfzeilen, die Grenzen eines Pakets, die Pfade unter
+`/apps/` und die Liste der Endpunkte mit dem Bereich, den jeder verlangt. Dazu die
+**Kontraktversion**: die Zahl, an der das Kit merkt, dass es zu diesem Gerät nicht passt.
 
-Was du dort nachschlägst:
-
-| Frage | Wo im Spiegel |
-|---|---|
-| Welche Geräte kennt das Produkt, mit welchen Eckdaten? | `config/platforms/*.json` |
-| Wie läuft die Einrichtung ab, welche Schritte gibt es? | `scripts/` und die Kommandozeilenwerkzeuge im Wurzelverzeichnis |
-| Was sagt die Produktdokumentation? | `docs/` |
-| Welcher Stand ist das? | `.ara/mirror/STATE.json` |
-
-**Vorsicht bei `docs/`:** Die Produktdokumentation ist an manchen Stellen älter als der
-Code. Wenn Dokumentation und Skript sich widersprechen, gilt das Skript. Sag dem Menschen,
-wenn dir so ein Widerspruch auffällt, das ist eine nützliche Rückmeldung ans Produktteam.
+**Das Kit schreibt keinen dieser Werte mit.** Es liest sie je Gerät. Zwei Nachbauten
+desselben Vertrags laufen auseinander, und die Frage ist nur, wann es jemand merkt.
+Verfahren: `.ara/knowledge/apps.md`.
 
 ## Quelle 2: Das Gerät
 
@@ -45,13 +36,42 @@ dort **tatsächlich** läuft, nicht was vorgesehen war.
 
 Frag das Gerät, statt aus dem Spiegel abzuleiten, wenn es um dieses eine Gerät geht:
 welche Plattform erkannt wurde, welches Profil gilt, welche Dienste laufen, welches Modell
-geladen ist, welche Version installiert ist. Die passenden Befehle stehen im Spiegel
+geladen ist, welche Version installiert ist. Die passenden Befehle stehen im Artefakt
 (Kommandozeilenwerkzeug im Wurzelverzeichnis, Abschnitt Hilfe). Lies sie dort nach, statt
 sie auswendig zu verwenden.
 
-## Quelle 3: Gibt es nicht
+## Quelle 3: Der Spiegel, also das Artefakt
 
-Es gibt keine dritte Quelle. Insbesondere:
+Unter `.ara/mirror/` liegt das Installationsartefakt: das, was `arasul.de/api/download`
+mit dem Token ausgeliefert hat, samt Stand und Quelle in `STATE.json`.
+
+```
+node .ara/tools/mirror.mjs --show      # was liegt da, von wann, aus welcher Quelle
+node .ara/tools/mirror.mjs --refresh   # neu holen
+```
+
+**Er entsteht bei der Installation** (`/device` mit `--install arasul`) und sonst nicht.
+Ohne Token kein Artefakt, dann sagst du das und arbeitest ohne Produktaussagen weiter.
+
+Was du dort nachschlägst:
+
+| Frage | Wo im Artefakt |
+|---|---|
+| Welche Geräte kennt das Produkt, mit welchen Eckdaten? | `config/platforms/*.json` |
+| Wie läuft die Einrichtung ab, welche Schritte gibt es? | `scripts/` und die Kommandozeilenwerkzeuge im Wurzelverzeichnis |
+| Was sagt die Produktdokumentation? | `docs/` |
+| Welcher Stand ist das, woher kommt er? | `.ara/mirror/STATE.json` |
+
+**Vorsicht bei `docs/`:** Die Produktdokumentation ist an manchen Stellen älter als der
+Code. Wenn Dokumentation und Skript sich widersprechen, gilt das Skript. Sag dem Menschen,
+wenn dir so ein Widerspruch auffällt, das ist eine nützliche Rückmeldung ans Produktteam.
+
+Steht ein Gerät zur Verfügung, ist es die genauere Quelle. Das Artefakt sagt, was
+ausgeliefert wurde, das Gerät sagt, was dort läuft.
+
+## Quelle 4: Gibt es nicht
+
+Es gibt keine vierte Quelle. Insbesondere:
 
 - **Nicht dein Gedächtnis.** Auch wenn du sicher bist.
 - **Nicht eine ältere Notiz im Kit** oder in einem Kundenordner. Notizen halten fest, was
@@ -62,9 +82,9 @@ Es gibt keine dritte Quelle. Insbesondere:
 
 Sag es klar und biete an, was ohne geht:
 
-> „Für den Modellnamen brauche ich den Spiegel oder Zugriff auf das Gerät. Ich habe
-> gerade beides nicht. Wir können die Akte fertig machen und das nachziehen, sobald du
-> deinen Token eingetragen hast."
+> „Für den Modellnamen brauche ich Zugriff auf das Gerät oder das Artefakt. Ich habe
+> gerade beides nicht. Wir können die Akte fertig machen und das nachziehen, sobald das
+> Gerät erreichbar ist."
 
 Schreib niemals einen ungeprüften Wert in eine Kundendatei. Eine Lücke mit Vermerk ist
 besser als eine Zahl, der jemand glaubt.

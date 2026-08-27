@@ -13,7 +13,16 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
-import { ROOT, fail, parseArgs, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import {
+  ROOT,
+  devicePath,
+  fail,
+  listCustomers,
+  listDevices,
+  parseArgs,
+  readFrontmatter,
+  writeFrontmatter,
+} from "./lib/kit.mjs";
 import {
   activeStore,
   getSecret,
@@ -24,9 +33,33 @@ import {
 } from "./lib/secrets.mjs";
 
 const KNOWN = [
-  { name: "ARASUL_TOKEN", info: "Lizenztoken aus dem Partnerportal" },
+  {
+    name: "ARASUL_TOKEN",
+    info: "Download-Token aus dem Partnerportal, fünf je Partner kostenlos. Erst für die Installation nötig",
+  },
   { name: "ARASUL_BASIS", info: "Adresse des Portals (nur bei abweichender Installation)" },
 ];
+
+/**
+ * Die Kit-Schlüssel der Geräte heißen je Gerät anders. Sie stehen nicht in der
+ * Liste oben, sondern in den Geräteakten: dort steht der Name des Eintrags,
+ * hier steht, ob dazu wirklich etwas hinterlegt ist. Der Wert bleibt unsichtbar.
+ */
+function deviceKeys() {
+  const found = [];
+  for (const customer of [null, ...listCustomers()]) {
+    for (const device of listDevices(customer)) {
+      const { fields } = readFrontmatter(join(devicePath(customer, device), "device.md"));
+      if (!fields.api_key_ref) continue;
+      found.push({
+        place: customer ? `${customer}/${device}` : device,
+        ref: fields.api_key_ref,
+        set: hasSecret(fields.api_key_ref),
+      });
+    }
+  }
+  return found;
+}
 
 const arg = parseArgs();
 const PROFILE = join(ROOT, "business", "profile.md");
@@ -100,6 +133,13 @@ if (typeof arg.set === "string") {
   ];
   for (const entry of KNOWN) {
     lines.push(`- ${entry.name}: ${hasSecret(entry.name) ? "hinterlegt" : "fehlt"}: ${entry.info}`);
+  }
+  const devices = deviceKeys();
+  if (devices.length) {
+    lines.push("", "Kit-Schlüssel der Geräte (app:deploy), Name aus der jeweiligen Akte:");
+    for (const entry of devices) {
+      lines.push(`- ${entry.ref}: ${entry.set ? "hinterlegt" : "fehlt"}: Gerät ${entry.place}`);
+    }
   }
   lines.push(
     "",

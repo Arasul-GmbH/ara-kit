@@ -30,7 +30,7 @@ späteren Rückfrage mehr als ein Protokolleintrag. Leg sie neben das Abnahmedok
 **Kundenwebsites lesen.** Beim Anlegen einer Akte selbst nachsehen, statt zu fragen, was
 öffentlich dasteht.
 
-**Das Partnerportal bedienen.** Lizenztoken holen, Bestellungen und Einkaufspreise
+**Das Partnerportal bedienen.** Download-Token holen, Bestellungen und Einkaufspreise
 nachsehen. Dort liegen echte Geschäftsdaten, also nur, wenn es zur Aufgabe gehört.
 
 ## Welches Werkzeug wofür
