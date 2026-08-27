@@ -7,6 +7,11 @@ region:
 contact_person:
 contact:                  # Telefon oder E-Mail
 website:
+street:                   # Strasse und Hausnummer, Anschrift fuer Angebot und Rechnung
+postcode:
+city:
+country: DE               # Laenderkennzeichen nach ISO 3166, zwei Buchstaben
+vat_id:                   # USt-IdNr des Kunden, falls vorhanden
 created:
 last_contact:
 follow_up:                # JJJJ-MM-TT, wann du dich wieder melden willst

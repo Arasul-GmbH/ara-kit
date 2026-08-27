@@ -21,6 +21,8 @@
  *
  * Was nie im PDF landet:
  *   - HTML-Kommentare. Dort stehen die Prueflisten, die niemand ausser dir liest.
+ *   - Das Frontmatter. Das ist die maschinenlesbare Seite eines Belegs, etwa
+ *     einer Rechnung, und keine Zeile fuer den Kunden.
  *   - Die Hinweisbloecke der Vorlage, also alle Zitatzeilen vor der ersten
  *     Ueberschrift. Mit --keep-notes bleiben sie drin.
  */
@@ -168,6 +170,16 @@ function stripComments(text) {
 }
 
 /**
+ * Das Frontmatter weg. Es ist die maschinenlesbare Seite eines Belegs und
+ * gehoert nicht ins Papier: gedruckt saehe der Kunde sonst zuerst eine Liste
+ * von Feldnamen. Ohne diesen Schnitt wuerde auch der Hinweisblock der Vorlage
+ * stehenbleiben, denn der steht dann nicht mehr am Anfang der Datei.
+ */
+function stripFrontmatter(text) {
+  return text.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*(\r?\n|$)/, "");
+}
+
+/**
  * Die Hinweisbloecke der Vorlage weg: alle Zitatzeilen vor der ersten
  * Ueberschrift, samt der Trennlinie, die sie abschliesst. Zitate mitten im
  * Dokument bleiben stehen, das sind echte Zitate.
@@ -194,7 +206,7 @@ function stripPreambleNotes(text) {
   return sawNote ? lines.slice(cut).join("\n") : text;
 }
 
-let content = stripComments(raw);
+let content = stripFrontmatter(stripComments(raw));
 if (!arg["keep-notes"]) content = stripPreambleNotes(content);
 content = content.replace(/^\s*\n+/, "");
 
