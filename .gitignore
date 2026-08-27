@@ -4,7 +4,14 @@
 business/
 customers/
 devices/
-apps/
+apps/*
+
+# Eine Ausnahme: die Referenz-App gehoert dem Kit und kommt mit dem Klon mit.
+# Sie ist zum Ansehen da, nicht zum Bearbeiten; ein Update fasst sie so wenig an
+# wie jeden anderen Ordner unter apps/. Ihr Bau entsteht beim Bauen und gehoert
+# niemandem, also bleibt er draussen.
+!apps/urlaubsantrag/
+apps/urlaubsantrag/build/
 
 .env
 .env.*

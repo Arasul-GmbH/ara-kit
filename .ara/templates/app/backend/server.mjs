@@ -171,7 +171,10 @@ const server = createServer(async (anfrage, antwort) => {
 });
 
 server.listen(PORT, "0.0.0.0", () => {
-  process.stdout.write(`${NAME} hört auf ${PORT}\n`);
+  // Die Nummer aus dem Server und nicht die aus der Umgebung: mit PORT=0 sucht
+  // das Betriebssystem eine freie, und dann ist die Zeile hier die einzige
+  // Stelle, an der sie überhaupt steht.
+  process.stdout.write(`${NAME} hört auf ${server.address().port}\n`);
 });
 
 // Docker schickt SIGTERM. Ohne diese Zeilen wartet es zehn Sekunden und

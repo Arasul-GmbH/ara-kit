@@ -31,6 +31,7 @@ import {
   promisedFolders,
 } from "./lib/contract.mjs";
 import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
+import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 
 const results = [];
@@ -866,6 +867,300 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
   }
 });
 
+// --- Die Akte einer App ------------------------------------------------------
+
+check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-app";
+  const dir = join(ROOT, "apps", name);
+  try {
+    let run = tool("app.mjs", ["--app", name, "--new", "--titel", "Probe"]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    for (const datei of ["app.json", "README.md", "backend/Dockerfile", "flows/freigabe.md", "frontend/src/design.css"]) {
+      assert(existsSync(join(dir, datei)), `aus der Vorlage fehlt: ${datei}`);
+    }
+    const manifest = JSON.parse(readFileSync(join(dir, "app.json"), "utf8"));
+    assert(manifest.id === name && manifest.name === "Probe", "die Platzhalter der Vorlage wurden nicht ersetzt");
+    assert(
+      !/\{\{[a-z]+\}\}/.test(readFileSync(join(dir, "README.md"), "utf8")),
+      "in der README steht noch ein Platzhalter"
+    );
+
+    // Zweimal dieselbe App gibt es nicht, und der Ordner bleibt, wie er ist.
+    run = tool("app.mjs", ["--app", name, "--new"]);
+    assert(run.status !== 0 && /gibt es schon/.test(run.stderr), "eine App wurde zweimal angelegt");
+
+    // Der Plan: einer aktiv, nicht zwei.
+    assert(tool("app.mjs", ["--app", name, "--plan", "Erste Fassung"]).status === 0, "Plan nicht angelegt");
+    assert(tool("app.mjs", ["--app", name, "--plan", "Zweite Fassung"]).status === 0, "zweiter Plan nicht angelegt");
+    const offen = readdirSync(join(dir, "plans", "offen"));
+    assert(offen.length === 2, `Pläne liegen nicht unter offen/: ${offen.join(", ")}`);
+    assert(tool("app.mjs", ["--app", name, "--plan-aktiv", offen[0]]).status === 0, "Plan nicht aktiv gesetzt");
+    run = tool("app.mjs", ["--app", name, "--plan-aktiv", offen[1]]);
+    assert(run.status !== 0 && /Höchstens ein Plan/.test(run.stderr), "zwei Pläne wurden aktiv");
+    const { fields } = readFrontmatter(join(dir, "plans", "aktiv", offen[0]));
+    assert(fields.stand === "aktiv", "der Stand im Frontmatter wandert nicht mit");
+
+    // Die Lage: der nächste Schritt ist der Bau, und die Vorlage taugt für keinen
+    // Vorschlag, den es nicht gibt.
+    run = tool("app.mjs", ["--app", name, "--json"]);
+    const lage = JSON.parse(run.stdout);
+    assert(lage.plans.aktiv.length === 1 && lage.plans.offen.length === 1, "die Lage zählt die Pläne falsch");
+    assert(!lage.build.exists, "ein Bau ohne Bau");
+    assert(
+      lage.steps.some((s) => /--build/.test(s.wie || "")),
+      `der Bau wird nicht vorgeschlagen: ${JSON.stringify(lage.steps)}`
+    );
+
+    // Ohne Bau wird nichts eingespielt, auch nicht an ein Gerät, das antwortet.
+    run = tool("app.mjs", ["--device", "gibtsnicht", "--app", name, "--deploy"]);
+    assert(run.status !== 0, "ohne Bau wurde eingespielt");
+    return "anlegen, Pläne, Lage";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Der Bau nimmt das Paket und lässt die Arbeit daran liegen", () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-bau";
+  const dir = join(ROOT, "apps", name);
+  try {
+    // Eine App ohne eigenen Bau: das Frontend liegt fertig vor. So läuft der
+    // Selbsttest ohne Netz, und geprüft wird genau der Schnitt des Ordners.
+    mkdirSync(join(dir, "frontend"), { recursive: true });
+    mkdirSync(join(dir, "flows"), { recursive: true });
+    mkdirSync(join(dir, "plans", "offen"), { recursive: true });
+    writeFileSync(join(dir, "app.json"), JSON.stringify({ schema: 1, id: name, name: "Bau", version: "1.0.0" }, null, 2));
+    writeFileSync(join(dir, "README.md"), "# Bau\n");
+    writeFileSync(join(dir, "frontend", "index.html"), "<p>fertig</p>\n");
+    writeFileSync(join(dir, "flows", "probe.md"), "---\nname: probe\n---\n\nTu etwas.\n");
+    writeFileSync(join(dir, "plans", "offen", "2026-01-01-probe.md"), "---\nstand: offen\n---\n");
+
+    const run = tool("app.mjs", ["--app", name, "--build"]);
+    assert(run.status === 0, `Bau fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    const build = join(dir, "build");
+    for (const datei of ["app.json", "frontend/index.html", "flows/probe.md"]) {
+      assert(existsSync(join(build, datei)), `im Paket fehlt: ${datei}`);
+    }
+    for (const draussen of ["plans", "README.md", "build"]) {
+      assert(!existsSync(join(build, draussen)), `im Paket liegt, was nicht hineingehört: ${draussen}`);
+    }
+
+    // Ein Bau, der älter ist als die Quelle, wird als solcher erkannt und nicht
+    // eingespielt: sonst ginge der Stand von vorgestern an das Gerät.
+    writeFileSync(join(dir, "frontend", "index.html"), "<p>neuer</p>\n");
+    const lage = JSON.parse(tool("app.mjs", ["--app", name, "--json"]).stdout);
+    assert(lage.build.stale, "ein veralteter Bau fällt nicht auf");
+    const abgewiesen = tool("app.mjs", ["--device", "gibtsnicht", "--app", name, "--deploy"]);
+    assert(abgewiesen.status !== 0, "ein veralteter Bau wurde eingespielt");
+    return "app.json, frontend, flows im Paket, Pläne und README draußen";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Ein Gerät ohne Arasul bekommt zwei Container und den Satz, was fehlt", () => {
+  const manifest = {
+    schema: 1,
+    id: "probeapp",
+    name: "Probe",
+    version: "1.0.0",
+    frontend: { verzeichnis: "frontend" },
+    backend: { image: "arasul-probeapp:1.0.0", bauen: { verzeichnis: "backend" }, umgebung: { ARASUL_APP_NAME: "Probe" } },
+    ports: { backend: 8080 },
+  };
+  const datei = composeFile(manifest, { port: 8081 });
+  assert(/build:\s*\n\s+context: \.\/backend/.test(datei), "das Backend wird nicht am Gerät gebaut");
+  assert(/PORT: "8080"/.test(datei), "der Port aus dem Manifest steht nicht im Container");
+  assert(/- "8081:80"/.test(datei), "der Port am Gerät fehlt");
+  assert(!/8080:8080/.test(datei), "das Backend hängt am Gerät, obwohl ein Webserver davor steht");
+  for (const satz of WAS_FEHLT) {
+    assert(datei.includes(satz), `im Kopf der Datei fehlt: ${satz.slice(0, 30)}`);
+  }
+  assert(/Anmeldung/.test(WAS_FEHLT.join(" ")) && /Freigaben/.test(WAS_FEHLT.join(" ")), "der Satz nennt nicht, was fehlt");
+
+  const conf = nginxConf(manifest);
+  assert(/proxy_pass http:\/\/backend:8080\//.test(conf), "die Schnittstelle wird nicht weitergereicht");
+  assert(/location \/api\//.test(conf), "die App findet ihre Schnittstelle nicht unter /api/");
+
+  // Ohne Backend gibt es nichts weiterzureichen, und keinen zweiten Container.
+  const nurSeite = composeFile({ ...manifest, backend: undefined, ports: undefined });
+  assert(!/backend:/.test(nurSeite), "eine App ohne Backend bekommt trotzdem einen Container dafür");
+  assert(!/location \/api\//.test(nginxConf({ ...manifest, backend: undefined })), "ohne Backend wird weitergereicht");
+});
+
+await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist genehmigt", async () => {
+  // Die Referenz-App, gegen ein Gerät, das gespielt wird. Geprüft wird der Weg,
+  // um den es in dieser App geht: sie startet einen Flow, der Lauf hält an, ein
+  // MENSCH entscheidet, und erst danach steht der Antrag auf genehmigt. Die App
+  // entscheidet dabei nichts: sie liest nur.
+  const backend = join(ROOT, "apps", "urlaubsantrag", "backend", "server.mjs");
+  if (!existsSync(backend)) return "übersprungen, die Referenz-App liegt nicht in diesem Klon";
+
+  const freigabe = {
+    id: 7,
+    run_id: 7,
+    flow_name: "antrag",
+    titel: "Urlaub",
+    status: "offen",
+    begruendung: null,
+    entschieden_von: null,
+  };
+  const gesehen = { start: null, key: null };
+  const geraet = createServer((anfrage, antwort) => {
+    const url = new URL(anfrage.url, "http://x");
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      gesehen.key = anfrage.headers["x-api-key"] || null;
+      if (gesehen.key !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
+      if (url.pathname === "/flows/antrag/run") {
+        gesehen.start = JSON.parse(Buffer.concat(teile).toString("utf8")).args;
+        return json(202, { success: true, run_id: 7 });
+      }
+      if (url.pathname === "/freigaben") {
+        return json(200, { success: true, freigaben: url.searchParams.get("lauf") === "7" ? [freigabe] : [] });
+      }
+      if (url.pathname === "/flows/runs/7") {
+        return json(200, {
+          success: true,
+          status: freigabe.status === "bestaetigt" ? "fertig" : "wartend",
+          result: freigabe.status === "bestaetigt" ? "Anna hat den Urlaub genehmigt." : null,
+        });
+      }
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((ready) => geraet.listen(0, "127.0.0.1", ready));
+  const api = `http://127.0.0.1:${geraet.address().port}`;
+
+  const app = spawn("node", [backend], {
+    env: {
+      ...process.env,
+      PORT: "0",
+      ARASUL_API_URL: api,
+      ARASUL_API_SCHLUESSEL: "aras_selbsttest",
+      ARASUL_APP_NAME: "Urlaubsantrag",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  // Der Port kommt vom Betriebssystem, damit zwei Läufe sich nicht ins Gehege
+  // kommen. Die App sagt ihn beim Start, also wird zugehört statt geraten.
+  const appUrl = await new Promise((done, failed) => {
+    const zeit = setTimeout(() => failed(new Error("die App hat nicht gestartet")), 10_000);
+    app.stdout.on("data", (chunk) => {
+      const treffer = String(chunk).match(/auf (\d+)/);
+      if (treffer) {
+        clearTimeout(zeit);
+        done(`http://127.0.0.1:${treffer[1]}`);
+      }
+    });
+  });
+
+  // So legt die Plattform einen Namen in die Kopfzeile: als UTF-8, das auf der
+  // Leitung wie Latin-1 aussieht. Wer hier schlicht "Jürgen" schickt, prüft den
+  // Umweg nicht, den die App genau dafür geht.
+  const alsKopfzeile = (text) => Buffer.from(text, "utf8").toString("latin1");
+  const ruf = async (pfad, optionen) => {
+    const antwort = await fetch(`${appUrl}${pfad}`, {
+      headers: {
+        "content-type": "application/json",
+        "x-arasul-user": alsKopfzeile("Jürgen"),
+        "x-arasul-role": "mitarbeiter",
+      },
+      ...optionen,
+    });
+    return { code: antwort.status, daten: await antwort.json() };
+  };
+
+  try {
+    const lage = await ruf("/lage");
+    assert(lage.daten.nutzer === "Jürgen", `die App liest den Angemeldeten nicht: ${JSON.stringify(lage.daten)}`);
+    assert(lage.daten.arasul === true, "die App sieht die Schnittstelle des Geräts nicht");
+
+    const gestellt = await ruf("/antraege", {
+      method: "POST",
+      body: JSON.stringify({ von: "2026-09-07", bis: "2026-09-11", grund: "Familie" }),
+    });
+    assert(gestellt.code === 201, `Antrag abgewiesen: ${JSON.stringify(gestellt.daten)}`);
+    assert(gestellt.daten.antrag.tage === 5, `Arbeitstage falsch gezählt: ${gestellt.daten.antrag.tage}`);
+    assert(gestellt.daten.antrag.antragsteller === "Jürgen", "der Antragsteller kommt nicht aus der Anmeldung");
+    assert(gestellt.daten.antrag.status === "wartet", `der Antrag wartet nicht: ${gestellt.daten.antrag.status}`);
+    assert(gestellt.daten.antrag.lauf === 7, "der Flow wurde nicht gestartet");
+    assert(gesehen.start?.antragsteller === "Jürgen", `der Flow bekam falsche Angaben: ${JSON.stringify(gesehen.start)}`);
+
+    // Ein Wochenende zählt nicht mit, und ein Zeitraum ohne Arbeitstag ist keiner.
+    const wochenende = await ruf("/antraege", {
+      method: "POST",
+      body: JSON.stringify({ von: "2026-09-05", bis: "2026-09-06" }),
+    });
+    assert(wochenende.code === 400, "ein Zeitraum ohne Arbeitstag wurde angenommen");
+
+    // Solange niemand entschieden hat, ändert sich nichts. Die App wartet, sie
+    // hilft nicht nach.
+    let liste = await ruf("/antraege");
+    assert(liste.daten.antraege[0].status === "wartet", "der Antrag entscheidet sich selbst");
+
+    // Jetzt der Mensch, in der Oberfläche von Arasul.
+    freigabe.status = "bestaetigt";
+    freigabe.entschieden_von = "Anna";
+    liste = await ruf("/antraege");
+    const antrag = liste.daten.antraege.find((a) => a.id === 1);
+    assert(antrag.status === "genehmigt", `nach der Bestätigung: ${antrag.status}`);
+    assert(antrag.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Antrag");
+    assert(/genehmigt/.test(antrag.bemerkung || ""), `der Satz des Laufs fehlt: ${antrag.bemerkung}`);
+    return "gestellt, gewartet, bestätigt, genehmigt";
+  } finally {
+    app.kill();
+    geraet.close();
+  }
+});
+
+await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async () => {
+  const backend = join(ROOT, "apps", "urlaubsantrag", "backend", "server.mjs");
+  if (!existsSync(backend)) return "übersprungen, die Referenz-App liegt nicht in diesem Klon";
+  const app = spawn("node", [backend], {
+    env: { ...process.env, PORT: "0", ARASUL_API_URL: "", ARASUL_API_SCHLUESSEL: "" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const appUrl = await new Promise((done, failed) => {
+    const zeit = setTimeout(() => failed(new Error("die App hat nicht gestartet")), 10_000);
+    app.stdout.on("data", (chunk) => {
+      const treffer = String(chunk).match(/auf (\d+)/);
+      if (treffer) {
+        clearTimeout(zeit);
+        done(`http://127.0.0.1:${treffer[1]}`);
+      }
+    });
+  });
+  try {
+    const lage = await (await fetch(`${appUrl}/lage`)).json();
+    assert(lage.arasul === false, "die App behauptet eine Schnittstelle, die sie nicht hat");
+    const gestellt = await fetch(`${appUrl}/antraege`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ von: "2026-09-07", bis: "2026-09-08" }),
+    });
+    const daten = await gestellt.json();
+    assert(daten.antrag.status !== "genehmigt", "ohne Freigabe gilt der Antrag als genehmigt");
+    assert(/Arasul|Flow/.test(daten.antrag.hinweis || ""), `der Antrag sagt nicht, warum niemand entscheidet: ${daten.antrag.hinweis}`);
+    return "Antrag angenommen, ohne Entscheidung, mit Begründung";
+  } finally {
+    app.kill();
+  }
+});
+
 await checkAsync("Das Artefakt geht als Ganzes an das Gerät, oder gar nicht", async () => {
   const work = mkdtempSync(join(tmpdir(), "ara-artefakt-"));
   const mirror = join(work, "spiegel");
@@ -947,7 +1242,10 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     "business/company.md",
     "business/notes/gelerntes.md",
     "devices/zentrale/device.md",
-    "apps/urlaubsantrag/app.json",
+    "apps/eigene-app/app.json",
+    // Der Bau einer App gehoert niemandem: er entsteht beim Bauen, auch bei der
+    // Referenz-App, die sonst als Einzige unter apps/ verfolgt wird.
+    "apps/urlaubsantrag/build/app.json",
     ".env",
     ".ara/mirror/VERSION",
     ".ara/state.json",
@@ -973,6 +1271,10 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".ara/tools/selftest.mjs",
     ".ara/commands/alle/device.md",
     ".ara/commands/partner/customer.md",
+    // Die eine Ausnahme unter apps/: die Referenz-App gehoert dem Kit und kommt
+    // mit dem Klon mit. Ohne sie haette ein Fremder nichts zum Ansehen.
+    "apps/urlaubsantrag/app.json",
+    "apps/urlaubsantrag/flows/antrag.md",
     "README.md",
     "LICENSE",
   ];
@@ -1163,7 +1465,9 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
   const files = listed.stdout.split("\0").filter(Boolean);
 
   // Feste Namen, die Werkzeuge so erwarten: README, CLAUDE.md, SKILL.md.
-  const fixed = new Set(["README.md", "CLAUDE.md", "SKILL.md", "LICENSE", ".gitkeep"]);
+  // `Dockerfile` heisst so, weil Docker es so erwartet: es steht im Paket einer
+  // App und wird am Geraet gebaut, nicht von einem Kit-Werkzeug gelesen.
+  const fixed = new Set(["README.md", "CLAUDE.md", "SKILL.md", "LICENSE", ".gitkeep", "Dockerfile"]);
   // Die Bausteine werden aus Arasuls Steuerungsordner gespiegelt und tragen
   // dessen Nummern (W1 bis W5). Sie heissen hier so, wie sie dort heissen.
   const mirrored = /^\.ara\/vorlagen\/bausteine\//;
