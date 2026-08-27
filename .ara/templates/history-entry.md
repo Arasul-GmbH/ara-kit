@@ -1,6 +1,6 @@
 ---
 date:
-type:                    # call | quote | incident | maintenance | update | extension
+type:                    # call | quote | invoice | incident | maintenance | update | extension
 device:                  # falls es um ein bestimmtes geht
 duration:                # für die Abrechnung
 ---

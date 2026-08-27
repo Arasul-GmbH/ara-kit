@@ -63,6 +63,7 @@ Verfahren: `.ara/knowledge/paperwork.md`
 | `/customer <name>` | Nur Partner. Kunde anlegen oder öffnen | `.ara/knowledge/customer-file.md` |
 | `/kalkulation` | Nur Partner. Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
 | `/offer <kunde>` | Nur Partner. Angebot mit allen Anlagen, gerechnet aus dem Kalkulationsblatt | `.ara/knowledge/paperwork.md` |
+| `/invoice <kunde>` | Nur Partner, und nur mit `invoice: yes` im Profil. Rechnung als ZUGFeRD-PDF, Nummer aus dem Nummernkreis, Pflichtangaben nach § 14 UStG | `.ara/knowledge/invoicing.md` |
 | `/device [<gerät>]` | Gerät anlegen und prüfen: Akte, SSH, Hardware, Urteil, nächste Schritte. Arasul installieren, Kit-Schlüssel holen. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/device.md` |
 | `/app [<app>]` | App planen, bauen, in den Teststand rollen, live schalten. Liest die Akte und bietet nur die sinnvollen nächsten Schritte | `.ara/knowledge/app.md` |
 | `/maintain [<gerät>]` | Laufendes Gerät betreuen. Beginnt mit einer Statuszeile, dann sagst du im Freitext, was ansteht. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/maintenance-flow.md` |
@@ -95,6 +96,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `disk.mjs` | Boot-Medien erkennen, prüfen und schreiben |
 | `agenda.mjs` | Was ansteht: Wiedervorlagen, Wartungsenden, offene Einrichtungen |
 | `calculation.mjs` | Kalkulationsblatt: welche Zahl liegt vor, welche fehlt, was geht deshalb nicht |
+| `invoice.mjs` | Rechnung: Nummer aus dem Nummernkreis vergeben, Beleg aus dem Angebot anlegen, Pflichtangaben nach § 14 UStG pruefen, als ZUGFeRD-PDF drucken (`--new`, `--check`, `--pdf`, `--validate`, `--void`) |
 | `evidence.mjs` | Bildnachweis je Zeile der Leistungsbeschreibung (`--plan`, `--record`, `--render`). Läuft, ist aber in kein Verfahren eingebunden, siehe `.ara/knowledge/leistungsbeschreibung.md` |
 | `service-description.mjs` | Leistungsbeschreibung mit Werten vom Gerät: Softwarestand, Kontraktfassung, Modelle, Apps, je Wert mit Quelle. Was ungemessen blieb, bleibt Platzhalter |
 | `pdf.mjs` | Aus Markdown wird ein PDF im Hausstil (`--check`, `--force`) |

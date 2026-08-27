@@ -25,6 +25,7 @@ Zwei Unternehmen schreiben Papier, und sie werden leicht verwechselt.
 | Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen | der Partner gibt sie weiter | `.ara/vorlagen/` |
 | Nachweise zu KI-Einstufung und Datenverarbeitung | Arasul verfasst, der Partner legt sie bei | `.ara/nachweise/` |
 | Übergabeprotokoll | Partner und Kunde zeichnen | `.ara/vorlagen/uebergabeprotokoll.md` |
+| Rechnung an den Endkunden | **der Partner** | `.ara/vorlagen/rechnung.md`, Verfahren in `.ara/knowledge/invoicing.md` |
 | Partnervertrag, Kaufvertrag, Vereinbarung zur Auftragsverarbeitung | **Arasul** | nicht im Kit |
 
 Die drei letzten Zeilen sind der häufigste Irrtum. **Der Partnervertrag ist ein Papier,
@@ -60,7 +61,9 @@ verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
    `quoted`, Gültigkeitsdatum als Wiedervorlage. Siehe `.ara/knowledge/crm.md`.
 
 Später, bei der Übergabe: Übergabeprotokoll und technische Abnahme, siehe
-`.ara/knowledge/handover.md`.
+`.ara/knowledge/handover.md`. Und danach die Rechnung, siehe
+`.ara/knowledge/invoicing.md`: sie ist das einzige Papier im Kit, dem ein Gesetz
+vorschreibt, was drinstehen muss, und darum hat sie ein eigenes Verfahren.
 
 ## Die fünf Anlagen zum Angebot
 

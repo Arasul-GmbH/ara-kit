@@ -1,6 +1,7 @@
 ---
 legal_name:
-address:
+address:                  # Strasse Nr, PLZ Ort. Die Rechnung braucht die drei Teile einzeln
+country: DE               # Laenderkennzeichen nach ISO 3166, zwei Buchstaben
 phone:
 email:
 website:

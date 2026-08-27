@@ -50,6 +50,18 @@ import {
   statusLine,
   topicEndpoints,
 } from "./lib/maintain.mjs";
+import {
+  auditLedger,
+  checkVat14,
+  computePositions,
+  formatAmount,
+  parseAmount,
+  peekNumber,
+  readInvoice,
+  totals,
+} from "./lib/invoice.mjs";
+import { buildXml, validateXml } from "./lib/zugferd.mjs";
+import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 
@@ -1988,6 +2000,506 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
   return `${mustBeIgnored.length} Pfade geprüft`;
 });
 
+// --- Die Rechnung -------------------------------------------------------------
+
+check("Betraege werden in ganzen Cent gelesen und geschrieben", () => {
+  // Eine Rechnung, die aus Gleitkommazahlen entsteht, ist irgendwann einen Cent
+  // daneben, und der Cent steht dann in der Buchhaltung des Kunden.
+  const cases = [
+    ["1.234,56", 123456],
+    ["95", 9500],
+    ["24,90 Euro", 2490],
+    ["24.90", 2490],
+    ["1.560", 156000],
+    ["0,01", 1],
+    ["", null],
+    ["{Betrag}", null],
+  ];
+  for (const [text, expected] of cases) {
+    const got = parseAmount(text);
+    assert(got === expected, `"${text}" wird als ${got} gelesen, erwartet ${expected}`);
+  }
+  for (const cents of [1, 99, 100, 123456, 100000000]) {
+    assert(
+      parseAmount(formatAmount(cents)) === cents,
+      `${cents} ueberlebt den Weg durch das Papier nicht: ${formatAmount(cents)}`
+    );
+  }
+  return `${cases.length} Schreibweisen`;
+});
+
+check("Der Nummernkreis ist fortlaufend und laesst sich nicht zurueckdrehen", () => {
+  // Eine Luecke im Nummernkreis ist das Erste, wonach eine Betriebspruefung
+  // sucht. Also faellt sie hier auf und nicht dort.
+  const ledger = (year, last, numbers) => ({
+    exists: true,
+    year,
+    last,
+    format: "JJJJ-NNNN",
+    rows: numbers.map((n) => ({ Nummer: n, Datum: "", Kunde: "", Stand: "gestellt" })),
+  });
+
+  const heil = ledger(2026, 2, ["2026-0001", "2026-0002"]);
+  assert(auditLedger(heil).length === 0, `ein heiler Kreis wird beanstandet: ${auditLedger(heil)}`);
+  assert(peekNumber("2026-09-01", heil).number === "2026-0003", "die naechste Nummer stimmt nicht");
+  assert(peekNumber("2027-01-02", heil).number === "2027-0001", "das neue Jahr faengt nicht bei 0001 an");
+
+  const luecke = ledger(2026, 3, ["2026-0001", "2026-0003"]);
+  assert(auditLedger(luecke).some((p) => /Luecke/.test(p)), "eine Luecke faellt nicht auf");
+
+  const doppelt = ledger(2026, 2, ["2026-0001", "2026-0001", "2026-0002"]);
+  assert(auditLedger(doppelt).some((p) => /zweimal/.test(p)), "eine doppelte Nummer faellt nicht auf");
+
+  const gedreht = ledger(2026, 1, ["2026-0001", "2026-0002"]);
+  assert(auditLedger(gedreht).some((p) => /zurueckgedreht/.test(p)), "ein gedrehter Kopf faellt nicht auf");
+
+  let refused = false;
+  try {
+    peekNumber("2025-12-30", heil);
+  } catch {
+    refused = true;
+  }
+  assert(refused, "ein Beleg aus einem abgeschlossenen Jahr bekommt trotzdem eine Nummer");
+  return "Luecke, Dublette, gedrehter Kopf und altes Jahr werden erkannt";
+});
+
+check("Die Steuer wird je Satz gerechnet, nicht je Zeile", () => {
+  // Je Zeile gerundet weicht die Summe bei vielen Positionen um Cents von der
+  // ab, die das Finanzamt rechnet.
+  const rows = [
+    { text: "Beratung", quantity: "3", unit: "Stunden", price: "95,00", rate: "" },
+    { text: "Fahrt", quantity: "1", unit: "Stueck", price: "0,33", rate: "" },
+    { text: "Buch", quantity: "3", unit: "Stueck", price: "24,90", rate: "7 Prozent" },
+  ];
+  const { positions, problems } = computePositions(rows, 19);
+  assert(problems.length === 0, `lesbare Zeilen werden beanstandet: ${problems.join(" ")}`);
+  const sums = totals(positions, "standard");
+  // 3 mal 95,00 plus 0,33 plus 3 mal 24,90 sind 360,03.
+  assert(sums.net === 36003, `die Nettosumme ist ${formatAmount(sums.net)}, erwartet 360,03`);
+  assert(sums.taxes.length === 2, `es entstehen ${sums.taxes.length} Steuergruppen statt zwei`);
+  const neunzehn = sums.taxes.find((group) => group.rate === 19);
+  assert(neunzehn.basis === 28533, `die Grundlage zu 19 Prozent ist ${formatAmount(neunzehn.basis)}`);
+  // Je Zeile gerundet kaeme 54,15 plus 0,06 heraus, auf die Summe sind es 54,21.
+  assert(neunzehn.tax === 5421, `19 Prozent auf 285,33 sind ${formatAmount(neunzehn.tax)}, erwartet 54,21`);
+  const sieben = sums.taxes.find((group) => group.rate === 7);
+  assert(sieben.tax === 523, `7 Prozent auf 74,70 sind ${formatAmount(sieben.tax)}, erwartet 5,23`);
+  assert(sums.gross === sums.net + sums.tax, "brutto ist nicht netto plus Steuer");
+
+  // Ohne Steuerausweis darf kein Steuerbetrag entstehen.
+  const klein = totals(positions, "kleinunternehmer");
+  assert(klein.tax === 0, "ein Kleinunternehmer weist Steuer aus");
+  assert(klein.taxes.every((group) => group.category === "E" && group.reason), "der Grund der Befreiung fehlt");
+  return `netto ${formatAmount(sums.net)}, Steuer ${formatAmount(sums.tax)}`;
+});
+
+check("Die Pflichtangaben nach § 14 UStG werden einzeln geprueft", () => {
+  // Fehlt eine, berechtigt die Rechnung den Kunden nicht zum Vorsteuerabzug.
+  // Das faellt bei ihm auf, nicht beim Partner.
+  const dir = mkdtempSync(join(tmpdir(), "ara-rechnung-"));
+  try {
+    const seller = {
+      exists: true,
+      legal_name: "Beispiel IT-Service e. K.",
+      address: "Musterweg 3, 48143 Muenster",
+      street: "Musterweg 3",
+      postcode: "48143",
+      city: "Muenster",
+      address_ok: true,
+      country: "DE",
+      phone: "",
+      email: "",
+      website: "",
+      tax_number: "",
+      vat_id: "DE123456789",
+      iban: "",
+      payment_terms: "14",
+    };
+    const ledger = {
+      exists: true,
+      year: 2026,
+      last: 1,
+      format: "JJJJ-NNNN",
+      rows: [{ Nummer: "2026-0001", Datum: "2026-08-27", Kunde: "probe", Stand: "entwurf" }],
+    };
+    const beleg = (changes = {}, body = "") => {
+      const fields = {
+        invoice_number: "2026-0001",
+        invoice_date: "2026-08-27",
+        due_date: "2026-09-10",
+        service_date: "2026-08-20",
+        buyer_name: "Probe GmbH",
+        buyer_street: "Industriestrasse 14",
+        buyer_postcode: "48155",
+        buyer_city: "Muenster",
+        buyer_country: "DE",
+        currency: "EUR",
+        tax_mode: "standard",
+        tax_rate: "19",
+        ...changes,
+      };
+      const file = join(dir, "beleg.md");
+      writeFileSync(
+        file,
+        `---\n${Object.entries(fields)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join("\n")}\n---\n\nFaellig am: ${fields.due_date}\n\n## Leistungen\n\n` +
+          "| Pos | Leistung | Menge | Einheit | Einzelpreis netto | Gesamt netto |\n" +
+          "| --- | --- | --- | --- | --- | --- |\n" +
+          "| 1 | Einrichtung des Geraets in der Zentrale | 2 | Tage | 780,00 Euro | 1.560,00 Euro |\n" +
+          `${body}\n`
+      );
+      return checkVat14(readInvoice(file), seller, ledger);
+    };
+
+    const heil = beleg();
+    const offen = heil.filter((check) => !check.ok);
+    assert(offen.length === 0, `ein vollstaendiger Beleg wird beanstandet: ${offen.map((c) => c.label).join(", ")}`);
+    assert(heil.length === 11, `es werden ${heil.length} Angaben geprueft, erwartet 11`);
+
+    // Jede Luecke muss genau ihre Zeile rot machen.
+    const luecken = [
+      [{ service_date: "" }, /Zeitpunkt der Lieferung/],
+      [{ invoice_date: "" }, /Ausstellungsdatum/],
+      [{ invoice_number: "2026-0099" }, /Rechnungsnummer/],
+      [{ buyer_city: "" }, /Leistungsempfaengers/],
+      [{ due_date: "" }, /Faelligkeit/],
+    ];
+    for (const [change, pattern] of luecken) {
+      const rot = beleg(change).filter((check) => !check.ok);
+      assert(rot.length >= 1, `${JSON.stringify(change)} macht keine Zeile rot`);
+      assert(rot.some((check) => pattern.test(check.label)), `${JSON.stringify(change)} macht die falsche Zeile rot`);
+    }
+
+    // Ohne Steuerausweis braucht es den Hinweis auf die Befreiung, sonst nicht.
+    const ohneHinweis = beleg({ tax_mode: "kleinunternehmer", tax_rate: "0" }).filter((c) => !c.ok);
+    assert(
+      ohneHinweis.some((check) => /Steuerbefreiung/.test(check.label)),
+      "ein Kleinunternehmer ohne Hinweis auf § 19 UStG faellt nicht auf"
+    );
+    const mitHinweis = beleg({ tax_mode: "kleinunternehmer", tax_rate: "0" }, "\nKleinunternehmer nach § 19 UStG.\n");
+    assert(
+      mitHinweis.every((check) => check.ok),
+      `mit Hinweis bleibt offen: ${mitHinweis.filter((c) => !c.ok).map((c) => c.label).join(", ")}`
+    );
+
+    // Ein Platzhalter im Text ist eine eigene Zeile, nicht nur ein Problem des Drucks.
+    const platzhalter = beleg({}, "\n{Noch zu fuellen}\n").filter((check) => !check.ok);
+    assert(platzhalter.some((check) => /Platzhalter/.test(check.label)), "ein Platzhalter faellt nicht auf");
+    return "11 Angaben, jede einzeln nachgewiesen";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("Die Rechnungsdaten halten die Regeln der EN 16931 ein", () => {
+  // Das XML ist das, was die Buchhaltung des Kunden liest. Was hier durchgeht,
+  // geht dort ein.
+  const dir = mkdtempSync(join(tmpdir(), "ara-cii-"));
+  try {
+    const file = join(dir, "beleg.md");
+    writeFileSync(
+      file,
+      "---\ninvoice_number: 2026-0001\ninvoice_date: 2026-08-27\ndue_date: 2026-09-10\n" +
+        "service_date: 2026-08-20\nbuyer_name: Probe GmbH\nbuyer_street: Industriestrasse 14\n" +
+        "buyer_postcode: 48155\nbuyer_city: Muenster\nbuyer_country: DE\ncurrency: EUR\n" +
+        "tax_mode: standard\ntax_rate: 19\n---\n\n## Leistungen\n\n" +
+        "| Pos | Leistung | Menge | Einheit | Einzelpreis netto | Gesamt netto |\n" +
+        "| --- | --- | --- | --- | --- | --- |\n" +
+        "| 1 | Einrichtung des Geraets | 2 | Tage | 780,00 Euro | 1.560,00 Euro |\n"
+    );
+    const seller = {
+      legal_name: "Beispiel IT-Service e. K.",
+      street: "Musterweg 3",
+      postcode: "48143",
+      city: "Muenster",
+      country: "DE",
+      phone: "",
+      email: "",
+      vat_id: "DE123456789",
+      tax_number: "",
+      iban: "DE02120300000000202051",
+    };
+    const xml = buildXml(readInvoice(file), seller);
+    const result = validateXml(xml);
+    assert(result.ok, `saubere Daten werden beanstandet:\n    ${result.problems.join("\n    ")}`);
+    assert(result.unchecked.length > 0, "es wird nicht gesagt, was ungeprueft bleibt");
+
+    // Jede Verfaelschung muss ihre Regel finden.
+    const faelle = [
+      [xml.replace("<ram:GrandTotalAmount>1856.40", "<ram:GrandTotalAmount>1856.00"), /BR-CO-15/],
+      [xml.replace("<ram:CalculatedAmount>296.40", "<ram:CalculatedAmount>300.00"), /BR-CO-1[47]/],
+      [xml.replace("<ram:LineTotalAmount>1560.00</ram:LineTotalAmount>\n        ", ""), /BR-24|fehlt/],
+      [xml.replace("urn:cen.eu:en16931:2017", "urn:etwas:anderes"), /BR-01/],
+      [xml.replace("<ram:CountryID>DE</ram:CountryID>", "<ram:CountryID>Deutschland</ram:CountryID>"), /BR-09/],
+      [xml.replace("<ram:TypeCode>380", "<ram:TypeCode>381"), /BR-CL-01/],
+      [xml.replace(/<ram:InvoiceCurrencyCode>EUR<\/ram:InvoiceCurrencyCode>\n\s*/, ""), /BR-05|fehlt/],
+    ];
+    for (const [broken, pattern] of faelle) {
+      assert(broken !== xml, "eine Verfaelschung hat gar nichts geaendert, der Test misst nichts");
+      const judged = validateXml(broken);
+      assert(!judged.ok, `eine Verfaelschung geht durch: ${pattern}`);
+      assert(
+        judged.problems.some((problem) => pattern.test(problem)),
+        `erwartet wurde ${pattern}, gefunden: ${judged.problems.join(" | ")}`
+      );
+    }
+
+    // Ein vertauschtes Element faellt gegen das Modell der Schemaordnung auf.
+    const vertauscht = xml.replace(
+      /( *)<ram:TypeCode>VAT<\/ram:TypeCode>\n( *)<ram:CategoryCode>S<\/ram:CategoryCode>/,
+      "$1<ram:CategoryCode>S</ram:CategoryCode>\n$2<ram:TypeCode>VAT</ram:TypeCode>"
+    );
+    assert(vertauscht !== xml, "die Vertauschung hat nichts geaendert, der Test misst nichts");
+    assert(
+      validateXml(vertauscht).problems.some((problem) => /Reihenfolge/.test(problem)),
+      "eine vertauschte Reihenfolge faellt nicht auf"
+    );
+    return `${faelle.length} Verfaelschungen, jede gefunden`;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("Das PDF traegt die Rechnungsdaten und gibt sie unveraendert zurueck", () => {
+  // ZUGFeRD lebt davon, dass das XML wirklich im PDF steckt. Eine Datei
+  // daneben geht auf dem Weg zum Kunden verloren.
+  const dir = mkdtempSync(join(tmpdir(), "ara-zugferd-"));
+  try {
+    const quelle = join(dir, "blatt.md");
+    const ziel = join(dir, "blatt.pdf");
+    writeFileSync(quelle, "---\nprobe: ja\n---\n\n# Rechnung\n\nEin Satz.\n");
+    const run = tool("pdf.mjs", [quelle, "--out", ziel]);
+    if (/Kein Chromium gefunden/.test(run.stderr)) return "uebersprungen: kein Chromium auf diesem Rechner";
+    assert(run.status === 0, `Druck fehlgeschlagen: ${run.stderr || run.stdout}`);
+
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<probe>Ümläute und &amp; dazu</probe>\n';
+    const fertig = embed(readFileSync(ziel), {
+      xml,
+      attachment: "factur-x.xml",
+      profile: "EN 16931",
+      description: "Rechnung 2026-0001 als Datensatz",
+      author: "Beispiel IT-Service e. K.",
+    });
+    writeFileSync(ziel, fertig);
+
+    const lage = inspect(readFileSync(ziel));
+    assert(lage.attachment, "im PDF steckt keine angehaengte Datei");
+    assert(lage.attachment.name === "factur-x.xml", `der Anhang heisst ${lage.attachment.name}`);
+    assert(lage.attachment.xml === xml, "der Anhang kommt veraendert zurueck");
+    assert(lage.attachment.relationship === "Alternative", "die Beziehung des Anhangs ist nicht Alternative");
+    assert(lage.pdfa, "die Kennzeichnung als PDF/A-3B fehlt");
+    assert(lage.outputIntent, "das Ausgabeprofil fehlt");
+    assert(lage.associated, "der Verweis /AF im Katalog fehlt");
+    assert(lage.embeddedFiles, "der Namensbaum der eingebetteten Dateien fehlt");
+    assert(lage.facturx, "die Factur-X-Metadaten fehlen");
+    assert(lage.header === "%PDF-1.7", `die Kopfzeile ist ${lage.header}`);
+
+    // Die Querverweise des Nachtrags muessen auf ihre Objekte zeigen, sonst
+    // ist die Datei fuer jeden Leser kaputt.
+    const text = fertig.toString("latin1");
+    const start = Number([...text.matchAll(/startxref\s+(\d+)/g)].pop()[1]);
+    const zeilen = text.slice(start).split("\n");
+    let geprueft = 0;
+    for (let i = 1; i < zeilen.length; i++) {
+      const abschnitt = zeilen[i].trim().match(/^(\d+) (\d+)$/);
+      if (!abschnitt) {
+        if (zeilen[i].startsWith("trailer")) break;
+        continue;
+      }
+      const ersteNummer = Number(abschnitt[1]);
+      for (let k = 0; k < Number(abschnitt[2]); k++) {
+        const stelle = Number(zeilen[i + 1 + k].trim().split(/\s+/)[0]);
+        assert(
+          text.startsWith(`${ersteNummer + k} 0 obj`, stelle),
+          `der Querverweis auf Objekt ${ersteNummer + k} zeigt auf die falsche Stelle`
+        );
+        geprueft++;
+      }
+      i += Number(abschnitt[2]);
+    }
+    assert(geprueft > 0, "der Nachtrag hat keine Querverweistabelle");
+    return `${geprueft} Querverweise, Anhang unveraendert`;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("Das Ausgabeprofil ist ein lesbares ICC-Profil", () => {
+  // Ohne Ausgabeprofil ist bei PDF/A nicht festgelegt, welche Farbe ein Wert
+  // bedeutet. Gebaut wird es im Kit, also wird auch hier nachgesehen.
+  const profile = sRgbProfile();
+  assert(profile.readUInt32BE(0) === profile.length, "die Groesse im Kopf stimmt nicht mit der Datei ueberein");
+  assert(profile.subarray(36, 40).toString("latin1") === "acsp", "die Kennung acsp fehlt");
+  assert(profile.subarray(12, 16).toString("latin1") === "mntr", "es ist kein Bildschirmprofil");
+  assert(profile.subarray(16, 20).toString("latin1") === "RGB ", "der Farbraum ist nicht RGB");
+  const count = profile.readUInt32BE(128);
+  const tags = [];
+  for (let i = 0; i < count; i++) {
+    const at = 132 + i * 12;
+    const name = profile.subarray(at, at + 4).toString("latin1");
+    const offset = profile.readUInt32BE(at + 4);
+    const size = profile.readUInt32BE(at + 8);
+    assert(offset + size <= profile.length, `der Eintrag ${name} zeigt ueber das Profil hinaus`);
+    tags.push(name);
+  }
+  for (const needed of ["desc", "cprt", "wtpt", "rXYZ", "gXYZ", "bXYZ", "rTRC", "gTRC", "bTRC"]) {
+    assert(tags.includes(needed), `im Profil fehlt der Eintrag ${needed}`);
+  }
+  return `${tags.length} Eintraege, ${profile.length} Byte`;
+});
+
+check("pdf.mjs druckt kein Frontmatter", () => {
+  // Ein Beleg traegt seine maschinenlesbaren Felder im Kopf. Gedruckt saehe der
+  // Kunde zuerst eine Liste von Feldnamen.
+  const dir = mkdtempSync(join(tmpdir(), "ara-kopf-"));
+  try {
+    const quelle = join(dir, "beleg.md");
+    const ziel = join(dir, "beleg.html");
+    writeFileSync(
+      quelle,
+      "---\ninvoice_number: 2026-0001\ntax_mode: standard\n---\n\n> Hinweis der Vorlage.\n\n---\n\n# Rechnung\n\nEin Satz.\n"
+    );
+    const run = tool("pdf.mjs", [quelle, "--html", "--out", ziel]);
+    assert(run.status === 0, `HTML-Ausgabe fehlgeschlagen: ${run.stderr || run.stdout}`);
+    const html = readFileSync(ziel, "utf8");
+    assert(!/invoice_number/.test(html), "das Frontmatter landet im Papier");
+    assert(!/Hinweis der Vorlage/.test(html), "der Hinweisblock der Vorlage landet im Papier");
+    assert(/<h1>Rechnung<\/h1>/.test(html), "der Inhalt fehlt");
+    return "Kopf und Hinweisblock bleiben draussen";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Eine Rechnung entsteht aus einer Kundenakte, mit Nummer und Anhang", async () => {
+  // Der ganze Weg an einem Wegwerf-Kit: Firmenkopf, Kundenakte, Angebot,
+  // Rechnung, Pruefliste, Druck. Nichts davon fasst die echten Ordner an.
+  const work = mkdtempSync(join(tmpdir(), "ara-invoice-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara"), join(fork, ".ara"), {
+    recursive: true,
+    filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src),
+  });
+  const write = (rel, content) => {
+    mkdirSync(join(fork, rel, ".."), { recursive: true });
+    writeFileSync(join(fork, rel), content);
+  };
+  const read = (rel) => readFileSync(join(fork, rel), "utf8");
+  const forkTool = (args) =>
+    new Promise((done) => {
+      const child = spawn("node", [join(fork, ".ara", "tools", "invoice.mjs"), ...args], { cwd: fork });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => (stdout += d));
+      child.stderr.on("data", (d) => (stderr += d));
+      child.on("close", (status) => done({ status, stdout, stderr }));
+    });
+
+  try {
+    write("business/profile.md", "---\nrole: partner\nname: Probe\ninvoice: yes\n---\n\nMeins.\n");
+    write(
+      "business/company.md",
+      "---\nlegal_name: Beispiel IT-Service e. K.\naddress: Musterweg 3, 48143 Muenster\n" +
+        "country: DE\nphone: 0251 000000\nemail: post@beispiel-it.example\nwebsite:\n" +
+        "tax_number:\nvat_id: DE123456789\niban: DE02120300000000202051\npayment_terms: 14\nlogo:\n---\n\nMeins.\n"
+    );
+    write(
+      "customers/probe/customer.md",
+      "---\nid: probe\nlegal_name: Probe Metallbau GmbH\nstatus: won\ncontact_person: Frau Berger\n" +
+        "street: Industriestrasse 14\npostcode: 48155\ncity: Muenster\ncountry: DE\nvat_id:\n---\n\nMeins.\n"
+    );
+    write(
+      "customers/probe/documents/2026-08-10-angebot.md",
+      "# Angebot\n\n## Leistungen\n\n| Pos | Leistung | Menge | Einzelpreis netto | Gesamt netto |\n" +
+        "| --- | --- | --- | --- | --- |\n" +
+        "| 1 | Einrichtung des Geraets in der Zentrale | 2 | 780,00 Euro | 1.560,00 Euro |\n" +
+        "| 2 | Wartung, erstes Jahr | 1 | 960,00 Euro | 960,00 Euro |\n" +
+        "| | **Summe netto** | | | **2.520,00 Euro** |\n"
+    );
+
+    // 1. Ohne Nummernkreis sagt die Uebersicht, wie einer entsteht.
+    let run = await forkTool([]);
+    assert(run.status === 0, `Uebersicht fehlgeschlagen: ${run.stderr}`);
+    assert(/noch keinen Nummernkreis/.test(run.stdout), "der fehlende Nummernkreis wird nicht benannt");
+
+    // 2. Die erste Rechnung nimmt die Positionen aus dem Angebot der Akte.
+    run = await forkTool(["--customer", "probe", "--new", "--date", "2026-08-27", "--service-date", "2026-08-20"]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}`);
+    assert(/2026-0001/.test(run.stdout), "die erste Nummer ist nicht 2026-0001");
+    assert(/2 Positionen aus/.test(run.stdout), `die Positionen kommen nicht aus dem Angebot: ${run.stdout}`);
+    assert(/Alle Pflichtangaben stehen/.test(run.stdout), `es fehlt etwas: ${run.stdout}`);
+    const beleg = "customers/probe/documents/2026-08-27-rechnung-2026-0001.md";
+    assert(existsSync(join(fork, beleg)), "der Beleg ist nicht abgelegt worden");
+    assert(/2\.520,00/.test(read(beleg)), "die Summe aus dem Angebot steht nicht im Beleg");
+    assert(/478,80/.test(read(beleg)), "die Umsatzsteuer steht nicht im Beleg");
+    assert(/2\.998,80/.test(read(beleg)), "der Rechnungsbetrag steht nicht im Beleg");
+    assert(/\| 2026-0001 \|/.test(read("business/invoices.md")), "die Nummer steht nicht im Nummernkreis");
+
+    // 3. Die Pruefliste ist gruen und nennt, was sie nicht geprueft hat.
+    run = await forkTool(["--check", beleg]);
+    assert(run.status === 0, `die Pruefliste ist rot:\n${run.stdout}`);
+    assert(!/FEHL/.test(run.stdout), `die Pruefliste ist rot:\n${run.stdout}`);
+    assert(/Ungeprueft:/.test(run.stdout), "es wird nicht gesagt, was ungeprueft bleibt");
+
+    // 4. Die zweite Rechnung bekommt die naechste Nummer.
+    run = await forkTool([
+      "--customer", "probe", "--new", "--date", "2026-08-28", "--service-date", "2026-08-28",
+      "--position", "Stoerungsbehebung, Fernwartung|1,5|Stunden|95,00",
+    ]);
+    assert(run.status === 0, `die zweite Rechnung scheitert: ${run.stderr}`);
+    assert(/2026-0002/.test(run.stdout), `die zweite Nummer ist nicht 2026-0002: ${run.stdout}`);
+    assert(/142,50/.test(run.stdout), "eine halbe Stunde wird nicht gerechnet");
+
+    // 5. Ein Beleg ohne Pflichtangabe wird nicht gedruckt.
+    write(
+      "customers/luecke/customer.md",
+      "---\nid: luecke\nlegal_name: Ohne Anschrift GmbH\nstatus: won\n---\n\nMeins.\n"
+    );
+    run = await forkTool(["--customer", "luecke", "--new", "--date", "2026-08-29", "--empty"]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}`);
+    assert(/Pflichtangaben fehlen noch/.test(run.stdout), "der unvollstaendige Beleg gilt als fertig");
+    const halb = "customers/luecke/documents/2026-08-29-rechnung-2026-0003.md";
+    run = await forkTool(["--pdf", halb]);
+    assert(run.status !== 0, "ein Beleg ohne Pflichtangaben wird gedruckt");
+    assert(/wird nicht gedruckt/.test(run.stderr), "es wird nicht gesagt, warum nicht gedruckt wird");
+    assert(!existsSync(join(fork, halb.replace(/\.md$/, ".pdf"))), "es ist trotzdem ein PDF entstanden");
+
+    // 6. Eine verworfene Nummer bleibt vergeben.
+    run = await forkTool(["--void", "2026-0003", "--reason", "Kunde springt ab"]);
+    assert(run.status === 0, `Stornieren fehlgeschlagen: ${run.stderr}`);
+    assert(/storniert/.test(read("business/invoices.md")), "die Stornierung steht nicht im Nummernkreis");
+    assert(/Kunde springt ab/.test(read("business/invoices.md")), "der Grund fehlt");
+    run = await forkTool([]);
+    assert(!/Luecke/.test(run.stdout), `der Kreis meldet eine Luecke: ${run.stdout}`);
+    assert(/Naechste waere 2026-0004/.test(run.stdout), "nach einer Stornierung wird die Nummer neu vergeben");
+
+    // 7. Drucken, und der Anhang muss aus dem fertigen PDF zurueckkommen.
+    run = await forkTool(["--pdf", beleg]);
+    if (/Kein Chromium gefunden/.test(run.stdout + run.stderr)) {
+      return "ohne Druck geprueft: kein Chromium auf diesem Rechner";
+    }
+    assert(run.status === 0, `Druck fehlgeschlagen: ${run.stdout}\n${run.stderr}`);
+    const pdf = join(fork, beleg.replace(/\.md$/, ".pdf"));
+    assert(existsSync(pdf), "es ist kein PDF entstanden");
+    const lage = inspect(readFileSync(pdf));
+    assert(lage.attachment?.name === "factur-x.xml", "im PDF steckt keine Rechnungsdatei");
+    const geprueft = validateXml(lage.attachment.xml);
+    assert(geprueft.ok, `der Anhang im PDF wird beanstandet:\n    ${geprueft.problems.join("\n    ")}`);
+    assert(/2026-0001/.test(lage.attachment.xml), "im Anhang steht die Rechnungsnummer nicht");
+    assert(/2998.80/.test(lage.attachment.xml), "im Anhang steht der Rechnungsbetrag nicht");
+    assert(/gestellt/.test(read("business/invoices.md")), "der Nummernkreis fuehrt den Beleg nicht als gestellt");
+
+    // Das Papier und der Anhang muessen dieselbe Zahl nennen. Genau dafuer gibt
+    // es nur eine Tabelle und keinen zweiten Datensatz daneben.
+    run = await forkTool(["--validate", beleg.replace(/\.md$/, ".pdf")]);
+    assert(run.status === 0, `die fertige Rechnung wird beanstandet:\n${run.stdout}`);
+    assert(/PDF\/A-3B gesetzt/.test(run.stdout), "die Kennzeichnung als PDF/A-3B fehlt");
+    return "zwei Nummern, eine Stornierung, ein PDF mit Anhang";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 // --- Das Papier -------------------------------------------------------------
 
 check("Kein Absender von Arasul im Papier des Partners", () => {
@@ -2384,12 +2896,18 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   // Ein neuer Stand mit einer neuen Nummer und einem Eintrag dazu: /init soll
   // vor dem Einspielen sagen koennen, was dazukommt, und nicht nur, welche
   // Dateien sich aendern.
-  writeFileSync(join(source, ".ara", "VERSION"), "0.8.0\n");
+  //
+  // Beide Nummern kommen aus dem Kit selbst. Stuenden sie hier fest, waere
+  // dieser Test bei jedem Standwechsel rot, ohne dass am Update etwas fehlt.
+  const stand = read(".ara/VERSION").trim();
+  const neuerStand = stand.replace(/^(\d+)\.(\d+)\.\d+$/, (_, major, minor) => `${major}.${Number(minor) + 1}.0`);
+  assert(neuerStand !== stand, `aus "${stand}" laesst sich keine naechste Nummer bilden`);
+  writeFileSync(join(source, ".ara", "VERSION"), `${neuerStand}\n`);
   writeFileSync(
     join(source, ".ara", "CHANGELOG.md"),
     read(".ara/CHANGELOG.md").replace(
-      "## 0.7.0 (",
-      "## 0.8.0 (2026-09-01)\n\nKontrakt: bis 3\n\n- Ein erfundener Punkt fuer den Selbsttest.\n\n## 0.7.0 ("
+      `## ${stand} (`,
+      `## ${neuerStand} (2026-09-01)\n\nKontrakt: bis 3\n\n- Ein erfundener Punkt fuer den Selbsttest.\n\n## ${stand} (`
     )
   );
   writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
@@ -2442,8 +2960,8 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/neu\s+\.ara\/knowledge\/probe\.md/.test(run.stdout), "neue Datei nicht gemeldet");
     assert(/entfernt\s+\.ara\/knowledge\/sales\.md/.test(run.stdout), "entfernte Datei nicht gemeldet");
     assert(!has(".ara/knowledge/probe.md"), "--check hat eingespielt");
-    assert(/Stand: 0\.8\.0/.test(run.stdout), `der neue Stand wird nicht genannt: ${run.stdout}`);
-    assert(/Neu seit 0\.7\.0/.test(run.stdout), "es wird nicht gesagt, von welchem Stand es kommt");
+    assert(run.stdout.includes(`Stand: ${neuerStand}`), `der neue Stand wird nicht genannt: ${run.stdout}`);
+    assert(run.stdout.includes(`Neu seit ${stand}`), "es wird nicht gesagt, von welchem Stand es kommt");
     assert(/erfundener Punkt/.test(run.stdout), "der Eintrag der Aenderungsliste fehlt");
     assert(/Kontraktfassungen bis/.test(run.stdout), "die Vertraeglichkeit zum Geraet fehlt");
 
