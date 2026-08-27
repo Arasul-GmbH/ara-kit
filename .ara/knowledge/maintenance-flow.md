@@ -2,17 +2,53 @@
 
 > **Wann brauchst du das?** Bei `/maintain`: alles, was nach der Abnahme passiert.
 
-## Einstieg
+## Einstieg: erst messen, dann fragen
 
 Ein Command, mehrere Anliegen. Erkenn am Anliegen, worum es geht, und frag nicht ab, was du
 sehen kannst.
 
-Zuerst immer: **Lagebild in drei Zeilen.** Wer der Kunde ist, welches Gerät, wann zuletzt
-etwas passiert ist (letzter Eintrag im Verlauf), ob es erreichbar ist. Dann die Frage, was
-ansteht, kein Vorschlagskatalog.
+**Zuerst immer die Statuszeile.** Sie entsteht nicht im Gespräch, sondern am Gerät:
 
-Bevor du etwas am Gerät tust: `node .ara/tools/remote.mjs --customer <k> --check`.
-Steht die Verbindung nicht, ist das die erste Aufgabe, nicht die zweite.
+```
+node .ara/tools/maintain.mjs --device <gerät>
+node .ara/tools/maintain.mjs --customer <kunde> --device <gerät>
+node .ara/tools/maintain.mjs --device <gerät> --report     Bericht in die Akte
+```
+
+Sie nennt vier Dinge, in dieser Reihenfolge, weil sie in dieser Reihenfolge entscheiden,
+ob überhaupt etwas zu tun ist: **Version, Apps mit ihren Ständen, letzte Sicherung,
+Auffälliges.** Dahinter steht, was nicht gemessen werden konnte.
+
+Gib sie weiter und frag dann, was ansteht. Kein Vorschlagskatalog: der Mensch sagt im
+Freitext, was los ist, und daraus erkennst du, welches der vier Anliegen unten es ist.
+
+### Zwei Wege, und keiner ist Bedingung für den anderen
+
+| Weg | Was er bringt | Was ohne ihn fehlt |
+|---|---|---|
+| SSH, mit den Daten aus der Geräteakte | Platte, Speicher, Container, fehlgeschlagene Dienste, Protokolle | der ganze Zustand des Rechners |
+| Die Schnittstelle, mit dem Kit-Schlüssel | Systemversion und Kontraktstand, Apps mit Test- und Livestand, letzte Sicherung | alles, was die Plattform von sich weiß |
+
+Geht einer nicht, entsteht der Bericht aus dem anderen. **Was fehlt, steht als eigener
+Abschnitt darin, und den sagst du dazu.** Ein Bericht, der verschweigt, was nicht gemessen
+wurde, liest sich wie ein heiles Gerät, und darauf verlässt sich hinterher jemand.
+
+Steht die Verbindung gar nicht, weder so noch so, ist das die erste Aufgabe und nicht die
+zweite. Für einen einzelnen Befehl auf dem Gerät bleibt
+`node .ara/tools/remote.mjs --customer <k> --check` der Weg.
+
+### Kein Pfad aus dem Gedächtnis
+
+Das Werkzeug kennt genau einen Pfad, den Kontrakt. Jeden anderen schlägt es dort nach.
+Findet es zu einem Punkt nichts, steht im Bericht "dieses Gerät nennt dafür keinen
+Endpunkt, noch nicht am Gerät", und **das ist die Antwort, nicht eine Lücke, die du
+füllst.** Die letzte Sicherung ist heute genau so ein Punkt: kommt der Weg dazu, findet
+ihn das Werkzeug beim nächsten Lauf von selbst.
+
+Dasselbe gilt für die Apps. Solange das Gerät keinen Endpunkt nennt, der sie aufzählt,
+fragt das Kit nach den Kennungen, die es selbst kennt (die Ordner unter `apps/`, oder was
+du mit `--apps` angibst). **Andere kann das Gerät trotzdem tragen**, und der Bericht sagt
+das. Eine Liste, die er vollständig nennen würde, wäre geraten.
 
 ## Die vier Anliegen
 
@@ -22,14 +58,24 @@ Verfahren in `.ara/knowledge/diagnostics.md`. Erst feststellen, dann ändern.
 
 ### 2. Regelmäßiger Blick
 
-Wenn niemand ein konkretes Problem hat, aber jemand wissen will, ob alles in Ordnung ist:
+Wenn niemand ein konkretes Problem hat, aber jemand wissen will, ob alles in Ordnung ist,
+ist der Bericht schon die Antwort. Nimm ihn mit `--report`, dann liegt er in der Akte:
 
-- Dienste gesund? Läuft das Gerät seit dem letzten geplanten Start durch?
-- Speicherplatz, der einzige Wert, der still wächst, bis nichts mehr geht
-- Fehler in den Protokollen seit dem letzten Blick
-- Sicherungen: laufen sie, und ist eine davon je zurückgespielt worden?
-- Produktstand gegen den aktuellen Stand im Spiegel
-- Fernzugriff **von außen**: nicht nur, ob deine bestehende Sitzung noch offen ist
+```
+node .ara/tools/maintain.mjs --customer <kunde> --device <gerät> --report
+```
+
+Er misst Dienste und Container, den Speicherplatz (den einzigen Wert, der still wächst,
+bis nichts mehr geht), die Fehler in den Protokollen der letzten 24 Stunden, die Apps mit
+ihren Ständen und die letzte Sicherung.
+
+Drei Dinge misst er **nicht**, und die bleiben deine Aufgabe:
+
+- **Ist eine Sicherung je zurückgespielt worden?** Eine Sicherung, die nie
+  wiederhergestellt wurde, ist eine Vermutung. Das ist eine Übung, kein Messwert.
+- **Der Produktstand gegen den Spiegel.** `node .ara/tools/mirror.mjs --show` sagt, womit
+  installiert wurde. Ob es einen neueren gibt, sagt `--refresh`.
+- **Fernzugriff von außen**, nicht nur, ob deine bestehende Sitzung noch offen ist.
 
 Ergebnis in den Verlauf, auch wenn alles in Ordnung war. Ein Verlauf mit regelmäßigen
 Einträgen ist bei einer Verlängerung mehr wert als jedes Verkaufsgespräch.
@@ -75,3 +121,12 @@ Jeder Einsatz erzeugt einen Eintrag unter `customers/<k>/history/JJJJ-MM-TT-them
 (Vorlage: `.ara/templates/history-entry.md`). Das ist die Nachweisführung, wenn ein Kunde
 fragt, was wann gemacht wurde, und die Grundlage dafür, dass beim nächsten Mal niemand bei
 null anfängt.
+
+Der Wartungsbericht ist etwas anderes und liegt woanders: er ist der **Messwert** und
+liegt beim Gerät, unter `<geräteordner>/reports/JJJJ-MM-TT-wartung.md`, geschrieben von
+`--report`. Der Verlaufseintrag ist das, was **passiert ist**, in deinen Worten, mit
+Anlass, Befund, Getanem und Nachweis. Zwei Berichte an einem Tag überschreiben sich nicht.
+
+Vor und nach einem Eingriff je einen Bericht aufzunehmen ist die einfachste Art, den
+Nachweis zu führen: was vorher galt, was hinterher gilt, beides gemessen und nicht
+behauptet.

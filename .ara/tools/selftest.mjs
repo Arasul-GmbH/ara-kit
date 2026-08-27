@@ -8,6 +8,7 @@
  *   node .ara/tools/selftest.mjs
  */
 
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
 import {
@@ -33,6 +34,13 @@ import {
 import { RETIRED } from "./lib/commands.mjs";
 import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
+import {
+  needsParameter,
+  parseHealth,
+  readHealth,
+  statusLine,
+  topicEndpoints,
+} from "./lib/maintain.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 
 const results = [];
@@ -1245,6 +1253,303 @@ check("Auf einem Gerät ohne Urteil wird nichts installiert", () => {
   }
 });
 
+// --- Kundenakte --------------------------------------------------------------
+
+check("customer.mjs legt die Akte an und gibt das Lagebild samt Geräten", () => {
+  const name = "selftest-kunde";
+  const dir = join(ROOT, "customers", name);
+  try {
+    rmSync(dir, { recursive: true, force: true });
+
+    let run = tool("customer.mjs", ["--customer", name, "--new", "--legal-name", "Selbsttest GmbH"]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}`);
+    const { fields } = readFrontmatter(join(dir, "customer.md"));
+    assert(fields.id === name, `id nicht gesetzt: ${JSON.stringify(fields)}`);
+    assert(fields.legal_name === "Selbsttest GmbH", "die Firmierung steht nicht im Frontmatter");
+    assert(fields.status === "lead", "der Stand steht nicht im Frontmatter");
+    assert(existsSync(join(dir, "history")) && existsSync(join(dir, "documents")), "Ordner fehlen");
+
+    // Zweimal dieselbe Akte gibt es nicht.
+    run = tool("customer.mjs", ["--customer", name, "--new"]);
+    assert(run.status !== 0 && /gibt es schon/.test(run.stderr), "eine zweite Akte wurde angelegt");
+
+    // Und ein aehnlicher Name ist meist derselbe Kunde. Das haelt an, bis
+    // jemand --force sagt: zwei halbe Akten desselben Kunden sind der Fall,
+    // den niemand mehr zusammenfuehrt.
+    run = tool("customer.mjs", ["--customer", `${name}-gmbh`, "--new"]);
+    assert(run.status !== 0 && /ähnlichem Namen/.test(run.stderr), `aehnlicher Name faellt nicht auf: ${run.stdout}`);
+
+    // Ein Geraet des Kunden, mit allem, was seit E4 in seiner Akte steht.
+    const geraet = join(dir, "devices", "zentrale");
+    mkdirSync(geraet, { recursive: true });
+    cpSync(join(ROOT, ".ara", "templates", "device.md"), join(geraet, "device.md"));
+    writeFrontmatter(join(geraet, "device.md"), {
+      name: "zentrale",
+      customer: name,
+      status: "live",
+      verdict: "supported",
+      address: "10.0.0.5",
+      api_base: "https://tunnel.example:8443",
+      tls: "selfsigned",
+      arasul: "found",
+      api_key_ref: "ARASUL_KEY_GIBTESNICHT",
+    });
+
+    run = tool("customer.mjs", ["--customer", name, "--json"]);
+    assert(run.status === 0, `Lagebild fehlgeschlagen: ${run.stderr}`);
+    const lage = JSON.parse(run.stdout);
+    assert(lage.devices.length === 1, "das Gerät des Kunden fehlt im Lagebild");
+    assert(lage.devices[0].api_base === "https://tunnel.example:8443", "die Schnittstelle fehlt");
+    assert(lage.devices[0].tls === "selfsigned", "das Zertifikat fehlt");
+    // Ein Name in der Akte ohne Eintrag dahinter ist der Fall, der sonst erst
+    // beim ersten Deploy auffaellt.
+    assert(lage.devices[0].key_ref && lage.devices[0].key_present === false, "der fehlende Schlüssel fällt nicht auf");
+    assert(
+      lage.open.some((satz) => /Geheimnis-Ablage steht er nicht/.test(satz)),
+      `der fehlende Schlüssel steht nicht unter "was ansteht": ${lage.open.join(" | ")}`
+    );
+    assert(
+      lage.open.some((satz) => /keine Wartungslaufzeit/.test(satz)),
+      "ein laufendes Gerät ohne Wartungsende fällt nicht auf"
+    );
+
+    run = tool("customer.mjs", ["--customer", name]);
+    assert(/zentrale/.test(run.stdout) && /Selbsttest GmbH/.test(run.stdout), "das Lagebild nennt Kunde oder Gerät nicht");
+    assert(!/ARASUL_KEY_GIBTESNICHT=|aras_/.test(run.stdout), "im Lagebild steht ein Schlüsselwert");
+
+    run = tool("customer.mjs", []);
+    assert(new RegExp(name).test(run.stdout), "die Übersicht führt den Kunden nicht");
+    return "anlegen, ähnlicher Name, Lagebild mit Gerät, Übersicht";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// --- Wartung -----------------------------------------------------------------
+
+check("Aus dem Befund am Gerät wird ein Zustand und ein Urteil", () => {
+  const befund = [
+    "@uptime=up 12 days",
+    "@disk_total_kb=100000000",
+    "@disk_free_kb=4000000",
+    "@disk_used_pct=96%",
+    "@mem_total_kb=32000000",
+    "@mem_available_kb=8000000",
+    "@docker_server=27.1.1",
+    "@container=eine-app|running|Up 3 days",
+    "@container=andere-app|exited|Exited (1) 2 hours ago",
+    "@unit_source=systemd",
+    "@failed_unit=probe.service",
+    "@log_source=journalctl",
+    "@log_read=ja",
+    "@log=Aug 27 03:00 probe: ERROR keine Verbindung",
+    "@done=ja",
+  ].join("\n");
+
+  const facts = parseHealth(befund);
+  assert(facts.container.length === 2, "mehrfache Schlüssel werden nicht zur Liste");
+  const health = readHealth(facts);
+  assert(health.complete, "ein durchgelaufenes Skript gilt als abgebrochen");
+  assert(health.disk.usedPct === 96 && health.disk.freeGb === 3.8, `Platte falsch gelesen: ${JSON.stringify(health.disk)}`);
+  assert(health.stopped.length === 1 && health.stopped[0].name === "andere-app", "der ausgefallene Container fällt nicht auf");
+
+  const achtung = health.findings.filter((f) => f.level === "achtung");
+  assert(achtung.length === 3, `erwartet drei Mal Achtung, bekommen: ${JSON.stringify(health.findings)}`);
+  assert(achtung.some((f) => /96 Prozent/.test(f.text)), "die volle Platte wird nicht genannt");
+  assert(achtung.some((f) => /probe.service/.test(f.text)), "der fehlgeschlagene Dienst wird nicht genannt");
+
+  // Ein gesundes Gerät bekommt keinen Befund angedichtet.
+  const heil = readHealth(parseHealth("@disk_used_pct=23%\n@container=eine-app|running|Up 1 day\n@done=ja"));
+  assert(heil.findings.length === 0, `heiles Gerät bekommt Befunde: ${JSON.stringify(heil.findings)}`);
+
+  // Nicht lesbar ist etwas anderes als nichts gefunden. Ein Gerät, dessen
+  // Protokolle der Anmeldename nicht lesen darf, hat nicht null Fehler.
+  const ohneRechte = readHealth(parseHealth("@log_source=journalctl\n@log_read=nein\n@done=ja"));
+  assert(
+    ohneRechte.findings.some((f) => /Rechte/.test(f.text)),
+    "unlesbare Protokolle gelten als leere Protokolle"
+  );
+  return "Platte, Container, Dienste, Protokolle, und ein heiles Gerät bleibt heil";
+});
+
+check("Die Statuszeile verschweigt nicht, was ungemessen blieb", () => {
+  const health = readHealth(parseHealth("@disk_used_pct=20%\n@done=ja"));
+  const voll = statusLine({
+    place: "probe",
+    platform: { text: "Arasul X, Kontrakt 3" },
+    apps: { state: "gelesen", found: [{ id: "eineapp", live: "1.0.0", test: "1.1.0" }] },
+    backup: { text: "datum 2026-08-26" },
+    health,
+    unmeasured: [],
+  });
+  assert(/Arasul X/.test(voll) && /eineapp live 1.0.0, Test 1.1.0/.test(voll), `Statuszeile unvollständig: ${voll}`);
+  assert(/Sicherung: datum 2026-08-26/.test(voll), "die Sicherung fehlt in der Statuszeile");
+  assert(/nichts auffällig/.test(voll), "ein heiles Gerät wird nicht als solches genannt");
+
+  // Ohne Messung steht das da, statt wegzufallen: eine Zeile ohne Sicherung
+  // liest sich sonst wie eine Zeile mit einer heilen Sicherung.
+  const leer = statusLine({ place: "probe", platform: null, apps: null, backup: null, health: null, unmeasured: ["Plattform"] });
+  assert(/Plattform ungemessen/.test(leer), `ungemessene Plattform fehlt: ${leer}`);
+  assert(/Apps ungemessen/.test(leer), "ungemessene Apps fehlen");
+  assert(/Sicherung: ungemessen/.test(leer), "ungemessene Sicherung fehlt");
+  assert(/ungemessen: Plattform/.test(leer), "die Liste des Ungemessenen fehlt");
+  return "voll und leer";
+});
+
+check("Zu einem Thema wird im Kontrakt nachgesehen, nicht geraten", () => {
+  // Fuer die Sicherung kennt das Kit keinen Pfad. Es sucht in der Liste, die
+  // das Geraet selbst veroeffentlicht, in dessen Worten.
+  const ohne = topicEndpoints(KONTRAKT, ["sicherung", "backup"]);
+  assert(ohne.length === 0, "in einem Kontrakt ohne Sicherung wird eine gefunden");
+
+  const mit = {
+    ...KONTRAKT,
+    endpunkte: [
+      ...KONTRAKT.endpunkte,
+      { verb: "GET", pfad: "/api/v1/external/sicherung", bereich: "betrieb", was: "Datum und Groesse der letzten Sicherung" },
+    ],
+  };
+  const gefunden = topicEndpoints(mit, ["sicherung", "backup"]);
+  assert(gefunden.length === 1 && gefunden[0].pfad === "/api/v1/external/sicherung", `falsch gefunden: ${JSON.stringify(gefunden)}`);
+  assert(topicEndpoints(mit, ["sicherung"], "POST").length === 0, "das Verb wird nicht beachtet");
+
+  // Ein Pfad mit Platzhalter ist nicht aufrufbar: was dort hineingehoert, weiss
+  // das Kit nicht, und es fuellt es auch nicht auf gut Glueck.
+  assert(needsParameter("/api/v1/external/apps/:id"), "ein Parameter im Pfad fällt nicht auf");
+  assert(needsParameter("/api/v1/external/freigaben?lauf=<id>"), "eine Rückfrage mit Platzhalter fällt nicht auf");
+  assert(!needsParameter("/api/v1/external/sicherung"), "ein vollständiger Pfad gilt als unvollständig");
+  return "kein Endpunkt, ein Endpunkt, einer mit Platzhalter";
+});
+
+await checkAsync("maintain.mjs berichtet auch ohne SSH und sagt, was fehlt", async () => {
+  const name = "selftest-wartung";
+  const akte = join(ROOT, "devices", name);
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+
+  // Das Geraet, gespielt. Der Kontrakt kennt den Weg zu einer App, aber keinen
+  // zur Sicherung: genau der Stand, in dem dieses Kit gebaut wurde.
+  const gesehen = { pfade: [], key: null };
+  let mitSicherung = false;
+  const server = createServer((request, response) => {
+    const antwort = (status, body) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(body));
+    };
+    gesehen.key = request.headers["x-api-key"] || null;
+    if (gesehen.key !== "aras_wartung") return antwort(401, { error: { message: "Kein gueltiger Schluessel" } });
+    const pfad = request.url.split("?")[0];
+    gesehen.pfade.push(pfad);
+    if (pfad === "/api/v1/external/contract") {
+      return antwort(200, {
+        data: {
+          ...KONTRAKT,
+          arasul: "Vorserie",
+          endpunkte: mitSicherung
+            ? [
+                ...KONTRAKT.endpunkte,
+                { verb: "GET", pfad: "/api/v1/external/sicherung", bereich: "betrieb", was: "Letzte Sicherung ausserhalb" },
+              ]
+            : KONTRAKT.endpunkte,
+        },
+      });
+    }
+    if (pfad === "/api/v1/external/apps/probeapp") {
+      return antwort(200, { data: { id: "probeapp", live: { version: "1.2.0" }, test: { version: "1.3.0" } } });
+    }
+    if (pfad === "/api/v1/external/sicherung") {
+      return antwort(200, { data: { ziel: "USB", datum: "2026-08-26 03:00", groesse_mb: 812 } });
+    }
+    antwort(404, { error: { message: "Endpoint not found" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_WARTUNG: "aras_wartung" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  // Die Adresse fuehrt ins Leere: so wie ein Geraet, das gerade nur ueber einen
+  // Tunnel erreichbar ist und dessen SSH nicht steht.
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1",
+    ssh_port: "1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_WARTUNG",
+  });
+
+  try {
+    let run = await toolAsync("maintain.mjs", ["--device", name, "--apps", "probeapp"], env);
+    assert(run.status === 0, `Bericht fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(gesehen.key === "aras_wartung", "der Kit-Schlüssel kam nicht in der Kopfzeile an");
+    assert(/Arasul Vorserie/.test(run.stdout), "die Systemversion aus dem Kontrakt fehlt");
+    assert(/probeapp: live 1.2.0, Test 1.3.0/.test(run.stdout), `die Stände der App fehlen: ${run.stdout}`);
+
+    // Ohne SSH entsteht der Bericht trotzdem, und was fehlt, steht darin.
+    assert(/Zustand am Gerät/.test(run.stdout), "der Abschnitt zum Zustand fehlt");
+    assert(/Was fehlt/.test(run.stdout), "der Abschnitt über das Ungemessene fehlt");
+    assert(/Kein SSH/.test(run.stdout), `das fehlende SSH wird nicht benannt: ${run.stdout}`);
+
+    // Die Sicherung steht nicht im Kontrakt dieses Geraets. Dann wird kein Pfad
+    // geraten, und der Punkt heisst "noch nicht am Geraet".
+    assert(/noch nicht am Gerät/.test(run.stdout), "die fehlende Sicherung wird nicht als solche ausgewiesen");
+    assert(
+      !gesehen.pfade.some((p) => /sicherung|backup/i.test(p)),
+      `das Kit hat einen Pfad geraten: ${gesehen.pfade.join(", ")}`
+    );
+
+    // Die Statuszeile ist die erste Zeile, damit sie ein Mensch zuerst liest.
+    const erste = run.stdout.split("\n")[0];
+    assert(new RegExp(`^${name}: `).test(erste), `die Statuszeile steht nicht zuerst: ${erste}`);
+    assert(/Sicherung:/.test(erste), "die Sicherung fehlt in der Statuszeile");
+
+    run = await toolAsync("maintain.mjs", ["--device", name, "--line", "--apps", "probeapp"], env);
+    assert(run.stdout.trim().split("\n").length === 1, `--line gibt mehr als eine Zeile: ${run.stdout}`);
+
+    // Kommt der Endpunkt am Geraet dazu, findet ihn das Kit von selbst, ohne
+    // dass hier etwas nachgezogen wird.
+    mitSicherung = true;
+    gesehen.pfade = [];
+    run = await toolAsync("maintain.mjs", ["--device", name, "--apps", "probeapp"], env);
+    assert(gesehen.pfade.includes("/api/v1/external/sicherung"), "der neue Endpunkt wird nicht gerufen");
+    assert(/2026-08-26 03:00/.test(run.stdout), `die Sicherung steht nicht im Bericht: ${run.stdout}`);
+
+    // Nach einer App, die das Geraet nicht kennt, wird gefragt, und die Antwort
+    // ist "nicht auf diesem Gerät", keine erfundene Version.
+    run = await toolAsync("maintain.mjs", ["--device", name, "--apps", "gibtesnicht"], env);
+    assert(/Nicht auf diesem Gerät: gibtesnicht/.test(run.stdout), `unbekannte App falsch behandelt: ${run.stdout}`);
+
+    // --report legt den Bericht in die Akte und schreibt in den Laufzettel.
+    assert(
+      tool("runsheet.mjs", ["--create", "--device", name]).status === 0,
+      "der Laufzettel für die Prüfung ließ sich nicht anlegen"
+    );
+    run = await toolAsync("maintain.mjs", ["--device", name, "--report", "--apps", "probeapp"], env);
+    const berichte = readdirSync(join(akte, "reports"));
+    assert(berichte.length === 1, `erwartet einen Bericht, gefunden: ${berichte.join(", ")}`);
+    assert(/wartung\.md$/.test(berichte[0]), `der Bericht heißt ${berichte[0]}`);
+    assert(/Wartungsbericht/.test(readFileSync(join(akte, "reports", berichte[0]), "utf8")), "der Bericht ist leer");
+    assert(/Wartungsbericht aufgenommen/.test(readFileSync(join(akte, "runsheet.md"), "utf8")), "der Laufzettel bekam nichts");
+
+    // Zwei Berichte an einem Tag ueberschreiben sich nicht: wer nach einer
+    // Reparatur nachmisst, will beide Staende sehen.
+    await toolAsync("maintain.mjs", ["--device", name, "--report", "--apps", "probeapp"], env);
+    assert(readdirSync(join(akte, "reports")).length === 2, "der zweite Bericht hat den ersten überschrieben");
+
+    // Geht kein Weg, wird kein Bericht erfunden.
+    run = await toolAsync("maintain.mjs", ["--device", name, "--no-api"], env);
+    assert(run.status !== 0 && /nichts zu messen/i.test(run.stderr), `ohne beide Wege kam ein Bericht: ${run.stdout}`);
+    return "Version, Apps, fehlende und vorhandene Sicherung, Statuszeile, Bericht, Laufzettel";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
 // --- Trennung von Partnerdaten ----------------------------------------------
 
 check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
@@ -1781,6 +2086,40 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(run.status === 0, `--replace fehlgeschlagen: ${run.stderr}`);
     assert(/Auch neu im Kit/.test(read(".claude/commands/customer.md")), "--replace hat nicht ersetzt");
     assert(!/Meine Zeile/.test(read(".claude/commands/customer.md")), "--replace hat die alte Kopie gelassen");
+
+    // 5b. Ein abgeloester Befehl: die unveraenderte Kopie raeumt --apply weg,
+    // eine angepasste bleibt liegen. Sonst haette der Partner nach dem Update
+    // /angebot und /offer nebeneinander, und der alte fuehrt durch ein
+    // Verfahren, das es nicht mehr gibt.
+    const [alterName, nachfolger] = Object.entries(RETIRED)[0];
+    const merker = JSON.parse(read(".claude/commands/.sources.json"));
+    const merkeAls = (inhalt) => {
+      write(`.claude/commands/${alterName}.md`, inhalt);
+      merker[alterName] = createHash("sha256").update(inhalt).digest("hex");
+      write(".claude/commands/.sources.json", JSON.stringify(merker, null, 2) + "\n");
+    };
+
+    merkeAls("Der alte Befehl, wie ihn das Kit hingelegt hat.\n");
+    run = await forkTool("commands.mjs", []);
+    assert(
+      new RegExp(`abgeloest\\s+/${alterName}`).test(run.stdout),
+      `abgeloester Befehl wird nicht gemeldet: ${run.stdout}`
+    );
+    assert(new RegExp(`/${nachfolger}`).test(run.stdout), "der neue Name wird nicht genannt");
+    assert(!new RegExp(`eigener\\s+/${alterName}`).test(run.stdout), "der abgeloeste gilt als eigener Befehl");
+    run = await forkTool("commands.mjs", ["--apply"]);
+    assert(!has(`.claude/commands/${alterName}.md`), "die unveraenderte Kopie blieb liegen");
+    assert(
+      JSON.parse(read(".claude/commands/.sources.json"))[alterName] === undefined,
+      "der Merker zum abgeloesten Befehl blieb stehen"
+    );
+
+    merkeAls("Der alte Befehl, wie ihn das Kit hingelegt hat.\n");
+    write(`.claude/commands/${alterName}.md`, "Der alte Befehl, von Hand geaendert.\n");
+    run = await forkTool("commands.mjs", ["--apply"]);
+    assert(has(`.claude/commands/${alterName}.md`), "eine von Hand geaenderte Kopie wurde geloescht");
+    assert(/liegen geblieben/.test(run.stdout), `das Liegenbleiben wird nicht erklaert: ${run.stdout}`);
+    rmSync(join(fork, ".claude", "commands", `${alterName}.md`));
 
     // 6. /init ohne Interview, beide Zweige. Das Profil aus dem Fork weicht dafuer.
     rmSync(join(fork, "business"), { recursive: true, force: true });

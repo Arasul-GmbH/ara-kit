@@ -87,6 +87,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen, Arasul installieren, Kit-Schlüssel holen (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--json`) |
 | `app.mjs` | Zwei Seiten. Ohne `--device`: App aus der Vorlage anlegen, Pläne schieben, bauen, Lage lesen. Mit `--device`: Kontrakt lesen, `app.json` dagegen prüfen, Paket in den Teststand, live schalten, zurück, entfernen, und mit `--compose` auf ein Gerät ohne Arasul |
 | `customer.mjs` | Kundenakte anlegen (`--new`) und das Lagebild lesen: Stand, Geräte mit ihrem Zustand, Papier, Verlauf, was ansteht |
+| `maintain.mjs` | Zustand eines Geräts lesen: Statuszeile und Wartungsbericht, über SSH und über die Schnittstelle. Liest nur, und sagt, was nicht gemessen werden konnte (`--line`, `--report`, `--json`) |
 | `runsheet.mjs` | Stand einer Einrichtung lesen und fortschreiben |
 | `remote.mjs` | Befehl auf einem Kundengerät ausführen (`--check`, `--log`) |
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |
