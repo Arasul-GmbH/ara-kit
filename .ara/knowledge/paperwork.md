@@ -140,8 +140,9 @@ Sechs Schritte:
    im Spiegel belegen kannst, ist `in Erprobung`, nicht `abgenommen`.
    Dafür gibt es `node .ara/tools/evidence.mjs`: es lässt `abgenommen` nur mit einem
    geprüften Bild vom Gerät zu und schreibt die Anlage in die Kundenakte. Stand
-   26.08.2026 unvollständig, wird in Phase E5/E6 des Plans ersetzt: das Werkzeug läuft,
-   die Schritte im Browser sind noch nicht als Verfahren beschrieben.
+   27.08.2026 unvollständig: das Werkzeug läuft, die Schritte im Browser sind nicht als
+   Verfahren beschrieben, und es ist keiner Phase zugeordnet. Bis dahin belegst du
+   `abgenommen` von Hand am Gerät und schreibst dazu, womit.
 4. **Abschnitt 4 und 6 aus dem konkreten Fall füllen**: was dieser Kunde ausdrücklich
    nicht bekommt, und welche Erweiterungen bei der Übergabe installiert sind. Steht keine
    drin, schreibst du `keine`, nicht nichts.

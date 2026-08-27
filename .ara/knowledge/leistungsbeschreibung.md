@@ -2,12 +2,12 @@
 
 > **Wann brauchst du das?** Vor jedem Angebot, und noch einmal vor jeder Übergabe.
 
-> **Stand 26.08.2026: unvollständig, wird in Phase E5/E6 des Plans ersetzt.** Die
-> verbindliche Reihenfolge und die fünf Anlagen stehen in `.ara/knowledge/paperwork.md`,
-> Abschnitt „Die Leistungsbeschreibung füllen". Diese Datei vertieft nur den Reifegrad
-> je Zeile. Widersprechen sich beide, gilt `paperwork.md`. Der Bildnachweis je Zeile
-> (`node .ara/tools/evidence.mjs`) ist als Werkzeug da, aber noch in kein Verfahren
-> eingebunden.
+> **Stand 27.08.2026: unvollständig.** Die verbindliche Reihenfolge und die fünf Anlagen
+> stehen in `.ara/knowledge/paperwork.md`, Abschnitt „Die Leistungsbeschreibung füllen".
+> Diese Datei vertieft nur den Reifegrad je Zeile. Widersprechen sich beide, gilt
+> `paperwork.md`. Was fehlt, ist der Bildnachweis je Zeile: `node .ara/tools/evidence.mjs`
+> läuft, aber die Schritte im Browser sind in kein Verfahren geschrieben, und darum
+> entsteht `abgenommen` bis dahin von Hand am Gerät. Es ist keiner Phase zugeordnet.
 
 ## Was dieses Dokument ist
 
