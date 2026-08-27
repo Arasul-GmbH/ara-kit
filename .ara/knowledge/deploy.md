@@ -32,6 +32,10 @@ gebaut wäre, sondern die höchste Fassung, die es versteht. Daraus folgen drei 
 Eingespielt wird nur in den ersten beiden Lagen. Ein Paket auf gut Glück zu schicken
 heißt, den Fehler am Gerät zu suchen statt vorher.
 
+Was die App danach am Gerät benutzen kann, ist eine andere Frage und steht in
+`.ara/knowledge/platform-services.md`: Anmeldung, Freigaben, Flows, Sprachmodell,
+Dokumente. Hier geht es nur darum, wie sie dorthin kommt.
+
 **Ohne Kit-Schlüssel geht keiner dieser Aufrufe.** Er steht in der Geräteakte unter
 `api_key_ref`, sein Wert in der Geheimnis-Ablage. Woher er kommt:
 `.ara/knowledge/device.md`, Abschnitt „Der Kit-Schlüssel".

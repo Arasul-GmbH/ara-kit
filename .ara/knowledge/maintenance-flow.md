@@ -42,8 +42,13 @@ zweite. Für einen einzelnen Befehl auf dem Gerät bleibt
 Das Werkzeug kennt genau einen Pfad, den Kontrakt. Jeden anderen schlägt es dort nach.
 Findet es zu einem Punkt nichts, steht im Bericht "dieses Gerät nennt dafür keinen
 Endpunkt, noch nicht am Gerät", und **das ist die Antwort, nicht eine Lücke, die du
-füllst.** Die letzte Sicherung ist heute genau so ein Punkt: kommt der Weg dazu, findet
-ihn das Werkzeug beim nächsten Lauf von selbst.
+füllst.** Die letzte Sicherung ist heute genau so ein Punkt.
+
+**Sie ist trotzdem messbar, nur nicht vom Kit.** Das Gerät beantwortet die zwei Fragen
+dazu über einen Weg seiner Oberfläche, und der verlangt eine Sitzung als Administrator,
+kein Schlüssel öffnet ihn. Wie du trotzdem herankommst und was in der Antwort steht,
+steht in `.ara/knowledge/platform-services.md` unter "Die Sicherung". Kommt einmal ein
+Weg mit Schlüssel dazu, findet ihn das Werkzeug beim nächsten Lauf von selbst.
 
 Dasselbe gilt für die Apps. Solange das Gerät keinen Endpunkt nennt, der sie aufzählt,
 fragt das Kit nach den Kennungen, die es selbst kennt (die Ordner unter `apps/`, oder was

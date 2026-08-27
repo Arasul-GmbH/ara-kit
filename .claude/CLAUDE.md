@@ -102,6 +102,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `commands.mjs` | Befehle aus `.ara/commands/` nach `.claude/commands/` legen, je nach Zweig (`--apply`, `--role`). Merkt sich den Hash der Quelle und erkennt so, ob ein Befehl im Kit neuer ist oder von Hand angepasst wurde (`--replace`) |
 | `init.mjs` | `/init` ohne Interview aus einer Antwortdatei (`--answers`), und die Lücken im Profil (`--show`) |
 | `selftest.mjs` | Prüft, ob das Kit auf diesem Rechner funktioniert |
+| `check-docs.mjs` | Doku-Selbsttest: jede Route, die im Wissen steht, gegen ein Gerät prüfen (`--device`). Verändert nichts |
 
 Dazu kommen zwei Werkzeuge, die keine Kit-Skripte sind:
 

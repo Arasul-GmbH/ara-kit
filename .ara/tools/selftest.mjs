@@ -32,6 +32,15 @@ import {
   promisedFolders,
 } from "./lib/contract.mjs";
 import { RETIRED } from "./lib/commands.mjs";
+import {
+  EXTERNAL_PREFIX,
+  bareApiPaths,
+  callable,
+  collectRoutes,
+  judgeRoute,
+  planFor,
+  undocumented,
+} from "./lib/docroutes.mjs";
 import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -962,6 +971,192 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
   }
 });
 
+// --- Doku-Selbsttest ---------------------------------------------------------
+
+check("Routen im Wissen werden gefunden, auch die ohne Verb", () => {
+  const files = [
+    {
+      file: "probe.md",
+      text: [
+        "Ein Satz mit `GET /api/v1/external/models` darin.",
+        "",
+        "```",
+        "POST /api/v1/external/flows/<name>/run",
+        "GET  /apps/<id>/api/me",
+        "DELETE /api/v1/external/apps/:id?bestaetigung=<id>",
+        "```",
+        "",
+        "Und ein Weg ohne Verb: `/api/backup/status`.",
+        "Kein Weg: /etc/hosts und /arasul/flows.",
+      ].join("\n"),
+    },
+    { file: "zweite.md", text: "Noch einmal `GET /api/v1/external/models`, andere Datei." },
+  ];
+  const routes = collectRoutes(files);
+  const pfade = routes.map((r) => `${r.verb} ${r.path}`);
+  assert(pfade.includes("GET /api/v1/external/models"), `nicht gefunden: ${pfade.join(", ")}`);
+  assert(pfade.includes("POST /api/v1/external/flows/:wert/run"), "der Platzhalter wird nicht vereinheitlicht");
+  assert(pfade.includes("GET /apps/:wert/api/me"), "ein Weg unter /apps fehlt");
+  assert(pfade.includes("DELETE /api/v1/external/apps/:id"), "die Frage am Pfad wird nicht abgeschnitten");
+  assert(!pfade.some((p) => /etc\/hosts|arasul\/flows/.test(p)), `ein Dateipfad gilt als Route: ${pfade.join(", ")}`);
+  assert(routes.find((r) => r.path === "/api/v1/external/models").files.length === 2, "die zweite Fundstelle fehlt");
+
+  const bare = bareApiPaths(files);
+  assert(bare.length === 1 && bare[0].path === "/api/backup/status", `ohne Verb falsch gelesen: ${JSON.stringify(bare)}`);
+  assert(callable("/apps/:wert/api/me").split("/")[2].length > 0, "ein Platzhalter wird nicht gefuellt");
+  return `${routes.length} Routen, 1 ohne Verb`;
+});
+
+check("Jede Route bekommt den Weg, auf dem sie zu pruefen ist", () => {
+  const lesen = planFor({ verb: "GET", path: "/api/v1/external/apps/:id" }, KONTRAKT);
+  assert(lesen.how === "kontrakt", "ein Weg mit einem Wert darin wird trotzdem gerufen");
+  const schreiben = planFor({ verb: "POST", path: "/api/v1/external/apps" }, KONTRAKT);
+  assert(schreiben.how === "kontrakt", "ein veraendernder Weg wird gerufen");
+  const kontrakt = planFor({ verb: "GET", path: "/api/v1/external/contract" }, KONTRAKT);
+  assert(kontrakt.how === "gerufen", "ein lesender Weg ohne Wert wird nicht gerufen");
+  const sitzung = planFor({ verb: "GET", path: "/api/irgendwas" }, KONTRAKT);
+  assert(sitzung.how === "ohne-schluessel", "ein Weg der Oberflaeche wird mit Schluessel gerufen");
+  const fremd = planFor({ verb: "GET", path: `${EXTERNAL_PREFIX}/gibtsnicht` }, KONTRAKT);
+  assert(fremd.kind === "extern-unbekannt", "ein unbekannter aeusserer Weg faellt nicht auf");
+
+  assert(judgeRoute(kontrakt, { status: 200 }).state === "ok", "200 gilt nicht als Beleg");
+  assert(judgeRoute(kontrakt, { status: 404 }).state === "fehlt", "404 gilt nicht als Gegenbeleg");
+  assert(judgeRoute(kontrakt, { status: 0, error: { message: "tot" } }).state === "unklar", "keine Antwort gilt als Urteil");
+  assert(judgeRoute(sitzung, { status: 401 }).state === "ok", "eine Abweisung gilt nicht als Beleg");
+  assert(judgeRoute(fremd, null).state === "fehlt", "ein Weg ausserhalb des Kontrakts gilt als vorhanden");
+  assert(judgeRoute(schreiben, null).state === "ok", "der Kontrakt selbst gilt nicht als Beleg");
+
+  // Der Kontrakt selbst ist nie "nicht beschrieben": ihn kennt das Kit
+  // auswendig, und kein Verfahren fuehrt ihn als Route auf.
+  const offen = undocumented(KONTRAKT, []);
+  assert(offen.length === KONTRAKT.endpunkte.length - 1, `nicht beschriebene Endpunkte falsch gezaehlt: ${offen.length}`);
+  assert(!offen.some((e) => /contract/.test(e.path)), "der Kontrakt selbst gilt als nicht beschrieben");
+});
+
+await checkAsync("check-docs.mjs prueft jede Route des Wissens am Geraet", async () => {
+  // Gegen ein gespieltes Geraet, dessen Kontrakt genau die aeusseren Routen
+  // nennt, die im Wissen dieses Kits stehen. Damit haengt der Test an keinem
+  // Produktwert: was das Wissen nennt, wird hier zur Erwartung, und das
+  // Werkzeug muss beides zur Deckung bringen.
+  const name = "selftest-doku";
+  const akte = join(ROOT, "devices", name);
+  const knowledge = join(ROOT, ".ara", "knowledge");
+  const files = readdirSync(knowledge)
+    .filter((datei) => datei.endsWith(".md"))
+    .map((datei) => ({ file: datei, text: readFileSync(join(knowledge, datei), "utf8") }));
+  const routes = collectRoutes(files);
+  const aussen = routes.filter((route) => route.path.startsWith(`${EXTERNAL_PREFIX}/`));
+  const innen = routes.filter((route) => !route.path.startsWith(`${EXTERNAL_PREFIX}/`));
+  assert(aussen.length > 0 && innen.length > 0, "das Wissen nennt nicht beide Arten von Weg");
+
+  // Was das Geraet weglaesst: ein aeusserer Weg fehlt in seinem Kontrakt, ein
+  // Weg der Oberflaeche antwortet mit 404. Beides muss auffallen, und nur das.
+  const fehltAussen = aussen[aussen.length - 1];
+  const fehltInnen = innen[innen.length - 1];
+  // Die beiden Luecken sind umschaltbar: derselbe Server spielt erst das Geraet
+  // mit zwei Luecken und danach das heile.
+  const luecke = { aussen: fehltAussen, innen: fehltInnen };
+  const kontrakt = { ...KONTRAKT, endpunkte: [] };
+  const kontraktSchreiben = () => {
+    kontrakt.endpunkte = [
+      { verb: "GET", pfad: "/api/v1/external/contract", bereich: null, was: "Dieser Kontrakt" },
+      ...aussen
+        .filter((route) => route !== luecke.aussen)
+        .map((route) => ({ verb: route.verb, pfad: route.path, bereich: null, was: "aus dem Wissen des Kits" })),
+    ];
+  };
+  kontraktSchreiben();
+
+  const gesehen = [];
+  const server = createServer((request, response) => {
+    const pfad = request.url.split("?")[0];
+    gesehen.push(`${request.method} ${pfad}${request.headers["x-api-key"] ? " +schluessel" : ""}`);
+    const antwort = (status, body) => {
+      response.writeHead(status, { "Content-Type": "application/json" });
+      response.end(JSON.stringify(body));
+    };
+    if (pfad === "/api/v1/external/contract") {
+      if (request.headers["x-api-key"] !== "aras_selbsttest") return antwort(401, { error: { message: "kein Schluessel" } });
+      return antwort(200, { data: kontrakt });
+    }
+    // Ein Weg der Oberflaeche weist ohne Ausweis ab, das ist der Beleg.
+    if (innen.some((route) => callable(route.path) === pfad && route !== luecke.innen)) {
+      return antwort(401, { error: { message: "Anmeldung noetig" } });
+    }
+    if (aussen.some((route) => callable(route.path) === pfad && route !== luecke.aussen)) {
+      return antwort(200, { data: {} });
+    }
+    antwort(404, { error: { message: "kennt dieses Geraet nicht" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST: "aras_selbsttest" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST",
+  });
+
+  try {
+    // Ohne Geraet: die Liste, und kein Aufruf.
+    let run = await toolAsync("check-docs.mjs", [], env);
+    assert(run.status === 0, `Liste fehlgeschlagen: ${run.stderr}`);
+    assert(new RegExp(`${routes.length} Routen`).test(run.stdout), `die Zahl stimmt nicht: ${run.stdout.split("\n")[0]}`);
+
+    run = await toolAsync("check-docs.mjs", ["--device", name, "--json"], env);
+    const lage = JSON.parse(run.stdout);
+    const urteil = new Map(lage.results.map((r) => [`${r.verb} ${r.path}`, r]));
+    assert(urteil.size === routes.length, `nicht jede Route wurde geprueft: ${urteil.size} von ${routes.length}`);
+
+    const fehlend = lage.results.filter((r) => r.state === "fehlt").map((r) => `${r.verb} ${r.path}`);
+    assert(
+      fehlend.length === 2 &&
+        fehlend.includes(`${fehltAussen.verb} ${fehltAussen.path}`) &&
+        fehlend.includes(`${fehltInnen.verb} ${fehltInnen.path}`),
+      `falsch beurteilt, gemeldet fehlen: ${fehlend.join(", ")}`
+    );
+    assert(run.status === 1, "eine fehlende Route beendet den Lauf nicht mit einem Fehler");
+
+    // An der aeusseren Schnittstelle wurde nichts gerufen, was etwas veraendert:
+    // dort haelt das Kit den Schluessel, und ein Deploy oder ein Entfernen als
+    // Nebenwirkung einer Doku-Pruefung waere ein Schaden.
+    const mitSchluessel = gesehen.filter((zeile) => zeile.includes("+schluessel"));
+    assert(
+      mitSchluessel.every((zeile) => zeile.startsWith("GET ")),
+      `mit Schluessel wurde etwas Veraenderndes gerufen: ${mitSchluessel.join(", ")}`
+    );
+    assert(
+      !gesehen.some((zeile) => !zeile.startsWith("GET ") && zeile.includes(EXTERNAL_PREFIX)),
+      `an der aeusseren Schnittstelle wurde veraendernd gerufen: ${gesehen.join(", ")}`
+    );
+    // Ein Weg der Oberflaeche bekommt keinen Schluessel: das Kit hat dort keine
+    // Sitzung, und die Abweisung ist genau der Beleg, den es sucht.
+    for (const route of innen) {
+      const zeile = gesehen.find((z) => z.startsWith(`${route.verb} ${callable(route.path)}`));
+      assert(zeile, `${route.verb} ${route.path} wurde gar nicht gerufen`);
+      assert(!zeile.includes("+schluessel"), `${route.path} wurde mit Schluessel gerufen: ${zeile}`);
+    }
+
+    // Ohne die beiden Luecken ist alles gruen.
+    luecke.aussen = null;
+    luecke.innen = null;
+    kontraktSchreiben();
+    run = await toolAsync("check-docs.mjs", ["--device", name], env);
+    assert(run.status === 0, `heiles Geraet wird gemeldet: ${run.stdout}`);
+    assert(/Alle \d+ Routen gibt es an diesem Gerät/.test(run.stdout), `kein gruener Satz: ${run.stdout}`);
+    return `${routes.length} Routen, ${aussen.length} ueber den Kontrakt, ${innen.length} ohne Ausweis`;
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+  }
+});
+
 // --- Die Akte einer App ------------------------------------------------------
 
 check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () => {
@@ -1871,7 +2066,18 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
   // Feste Namen, die Werkzeuge so erwarten: README, CLAUDE.md, SKILL.md.
   // `Dockerfile` heisst so, weil Docker es so erwartet: es steht im Paket einer
   // App und wird am Geraet gebaut, nicht von einem Kit-Werkzeug gelesen.
-  const fixed = new Set(["README.md", "CLAUDE.md", "SKILL.md", "LICENSE", ".gitkeep", "Dockerfile"]);
+  // `VERSION` und `CHANGELOG.md` sind ueberall im Handwerk grossgeschrieben;
+  // ein Partner sucht sie unter diesem Namen und nicht unter einem eigenen.
+  const fixed = new Set([
+    "README.md",
+    "CLAUDE.md",
+    "SKILL.md",
+    "LICENSE",
+    "VERSION",
+    "CHANGELOG.md",
+    ".gitkeep",
+    "Dockerfile",
+  ]);
   // Die Bausteine werden aus Arasuls Steuerungsordner gespiegelt und tragen
   // dessen Nummern (W1 bis W5). Sie heissen hier so, wie sie dort heissen.
   const mirrored = /^\.ara\/vorlagen\/bausteine\//;

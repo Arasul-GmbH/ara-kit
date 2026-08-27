@@ -27,7 +27,14 @@ einer Flow-Datei, die Namen der Kopfzeilen, die Grenzen eines Pakets, die Pfade 
 
 **Das Kit schreibt keinen dieser Werte mit.** Es liest sie je Gerät. Zwei Nachbauten
 desselben Vertrags laufen auseinander, und die Frage ist nur, wann es jemand merkt.
-Verfahren: `.ara/knowledge/deploy.md`.
+Verfahren: `.ara/knowledge/deploy.md` für den Weg eines Pakets,
+`.ara/knowledge/platform-services.md` für die Dienste, die eine App dort vorfindet.
+
+**Die Verfahren nennen Routen, und das ist Absicht.** Ein Blatt, das keine nennt, kann
+niemand gegen ein Gerät halten. Geprüft werden sie mit
+`node .ara/tools/check-docs.mjs --device <gerät>`: es liest jede Route aus dem Wissen,
+hält sie gegen die Endpunktliste des Kontrakts und fragt am Gerät nach. Was dort fehlt,
+sagt es mit einem Satz je Route.
 
 ## Quelle 2: Das Gerät
 
