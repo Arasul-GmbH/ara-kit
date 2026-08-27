@@ -24,7 +24,7 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { judge, parseProbe, services } from "./lib/device.mjs";
 import { KIT_CONTRACT_VERSION, checkManifest, checkVersion, findEndpoint } from "./lib/contract.mjs";
-import { scrub } from "./lib/install.mjs";
+import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 
 const results = [];
@@ -745,6 +745,40 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     rmSync(akte, { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
+  }
+});
+
+await checkAsync("Das Artefakt geht als Ganzes an das Gerät, oder gar nicht", async () => {
+  const work = mkdtempSync(join(tmpdir(), "ara-artefakt-"));
+  const mirror = join(work, "spiegel");
+  const ziel = join(work, "geraet");
+  const gemerkt = process.env.ARA_MIRROR;
+  mkdirSync(join(mirror, "config", "platforms"), { recursive: true });
+  process.env.ARA_MIRROR = mirror;
+  try {
+    // Ein Artefakt, das nicht sagt, wie es sich installiert: das Kit rät nicht.
+    writeFileSync(join(mirror, "README.md"), "# Irgendetwas\n");
+    assert(installerEntry() === null, "ohne Einstiegspunkt behauptet das Kit einen Weg");
+
+    // Eines, das es sagt.
+    writeFileSync(join(mirror, "arasul"), "#!/bin/sh\n");
+    writeFileSync(join(mirror, "config", "platforms", "probe.json"), "{}\n");
+    writeFileSync(join(mirror, "STATE.json"), JSON.stringify({ fetched: "2026-08-27T10:00:00.000Z", source: "https://probe", version: "9.9.9" }));
+    const entry = installerEntry();
+    assert(typeof entry === "string" && entry.length, "Einstiegspunkt nicht erkannt");
+    assert(mirrorState().version === "9.9.9", "Stand des Artefakts nicht gelesen");
+    assert(mirrorState().source === "https://probe", "Quelle des Artefakts nicht gelesen");
+
+    // Schieben: was im Spiegel liegt, liegt danach am Ziel, samt Unterordnern.
+    const geschoben = await ship(null, "local", JSON.stringify(ziel));
+    assert(geschoben.ok, `Schieben fehlgeschlagen: ${geschoben.message}`);
+    assert(existsSync(join(ziel, "arasul")), "der Einstiegspunkt kam nicht an");
+    assert(existsSync(join(ziel, "config", "platforms", "probe.json")), "Unterordner kamen nicht an");
+    return `${entry}, Stand 9.9.9`;
+  } finally {
+    if (gemerkt === undefined) delete process.env.ARA_MIRROR;
+    else process.env.ARA_MIRROR = gemerkt;
+    rmSync(work, { recursive: true, force: true });
   }
 });
 

@@ -22,7 +22,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./kit.mjs";
 
-const MIRROR = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
+/**
+ * Wo der Spiegel liegt. Als Funktion und nicht als Konstante, damit ein Lauf
+ * ihn umlenken kann (ARA_MIRROR), ohne einen echten Spiegel zu überschreiben.
+ */
+function mirrorDir() {
+  return process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
+}
 
 /** Wohin das Artefakt am Gerät ausgepackt wird. */
 export const TARGET = '"$HOME/arasul"';
@@ -49,7 +55,7 @@ export function scrub(text) {
 // --- Der Spiegel -------------------------------------------------------------
 
 export function mirrorState() {
-  const file = join(MIRROR, "STATE.json");
+  const file = join(mirrorDir(), "STATE.json");
   if (!existsSync(file)) return null;
   try {
     return JSON.parse(readFileSync(file, "utf8"));
@@ -74,7 +80,7 @@ export function fetchMirror() {
 
 /** Sagt das geholte Artefakt, wie es installiert wird? */
 export function installerEntry() {
-  if (!existsSync(join(MIRROR, ENTRY.file))) return null;
+  if (!existsSync(join(mirrorDir(), ENTRY.file))) return null;
   return ENTRY.command;
 }
 
@@ -96,13 +102,13 @@ export function runRemote(sshArgs, transport, command, { interactive = false } =
 /** Schiebt das Artefakt an das Gerät und packt es dort aus. */
 export async function ship(sshArgs, transport, target = TARGET) {
   if (transport !== "ssh") {
-    const run = spawnSync("sh", ["-c", `mkdir -p ${target} && tar -czf - -C '${MIRROR}' . | tar -xzf - -C ${target}`], {
+    const run = spawnSync("sh", ["-c", `mkdir -p ${target} && tar -czf - -C ${JSON.stringify(mirrorDir())} . | tar -xzf - -C ${target}`], {
       encoding: "utf8",
     });
     return { ok: run.status === 0, message: (run.stderr || "").trim() };
   }
   return new Promise((done) => {
-    const pack = spawn("tar", ["-czf", "-", "-C", MIRROR, "."], { stdio: ["ignore", "pipe", "pipe"] });
+    const pack = spawn("tar", ["-czf", "-", "-C", mirrorDir(), "."], { stdio: ["ignore", "pipe", "pipe"] });
     const push = spawn("ssh", [...sshArgs, `mkdir -p ${target} && tar -xzf - -C ${target}`], {
       stdio: ["pipe", "pipe", "pipe"],
     });

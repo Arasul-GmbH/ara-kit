@@ -264,7 +264,7 @@ if (typeof arg.deploy === "string") {
       console.log(
         [
           "",
-          `Eingespielt: ${stand.app_id ?? manifest.id} ${stand.version ?? manifest.version} im ${stand.stand ?? "Teststand"}.`,
+          `Eingespielt: ${stand.app_id ?? manifest.id} ${stand.version ?? manifest.version}, Stand "${stand.stand ?? "test"}".`,
           `Ansehen: ${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`,
           "",
           "Live schaltet ein Mensch. Wenn der Teststand überzeugt:",
