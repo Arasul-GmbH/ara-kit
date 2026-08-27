@@ -203,8 +203,11 @@ if (install.length) {
     ollama: "curl -fsSL https://ollama.com/install.sh | sh",
   };
   for (const what of install) {
-    if ((what === "docker" && svc.docker.state !== "missing") || (what === "ollama" && svc.ollama.state !== "missing")) {
-      console.log(`${what}: schon vorhanden, nichts zu tun.`);
+    // Was da ist, wird nicht noch einmal aufgesetzt, und der Satz sagt, was
+    // gefunden wurde: auf einem Gerät mit Arasul fährt das Modell im Container,
+    // und ein zweites Ollama daneben wäre ein zweites Modell im Speicher.
+    if (svc[what] && svc[what].state !== "missing") {
+      console.log(`${what}: ${svc[what].text}. Nichts zu tun.`);
       continue;
     }
     console.log(`\n${what} aufsetzen auf ${label} ...`);

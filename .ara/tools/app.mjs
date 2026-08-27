@@ -20,13 +20,20 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { ROOT, fail, parseArgs, readDevice } from "./lib/kit.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, reason } from "./lib/arasul.mjs";
-import { CONTRACT_PATH, checkManifest, checkVersion, findEndpoint, summarize } from "./lib/contract.mjs";
+import {
+  CONTRACT_PATH,
+  checkManifest,
+  checkVersion,
+  findEndpoint,
+  promisedFolders,
+  summarize,
+} from "./lib/contract.mjs";
 
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
@@ -53,7 +60,7 @@ if (arg.help || process.argv.length <= 2) {
       "  --live                 den Teststand live schalten",
       "  --back                 auf die vorige Live-Version zurück",
       "  --remove --confirm <id>  App entfernen, samt Containern und Volumen",
-      "  --base <url>           andere Adresse als die aus der Akte",
+      "  --base <url>           andere Adresse als die aus der Akte (api_base, sonst address)",
       "  --insecure             ein selbst ausgestelltes Zertifikat annehmen",
       "  --json                 Ausgabe für die Auswertung",
     ].join("\n")
@@ -73,11 +80,19 @@ try {
 const place = device.customer ? `${device.customer}/${device.device}` : device.device;
 const fields = device.fields;
 
+// Die Schnittstelle liegt nicht immer unter der Adresse, über die SSH läuft: ein
+// Gerät kann hinter einem Tunnel hängen oder sein Zertifikat nur unter einem
+// Namen führen. Dann trägt die Akte `api_base`, und die bleibt dort stehen,
+// statt bei jedem Aufruf mitgetippt zu werden. `--base` sticht beides, für den
+// einen Versuch, der nicht in die Akte gehört.
 let base;
 try {
-  base = str(arg.base) || baseUrl(fields.address || fields.hostname);
+  base = baseUrl(str(arg.base) || fields.api_base || fields.address || fields.hostname);
 } catch (error) {
-  fail(`${error.message}\nTrag address in ${relative(ROOT, device.file)} ein.`);
+  fail(
+    `${error.message}\nTrag address in ${relative(ROOT, device.file)} ein, ` +
+      "oder api_base, wenn die Schnittstelle woanders liegt als der SSH-Zugang."
+  );
 }
 
 const insecure = Boolean(arg.insecure) || (fields.tls || "").toLowerCase() === "selfsigned";
@@ -129,6 +144,28 @@ if (!answer.ok) {
 const contract = answer.data;
 const version = checkVersion(contract);
 
+/**
+ * Die Regeln für einen Flow aus dem Paket, wörtlich aus dem Kontrakt.
+ *
+ * Ein Flow im Paket ist eine Datei mit einem Kopf, und was darin gilt, prüft
+ * kein Schema des Manifests. Das Kit baut die Regeln nicht nach, es zeigt sie:
+ * so, wie das Gerät sie ausgibt. Ein Gerät, das keine kennt, bekommt hier auch
+ * keinen Abschnitt.
+ */
+function flowSection() {
+  const rules = contract?.flow_frontmatter?.regeln || [];
+  if (!rules.length) return [];
+  return [
+    "",
+    "## Regeln für einen Flow aus dem Paket",
+    "",
+    "Sie gelten, sobald das Paket Flow-Dateien mitbringt. Sie stehen wörtlich im Kontrakt:",
+    "",
+    ...rules.map((r) => `- ${r}`),
+    ...(contract.flow_frontmatter.rumpf ? ["", contract.flow_frontmatter.rumpf] : []),
+  ];
+}
+
 /** Ruft einen Endpunkt, aber nur, wenn der Kontrakt ihn nennt. */
 async function endpoint(verb, path, options = {}) {
   const known = findEndpoint(contract, verb, path);
@@ -155,6 +192,7 @@ if (arg.contract) {
           (e) => `- ${e.verb} ${e.pfad}${e.bereich ? ` (${e.bereich})` : ""}: ${e.was}`
         )
       )
+      .concat(flowSection())
       .join("\n")
   );
   process.exit(version.ok ? 0 : 1);
@@ -179,12 +217,53 @@ function readManifest(folder) {
   }
 }
 
-function reportManifest(where, result) {
+/**
+ * Was das Manifest an Ordnern verspricht, muss auch im Ordner liegen.
+ *
+ * Welche Felder Ordner benennen, sagt der Kontrakt in der Wurzel seines Pakets,
+ * das Kit zählt sie nicht auf. Geprüft wird hier trotzdem, und zwar vor dem
+ * Packen: ein Manifest, das einen Ordner verspricht, den es nicht gibt, wird am
+ * Gerät abgewiesen, und dann hat jemand Minuten auf einen Bau gewartet, der nie
+ * begonnen hat.
+ */
+function checkDelivery(dir, manifest) {
+  const problems = [];
+  for (const { field, folder } of promisedFolders(contract, manifest)) {
+    if (folder.startsWith("/") || folder.split("/").includes("..")) {
+      problems.push(`\`${field}\` zeigt mit \`${folder}\` aus dem Paket heraus. In ein Paket geht nur, was darin liegt.`);
+      continue;
+    }
+    const path = join(dir, folder);
+    if (!existsSync(path) || !statSync(path).isDirectory()) {
+      problems.push(`app.json verspricht unter \`${field}\` den Ordner \`${folder}\`, im Paket gibt es ihn nicht.`);
+      continue;
+    }
+    if (readdirSync(path).filter((name) => !name.startsWith(".")).length === 0) {
+      problems.push(`Der Ordner \`${folder}\` aus \`${field}\` ist leer. Ein Versprechen ohne Lieferung weist das Gerät ab.`);
+    }
+  }
+  return problems;
+}
+
+function reportManifest(where, result, delivery) {
   const lines = [`# app.json aus ${where} gegen den Kontrakt von ${place}`, "", `- ${version.text}`];
   if (result.ok) {
     lines.push("- Das Schema dieses Geräts nimmt das Manifest an.");
   } else {
     lines.push("", "## Das Gerät würde das abweisen", "", ...result.problems.map((p) => `- ${p}`));
+  }
+  if (delivery.length) {
+    lines.push(
+      "",
+      "## Das Manifest verspricht mehr, als der Ordner liefert",
+      "",
+      ...delivery.map((p) => `- ${p}`)
+    );
+  } else if (result.ok) {
+    const versprochen = promisedFolders(contract, result.manifest);
+    if (versprochen.length) {
+      lines.push(`- Geliefert wird, was das Manifest verspricht: ${versprochen.map((f) => f.folder).join(", ")}.`);
+    }
   }
   if (result.unchecked.length) {
     lines.push(
@@ -202,27 +281,30 @@ function reportManifest(where, result) {
       ...result.rules.map((r) => `- ${r}`)
     );
   }
+  lines.push(...flowSection());
   return lines.join("\n");
 }
 
 if (typeof arg.check === "string") {
   const { dir, manifest } = readManifest(arg.check);
-  const result = checkManifest(contract, manifest);
+  const result = { ...checkManifest(contract, manifest), manifest };
+  const delivery = checkDelivery(dir, manifest);
   if (arg.json) {
-    console.log(JSON.stringify({ device: place, folder: dir, version, ...result }, null, 2));
+    console.log(JSON.stringify({ device: place, folder: dir, version, delivery, ...result }, null, 2));
   } else {
-    console.log(reportManifest(relative(ROOT, dir) || dir, result));
+    console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
   }
-  process.exit(result.ok && version.ok ? 0 : 1);
+  process.exit(result.ok && !delivery.length && version.ok ? 0 : 1);
 }
 
 // --- --deploy ----------------------------------------------------------------
 
 if (typeof arg.deploy === "string") {
   const { dir, manifest } = readManifest(arg.deploy);
-  const result = checkManifest(contract, manifest);
-  if (!result.ok) {
-    console.log(reportManifest(relative(ROOT, dir) || dir, result));
+  const result = { ...checkManifest(contract, manifest), manifest };
+  const delivery = checkDelivery(dir, manifest);
+  if (!result.ok || delivery.length) {
+    console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail("\nNichts eingespielt. Erst das Manifest, dann das Gerät.");
   }
   if (!version.ok) fail(`${version.text}\nNichts eingespielt.`);

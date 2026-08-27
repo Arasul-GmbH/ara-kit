@@ -32,7 +32,13 @@ p disk_free_kb "$(df -k / 2>/dev/null | tail -1 | awk '{print $4}')"
 if command -v docker >/dev/null 2>&1; then
   p docker_bin "$(command -v docker)"
   p docker_server "$(docker version --format '{{.Server.Version}}' 2>/dev/null)"
-  p docker_names "$(docker ps --format '{{.Names}}' 2>/dev/null | tr '\\n' ' ')"
+  names="$(docker ps --format '{{.Names}}' 2>/dev/null | tr '\\n' ' ')"
+  # Ohne Rechte auf den Docker-Socket sagt docker ps nichts, und dann sieht das
+  # Kit weder Arasul noch das Sprachmodell im Container. Einmal mit sudo, aber
+  # nur ohne Passwort: eine Passwortabfrage mitten in einer Pruefung, die nur
+  # liest, waere eine Falle.
+  [ -z "$names" ] && sudo -n true >/dev/null 2>&1 && names="$(sudo -n docker ps --format '{{.Names}}' 2>/dev/null | tr '\\n' ' ')"
+  p docker_names "$names"
 fi
 if command -v ollama >/dev/null 2>&1; then
   p ollama_bin "$(command -v ollama)"
@@ -120,7 +126,10 @@ export function judge(facts) {
   };
 }
 
-/** Docker, Ollama und Hinweise auf Arasul aus den Befunden. Erkannt heißt nicht eingerichtet. */
+/**
+ * Docker, das Sprachmodell und Hinweise auf Arasul aus den Befunden.
+ * Erkannt heißt nicht eingerichtet.
+ */
 export function services(facts) {
   const docker = facts.docker_bin
     ? facts.docker_server
@@ -128,9 +137,17 @@ export function services(facts) {
       : { state: "present", text: "installiert, Dienst antwortet nicht oder keine Rechte" }
     : { state: "missing", text: "fehlt" };
 
+  // Ein Sprachmodell läuft nicht überall als Programm auf dem Gerät. Auf einem
+  // Gerät mit Arasul fährt es in einem Container, und dort gibt es kein Binary
+  // im Pfad: „fehlt" wäre dann schlicht falsch, und der nächste Schritt hieße,
+  // etwas aufzusetzen, das längst läuft. Erkannt wird deshalb beides, und der
+  // Satz nennt, was gefunden wurde, statt es zu deuten.
+  const llmContainers = (facts.docker_names || "").split(/\s+/).filter((n) => /ollama|llm/i.test(n));
   const ollama = facts.ollama_bin
     ? { state: "present", text: `installiert${facts.ollama_version ? `, ${facts.ollama_version}` : ""}` }
-    : { state: "missing", text: "fehlt" };
+    : llmContainers.length
+      ? { state: "container", text: `läuft im Container ${llmContainers.join(", ")}, nicht als Programm auf dem Gerät` }
+      : { state: "missing", text: "fehlt" };
 
   // Hinweise auf Arasul: Container, Dienste oder Ordner mit dem Namen. Das ist
   // ein Anhaltspunkt, keine Aussage über den Produktstand. Der steht im Spiegel.

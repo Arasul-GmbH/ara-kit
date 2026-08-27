@@ -19,7 +19,7 @@ Bei einem Kundengerät kommt `--customer <kunde>` dazu. Das Werkzeug:
 1. legt die Akte `device.md` aus `.ara/templates/device.md` an, falls sie fehlt,
 2. prüft die SSH-Verbindung mit Schlüssel, ohne Passwortabfrage,
 3. lässt auf dem Gerät ein Leseskript laufen: Hardware, System, Speicher, Docker,
-   Ollama, Hinweise auf Arasul,
+   Ollama als Programm oder als Container, Hinweise auf Arasul,
 4. fällt das Urteil und schreibt Befund und Urteil in die Akte, unter „Prüfungen",
 5. merkt sich das Gerät in `.ara/state.json`,
 6. nennt den nächsten Schritt.
@@ -91,6 +91,13 @@ und Rückweg nennen und bestätigen lassen. Es läuft nur auf Linux, braucht Roo
 und nutzt die Installationswege der Hersteller. Auf einem Mac bleibt es Handarbeit, das
 sagt das Werkzeug selbst. Nach der Installation prüft es erneut, damit die Akte den
 Zustand trägt, nicht die Absicht.
+
+**Ollama kann als Programm auf dem Gerät liegen oder in einem Container fahren.** Das
+Werkzeug erkennt beides und sagt, was es gefunden hat: `present` für das Programm,
+`container` mit dem Namen des Containers, `missing` für nichts davon. Auf einem Gerät mit
+Arasul ist der Container der Normalfall, und dort wäre „fehlt" falsch: ein zweites Ollama
+danebenzusetzen hieße, ein zweites Modell in denselben Speicher zu legen. Aufsetzen bietet
+das Werkzeug deshalb nur an, wo wirklich nichts läuft.
 
 Auf einem Gerät, das nicht unterstützt ist, sind Docker und Ollama trotzdem sinnvoll:
 damit lassen sich Apps bauen und Modelle ausprobieren. Was fehlt, ist Arasul.
@@ -222,6 +229,12 @@ node .ara/tools/app.mjs --device <gerät> --contract
 
 Antwortet er, dann steht die Plattform, der Schlüssel gilt und das Kit passt zu diesem
 Gerät. Was dann noch kommt, steht in `.ara/knowledge/apps.md`.
+
+**Antwortet er nicht, obwohl SSH steht**, liegt die Schnittstelle woanders als der Zugang:
+hinter einem Tunnel, unter einem anderen Namen, auf einem anderen Port. Dann trägt die
+Akte `api_base`, die Adresse mit Vorsatz, unter der die Schnittstelle wirklich antwortet.
+Sie sticht `address`, bleibt in der Akte stehen und muss nicht bei jedem Aufruf mitgetippt
+werden. `--base <url>` gibt es weiter, für den einen Versuch, der nicht in die Akte gehört.
 
 ## Nach dem Urteil: bald
 

@@ -23,7 +23,13 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { judge, parseProbe, services } from "./lib/device.mjs";
-import { KIT_CONTRACT_VERSION, checkManifest, checkVersion, findEndpoint } from "./lib/contract.mjs";
+import {
+  KIT_CONTRACT_VERSION,
+  checkManifest,
+  checkVersion,
+  findEndpoint,
+  promisedFolders,
+} from "./lib/contract.mjs";
 import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 
@@ -271,6 +277,15 @@ check("Docker, Ollama und Arasul werden aus dem Befund erkannt", () => {
   const bare = services(parseProbe("@docker_bin=/usr/local/bin/docker\n@user=probe"));
   assert(bare.docker.state === "present", "Docker ohne Dienst gilt nicht als vorhanden");
   assert(bare.ollama.state === "missing" && bare.arasul.state === "none", "leerer Befund liefert Funde");
+
+  // Ein Gerät mit Arasul fährt das Sprachmodell im Container und hat kein
+  // Programm im Pfad. "fehlt" wäre dort falsch, und der nächste Schritt hieße,
+  // etwas aufzusetzen, das längst läuft.
+  const imContainer = services(
+    parseProbe("@docker_bin=/usr/bin/docker\n@docker_server=27.1.1\n@docker_names=llm-service traefik dashboard-backend")
+  );
+  assert(imContainer.ollama.state === "container", "das Modell im Container gilt als fehlend");
+  assert(/llm-service/.test(imContainer.ollama.text), "der gefundene Container wird nicht genannt");
 });
 
 check("device.mjs legt die Akte an, urteilt und merkt sich das Gerät", () => {
@@ -561,15 +576,39 @@ const KONTRAKT = {
           additionalProperties: false,
         },
         modelle: { type: "array", maxItems: 2, items: { type: "string", minLength: 1 } },
+        frontend: {
+          type: "object",
+          properties: { verzeichnis: { type: "string", minLength: 1 } },
+          required: ["verzeichnis"],
+          additionalProperties: false,
+        },
+        flows: {
+          type: "object",
+          properties: { verzeichnis: { type: "string", minLength: 1 } },
+          required: ["verzeichnis"],
+          additionalProperties: false,
+        },
       },
       required: ["schema", "id", "name", "version"],
       additionalProperties: false,
     },
     regeln: ["Mindestens eines von frontend und backend. Eine App ohne beides ist nichts."],
   },
+  flow_frontmatter: {
+    schema: { type: "object", properties: { name: { type: "string" } } },
+    rumpf: "Der Auftrag steht als Text unter dem Kopf, nicht im Kopf.",
+    regeln: ["Eine Datei je Flow, der Dateiname ist der Name."],
+  },
   koepfe: { benutzer: "X-Arasul-User", rolle: "X-Arasul-Role", rollen: ["admin", "mitarbeiter"] },
   schluessel: { kopf: "X-API-Key", praefix: "aras_", bereiche: ["app:deploy"] },
-  paket: { format: "tar.gz", packen: "tar czf paket.tgz -C <ordner> .", max_archiv_bytes: 200 * 1024 * 1024 },
+  paket: {
+    format: "tar.gz",
+    packen: "tar czf paket.tgz -C <ordner> .",
+    // Die Wurzel nennt die Ordner als Platzhalter. Daran und an nichts anderem
+    // erkennt das Kit, welche Felder des Manifests einen Ordner versprechen.
+    wurzel: ["app.json", "<frontend.verzeichnis>/", "<flows.verzeichnis>/"],
+    max_archiv_bytes: 200 * 1024 * 1024,
+  },
   apps: { basis: "/apps/<id>/", teststand: "/apps/<id>/test/" },
   endpunkte: [
     { verb: "GET", pfad: "/api/v1/external/contract", bereich: null, was: "Dieser Kontrakt" },
@@ -628,11 +667,40 @@ check("Das Kit ruft nur, was das Gerät verspricht", () => {
   assert(!findEndpoint(KONTRAKT, "PUT", "/api/v1/external/apps"), "falsches Verb gilt als bekannt");
 
   assert(checkVersion(KONTRAKT).ok, "gleiche Kontraktversion gilt nicht als passend");
-  const neuer = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION + 1 });
-  assert(!neuer.ok && /init/.test(neuer.text), "neueres Gerät führt nicht zum Hinweis auf das Kit-Update");
-  const aelter = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION - 1 });
-  assert(!aelter.ok && /Gerät braucht ein Update/.test(aelter.text), "älteres Gerät wird nicht benannt");
   assert(!checkVersion({}).ok, "ein Gerät ohne Kontraktversion gilt als passend");
+});
+
+check("Das Kit kennt die höchste Fassung, die es versteht", () => {
+  // Ein neueres Gerät ist ein Halt, und das Kit sagt, was ihm fehlt: die
+  // Fassung, die es nicht kennt, und die Felder, die es nicht liest. Ein
+  // älteres ist kein Halt: geprüft wird ohnehin gegen dessen Schema.
+  const neuer = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION + 1, sonderfeld: { x: 1 } });
+  assert(!neuer.ok && neuer.state === "device-newer", "neueres Gerät gilt als passend");
+  assert(/init/.test(neuer.text), "neueres Gerät führt nicht zum Hinweis auf das Kit-Update");
+  assert(new RegExp(`Fassung ${KIT_CONTRACT_VERSION + 1}`).test(neuer.text), "die unbekannte Fassung wird nicht benannt");
+  assert(/sonderfeld/.test(neuer.text), "das Kit sagt nicht, welches Feld es nicht liest");
+
+  const aelter = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION - 1 });
+  assert(aelter.ok && aelter.state === "device-older", "ein älteres Gerät wird nicht mehr bedient");
+  assert(new RegExp(`versteht bis ${KIT_CONTRACT_VERSION}`).test(aelter.text), "das Kit nennt seine höchste Fassung nicht");
+
+  const weiter = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION + 5 });
+  assert(new RegExp(`Fassungen ${KIT_CONTRACT_VERSION + 1} bis ${KIT_CONTRACT_VERSION + 5}`).test(weiter.text), "mehrere unbekannte Fassungen werden nicht als Spanne genannt");
+  return `Kit versteht bis ${KIT_CONTRACT_VERSION}`;
+});
+
+check("Welche Ordner ein Manifest verspricht, sagt der Kontrakt", () => {
+  // Das Kit zählt die Felder nicht auf, es liest die Platzhalter aus der Wurzel
+  // des Pakets. Kommt dort einer dazu, muss im Kit nichts nachgezogen werden.
+  const mit = promisedFolders(KONTRAKT, {
+    ...MANIFEST,
+    frontend: { verzeichnis: "frontend" },
+    flows: { verzeichnis: "flows" },
+  });
+  assert(mit.map((f) => f.folder).join(",") === "frontend,flows", `falsch gelesen: ${JSON.stringify(mit)}`);
+  assert(mit[1].field === "flows.verzeichnis", "das Feld wird nicht mitgenannt");
+  assert(promisedFolders(KONTRAKT, MANIFEST).length === 0, "ein Manifest ohne Ordner verspricht welche");
+  assert(promisedFolders({}, MANIFEST).length === 0, "ohne Wurzel im Kontrakt rät das Kit");
 });
 
 check("Kein Schlüssel gerät in eine Ausgabe", () => {
@@ -654,7 +722,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
 
   // Das Gerät, gespielt. Es prüft den Schlüssel in der Kopfzeile, nimmt genau ein
   // Multipart-Feld `paket` an und antwortet im Umschlag, den Arasul benutzt.
-  const gesehen = { key: null, paket: false, geschaltet: [], entfernt: null };
+  const gesehen = { key: null, paket: false, inhalt: [], geschaltet: [], entfernt: null };
   const server = createServer((request, response) => {
     const antwort = (status, body) => {
       response.writeHead(status, { "Content-Type": "application/json" });
@@ -674,6 +742,15 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       if (pfad === "/api/v1/external/apps" && request.method === "POST") {
         gesehen.paket =
           /name="paket"/.test(rumpf.toString("latin1").slice(0, 400)) && rumpf.includes(Buffer.from([0x1f, 0x8b]));
+        // Was im Paket liegt, wird ausgepackt und nicht geglaubt: der Umschlag
+        // des Multipart fällt weg, der Rest ist das Archiv.
+        gesehen.inhalt = [];
+        const anfang = rumpf.indexOf(Buffer.from([0x1f, 0x8b]));
+        const ende = rumpf.lastIndexOf(Buffer.from("\r\n--"));
+        if (anfang >= 0 && ende > anfang) {
+          const liste = spawnSync("tar", ["-tzf", "-"], { input: rumpf.subarray(anfang, ende), encoding: "utf8" });
+          gesehen.inhalt = liste.stdout.split(/\r?\n/).map((z) => z.trim()).filter(Boolean);
+        }
         return antwort(201, { data: { app_id: "probeapp", version: "1.0.0", stand: "test" } });
       }
       if (pfad === "/api/v1/external/apps/probeapp/schalten") {
@@ -694,9 +771,13 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
 
   mkdirSync(akte, { recursive: true });
   cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  // Die Adresse führt bewusst ins Leere, die Schnittstelle steht in api_base:
+  // so wie bei einem Gerät, das nur über einen Tunnel erreichbar ist. Wird
+  // api_base nicht gelesen, scheitert unten jeder einzelne Aufruf.
   writeFrontmatter(join(akte, "device.md"), {
     name,
-    address: base,
+    address: "127.0.0.1:1",
+    api_base: base,
     verdict: "supported",
     arasul: "found",
     api_key_ref: "ARASUL_KEY_SELFTEST",
@@ -710,7 +791,11 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     run = await toolAsync("app.mjs", ["--device", name, "--contract"], env);
     assert(run.status === 0, `Kontrakt fehlgeschlagen: ${run.stderr}${run.stdout}`);
     assert(gesehen.key === "aras_selbsttest", "der Schlüssel kam nicht in der Kopfzeile an");
-    assert(/Kontraktversion 1/.test(run.stdout), "die Kontraktversion fehlt in der Ausgabe");
+    assert(
+      new RegExp(`Kontraktversion ${KIT_CONTRACT_VERSION}`).test(run.stdout),
+      "die Kontraktversion fehlt in der Ausgabe"
+    );
+    assert(/Regeln für einen Flow/.test(run.stdout), "die Flow-Regeln des Kontrakts fehlen in der Ausgabe");
 
     run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
     assert(run.status === 0, `Prüfung des Manifests fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -733,12 +818,42 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove", "--confirm", "probeapp"], env);
     assert(run.status === 0 && gesehen.entfernt === "bestaetigung=probeapp", "die Rückfrage wird nicht durchgereicht");
 
+    // Ein Manifest, das einen Ordner verspricht, den es nicht gibt: das Gerät
+    // würde es abweisen, und das Kit sieht es vorher, ohne Paket und ohne Bau.
+    const mitFlows = { ...MANIFEST, version: "1.1.0", flows: { verzeichnis: "flows" } };
+    writeFileSync(join(quelle, "app.json"), JSON.stringify(mitFlows, null, 2));
+    gesehen.paket = false;
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    assert(run.status !== 0 && /verspricht/.test(run.stdout), "der versprochene Ordner fehlt und fällt nicht auf");
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    assert(run.status !== 0 && !gesehen.paket, "ein Manifest ohne den versprochenen Ordner wurde eingespielt");
+
+    // Ein leerer Ordner ist auch keine Lieferung.
+    mkdirSync(join(quelle, "flows"), { recursive: true });
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    assert(run.status !== 0 && /leer/.test(run.stdout), "ein leerer Ordner gilt als Lieferung");
+
+    // Mit der Datei darin geht es durch, und sie liegt im Paket.
+    writeFileSync(join(quelle, "flows", "bericht.md"), "---\nname: bericht\n---\n\nFasse zusammen.\n");
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    assert(run.status === 0, `Manifest mit Flows abgelehnt: ${run.stdout}${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    assert(run.status === 0 && gesehen.paket, `Einspielen mit Flows fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(gesehen.inhalt.includes("./flows/bericht.md"), `die Flow-Datei fehlt im Paket: ${gesehen.inhalt.join(", ")}`);
+
+    // --base sticht die Akte: für den einen Versuch, der nicht hineingehört.
+    writeFrontmatter(join(akte, "device.md"), { api_base: "https://127.0.0.1:1" });
+    run = await toolAsync("app.mjs", ["--device", name, "--contract"], env);
+    assert(run.status !== 0, "eine tote api_base wird nicht bemerkt");
+    run = await toolAsync("app.mjs", ["--device", name, "--contract", "--base", base], env);
+    assert(run.status === 0, `--base sticht die Akte nicht: ${run.stderr}${run.stdout}`);
+
     // Ein Manifest, das das Gerät abweisen würde, wird gar nicht erst geschickt.
     writeFileSync(join(quelle, "app.json"), JSON.stringify({ ...MANIFEST, version: "eins" }));
     gesehen.paket = false;
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--base", base], env);
     assert(run.status !== 0 && !gesehen.paket, "ein ungültiges Manifest wurde eingespielt");
-    return "Kontrakt, Prüfung, Teststand, live, zurück, entfernen";
+    return "Kontrakt, Prüfung, Flows im Paket, Teststand, live, zurück, entfernen";
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });

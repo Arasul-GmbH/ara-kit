@@ -12,14 +12,15 @@ verdict:                  # supported | soon | unsupported, von device.mjs einge
 noted_on:                 # JJJJ-MM-TT. Wann ein nicht unterstütztes Gerät vorgemerkt wurde
 location:                 # Raum, Gebäude
 hostname:
-address:                  # IP oder Name im Kundennetz
+address:                  # IP oder Name im Kundennetz, darüber läuft SSH
+api_base:                 # Schnittstelle, wenn sie nicht unter address liegt, z.B. hinter einem Tunnel
 ssh_user:                 # Anmeldename auf dem Gerät
 ssh_port:                 # nach der Härtung der neue Port
 ssh_key:                  # Name des Schlüssels in ~/.ssh, ohne Pfad
 ssh:                      # ok | refused | local, Ergebnis der letzten Prüfung
 tls:                      # selfsigned, wenn das Gerät ein selbst ausgestelltes Zertifikat trägt
 docker:                   # running | present | missing
-ollama:                   # present | missing
+ollama:                   # present | container | missing, Programm oder Container
 arasul:                   # found | none, Hinweise auf dem Gerät, kein Produktstand
 api_key_ref:              # Kit-Schlüssel (app:deploy) für den Deploy: Name des Eintrags, kein Wert
 checked:                  # Zeitpunkt der letzten Prüfung durch device.mjs
