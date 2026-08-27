@@ -257,6 +257,9 @@ if (typeof arg.deploy === "string") {
       file: archive,
       fileField: "paket",
       keyHeader: contract?.schluessel?.kopf || undefined,
+      // Das Gerät baut das Backend, bevor es antwortet. Das dauert Minuten,
+      // und in der Zeit fließt nichts über die Leitung.
+      timeout: 30 * 60_000,
     });
     if (!sent.ok) fail(`${place} hat das Paket abgewiesen (Status ${sent.status}).\n${reason(sent)}`);
 

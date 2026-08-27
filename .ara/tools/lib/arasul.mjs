@@ -71,7 +71,9 @@ export async function call({
   fileName = "paket.tgz",
   keyHeader = DEFAULT_KEY_HEADER,
   insecure = false,
-  timeout = 600_000,
+  // Leerlauf, nicht Gesamtdauer. Eine Minute reicht für jede Auskunft; ein
+  // Einspielen wartet auf einen Bau am Gerät und setzt das selbst höher.
+  timeout = 60_000,
 }) {
   const url = new URL(path, base.endsWith("/") ? base : `${base}/`);
   const secure = url.protocol === "https:";
@@ -81,13 +83,13 @@ export async function call({
   if (key) headers[keyHeader] = key;
 
   let body = null;
-  let boundary = null;
+  let multipart = null;
   if (json) {
     body = Buffer.from(JSON.stringify(json));
     headers["Content-Type"] = "application/json";
     headers["Content-Length"] = body.length;
   } else if (file) {
-    boundary = `----ara${randomBytes(12).toString("hex")}`;
+    const boundary = `----ara${randomBytes(12).toString("hex")}`;
     const head = Buffer.from(
       `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="${fileField}"; filename="${fileName}"\r\n` +
@@ -96,7 +98,7 @@ export async function call({
     const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
     headers["Content-Type"] = `multipart/form-data; boundary=${boundary}`;
     headers["Content-Length"] = head.length + statSync(file).size + tail.length;
-    boundary = { head, tail };
+    multipart = { head, tail };
   }
 
   const options = {
@@ -135,10 +137,10 @@ export async function call({
     if (body) {
       req.end(body);
     } else if (file) {
-      req.write(boundary.head);
+      req.write(multipart.head);
       const stream = createReadStream(file);
       stream.on("error", (error) => req.destroy(error));
-      stream.on("end", () => req.end(boundary.tail));
+      stream.on("end", () => req.end(multipart.tail));
       stream.pipe(req, { end: false });
     } else {
       req.end();
