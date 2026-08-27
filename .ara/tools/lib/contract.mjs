@@ -34,6 +34,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 2,
     kann: "Ein Paket bringt Flows mit: das Kit packt jeden Ordner mit ein, den das Manifest verspricht, und prüft vorher, dass es ihn wirklich gibt.",
   },
+  {
+    version: 3,
+    kann: "Ein Flow darf anhalten, bis ein Mensch entscheidet: die Vorlage einer App bringt einen Flow mit Freigabe-Schritt mit, und /app fragt im Interview, an welcher Stelle das gebraucht wird.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */

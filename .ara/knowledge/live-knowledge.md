@@ -27,7 +27,7 @@ einer Flow-Datei, die Namen der Kopfzeilen, die Grenzen eines Pakets, die Pfade 
 
 **Das Kit schreibt keinen dieser Werte mit.** Es liest sie je Gerät. Zwei Nachbauten
 desselben Vertrags laufen auseinander, und die Frage ist nur, wann es jemand merkt.
-Verfahren: `.ara/knowledge/apps.md`.
+Verfahren: `.ara/knowledge/deploy.md`.
 
 ## Quelle 2: Das Gerät
 

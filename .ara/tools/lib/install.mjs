@@ -99,16 +99,23 @@ export function runRemote(sshArgs, transport, command, { interactive = false } =
   return { status: run.status, stdout: run.stdout || "", stderr: run.stderr || "" };
 }
 
-/** Schiebt das Artefakt an das Gerät und packt es dort aus. */
-export async function ship(sshArgs, transport, target = TARGET) {
+/**
+ * Schiebt einen Ordner an das Gerät und packt ihn dort aus.
+ *
+ * Ohne Angabe ist das der Spiegel: das ist der Weg, für den die Funktion
+ * entstanden ist. `from` gibt es, weil derselbe Weg noch einmal gebraucht wird,
+ * wenn eine App auf ein Gerät ohne Arasul geht (Phase E5): zwei Nachbauten
+ * desselben Rohrs liefen auseinander, und der zweite wäre der ungetestete.
+ */
+export async function ship(sshArgs, transport, target = TARGET, from = mirrorDir()) {
   if (transport !== "ssh") {
-    const run = spawnSync("sh", ["-c", `mkdir -p ${target} && tar -czf - -C ${JSON.stringify(mirrorDir())} . | tar -xzf - -C ${target}`], {
+    const run = spawnSync("sh", ["-c", `mkdir -p ${target} && tar -czf - -C ${JSON.stringify(from)} . | tar -xzf - -C ${target}`], {
       encoding: "utf8",
     });
     return { ok: run.status === 0, message: (run.stderr || "").trim() };
   }
   return new Promise((done) => {
-    const pack = spawn("tar", ["-czf", "-", "-C", mirrorDir(), "."], { stdio: ["ignore", "pipe", "pipe"] });
+    const pack = spawn("tar", ["-czf", "-", "-C", from, "."], { stdio: ["ignore", "pipe", "pipe"] });
     const push = spawn("ssh", [...sshArgs, `mkdir -p ${target} && tar -xzf - -C ${target}`], {
       stdio: ["pipe", "pipe", "pipe"],
     });

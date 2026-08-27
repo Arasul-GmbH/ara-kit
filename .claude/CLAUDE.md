@@ -12,19 +12,21 @@ Deine Persona steht in `.ara/persona/ara.md`. Lies sie einmal am Anfang jeder Si
 | `business/` | Profil, Firmendaten, Kalkulationsblatt, Gelerntes. Gehört dem Nutzer. |
 | `customers/` | Partner: alles pro Kunde, Akte, Geräte, Laufzettel, Verlauf. Gehört dem Partner. |
 | `devices/` | Geräte ohne Kunden, in beiden Zweigen: beim Unternehmen alle, beim Partner die eigenen. Gehört dem Nutzer. |
-| `apps/` | Eigene Apps, kundenunabhängig. Gehört dem Nutzer. |
+| `apps/` | Eigene Apps, kundenunabhängig. Gehört dem Nutzer. Nur `apps/urlaubsantrag/` gehört dem Kit: die Referenz-App zum Ansehen. |
 | `.ara/commands/` | Quelle der Befehle: `alle/` für jeden Zweig, `partner/` nur für Partner. `/init` legt sie nach `.claude/commands/`. |
 | `.ara/knowledge/` | **Verfahren**: wie man vorgeht. Keine Produktwerte. |
 | `.ara/vorlagen/` | **Das Papier**: Angebot, Anlagen, Übergabeprotokoll. Einziger Ort dafür, siehe `.ara/vorlagen/README.md`. |
 | `.ara/nachweise/` | Nachweise zu KI-Einstufung und Datenverarbeitung. Anlagen 4 und 5 zum Angebot. Aus Arasuls Steuerungsordner gespiegelt, hier nicht bearbeiten. |
-| `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst. |
+| `.ara/templates/` | Gerüste für den Betrieb, die du mit echten Daten füllst, dazu `app/`: die Vorlage einer App, aus der `/app --new` schöpft. |
 | `.ara/tools/` | Skripte (Node). Du rufst sie auf, statt Dinge nachzubauen. |
 | `.ara/mirror/` | Das geholte Installationsartefakt, entsteht bei `/device --install arasul`. Nicht bearbeiten. |
 | `.claude/` | Regeln, Skills und die erzeugten Befehle. Getrackt sind nur `CLAUDE.md`, `settings.json`, `skills/` und `commands/init.md`. |
 
 `business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`
 und die erzeugten Befehle unter `.claude/commands/` sind von der Versionskontrolle
-ausgenommen, ein Update des Kits fasst sie nie an.
+ausgenommen, ein Update des Kits fasst sie nie an. Die eine Ausnahme ist
+`apps/urlaubsantrag/`: die Referenz-App kommt mit dem Klon mit. Angefasst wird auch sie
+von keinem Update, sie liegt ja unter `apps/`.
 
 ## Die wichtigste Regel: nichts über das Produkt behaupten
 
@@ -61,6 +63,7 @@ Verfahren: `.ara/knowledge/paperwork.md`
 | `/kalkulation` | Nur Partner. Preise hinterlegen, Kalkulationsblatt pflegen | `.ara/knowledge/pricing.md` |
 | `/angebot <kunde>` | Nur Partner. Angebot mit allen Anlagen | `.ara/knowledge/paperwork.md` |
 | `/device [<gerät>]` | Gerät anlegen und prüfen: Akte, SSH, Hardware, Urteil, nächste Schritte. Arasul installieren, Kit-Schlüssel holen. `<kunde>/<gerät>` für ein Kundengerät | `.ara/knowledge/device.md` |
+| `/app [<app>]` | App planen, bauen, in den Teststand rollen, live schalten. Liest die Akte und bietet nur die sinnvollen nächsten Schritte | `.ara/knowledge/app.md` |
 | `/maintain <kunde>[/<gerät>]` | Laufendes Gerät betreuen | `.ara/knowledge/maintenance-flow.md` |
 
 **Jeder Befehl sagt am Anfang, welche Wissensdateien er lädt.** Lies genau die, nicht
@@ -82,7 +85,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 | `mirror.mjs` | Das Installationsartefakt holen und ansehen (`--show`, `--refresh`). Ruft `/device` selbst auf |
 | `check-environment.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
 | `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen, Arasul installieren, Kit-Schlüssel holen (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--json`) |
-| `app.mjs` | Kontrakt eines Geräts lesen, `app.json` dagegen prüfen, Paket in den Teststand, live schalten, zurück, entfernen |
+| `app.mjs` | Zwei Seiten. Ohne `--device`: App aus der Vorlage anlegen, Pläne schieben, bauen, Lage lesen. Mit `--device`: Kontrakt lesen, `app.json` dagegen prüfen, Paket in den Teststand, live schalten, zurück, entfernen, und mit `--compose` auf ein Gerät ohne Arasul |
 | `runsheet.mjs` | Stand einer Einrichtung lesen und fortschreiben |
 | `remote.mjs` | Befehl auf einem Kundengerät ausführen (`--check`, `--log`) |
 | `find-device.mjs` | Ist ein Gerät erreichbar, welche Dienste antworten |

@@ -9,7 +9,7 @@ Lies `.ara/knowledge/device.md` und arbeite danach. Wissen, das dieser Befehl l�
 `.ara/knowledge/device.md`, `.ara/knowledge/security.md`, dazu erst nach dem Urteil
 und nur bei Bedarf `.ara/knowledge/remote-access.md`, `.ara/knowledge/boot-and-flash.md`,
 `.ara/knowledge/identify-device.md`, `.ara/knowledge/handover.md`,
-`.ara/knowledge/apps.md`, sobald Arasul auf dem Ger채t l채uft, und
+`.ara/knowledge/deploy.md`, sobald Arasul auf dem Ger채t l채uft, und
 `.ara/knowledge/live-knowledge.md` f체r jeden Produktwert. Das Profil in
 `business/profile.md` liest du vorher: Zweig, Erkl채rtiefe, Sicherheitsstufe, SSH-Schl체ssel.
 

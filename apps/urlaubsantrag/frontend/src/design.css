@@ -1,0 +1,53 @@
+/**
+ * Die Marken des Arasul-Aussehens für diese App.
+ *
+ * Übernommen aus dem Spiegel am 2026-08-27.
+ * Das ist das Aussehen des Geräts, mit dem gearbeitet wurde.
+ *
+ * Eine Farbe gehört in eine Marke, nicht in eine Regel: was hier steht, wird
+ * beim nächsten Stand ersetzt, alles andere bleibt.
+ */
+
+:root {
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, monospace;
+
+  --background: #0A0A0A;
+  --foreground: #e6e6e6;
+  --card: #121212;
+  --card-foreground: #e6e6e6;
+  --muted: #161616;
+  --muted-foreground: rgba(228, 228, 228, 0.55);
+  --primary: #81A1C1;
+  --primary-foreground: #0A0A0A;
+  --accent: rgba(228, 228, 228, 0.07);
+  --border: rgba(228, 228, 228, 0.08);
+  --input: rgba(228, 228, 228, 0.1);
+  --ring: #81A1C1;
+  --destructive: #EF4444;
+  --success: #10B981;
+  --warning: #F59E0B;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #F6F6F6;
+    --foreground: #1a1a1a;
+    --card: #FFFFFF;
+    --card-foreground: #1a1a1a;
+    --muted: #ECECEC;
+    --muted-foreground: #6b6b6b;
+    --primary: #2D8FD9;
+    --primary-foreground: #FFFFFF;
+    --accent: rgba(16, 16, 16, 0.05);
+    --border: rgba(16, 16, 16, 0.1);
+    --input: rgba(16, 16, 16, 0.12);
+    --ring: #2D8FD9;
+    --destructive: #EF4444;
+    --success: #10B981;
+    --warning: #F59E0B;
+  }
+}

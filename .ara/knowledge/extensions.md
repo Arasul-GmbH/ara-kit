@@ -21,7 +21,7 @@ Was daraus folgt, gilt weiter:
 3. **Es bleibt beim Kunden.** Das Gerät trägt die App, auch wenn der Partner wechselt.
 
 Wie ein Paket auf ein Gerät kommt, in den Teststand und von dort live, steht in
-`.ara/knowledge/apps.md`, und dort auch, was hineingehört: `app.json` in der Wurzel und
+`.ara/knowledge/deploy.md`, und dort auch, was hineingehört: `app.json` in der Wurzel und
 die Ordner, die das Manifest benennt. **Flows gehören dazu, als Lieferung**: das Paket
 bringt je Flow eine Datei mit Kopf mit, statt einen Namen zu fordern, den jemand am Gerät
 angelegt haben muss. Welche Felder in den Kopf gehören, sagt der Kontrakt des Geräts,
@@ -46,7 +46,7 @@ Bevor irgendetwas gebaut wird: Was gibt es bereits? Die Beschreibung der Schnitt
 liefert das Gerät selbst, in einem Aufruf:
 `node .ara/tools/app.mjs --device <gerät> --contract`. Dort steht, was eine App mitbringen
 muss und welche Endpunkte es gibt. Wie eine App dann auf das Gerät kommt, steht in
-`.ara/knowledge/apps.md`.
+`.ara/knowledge/deploy.md`.
 
 Die meisten Kundenwünsche brauchen keine neue Entwicklung, sondern eine Einrichtung.
 

@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "id": "{{id}}",
+  "name": "{{name}}",
+  "version": "0.1.0",
+  "beschreibung": "{{beschreibung}}",
+  "frontend": {
+    "verzeichnis": "frontend"
+  },
+  "backend": {
+    "image": "arasul-{{id}}:0.1.0",
+    "bauen": {
+      "verzeichnis": "backend"
+    },
+    "gesundheit": "/gesund",
+    "umgebung": {
+      "ARASUL_APP_NAME": "{{name}}"
+    }
+  },
+  "ports": {
+    "backend": 8080
+  },
+  "ressourcen": {
+    "speicher": "128m",
+    "cpus": 0.25
+  },
+  "modelle": [],
+  "flows": {
+    "verzeichnis": "flows"
+  }
+}

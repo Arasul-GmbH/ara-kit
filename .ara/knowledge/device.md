@@ -228,7 +228,9 @@ node .ara/tools/app.mjs --device <gerät> --contract
 ```
 
 Antwortet er, dann steht die Plattform, der Schlüssel gilt und das Kit passt zu diesem
-Gerät. Was dann noch kommt, steht in `.ara/knowledge/apps.md`.
+Gerät. Wie ein fertiges Paket dorthin kommt, steht in `.ara/knowledge/deploy.md`; wie aus
+einem Kundenwunsch überhaupt eine App wird, in `.ara/knowledge/app.md`. Der nächste
+Befehl ist dann `/app`.
 
 **Antwortet er nicht, obwohl SSH steht**, liegt die Schnittstelle woanders als der Zugang:
 hinter einem Tunnel, unter einem anderen Namen, auf einem anderen Port. Dann trägt die
