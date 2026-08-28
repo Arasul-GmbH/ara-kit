@@ -19,6 +19,7 @@ import { existsSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import { platform } from "node:os";
 import { join } from "node:path";
 import { ROOT, readFrontmatter } from "./kit.mjs";
+import { t } from "./i18n.mjs";
 
 const ENV_FILE = join(ROOT, ".env");
 const SERVICE = "ara-kit";
@@ -43,13 +44,16 @@ export function keychainAvailable() {
 
 export function keychainHint() {
   const system = platform();
-  if (system === "darwin") return "macOS-Schlüsselbund";
+  if (system === "darwin") return t("macOS keychain", "macOS-Schlüsselbund");
   if (system === "linux") {
     return keychainAvailable()
       ? "Secret Service (secret-tool)"
-      : "Secret Service, dafür fehlt secret-tool (Paket libsecret-tools)";
+      : t(
+          "Secret Service, but secret-tool is missing (package libsecret-tools)",
+          "Secret Service, dafür fehlt secret-tool (Paket libsecret-tools)"
+        );
   }
-  return "auf diesem Betriebssystem nicht verfügbar";
+  return t("not available on this operating system", "auf diesem Betriebssystem nicht verfügbar");
 }
 
 // --- .env ---------------------------------------------------------------
@@ -112,7 +116,9 @@ function keychainSet(name, value) {
       ["add-generic-password", "-U", "-a", name, "-s", SERVICE, "-w"],
       { input: value, encoding: "utf8" }
     );
-    if (run.status !== 0) throw new Error((run.stderr || "").trim() || "Schlüsselbund lehnt ab.");
+    if (run.status !== 0) {
+      throw new Error((run.stderr || "").trim() || t("The keychain refuses.", "Schlüsselbund lehnt ab."));
+    }
     return;
   }
   if (system === "linux") {
@@ -121,10 +127,17 @@ function keychainSet(name, value) {
       ["store", "--label", `${SERVICE} ${name}`, "service", SERVICE, "account", name],
       { input: value, encoding: "utf8" }
     );
-    if (run.status !== 0) throw new Error((run.stderr || "").trim() || "secret-tool lehnt ab.");
+    if (run.status !== 0) {
+      throw new Error((run.stderr || "").trim() || t("secret-tool refuses.", "secret-tool lehnt ab."));
+    }
     return;
   }
-  throw new Error("Auf diesem Betriebssystem gibt es keine unterstützte Schlüsselbund-Ablage.");
+  throw new Error(
+    t(
+      "There is no supported keychain store on this operating system.",
+      "Auf diesem Betriebssystem gibt es keine unterstützte Schlüsselbund-Ablage."
+    )
+  );
 }
 
 // --- Schnittstelle ------------------------------------------------------
@@ -146,7 +159,7 @@ export function getSecret(name) {
 
 /** Legt ein Geheimnis in der gewählten Ablage ab. */
 export function setSecret(name, value) {
-  if (!value) throw new Error("Ein leerer Wert wird nicht gespeichert.");
+  if (!value) throw new Error(t("An empty value is not saved.", "Ein leerer Wert wird nicht gespeichert."));
   if (activeStore() === "keychain") {
     keychainSet(name, value);
     return "keychain";
