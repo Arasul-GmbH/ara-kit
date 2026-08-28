@@ -1,5 +1,25 @@
 #!/usr/bin/env node
 /**
+ * Calculation sheet: which number is there, which is missing and what is therefore not possible.
+ *
+ * A complete offer along `.ara/knowledge/pricing.md` needs ten numbers. If they
+ * stand in `business/company.md`, Ara calculates without asking, and two offers by
+ * the same partner for the same device type land on the same numbers. If one is
+ * missing, it otherwise gets estimated anew at every offer.
+ *
+ * The tool only reads. Entering happens in the procedure `/calculation`, so that
+ * every number comes in with the date on which it was confirmed.
+ *
+ *   node .ara/tools/calculation.mjs               what is there, what is missing
+ *   node .ara/tools/calculation.mjs --json        machine readable
+ *   node .ara/tools/calculation.mjs --file <path> read a different sheet. The
+ *                                                 self-test uses that, daily work does not.
+ *
+ * Return code 1 as soon as a number is missing without which no complete offer
+ * comes into being. A stale as-of date is a hint, not an error.
+ *
+ * === deutsch ===
+ *
  * Kalkulationsblatt: welche Zahl liegt vor, welche fehlt und was deshalb nicht geht.
  *
  * Ein vollständiges Angebot nach `.ara/knowledge/pricing.md` braucht zehn Zahlen.
@@ -21,6 +41,7 @@
 
 import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { t } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, daysUntil, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
 helpOnly(import.meta.url);
@@ -39,80 +60,104 @@ const PURCHASE_STALE_DAYS = 180;
 const RATES = [
   {
     key: "hourly_rate",
-    label: "Stundensatz",
-    unit: "Euro netto je Stunde",
+    label: t("Hourly rate", "Stundensatz"),
+    unit: t("euro net per hour", "Euro netto je Stunde"),
     blocking: true,
-    without: "keine Kalkulation, weder Einrichtung noch Betreuung",
+    without: t(
+      "no calculation, neither setup nor care",
+      "keine Kalkulation, weder Einrichtung noch Betreuung"
+    ),
   },
   {
     key: "setup_hours",
-    label: "Stunden für eine Ersteinrichtung",
-    unit: "Stunden",
+    label: t("Hours for a first setup", "Stunden für eine Ersteinrichtung"),
+    unit: t("hours", "Stunden"),
     blocking: true,
-    without:
+    without: t(
+      "the setup gets estimated anew at every offer, and two offers " +
+        "for the same device type land on different numbers",
       "die Einrichtung wird bei jedem Angebot neu geschätzt, und zwei Angebote " +
-      "für denselben Gerätetyp kommen auf verschiedene Zahlen",
+        "für denselben Gerätetyp kommen auf verschiedene Zahlen"
+    ),
   },
   {
     key: "hardware_markup",
-    label: "Aufschlag auf Hardware",
-    unit: "Prozent",
+    label: t("Markup on hardware", "Aufschlag auf Hardware"),
+    unit: t("percent", "Prozent"),
     blocking: true,
-    without: "kein Hardwarepreis",
+    without: t("no hardware price", "kein Hardwarepreis"),
   },
   {
     key: "care_yearly",
-    label: "Eigene Betreuung",
-    unit: "Euro netto je Jahr und Gerät",
+    label: t("Own care", "Eigene Betreuung"),
+    unit: t("euro net per year and device", "Euro netto je Jahr und Gerät"),
     blocking: true,
-    without: "kein laufender Posten, und der ist der Teil, der das Geschäft trägt",
+    without: t(
+      "no recurring item, and that is the part that carries the business",
+      "kein laufender Posten, und der ist der Teil, der das Geschäft trägt"
+    ),
   },
   {
     key: "payment_terms",
-    label: "Zahlungsziel",
-    unit: "Tage",
+    label: t("Payment terms", "Zahlungsziel"),
+    unit: t("days", "Tage"),
     blocking: true,
-    without: "kein Angebot, das Zahlungsziel steht im Briefkopf",
+    without: t(
+      "no offer, the payment terms stand in the letterhead",
+      "kein Angebot, das Zahlungsziel steht im Briefkopf"
+    ),
   },
   {
     key: "travel",
-    label: "Anfahrt",
-    unit: "Euro netto je Fahrt",
+    label: t("Travel", "Anfahrt"),
+    unit: t("euro net per trip", "Euro netto je Fahrt"),
     blocking: false,
-    without: "die Anfahrt fällt beim Rechnen unter den Tisch",
+    without: t(
+      "the travel falls off the table when calculating",
+      "die Anfahrt fällt beim Rechnen unter den Tisch"
+    ),
   },
   {
     key: "minimum_fee",
-    label: "Mindestpauschale",
-    unit: "Euro netto je Auftrag",
+    label: t("Minimum fee", "Mindestpauschale"),
+    unit: t("euro net per job", "Euro netto je Auftrag"),
     blocking: false,
-    without: "kleine Aufträge gehen unter Wert raus",
+    without: t("small jobs go out below value", "kleine Aufträge gehen unter Wert raus"),
   },
 ];
 
-/** Die drei Einkaufspreise. Sie stehen im Partnerportal, nicht im Kopf des Partners. */
+/**
+ * Die drei Einkaufspreise. Sie stehen im Partnerportal, nicht im Kopf des Partners.
+ *
+ * Erkannt werden sie an der Zeile im Blatt, und das Blatt gibt es in beiden
+ * Sprachen: ein Partner, der auf Englisch angefangen hat, schreibt "Licence" in
+ * dieselbe Tabelle, in die ein anderer "Lizenz" schreibt.
+ */
 const PURCHASES = [
   {
     id: "license",
-    match: /^lizenz/i,
-    label: "Lizenz, einmalig",
+    match: /^(lizenz|licen[cs]e)/i,
+    label: t("Licence, one-off", "Lizenz, einmalig"),
     blocking: true,
-    without: "keine Lizenzposition",
+    without: t("no licence line item", "keine Lizenzposition"),
   },
   {
     id: "maintenance",
-    match: /^wartung/i,
-    label: "Wartung, jährlich",
+    match: /^(wartung|maintenance)/i,
+    label: t("Maintenance, yearly", "Wartung, jährlich"),
     blocking: true,
-    without: "keine Wartung, weder Jahr 1 noch ab Jahr 2",
+    without: t(
+      "no maintenance, neither year 1 nor from year 2",
+      "keine Wartung, weder Jahr 1 noch ab Jahr 2"
+    ),
   },
   {
     id: "hardware",
     match: /^hardware/i,
-    label: "Hardware je Typ",
+    label: t("Hardware per type", "Hardware je Typ"),
     blocking: true,
     many: true,
-    without: "kein Hardwarepreis und keine Marge",
+    without: t("no hardware price and no margin", "kein Hardwarepreis und keine Marge"),
   },
 ];
 
@@ -121,8 +166,12 @@ const shown = relative(ROOT, file);
 
 if (!existsSync(file)) {
   console.error(
-    `${shown} gibt es noch nicht, also gibt es kein Kalkulationsblatt.\n` +
-      "Es entsteht im Onboarding: /init, Runde 5."
+    t(
+      `${shown} does not exist yet, so there is no calculation sheet.\n` +
+        "It comes into being in the onboarding: /init, round 5.",
+      `${shown} gibt es noch nicht, also gibt es kein Kalkulationsblatt.\n` +
+        "Es entsteht im Onboarding: /init, Runde 5."
+    )
   );
   process.exit(1);
 }
@@ -168,7 +217,9 @@ function purchaseRows(text) {
   let inside = false;
   for (const line of text.split(/\r?\n/)) {
     if (/^##\s/.test(line)) {
-      inside = /^##\s+Einkaufspreise\s*$/.test(line);
+      // Die Ueberschrift heisst je Fassung des Blattes anders und meint dieselbe
+      // Tabelle.
+      inside = /^##\s+(Einkaufspreise|Purchase prices)\s*$/.test(line);
       continue;
     }
     if (!inside || !/^\s*\|/.test(line)) continue;
@@ -179,7 +230,7 @@ function purchaseRows(text) {
       .map((cell) => cell.trim());
     if (cells.length < 2) continue;
     if (/^[\s:-]+$/.test(cells[0])) continue;
-    if (/^position$/i.test(cells[0])) continue;
+    if (/^(position|item)$/i.test(cells[0])) continue;
     rows.push({ position: cells[0], value: cells[1] || "", asof: cells[2] || "" });
   }
   return rows;
@@ -196,7 +247,7 @@ const purchases = PURCHASES.map((entry) => {
     group: "purchase",
     key: entry.id,
     label: entry.label,
-    unit: "Euro netto",
+    unit: t("euro net", "Euro netto"),
     blocking: entry.blocking,
     without: entry.without,
     value: filled.length
@@ -248,7 +299,7 @@ if (arg.json) {
   process.exit(blocking.length ? 1 : 0);
 }
 
-const out = [`Kalkulationsblatt: ${shown}`, ""];
+const out = [t(`Calculation sheet: ${shown}`, `Kalkulationsblatt: ${shown}`), ""];
 
 function section(title, items) {
   out.push(title);
@@ -256,51 +307,88 @@ function section(title, items) {
     if (!item.value) {
       // Die Folge steht weiter unten gesammelt, hier würde sie die Übersicht
       // zerreißen, die man mit einem Blick lesen können soll.
-      out.push(`  fehlt  ${item.label}`);
+      out.push(t(`  missing  ${item.label}`, `  fehlt  ${item.label}`));
       continue;
     }
     const notes = [];
-    if (!item.dated) notes.push(item.asof ? `Stand ${item.asof}, eine Zeile ohne` : "ohne Stand");
-    else notes.push(`Stand ${item.asof}`);
+    if (!item.dated) {
+      notes.push(
+        item.asof
+          ? t(`as of ${item.asof}, one line without`, `Stand ${item.asof}, eine Zeile ohne`)
+          : t("without an as-of date", "ohne Stand")
+      );
+    } else {
+      notes.push(t(`as of ${item.asof}`, `Stand ${item.asof}`));
+    }
     const limit = item.group === "rates" ? RATES_STALE_DAYS : PURCHASE_STALE_DAYS;
     if (item.age !== null && item.age > limit) {
-      notes.push(`${Math.round(item.age / 30)} Monate alt, nachsehen`);
+      notes.push(
+        t(`${Math.round(item.age / 30)} months old, look it up`, `${Math.round(item.age / 30)} Monate alt, nachsehen`)
+      );
     }
-    out.push(`  liegt  ${item.label}: ${item.value} ${item.unit} (${notes.join(", ")})`);
+    out.push(
+      t(
+        `  there    ${item.label}: ${item.value} ${item.unit} (${notes.join(", ")})`,
+        `  liegt  ${item.label}: ${item.value} ${item.unit} (${notes.join(", ")})`
+      )
+    );
   }
   out.push("");
 }
 
-section("Eigene Sätze, die kennst du selbst", rates);
-section("Einkaufspreise, die stehen im Partnerportal", purchases);
+section(t("Your own rates, you know them yourself", "Eigene Sätze, die kennst du selbst"), rates);
+section(
+  t("Purchase prices, they stand in the partner portal", "Einkaufspreise, die stehen im Partnerportal"),
+  purchases
+);
 
 if (missing.length === 0) {
-  out.push("Alle zehn Zahlen liegen vor. Für ein Angebot muss nichts erfragt werden.");
+  out.push(
+    t(
+      "All ten numbers are there. Nothing has to be asked for an offer.",
+      "Alle zehn Zahlen liegen vor. Für ein Angebot muss nichts erfragt werden."
+    )
+  );
 } else {
   out.push(
-    `Es fehlen ${missing.length} von ${all.length} Zahlen, ${blocking.length} davon blockieren:`
+    t(
+      `${missing.length} of ${all.length} numbers are missing, ${blocking.length} of them block:`,
+      `Es fehlen ${missing.length} von ${all.length} Zahlen, ${blocking.length} davon blockieren:`
+    )
   );
-  for (const item of blocking) out.push(`  ohne ${item.label}: ${item.without}`);
+  for (const item of blocking) {
+    out.push(t(`  without ${item.label}: ${item.without}`, `  ohne ${item.label}: ${item.without}`));
+  }
   const soft = missing.filter((item) => !item.blocking);
   if (soft.length) {
-    out.push("Nicht blockierend, aber jedes Mal ein Streitpunkt:");
-    for (const item of soft) out.push(`  ohne ${item.label}: ${item.without}`);
+    out.push(
+      t("Not blocking, but a point of contention every time:", "Nicht blockierend, aber jedes Mal ein Streitpunkt:")
+    );
+    for (const item of soft) {
+      out.push(t(`  without ${item.label}: ${item.without}`, `  ohne ${item.label}: ${item.without}`));
+    }
   }
-  out.push("", "Nachtragen mit /kalkulation.");
+  out.push("", t("Add them with /calculation.", "Nachtragen mit /calculation."));
 }
 
 if (stale.length) {
   out.push(
     "",
-    `Veraltet: ${stale.map((item) => item.label).join(", ")}. ` +
-      "Bestätigen, bevor daraus ein Angebot wird."
+    t(
+      `Stale: ${stale.map((item) => item.label).join(", ")}. Confirm before an offer comes out of it.`,
+      `Veraltet: ${stale.map((item) => item.label).join(", ")}. Bestätigen, bevor daraus ein Angebot wird.`
+    )
   );
 }
 if (undated.length) {
   out.push(
     "",
-    `Ohne Stand-Datum: ${undated.map((item) => item.label).join(", ")}. ` +
-      "Eine Zahl ohne Datum lässt sich nicht auf Aktualität prüfen."
+    t(
+      `Without an as-of date: ${undated.map((item) => item.label).join(", ")}. ` +
+        "A number without a date cannot be checked for currency.",
+      `Ohne Stand-Datum: ${undated.map((item) => item.label).join(", ")}. ` +
+        "Eine Zahl ohne Datum lässt sich nicht auf Aktualität prüfen."
+    )
   );
 }
 

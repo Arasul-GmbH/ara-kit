@@ -504,7 +504,7 @@ check("Kalkulationsblatt meldet jede fehlende Zahl mit ihrer Folge", () => {
     let run = tool("calculation.mjs", ["--file", file]);
     assert(run.status !== 0, "ein leeres Blatt gilt als ausreichend für ein Angebot");
     assert(/keine Kalkulation/.test(run.stdout), "die Folge des fehlenden Stundensatzes fehlt");
-    assert(/Nachtragen mit \/kalkulation/.test(run.stdout), "der Weg zum Nachtragen fehlt");
+    assert(/Nachtragen mit \/calculation/.test(run.stdout), "der Weg zum Nachtragen fehlt");
 
     const empty = JSON.parse(tool("calculation.mjs", ["--file", file, "--json"]).stdout);
     assert(empty.numbers.length === 10, `${empty.numbers.length} Zahlen statt zehn`);
