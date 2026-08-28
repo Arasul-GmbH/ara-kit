@@ -1,67 +1,66 @@
-# Verfahren: Gerät bestimmen
+# Procedure: determine the device
 
-> **Wann brauchst du das?** Am Anfang jeder Einrichtung, und immer wenn du wissen musst,
-> was auf diesem Gerät gilt. Modell, Engine, Speicherbudget, Besonderheiten.
+> **When do you need this?** At the start of every setup, and whenever you have to know what
+> applies on this device. Model, engine, memory budget, particularities.
 
-## Der Grundsatz
+## The principle
 
-Es gibt **keine Geräteliste im Kit**. Welche Geräte das Produkt kennt und was auf ihnen
-gilt, steht im Produkt selbst, im Plattformkatalog. Der ändert sich, das Kit liest ihn,
-statt ihn nachzubauen.
+There is **no device list in the kit**. Which devices the product knows and what applies on
+them stands in the product itself, in the platform catalogue. That changes, so the kit reads
+it instead of rebuilding it.
 
-## Schritt 1: Katalog öffnen
+## Step 1: open the catalogue
 
-Hol den Spiegel (`node .ara/tools/mirror.mjs`) und sieh unter
-`.ara/mirror/config/platforms/` nach. Dort liegt ein Profil je Gerätetyp, dazu eine
-Beschreibung der Felder.
+Fetch the mirror (`node .ara/tools/mirror.mjs`) and look under
+`.ara/mirror/config/platforms/`. There is one profile per device type, plus a description of
+the fields.
 
-Lies die Beschreibungsdatei im selben Ordner zuerst, sie erklärt, was die Felder bedeuten.
-Erfinde die Bedeutung nicht.
+Read the description file in the same folder first, it explains what the fields mean. Do not
+invent the meaning.
 
-## Schritt 2: Reifegrad prüfen, das ist der wichtige Teil
+## Step 2: check the maturity, that is the important part
 
-Ein Profil im Katalog heißt **nicht**, dass das Gerät erprobt ist. Die Profile tragen
-Angaben dazu, wie gut sie belegt sind: ob die Rechenfähigkeit der Grafikeinheit bestätigt
-wurde, und auf welcher Stufe die Prüfung steht (an echter Hardware, nur emuliert, oder als
-Nachtrag geplant).
+A profile in the catalogue does **not** mean the device is tried. The profiles carry
+statements about how well they are backed: whether the compute capability of the graphics
+unit has been confirmed, and at which level the check stands (on real hardware, only
+emulated, or planned as a follow-up).
 
-**Lies diese Felder und sag dem Menschen ehrlich, was du siehst.** Ein Profil, dessen Werte
-als unbestätigt gekennzeichnet sind, ist eine Absichtserklärung, keine Zusage. Wenn ein
-Partner ein solches Gerät beim Kunden aufstellen will, gehört dieser Satz vor die
-Installation, nicht danach:
+**Read those fields and tell the human honestly what you see.** A profile whose values are
+marked as unconfirmed is a declaration of intent, not a promise. If a partner wants to put
+such a device up at a customer, this sentence belongs before the installation, not after:
 
-> Das Profil für dieses Gerät ist im Produkt hinterlegt, aber laut Katalog noch nicht an
-> echter Hardware bestätigt. Wir sind hier die Ersten. Rechne mit Nacharbeit und plan einen
-> zweiten Termin ein.
+> The profile for this device is stored in the product, but according to the catalogue it has
+> not been confirmed on real hardware yet. We are the first here. Reckon with rework and plan
+> a second appointment.
 
-Wenn Katalogangaben und Verkaufsversprechen auseinandergehen, ist das eine Frage ans
-Produktteam, und der Partner sollte sie stellen, bevor er einen Termin zusagt.
+If catalogue entries and sales promises diverge, that is a question for the product team, and
+the partner should ask it before promising an appointment.
 
-## Schritt 3: Am Gerät bestätigen
+## Step 3: confirm on the device
 
-Sobald das Gerät läuft und erreichbar ist, **frag es selbst**. Das Produkt erkennt seine
-Plattform und kann das erkannte Profil ausgeben; die passenden Befehle stehen in der Hilfe
-des Kommandozeilenwerkzeugs im Wurzelverzeichnis des Spiegels.
+As soon as the device runs and is reachable, **ask it yourself**. The product recognises its
+platform and can print the recognised profile; the matching commands are in the help of the
+command line tool in the root directory of the mirror.
 
-Erst dieser Wert kommt in `device.md` und in den Laufzettel. Vorher steht dort nichts oder
-ein ausdrücklich als vorläufig gekennzeichneter Eintrag.
+Only that value goes into `device.md` and into the runsheet. Before that, nothing stands
+there, or an entry explicitly marked as provisional.
 
-**Warum so streng:** Ein Gerät kann anders erkannt werden, als der Lieferschein vermuten
-lässt, andere Speicherbestückung, anderer Aufbau, ein Vorgängermodell im gleichen Gehäuse.
-Die Einrichtung richtet sich nach dem, was das Gerät von sich sagt.
+**Why so strict:** a device can be recognised differently from what the delivery note
+suggests, different memory fitted, a different build, a previous model in the same case. The
+setup follows what the device says about itself.
 
-## Schritt 4: Was du daraus ableitest
+## Step 4: what you derive from it
 
-Aus dem bestätigten Profil ergeben sich Speicherbudget, Standardmodell, Engine und
-Besonderheiten. **Nimm diese Werte aus dem Profil, nicht aus dem Gedächtnis**, und schreib
-sie in den Laufzettel, wenn sie für die Einrichtung wichtig sind.
+Out of the confirmed profile follow memory budget, default model, engine and particularities.
+**Take these values from the profile, not from memory**, and write them into the runsheet if
+they matter for the setup.
 
-Fällt dir dabei etwas auf, das nicht zusammenpasst, ein Modell, das die Engine nicht laden
-kann, ein Speicherbudget über der verbauten Ausstattung, halt an und sag es. Solche
-Widersprüche sind der häufigste Grund, warum eine Installation am Ende nicht antwortet.
+If you notice something that does not fit together, a model the engine cannot load, a memory
+budget above what is actually fitted, stop and say so. Such contradictions are the most
+frequent reason why an installation ends up not answering.
 
-## Wenn kein Gerät bekannt ist
+## When no device is known
 
-Beim Anlegen einer Kundenakte ist oft noch offen, welches Gerät es wird. Das ist in
-Ordnung. Trag nichts ein, was du nicht weißt, und plan das Gerät erst dann, wenn es
-feststeht. Ein Angebot kann mit einer Gerätekategorie arbeiten, eine Einrichtung nicht.
+When creating a customer file it is often still open which device it will be. That is fine.
+Enter nothing you do not know, and plan the device only once it is settled. An offer can work
+with a device category, a setup cannot.

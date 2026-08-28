@@ -1,156 +1,153 @@
-# Verfahren: Wartung und Betreuung
+# Procedure: maintenance and care
 
-> **Wann brauchst du das?** Bei `/maintain`: alles, was nach der Abnahme passiert.
+> **When do you need this?** At `/maintain`: everything that happens after the handover.
 
-## Einstieg: erst messen, dann fragen
+## Entry: measure first, ask second
 
-Ein Command, mehrere Anliegen. Erkenn am Anliegen, worum es geht, und frag nicht ab, was du
-sehen kannst.
+One command, several requests. Recognise from the request what it is about, and do not ask about
+what you can see.
 
-**Zuerst immer die Statuszeile.** Sie entsteht nicht im Gespräch, sondern am Gerät:
+**Always the status line first.** It does not come into being in the conversation but on the
+device:
 
 ```
-node .ara/tools/maintain.mjs --device <gerät>
-node .ara/tools/maintain.mjs --customer <kunde> --device <gerät>
-node .ara/tools/maintain.mjs --device <gerät> --report     Bericht in die Akte
+node .ara/tools/maintain.mjs --device <device>
+node .ara/tools/maintain.mjs --customer <customer> --device <device>
+node .ara/tools/maintain.mjs --device <device> --report     report into the file
 ```
 
-Sie nennt vier Dinge, in dieser Reihenfolge, weil sie in dieser Reihenfolge entscheiden,
-ob überhaupt etwas zu tun ist: **Version, Apps mit ihren Ständen, letzte Sicherung,
-Auffälliges.** Dahinter steht, was nicht gemessen werden konnte.
+It names four things, in this order, because in this order they decide whether there is anything
+to do at all: **version, apps with their versions, last backup, anything conspicuous.** Behind
+that stands what could not be measured.
 
-Gib sie weiter und frag dann, was ansteht. Kein Vorschlagskatalog: der Mensch sagt im
-Freitext, was los ist, und daraus erkennst du, welches der vier Anliegen unten es ist.
+Pass it on and then ask what is due. No catalogue of suggestions: the human says in free text
+what is going on, and from that you recognise which of the four requests below it is.
 
-### Zwei Wege, und keiner ist Bedingung für den anderen
+### Two ways, and neither is a condition for the other
 
-| Weg | Was er bringt | Was ohne ihn fehlt |
+| Way | What it brings | What is missing without it |
 |---|---|---|
-| SSH, mit den Daten aus der Geräteakte | Platte, Speicher, Container, fehlgeschlagene Dienste, Protokolle | der ganze Zustand des Rechners |
-| Die Schnittstelle, mit dem Kit-Schlüssel | Systemversion und Kontraktstand, Apps mit Test- und Livestand, letzte Sicherung | alles, was die Plattform von sich weiß |
+| SSH, with the details from the device file | disk, memory, containers, failed services, logs | the whole state of the computer |
+| The interface, with the kit key | system version and contract version, apps with staging and live version, last backup | everything the platform knows about itself |
 
-Geht einer nicht, entsteht der Bericht aus dem anderen. **Was fehlt, steht als eigener
-Abschnitt darin, und den sagst du dazu.** Ein Bericht, der verschweigt, was nicht gemessen
-wurde, liest sich wie ein heiles Gerät, und darauf verlässt sich hinterher jemand.
+If one does not work, the report comes out of the other. **What is missing stands in it as a
+section of its own, and you say it along.** A report that keeps quiet about what was not measured
+reads like a healthy device, and somebody relies on that afterwards.
 
-Steht die Verbindung gar nicht, weder so noch so, ist das die erste Aufgabe und nicht die
-zweite. Für einen einzelnen Befehl auf dem Gerät bleibt
-`node .ara/tools/remote.mjs --customer <k> --check` der Weg.
+If there is no connection at all, neither way, that is the first task and not the second. For a
+single command on the device `node .ara/tools/remote.mjs --customer <c> --check` remains the way.
 
-### Kein Pfad aus dem Gedächtnis
+### No path from memory
 
-Das Werkzeug kennt genau einen Pfad, den Kontrakt. Jeden anderen schlägt es dort nach.
-Findet es zu einem Punkt nichts, steht im Bericht "dieses Gerät nennt dafür keinen
-Endpunkt, noch nicht am Gerät", und **das ist die Antwort, nicht eine Lücke, die du
-füllst.** Die letzte Sicherung ist heute genau so ein Punkt.
+The tool knows exactly one path, the contract. Every other one it looks up there. If it finds
+nothing on a point, the report says "dieses Gerät nennt dafür keinen Endpunkt, noch nicht am
+Gerät", and **that is the answer, not a gap you fill.** The last backup is exactly such a point
+today.
 
-**Sie ist trotzdem messbar, nur nicht vom Kit.** Das Gerät beantwortet die zwei Fragen
-dazu über einen Weg seiner Oberfläche, und der verlangt eine Sitzung als Administrator,
-kein Schlüssel öffnet ihn. Wie du trotzdem herankommst und was in der Antwort steht,
-steht in `.ara/knowledge/platform-services.md` unter "Die Sicherung". Kommt einmal ein
-Weg mit Schlüssel dazu, findet ihn das Werkzeug beim nächsten Lauf von selbst.
+**It is measurable nevertheless, just not by the kit.** The device answers the two questions
+about it over a route of its interface, and that demands a session as administrator, no key opens
+it. How you get there anyway and what stands in the answer is in
+`.ara/knowledge/platform-services.md` under "Die Sicherung". If a route with a key ever gets
+added, the tool finds it by itself at the next run.
 
-Dasselbe gilt für die Apps. Solange das Gerät keinen Endpunkt nennt, der sie aufzählt,
-fragt das Kit nach den Kennungen, die es selbst kennt (die Ordner unter `apps/`, oder was
-du mit `--apps` angibst). **Andere kann das Gerät trotzdem tragen**, und der Bericht sagt
-das. Eine Liste, die er vollständig nennen würde, wäre geraten.
+The same holds for the apps. As long as the device names no endpoint that lists them, the kit
+asks for the ids it knows itself (the folders under `apps/`, or what you pass with `--apps`).
+**The device can carry others nevertheless**, and the report says so. A list it would call
+complete would be guessed.
 
-## Die vier Anliegen
+## The four requests
 
-### 1. Es klemmt
+### 1. Something is stuck
 
-Verfahren in `.ara/knowledge/diagnostics.md`. Erst feststellen, dann ändern.
+Procedure in `.ara/knowledge/diagnostics.md`. Establish first, change second.
 
-### 2. Regelmäßiger Blick
+### 2. Regular look
 
-Wenn niemand ein konkretes Problem hat, aber jemand wissen will, ob alles in Ordnung ist,
-ist der Bericht schon die Antwort. Nimm ihn mit `--report`, dann liegt er in der Akte:
+When nobody has a concrete problem but somebody wants to know whether everything is in order, the
+report is already the answer. Take it with `--report`, then it lies in the file:
 
 ```
-node .ara/tools/maintain.mjs --customer <kunde> --device <gerät> --report
+node .ara/tools/maintain.mjs --customer <customer> --device <device> --report
 ```
 
-Er misst Dienste und Container, den Speicherplatz (den einzigen Wert, der still wächst,
-bis nichts mehr geht), die Fehler in den Protokollen der letzten 24 Stunden, die Apps mit
-ihren Ständen und die letzte Sicherung.
+It measures services and containers, the disk space (the one value that grows silently until
+nothing works any more), the errors in the logs of the last 24 hours, the apps with their
+versions and the last backup.
 
-Drei Dinge misst er **nicht**, und die bleiben deine Aufgabe:
+Three things it does **not** measure, and those stay your job:
 
-- **Ist eine Sicherung je zurückgespielt worden?** Eine Sicherung, die nie
-  wiederhergestellt wurde, ist eine Vermutung. Das ist eine Übung, kein Messwert.
-- **Der Produktstand gegen den Spiegel.** `node .ara/tools/mirror.mjs --show` sagt, womit
-  installiert wurde. Ob es einen neueren gibt, sagt `--refresh`.
-- **Fernzugriff von außen**, nicht nur, ob deine bestehende Sitzung noch offen ist.
+- **Has a backup ever been restored?** A backup that was never restored is a guess. That is an
+  exercise, not a measurement.
+- **The product version against the mirror.** `node .ara/tools/mirror.mjs --show` says what was
+  installed with. Whether there is a newer one, `--refresh` says.
+- **Remote access from outside**, not just whether your existing session is still open.
 
-Ergebnis in den Verlauf, auch wenn alles in Ordnung war. Ein Verlauf mit regelmäßigen
-Einträgen ist bei einer Verlängerung mehr wert als jedes Verkaufsgespräch.
+Result into the history, even if everything was in order. A history with regular entries is worth
+more at an extension than any sales conversation.
 
-### 3. Update einspielen
+### 3. Deploy an update
 
-Ein Update ist ein Eingriff, kein Klick.
+An update is an intervention, not a click.
 
-1. **Vorher:** Was ändert sich? Gibt es Hinweise im Produkt dazu? Ist der Zeitpunkt mit dem
-   Kunden abgesprochen? Ein Update während der Arbeitszeit ist eine Störung.
-2. **Sicherung anlegen und prüfen, dass sie existiert.** Nicht „läuft ja automatisch".
-3. **Einspielen**, dem Weg des Produkts folgend (im Spiegel nachlesen).
-4. **Danach die Nachweise aus `.ara/knowledge/handover.md`**: mindestens: Dienste gesund,
-   fachliche Anfrage beantwortet, Fernzugriff steht. Ein Update, das durchläuft und danach
-   ein totes System hinterlässt, ist der Normalfall bei ungeprüften Updates.
-5. **Rückweg kennen**, bevor du anfängst. Wenn es keinen gibt, ist das eine Information für
-   den Kunden, keine Kleinigkeit.
+1. **Beforehand:** what changes? Are there notes in the product about it? Is the time agreed with
+   the customer? An update during working hours is a disruption.
+2. **Make a backup and check that it exists.** Not "it runs automatically anyway".
+3. **Deploy**, following the product's way (read up in the mirror).
+4. **Afterwards the evidence from `.ara/knowledge/handover.md`**: at minimum: services healthy, a
+   question about substance answered, remote access stands. An update that runs through and leaves
+   a dead system behind is the normal case with unchecked updates.
+5. **Know the way back**, before you start. If there is none, that is information for the
+   customer, not a trifle.
 
-### 4. Erweiterung bauen
+### 4. Build an extension
 
-Der Teil, mit dem der Partner zusätzlich Geld verdient. Verfahren:
+The part with which the partner earns additional money. Procedure:
 `.ara/knowledge/extensions.md`
 
-## Ein Mitarbeiter kommt dazu, einer geht
+## An employee joins, one leaves
 
-Der häufigste kleine Auftrag nach der Abnahme, und der einzige, für den das Kit keinen
-Befehl hat: es hat einen Schlüssel mit `app:deploy` und keine Sitzung als Administrator.
+The most frequent small job after the handover, and the only one for which the kit has no command:
+it has a key with `app:deploy` and no session as administrator.
 
-Der übliche Weg ist die Oberfläche, im Browser am Gerät. **Ohne Browser geht es über die
-Verwaltungsschnittstelle der Plattform**, mit einem Ausweis in der Kopfzeile
-(`Authorization: Bearer`). Weg, Rumpf und der Weg zum Token stehen im Artefakt, nicht im
-Kit: Admin-Handbuch und API-Referenz, beide im Spiegel.
+The usual way is the interface, in the browser on the device. **Without a browser it goes through
+the platform's admin interface**, with a credential in the header (`Authorization: Bearer`). Route,
+body and the way to the token stand in the artifact, not in the kit: admin handbook and API
+reference, both in the mirror.
 
 ```
 node .ara/tools/mirror.mjs --docs
 ```
 
-Der ganze Ablauf mit der Form des Aufrufs steht in `.ara/knowledge/device.md` unter
-"Der erste Mitarbeiter und die erste Freigabe". **Wer geht, verliert seine Freigaben
-sofort und nicht beim nächsten Besuch**, und das schreibst du in den Verlauf, mit Datum
-und mit dem Weg, auf dem du es gemacht hast.
+The whole sequence with the shape of the call stands in `.ara/knowledge/device.md` under "Der
+erste Mitarbeiter und die erste Freigabe". **Whoever leaves loses their permissions immediately
+and not at the next visit**, and you write that into the history, with a date and with the way you
+did it.
 
-## Wenn der Kunde anruft, weil etwas nicht geht
+## When the customer calls because something does not work
 
-Das Kit überwacht nichts (bewusst). Der übliche Weg ist: Der Kunde meldet sich.
+The kit monitors nothing (on purpose). The usual way is: the customer gets in touch.
 
-Dann gilt: **erst zuhören, dann nachsehen.** Was der Kunde beschreibt, ist ein Symptom aus
-seiner Sicht, „das Ding ist kaputt" kann ein abgelaufenes Zertifikat, ein volles
-Dateisystem oder ein gezogener Netzstecker sein. Frag nach dem, was er gemacht hat, nicht
-nach dem, was er vermutet.
+Then: **listen first, look second.** What the customer describes is a symptom from their point of
+view, "the thing is broken" can be an expired certificate, a full file system or a pulled power
+plug. Ask about what they did, not about what they suspect.
 
-## Grenzen
+## Limits
 
-- **Nichts anfassen, was nicht zur Aufgabe gehört.**
-- **Nichts vom Gerät kopieren** außer Protokollauszügen, die du für die Diagnose brauchst.
-- **Bei größeren Eingriffen den Kunden fragen**, auch wenn ein Wartungsvertrag besteht. Ein
-  Vertrag erlaubt Wartung, er ist kein Freibrief für einen Neustart um elf Uhr vormittags.
+- **Touch nothing that does not belong to the task.**
+- **Copy nothing off the device** apart from log excerpts you need for the diagnosis.
+- **For larger interventions ask the customer**, even when there is a maintenance contract. A
+  contract permits maintenance, it is not a licence for a restart at eleven in the morning.
 
-## Mitschreiben
+## Writing along
 
-Jeder Einsatz erzeugt einen Eintrag unter `customers/<k>/history/JJJJ-MM-TT-thema.md`
-(Vorlage: `.ara/templates/history-entry.md`). Das ist die Nachweisführung, wenn ein Kunde
-fragt, was wann gemacht wurde, und die Grundlage dafür, dass beim nächsten Mal niemand bei
-null anfängt.
+Every visit produces an entry under `customers/<c>/history/YYYY-MM-DD-topic.md` (template:
+`.ara/templates/history-entry.md`). That is the record when a customer asks what was done when,
+and the ground for nobody starting from zero next time.
 
-Der Wartungsbericht ist etwas anderes und liegt woanders: er ist der **Messwert** und
-liegt beim Gerät, unter `<geräteordner>/reports/JJJJ-MM-TT-wartung.md`, geschrieben von
-`--report`. Der Verlaufseintrag ist das, was **passiert ist**, in deinen Worten, mit
-Anlass, Befund, Getanem und Nachweis. Zwei Berichte an einem Tag überschreiben sich nicht.
+The maintenance report is something else and lies elsewhere: it is the **measurement** and lies
+with the device, under `<device folder>/reports/YYYY-MM-DD-wartung.md`, written by `--report`. The
+history entry is what **happened**, in your words, with occasion, finding, what was done and the
+evidence. Two reports on one day do not overwrite each other.
 
-Vor und nach einem Eingriff je einen Bericht aufzunehmen ist die einfachste Art, den
-Nachweis zu führen: was vorher galt, was hinterher gilt, beides gemessen und nicht
-behauptet.
+Recording one report before and one after an intervention is the simplest way to keep the record:
+what held before, what holds after, both measured and not claimed.

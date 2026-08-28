@@ -1,121 +1,122 @@
 ---
-description: Rechnung als ZUGFeRD-PDF, mit Nummer aus dem Nummernkreis
-argument-hint: <kunde>
+description: Invoice as a ZUGFeRD PDF, with a number from the number range
+argument-hint: <customer>
 ---
 
-Rechnung für: **$1**
+Invoice for: **$1**
 
-Lies `.ara/knowledge/invoicing.md` und arbeite danach. Was hier steht, ist der Weg durch
-dieses Verfahren, nicht ein zweites daneben. Wissen, das dieser Befehl lädt:
+Read `.ara/knowledge/invoicing.md` and work along it. What stands here is the way through
+that procedure, not a second one beside it. Knowledge this command loads:
 `.ara/knowledge/invoicing.md`, `.ara/knowledge/crm.md`, `.ara/knowledge/customer-file.md`.
-Dazu `business/profile.md` und `business/company.md` für den Absender.
+Plus `business/profile.md` and `business/company.md` for the sender.
 
-Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere
-Kundenordner, auch nicht, um eine alte Rechnung als Muster zu nehmen.
+The invoice itself is German: it is a German tax document, and section 14 UStG is what it
+has to satisfy. The conversation about it runs in the language of the profile.
 
-**Kein Argument angegeben:** erst den Nummernkreis zeigen
-(`node .ara/tools/invoice.mjs`), dann die Kunden (`node .ara/tools/customer.mjs`), dann
-fragen, für wen die Rechnung ist.
+From now on you work exclusively in `customers/$1/`. No look into other customer folders,
+not even to take an old invoice as a pattern.
 
-## Der Grundsatz
+**No argument given:** first show the number range (`node .ara/tools/invoice.mjs`), then the
+customers (`node .ara/tools/customer.mjs`), then ask who the invoice is for.
 
-Eine Rechnung ist kein Anschreiben. Fehlt eine der Pflichtangaben nach § 14 Abs. 4 UStG,
-berechtigt sie den Kunden nicht zum Vorsteuerabzug. Das fällt bei ihm auf, nicht bei dir,
-und dann kommt sie zurück. Darum wird die Prüfliste **vor** dem Druck rot, nicht danach.
+## The principle
 
-Die Nummer wird beim Anlegen vergeben und nie zurückgedreht. Ein verworfener Entwurf wird
-storniert, nicht gelöscht: sonst hat der Nummernkreis eine Lücke, und die sucht ein
-Betriebsprüfer als Erstes.
+An invoice is not a covering letter. If one of the mandatory details under section 14(4)
+UStG is missing, it does not entitle the customer to deduct input tax. That shows up at
+their end, not at yours, and then it comes back. That is why the checklist goes red
+**before** the print, not after.
 
-## Die sechs Schritte
+The number is assigned on creation and never wound back. A discarded draft is cancelled, not
+deleted: otherwise the number range has a gap, and that is the first thing a tax auditor
+looks for.
 
-1. **Nachsehen, was es schon gibt.**
+## The six steps
+
+1. **Look at what is already there.**
 
    ```
    node .ara/tools/invoice.mjs --customer $1
    node .ara/tools/customer.mjs --customer $1
    ```
 
-   Das erste sagt, welche Nummern für diesen Kunden vergeben sind und welcher Beleg noch
-   nicht gedruckt ist. Das zweite gibt das Lagebild: Stand, Geräte, Papier, Verlauf.
-   Liegt ein Angebot in `customers/$1/documents/`, ist das die Quelle der Positionen.
+   The first says which numbers are assigned for this customer and which document is not
+   printed yet. The second gives the picture: status, devices, paperwork, history. If an
+   offer sits in `customers/$1/documents/`, that is the source of the line items.
 
-2. **Klären, worüber abgerechnet wird**, in **einer** Interview-Runde. Was du aus der
-   Akte lesen kannst, fragst du nicht. Was nur der Mensch weiß:
+2. **Clarify what is being billed**, in **one** interview round. What you can read from the
+   file you do not ask. What only the human knows:
 
-   - Wofür die Rechnung ist: das Angebot ganz, ein Teil davon, eine Wartung, Stunden.
-   - **Der Leistungszeitpunkt.** Der Tag, an dem geliefert oder die Leistung erbracht
-     wurde, oder der Zeitraum. Das ist nicht das Rechnungsdatum, auch wenn beides oft
-     auf denselben Tag fällt. § 14 Abs. 4 Nr. 6 UStG verlangt ihn eigens.
-   - Ob eine Anzahlung schon geflossen ist.
+   - What the invoice is for: the whole offer, a part of it, a maintenance, hours.
+   - **The date of supply.** The day on which delivery happened or the service was rendered,
+     or the period. That is not the invoice date, even if both often fall on the same day.
+     Section 14(4) no. 6 UStG demands it separately.
+   - Whether a down payment has already been made.
 
-3. **Beleg anlegen.** Die Nummer kommt aus dem Nummernkreis, die Positionen aus dem
-   Angebot oder aus der Zeile:
+3. **Create the document.** The number comes from the number range, the line items from the
+   offer or from the command line:
 
    ```
-   node .ara/tools/invoice.mjs --customer $1 --new --service-date JJJJ-MM-TT
-   node .ara/tools/invoice.mjs --customer $1 --new --from-offer customers/$1/documents/<datei>.md
+   node .ara/tools/invoice.mjs --customer $1 --new --service-date YYYY-MM-DD
+   node .ara/tools/invoice.mjs --customer $1 --new --from-offer customers/$1/documents/<file>.md
    node .ara/tools/invoice.mjs --customer $1 --new --position "Wartung 2026|1|Jahr|960,00"
    ```
 
-   Ohne `--from-offer` nimmt das Werkzeug das jüngste Angebot in der Akte. Mit `--empty`
-   nimmt es keines und legt eine Zeile zum Ausfüllen an. Kleinunternehmer und Reverse
-   Charge über `--tax-mode`, Zahlungsziel über `--due` oder `--terms`.
+   Without `--from-offer` the tool takes the most recent offer in the file. With `--empty` it
+   takes none and creates one line to fill in. Small business rule and reverse charge over
+   `--tax-mode`, payment terms over `--due` or `--terms`.
 
-   **Danach liest du den Beleg und füllst, was nur du weißt.** Das Werkzeug rechnet und
-   trägt ein, was in den Akten steht. Es erfindet keine Leistungsbeschreibung: "Beratung"
-   allein genügt dem Finanzamt nicht, aus der Zeile muss hervorgehen, was geleistet
-   wurde.
+   **After that you read the document and fill in what only you know.** The tool calculates
+   and enters what stands in the files. It invents no description of the service: "Beratung"
+   alone does not satisfy the tax office, the line has to show what was delivered.
 
-4. **Prüfliste abarbeiten.**
-
-   ```
-   node .ara/tools/invoice.mjs --check customers/$1/documents/<beleg>.md
-   ```
-
-   Jede Zeile nennt ihren Absatz aus § 14 UStG und, wenn sie rot ist, was genau fehlt und
-   wo es hingehört. Fehlt die Anschrift des Kunden, gehört sie in `customers/$1/customer.md`
-   und nicht in den Beleg: dort steht sie beim nächsten Mal wieder.
-
-5. **Drucken.** Erst wenn die Prüfliste grün ist:
+4. **Work through the checklist.**
 
    ```
-   node .ara/tools/invoice.mjs --pdf customers/$1/documents/<beleg>.md
+   node .ara/tools/invoice.mjs --check customers/$1/documents/<document>.md
    ```
 
-   Das erzeugt das PDF und hängt die Rechnungsdaten als `factur-x.xml` hinein, das ist
-   ZUGFeRD. Danach liest das Werkzeug den Anhang aus dem fertigen PDF zurück und prüft
-   ihn noch einmal. Was dabei ungeprüft bleibt, sagt es selbst, und das sagst du weiter,
-   statt es zu verschweigen.
+   Every line names its paragraph from section 14 UStG and, when it is red, what exactly is
+   missing and where it belongs. If the customer's address is missing, it belongs into
+   `customers/$1/customer.md` and not into the document: there it will be there next time.
 
-6. **Nachhalten.** Nach `.ara/knowledge/crm.md`: Eintrag in `customers/$1/history/` mit
-   `type: invoice`, `last_contact` auf heute, `follow_up` auf das Fälligkeitsdatum mit
-   einem Halbsatz, worum es geht. Der Nummernkreis führt den Beleg danach als `gestellt`.
+5. **Print.** Only once the checklist is green:
 
-## Verschickt wird nichts
+   ```
+   node .ara/tools/invoice.mjs --pdf customers/$1/documents/<document>.md
+   ```
 
-Erzeugen ist frei. **Versenden entscheidet der Partner.** Du legst das fertige PDF vor
-und sagst, was noch offen ist. Du verschickst keine Mail und lädst nichts hoch.
+   That produces the PDF and hangs the invoice data into it as `factur-x.xml`, which is
+   ZUGFeRD. Afterwards the tool reads the attachment back out of the finished PDF and checks
+   it once more. What stays unchecked it says itself, and you pass that on instead of keeping
+   quiet about it.
 
-## Was dieses Kit nicht ist
+6. **Follow up.** Along `.ara/knowledge/crm.md`: entry in `customers/$1/history/` with
+   `type: invoice`, `last_contact` to today, `follow_up` to the due date with half a sentence
+   on what it is about. The number range then carries the document as `gestellt`.
 
-Keine Buchhaltung. Es schreibt die Rechnung und führt ihren Nummernkreis, mehr nicht.
-Zahlungseingänge, Mahnwesen, Umsatzsteuervoranmeldung und der Steuerberater laufen
-weiterhin dort, wo sie heute laufen. Wenn jemand danach fragt, sag genau das.
+## Nothing gets sent
 
-## Die Prüfliste
+Producing is free. **Sending is the partner's decision.** You present the finished PDF and
+say what is still open. You send no mail and upload nothing.
 
-Leg sie dem Menschen vor, bevor etwas rausgeht. Jede Zeile, die du nicht selbst geprüft
-hast, sagst du als ungeprüft an.
+## What this kit is not
 
-- [ ] `node .ara/tools/invoice.mjs --check <beleg>` lief grün, ohne `--force`
-- [ ] Der Leistungszeitpunkt ist der Tag der Leistung, nicht das Rechnungsdatum
-- [ ] Jede Position sagt, was geleistet wurde, nicht nur, aus welchem Topf es kommt
-- [ ] Die Beträge stammen aus dem Angebot oder aus einer erfassten Leistung, keiner ist
-      geschätzt
-- [ ] Anschrift des Kunden aus `customers/$1/customer.md`, nicht aus dem Gedächtnis
-- [ ] Absender, Steuernummer oder USt-IdNr. und IBAN aus `business/company.md`
-- [ ] Die Nummer steht im Nummernkreis, und der hat keine Lücke
-- [ ] Das PDF trägt den Anhang, und er ließ sich zurücklesen
-- [ ] Verlaufseintrag geschrieben, `follow_up` auf die Fälligkeit gesetzt
-- [ ] Keine Gedankenstriche als Trenner, keine Emojis
+Not an accounting system. It writes the invoice and keeps its number range, nothing more.
+Incoming payments, dunning, VAT returns and the tax adviser keep running where they run
+today. If somebody asks about that, say exactly this.
+
+## The checklist
+
+Present it to the human before anything goes out. Every line you did not check yourself, you
+announce as unchecked.
+
+- [ ] `node .ara/tools/invoice.mjs --check <document>` ran green, without `--force`
+- [ ] The date of supply is the day of the service, not the invoice date
+- [ ] Every line item says what was delivered, not just which pot it comes out of
+- [ ] The amounts come from the offer or from a recorded service, none is estimated
+- [ ] The customer's address from `customers/$1/customer.md`, not from memory
+- [ ] Sender, tax number or VAT ID and IBAN from `business/company.md`
+- [ ] The number stands in the number range, and it has no gap
+- [ ] The PDF carries the attachment, and it could be read back
+- [ ] History entry written, `follow_up` set to the due date
+- [ ] No dashes as separators, no emojis

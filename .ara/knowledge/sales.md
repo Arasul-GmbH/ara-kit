@@ -1,81 +1,81 @@
-# Verfahren: Verkaufsgespräch
+# Procedure: sales conversation
 
-> **Wann brauchst du das?** Beim Erstkontakt, bei Einwänden, beim Schreiben eines Angebots.
+> **When do you need this?** At first contact, at objections, when writing an offer.
 
-## Die Haltung
+## The stance
 
-Was hier verkauft wird, ist kein fertiges Produkt für ein bekanntes Problem, sondern ein
-Fundament. Das ist ein Unterschied, der sich im Gespräch durchhalten lässt oder rächt.
+What is sold here is not a finished product for a known problem, it is a foundation. That is
+a difference you can hold up through the conversation or that comes back at you.
 
-**Nicht überversprechen.** Ein Kunde, der etwas anderes erwartet hat, als er bekommt, ist
-teurer als ein Kunde, den man nicht gewonnen hat. Der Partner muss das Gerät danach warten, und zwar jahrelang.
+**Do not overpromise.** A customer who expected something other than what they get is more
+expensive than a customer never won. The partner has to maintain the device afterwards, and
+for years.
 
-**Vom Arbeitsschritt her denken, nicht von der Technik.** Niemand kauft lokale
-Sprachverarbeitung. Man kauft, dass drei Leute nicht mehr Angebote abtippen.
+**Think from the work step, not from the technology.** Nobody buys local language processing.
+People buy that three of their staff no longer retype offers.
 
-## Erstkontakt
+## First contact
 
-Zuhören, bevor du erklärst. Drei Fragen tragen das ganze Gespräch:
+Listen before you explain. Three questions carry the whole conversation:
 
-1. **Was macht heute Arbeit, die keine sein müsste?** Der konkrete Vorgang, mit Häufigkeit.
-2. **Was passiert heute mit euren Daten?** Damit kommt fast immer von selbst, warum eine
-   Cloudlösung nicht in Frage kommt, und dann muss man es nicht verkaufen.
-3. **Wer würde damit arbeiten?** Wenn es niemanden gibt, ist es kein Projekt, sondern eine
-   Idee.
+1. **What causes work today that should not be work?** The concrete process, with a frequency.
+2. **What happens to your data today?** With that, why a cloud solution is out of the question
+   almost always comes up by itself, and then it does not have to be sold.
+3. **Who would work with it?** If there is nobody, it is not a project, it is an idea.
 
-Wenn nach diesen drei Fragen kein konkreter Arbeitsvorgang auf dem Tisch liegt, ist der
-Kunde noch nicht so weit. Das ist eine brauchbare Erkenntnis, kein Scheitern.
+If after those three questions no concrete work process is on the table, the customer is not
+ready yet. That is a usable insight, not a failure.
 
-## Was ehrlich gesagt werden muss
+## What has to be said honestly
 
-Diese Punkte gehören ins Gespräch, nicht in die Abnahme:
+These points belong in the conversation, not in the handover:
 
-- Es ist ein Fundament. Der Nutzen entsteht mit der Einrichtung auf ihren Fall.
-- Ein lokales Modell arbeitet anders als das, was sie aus der Cloud kennen. Antwortzeiten
-  und Fähigkeiten sind nicht dieselben.
-- Es braucht jemanden, der es betreut. Genau dafür gibt es den Partner.
-- Die Hardware hat Lieferzeiten.
+- It is a foundation. The benefit comes into being with the setup for their case.
+- A local model works differently from what they know from the cloud. Response times and
+  capabilities are not the same.
+- It needs somebody to look after it. That is exactly what the partner is for.
+- The hardware has delivery times.
 
-Wer diese vier Punkte am Anfang sagt, verliert manchmal ein Geschäft. Wer sie verschweigt,
-verliert später den Kunden.
+Whoever says those four points at the start sometimes loses a deal. Whoever keeps quiet about
+them loses the customer later.
 
-## Einwände
+## Objections
 
-Ein Einwand ist eine Frage, kein Angriff. Beantworte die Frage dahinter.
+An objection is a question, not an attack. Answer the question behind it.
 
-| Was gesagt wird | Worum es meist geht |
+| What is said | What it usually means |
 |---|---|
-| „Zu teuer" | Kein Vergleichsmaßstab. Rechne gegen die Arbeitszeit, die heute dafür draufgeht |
-| „Wir nutzen schon eine Cloudlösung" | Dann läuft etwas. Frag, was daran heute nicht geht. Daten, Kosten, Abhängigkeit |
-| „Können wir das nicht selbst?" | Können sie oft. Die Frage ist, ob sie es in drei Jahren noch warten wollen |
-| „Was, wenn ihr euch auflöst?" | Berechtigt. Es läuft im Haus, die Daten liegen im Haus |
-| „Unser IT-Dienstleister sagt …" | Nicht gegen ihn arbeiten. Ihn dazuholen, er bleibt, der Partner auch |
+| "Too expensive" | No yardstick. Calculate against the working time that goes into it today |
+| "We already use a cloud solution" | Then something runs. Ask what does not work about it today. Data, cost, dependency |
+| "Can we not do that ourselves?" | Often they can. The question is whether they still want to maintain it in three years |
+| "What if you go under?" | Fair. It runs in their house, the data lies in their house |
+| "Our IT provider says ..." | Do not work against them. Bring them in, they stay, and so does the partner |
 
-Wenn du einen Einwand nicht beantworten kannst, ohne etwas zu behaupten: sag, dass du es
-klärst. Eine erfundene Antwort im Verkaufsgespräch wird bei der Abnahme zum Problem.
+If you cannot answer an objection without claiming something: say that you will find out. An
+invented answer in a sales conversation becomes a problem at the handover.
 
-## Angebot
+## Offer
 
-Struktur, keine Textbausteine. Der Partner schreibt in seiner Sprache, du hilfst mit
-Aufbau und Vollständigkeit.
+Structure, not boilerplate. The partner writes in their own language, you help with structure
+and completeness.
 
-1. **Was wir verstanden haben.** Die Ausgangslage in ihren Worten. Wer sich verstanden
-   fühlt, vergleicht weniger.
-2. **Was wir vorschlagen.** Gerät, Umfang, was es tun wird.
-3. **Was es kostet.** Einmalig und laufend getrennt (`.ara/knowledge/pricing.md`).
-4. **Was nicht enthalten ist.** Der wichtigste Abschnitt.
-5. **Wie es abläuft.** Bestellung, Lieferzeit, Einrichtungstermin, Abnahme, Betreuung.
-6. **Gültigkeit.** Hardwarepreise ändern sich.
+1. **What we understood.** The starting position in their words. Whoever feels understood
+   compares less.
+2. **What we suggest.** Device, scope, what it will do.
+3. **What it costs.** One-off and recurring kept apart (`.ara/knowledge/pricing.md`).
+4. **What is not included.** The most important section.
+5. **How it runs.** Order, delivery time, setup date, handover, care.
+6. **Validity.** Hardware prices change.
 
-Zieh die Firmendaten aus `business/company.md` und den Ton aus dem, was der Partner dort über
-seinen Auftritt geschrieben hat. Schreib nicht in einem Ton, den er nicht sprechen würde.
+Pull the company details from `business/company.md` and the tone from what the partner wrote
+there about how they present themselves. Do not write in a tone they would not speak.
 
-**Fünf Anlagen gehören dazu, und ohne sie ist das Angebot unvollständig:**
-Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen und die beiden Nachweise aus
-`.ara/nachweise/`. Welche Folge es hat, wenn eine fehlt, steht in `.ara/knowledge/paperwork.md`. Der Befehl `/offer <kunde>` führt
-durch den ganzen Weg.
+**Five annexes belong to it, and without them the offer is incomplete:**
+Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen and the two Nachweise from
+`.ara/nachweise/`. What follows if one is missing stands in `.ara/knowledge/paperwork.md`. The
+command `/offer <customer>` leads through the whole way.
 
-**Was du im Gespräch zusagst, muss in der Leistungsbeschreibung stehen.** Das ist die
-eine Regel, die aus diesem Abschnitt hängen bleiben soll. Eine großzügige Zusage im
-Verkaufsgespräch ist die teuerste Sorte Freundlichkeit: nach dem Reseller-Vertrag zahlt
-der Partner sie selbst.
+**What you promise in the conversation has to stand in the service description.** That is the
+one rule that should stick from this section. A generous promise in a sales conversation is
+the most expensive kind of friendliness: under the reseller contract the partner pays for it
+themselves.

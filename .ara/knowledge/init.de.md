@@ -90,7 +90,7 @@ Sitzung schon funktioniert:
 node .ara/tools/commands.mjs --apply --role <partner|company>
 ```
 
-Partner bekommen `alle/` und `partner/` aus `.ara/commands/`, Unternehmen nur `alle/`.
+Partner bekommen `all/` und `partner/` aus `.ara/commands/`, Unternehmen nur `all/`.
 Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart der Sitzung.
 
 ### Runde 3: Wer du bist und was du kannst
@@ -180,9 +180,9 @@ Logo-Pfad, Stundensatz, Aufschlag auf Hardware, Zahlungsziel. Nach `business/com
 
 **Die restlichen Preise werden hier nicht abgefragt.** Ein vollständiges Angebot braucht
 zehn Zahlen, drei davon stehen jetzt da. Die anderen sieben, darunter die drei
-Einkaufspreise, holt `/kalkulation`, und das aus einem Grund: die Einkaufspreise sind
+Einkaufspreise, holt `/calculation`, und das aus einem Grund: die Einkaufspreise sind
 Arasuls Zahlen, sie ändern sich, und in einem Onboarding, das genau einmal stattfindet,
-würden sie still veralten. Sag das in einem Satz und nenne `/kalkulation` als nächsten
+würden sie still veralten. Sag das in einem Satz und nenne `/calculation` als nächsten
 Schritt, wenn Angebote anstehen.
 
 ### Runde 8: Zugänge und Werkzeuge

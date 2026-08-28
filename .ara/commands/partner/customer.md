@@ -1,55 +1,55 @@
 ---
-description: Kunde anlegen oder öffnen
-argument-hint: <kundenname>
+description: Create or open a customer
+argument-hint: <customer name>
 ---
 
-Kunde: **$1**
+Customer: **$1**
 
-Lies `.ara/knowledge/customer-file.md` und arbeite danach. Wissen, das dieser Befehl
-lädt: `.ara/knowledge/customer-file.md`, `.ara/knowledge/crm.md` für Verlauf und
-Wiedervorlage, `.ara/knowledge/sales.md` beim Erstkontakt. Das Profil in
-`business/profile.md` liest du vorher, es sagt dir, wie viel du erklärst.
+Read `.ara/knowledge/customer-file.md` and work along it. Knowledge this command loads:
+`.ara/knowledge/customer-file.md`, `.ara/knowledge/crm.md` for history and follow-up,
+`.ara/knowledge/sales.md` for a first contact. You read the profile in
+`business/profile.md` beforehand, it tells you the language and how much you explain.
 
-**Zuerst nachsehen, dann reden.** Das Werkzeug liest die Akte, die Geräte des Kunden,
-sein Papier und seinen Verlauf an einer Stelle:
+**Look first, talk second.** The tool reads the file, the customer's devices, their
+paperwork and their history in one place:
 
 ```
-node .ara/tools/customer.mjs                       welche Kunden es gibt
-node .ara/tools/customer.mjs --customer $1         Lagebild
+node .ara/tools/customer.mjs                       which customers there are
+node .ara/tools/customer.mjs --customer $1         the picture
 ```
 
-- **Kein Argument angegeben:** die Übersicht zeigen, je eine Zeile mit Stand, Geräten und
-  letztem Kontakt, und fragen, um welchen es geht.
-- **Akte existiert (auch unter ähnlichem Namen):** öffnen. Was das Werkzeug ausgibt, ist
-  deine Grundlage, nicht dein Text. Sag in eigenen Worten, wo der Kunde steht, welche
-  Geräte er hat und in welchem Zustand, und was ansteht. **Nicht vorlesen.**
-- **Akte existiert nicht:** anlegen. Vorher nachsehen, was du selbst herausfinden kannst
-  (Website), dann eine gebündelte Interview-Runde, dann schreiben:
+- **No argument given:** show the overview, one line each with status, devices and last
+  contact, and ask which one it is about.
+- **File exists (also under a similar name):** open it. What the tool prints is your
+  ground, not your text. Say in your own words where the customer stands, which devices
+  they have and in what state, and what is due. **Do not read it out.**
+- **File does not exist:** create it. First look up what you can find out yourself
+  (website), then one bundled interview round, then write:
 
   ```
-  node .ara/tools/customer.mjs --customer $1 --new --legal-name "<Firmierung>"
+  node .ara/tools/customer.mjs --customer $1 --new --legal-name "<legal name>"
   ```
 
-  Das legt Ordner und Frontmatter an, den Rest füllst du aus dem Gespräch. Warnt es vor
-  einem ähnlichen Namen, ist das meist derselbe Kunde ein zweites Mal: nachsehen, statt
-  `--force` anzuhängen.
+  That creates the folder and the frontmatter, the rest you fill from the conversation. If
+  it warns about a similar name, that is usually the same customer a second time: look,
+  instead of appending `--force`.
 
-## Die Geräte hängen am Kunden
+## The devices hang off the customer
 
-Ein Kundengerät liegt unter `customers/$1/devices/<gerät>/`, angelegt wird es mit
-`/device $1/<gerät>`. Seine Akte sagt, ob das Kit es überhaupt ansprechen kann: `address`
-für SSH, `api_base` für die Schnittstelle, wenn sie woanders liegt, `tls` bei einem selbst
-ausgestellten Zertifikat, `api_key_ref` für den Kit-Schlüssel. Was das Werkzeug dazu
-ausgibt, ist eine Aussage über die **Akte**. Ob das Gerät antwortet und wie es ihm geht,
-sagt `/maintain $1/<gerät>`.
+A customer device sits under `customers/$1/devices/<device>/`, it is created with
+`/device $1/<device>`. Its file says whether the kit can address it at all: `address` for
+SSH, `api_base` for the interface if it sits elsewhere, `tls` for a self-signed
+certificate, `api_key_ref` for the kit key. What the tool prints about that is a statement
+about the **file**. Whether the device answers and how it is doing, `/maintain $1/<device>`
+says.
 
-Die eigenen Geräte des Partners gehören keinem Kunden und liegen unter `devices/`. Leg
-dafür keinen Scheinkunden an.
+The partner's own devices belong to no customer and sit under `devices/`. Do not create a
+dummy customer for them.
 
-## Nach dem Gespräch
+## After the conversation
 
-Eintrag unter `customers/$1/history/`, `last_contact` auf heute, `follow_up` mit einem
-Halbsatz, worum es dann geht. Das sind drei Zeilen und der Unterschied zwischen einer
-Akte und einem Ordner voller Dateien.
+Entry under `customers/$1/history/`, `last_contact` to today, `follow_up` with half a
+sentence on what it will be about then. That is three lines and the difference between a
+customer file and a folder full of files.
 
-Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere Kundenordner.
+From now on you work exclusively in `customers/$1/`. No look into other customer folders.

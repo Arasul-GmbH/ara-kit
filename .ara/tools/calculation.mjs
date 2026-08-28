@@ -7,7 +7,7 @@
  * desselben Partners für denselben Gerätetyp kommen auf dieselben Zahlen. Fehlt eine,
  * wird sie sonst bei jedem Angebot neu geschätzt.
  *
- * Das Werkzeug liest nur. Eingetragen wird im Verfahren `/kalkulation`, damit jede
+ * Das Werkzeug liest nur. Eingetragen wird im Verfahren `/calculation`, damit jede
  * Zahl mit dem Datum hereinkommt, an dem sie bestätigt wurde.
  *
  *   node .ara/tools/calculation.mjs               was liegt vor, was fehlt

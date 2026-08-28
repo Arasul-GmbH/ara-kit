@@ -1,107 +1,102 @@
-# Live-Wissen: woher Werte kommen
+# Live knowledge: where values come from
 
-> **Wann brauchst du das?** Immer wenn du etwas Konkretes über das Produkt sagen, prüfen oder
-> ausführen willst. Modelle, Ports, Befehle, Pfade, Geräteprofile, Versionen.
+> **When do you need this?** Whenever you want to say, check or run something concrete about
+> the product. Models, ports, commands, paths, device profiles, versions.
 
-## Warum es diese Regel gibt
+## Why this rule exists
 
-Das Produkt `arasul-jet` entwickelt sich schnell. Modelle, Engines, Geräteprofile und
-Befehle haben sich in wenigen Wochen mehrfach geändert. Ein Kit, das solche Werte als Text
-mitliefert, ist am Tag seiner Auslieferung falsch, und dann liest jemand sie vor einem
-Kunden vor.
+The product `arasul-jet` develops fast. Models, engines, device profiles and commands have
+changed several times within a few weeks. A kit that ships such values as text is wrong on the
+day it ships, and then somebody reads them out in front of a customer.
 
-Deshalb: **Das Kit weiß, wie man vorgeht. Das Produkt weiß, was gilt.**
+Therefore: **the kit knows how to go about things. The product knows what applies.**
 
-## Quelle 1: Der Kontrakt des Geräts
+## Source 1: the device's contract
 
-Alles, was zwischen Kit und Produkt **vereinbart** ist, sagt das Gerät selbst:
-
-```
-node .ara/tools/app.mjs --device <gerät> --contract
-```
-
-Von dort kommen das Schema für `app.json`, die Regeln, die kein Schema trägt, der Kopf
-einer Flow-Datei, die Namen der Kopfzeilen, die Grenzen eines Pakets, die Pfade unter
-`/apps/` und die Liste der Endpunkte mit dem Bereich, den jeder verlangt. Dazu die
-**Kontraktversion**: die Zahl, an der das Kit merkt, dass es zu diesem Gerät nicht passt.
-
-**Das Kit schreibt keinen dieser Werte mit.** Es liest sie je Gerät. Zwei Nachbauten
-desselben Vertrags laufen auseinander, und die Frage ist nur, wann es jemand merkt.
-Verfahren: `.ara/knowledge/deploy.md` für den Weg eines Pakets,
-`.ara/knowledge/platform-services.md` für die Dienste, die eine App dort vorfindet.
-
-**Die Verfahren nennen Routen, und das ist Absicht.** Ein Blatt, das keine nennt, kann
-niemand gegen ein Gerät halten. Geprüft werden sie mit
-`node .ara/tools/check-docs.mjs --device <gerät>`: es liest jede Route aus dem Wissen,
-hält sie gegen die Endpunktliste des Kontrakts und fragt am Gerät nach. Was dort fehlt,
-sagt es mit einem Satz je Route.
-
-## Quelle 2: Das Gerät
-
-Sobald ein Gerät per SSH erreichbar ist, ist es die genauere Quelle, es sagt dir, was
-dort **tatsächlich** läuft, nicht was vorgesehen war.
-
-Frag das Gerät, statt aus dem Spiegel abzuleiten, wenn es um dieses eine Gerät geht:
-welche Plattform erkannt wurde, welches Profil gilt, welche Dienste laufen, welches Modell
-geladen ist, welche Version installiert ist. Die passenden Befehle stehen im Artefakt
-(Kommandozeilenwerkzeug im Wurzelverzeichnis, Abschnitt Hilfe). Lies sie dort nach, statt
-sie auswendig zu verwenden.
-
-## Quelle 3: Der Spiegel, also das Artefakt
-
-Unter `.ara/mirror/` liegt das Installationsartefakt: das, was `arasul.de/api/download`
-mit dem Token ausgeliefert hat, samt Stand und Quelle in `STATE.json`.
+Everything **agreed** between kit and product the device says itself:
 
 ```
-node .ara/tools/mirror.mjs --show      # was liegt da, von wann, aus welcher Quelle
-node .ara/tools/mirror.mjs --docs      # welche Anleitungen kamen mit
-node .ara/tools/mirror.mjs --refresh   # neu holen
+node .ara/tools/app.mjs --device <device> --contract
 ```
 
-**Er entsteht bei der Installation** (`/device` mit `--install arasul`) und sonst nicht.
-Ohne Token kein Artefakt, dann sagst du das und arbeitest ohne Produktaussagen weiter.
+From there come the schema for `app.json`, the rules no schema carries, the header of a flow
+file, the names of the header lines, the limits of a package, the paths under `/apps/` and the
+list of endpoints with the scope each one demands. Plus the **contract version**: the number by
+which the kit notices that it does not fit this device.
 
-Was du dort nachschlägst:
+**The kit writes none of these values down.** It reads them per device. Two rebuilds of the
+same contract drift apart, and the only question is when somebody notices. Procedure:
+`.ara/knowledge/deploy.md` for the way of a package, `.ara/knowledge/platform-services.md` for
+the services an app finds there.
 
-| Frage | Wo im Artefakt |
+**The procedures name routes, and that is on purpose.** A sheet that names none cannot be held
+against a device by anyone. They are checked with
+`node .ara/tools/check-docs.mjs --device <device>`: it reads every route out of the knowledge,
+holds it against the contract's endpoint list and asks on the device. What is missing there it
+says with one sentence per route.
+
+## Source 2: the device
+
+As soon as a device is reachable over SSH, it is the more precise source, it tells you what
+**actually** runs there, not what was intended.
+
+Ask the device instead of deriving from the mirror when it is about this one device: which
+platform was recognised, which profile applies, which services run, which model is loaded,
+which version is installed. The matching commands are in the artifact (command line tool in the
+root directory, help section). Read them up there instead of using them from memory.
+
+## Source 3: the mirror, that is the artifact
+
+Under `.ara/mirror/` lies the installation artifact: what `arasul.de/api/download` delivered
+with the token, together with version and source in `STATE.json`.
+
+```
+node .ara/tools/mirror.mjs --show      # what is there, from when, from which source
+node .ara/tools/mirror.mjs --docs      # which manuals came along
+node .ara/tools/mirror.mjs --refresh   # fetch again
+```
+
+**It comes into being at the installation** (`/device` with `--install arasul`) and not
+otherwise. Without a token no artifact, then you say so and carry on without product statements.
+
+What you look up there:
+
+| Question | Where in the artifact |
 |---|---|
-| Welche Geräte kennt das Produkt, mit welchen Eckdaten? | `config/platforms/*.json` |
-| Womit wird installiert, und wie heißt der Einstiegspunkt? | `arasul-release.json` |
-| Wie läuft die Einrichtung ab, welche Schritte gibt es? | `scripts/` und die Kommandozeilenwerkzeuge im Wurzelverzeichnis |
-| Was sagt die Produktdokumentation? | `docs/`, aufgelistet von `mirror.mjs --docs` |
-| Wie legt man einen Mitarbeiter an, wie gibt man eine App frei? | Admin-Handbuch und API-Referenz, beide unter `docs/` |
-| Welcher Stand ist das, woher kommt er? | `.ara/mirror/STATE.json` |
+| Which devices does the product know, with what key data? | `config/platforms/*.json` |
+| What is used to install, and what is the entry point called? | `arasul-release.json` |
+| How does the setup run, which steps are there? | `scripts/` and the command line tools in the root directory |
+| What does the product documentation say? | `docs/`, listed by `mirror.mjs --docs` |
+| How do you create an employee, how do you share an app? | Admin handbook and API reference, both under `docs/` |
+| Which version is this, where does it come from? | `.ara/mirror/STATE.json` |
 
-**Vorsicht bei `docs/`:** Die Produktdokumentation ist an manchen Stellen älter als der
-Code. Wenn Dokumentation und Skript sich widersprechen, gilt das Skript. Sag dem Menschen,
-wenn dir so ein Widerspruch auffällt, das ist eine nützliche Rückmeldung ans Produktteam.
+**Careful with `docs/`:** the product documentation is in places older than the code. If
+documentation and script contradict each other, the script applies. Tell the human when you
+notice such a contradiction, that is useful feedback for the product team.
 
-Steht ein Gerät zur Verfügung, ist es die genauere Quelle. Das Artefakt sagt, was
-ausgeliefert wurde, das Gerät sagt, was dort läuft.
+If a device is available, it is the more precise source. The artifact says what was delivered,
+the device says what runs there.
 
-## Quelle 4: Gibt es nicht
+## Source 4: does not exist
 
-Es gibt keine vierte Quelle. Insbesondere:
+There is no fourth source. In particular:
 
-- **Nicht dein Gedächtnis.** Auch wenn du sicher bist.
-- **Nicht eine ältere Notiz im Kit** oder in einem Kundenordner. Notizen halten fest, was
-  damals war.
-- **Nicht das Internet.** Öffentliche Anleitungen beschreiben andere Systeme.
+- **Not your memory.** Even when you are sure.
+- **Not an older note in the kit** or in a customer folder. Notes record what was the case then.
+- **Not the internet.** Public guides describe other systems.
 
-## Wenn keine Quelle verfügbar ist
+## When no source is available
 
-Sag es klar und biete an, was ohne geht:
+Say it clearly and offer what works without it:
 
-> „Für den Modellnamen brauche ich Zugriff auf das Gerät oder das Artefakt. Ich habe
-> gerade beides nicht. Wir können die Akte fertig machen und das nachziehen, sobald das
-> Gerät erreichbar ist."
+> "For the model name I need access to the device or the artifact. I have neither right now. We
+> can finish the file and catch up on that as soon as the device is reachable."
 
-Schreib niemals einen ungeprüften Wert in eine Kundendatei. Eine Lücke mit Vermerk ist
-besser als eine Zahl, der jemand glaubt.
+Never write an unchecked value into a customer file. A gap with a note is better than a number
+somebody believes.
 
-## Was das Kit stattdessen weiß
+## What the kit knows instead
 
-Verfahren. Reihenfolgen. Was vor was kommt und warum. Woran man erkennt, dass ein Schritt
-wirklich funktioniert hat. Welche Fehler häufig passieren und wie man sie feststellt. Was
-in einer Abnahme nachgewiesen sein muss. Das ändert sich langsam. Werte ändern sich
-schnell.
+Procedures. Orders. What comes before what and why. How you recognise that a step really
+worked. Which mistakes happen often and how you establish them. What has to be evidenced at a
+handover. That changes slowly. Values change fast.

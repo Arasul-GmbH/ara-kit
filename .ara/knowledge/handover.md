@@ -1,95 +1,92 @@
-# Verfahren: Nachweis und Abnahme
+# Procedure: evidence and handover
 
-> **Wann brauchst du das?** In Phase 5 und 6 einer Einrichtung, und immer, wenn jemand
-> wissen will, ob ein Gerät wirklich betriebsbereit ist.
+> **When do you need this?** In phase 5 and 6 of a setup, and whenever somebody wants to know
+> whether a device is really ready for operation.
 
-## Der Grundsatz
+## The principle
 
-**Eine Handlung ist kein Ergebnis.** „Modell installiert" ist eine Handlung. „Eine
-Testanfrage wird in vier Sekunden mit einem sinnvollen Absatz beantwortet" ist ein Ergebnis.
+**An action is not a result.** "Model installed" is an action. "A test question is answered in
+four seconds with a sensible paragraph" is a result.
 
-Für die Abnahme zählen nur Ergebnisse. Jeder Punkt wird geprüft, und was dabei
-herauskam, steht im Laufzettel, auch wenn es unangenehm ist.
+For the handover only results count. Every point is checked, and what came out of it stands in
+the runsheet, even when it is uncomfortable.
 
-## Die Prüfliste
+## The checklist
 
-Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**,
-**nicht geprüft**. Es gibt kein „müsste".
+Every point gets one of three results: **met**, **not met**, **not checked**. There is no
+"should be".
 
-### 1. Das Gerät steht auf eigenen Beinen
+### 1. The device stands on its own feet
 
-- Alle Dienste melden sich gesund.
-- **Nach einem Neustart des Geräts wieder.** Ein System, das nur läuft, weil es gerade
-  aufgesetzt wurde, fällt beim ersten Stromausfall aus.
-- Der Neustart-Test ist Pflicht. Er dauert Minuten und erspart Rückfahrten.
+- All services report themselves healthy.
+- **After a restart of the device, again.** A system that only runs because it was just set up
+  fails at the first power cut.
+- The restart test is mandatory. It takes minutes and saves return trips.
 
-### 2. Die Kernfunktion antwortet fachlich
+### 2. The core function answers in substance
 
-- Eine echte Frage aus dem Arbeitsalltag des Kunden, keine Testphrase.
-- Die Antwort muss inhaltlich brauchbar sein. Ein System, das mit einer leeren oder
-  offensichtlich unsinnigen Antwort reagiert, hat meist gar kein Modell geladen.
-- Antwortzeit notieren. Der Kunde wird sie mit dem vergleichen, was er aus der Cloud kennt
- , besser, er hört die Zahl vom Partner als dass er sie selbst entdeckt.
+- A real question from the customer's working day, not a test phrase.
+- The answer has to be usable in content. A system that reacts with an empty or obviously
+  nonsensical answer usually has no model loaded at all.
+- Note the response time. The customer will compare it with what they know from the cloud;
+  better they hear the number from the partner than discover it themselves.
 
-### 3. Dokumente werden gefunden
+### 3. Documents are found
 
-- Ein Testdokument aufnehmen, das dem entspricht, was der Kunde wirklich hat.
-- Danach eine Frage stellen, deren Antwort nur in diesem Dokument steht.
-- Testdokument danach wieder entfernen, wenn es nicht zum Kunden gehört.
+- Ingest a test document that matches what the customer really has.
+- Then ask a question whose answer stands only in that document.
+- Remove the test document afterwards if it does not belong to the customer.
 
-### 4. Der Fernzugriff funktioniert von außen
+### 4. Remote access works from outside
 
-- **Von außerhalb des Kundennetzes geprüft.** Mobilfunk genügt.
-- Im Kundennetz funktioniert fast immer alles. Dieser Punkt ist der häufigste Grund, warum
-  eine Wartung Wochen später nicht möglich ist.
-- Auch prüfen: Kommt man nach einem Neustart des Geräts noch heran?
+- **Checked from outside the customer network.** A mobile connection is enough.
+- Inside the customer network almost everything works. This point is the most frequent reason
+  why maintenance is impossible weeks later.
+- Also check: can you still get in after a restart of the device?
 
-### 5. Der Zugang ist abgesichert
+### 5. Access is secured
 
-- Anmeldung mit Passwort wird abgelehnt, mit Schlüssel angenommen, beides geprüft, nicht
-  angenommen.
-- Nur die Dienste sind erreichbar, die erreichbar sein sollen.
-- Zugangsdaten liegen dort, wo sie hingehören, und nicht in einer Kundendatei.
+- Login with a password is refused, with a key accepted, both checked, not assumed.
+- Only the services that should be reachable are reachable.
+- Credentials lie where they belong, and not in a customer file.
 
-### 6. Der Kunde kann selbst handeln
+### 6. The customer can act themselves
 
-- Er weiß, wie er die Fernwartung abschaltet, **vorgeführt, nicht erwähnt**.
-- Er weiß, wen er anruft und was dann passiert.
-- Er hat eine Kurzanleitung, die seine Mitarbeiter verstehen.
+- They know how to switch remote maintenance off, **demonstrated, not mentioned**.
+- They know whom to call and what happens then.
+- They have a short guide their staff understand.
 
-### 7 Das Papier ist vollständig
+### 7 The paperwork is complete
 
-- Die **Leistungsbeschreibung** liegt vor, mit Datum, gegen dieses Gerät erhoben.
-- **Jede Zeile, die du im Protokoll abzeichnest, steht dort auf "abgenommen", und
-  umgekehrt.** Ein Bereich, der dort zugesagt ist und hier nicht vorgeführt wurde, ist
-  ein Widerspruch in deinen eigenen Papieren.
-- Die **Endkundenbedingungen** sind vereinbart, und zwar **vor** Vertragsschluss.
-  Nachträglich trägt es nicht.
-- Die **Drittlizenzen** liegen bei.
-- Der Kunde hat die **Schutzmaßnahmen** nach Abschnitt 8 der Leistungsbeschreibung
-  eingerichtet und bestätigt das im Protokoll. Ohne diese Bestätigung steht der Hinweis
-  auf die Fehlbarkeit von Ausgaben allein, und allein trägt er nicht.
+- The **Leistungsbeschreibung** is there, with a date, taken against this device.
+- **Every line you sign off in the record stands there as "abgenommen", and the other way
+  round.** An area promised there and not demonstrated here is a contradiction in your own
+  papers.
+- The **Endkundenbedingungen** are agreed, and **before** the contract is concluded.
+  Afterwards it does not carry.
+- The **Drittlizenzen** are attached.
+- The customer has set up the **protective measures** under section 8 of the service
+  description and confirms that in the record. Without that confirmation the notice about the
+  fallibility of outputs stands alone, and alone it does not carry.
 
-Verfahren: `.ara/knowledge/paperwork.md`
+Procedure: `.ara/knowledge/paperwork.md`
 
-## Wenn ein Punkt nicht erfüllt ist
+## When a point is not met
 
-Dann ist das Gerät **nicht abgenommen**. Das ist kein Drama, sondern eine Aussage:
+Then the device is **not handed over**. That is no drama, it is a statement:
 
-> Vier von sechs Punkten sind erfüllt. Der Fernzugriff von außen funktioniert nicht, das
-> Kundennetz lässt die Verbindung nicht zu. Bis das geklärt ist, kann ich das Gerät nicht
-> aus der Ferne warten. Vorschlag: Ich notiere es als offenen Punkt, du sprichst mit dem
-> Netzbetreuer, und wir holen es nach.
+> Four of six points are met. Remote access from outside does not work, the customer network
+> does not permit the connection. Until that is settled I cannot maintain the device remotely.
+> Suggestion: I note it as an open point, you talk to whoever looks after the network, and we
+> catch up on it.
 
-Trag offene Punkte in den Laufzettel und in `handover.md` ein. Ein Kunde, der von einem
-offenen Punkt weiß, ist ein zufriedener Kunde. Einer, der ihn ein halbes Jahr später
-entdeckt, nicht.
+Enter open points in the runsheet and in `handover.md`. A customer who knows about an open
+point is a satisfied customer. One who discovers it half a year later is not.
 
-## Die Abnahmedatei
+## The handover file
 
-`handover.md` entsteht **aus dem Laufzettel**, nicht aus der Erinnerung. Sie hält fest, was
-installiert wurde, wie man herankommt, was geprüft wurde und mit welchem Ergebnis, und was
-offen ist.
+`handover.md` comes into being **out of the runsheet**, not out of memory. It records what was
+installed, how to get in, what was checked and with what result, and what is open.
 
-Weil sie aus dem Protokoll entsteht, beschreibt sie den tatsächlichen Zustand. Genau deshalb
-wird sie nicht frei formuliert und nicht geschönt.
+Because it comes out of the record, it describes the actual state. That is exactly why it is
+not freely worded and not prettified.

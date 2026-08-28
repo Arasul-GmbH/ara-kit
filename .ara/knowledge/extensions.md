@@ -1,101 +1,97 @@
-# Verfahren: Erweiterungen bauen
+# Procedure: building extensions
 
-> **Wann brauchst du das?** Wenn ein Kunde etwas will, das das Produkt nicht ab Werk kann.
+> **When do you need this?** When a customer wants something the product cannot do out of the
+> box.
 
-## Wo gebaut wird, und wo nicht
+## Where things are built, and where not
 
-**Geschrieben wird beim Partner, gebaut wird am Gerät, und beides hat einen Grund.**
+**Written at the partner, built on the device, and both have a reason.**
 
-Der Quelltext einer App liegt beim Partner, nicht beim Kunden: dieselbe App läuft
-vielleicht bei drei Kunden, und dreimal derselbe Code unter drei Geräteakten ist
-dreimal dasselbe Ding, das auseinanderläuft. Das Paket geht als Archiv an das Gerät,
-und **das Gerät baut den Container selbst** aus dem Bauplan darin. Ein fertiges Image
-wäre für eine Architektur gebaut, und niemand merkt es, bis es dort nicht startet.
+The source code of an app lies with the partner, not with the customer: the same app may run
+at three customers, and the same code three times under three device files is the same thing
+three times, drifting apart. The package goes to the device as an archive, and **the device
+builds the container itself** from the build file inside. A finished image would be built for
+one architecture, and nobody notices until it does not start there.
 
-Was daraus folgt, gilt weiter:
+What follows from that still holds:
 
-1. **Die Daten bleiben beim Kunden.** Entwickle nicht gegen Kundendaten auf deinem
-   Laptop. Was du zum Ausprobieren brauchst, sind erfundene Daten; das Echte sieht die
-   App erst am Gerät. Genau das soll das Produkt verhindern.
-2. **Dieselbe Umgebung.** Gebaut wird dort, wo es läuft. Kein „bei mir ging es".
-3. **Es bleibt beim Kunden.** Das Gerät trägt die App, auch wenn der Partner wechselt.
+1. **The data stays at the customer.** Do not develop against customer data on your laptop.
+   What you need for trying things out is invented data; the real thing the app only sees on
+   the device. That is exactly what the product is meant to prevent.
+2. **The same environment.** Built where it runs. No "it worked on my machine".
+3. **It stays at the customer.** The device carries the app, even if the partner changes.
 
-Wie ein Paket auf ein Gerät kommt, in den Teststand und von dort live, steht in
-`.ara/knowledge/deploy.md`, und dort auch, was hineingehört: `app.json` in der Wurzel und
-die Ordner, die das Manifest benennt. **Flows gehören dazu, als Lieferung**: das Paket
-bringt je Flow eine Datei mit Kopf mit, statt einen Namen zu fordern, den jemand am Gerät
-angelegt haben muss. Welche Felder in den Kopf gehören, sagt der Kontrakt des Geräts,
-nicht dieses Blatt.
+How a package gets onto a device, into staging and from there live, stands in
+`.ara/knowledge/deploy.md`, and there too what belongs into it: `app.json` at the root and the
+folders the manifest names. **Flows belong to it, as a delivery**: the package brings one file
+with a header per flow, instead of demanding a name that somebody must have created on the
+device. Which fields belong in the header, the device's contract says, not this sheet.
 
-## Vorgehen
+## How to go about it
 
-### 1. Verstehen, was gebraucht wird
+### 1. Understand what is needed
 
-Nicht die gewünschte Lösung, sondern den Arbeitsschritt dahinter. „Wir wollen einen Bot für
-Rechnungen" heißt meist: jemand tippt Rechnungsdaten aus PDFs ab. Das ist die Aufgabe.
+Not the wished-for solution, but the work step behind it. "We want a bot for invoices" usually
+means: somebody retypes invoice data out of PDFs. That is the task.
 
-Frag nach: Wie läuft es heute? Wie oft? Was passiert danach mit dem Ergebnis? Wer macht es?
-Was passiert, wenn es einmal falsch ist?
+Ask: how does it run today? How often? What happens to the result afterwards? Who does it?
+What happens when it is wrong once?
 
-Der letzte Punkt entscheidet über die Bauweise. Etwas, das falsch sein darf und geprüft
-wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt.
+The last point decides the construction. Something that may be wrong and gets checked is an
+afternoon. Something that may never be wrong is a project.
 
-### 2. Nachsehen, was das Produkt schon kann
+### 2. Look at what the product can already do
 
-Bevor irgendetwas gebaut wird: Was gibt es bereits? Die Beschreibung der Schnittstelle
-liefert das Gerät selbst, in einem Aufruf:
-`node .ara/tools/app.mjs --device <gerät> --contract`. Dort steht, was eine App mitbringen
-muss und welche Endpunkte es gibt. Wozu die einzelnen Dienste da sind, Anmeldung,
-Freigaben, Flows, Sprachmodell und Dokumente, steht in
-`.ara/knowledge/platform-services.md`. Wie eine App dann auf das Gerät kommt, steht in
+Before anything gets built: what is there already? The description of the interface the device
+delivers itself, in one call: `node .ara/tools/app.mjs --device <device> --contract`. It says
+what an app has to bring along and which endpoints there are. What the individual services are
+for, login, permissions, flows, language model and documents, stands in
+`.ara/knowledge/platform-services.md`. How an app then gets onto the device stands in
 `.ara/knowledge/deploy.md`.
 
-Die meisten Kundenwünsche brauchen keine neue Entwicklung, sondern eine Einrichtung.
+Most customer wishes need no new development but a setup.
 
-### 3. Klein anfangen
+### 3. Start small
 
-Der erste Schritt ist immer: **ein Beispiel, das durchläuft.** Ein Dokument, ein Ergebnis,
-vom Kunden angesehen. Erst wenn das steht, wird es breiter.
+The first step is always: **one example that runs through.** One document, one result, looked
+at by the customer. Only once that stands does it get broader.
 
-Nicht: drei Wochen bauen und dann vorführen.
+Not: build for three weeks and then demonstrate.
 
-### 4. Übergeben
+### 4. Hand over
 
-Eine Erweiterung, die nur der Partner starten kann, ist keine Lösung. Zur Übergabe gehört:
-wie man sie benutzt, wie man sieht, dass sie läuft, was zu tun ist, wenn sie nicht läuft.
+An extension only the partner can start is not a solution. Part of the handover is: how to use
+it, how to see that it runs, what to do when it does not run.
 
-Das gehört in den Verlauf des Kunden, was gebaut wurde, warum, und wo es liegt. In einem
-Jahr fragt jemand danach.
+That belongs into the customer's history, what was built, why, and where it lies. In a year
+somebody will ask about it.
 
-## Wer die Erweiterung lizenziert
+## Who licenses the extension
 
-**Erweiterungen sind nicht Bestandteil der Lieferung.** Auch dann nicht, wenn die
-Plattform ihre Installation vorsieht oder erleichtert. Das steht so in den Verträgen,
-und es hat eine Folge, die du kennen musst:
+**Extensions are not part of the delivery.** Not even when the platform provides for or eases
+their installation. That is what the contracts say, and it has a consequence you have to know:
 
-**Wer eine Erweiterung installiert, lizenziert sie selbst.** Das gilt für eigene
-Erweiterungen genauso wie für fremde Software, die der Kunde dazuhaben will. Viele
-verbreitete Automatisierungswerkzeuge stehen unter Lizenzen, die eine entgeltliche
-Weitergabe durch Dritte ausschliessen. Wenn du so etwas für einen Kunden installierst,
-schließt **er** die Lizenz mit dem Anbieter, nicht du und nicht Arasul.
+**Whoever installs an extension licenses it themselves.** That holds for your own extensions
+just as much as for third-party software the customer wants alongside. Many widespread
+automation tools are under licences that exclude paid redistribution by third parties. If you
+install such a thing for a customer, **they** conclude the licence with the vendor, not you and
+not Arasul.
 
-Prüf vor der Installation zwei Dinge und schreib das Ergebnis in den Verlauf:
+Check two things before the installation and write the result into the history:
 
-1. **Unter welcher Lizenz steht sie**, und erlaubt die Lizenz den Einsatz, den der Kunde
-   vorhat. Kommerzieller Einsatz im eigenen Betrieb ist meist erlaubt, Weitergabe an
-   Dritte oft nicht.
-2. **Wer laut Lizenz Lizenznehmer ist.** Trag das in die Leistungsbeschreibung
-   Abschnitt 6 ein, damit später klar ist, was bei der Übergabe drauf war und wer
-   dafür einsteht.
+1. **Under which licence it stands**, and whether the licence permits the use the customer
+   intends. Commercial use in their own operation is usually permitted, passing it on to third
+   parties often is not.
+2. **Who the licensee is under the licence.** Enter that in the service description, section 6,
+   so that it is clear later what was on it at handover and who stands behind it.
 
-Für den Betrieb einer Erweiterung wird weder Funktion noch Verfuegbarkeit noch
-Verträglichkeit mit kuenftigen Fassungen geschuldet. Sag das dem Kunden, bevor du
-etwas installierst, nicht danach.
+For the operation of an extension neither function nor availability nor compatibility with
+future versions is owed. Say that to the customer before you install something, not afterwards.
 
-Verfahren für das Papier: `.ara/knowledge/paperwork.md`
+Procedure for the paperwork: `.ara/knowledge/paperwork.md`
 
-## Abrechnung
+## Billing
 
-Erweiterungen sind Dienstleistung, keine Lizenz. Sie werden getrennt angeboten und
-abgerechnet. Der Kunde soll vorher wissen, was ihn erwartet, auch, dass eine Erweiterung
-Pflege braucht, wenn sich das Produkt weiterentwickelt.
+Extensions are a service, not a licence. They are offered and billed separately. The customer
+should know beforehand what to expect, including that an extension needs care as the product
+develops.

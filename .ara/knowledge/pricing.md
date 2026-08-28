@@ -1,142 +1,135 @@
-# Verfahren: Kalkulation
+# Procedure: calculation
 
-> **Wann brauchst du das?** Wenn jemand wissen will, was etwas kostet, für den Kunden oder
-> für den Partner selbst.
+> **When do you need this?** When somebody wants to know what something costs, for the customer
+> or for the partner themselves.
 
-## Woher die Zahlen kommen
+## Where the numbers come from
 
-**Nicht aus dem Kit.** Preise ändern sich, und ein falscher Preis in einem Angebot ist
-teurer als eine Rückfrage.
+**Not from the kit.** Prices change, and a wrong price in an offer is more expensive than a
+question.
 
-| Was | Wo es steht |
+| What | Where it stands |
 |---|---|
-| Einkaufspreise (Lizenz, Wartung, Hardware) | Partnerportal, der Partner sieht seine eigenen |
-| Die eigenen Sätze des Partners | `business/company.md`, Kalkulationsblatt |
-| Was dieser Kunde braucht | `customers/<k>/customer.md` |
+| Purchase prices (licence, maintenance, hardware) | Partner portal, the partner sees their own |
+| The partner's own rates | `business/company.md`, calculation sheet |
+| What this customer needs | `customers/<c>/customer.md` |
 
-Fehlt eine Zahl im Kalkulationsblatt, wird sie **einmal** nachgetragen und nicht bei
-jeder Kalkulation neu erfragt. Dafür gibt es `/kalkulation`.
+If a number is missing from the calculation sheet, it gets added **once** and is not asked for
+again at every calculation. That is what `/calculation` is for.
 
-Kennst du einen Einkaufspreis nicht, sag das und lass ihn dir nennen. Rate nicht, und
-übernimm keine Zahl aus einem alten Angebot als aktuellen Preis.
+If you do not know a purchase price, say so and have it named. Do not guess, and do not take a
+number from an old offer as a current price.
 
-## Das Kalkulationsblatt
+## The calculation sheet
 
-Ein vollständiges Angebot braucht zehn Zahlen. Sie stehen in `business/company.md`, die
-eigenen Sätze im Frontmatter, die Einkaufspreise in der Tabelle unter „Einkaufspreise".
+A complete offer needs ten numbers. They stand in `business/company.md`, the own rates in the
+frontmatter, the purchase prices in the table under "Einkaufspreise".
 
-| Zahl | Woher | Fehlt sie, geht nicht |
+| Number | From | Without it, this does not work |
 |---|---|---|
-| Stundensatz | der Partner | die Kalkulation, weder Einrichtung noch Betreuung |
-| Stunden für eine Ersteinrichtung | der Partner | eine gleichbleibende Einrichtungsposition |
-| Aufschlag auf Hardware | der Partner | der Hardwarepreis |
-| Eigene Betreuung, jährlich | der Partner | der laufende Posten, der das Geschäft trägt |
-| Zahlungsziel | der Partner | das Angebot, es steht im Briefkopf |
-| Anfahrt | der Partner | sie fällt beim Rechnen unter den Tisch |
-| Mindestpauschale | der Partner | kleine Aufträge gehen unter Wert raus |
-| Einkauf Lizenz, einmalig | Partnerportal | die Lizenzposition |
-| Einkauf Wartung, jährlich | Partnerportal | Wartung Jahr 1 und ab Jahr 2 |
-| Einkauf Hardware, je Typ | Partnerportal | Hardwarepreis und Marge |
+| Hourly rate | the partner | the calculation, neither setup nor care |
+| Hours for a first setup | the partner | a consistent setup line item |
+| Markup on hardware | the partner | the hardware price |
+| Own care, yearly | the partner | the recurring item that carries the business |
+| Payment terms | the partner | the offer, it stands in the letterhead |
+| Travel | the partner | it falls off the table when calculating |
+| Minimum fee | the partner | small jobs go out below value |
+| Purchase licence, one-off | Partner portal | the licence line item |
+| Purchase maintenance, yearly | Partner portal | maintenance year 1 and from year 2 |
+| Purchase hardware, per type | Partner portal | hardware price and margin |
 
-Was liegt vor und was fehlt:
+What is there and what is missing:
 
 ```
 node .ara/tools/calculation.mjs
 node .ara/tools/calculation.mjs --json
 ```
 
-Das Werkzeug liest nur, es trägt nichts ein. Es meldet jede fehlende Zahl **einzeln mit
-ihrer Folge**, und es meldet, welcher Stand alt geworden ist. Ruf es auf, bevor du
-rechnest, statt dich zu erinnern, was hinterlegt war.
+The tool only reads, it enters nothing. It reports every missing number **individually with its
+consequence**, and it reports which as-of date has gone stale. Call it before you calculate,
+instead of remembering what was stored.
 
-**Jede Zahl trägt ein Stand-Datum.** Die eigenen Sätze zusammen unter `rates_asof`, jeder
-Einkaufspreis in seiner Zeile. Ohne Datum lässt sich später nicht sagen, ob eine Zahl noch
-gilt, und genau das ist bei Preisen die einzige Frage, die zählt. Zwei Fristen, danach
-meldet das Werkzeug „nachsehen":
+**Every number carries an as-of date.** The own rates together under `rates_asof`, every purchase
+price in its own line. Without a date it cannot be said later whether a number still holds, and
+with prices that is exactly the only question that counts. Two periods, after which the tool
+reports "nachsehen":
 
-- **Einkaufspreise nach sechs Monaten.** Es sind Arasuls Zahlen, sie ändern sich, und der
-  Partner erfährt es nicht von allein.
-- **Eigene Sätze nach einem Jahr.** Wer seinen Stundensatz drei Jahre nicht angefasst hat,
-  arbeitet mit dem Satz von vorgestern.
+- **Purchase prices after six months.** They are Arasul's numbers, they change, and the partner
+  does not find out by themselves.
+- **Own rates after a year.** Whoever has not touched their hourly rate for three years works
+  with the rate from the day before yesterday.
 
-## Das Verfahren `/kalkulation`
+## The procedure `/calculation`
 
-Das Blatt pflegen, getrennt vom Onboarding. Zwei Runden, jede gebündelt im
-Interview-Werkzeug, jede mit einer offenen Möglichkeit.
+Keeping the sheet, separate from onboarding. Two rounds, each bundled in the interview tool,
+each with an open option.
 
-1. **Erst nachsehen, dann fragen.** `node .ara/tools/calculation.mjs`. Was schon
-   dasteht, wird nicht erfragt, sondern zur Bestätigung vorgelesen. Frag nur nach dem,
-   was fehlt oder alt ist.
+1. **Look first, ask second.** `node .ara/tools/calculation.mjs`. What is already there is not
+   asked for, it is read out for confirmation. Ask only about what is missing or stale.
 
-2. **Die eigenen Sätze**, in einer Runde. Sie kennt der Partner auswendig, dafür muss er
-   nirgends nachsehen. Sag dazu, wozu jede dient, sonst wirkt es wie ein Formular.
-   Danach `rates_asof` auf heute.
+2. **The own rates**, in one round. The partner knows them by heart, they need to look nowhere.
+   Say what each one is for, otherwise it feels like a form. Afterwards `rates_asof` to today.
 
-3. **Die Einkaufspreise**, in einer zweiten Runde. Sie stehen im Partnerportal, dafür
-   muss er nachsehen. Hat er das Portal gerade nicht zur Hand, ist das in Ordnung: die
-   eigenen Sätze bleiben trotzdem eingetragen, und du sagst am Ende, was deshalb noch
-   nicht geht. Eine Zeile je Hardwaretyp, den er anbietet. **Rate keinen Einkaufspreis
-   und übernimm keinen aus einem alten Angebot.**
+3. **The purchase prices**, in a second round. They stand in the partner portal, so they have to
+   look. If they do not have the portal at hand right now, that is fine: the own rates stay
+   entered anyway, and you say at the end what is therefore not yet possible. One line per
+   hardware type they offer. **Guess no purchase price and take none from an old offer.**
 
-4. **Eintragen, mit Datum.** Jede Zahl in `business/company.md`, jeder Einkaufspreis mit
-   dem Datum, an dem er im Portal stand, nicht mit dem heutigen, wenn er von gestern ist.
+4. **Enter, with a date.** Every number into `business/company.md`, every purchase price with the
+   date on which it stood in the portal, not with today's if it is from yesterday.
 
-5. **Noch einmal melden.** `node .ara/tools/calculation.mjs`, und dann in zwei bis drei
-   Zeilen: was jetzt liegt, was noch fehlt und was deshalb nicht geht. Konkret, nicht
-   „einiges fehlt noch".
+5. **Report once more.** `node .ara/tools/calculation.mjs`, and then in two or three lines: what
+   is there now, what is still missing and what is therefore not possible. Concretely, not "some
+   things are missing".
 
-**Die Einkaufspreise bleiben in `business/company.md`.** Sie gehen in keine Kundendatei,
-in kein Angebot und in keinen Verlaufseintrag, auch nicht als Zwischensumme, aus der sich
-die Marge zurückrechnen lässt. Die Marge des Partners ist seine Sache.
+**The purchase prices stay in `business/company.md`.** They go into no customer file, into no
+offer and into no history entry, not even as a subtotal from which the margin can be worked back.
+The partner's margin is their own business.
 
-## Die Posten
+## The line items
 
-Ein vollständiges Angebot besteht aus vier Teilen. Fehlt einer, wird nachverhandelt, und
-das immer zu Lasten des Partners.
+A complete offer consists of four parts. If one is missing, it gets renegotiated, and always to
+the partner's cost.
 
-1. **Hardware.** Einkauf plus Aufschlag. Lieferzeit nennen, sie ist bei dieser Art Gerät
-   oft der bestimmende Faktor.
-2. **Lizenz.** Einmalig, Einkauf plus Marge.
-3. **Einrichtung.** Stunden mal Satz, und die Stundenzahl kommt aus `setup_hours` im
-   Kalkulationsblatt, nicht aus einer frischen Schätzung. Sonst kommen zwei Angebote für
-   denselben Gerätetyp auf verschiedene Zahlen, und keine davon lässt sich begründen.
-   Sei ehrlich: eine Ersteinrichtung an einem Gerätetyp, den man zum ersten Mal aufsetzt,
-   dauert länger als die zweite. Wer das nicht einpreist, arbeitet den ersten Kunden
-   umsonst. Hat der Partner für diesen Fall eine eigene Regel, steht sie unter „Notizen
-   zur Kalkulation".
-4. **Laufendes.** Wartung des Produkts plus die eigene Betreuung (`care_yearly`). Das ist
-   der Teil, der das Geschäft trägt, er gehört ins erste Angebot, nicht in ein späteres
-   Gespräch.
+1. **Hardware.** Purchase plus markup. Name the delivery time, with this kind of device it is
+   often the determining factor.
+2. **Licence.** One-off, purchase plus margin.
+3. **Setup.** Hours times rate, and the number of hours comes from `setup_hours` in the
+   calculation sheet, not from a fresh estimate. Otherwise two offers for the same device type
+   land on different numbers, and none of them can be justified. Be honest: a first setup on a
+   device type you are setting up for the first time takes longer than the second. Whoever does
+   not price that in works the first customer for free. If the partner has their own rule for
+   that case, it stands under "Notizen zur Kalkulation".
+4. **Recurring.** Maintenance of the product plus your own care (`care_yearly`). That is the part
+   that carries the business, it belongs in the first offer, not in a later conversation.
 
-Dazu, wenn zutreffend: Anfahrt (`travel`), Schulung, Erweiterungen, Datenübernahme. Und
-was am Ende unter der Mindestpauschale (`minimum_fee`) landet, wird zur Pauschale, nicht
-zum Freundschaftspreis.
+Plus, where applicable: travel (`travel`), training, extensions, data migration. And whatever
+ends up under the minimum fee (`minimum_fee`) becomes the flat rate, not a friendship price.
 
-## Wie du rechnest
+## How you calculate
 
-- **Netto rechnen**, Umsatzsteuer am Ende ausweisen.
-- **Aufwand ehrlich schätzen**, nicht optimistisch. Ein zweiter Termin, den niemand bezahlt,
-  kostet mehr als eine offene Position.
-- **Bandbreite statt Scheingenauigkeit**, solange etwas unklar ist. „Zwischen X und Y, je
-  nachdem ob das Netz vorbereitet ist" ist ehrlicher als eine exakte Zahl, die nicht hält.
-- **Wiederkehrendes getrennt ausweisen** von einmaligem. Der Kunde muss beides sehen.
+- **Calculate net**, show VAT at the end.
+- **Estimate effort honestly**, not optimistically. A second appointment nobody pays for costs
+  more than an open line item.
+- **A range instead of false precision**, as long as something is unclear. "Between X and Y,
+  depending on whether the network is prepared" is more honest than an exact number that does not
+  hold.
+- **Show recurring separately** from one-off. The customer has to see both.
 
-## Was du dazusagst
+## What you say alongside
 
-Bei der Zahl bleibt es nicht. Zwei Dinge gehören dazu:
+The number is not the end of it. Two things belong with it:
 
-- **Was nicht enthalten ist.** Erweiterungen, Datenübernahme, Schulung über das
-  Vereinbarte hinaus.
-- **Woran der Preis hängt.** Wenn das Kundennetz nicht vorbereitet ist oder das Gerät ein
-  Typ ist, mit dem noch niemand gearbeitet hat, wird es aufwendiger. Das gehört vorher
-  gesagt.
+- **What is not included.** Extensions, data migration, training beyond what was agreed.
+- **What the price hangs on.** If the customer network is not prepared or the device is a type
+  nobody has worked with yet, it gets more laborious. That belongs said beforehand.
 
-## Für den Partner selbst
+## For the partner themselves
 
-Manchmal ist die Frage nicht „was kostet das den Kunden", sondern „was bleibt bei mir
-hängen". Dann rechne die Marge und den Stundenertrag aus. Einkauf gegen Verkauf, Aufwand
-gegen Satz. Wenn dabei etwas herauskommt, das sich nicht lohnt, sag es. Ein Auftrag, der
-sich nicht rechnet, ist kein Erfolg.
+Sometimes the question is not "what does this cost the customer" but "what stays with me". Then
+work out the margin and the yield per hour. Purchase against sale, effort against rate. If
+something comes out of it that is not worth it, say so. A job that does not add up is not a
+success.
 
-Die Einkaufspreise sind vertraulich. Sie gehören in eine interne Rechnung, nie in ein
-Kundenangebot.
+The purchase prices are confidential. They belong into an internal calculation, never into a
+customer offer.

@@ -42,7 +42,7 @@ const SECTIONS = [
   ["Technikstand dieses Rechners", "environment"],
 ];
 
-/** Felder von company.md, die /init abfragt. Der Rest ist Sache von /kalkulation. */
+/** Felder von company.md, die /init abfragt. Der Rest ist Sache von /calculation. */
 const COMPANY_FIELDS = [
   "legal_name", "address", "phone", "email", "website", "tax_number", "vat_id", "iban",
   "hourly_rate", "hardware_markup", "payment_terms", "logo",

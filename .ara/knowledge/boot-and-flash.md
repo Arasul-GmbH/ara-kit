@@ -1,108 +1,103 @@
-# Verfahren: Betriebssystem und Boot-Medium
+# Procedure: operating system and boot medium
 
-> **Wann brauchst du das?** In Phase 1 einer Einrichtung, bevor das Gerät zum ersten Mal
-> im Netz erreichbar ist.
+> **When do you need this?** In phase 1 of a setup, before the device is reachable on the
+> network for the first time.
 
-## Die Grundfrage: was muss dieses Gerät überhaupt bekommen?
+## The basic question: what does this device actually need?
 
-Nicht jedes Gerät braucht ein neues Betriebssystem. Klär als Erstes, welcher der drei Fälle
-vorliegt. Steht es nicht eindeutig fest, frag den Menschen, statt zu raten. Ein
-unnötiger Flash-Vorgang kostet einen halben Tag.
+Not every device needs a new operating system. Clarify first which of the three cases applies.
+If it is not unambiguous, ask the human instead of guessing. An unnecessary flash costs half a
+day.
 
-### Fall A. Werksystem bleibt
+### Case A. The factory system stays
 
-Geräte, die mit einem passenden Betriebssystem ab Werk kommen. Hier wird nichts
-neu installiert. Der Mensch startet das Gerät, durchläuft die Ersteinrichtung des
-Herstellers (Sprache, Tastatur, Benutzer, Netz) und meldet sich zurück.
+Devices that come with a suitable operating system from the factory. Nothing is installed anew
+here. The human starts the device, goes through the manufacturer's initial setup (language,
+keyboard, user, network) and reports back.
 
-Deine Aufgabe: eine kurze Ansage, was ihn erwartet, und danach der Erstkontakt über das
-Netz. Nicht mehr.
+Your job: a short announcement of what to expect, and after that the first contact over the
+network. Nothing more.
 
-### Fall B. Ein Standard-Linux auf einen Rechner mit üblicher Ausstattung
+### Case B. A standard Linux on a computer with ordinary hardware
 
-Hier hilfst du wirklich: Abbild besorgen, Prüfsumme vergleichen, Boot-Medium schreiben,
-durch das Startmenü und den Installationsassistenten führen.
+Here you really help: get the image, compare the checksum, write the boot medium, lead through
+the boot menu and the installer.
 
-### Fall C. Ein eingebettetes Gerät, das geflasht werden muss
+### Case C. An embedded device that has to be flashed
 
-Der aufwendigste Fall. Solche Geräte werden nicht von einem Stick installiert, sondern über
-eine Kabelverbindung von einem anderen Rechner aus in einen Wiederherstellungsmodus versetzt
-und beschrieben. Dafür gelten die Werkzeuge und Voraussetzungen des Herstellers.
+The most laborious case. Such devices are not installed from a stick, they are put into a
+recovery mode over a cable connection from another computer and written to. The manufacturer's
+tools and prerequisites apply for that.
 
-**Diese Voraussetzung ist hart:** Der schreibende Rechner muss die vom Hersteller verlangte
-Architektur und Betriebssystemversion haben. Ein Rechner mit anderer Architektur kann das
-nicht, auch nicht in einem Container, weil die Verbindung zum Gerät im
-Wiederherstellungsmodus durchgereicht werden müsste.
+**This prerequisite is hard:** the writing computer has to have the architecture and operating
+system version the manufacturer demands. A computer with a different architecture cannot do it,
+not even in a container, because the connection to the device in recovery mode would have to be
+passed through.
 
-Was du tust:
+What you do:
 
-1. **Prüf, ob ein geeigneter Rechner verfügbar ist.** Der Technikcheck aus dem Onboarding
-   hält das in `business/profile.md` fest.
-2. **Ist keiner da:** sag es klar und früh. Nicht „das wird schwierig", sondern:
+1. **Check whether a suitable computer is available.** The technical check from onboarding
+   records that in `business/profile.md`.
+2. **If there is none:** say it clearly and early. Not "that will be difficult", but:
 
-   > Dieses Gerät lässt sich von deinem Rechner aus nicht beschreiben. Dafür braucht es
-   > einen Rechner mit der vom Hersteller verlangten Architektur. Zwei Wege: du besorgst dir
-   > einen, oder das Gerät kommt vorbereitet zu dir. Klär das, bevor du einen Termin beim
-   > Kunden machst.
+   > This device cannot be written from your computer. That needs a computer with the
+   > architecture the manufacturer demands. Two ways: you get hold of one, or the device comes
+   > to you prepared. Settle that before you fix an appointment at the customer.
 
-3. **Ist einer da:** die Schritte des Herstellers gelten. Lies sie in der aktuellen Fassung
-   nach, statt sie aus dem Gedächtnis zu nennen, die Werkzeuge ändern sich mit jeder
-   Generation.
+3. **If there is one:** the manufacturer's steps apply. Read them up in the current version
+   instead of naming them from memory, the tools change with every generation.
 
-## Boot-Medium schreiben (Fall B)
+## Writing the boot medium (case B)
 
-Der einzige unumkehrbare Schritt der ganzen Einrichtung. Reihenfolge:
+The only irreversible step of the whole setup. Order:
 
-1. **Abbild besorgen.** Von der offiziellen Quelle, in der Fassung, die zum Gerät passt.
-2. **Prüfsumme vergleichen.**
-   `node .ara/tools/disk.mjs --checksum <datei>`
-   Vergleich mit der veröffentlichten Prüfsumme. Stimmt sie nicht: **nicht schreiben.**
-   Ein halb geladenes Abbild führt zu einem Rechner, der bis zur Hälfte startet, und kostet
-   dich einen Vor-Ort-Termin.
-3. **Datenträger anzeigen.**
+1. **Get the image.** From the official source, in the version that fits the device.
+2. **Compare the checksum.**
+   `node .ara/tools/disk.mjs --checksum <file>`
+   Compare with the published checksum. If it does not match: **do not write.** A half-loaded
+   image leads to a computer that boots halfway, and costs you an on-site appointment.
+3. **Show the disks.**
    `node .ara/tools/disk.mjs --list`
-   Das Werkzeug zeigt nur externe Datenträger. Lies dem Menschen **Bezeichnung und Größe**
-   vor und lass ihn gegen den Stick in seiner Hand bestätigen. Zwei Sticks gleicher Größe
-   sind der häufigste schwere Fehler.
-4. **Vorschau.**
-   `node .ara/tools/disk.mjs --write <abbild> --to <kennung>`
-   Zeigt, was passieren würde, ohne etwas zu tun. Das ist die Bestätigungsstufe.
-5. **Schreiben.** Mit `--yes --execute`. Braucht Verwaltungsrechte; wenn das Passwort
-   nicht durchkommt, gib die beiden angezeigten Befehle aus und lass den Menschen sie in
-   seinem Terminal ausführen. Das ist kein Scheitern, das ist der normale Weg.
+   The tool shows external disks only. Read the **label and size** out to the human and have
+   them confirm it against the stick in their hand. Two sticks of the same size are the most
+   frequent serious mistake.
+4. **Preview.**
+   `node .ara/tools/disk.mjs --write <image> --to <id>`
+   Shows what would happen without doing anything. That is the confirmation stage.
+5. **Write.** With `--yes --execute`. Needs administrative rights; if the password does not get
+   through, print the two commands shown and let the human run them in their own terminal. That
+   is not a failure, that is the normal way.
 
-## Erstboot begleiten
+## Accompanying the first boot
 
-Was du nicht selbst tun kannst, also Stick einstecken, Taste drücken, Kabel umstecken, wird
-**eine kurze Anweisung, keine Anleitung**. Ein Schritt, dann warten, dann der nächste:
+What you cannot do yourself, so plugging in the stick, pressing a key, moving a cable, becomes
+**one short instruction, not a manual**. One step, then wait, then the next:
 
-> Steck den Stick ein und starte das Gerät neu. Beim Hochfahren die Taste für das Startmenü
-> drücken, je nach Hersteller F11, F12 oder Entf. Sag mir, wenn du das Menü siehst.
+> Plug in the stick and restart the device. While it comes up, press the key for the boot menu,
+> depending on the manufacturer F11, F12 or Del. Tell me when you see the menu.
 
-Nicht sechs Schritte auf einmal. Der Mensch steht dabei vor dem Gerät und kann nicht
-mitlesen.
+Not six steps at once. The human is standing in front of the device and cannot read along.
 
-Beim Installationsassistenten führst du durch die Punkte, die später zählen:
+At the installer you lead through the points that count later:
 
-- **Benutzername**: der wird zum Anmeldenamen für die Fernwartung. Einheitlich halten.
-- **Netz**: feste Adresse oder automatisch? Feste Adresse ist für ein Gerät, das dauerhaft
-  erreichbar sein soll, fast immer die bessere Wahl. Sprich das mit dem ab, der das
-  Kundennetz betreut.
-- **Verschlüsselung der Festplatte**: bedenken: ein verschlüsseltes Gerät startet nach
-  einem Stromausfall nicht ohne Eingabe durch. Für ein Gerät im Serverschrank ist das
-  eine bewusste Entscheidung, keine Nebensache.
-- **Automatische Anmeldung**: aus.
+- **User name**: that becomes the login name for remote maintenance. Keep it consistent.
+- **Network**: fixed address or automatic? A fixed address is almost always the better choice
+  for a device that is meant to stay reachable. Agree that with whoever looks after the customer
+  network.
+- **Disk encryption**: consider that an encrypted device does not boot through after a power cut
+  without an entry. For a device in a server cabinet that is a deliberate decision, not a side
+  matter.
+- **Automatic login**: off.
 
-Alles, was hier entschieden wird, gehört in den Laufzettel. In sechs Monaten weiß niemand
-mehr, warum das Gerät so heißt, wie es heißt.
+Everything decided here belongs in the runsheet. In six months nobody knows any more why the
+device is called what it is called.
 
-## Wenn es klemmt
+## When it gets stuck
 
-- **Gerät startet nicht vom Stick:** Startreihenfolge, sicherer Start, Anschluss wechseln.
-- **Startet, bricht aber ab:** meist ein beschädigtes Abbild. Prüfsumme kontrollieren.
-- **Kein Bild:** anderer Anschluss, anderer Bildschirm, Gerät braucht manchmal einen
-  angeschlossenen Bildschirm beim Start.
+- **Device does not boot from the stick:** boot order, secure boot, change the port.
+- **Boots but aborts:** usually a damaged image. Check the checksum.
+- **No picture:** other port, other screen, a device sometimes needs a connected screen at boot.
 
-Nach zwei erfolglosen Versuchen: anhalten, den Stand in den Laufzettel schreiben und
-gemeinsam entscheiden, ob es einen zweiten Termin braucht. Stundenlanges Probieren vor dem
-Kunden kostet mehr als ein zweiter Besuch.
+After two unsuccessful attempts: stop, write the state into the runsheet and decide together
+whether it needs a second appointment. Hours of trying in front of the customer cost more than
+a second visit.
