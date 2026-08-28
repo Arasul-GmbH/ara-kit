@@ -13,6 +13,18 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.11.0 (2026-08-28)
+
+Contract: up to 3
+
+- `/device` recognises a device without being told anything about it. It reads what the device says about itself, vendor from `/sys/class/dmi/id/sys_vendor`, model, architecture, running system, reachability, and prints every one of them with the place that gives it.
+- Which hardware the kit knows now stands under `.ara/knowledge/devices/`, one sheet per device, in both languages, for Orin, Thor and DGX Spark. Every sheet carries the date it is from and where its knowledge came from, and nothing is researched at runtime. A new device is a new sheet and no longer a new line in `lib/device.mjs`.
+- Before every run, and a second time before every intervention, `/device` says how well the profile is backed: the field `verification` from the platform catalogue of the product, read from the mirror. `live` means verified on real hardware, `emulation` means only checked under emulation, `follow-up` means built from manufacturer documentation. Without a mirror the kit says that it cannot read the level, and it guesses none.
+- The catalogue profile lands in `device.md` only when the mirror really carries it and the memory fits the variant. `orin-64` on an Orin with 32 GB would be a promise about memory this device does not keep.
+- `--probe <file>` is the dry run: findings from a file instead of from a device, same recognition, same profile, same verification level, but nothing gets written and nothing gets changed. It refuses `--install`, `--deploy-key` and `--admin-login`. That is how the self-test carries Thor and DGX Spark, and neither of them is thereby verified.
+- On a computer that does not carry Arasul the run ends helpfully: which devices carry it today according to the sheets, that questions about Arasul need no device, and a calm sentence on the licence. The kit is under the Apache licence 2.0 and stays usable without Arasul.
+- `.gitignore` anchors the user folders at the repository root. Without the leading slash `devices/` also excluded `.ara/knowledge/devices/`, and then the device profiles would not have arrived in a clone.
+
 ## 0.10.0 (2026-08-28)
 
 Contract: up to 3

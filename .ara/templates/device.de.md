@@ -5,7 +5,7 @@ model:                    # wie das Gerät heißt, laut Lieferschein
 hardware:                 # was das Gerät von sich sagt, von device.mjs eingetragen
 os:                       # Betriebssystem, von device.mjs eingetragen
 arch:                     # Architektur, von device.mjs eingetragen
-profile:                  # Plattformprofil. NUR wenn vom Gerät bestätigt
+profile:                  # Plattformprofil aus dem Katalog. Von device.mjs eingetragen, nur wenn der Spiegel es wirklich führt
 serial:
 status: planned           # planned | delivered | installing | live | retired
 verdict:                  # supported | soon | unsupported, von device.mjs eingetragen

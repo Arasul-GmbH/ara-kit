@@ -20,9 +20,10 @@ Bei einem Kundengerät kommt `--customer <kunde>` dazu. Das Werkzeug:
 2. prüft die SSH-Verbindung mit Schlüssel, ohne Passwortabfrage,
 3. lässt auf dem Gerät ein Leseskript laufen: Hardware, System, Speicher, Docker,
    Ollama als Programm oder als Container, Hinweise auf Arasul,
-4. fällt das Urteil und schreibt Befund und Urteil in die Akte, unter „Prüfungen",
-5. merkt sich das Gerät in `.ara/state.json`,
-6. nennt den nächsten Schritt.
+4. erkennt daraus das Gerät, ohne Vorwissen, und sagt, wie gut das belegt ist,
+5. fällt das Urteil und schreibt Befund, Profil und Urteil in die Akte, unter „Prüfungen",
+6. merkt sich das Gerät in `.ara/state.json`,
+7. nennt den nächsten Schritt.
 
 Es liest nur. Eingriffe sind `--install` und `--deploy-key`, beide weiter unten, beide
 nur auf Wunsch und nach Bestätigung.
@@ -43,27 +44,77 @@ Kunden. Kein Scheinkunde für ein eigenes Gerät, das verfälscht jede Auswertun
 kann sich ändern, der Standort bleibt. Bei Geräten ohne Kunden ist das Modell ein guter
 Name (`orin`, `dgx-spark`), weil der Standort sie nicht unterscheidet.
 
+## Erkennung, und wie gut sie belegt ist
+
+**Dem Werkzeug muss über das Gerät nichts gesagt werden.** Es liest, was das Gerät über
+sich sagt, und gibt fünf Dinge aus, jedes mit der Stelle, die es hergibt: ob es erreichbar
+ist, den Hersteller (`/sys/class/dmi/id/sys_vendor`), das Modell
+(`/proc/device-tree/model` oder DMI), die Architektur und das laufende System.
+
+Daraus wird das **Geräteprofil**, und das gibt das Werkzeug als eigenen Abschnitt aus:
+
+- **Das Kit-Profil.** Ein Blatt je Gerät unter `.ara/knowledge/devices/`, und das Blatt
+  sagt, von wann es ist und woher seine Kenntnis stammt. Das ist eine Aussage über
+  Hardware, nicht über das Produkt, und sie steht geschrieben: zur Laufzeit wird nichts
+  recherchiert. Passt kein Blatt, sagt das Werkzeug das, statt etwas Ähnliches
+  hinzustellen.
+- **Das Katalogprofil.** Das Profil, das das Produkt für diese Hardware führt. Es wird
+  nur genannt, wenn der Spiegel es wirklich hat, und nur, wenn der Speicher zur Fassung
+  passt: `orin-64` auf einem Orin mit 32 GB wäre eine Zusage über Speicher, die dieses
+  Gerät nicht hält.
+- **Der Verifikationsstand.** Das Feld `verification` aus dem Katalog, aus dem Spiegel
+  gelesen. `live` heißt an echter Hardware verifiziert, `emulation` heißt nur unter
+  Emulation geprüft, `follow-up` heißt nach Herstellerdoku gebaut und an keinem Gerät
+  erprobt.
+
+**Diese Zeile steht vor jedem Eingriff, nicht danach.** Wer auf einem Gerät installiert,
+soll vorher gelesen haben, worauf sich das Kit stützt und wie weit das trägt. Ohne Spiegel
+gibt es keine Stufe, und dann sagt das Werkzeug, dass es sie nicht lesen kann. Es rät
+keine.
+
+Über ein Gerät, das nicht dasteht, lässt sich auch reden:
+
+```
+node .ara/tools/device.mjs --name thor --probe <datei mit befunden>
+```
+
+Das ist der Trockenlauf. Dieselbe Erkennung, dasselbe Profil, derselbe
+Verifikationsstand, Befunde aus einer Datei statt von einem Gerät. **Er schreibt nichts
+und verändert nichts**, und er verweigert `--install`, `--deploy-key` und
+`--admin-login`. So findet ein Partner heraus, was das Kit über ein Gerät sagen würde,
+bevor er es kauft.
+
 ## Das Urteil
 
 Drei Antworten, und jede hat eine Folge:
 
 | Urteil | Woran erkannt | Was folgt |
 | --- | --- | --- |
-| **unterstützt** | Jetson Orin oder Jetson Thor | Arasul kann darauf laufen. Weiter unten bei „Nach dem Urteil" |
-| **bald** | DGX Spark, andere Rechner mit NVIDIA-Grafik | Angekündigt. Vorgemerkt in der Akte, weiter, sobald der Spiegel ein Profil dafür führt |
+| **unterstützt** | ein Blatt unter `.ara/knowledge/devices/`, dessen `support` das sagt | Arasul kann darauf laufen. Weiter unten bei „Nach dem Urteil" |
+| **bald** | ein Blatt, das `soon` sagt, oder NVIDIA-Grafik ohne Blatt | Angekündigt. Vorgemerkt in der Akte, weiter, sobald der Spiegel ein Profil dafür führt |
 | **nicht unterstützt, wir merken es vor** | alles andere, etwa ein Mac oder ein Rechner ohne NVIDIA-Grafik | Vorgemerkt in der Akte mit Datum. Ohne Arasul endet es hier |
 
-Die Regel steht in `.ara/tools/lib/device.mjs`, und sie ist eine Regel des Kits, kein
-Produktwert. Was auf einem unterstützten Gerät gilt (Profil, Modell, Engine, Speicher),
-steht weiter nur im Spiegel: `.ara/knowledge/identify-device.de.md`.
+Welche Hardware Arasul trägt, steht in den Blättern und nicht im Quelltext, und es ist
+eine Aussage des Kits, kein Produktwert. Ein neues Gerät ist ein neues Blatt. Was auf
+einem unterstützten Gerät gilt (Modell, Engine, Speicher), steht weiter nur im Spiegel:
+`.ara/knowledge/identify-device.de.md`.
 
 **Vormerken** heißt: `verdict` und `noted_on` stehen in der Akte. Damit bleibt sichtbar,
 welche Geräte nachgefragt wurden, und der Mensch kann das ans Produktteam geben.
 
-**Ohne Arasul endet es hier.** Das Werkzeug sagt in einem Satz, was Arasul brächte:
-Anmeldung, Teststand und Live-Schaltung für Apps, Freigaben, Flows, Sicherung und
-Wartung. Das ist die ganze Ansage. Kein Verkaufsgespräch hinterher, es sei denn, der
-Mensch fängt eins an.
+**Ohne Arasul endet es hier, und es endet hilfreich.** Das Werkzeug schließt mit drei
+Dingen, und keines davon ist ein Verkaufsgespräch: was Arasul brächte, in einem Satz
+(Anmeldung, Teststand und Live-Schaltung für Apps, Freigaben, Flows, Sicherung und
+Wartung), welche Geräte es heute tragen, nach den Blättern, und ein ruhiger Satz zur
+Lizenz. Das Kit steht unter der Apache-Lizenz 2.0 und bleibt ohne Arasul brauchbar; was
+eine Lizenz für Arasul kostet, regelt der Vertrag, und das Download-Token aus dem Portal
+kostet nichts.
+
+**Fragen zu Arasul brauchen kein Gerät.** Wer das Kit auf seinem Rechner ausprobiert und
+dann fragt, was das eigentlich ist, bekommt eine Antwort, aus
+`.ara/knowledge/sales.de.md` und `.ara/knowledge/extensions.de.md`, und ein ehrliches
+„das weiß ich nicht" dort, wo die Antwort ein Produktwert wäre, an den das Kit nicht
+herankommt. Sag nicht mehr, als gefragt war, es sei denn, der Mensch fängt an.
 
 ## Wenn SSH nicht steht
 

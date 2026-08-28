@@ -8,7 +8,8 @@ Device: **$1**
 Read `.ara/knowledge/device.md` and work along it. Knowledge this command loads:
 `.ara/knowledge/device.md`, `.ara/knowledge/security.md`, plus, only after the verdict and
 only when needed, `.ara/knowledge/remote-access.md`, `.ara/knowledge/boot-and-flash.md`,
-`.ara/knowledge/identify-device.md`, `.ara/knowledge/handover.md`,
+`.ara/knowledge/identify-device.md`, the matching sheet under `.ara/knowledge/devices/`,
+`.ara/knowledge/handover.md`,
 `.ara/knowledge/deploy.md` once Arasul runs on the device, and
 `.ara/knowledge/live-knowledge.md` for every product value. You read the profile in
 `business/profile.md` beforehand: language, branch, detail level, security level, SSH key.
@@ -36,6 +37,22 @@ The tool creates the file, checks SSH, recognises hardware and system, finds Doc
 Ollama and traces of Arasul and delivers the verdict: **supported**, **soon** or **not
 supported, we note it down**. It only reads. Say the result in three lines and the next
 step it names.
+
+**Recognition needs no prior knowledge, and you supply none.** The tool reads what the
+device says about itself and holds it against the sheets under `.ara/knowledge/devices/`.
+What it prints under "Device profile" you pass on unchanged, in particular the verification
+level: `live` means verified on real hardware, `emulation` means only checked under
+emulation, `follow-up` means built from manufacturer documentation. Without a mirror there
+is no level, and then you say that instead of a level. **Never name a device, a memory size
+or a level from memory.**
+
+**Before an intervention that line comes first.** `--install` and `--deploy-key` print the
+profile block themselves before they start. Read it out before you have the intervention
+confirmed: on a device whose profile is not `live`, that belongs in the confirmation.
+
+**A device that is not here** can be run dry: `--probe <file with findings>` takes the
+findings from a file, recognises the same way and writes nothing. Use it when somebody asks
+what the kit would say about a device they do not own yet.
 
 **Docker and Ollama** it only sets up on request, with `--install docker,ollama`. That is
 a level 2 intervention: name intent, target and way back, have it confirmed, then call it.
@@ -72,6 +89,9 @@ straight into the login, back comes a credential, and the password is never disp
 you call with it, `node .ara/tools/mirror.mjs --docs` says. Procedure in
 `.ara/knowledge/device.md`.
 
-**Without Arasul it ends here.** The tool says in one sentence what Arasul would bring.
-Nothing more, no sales pitch. With Arasul on a supported device it continues along the
-procedure.
+**Without Arasul it ends here, and helpfully.** The tool closes by itself with what Arasul
+would bring, which devices carry it and a calm sentence on the licence. Pass that on and add
+nothing to it. If the human then asks about Arasul, answer them: that needs no device, and
+`.ara/knowledge/sales.md` is there for it. Where the answer would be a product value you
+cannot reach, say that you do not know it. With Arasul on a supported device it continues
+along the procedure.
