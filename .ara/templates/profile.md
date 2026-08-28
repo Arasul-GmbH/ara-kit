@@ -1,57 +1,58 @@
 ---
 role: partner             # partner | company
+language: en              # de | en, which language Ara speaks and the tools print in
 name:
-salutation:               # wie du angesprochen werden willst
+salutation:               # how you want to be addressed
 company:
 region:
-skills:                   # was du kannst, kommagetrennt: development, administration, domain, sales
-tools:                    # womit dein Haus arbeitet, kommagetrennt, z. B. DATEV, HubSpot, Nextcloud
-invoice:                  # nur Partner: yes | no | later, soll das Kit Rechnungen erzeugen
-invoice_tool:             # nur Partner: womit heute Rechnungen geschrieben werden
-detail_level: medium      # low | medium | high, wie viel Ara erklärt
+skills:                   # what you can do, comma separated: development, administration, domain, sales
+tools:                    # what your house works with, comma separated, e.g. DATEV, HubSpot, Nextcloud
+invoice:                  # partner only: yes | no | later, should the kit produce invoices
+invoice_tool:             # partner only: what invoices are written with today
+detail_level: medium      # low | medium | high, how much Ara explains
 security_level: standard  # standard | relaxed
-experience:               # kurz: linux, ssh, hardware vor ort
-flash_host: unknown       # no | yes | unknown, x86-Linux zum Flashen verfügbar
-ssh_key:                  # Name des Schlüssels in ~/.ssh
+experience:               # briefly: linux, ssh, hardware on site
+flash_host: unknown       # no | yes | unknown, x86 Linux available for flashing
+ssh_key:                  # name of the key in ~/.ssh
 secrets_store: env        # env | keychain
-browser: yes              # yes | no, darf Ara den Browser selbst bedienen
-backup_repo:              # wo dieses Kit gesichert wird, falls eingerichtet
-first_device:             # Modell des ersten Geräts, leer wenn keins ansteht
+browser: yes              # yes | no, may Ara operate the browser herself
+backup_repo:              # where this kit is backed up, if set up
+first_device:             # model of the first device, empty if none is coming
 first_device_state:       # present | ordered | none
-first_app:                # ein Satz: was die erste App tun soll
+first_app:                # one sentence: what the first app should do
 created:
 ---
 
-<!-- Diese Datei gehört dir. Ara schreibt sie in deiner Sprache und spricht dich
-     darin an, nicht über dich. -->
+<!-- This file belongs to you. Ara writes it in your language and addresses you in
+     it, she does not write about you. -->
 
-## Wer ich bin und was ich kann
+## Who I am and what I can do
 
-<!-- Rolle, Stärken, was du selbst machst und was nicht. Danach richtet sich,
-     wie viel jeder Befehl erklärt. In Du-Form an dich gerichtet. -->
+<!-- Role, strengths, what you do yourself and what you do not. How much every
+     command explains follows from that. Addressed to you. -->
 
-## Wie ich arbeiten möchte
+## How I want to work
 
-<!-- Wie viel soll erklärt werden, was kannst du selbst, worauf legst du Wert.
-     In Du-Form an dich gerichtet. -->
+<!-- How much should be explained, what you can do yourself, what matters to you.
+     Addressed to you. -->
 
-## Womit mein Haus arbeitet
+## What my house works with
 
-<!-- Buchhaltung, CRM, Ticket, Dateiablage, Kommunikation, ERP oder Branchensoftware.
-     Für ein Unternehmen: woran Apps später andocken. Für einen Partner: der Stack,
-     den du bei Kunden kennst. -->
+<!-- Accounting, CRM, ticketing, file storage, communication, ERP or industry
+     software. For a company: what apps will dock onto later. For a partner: the
+     stack you know at customers. -->
 
-## Was ich vorhabe
+## What I intend
 
-<!-- Wo du hin willst: wie viele Kunden, welche Branchen, ob das nebenher läuft
-     oder dein Hauptgeschäft ist. Als Unternehmen: wofür das Gerät da ist, welche
-     Abteilungen es nutzen, was die erste App tun soll. -->
+<!-- Where you want to go: how many customers, which industries, whether this runs
+     on the side or is your main business. As a company: what the device is there
+     for, which departments use it, what the first app should do. -->
 
-## Abweichungen von den Standardregeln
+## Deviations from the standard rules
 
-<!-- Nur wenn Regeln gelockert wurden: was genau, seit wann, warum. -->
+<!-- Only if rules were relaxed: what exactly, since when, why. -->
 
-## Technikstand dieses Rechners
+## Technical state of this computer
 
-<!-- Ergebnis von check-environment.mjs, mit Datum. Was fehlt, steht hier als
-     offener Punkt. -->
+<!-- Result of check-environment.mjs, with a date. What is missing stands here as
+     an open point. -->

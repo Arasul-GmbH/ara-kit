@@ -96,7 +96,7 @@ if (arg.void) {
   if (!entry) fail(`Die Nummer ${number} steht nicht im Nummernkreis.`);
   const reason = str(arg.reason);
   if (!reason) fail('Zum Stornieren gehoert ein Grund: --reason "…".');
-  updateEntry(number, { Stand: "storniert", Grund: reason });
+  updateEntry(number, { State: "storniert", Reason: reason });
   console.log(
     `${number} steht jetzt als storniert im Nummernkreis. Die Nummer bleibt vergeben, ` +
       "sonst haette der Kreis eine Luecke." +
@@ -162,9 +162,9 @@ if (arg.new) {
   // Nummernkreis fuehrt damit dieselben Betraege, die im Papier stehen.
   const written = readInvoice(file);
   updateEntry(number, {
-    Netto: formatAmount(written.net),
-    Brutto: formatAmount(written.gross),
-    Datei: relative(ROOT, file),
+    Net: formatAmount(written.net),
+    Gross: formatAmount(written.gross),
+    File: relative(ROOT, file),
   });
 
   const checks = checkVat14(written, seller);
@@ -356,10 +356,10 @@ if (!again.ok) {
 const number = invoice.fields.invoice_number;
 if (number && findEntry(number)) {
   updateEntry(number, {
-    Stand: "gestellt",
-    Netto: formatAmount(invoice.net),
-    Brutto: formatAmount(invoice.gross),
-    Datei: relative(ROOT, path),
+    State: "gestellt",
+    Net: formatAmount(invoice.net),
+    Gross: formatAmount(invoice.gross),
+    File: relative(ROOT, path),
   });
 }
 
@@ -387,7 +387,7 @@ function survey() {
   const customer = str(arg.customer);
   const ledger = readLedger();
   const problems = auditLedger(ledger);
-  const rows = customer ? ledger.rows.filter((row) => row.Kunde.startsWith(customer)) : ledger.rows;
+  const rows = customer ? ledger.rows.filter((row) => row.Customer.startsWith(customer)) : ledger.rows;
 
   if (arg.json) {
     console.log(JSON.stringify({ ...ledger, rows, problems }, null, 2));
@@ -409,19 +409,19 @@ function survey() {
   }
   for (const row of rows.slice(-20)) {
     console.log(
-      `${row.Nummer}  ${row.Datum}  ${row.Kunde.padEnd(24)} ${String(row.Brutto).padStart(12)} Euro  ` +
-        `${row.Stand}${STATES[row.Stand] ? ` (${STATES[row.Stand]})` : ""}`
+      `${row.Number}  ${row.Date}  ${row.Customer.padEnd(24)} ${String(row.Gross).padStart(12)} Euro  ` +
+        `${row.State}${STATES[row.State] ? ` (${STATES[row.State]})` : ""}`
     );
   }
   if (problems.length) {
     console.log("\nAm Nummernkreis stimmt etwas nicht:");
     for (const problem of problems) console.log(`  ${problem}`);
   }
-  const drafts = rows.filter((row) => row.Stand === "entwurf");
+  const drafts = rows.filter((row) => row.State === "entwurf");
   if (drafts.length) {
     console.log(
       `\n${drafts.length} Beleg${drafts.length === 1 ? "" : "e"} noch nicht gedruckt: ` +
-        drafts.map((row) => row.Nummer).join(", ")
+        drafts.map((row) => row.Number).join(", ")
     );
   }
 }

@@ -39,6 +39,7 @@ import {
   today,
   writeFrontmatter,
 } from "./lib/kit.mjs";
+import { localized, t } from "./lib/i18n.mjs";
 import { arasulRunning } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
 
@@ -111,7 +112,7 @@ if (arg.new) {
   ensureDir(dir);
   ensureDir(join(dir, "history"));
   ensureDir(join(dir, "documents"));
-  writeFileSync(file, readFileSync(join(ROOT, ".ara", "templates", "customer.md"), "utf8"));
+  writeFileSync(file, readFileSync(localized(join(ROOT, ".ara", "templates", "customer.md")), "utf8"));
   writeFrontmatter(file, {
     id: name,
     legal_name: str(arg["legal-name"]) || "",

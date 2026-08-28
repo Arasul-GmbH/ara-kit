@@ -1,54 +1,66 @@
 ---
-description: Kit einrichten oder auf den aktuellen Stand bringen
-argument-hint: [antwortdatei]
+description: Set up the kit or bring it up to date
+argument-hint: [answer file]
 ---
 
-Lies zuerst `.ara/persona/ara.md`, dann `.ara/knowledge/init.md`, und arbeite das
-Verfahren dort ab. Wissen, das dieser Befehl lädt: `.ara/knowledge/init.md`, dazu
-`.ara/knowledge/security.md` für die Sicherheitsstufen und `.ara/knowledge/browser.md`
-für den Browser. Sonst nichts.
+This is the one command that exists before there is a profile, so it is the one that is
+always English. Read `business/profile.md` if it is there: `language` says whether you
+speak English or German from here on. If it is not there, this is the first time, and the
+language is the first thing you ask.
 
-Es gibt drei Wege, und welcher gilt, entscheiden eine Datei und das Argument:
+Read `.ara/persona/ara.md` first, then `.ara/knowledge/init.md`, and work along the
+procedure there. In German, read the `.de.md` next to each of them. Knowledge this command
+loads: `.ara/knowledge/init.md`, plus `.ara/knowledge/security.md` for the security levels
+and `.ara/knowledge/browser.md` for the browser. Nothing else.
 
-**Ein Argument steht da (`$1`): eine Antwortdatei, kein Interview.**
+There are three ways, and which one applies a file and the argument decide:
+
+**An argument is there (`$1`): an answer file, no interview.**
 
 ```
 node .ara/tools/init.mjs --answers $1
 ```
 
-Das Werkzeug schreibt das Profil, legt die Befehle des Zweigs an und sagt, was fehlt.
-Du berichtest das Ergebnis und nennst den nächsten Schritt, mehr nicht. Beispiele für
-die Datei: `.ara/templates/init-answers-partner.json`, `init-answers-company.json`.
+The tool writes the profile, creates the commands of the branch and says what is missing.
+You report the result and name the next step, nothing more. Examples for the file:
+`.ara/templates/init-answers-partner.json`, `init-answers-company.json`.
 
-**`business/profile.md` fehlt: das erste Mal.** Interview nach dem Verfahren, zehn
-Runden, jede gebündelt im Interview-Werkzeug. Die erste Frage ist die Weiche: Partner
-oder Unternehmen. Sobald sie beantwortet ist, legst du die Befehle an:
+**`business/profile.md` is missing: the first time.** Interview along the procedure, ten
+rounds, each one bundled in the interview tool. The first round with questions asks two
+things at once: the language, and the fork between partner and company. As soon as both
+are answered, you create the commands:
 
 ```
-node .ara/tools/commands.mjs --apply --role <partner|company>
+node .ara/tools/commands.mjs --apply --role <partner|company> --language <de|en>
 ```
 
-Kein Token, kein Konto: das Onboarding braucht beides nicht.
+`--language` stands there because the profile does not exist yet; from then on the tools
+read it from the profile.
 
-**`business/profile.md` existiert: jedes weitere Mal.** Dann geht es um den Stand des
-Kits, nicht um den Menschen.
+No token, no account: the onboarding needs neither.
 
-1. `node .ara/tools/init.mjs --show` nennt zuerst den Stand des Kits, was daran neu ist
-   und bis zu welcher Kontraktfassung es mit einem Gerät zusammenarbeitet. Gib das in
-   zwei Sätzen weiter.
-2. `node .ara/tools/update.mjs --check` zeigt, was sich ändern würde, und nennt den Stand,
-   auf den es ginge. Nichts Neues: sag das in einer Zeile und hör auf.
-3. Gibt es etwas Neues, zeig die Liste und lass das Einspielen bestätigen. Dann
-   `node .ara/tools/update.mjs`. Es ersetzt nur `.ara/` und das Minimum von `.claude/`,
-   deine Ordner fasst es nicht an.
-4. `node .ara/tools/commands.mjs` zeigt je Befehl, ob er fehlt, im Kit neuer ist, von
-   Hand angepasst wurde oder beides. Fehlende und im Kit neuere: Unterschied zeigen,
-   dann `node .ara/tools/commands.mjs --apply`. Angepasste bleiben liegen, es sei denn,
-   der Mensch will die Kit-Fassung: `--replace <name>`.
-5. `node .ara/tools/init.mjs --show` nennt daneben die Lücken im Profil. Fehlt etwas,
-   das ein neuer Befehl braucht, frag genau das nach, nicht das ganze Profil noch einmal.
-6. `node .ara/tools/selftest.mjs`, damit der neue Stand auf diesem Rechner nachweislich
-   läuft.
+**`business/profile.md` exists: every further time.** Then it is about the version of the
+kit, not about the human.
 
-Kurz zur Haltung: mach so viel wie möglich selbst, prüf statt zu fragen, und stell
-Rückfragen gebündelt mit dem Interview-Werkzeug, nicht einzeln nacheinander.
+1. `node .ara/tools/init.mjs --show` names the version of the kit first, what is new about
+   it and up to which contract version it works together with a device. Pass that on in two
+   sentences.
+2. `node .ara/tools/update.mjs --check` shows what would change, and names the version it
+   would go to. Nothing new: say so in one line and stop.
+3. If there is something new, show the list and have the deployment confirmed. Then
+   `node .ara/tools/update.mjs`. It replaces only `.ara/` and the minimum of `.claude/`, it
+   does not touch your folders.
+4. `node .ara/tools/commands.mjs` shows per command whether it is missing, newer in the
+   kit, adapted by hand or both. Missing and newer in the kit: show the difference, then
+   `node .ara/tools/commands.mjs --apply`. Adapted ones stay, unless the human wants the
+   kit's version: `--replace <name>`.
+5. If the human wants a different language, set `language` in `business/profile.md` and run
+   `--apply` again. Every command then shows as "newer in kit", because its source has
+   become a different file. Do not switch unasked.
+6. `node .ara/tools/init.mjs --show` also names the gaps in the profile. If something is
+   missing that a new command needs, ask exactly that, not the whole profile again.
+7. `node .ara/tools/selftest.mjs`, so that the new version demonstrably runs on this
+   computer.
+
+Briefly on stance: do as much as possible yourself, check instead of asking, and put
+questions bundled into the interview tool, not one after another.

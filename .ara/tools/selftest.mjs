@@ -2688,7 +2688,7 @@ check("Der Nummernkreis ist fortlaufend und laesst sich nicht zurueckdrehen", ()
     year,
     last,
     format: "JJJJ-NNNN",
-    rows: numbers.map((n) => ({ Nummer: n, Datum: "", Kunde: "", Stand: "gestellt" })),
+    rows: numbers.map((n) => ({ Number: n, Date: "", Customer: "", State: "gestellt" })),
   });
 
   const heil = ledger(2026, 2, ["2026-0001", "2026-0002"]);
@@ -2771,7 +2771,7 @@ check("Die Pflichtangaben nach § 14 UStG werden einzeln geprueft", () => {
       year: 2026,
       last: 1,
       format: "JJJJ-NNNN",
-      rows: [{ Nummer: "2026-0001", Datum: "2026-08-27", Kunde: "probe", Stand: "entwurf" }],
+      rows: [{ Number: "2026-0001", Date: "2026-08-27", Customer: "probe", State: "entwurf" }],
     };
     const beleg = (changes = {}, body = "") => {
       const fields = {

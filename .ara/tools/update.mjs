@@ -32,8 +32,9 @@ import {
   statSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
+import { language, t, variantOf } from "./lib/i18n.mjs";
 import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
 import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
 import { standBlock } from "./lib/version.mjs";
@@ -155,7 +156,14 @@ function stand(root) {
     const file = join(root, ...parts);
     return existsSync(file) ? readFileSync(file, "utf8") : "";
   };
-  return { version: read(".ara", "VERSION").trim(), changelog: read(".ara", "CHANGELOG.md") };
+  // Die Aenderungsliste gibt es in beiden Sprachen. Gelesen wird die, in der
+  // vorgelesen wird: `variantOf` baut den Namen, `read` gibt leer zurueck, wenn
+  // ein fremder Stand sie noch nicht mitbringt.
+  const changelog = read(".ara", basename(variantOf("CHANGELOG.md", language())));
+  return {
+    version: read(".ara", "VERSION").trim(),
+    changelog: changelog || read(".ara", "CHANGELOG.md"),
+  };
 }
 
 /**

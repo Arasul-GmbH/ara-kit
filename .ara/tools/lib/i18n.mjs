@@ -58,9 +58,15 @@ export function language() {
   return cached;
 }
 
-/** Waehlt zwischen englisch und deutsch. */
-export function t(en, de) {
-  return language() === "de" ? de : en;
+/**
+ * Waehlt zwischen englisch und deutsch.
+ *
+ * `lang` gibt die Sprache vor, statt sie zu ermitteln. Das braucht `/init`: es
+ * schreibt das Profil, in dem die Sprache erst stehen wird, und muss dabei schon
+ * in ihr schreiben.
+ */
+export function t(en, de, lang = language()) {
+  return lang === "de" ? de : en;
 }
 
 /**

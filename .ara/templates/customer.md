@@ -1,41 +1,41 @@
 ---
-id:                       # unveränderlich, auch wenn der Ordner umbenannt wird
-legal_name:               # vollständige Firmierung mit Rechtsform
+id:                       # unchangeable, even when the folder gets renamed
+legal_name:               # full legal name with the legal form
 status: lead              # lead | quoted | won | installed | maintenance | inactive
 industry:
 region:
 contact_person:
-contact:                  # Telefon oder E-Mail
+contact:                  # phone or email
 website:
-street:                   # Strasse und Hausnummer, Anschrift fuer Angebot und Rechnung
+street:                   # street and number, address for offer and invoice
 postcode:
 city:
-country: DE               # Laenderkennzeichen nach ISO 3166, zwei Buchstaben
-vat_id:                   # USt-IdNr des Kunden, falls vorhanden
+country: DE               # country code after ISO 3166, two letters
+vat_id:                   # the customer's VAT ID, if there is one
 created:
 last_contact:
-follow_up:                # JJJJ-MM-TT, wann du dich wieder melden willst
-follow_up_note:           # ein Halbsatz, worum es dann geht
+follow_up:                # YYYY-MM-DD, when you want to get back in touch
+follow_up_note:           # half a sentence on what it will be about then
 ---
 
-## Was sie vorhaben
+## What they intend
 
-<!-- In Kundenworten, ein bis zwei Sätze. Grundlage für Abnahme und Schulung. -->
+<!-- In the customer's words, one or two sentences. Ground for handover and training. -->
 
-## Ausgangslage
+## Starting position
 
-<!-- Wie arbeiten sie heute, was stört sie daran, was ist der Anlass. -->
+<!-- How do they work today, what bothers them about it, what is the occasion. -->
 
-## Umfeld
+## Surroundings
 
-<!-- Standort des Geräts, Netzwerkbetreuung, bestehende IT-Dienstleister,
-     besondere Anforderungen der Branche. -->
+<!-- Location of the device, who looks after the network, existing IT providers,
+     special requirements of the industry. -->
 
-## Wer entscheidet
+## Who decides
 
-<!-- Wer unterschreibt, wer nutzt, wer kann das Projekt verhindern.
-     Bei kleinen Firmen oft dieselbe Person, dann steht das hier. -->
+<!-- Who signs, who uses it, who can prevent the project.
+     In small firms often the same person, and then that stands here. -->
 
-## Offene Punkte
+## Open points
 
-<!-- Was noch geklärt werden muss, mit wem. -->
+<!-- What still has to be settled, with whom. -->

@@ -32,6 +32,7 @@ import {
   resolveDevice,
   writeFrontmatter,
 } from "./lib/kit.mjs";
+import { localized, t } from "./lib/i18n.mjs";
 
 const PHASES = [
   "Vorbereitung am Schreibtisch",
@@ -64,7 +65,7 @@ if (arg.create) {
   const file = join(dir, "runsheet.md");
   if (existsSync(file)) fail(`Es gibt schon einen Laufzettel: ${file}`);
 
-  writeFileSync(file, readFileSync(join(ROOT, ".ara", "templates", "runsheet.md"), "utf8"));
+  writeFileSync(file, readFileSync(localized(join(ROOT, ".ara", "templates", "runsheet.md")), "utf8"));
   writeFrontmatter(file, {
     customer: customer || "",
     device: arg.device,

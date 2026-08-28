@@ -66,6 +66,7 @@ import {
   today,
   writeFrontmatter,
 } from "./lib/kit.mjs";
+import { localized, t } from "./lib/i18n.mjs";
 import { getSecret, hasSecret, setSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, reason } from "./lib/arasul.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
@@ -82,7 +83,7 @@ import {
 } from "./lib/install.mjs";
 
 const STATE = join(ROOT, ".ara", "state.json");
-const TEMPLATE = join(ROOT, ".ara", "templates", "device.md");
+const TEMPLATE = localized(join(ROOT, ".ara", "templates", "device.md"));
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const INSTALLABLE = ["docker", "ollama", "arasul"];
 /** Was das Prüfskript als Dienst meldet und was deshalb "fehlt" heißen kann. */

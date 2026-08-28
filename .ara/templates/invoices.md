@@ -1,47 +1,47 @@
 ---
-format: JJJJ-NNNN
+format: YYYY-NNNN
 year:
 last: 0
 created:
 ---
 
-<!-- Diese Datei gehoert dir. Sie ist der Nummernkreis deiner Rechnungen und
-     wird von node .ara/tools/invoice.mjs fortgeschrieben. Ein Update des Kits
-     fasst sie nie an, sie liegt unter business/. -->
+<!-- This file belongs to you. It is the number range of your invoices and is
+     written on by node .ara/tools/invoice.mjs. An update of the kit never
+     touches it, it lies under business/. -->
 
-# Nummernkreis der Rechnungen
+# Number range of the invoices
 
-Jede Rechnung bekommt eine Nummer, jede Nummer gibt es genau einmal, und
-zwischen zwei Nummern liegt keine Luecke. Das ist keine Ordnungsliebe, sondern
-§ 14 Abs. 4 Nr. 4 UStG: eine Rechnung ohne fortlaufende Nummer berechtigt den
-Kunden nicht zum Vorsteuerabzug.
+Every invoice gets a number, every number exists exactly once, and between two
+numbers there is no gap. That is not tidiness, it is section 14(4) no. 4 UStG: an
+invoice without a sequential number does not entitle the customer to deduct input
+tax.
 
-Die Nummer hat die Form `JJJJ-NNNN`. Jedes Jahr faengt bei `0001` an. `last` im
-Kopf ist die zuletzt vergebene Zahl des Jahres, das unter `year` steht.
+The number has the form `YYYY-NNNN`. Every year starts at `0001`. `last` in the
+header is the last number assigned in the year that stands under `year`.
 
-**Vergeben wird beim Anlegen des Belegs, nicht beim Drucken.** Ein Entwurf, der
-nie verschickt wurde, hat trotzdem seine Nummer verbraucht. Wer ihn verwirft,
-storniert die Nummer, statt die Zeile zu loeschen:
+**Assignment happens when the document is created, not when it is printed.** A
+draft that was never sent has used up its number nevertheless. Whoever discards
+one cancels the number instead of deleting the line:
 
 ```
-node .ara/tools/invoice.mjs --void JJJJ-NNNN --reason "Grund"
+node .ara/tools/invoice.mjs --void YYYY-NNNN --reason "reason"
 ```
 
-**Von Hand wird hier nichts zurueckgedreht.** Eine kleinere Zahl unter `last`
-als in der Liste steht, faellt beim naechsten Aufruf auf, und dann vergibt das
-Werkzeug gar keine Nummer mehr, bis es geklaert ist.
+**Nothing gets wound back here by hand.** A smaller number under `last` than in
+the list shows up at the next call, and then the tool assigns no number at all
+until it has been settled.
 
-## Vergebene Nummern
+## Assigned numbers
 
-| Nummer | Datum | Kunde | Netto | Brutto | Stand | Grund | Datei |
+| Number | Date | Customer | Net | Gross | State | Reason | File |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 
-Noch keine Nummer vergeben.
+No number assigned yet.
 
-## Staende
+## States
 
-| Stand | Was er heisst |
+| State | What it means |
 | --- | --- |
-| `entwurf` | geschrieben, noch nicht gedruckt |
-| `gestellt` | gedruckt und beim Kunden |
-| `storniert` | zurueckgenommen, die Nummer bleibt vergeben |
+| `entwurf` | written, not printed yet |
+| `gestellt` | printed and with the customer |
+| `storniert` | withdrawn, the number stays assigned |

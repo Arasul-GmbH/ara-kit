@@ -1,45 +1,45 @@
 ---
 legal_name:
-address:                  # Strasse Nr, PLZ Ort. Die Rechnung braucht die drei Teile einzeln
-country: DE               # Laenderkennzeichen nach ISO 3166, zwei Buchstaben
+address:                  # Street No, postcode city. The invoice needs the three parts separately
+country: DE               # country code after ISO 3166, two letters
 phone:
 email:
 website:
 tax_number:
 vat_id:
 iban:
-hourly_rate:              # netto, in Euro
-hardware_markup:          # Prozent
-payment_terms:            # Tage
-setup_hours:              # Stunden für eine Ersteinrichtung, erster Gerätetyp
-care_yearly:              # eigene Betreuung, netto je Jahr und Gerät
-travel:                   # Anfahrt, netto je Fahrt
-minimum_fee:              # Mindestpauschale, netto je Auftrag
-rates_asof:               # JJJJ-MM-TT, Stand der eigenen Sätze
-logo:                     # Pfad zur Datei, falls vorhanden
+hourly_rate:              # net, in euro
+hardware_markup:          # percent
+payment_terms:            # days
+setup_hours:              # hours for a first setup, first device type
+care_yearly:              # own care, net per year and device
+travel:                   # travel, net per trip
+minimum_fee:              # minimum fee, net per job
+rates_asof:               # YYYY-MM-DD, as-of date of your own rates
+logo:                     # path to the file, if there is one
 ---
 
-## Wie ich auftrete
+## How I present myself
 
-<!-- Tonalität gegenüber Kunden, Positionierung, was diese Firma ausmacht.
-     Ara nutzt das, wenn sie in deinem Namen Texte schreibt. -->
+<!-- Tone towards customers, positioning, what makes this firm what it is.
+     Ara uses this when she writes texts in your name. -->
 
-## Einkaufspreise
+## Purchase prices
 
-**Vertraulich. Diese Zahlen gehören nie in ein Kundenangebot**, auch nicht in eine
-Zwischensumme, aus der sich die Marge zurückrechnen lässt.
+**Confidential. These numbers never belong in a customer offer**, not even in a subtotal
+from which the margin can be worked back.
 
-Die verbindliche Quelle ist immer das Partnerportal. Was hier steht, ist eine Abschrift
-mit Datum, keine Preisliste. Eine Zeile je Hardwaretyp, den du anbietest.
+The binding source is always the partner portal. What stands here is a copy with a date,
+not a price list. One line per hardware type you offer.
 
-| Position | Einkauf netto | Stand |
+| Item | Purchase net | As of |
 |---|---|---|
-| Lizenz, einmalig | | |
-| Wartung, jährlich | | |
-| Hardware, {Typ} | | |
+| Licence, one-off | | |
+| Maintenance, yearly | | |
+| Hardware, {type} | | |
 
-## Notizen zur Kalkulation
+## Notes on calculation
 
-<!-- Eigene Regeln: Rabattgrenzen, was du nie umsonst machst, wie du die
-     Ersteinrichtung an einem neuen Gerätetyp aufschlägst, was du bei Anfahrt
-     über 100 km anders rechnest. Ein Satz je Regel genügt. -->
+<!-- Your own rules: discount limits, what you never do for free, how you mark up
+     the first setup on a new device type, what you calculate differently for
+     travel over 100 km. One sentence per rule is enough. -->

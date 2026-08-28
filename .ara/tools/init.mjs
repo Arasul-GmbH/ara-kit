@@ -22,25 +22,43 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { LANGUAGES, language, localized, t } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
 import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
 
 const TEMPLATES = join(ROOT, ".ara", "templates");
 const VERSION_FILE = join(ROOT, ".ara", "VERSION");
-const CHANGELOG = join(ROOT, ".ara", "CHANGELOG.md");
+const CHANGELOG = localized(join(ROOT, ".ara", "CHANGELOG.md"));
 const PROFILE = join(BUSINESS, "profile.md");
 const COMPANY = join(BUSINESS, "company.md");
 const ROLES = ["partner", "company"];
 
-/** Prosa-Abschnitte des Profils: Ueberschrift zu Feld in der Antwortdatei. */
-const SECTIONS = [
-  ["Wer ich bin und was ich kann", "about"],
-  ["Wie ich arbeiten möchte", "working"],
-  ["Womit mein Haus arbeitet", "house"],
-  ["Was ich vorhabe", "plans"],
-  ["Abweichungen von den Standardregeln", "deviations"],
-  ["Technikstand dieses Rechners", "environment"],
-];
+/**
+ * Prosa-Abschnitte des Profils: Ueberschrift zu Feld in der Antwortdatei.
+ *
+ * Die Ueberschriften stehen so in der Vorlage, und die Vorlage gibt es in beiden
+ * Sprachen. Gesucht wird darum in beiden Listen: welche Vorlage genommen wurde,
+ * entscheidet `language` in der Antwortdatei, und ein Profil, das jemand von Hand
+ * umgestellt hat, soll trotzdem gefunden werden.
+ */
+const SECTIONS = {
+  en: [
+    ["Who I am and what I can do", "about"],
+    ["How I want to work", "working"],
+    ["What my house works with", "house"],
+    ["What I intend", "plans"],
+    ["Deviations from the standard rules", "deviations"],
+    ["Technical state of this computer", "environment"],
+  ],
+  de: [
+    ["Wer ich bin und was ich kann", "about"],
+    ["Wie ich arbeiten möchte", "working"],
+    ["Womit mein Haus arbeitet", "house"],
+    ["Was ich vorhabe", "plans"],
+    ["Abweichungen von den Standardregeln", "deviations"],
+    ["Technikstand dieses Rechners", "environment"],
+  ],
+};
 
 /** Felder von company.md, die /init abfragt. Der Rest ist Sache von /calculation. */
 const COMPANY_FIELDS = [
@@ -54,14 +72,21 @@ const COMPANY_FIELDS = [
  */
 const CONSEQUENCES = {
   partner: [
-    ["ssh_key", "profile", "ohne benannten SSH-Schlüssel kein Zugang zu Kundengeräten über remote.mjs"],
-    ["legal_name", "company", "ohne Firmierung kein Angebot"],
-    ["address", "company", "ohne Anschrift kein Angebot"],
-    ["hourly_rate", "company", "ohne Stundensatz keine Kalkulation"],
+    ["ssh_key", "profile", () => t(
+      "without a named SSH key no access to customer devices over remote.mjs",
+      "ohne benannten SSH-Schlüssel kein Zugang zu Kundengeräten über remote.mjs")],
+    ["legal_name", "company", () => t("without a legal name no offer", "ohne Firmierung kein Angebot")],
+    ["address", "company", () => t("without an address no offer", "ohne Anschrift kein Angebot")],
+    ["hourly_rate", "company", () => t(
+      "without an hourly rate no calculation", "ohne Stundensatz keine Kalkulation")],
   ],
   company: [
-    ["ssh_key", "profile", "ohne benannten SSH-Schlüssel kein Zugang zum Gerät über remote.mjs"],
-    ["first_app", "profile", "ohne Ziel für die erste App fängt /app bei null an"],
+    ["ssh_key", "profile", () => t(
+      "without a named SSH key no access to the device over remote.mjs",
+      "ohne benannten SSH-Schlüssel kein Zugang zum Gerät über remote.mjs")],
+    ["first_app", "profile", () => t(
+      "without a goal for the first app /app starts from zero",
+      "ohne Ziel für die erste App fängt /app bei null an")],
   ],
 };
 
@@ -73,29 +98,49 @@ function run(tool, args) {
 }
 
 /** Technikstand als Absatz, aus check-environment.mjs. Werte, keine Wertung. */
-function environment() {
+function environment(lang) {
   const probe = run("check-environment.mjs", ["--json"]);
   let e;
   try {
     e = JSON.parse(probe.stdout);
   } catch {
-    return { text: `Stand ${today()}: check-environment.mjs lieferte kein Ergebnis.`, flash: "unknown" };
+    return {
+      text: t(
+        `As of ${today()}: check-environment.mjs returned no result.`,
+        `Stand ${today()}: check-environment.mjs lieferte kein Ergebnis.`,
+        lang
+      ),
+      flash: "unknown",
+    };
   }
   const keys = e.ssh_schluessel?.length
-    ? `SSH-Schlüssel in ~/.ssh: ${e.ssh_schluessel.join(", ")}`
-    : "kein SSH-Schlüssel in ~/.ssh";
+    ? t(`SSH keys in ~/.ssh: ${e.ssh_schluessel.join(", ")}`, `SSH-Schlüssel in ~/.ssh: ${e.ssh_schluessel.join(", ")}`, lang)
+    : t("no SSH key in ~/.ssh", "kein SSH-Schlüssel in ~/.ssh", lang);
   const missing = [];
-  if (!e.node_ausreichend) missing.push("Node ist zu alt");
-  if (!e.git) missing.push("git fehlt");
-  if (!e.ssh) missing.push("ssh fehlt");
+  if (!e.node_ausreichend) missing.push(t("Node is too old", "Node ist zu alt", lang));
+  if (!e.git) missing.push(t("git is missing", "git fehlt", lang));
+  if (!e.ssh) missing.push(t("ssh is missing", "ssh fehlt", lang));
   const text =
-    `Stand ${today()}: ${e.betriebssystem}, ${e.architektur}, ${e.arbeitsspeicher_gb} GB Arbeitsspeicher, ` +
-    `${e.freier_speicher_gb} GB frei. Node ${e.node}, ${e.git || "kein git"}, ${e.ssh || "kein ssh"}. ` +
+    t(
+      `As of ${today()}: ${e.betriebssystem}, ${e.architektur}, ${e.arbeitsspeicher_gb} GB memory, ` +
+        `${e.freier_speicher_gb} GB free. Node ${e.node}, ${e.git || "no git"}, ${e.ssh || "no ssh"}. `,
+      `Stand ${today()}: ${e.betriebssystem}, ${e.architektur}, ${e.arbeitsspeicher_gb} GB Arbeitsspeicher, ` +
+        `${e.freier_speicher_gb} GB frei. Node ${e.node}, ${e.git || "kein git"}, ${e.ssh || "kein ssh"}. `,
+      lang
+    ) +
     `${keys}. ` +
     (e.flash_host_geeignet
-      ? "Der Rechner taugt zum Flashen eingebetteter Geräte."
-      : "Zum Flashen eingebetteter Geräte taugt der Rechner nicht, dafür braucht es ein x86-Linux.") +
-    (missing.length ? ` Offen: ${missing.join(", ")}.` : "");
+      ? t(
+          "The computer is fit for flashing embedded devices.",
+          "Der Rechner taugt zum Flashen eingebetteter Geräte.",
+          lang
+        )
+      : t(
+          "The computer is not fit for flashing embedded devices, that needs an x86 Linux.",
+          "Zum Flashen eingebetteter Geräte taugt der Rechner nicht, dafür braucht es ein x86-Linux.",
+          lang
+        )) +
+    (missing.length ? t(` Open: ${missing.join(", ")}.`, ` Offen: ${missing.join(", ")}.`, lang) : "");
   return { text, flash: e.flash_host_geeignet ? "yes" : "no" };
 }
 
@@ -118,32 +163,38 @@ function fillSections(body, prose) {
   const out = [];
   for (const part of parts) {
     const heading = part.match(/^## (.+)$/m)?.[1];
-    const section = SECTIONS.find(([title]) => title === heading);
+    const section = [...SECTIONS.en, ...SECTIONS.de].find(([title]) => title === heading);
     if (!section) {
       // Der Kopfkommentar der Vorlage bleibt, er sagt, wem die Datei gehoert.
       out.push(part.trimEnd());
       continue;
     }
     const text = (prose[section[1]] || "").trim();
-    out.push(`## ${heading}\n\n${text || "Noch offen."}`);
+    out.push(`## ${heading}\n\n${text || t("Still open.", "Noch offen.")}`);
   }
   return out.join("\n\n") + "\n";
 }
 
 function readAnswers(path) {
   const file = resolve(path);
-  if (!existsSync(file)) fail(`Antwortdatei nicht gefunden: ${path}`);
+  if (!existsSync(file)) fail(t(`Answer file not found: ${path}`, `Antwortdatei nicht gefunden: ${path}`));
   let answers;
   try {
     answers = JSON.parse(readFileSync(file, "utf8"));
   } catch (error) {
-    fail(`Antwortdatei ist kein gültiges JSON: ${error.message}`);
+    fail(t(`The answer file is not valid JSON: ${error.message}`, `Antwortdatei ist kein gültiges JSON: ${error.message}`));
   }
   if (!ROLES.includes(answers.role)) {
-    fail(`"role" muss ${ROLES.join(" oder ")} sein, in der Antwortdatei steht "${answers.role || ""}".`);
+    fail(
+      t(
+        `"role" has to be ${ROLES.join(" or ")}, the answer file says "${answers.role || ""}".`,
+        `"role" muss ${ROLES.join(" oder ")} sein, in der Antwortdatei steht "${answers.role || ""}".`
+      )
+    );
   }
-  if (!answers.name) fail('"name" fehlt in der Antwortdatei.');
+  if (!answers.name) fail(t('"name" is missing from the answer file.', '"name" fehlt in der Antwortdatei.'));
   for (const [key, allowed] of [
+    ["language", LANGUAGES],
     ["detail_level", ["low", "medium", "high"]],
     ["security_level", ["standard", "relaxed"]],
     ["secrets_store", ["env", "keychain"]],
@@ -152,7 +203,12 @@ function readAnswers(path) {
     ["first_device_state", ["present", "ordered", "none"]],
   ]) {
     if (answers[key] && !allowed.includes(answers[key])) {
-      fail(`"${key}" kennt nur ${allowed.join(", ")}, nicht "${answers[key]}".`);
+      fail(
+        t(
+          `"${key}" only knows ${allowed.join(", ")}, not "${answers[key]}".`,
+          `"${key}" kennt nur ${allowed.join(", ")}, nicht "${answers[key]}".`
+        )
+      );
     }
   }
   return answers;
@@ -161,16 +217,21 @@ function readAnswers(path) {
 function apply(answers) {
   if (existsSync(PROFILE) && !arg.force) {
     fail(
-      "business/profile.md gibt es schon. /init fragt dann nur nach, was fehlt. " +
-        "Wer das Profil wirklich neu schreiben will: --force."
+      t(
+        "business/profile.md already exists. /init then only asks about what is missing. " +
+          "If you really want to write the profile anew: --force.",
+        "business/profile.md gibt es schon. /init fragt dann nur nach, was fehlt. " +
+          "Wer das Profil wirklich neu schreiben will: --force."
+      )
     );
   }
   mkdirSync(BUSINESS, { recursive: true });
-  const probe = environment();
+  const probe = environment(answers.language || language());
 
   const values = {
     ...answers,
     flash_host: probe.flash,
+    language: answers.language || language(),
     detail_level: answers.detail_level || "medium",
     security_level: answers.security_level || "standard",
     secrets_store: answers.secrets_store || "env",
@@ -182,8 +243,17 @@ function apply(answers) {
     values.invoice = "";
     values.invoice_tool = "";
   }
-  const profile = fillFrontmatter(readFileSync(join(TEMPLATES, "profile.md"), "utf8"), values);
-  const deviations = answers.deviations?.trim() || "Keine. Es gelten die Standardregeln aus .ara/knowledge/security.md.";
+  const profile = fillFrontmatter(
+    readFileSync(localized(join(TEMPLATES, "profile.md"), values.language), "utf8"),
+    values
+  );
+  const deviations =
+    answers.deviations?.trim() ||
+    t(
+      "None. The standard rules from .ara/knowledge/security.md apply.",
+      "Keine. Es gelten die Standardregeln aus .ara/knowledge/security.md.",
+      values.language
+    );
   writeFileSync(
     PROFILE,
     profile.head + fillSections(profile.body, { ...answers, deviations, environment: probe.text })
@@ -192,7 +262,7 @@ function apply(answers) {
   const written = ["business/profile.md"];
   if (answers.role === "partner") {
     const given = answers.company_file || {};
-    const company = fillFrontmatter(readFileSync(join(TEMPLATES, "company.md"), "utf8"), {
+    const company = fillFrontmatter(readFileSync(localized(join(TEMPLATES, "company.md"), answers.language), "utf8"), {
       ...Object.fromEntries(COMPANY_FIELDS.map((k) => [k, given[k] ?? ""])),
       rates_asof: given.hourly_rate ? today() : "",
     });
@@ -202,8 +272,15 @@ function apply(answers) {
     }
   }
 
-  const commands = run("commands.mjs", ["--apply", "--role", answers.role]);
-  if (commands.status !== 0) fail(`Befehle anlegen fehlgeschlagen:\n${commands.stderr || commands.stdout}`);
+  const commands = run("commands.mjs", ["--apply", "--role", answers.role, "--language", values.language]);
+  if (commands.status !== 0) {
+    fail(
+      t(
+        `Creating the commands failed:\n${commands.stderr || commands.stdout}`,
+        `Befehle anlegen fehlgeschlagen:\n${commands.stderr || commands.stdout}`
+      )
+    );
+  }
 
   return { written, commands: commands.stdout.trim() };
 }
@@ -220,12 +297,15 @@ function status() {
   const missing = Object.entries(profile.fields).filter(([, v]) => !v).map(([k]) => k);
   const consequences = (CONSEQUENCES[role] || [])
     .filter(([key, where]) => !(where === "company" ? company.fields : profile.fields)[key])
-    .map(([key, where, why]) => ({ key, file: where === "company" ? "business/company.md" : "business/profile.md", why }));
+    .map(([key, where, why]) => ({ key, file: where === "company" ? "business/company.md" : "business/profile.md", why: why() }));
   if (role === "partner" && profile.fields.invoice !== "no" && profile.fields.invoice !== "yes") {
     consequences.push({
       key: "invoice",
       file: "business/profile.md",
-      why: "solange nicht yes dasteht, legt das Kit den Rechnungsbefehl nicht an",
+      why: t(
+        "as long as it does not say yes, the kit does not create the invoice command",
+        "solange nicht yes dasteht, legt das Kit den Rechnungsbefehl nicht an"
+      ),
     });
   }
   return { exists: true, role, name: profile.fields.name, set, missing, consequences, company: company.exists };
@@ -258,14 +338,19 @@ if (arg.answers) {
     console.log(JSON.stringify({ ...lage, written: result.written }, null, 2));
     process.exit(0);
   }
-  console.log(`Geschrieben: ${result.written.join(", ")}`);
+  console.log(t(`Written: ${result.written.join(", ")}`, `Geschrieben: ${result.written.join(", ")}`));
   console.log(result.commands);
   console.log("");
   printConsequences(lage);
   console.log(
-    "\nNicht in der Antwortdatei, bleibt Handarbeit: Geheimnisablage prüfen (secrets.mjs --show), " +
-      "SSH-Schlüssel anlegen, falls keiner da ist, Sicherung einrichten. Ein Token braucht " +
-      "erst die Installation von Arasul, nicht das Profil."
+    t(
+      "\nNot in the answer file, stays manual work: check the secret store (secrets.mjs --show), " +
+        "create an SSH key if there is none, set up a backup. A token is only needed for " +
+        "installing Arasul, not for the profile.",
+      "\nNicht in der Antwortdatei, bleibt Handarbeit: Geheimnisablage prüfen (secrets.mjs --show), " +
+        "SSH-Schlüssel anlegen, falls keiner da ist, Sicherung einrichten. Ein Token braucht " +
+        "erst die Installation von Arasul, nicht das Profil."
+    )
   );
   process.exit(0);
 }
@@ -278,23 +363,39 @@ if (arg.json) {
 for (const line of lage.stand.lines) console.log(line);
 console.log("");
 if (!lage.exists) {
-  console.log("Kein Profil. Das ist das erste Mal: /init führt das Interview, oder eine Antwortdatei mit --answers.");
+  console.log(
+    t(
+      "No profile. This is the first time: /init runs the interview, or an answer file with --answers.",
+      "Kein Profil. Das ist das erste Mal: /init führt das Interview, oder eine Antwortdatei mit --answers."
+    )
+  );
   process.exit(0);
 }
 console.log(
-  `Profil: ${lage.name || "ohne Namen"}, Zweig ${lage.role === "partner" ? "Partner" : "Unternehmen"}, ` +
-    `${lage.set.length} Felder gesetzt, ${lage.missing.length} leer` +
+  t(
+    `Profile: ${lage.name || "without a name"}, branch ${lage.role === "partner" ? "partner" : "company"}, ` +
+      `${lage.set.length} fields set, ${lage.missing.length} empty`,
+    `Profil: ${lage.name || "ohne Namen"}, Zweig ${lage.role === "partner" ? "Partner" : "Unternehmen"}, ` +
+      `${lage.set.length} Felder gesetzt, ${lage.missing.length} leer`
+  ) +
     (lage.missing.length ? ` (${lage.missing.join(", ")})` : "") +
     "."
 );
-if (lage.role === "partner") console.log(`Firmenkopf: ${lage.company ? "business/company.md liegt" : "business/company.md fehlt"}.`);
+if (lage.role === "partner") {
+  console.log(
+    t(
+      `Company head: ${lage.company ? "business/company.md is there" : "business/company.md is missing"}.`,
+      `Firmenkopf: ${lage.company ? "business/company.md liegt" : "business/company.md fehlt"}.`
+    )
+  );
+}
 printConsequences(lage);
 
 function printConsequences(lage) {
   if (!lage.consequences.length) {
-    console.log("Es fehlt nichts, was ein Befehl braucht.");
+    console.log(t("Nothing is missing that a command needs.", "Es fehlt nichts, was ein Befehl braucht."));
     return;
   }
-  console.log("Es fehlt, und das heißt:");
+  console.log(t("What is missing, and what that means:", "Es fehlt, und das heißt:"));
   for (const c of lage.consequences) console.log(`  ${c.key} in ${c.file}: ${c.why}`);
 }

@@ -49,6 +49,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
 import { ROOT, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
+import { localized, t } from "./lib/i18n.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
@@ -71,7 +72,7 @@ helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 const TEMPLATE = join(ROOT, ".ara", "templates", "app");
-const PLAN_TEMPLATE = join(ROOT, ".ara", "templates", "plan.md");
+const PLAN_TEMPLATE = localized(join(ROOT, ".ara", "templates", "plan.md"));
 const STATE = join(ROOT, ".ara", "state.json");
 
 // Ohne jedes Argument die Liste der Schalter. --help beantwortet der Kopf der

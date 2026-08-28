@@ -73,25 +73,42 @@ etwas Grundlegendes, nenne den Installationsweg für das erkannte System und mac
 
 Merk dir das Ergebnis, es kommt in Runde 10 in `business/profile.md`.
 
-### Runde 2: Die Weiche
+### Runde 2: Sprache und Zweig
 
-Eine Frage, und sie entscheidet, wie das Kit aussieht:
+Die erste Runde mit Fragen, und sie stellt zwei. Beide entscheiden, wie das Kit aussieht,
+und beide gehören in dieselbe gebündelte Frage.
 
-**Partner oder Unternehmen?** Ein Partner richtet Geräte für fremde Kunden ein, mehrere.
-Ein Unternehmen betreibt ein eigenes Gerät für die eigene Firma. Sag zu jeder Option in
-einem Satz, was sie bedeutet: Partner bekommen Kundenakten, Angebote und Kalkulation dazu.
-Unternehmen bekommen nur, was ein eigenes Gerät braucht, und werden nie nach Kunden
-gefragt.
+**1. Deutsch oder Englisch?** Englisch ist die Hauptsprache des Kits, Deutsch ist
+gleichwertig und vollständig: dieselben Befehle, dasselbe Wissen, dieselben Werkzeuge.
+Gewählt wird, in welcher Sprache Ara spricht und schreibt und in welcher die Werkzeuge
+ausgeben. **Das Vertragspapier unter `.ara/vorlagen/` und die Nachweise bleiben deutsch**,
+in beiden Fällen: es ist rechtlich gebundener Text für den DACH-Raum. Sag das dazu, sonst
+erwartet jemand ein englisches Angebot.
 
-Sobald die Weiche beantwortet ist, legst du die Befehle an, damit alles Weitere in dieser
+Bis diese Frage beantwortet ist, gilt Englisch, denn ein frischer Klon hat kein Profil.
+Hat der Mensch dich von sich aus auf Deutsch angesprochen, frag auf Deutsch: was er
+schreibt, gilt vor der Vorgabe.
+
+**2. Partner oder Unternehmen?** Ein Partner richtet Geräte für fremde Kunden ein,
+mehrere. Ein Unternehmen betreibt ein eigenes Gerät für die eigene Firma. Sag zu jeder
+Option in einem Satz, was sie bedeutet: Partner bekommen Kundenakten, Angebote und
+Kalkulation dazu. Unternehmen bekommen nur, was ein eigenes Gerät braucht, und werden nie
+nach Kunden gefragt.
+
+Sobald beides beantwortet ist, legst du die Befehle an, damit alles Weitere in dieser
 Sitzung schon funktioniert:
 
 ```
-node .ara/tools/commands.mjs --apply --role <partner|company>
+node .ara/tools/commands.mjs --apply --role <partner|company> --language <de|en>
 ```
 
-Partner bekommen `all/` und `partner/` aus `.ara/commands/`, Unternehmen nur `all/`.
-Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart der Sitzung.
+`--language` steht dabei, weil das Profil noch nicht geschrieben ist: das Werkzeug liest
+die Sprache sonst dort. Partner bekommen `all/` und `partner/` aus `.ara/commands/`,
+Unternehmen nur `all/`. Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart
+der Sitzung.
+
+Ab jetzt sprichst du die gewählte Sprache. Ins Frontmatter kommt `language`, und aus dem
+Feld lesen alle Werkzeuge, in welcher Sprache sie ausgeben.
 
 ### Runde 3: Wer du bist und was du kannst
 
@@ -243,9 +260,11 @@ Schritt, wenn Angebote anstehen.
 
 ### Runde 10: Profil schreiben, bestätigen, ehrlich abschließen
 
-Jetzt `business/profile.md` aus `.ara/templates/profile.md` anlegen und füllen:
-Frontmatter vollständig, Prosa-Abschnitte in **Du-Form an ihn gerichtet**, Technikstand
-aus Runde 1 mit Datum. Partner dazu `business/company.md` aus `.ara/templates/company.md`.
+Jetzt `business/profile.md` aus `.ara/templates/profile.de.md` anlegen und füllen:
+Frontmatter vollständig, `language` aus Runde 2, Prosa-Abschnitte in **Du-Form an ihn
+gerichtet**, Technikstand aus Runde 1 mit Datum. Partner dazu `business/company.md` aus
+`.ara/templates/company.de.md`. Beide Gerüste gibt es in beiden Sprachen: ohne `.de` sind
+sie englisch, und die nimmst du, wenn in Runde 2 Englisch gewählt wurde.
 
 Lies ihm die zwei bis drei wichtigsten Punkte vor („So arbeite ich ab jetzt mit dir") und
 lass sie bestätigen. Was nicht stimmt, wird gleich korrigiert.
@@ -277,7 +296,7 @@ Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.
 ## Jedes weitere Mal
 
 `business/profile.md` existiert. Dann geht es nicht um den Menschen, sondern um den
-Stand des Kits. Sechs Schritte, in dieser Reihenfolge:
+Stand des Kits. Sieben Schritte, in dieser Reihenfolge:
 
 1. **Sagen, worauf er sitzt.** `node .ara/tools/init.mjs --show` beginnt mit drei
    Angaben: der Stand aus `.ara/VERSION`, was in diesem Stand neu ist, und bis zu welcher
@@ -311,15 +330,20 @@ Stand des Kits. Sechs Schritte, in dieser Reihenfolge:
    dem Kit stammt, bleibt liegen.
 
    **Ein abgelöster Befehl ist der einzige Fall, in dem das Werkzeug etwas löscht.**
-   `/angebot` heißt seit Phase E6 `/offer`. Blieben beide liegen, führte der alte weiter
+   `/angebot` heißt seit Phase E6 `/offer`, `/kalkulation` seit Phase E10 `/calculation`.
+   Blieben beide liegen, führte der alte weiter
    durch ein Verfahren, das es nicht mehr gibt. Gelöscht wird nur die unveränderte Kopie,
    erkennbar am gemerkten Hash; eine, die der Mensch angefasst hat, wird genannt und bleibt.
    Sag ihm in dem Fall, wie der Befehl heute heißt, und dass er die alte selbst löschen darf.
-5. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
+5. **Sprache wechseln**, falls der Mensch das will. `language` in `business/profile.md`
+   auf `de` oder `en`, dann `node .ara/tools/commands.mjs --apply`. Danach zeigt das
+   Werkzeug jeden Befehl als „neu im Kit", denn seine Quelle ist eine andere Datei
+   geworden. Das ist kein Fehler, sag es dazu. Ungefragt wechselst du nicht.
+6. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
    leeren Felder. Braucht ein neuer Befehl eine Angabe, die im Profil fehlt, frag genau
    diese, gebündelt. Steht bei einem Partner `invoice: later`, frag noch einmal. Nicht das
    ganze Onboarding wiederholen.
-6. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
+7. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
    Stand auf diesem Rechner belegt. Ist ein Gerät mit Arasul erreichbar, gehört
    `node .ara/tools/check-docs.mjs --device <gerät>` dazu: es hält jede Route, die im
    Wissen steht, gegen den Kontrakt dieses Geräts. Ein neuer Stand des Kits an einem

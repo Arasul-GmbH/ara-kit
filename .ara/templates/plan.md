@@ -8,49 +8,50 @@ erledigt:
 
 # {{titel}}
 
-> Ein Plan ist die Verabredung, was gebaut wird, und die Liste dessen, was dabei
-> angenommen wurde. Er wird im Gespräch ausgefüllt, nicht am Stück geschrieben. Was offen
-> bleibt, wird eine Annahme und steht unten, nicht in einem Kopf.
+> A plan is the agreement on what gets built, and the list of what was assumed while doing
+> so. It gets filled in during the conversation, not written in one go. What stays open
+> becomes an assumption and stands at the bottom, not in a header.
 
-## Wozu
+## What for
 
-Der Arbeitsschritt, um den es geht. Nicht die gewünschte Lösung, sondern das, was heute
-jemand von Hand tut: wie oft, wie lange, was danach mit dem Ergebnis passiert.
+The work step it is about. Not the wished-for solution, but what somebody does by hand
+today: how often, how long, what happens to the result afterwards.
 
-## Wer es benutzt
+## Who uses it
 
-Wer die App aufruft, und in welcher Rolle. Wer sie sehen darf, entscheidet der Kunde am
-Gerät, nicht diese Datei.
+Who opens the app, and in which role. Who may see it the customer decides on the device,
+not this file.
 
-## Welche Daten
+## Which data
 
-Was hinein geht, was liegen bleibt, was hinaus geht. Personenbezogenes ausdrücklich
-benennen: es bleibt am Gerät, und das ist der Punkt.
+What goes in, what stays, what goes out. Name personal data explicitly: it stays on the
+device, and that is the point.
 
-## Die Schritte
+## The steps
 
-Was der Reihe nach passiert, aus Sicht des Menschen davor. Ein Schritt je Zeile.
+What happens in order, from the point of view of the human in front of it. One step per
+line.
 
-## Wo ein Flow gebraucht wird
+## Where a flow is needed
 
-Wo ein Sprachmodell arbeitet und wo nicht. Ein Flow, der nur Daten hin und her schiebt,
-ist ein Programm und kein Flow.
+Where a language model works and where it does not. A flow that only shifts data back and
+forth is a program and not a flow.
 
-## Wo ein Mensch entscheidet
+## Where a human decides
 
-Wo ein Lauf anhalten und auf eine Freigabe warten soll, und was der Mensch dabei sieht,
-um entscheiden zu können. Wer entscheiden darf, steht am Gerät.
+Where a run should stop and wait for an approval, and what the human sees while doing it in
+order to be able to decide. Who may decide stands on the device.
 
-## Was ausdrücklich nicht dazugehört
+## What expressly does not belong to it
 
-Der Absatz, der später die Enttäuschung erspart.
+The paragraph that saves the disappointment later.
 
-## Woran man erkennt, dass es fertig ist
+## How you recognise that it is finished
 
-Ein Satz, den man prüfen kann: nicht „läuft rund", sondern „ein Antrag geht durch, der
-Flow hält an, jemand bestätigt, der Antrag steht auf genehmigt".
+One sentence you can check: not "runs smoothly", but "a request goes through, the flow
+stops, somebody approves, the request stands as approved".
 
-## Annahmen
+## Assumptions
 
-Was gefragt wurde und offen blieb, mit der Annahme, die stattdessen gilt. Jede Zeile ist
-eine Stelle, an der jemand später widersprechen darf.
+What was asked and stayed open, with the assumption that applies instead. Every line is a
+place where somebody may later object.
