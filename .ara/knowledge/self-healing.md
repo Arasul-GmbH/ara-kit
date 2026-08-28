@@ -35,8 +35,8 @@ They stand in `.ara/tools/lib/heal.mjs`, not only here, and the self-test holds 
    the kit.
 2. **Never the bootloader, never the system.** The tool has no command for anything but
    containers: start, stop, look. What the device boots from, what `systemd` runs, what
-   stands in `/etc`, and everything from `.ara/knowledge/flash-orin.md`, is out of its
-   reach by construction.
+   stands in the system configuration, and everything from
+   `.ara/knowledge/flash-orin.md`, is out of its reach by construction.
 3. **Only what has a way back.** Every intervention is recorded with the state before, the
    state after and the command that takes it back, and `--undo` runs exactly that command
    and proves that the state before is there again. What has no way back is not done: a

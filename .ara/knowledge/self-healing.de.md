@@ -35,8 +35,8 @@ Sie stehen in `.ara/tools/lib/heal.mjs`, nicht nur hier, und der Selbsttest häl
    Menschen, keine Aufgabe für das Kit.
 2. **Nie am Bootloader, nie am System.** Das Werkzeug hat keinen Befehl für etwas anderes
    als Container: starten, anhalten, ansehen. Wovon das Gerät bootet, was `systemd` führt,
-   was unter `/etc/` steht, und alles aus `.ara/knowledge/flash-orin.de.md`, liegt von Bauart
-   her außerhalb seiner Reichweite.
+   was in der Systemkonfiguration steht, und alles aus
+   `.ara/knowledge/flash-orin.de.md`, liegt von Bauart her außerhalb seiner Reichweite.
 3. **Nur, was einen Weg zurück hat.** Jeder Eingriff wird mit Zustand davor, Zustand danach
    und dem Befehl protokolliert, der ihn zurücknimmt, und `--undo` führt genau diesen Befehl
    aus und weist nach, dass der Stand davor wieder da ist. Was keinen Weg zurück hat, wird
