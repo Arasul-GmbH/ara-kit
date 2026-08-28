@@ -46,6 +46,14 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
 import {
+  matchProfile,
+  platformOf,
+  readProfiles,
+  supportedDevices,
+  verificationLine,
+  verificationOf,
+} from "./lib/platform.mjs";
+import {
   KIT_CONTRACT_VERSION,
   checkManifest,
   checkVersion,
@@ -339,27 +347,172 @@ check("Laufzettel für ein Gerät ohne Kunden liegt unter devices/", () => {
 
 // --- Gerät -------------------------------------------------------------------
 
-check("Urteil über ein Gerät folgt der Unterstützungsregel", () => {
-  // Orin und Thor tragen Arasul, DGX Spark und andere NVIDIA-Rechner sind
-  // angekündigt, ein Mac wird vorgemerkt. Die Befunde sind erfunden, aber so
-  // geschnitten, wie das Prüfskript sie liefert.
+/**
+ * Die Attrappen: Befunde, wie das Prüfskript sie liefert, für Geräte, die hier
+ * nicht stehen. Thor und DGX Spark gibt es nirgends zum Anfassen, und der Orin
+ * steht nicht in jedem Klon. Erfunden sind die Zeilen, ihr Schnitt ist es nicht.
+ */
+const ATTRAPPEN = {
+  orin:
+    "@uname=Linux 5.15.148-tegra aarch64\n@dt_model=NVIDIA Jetson AGX Orin Developer Kit\n" +
+    "@dmi_vendor=NVIDIA\n@tegra=R36 (release), REVISION: 4.7\n@gpu=Orin (nvgpu)\n@mem_kb=64348860\n@done=ja",
+  thor:
+    "@uname=Linux 6.8.12-tegra aarch64\n@os_release=Ubuntu 24.04 LTS\n" +
+    "@dt_model=NVIDIA Jetson AGX Thor Developer Kit\n@dmi_vendor=NVIDIA\n@gpu=Thor (nvgpu)\n" +
+    "@mem_kb=131072000\n@done=ja",
+  spark:
+    "@uname=Linux 6.11.0 aarch64\n@os_release=Ubuntu 24.04 LTS\n@dmi_model=NVIDIA DGX Spark\n" +
+    "@dmi_vendor=NVIDIA\n@gpu=NVIDIA GB10\n@mem_kb=134217728\n@done=ja",
+  fremd: "@uname=Linux 6.8 x86_64\n@dmi_model=ThinkStation P3\n@gpu=NVIDIA RTX 6000 Ada Generation\n@done=ja",
+  mac: "@uname=Darwin 24.6.0 arm64\n@macos=15.6.1\n@hw_model=Mac14,2\n@mem_bytes=17179869184\n@done=ja",
+  buero: "@uname=Linux 6.8 x86_64\n@os_release=Debian GNU/Linux 12\n@dmi_model=OptiPlex 7010\n@done=ja",
+};
+
+/** Ein Spiegel aus Attrappen: nur die Katalogprofile, nur das Feld, um das es geht. */
+function attrappenSpiegel(stufen) {
+  const dir = mkdtempSync(join(tmpdir(), "ara-katalog-"));
+  mkdirSync(join(dir, "config", "platforms"), { recursive: true });
+  for (const [id, verification] of Object.entries(stufen)) {
+    writeFileSync(
+      join(dir, "config", "platforms", `${id}.json`),
+      JSON.stringify({ id, verification }, null, 2) + "\n"
+    );
+  }
+  return dir;
+}
+
+check("Die Geräteprofile im Wissen sind vollständig und greifen eindeutig", () => {
+  // Erkennung ohne Vorwissen heißt: die Hardware, die das Kit kennt, steht in
+  // den Blättern und nicht im Quelltext. Ein Blatt ohne Pflichtfeld wird vom
+  // Leser übergangen, und dann erkennt das Kit still ein Gerät nicht mehr.
+  const dir = join(ROOT, ".ara", "knowledge", "devices");
+  const blaetter = readdirSync(dir).filter((n) => n.endsWith(".md") && !isVariant(n));
+  const profile = readProfiles();
+  assert(
+    profile.length === blaetter.length,
+    `${blaetter.length} Blätter, aber nur ${profile.length} lesbare Profile: ein Pflichtfeld fehlt`
+  );
+  assert(profile.length >= 3, `nur ${profile.length} Geräteprofile, Orin, Thor und Spark müssen da sein`);
+  for (const p of profile) {
+    assert(/^\d{4}-\d{2}-\d{2}$/.test(p.as_of), `${p.sheet} hat keinen Stand als Datum: ${p.as_of}`);
+    assert(p.source.length > 10, `${p.sheet} nennt keine Quelle`);
+    assert(["supported", "soon"].includes(p.support), `${p.sheet} trägt ein unbekanntes support: ${p.support}`);
+    // Stand und Quelle stehen auch im Text, in beiden Sprachen, damit sie liest,
+    // wer das Blatt aufmacht, und nicht nur, wer das Frontmatter parst.
+    assert(
+      /^As of: /m.test(readFileSync(join(dir, `${p.id}.md`), "utf8")),
+      `${p.sheet} sagt im Text nicht, von wann es ist`
+    );
+    assert(
+      /^Stand: /m.test(readFileSync(join(dir, `${p.id}.de.md`), "utf8")),
+      `${p.sheet} sagt auf Deutsch im Text nicht, von wann es ist`
+    );
+  }
+
+  // Jede Attrappe trifft genau ein Blatt. Zwei Treffer heißen, dass eines der
+  // Muster zu weit ist, und dann hinge das Urteil an der Reihenfolge im Ordner.
+  for (const [name, id] of [["orin", "orin"], ["thor", "thor"], ["spark", "dgx-spark"]]) {
+    const treffer = profile.filter((p) => matchProfile(parseProbe(ATTRAPPEN[name]), [p]));
+    assert(treffer.length === 1, `${name} trifft ${treffer.length} Blätter: ${treffer.map((p) => p.id).join(", ")}`);
+    assert(treffer[0].id === id, `${name} trifft ${treffer[0].id} statt ${id}`);
+  }
+  for (const name of ["mac", "buero"]) {
+    assert(!matchProfile(parseProbe(ATTRAPPEN[name]), profile), `${name} trifft ein Geräteprofil`);
+  }
+  // Der Rechnername gehört nicht zur Signatur: ein Gerät, das jemand "spark"
+  // genannt hat, ist kein DGX Spark.
+  assert(
+    !matchProfile(parseProbe("@uname=Linux 6.8 x86_64\n@hostname=spark\n@done=ja"), profile),
+    "der Rechnername entscheidet über das Geräteprofil"
+  );
+  return `${profile.length} Blätter`;
+});
+
+check("Urteil über ein Gerät folgt den Blättern, nicht dem Quelltext", () => {
+  // Orin und Thor tragen Arasul, DGX Spark ist angekündigt, ein Mac wird
+  // vorgemerkt. Woher das kommt, steht in den Blättern: nimmt man sie weg,
+  // bleibt nur noch die Regel für alles, wozu es keines gibt.
+  const profile = readProfiles();
   const cases = [
-    ["@uname=Linux 5.15 aarch64\n@dt_model=NVIDIA Jetson AGX Orin Developer Kit\n@tegra=# R36", "supported"],
-    ["@uname=Linux 6.8 aarch64\n@dt_model=NVIDIA Jetson AGX Thor Developer Kit", "supported"],
-    ["@uname=Linux 6.11 aarch64\n@dmi_model=NVIDIA DGX Spark\n@gpu=NVIDIA GB10", "soon"],
-    ["@uname=Linux 6.8 x86_64\n@dmi_model=ThinkStation P3\n@gpu=NVIDIA RTX 6000 Ada Generation", "soon"],
-    ["@uname=Darwin 24.6.0 arm64\n@macos=15.6.1\n@hw_model=Mac14,2\n@mem_bytes=17179869184", "unsupported"],
-    ["@uname=Linux 6.8 x86_64\n@os_release=Debian GNU/Linux 12\n@dmi_model=OptiPlex 7010", "unsupported"],
+    ["orin", "supported"],
+    ["thor", "supported"],
+    ["spark", "soon"],
+    ["fremd", "soon"],
+    ["mac", "unsupported"],
+    ["buero", "unsupported"],
   ];
-  for (const [probe, expected] of cases) {
-    const found = judge(parseProbe(probe));
-    assert(found.verdict === expected, `${probe.split("\n")[1]}: ${found.verdict} statt ${expected}`);
+  for (const [name, expected] of cases) {
+    const found = judge(parseProbe(ATTRAPPEN[name]), profile);
+    assert(found.verdict === expected, `${name}: ${found.verdict} statt ${expected}`);
     assert(found.verdictText, "Urteil ohne Satz");
   }
-  const mac = judge(parseProbe(cases[4][0]));
+  const orin = judge(parseProbe(ATTRAPPEN.orin), profile);
+  assert(orin.profile?.id === "orin", "das Blatt steht nicht im Befund");
+  assert(orin.reason.includes(".ara/knowledge/devices/orin.md"), `die Begründung nennt das Blatt nicht: ${orin.reason}`);
+  assert(orin.vendor === "NVIDIA" && /dmi/.test(orin.vendorSource), "Hersteller nicht vom Gerät gelesen");
+  assert(/orin/i.test(orin.hardware), "Hardware nicht aus dem Gerätebaum übernommen");
+
+  const mac = judge(parseProbe(ATTRAPPEN.mac), profile);
   assert(mac.os === "macOS 15.6.1" && mac.arch === "arm64" && mac.memoryGb === 16, "Mac-Befund falsch gelesen");
-  assert(/orin/i.test(judge(parseProbe(cases[0][0])).hardware), "Hardware nicht aus dem Gerätebaum übernommen");
+  assert(mac.vendor === "Apple", `Hersteller des Macs: ${mac.vendor}`);
+  assert(mac.profile === null, "der Mac trifft ein Geräteprofil");
+
+  // Ohne Blätter bleibt die Regel für den Rest: NVIDIA ist angekündigt, sonst
+  // vorgemerkt. Ein Orin ohne sein Blatt ist deshalb nicht mehr unterstützt.
+  const ohne = judge(parseProbe(ATTRAPPEN.orin), []);
+  assert(ohne.verdict === "soon", `ohne Blätter urteilt das Kit ${ohne.verdict} statt soon`);
   return `${cases.length} Befunde`;
+});
+
+check("Der Verifikationsstand kommt aus dem Spiegel und wird nicht geraten", () => {
+  // Das Feld verification aus config/platforms/<id>.json ist die einzige
+  // Auskunft darüber, ob ein Profil am Gerät verifiziert oder nur nach
+  // Herstellerdoku gebaut ist. Fehlt sie, sagt das Kit das, statt eine Stufe
+  // zu erfinden: eine ausgelassene Zeile läse sich wie eine Bestätigung.
+  const spiegel = attrappenSpiegel({ "orin-64": "live", "thor-128": "emulation", "dgx-spark": "follow-up" });
+  try {
+    const live = verificationOf("orin-64", spiegel);
+    assert(live.level === "live" && /verifiziert/.test(live.text), `live falsch gelesen: ${JSON.stringify(live)}`);
+    assert(/config\/platforms\/orin-64\.json/.test(verificationLine(live)), "die Zeile nennt ihre Quelle nicht");
+    assert(/Emulation/.test(verificationOf("thor-128", spiegel).text), "emulation falsch übersetzt");
+    assert(/Herstellerdoku/.test(verificationOf("dgx-spark", spiegel).text), "follow-up falsch übersetzt");
+
+    const fehlt = verificationOf("gibt-es-nicht", spiegel);
+    assert(fehlt.level === null && fehlt.reason, "ein fehlendes Katalogprofil liefert eine Stufe");
+    assert(/unbekannt/.test(verificationLine(fehlt)), `die Zeile behauptet etwas: ${verificationLine(fehlt)}`);
+
+    const leer = mkdtempSync(join(tmpdir(), "ara-leer-"));
+    try {
+      const ohne = verificationOf("orin-64", leer);
+      assert(ohne.level === null && /Spiegel/.test(ohne.reason), `ohne Spiegel: ${JSON.stringify(ohne)}`);
+    } finally {
+      rmSync(leer, { recursive: true, force: true });
+    }
+
+    // Eine Stufe, die das Kit nicht kennt, wird weitergereicht und nicht gedeutet.
+    const neu = attrappenSpiegel({ "orin-64": "teilweise" });
+    try {
+      const stufe = verificationOf("orin-64", neu);
+      assert(stufe.level === "teilweise" && stufe.text === null, "eine unbekannte Stufe wird gedeutet");
+      assert(/teilweise/.test(verificationLine(stufe)), "eine unbekannte Stufe fällt aus der Zeile");
+    } finally {
+      rmSync(neu, { recursive: true, force: true });
+    }
+  } finally {
+    rmSync(spiegel, { recursive: true, force: true });
+  }
+});
+
+check("Das Katalogprofil wird nur genannt, wenn der Speicher dazu passt", () => {
+  // Der Gerätebaum sagt nicht, wieviel Speicher verbaut ist. orin-64 auf einem
+  // Orin mit 32 GB wäre eine Zusage über Speicher, die dieses Gerät nicht hält.
+  const orin = readProfiles().find((p) => p.id === "orin");
+  assert(orin, "das Blatt für den Orin fehlt");
+  assert(platformOf(orin, 61).id === "orin-64", "der große Orin bekommt kein Katalogprofil");
+  const klein = platformOf(orin, 30);
+  assert(klein.id === null, "der kleine Orin bekommt orin-64 zugesprochen");
+  assert(/30 GB/.test(klein.reason) && /40 GB/.test(klein.reason), `der Grund sagt zu wenig: ${klein.reason}`);
+  assert(platformOf(orin, null).id === null, "ohne gelesenen Speicher wird ein Katalogprofil genannt");
 });
 
 check("Docker, Ollama und Arasul werden aus dem Befund erkannt", () => {
@@ -470,6 +623,150 @@ check("device.mjs legt die Akte an, urteilt und merkt sich das Gerät", () => {
     return `lokal: ${out.verdictText}`;
   } finally {
     for (const n of names) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Trockenlauf: Thor und DGX Spark laufen ohne Gerät durch", () => {
+  // Beide Geräte gibt es hier nicht, und es wird auch keines geben. Der Lauf
+  // bekommt darum Befunde aus einer Attrappe, sonst nimmt er denselben Weg wie
+  // an echter Hardware: Erkennung, Blatt, Katalogprofil, Verifikationsstand.
+  // Verifiziert wird dabei nichts, und der Lauf sagt das auch.
+  const spiegel = attrappenSpiegel({ "thor-128": "emulation", "dgx-spark": "follow-up" });
+  const work = mkdtempSync(join(tmpdir(), "ara-trocken-"));
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  try {
+    const faelle = [
+      { name: "thor", attrappe: "thor", blatt: "thor", katalog: "thor-128", stufe: "emulation", urteil: "supported" },
+      { name: "dgx-spark", attrappe: "spark", blatt: "dgx-spark", katalog: "dgx-spark", stufe: "follow-up", urteil: "soon" },
+    ];
+    for (const fall of faelle) {
+      const datei = join(work, `${fall.name}.txt`);
+      writeFileSync(datei, ATTRAPPEN[fall.attrappe] + "\n");
+      const run = tool("device.mjs", ["--name", fall.name, "--probe", datei, "--json"], "", { ARA_MIRROR: spiegel });
+      assert(run.status === 0, `${fall.name}: Trockenlauf fehlgeschlagen: ${run.stderr || run.stdout}`);
+      const out = JSON.parse(run.stdout);
+      assert(out.transport === "dry-run" && out.dry_run === datei, `${fall.name}: kein Trockenlauf`);
+      assert(out.vendor === "NVIDIA", `${fall.name}: Hersteller ${out.vendor}`);
+      assert(out.arch === "aarch64", `${fall.name}: Architektur ${out.arch}`);
+      assert(out.os && out.os !== "unbekannt", `${fall.name}: kein laufendes System erkannt`);
+      assert(out.profile?.id === fall.blatt, `${fall.name}: Blatt ${out.profile?.id} statt ${fall.blatt}`);
+      assert(out.profile.as_of && out.profile.source, `${fall.name}: Blatt ohne Stand oder Quelle`);
+      assert(out.platform === fall.katalog, `${fall.name}: Katalogprofil ${out.platform}`);
+      assert(out.verification === fall.stufe, `${fall.name}: Verifikationsstand ${out.verification}`);
+      assert(out.verdict === fall.urteil, `${fall.name}: Urteil ${out.verdict} statt ${fall.urteil}`);
+      // Keine Verifikation: nichts an diesen beiden Geräten wurde je gemessen,
+      // und der Lauf behauptet das auch an keiner Stelle.
+      assert(out.verification !== "live", `${fall.name}: der Trockenlauf meldet eine Verifikation am Gerät`);
+
+      // Ein Trockenlauf schreibt nichts. Eine Akte für ein Gerät, das es nicht
+      // gibt, wäre eine Behauptung, und der Merker zeigte danach darauf.
+      assert(out.file === null, `${fall.name}: der Trockenlauf nennt eine Akte`);
+      assert(!existsSync(join(ROOT, "devices", fall.name)), `${fall.name}: der Trockenlauf hat eine Akte angelegt`);
+
+      const text = tool("device.mjs", ["--name", fall.name, "--probe", datei], "", { ARA_MIRROR: spiegel });
+      assert(/^## Erkennung$/m.test(text.stdout), `${fall.name}: kein Abschnitt Erkennung`);
+      assert(/^## Geräteprofil$/m.test(text.stdout), `${fall.name}: kein Abschnitt Geräteprofil`);
+      assert(
+        new RegExp(`Verifikationsstand: ${fall.stufe}`).test(text.stdout),
+        `${fall.name}: der Verifikationsstand steht nicht im Bericht:\n${text.stdout}`
+      );
+    }
+
+    // Ohne Spiegel gibt es keine Stufe, und dann sagt der Lauf genau das.
+    const datei = join(work, "thor.txt");
+    const leer = mkdtempSync(join(tmpdir(), "ara-ohne-"));
+    try {
+      const run = tool("device.mjs", ["--name", "thor", "--probe", datei], "", { ARA_MIRROR: leer });
+      assert(/Verifikationsstand: unbekannt/.test(run.stdout), `ohne Spiegel wird eine Stufe gemeldet:\n${run.stdout}`);
+      assert(/kein Spiegel|keinen Spiegel|es gibt keinen Spiegel/.test(run.stdout), "der Grund fehlt");
+    } finally {
+      rmSync(leer, { recursive: true, force: true });
+    }
+
+    // Ein Trockenlauf greift nicht ein, und er sagt nicht nur, dass er es nicht tut.
+    for (const eingriff of [["--install", "docker"], ["--deploy-key"], ["--admin-login"]]) {
+      const run = tool("device.mjs", ["--name", "thor", "--probe", datei, ...eingriff]);
+      assert(run.status !== 0, `--probe zusammen mit ${eingriff[0]} lief durch`);
+    }
+    const fehlt = tool("device.mjs", ["--name", "thor", "--probe", join(work, "gibt-es-nicht.txt")]);
+    assert(fehlt.status !== 0, "eine fehlende Befunddatei wurde angenommen");
+    return "thor, dgx-spark";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+    rmSync(spiegel, { recursive: true, force: true });
+    for (const n of ["thor", "dgx-spark"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
+  // Wer das Kit zum ersten Mal auf seinem Arbeitsrechner ausprobiert, bekommt
+  // hier ein Nein. Ein Nein allein ist keine Auskunft: es gehört dazu, welche
+  // Geräte es heute tragen, dass Fragen auch ohne Gerät beantwortet werden, und
+  // ein ruhiger Satz zur Lizenz.
+  const work = mkdtempSync(join(tmpdir(), "ara-mac-"));
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  try {
+    const datei = join(work, "mac.txt");
+    writeFileSync(datei, ATTRAPPEN.mac + "\n");
+    const run = tool("device.mjs", ["--name", "mac", "--probe", datei]);
+    assert(run.status === 0, `Lauf fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(/^## Ohne passendes Gerät$/m.test(run.stdout), `kein Abschluss:\n${run.stdout}`);
+    for (const geraet of supportedDevices(readProfiles())) {
+      assert(run.stdout.includes(geraet.family), `${geraet.family} wird nicht genannt`);
+      assert(run.stdout.includes(geraet.sheet), `das Blatt zu ${geraet.family} wird nicht genannt`);
+    }
+    assert(/Fragen zu Arasul/.test(run.stdout), "Fragen zu Arasul werden nicht angeboten");
+    assert(/Apache-Lizenz 2\.0/.test(run.stdout), "die Lizenz des Kits wird nicht genannt");
+    assert(/keine Lizenzprüfung/.test(run.stdout), "der Satz zum Token fehlt");
+    // Ruhig heißt: kein zweiter Anlauf. Was Arasul brächte, steht genau einmal da.
+    const werbung = run.stdout.split("Mit Arasul bekäme").length - 1;
+    assert(werbung === 1, `der Satz über Arasul steht ${werbung} mal da`);
+
+    // Ein unterstütztes Gerät bekommt diesen Abschluss nicht.
+    writeFileSync(join(work, "orin.txt"), ATTRAPPEN.orin + "\n");
+    const orin = tool("device.mjs", ["--name", "orin", "--probe", join(work, "orin.txt")]);
+    assert(!/Ohne passendes Gerät/.test(orin.stdout), "ein unterstütztes Gerät bekommt den Abschluss auch");
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+    for (const n of ["mac", "orin"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Vor dem Eingriff steht der Verifikationsstand im Protokoll", () => {
+  // Wer an einem Gerät etwas verändert, soll vorher gelesen haben, worauf sich
+  // das Kit stützt und wie belastbar das ist. Der Block steht deshalb vor dem
+  // ersten Schritt und nicht im Bericht danach.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-eingriff";
+  const spiegel = attrappenSpiegel({ "orin-64": "live" });
+  rmSync(join(ROOT, "devices", name), { recursive: true, force: true });
+  try {
+    const run = tool(
+      "device.mjs",
+      ["--host", "127.0.0.2", "--port", "1", "--user", "probe", "--name", name, "--install", "docker"],
+      "",
+      { ARA_MIRROR: spiegel }
+    );
+    assert(run.status !== 0, "ohne Verbindung wurde aufgesetzt");
+    const block = run.stdout.indexOf("Geräteprofil, vor dem Start");
+    assert(block !== -1, `der Block vor dem Start fehlt:\n${run.stdout}`);
+    assert(/Verifikationsstand:/.test(run.stdout), "der Verifikationsstand fehlt vor dem Eingriff");
+    // Der Lauf bricht ab, bevor irgendetwas aufgesetzt wird, und der Block steht
+    // trotzdem da: also stand er vor dem ersten Schritt und nicht im Bericht.
+    assert(!/aufsetzen auf/.test(run.stdout), `es wurde doch aufgesetzt:\n${run.stdout}`);
+    assert(block < run.stdout.length, "der Block steht nicht in der Ausgabe");
+  } finally {
+    rmSync(spiegel, { recursive: true, force: true });
+    rmSync(join(ROOT, "devices", name), { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -2690,6 +2987,11 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".ara/tools/selftest.mjs",
     ".ara/commands/all/device.md",
     ".ara/commands/partner/customer.md",
+    // Die Geraeteprofile liegen unter .ara/knowledge/devices/, und `devices/`
+    // stand in .gitignore ohne fuehrenden Schraegstrich: sie waeren im Klon
+    // nicht angekommen, und ohne sie erkennt /device kein Geraet mehr.
+    ".ara/knowledge/devices/orin.md",
+    ".ara/knowledge/devices/orin.de.md",
     // Die eine Ausnahme unter apps/: die Referenz-App gehoert dem Kit und kommt
     // mit dem Klon mit. Ohne sie haette ein Fremder nichts zum Ansehen.
     "apps/urlaubsantrag/app.json",
@@ -3485,6 +3787,9 @@ const PAIRED = [
   { file: ".ara/CHANGELOG.md" },
   { dir: ".ara/persona" },
   { dir: ".ara/knowledge" },
+  // Die Geraeteprofile liegen einen Ordner tiefer und faellen sonst durch: der
+  // Leser oben nimmt nur Dateien, keine Unterordner.
+  { dir: ".ara/knowledge/devices" },
   { dir: ".ara/commands/all" },
   { dir: ".ara/commands/partner" },
   // Nur die Gerueste direkt darin. `app/` ist Quelltext einer App und keine

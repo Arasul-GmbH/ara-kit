@@ -12,6 +12,7 @@
  *   node .ara/tools/device.mjs --name orin --deploy-key           create the kit key on the device
  *   node .ara/tools/device.mjs --name orin --admin-login          get a session as administrator
  *   node .ara/tools/device.mjs --name orin --admin-login --token  only the credential, for a script
+ *   node .ara/tools/device.mjs --name thor --probe findings.txt   dry run, findings from a file
  *   node .ara/tools/device.mjs                                    which files there are
  *   node .ara/tools/device.mjs --name mac --json                  the same as JSON
  *   node .ara/tools/device.mjs --help                             this help, nothing else
@@ -20,10 +21,20 @@
  * under customers/<customer>/devices/<name>/, and then --customer comes along.
  *
  * The tool only reads on the device. It changes something only with --install or
- * --deploy-key, and that is an intervention that belongs confirmed beforehand. The
- * verdict follows the rule in lib/device.mjs: Orin and Thor carry Arasul, DGX Spark
- * and other NVIDIA computers are announced, everything else gets noted down. Values
- * for the device (profile, model, engine) still stand only in the mirror, not here.
+ * --deploy-key, and that is an intervention that belongs confirmed beforehand.
+ *
+ * Recognition runs without prior knowledge: the tool reads what the device says about
+ * itself (vendor, model, architecture, running system) and holds that against the
+ * device profiles under .ara/knowledge/devices/. Every profile carries the date it is
+ * from and where its knowledge came from. Whether the matching profile in the product's
+ * catalogue was verified on the device or only built from manufacturer documentation
+ * comes from the mirror, and that line stands before every intervention. Without a
+ * mirror the tool says that it cannot read the level instead of guessing one.
+ *
+ * --probe <file> is the dry run: the findings come from a file instead of from a
+ * device. Same recognition, same profile, same verification level, but nothing is
+ * written and nothing is changed. That is how a device that is not here gets talked
+ * about, and how the self-test carries Thor and DGX Spark.
  *
  * Two ways lead to a device with Arasul, and the tool knows both: one on which the
  * platform already runs only needs the kit key (--deploy-key); one without gets it
@@ -57,6 +68,7 @@
  *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
  *   node .ara/tools/device.mjs --name orin --admin-login          Sitzung als Administrator holen
  *   node .ara/tools/device.mjs --name orin --admin-login --token  nur den Ausweis, für ein Skript
+ *   node .ara/tools/device.mjs --name thor --probe befunde.txt    Trockenlauf, Befunde aus einer Datei
  *   node .ara/tools/device.mjs                                    welche Akten es gibt
  *   node .ara/tools/device.mjs --name mac --json                  dasselbe als JSON
  *   node .ara/tools/device.mjs --help                             diese Hilfe, sonst nichts
@@ -65,10 +77,20 @@
  * unter customers/<kunde>/devices/<name>/, dann kommt --customer dazu.
  *
  * Das Werkzeug liest auf dem Gerät nur. Es ändert erst mit --install oder
- * --deploy-key etwas, und das ist ein Eingriff, der vorher bestätigt gehört. Das
- * Urteil folgt der Regel in lib/device.mjs: Orin und Thor tragen Arasul, DGX Spark
- * und andere NVIDIA-Rechner sind angekündigt, alles andere wird vorgemerkt. Werte
- * für das Gerät (Profil, Modell, Engine) stehen weiter nur im Spiegel, nicht hier.
+ * --deploy-key etwas, und das ist ein Eingriff, der vorher bestätigt gehört.
+ *
+ * Die Erkennung läuft ohne Vorwissen: das Werkzeug liest, was das Gerät über sich
+ * sagt (Hersteller, Modell, Architektur, laufendes System), und hält das gegen die
+ * Geräteprofile unter .ara/knowledge/devices/. Jedes Profil trägt seinen Stand und
+ * seine Quelle. Ob das dazugehörige Profil im Katalog des Produkts am Gerät
+ * verifiziert oder nur nach Herstellerdoku gebaut wurde, kommt aus dem Spiegel, und
+ * diese Zeile steht vor jedem Eingriff. Ohne Spiegel sagt das Werkzeug, dass es die
+ * Stufe nicht lesen kann, statt eine zu raten.
+ *
+ * --probe <datei> ist der Trockenlauf: die Befunde kommen aus einer Datei statt von
+ * einem Gerät. Dieselbe Erkennung, dasselbe Profil, derselbe Verifikationsstand, aber
+ * geschrieben wird nichts und verändert auch nichts. So wird über ein Gerät geredet,
+ * das nicht dasteht, und so führt der Selbsttest Thor und DGX Spark.
  *
  * Zwei Wege führen zu einem Gerät mit Arasul, und das Werkzeug kennt beide: eines,
  * auf dem die Plattform schon läuft, braucht nur noch den Kit-Schlüssel
@@ -97,6 +119,7 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import { homedir, userInfo } from "node:os";
 import { join, relative } from "node:path";
 import { PROBE, VERDICTS, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
+import { platformOf, readProfiles, supportedDevices, verificationLine, verificationOf } from "./lib/platform.mjs";
 import {
   ROOT,
   devicePath,
@@ -150,6 +173,43 @@ helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 const customer = str(arg.customer);
+
+/**
+ * Der Trockenlauf: die Befunde kommen aus einer Datei statt von einem Gerät.
+ *
+ * Das Kit soll über ein Gerät sprechen können, das nicht dasteht. Ein Partner,
+ * der vor der Anschaffung wissen will, was das Kit über einen Thor sagt, bekommt
+ * hier dieselbe Erkennung, dasselbe Profil und denselben Verifikationsstand wie
+ * an echter Hardware, nur eben von einer Attrappe. Der Selbsttest fährt Thor und
+ * DGX Spark genau so, es gibt für beide kein Gerät.
+ *
+ * **Ein Trockenlauf schreibt nichts.** Keine Akte, kein Merker, kein Eingriff.
+ * Eine Akte für ein Gerät, das es nicht gibt, wäre eine Behauptung.
+ */
+const dryRun = str(arg.probe);
+if (dryRun) {
+  for (const forbidden of ["install", "deploy-key", "admin-login"]) {
+    if (arg[forbidden]) {
+      fail(
+        t(
+          `--probe is a dry run, it changes nothing. --${forbidden} needs a device.`,
+          `--probe ist ein Trockenlauf, er ändert nichts. --${forbidden} braucht ein Gerät.`
+        )
+      );
+    }
+  }
+  if (!existsSync(dryRun)) {
+    fail(t(`There is no findings file ${dryRun}.`, `Die Befunddatei ${dryRun} gibt es nicht.`));
+  }
+  if (!str(arg.name)) {
+    fail(
+      t(
+        "A dry run needs a name for the device it is about: --name <name>.",
+        "Ein Trockenlauf braucht einen Namen für das Gerät, um das es geht: --name <name>."
+      )
+    );
+  }
+}
 
 // --- Merker -----------------------------------------------------------------
 
@@ -238,7 +298,7 @@ const existing = fresh ? {} : readFrontmatter(file).fields;
  */
 const loginOnly = Boolean(arg["admin-login"]);
 const host = str(arg.host) || existing.address || existing.hostname || (loginOnly ? existing.api_base || "" : "");
-if (!host) {
+if (!host && !dryRun) {
   fail(
     fresh
       ? t(
@@ -459,8 +519,8 @@ if (arg["admin-login"]) await adminLogin();
 // kommt ohne diese Angaben aus.
 
 const isLocal = LOCAL_HOSTS.has(host);
-const user = str(arg.user) || existing.ssh_user || (isLocal ? userInfo().username : null);
-if (!user) fail(t("I need the login name on the device: --user <name>.", "Ich brauche den Anmeldenamen auf dem Gerät: --user <name>."));
+const user = str(arg.user) || existing.ssh_user || (isLocal ? userInfo().username : null) || (dryRun ? "" : null);
+if (user === null) fail(t("I need the login name on the device: --user <name>.", "Ich brauche den Anmeldenamen auf dem Gerät: --user <name>."));
 const port = str(arg.port) || existing.ssh_port || "22";
 const key = str(arg.key) || existing.ssh_key || "";
 
@@ -473,8 +533,14 @@ if (key) {
 sshArgs.push(`${user}@${host}`);
 const label = `${user}@${host}:${port}`;
 
-/** Führt das Prüfskript aus: über SSH, oder lokal, wenn das Ziel dieser Rechner ist. */
+/**
+ * Führt das Prüfskript aus: über SSH, oder lokal, wenn das Ziel dieser Rechner
+ * ist. Im Trockenlauf wird nichts ausgeführt, die Befunde stehen schon da.
+ */
 function probe() {
+  if (dryRun) {
+    return { transport: "dry-run", ssh: "dry-run", output: readFileSync(dryRun, "utf8"), message: "" };
+  }
   const remote = spawnSync("ssh", [...sshArgs, "sh -s"], { input: PROBE, encoding: "utf8" });
   if (remote.status === 0 && /@done=ja/.test(remote.stdout)) {
     return { transport: "ssh", ssh: "ok", output: remote.stdout, message: "" };
@@ -489,8 +555,108 @@ function probe() {
 
 const run = probe();
 const facts = parseProbe(run.output);
-const found = judge(facts);
+const profiles = readProfiles();
+const found = judge(facts, profiles);
 const svc = services(facts);
+
+// --- Das Profil und sein Verifikationsstand ----------------------------------
+//
+// Zwei getrennte Auskünfte, und sie kommen aus zwei getrennten Quellen. Welche
+// Hardware das hier ist, sagt das Blatt des Kits unter .ara/knowledge/devices/,
+// mit Stand und Quelle. Ob das Profil dazu am Gerät verifiziert oder nur nach
+// Herstellerdoku gebaut wurde, sagt allein der Katalog des Produkts im Spiegel.
+// Das Kit füllt die zweite Auskunft nie aus der ersten auf.
+
+const platform = platformOf(found.profile, found.memoryGb);
+const verification = platform.id
+  ? verificationOf(platform.id)
+  : { level: null, reason: platform.reason || t("no catalogue profile", "kein Katalogprofil") };
+
+/** Was am Gerät erkannt wurde, jede Angabe mit der Stelle, die sie hergibt. */
+function recognitionLines() {
+  const source = (where) => (where ? t(` (from ${where})`, ` (aus ${where})`) : "");
+  return [
+    t(
+      `- Reachable: ${
+        run.transport === "ssh"
+          ? `yes, over SSH, ${label}`
+          : run.transport === "local"
+            ? `this computer itself, SSH ${label} refused`
+            : run.transport === "dry-run"
+              ? `not checked, dry run from ${dryRun}`
+              : `no, ${label}`
+      }`,
+      `- Erreichbar: ${
+        run.transport === "ssh"
+          ? `ja, über SSH, ${label}`
+          : run.transport === "local"
+            ? `dieser Rechner selbst, SSH ${label} abgelehnt`
+            : run.transport === "dry-run"
+              ? `nicht geprüft, Trockenlauf aus ${dryRun}`
+              : `nein, ${label}`
+      }`
+    ),
+    t(`- Vendor: ${found.vendor || "not recognised"}`, `- Hersteller: ${found.vendor || "nicht erkannt"}`) +
+      source(found.vendorSource),
+    t(`- Model: ${found.hardware}`, `- Modell: ${found.hardware}`) +
+      source(facts.dt_model ? "/proc/device-tree/model" : facts.dmi_model ? "/sys/class/dmi/id/product_name" : ""),
+    t(`- Architecture: ${found.arch || "not recognised"}`, `- Architektur: ${found.arch || "nicht erkannt"}`),
+    t(`- Running system: ${found.os}`, `- Laufendes System: ${found.os}`) +
+      (found.kernel ? t(`, kernel ${found.kernel}`, `, Kern ${found.kernel}`) : "") +
+      (found.memoryGb ? t(`, ${found.memoryGb} GB memory`, `, ${found.memoryGb} GB Arbeitsspeicher`) : "") +
+      (found.diskFreeGb !== null ? t(`, ${found.diskFreeGb} GB free`, `, ${found.diskFreeGb} GB frei`) : ""),
+  ];
+}
+
+/**
+ * Das Profil, sein Alter, seine Quelle und der Verifikationsstand.
+ *
+ * Dieser Block steht vor jedem Eingriff und in jedem Bericht. Er darf nie
+ * fehlen: eine ausgelassene Zeile über den Verifikationsstand liest sich wie
+ * eine Bestätigung, und eine Bestätigung ist sie nicht.
+ */
+function profileLines() {
+  const lines = [];
+  if (found.profile) {
+    lines.push(
+      t(
+        `- Kit profile: ${found.profile.id}, ${found.profile.vendor} ${found.profile.family}, ` +
+          `sheet ${found.profile.sheet}`,
+        `- Kit-Profil: ${found.profile.id}, ${found.profile.vendor} ${found.profile.family}, ` +
+          `Blatt ${found.profile.sheet}`
+      ),
+      t(
+        `- As of: ${found.profile.as_of}. Source: ${found.profile.source}`,
+        `- Stand: ${found.profile.as_of}. Quelle: ${found.profile.source}`
+      )
+    );
+    lines.push(
+      platform.id
+        ? t(`- Catalogue profile: ${platform.id}`, `- Katalogprofil: ${platform.id}`)
+        : t(
+            `- Catalogue profile: none named, ${platform.reason}`,
+            `- Katalogprofil: keines genannt, ${platform.reason}`
+          ),
+      `- ${verificationLine(verification)}`
+    );
+    return lines;
+  }
+  // Ohne Blatt gibt es auch nichts zu verifizieren. Hier eine Stufe zu melden
+  // hieße, über ein Gerät zu sprechen, über das im Kit nichts geschrieben steht.
+  lines.push(
+    t(
+      "- Kit profile: none. No sheet under .ara/knowledge/devices/ fits this hardware.",
+      "- Kit-Profil: keines. Kein Blatt unter .ara/knowledge/devices/ passt zu dieser Hardware."
+    ),
+    t(
+      "- Catalogue profile and verification level: nothing to read. Without a sheet the kit names no " +
+        "catalogue profile, and without a catalogue profile there is no level it could look up.",
+      "- Katalogprofil und Verifikationsstand: nichts zu lesen. Ohne Blatt nennt das Kit kein " +
+        "Katalogprofil, und ohne Katalogprofil gibt es keine Stufe, die es nachschlagen könnte."
+    )
+  );
+  return lines;
+}
 
 // --- Optional: Docker und Ollama aufsetzen -----------------------------------
 
@@ -510,6 +676,20 @@ for (const what of wanted) {
 const wantsArasul = wanted.includes("arasul");
 const install = wanted.filter((what) => what !== "arasul");
 const installed = [];
+
+// Vor dem Eingriff, nicht danach. Wer auf einem Gerät etwas verändert, soll
+// vorher gelesen haben, worauf sich das Kit dabei stützt und wie belastbar das
+// ist. Im reinen Lesebetrieb steht derselbe Block unten im Bericht.
+if (wanted.length || arg["deploy-key"]) {
+  console.log(
+    [
+      t("## Device profile, before the start", "## Geräteprofil, vor dem Start"),
+      "",
+      ...profileLines(),
+      "",
+    ].join("\n")
+  );
+}
 if (install.length) {
   if (run.transport === "none") fail(t("Without a connection nothing gets set up.", "Ohne Verbindung wird nichts aufgesetzt."));
   if (!/linux/i.test(facts.uname || "")) {
@@ -794,8 +974,8 @@ if (arg["deploy-key"] || (arasul && arasul.ok)) {
 
 // --- Akte -------------------------------------------------------------------
 
-ensureDir(dir);
-if (fresh) writeFileSync(file, readFileSync(TEMPLATE, "utf8"));
+if (!dryRun) ensureDir(dir);
+if (fresh && !dryRun) writeFileSync(file, readFileSync(TEMPLATE, "utf8"));
 const known = run.transport !== "none";
 const changes = {
   name,
@@ -818,6 +998,10 @@ if (known) {
     ollama: svc.ollama.state,
     arasul: svc.arasul.state,
   });
+  // Das Katalogprofil steht nur dann in der Akte, wenn der Spiegel es wirklich
+  // führt. Sonst wäre es eine Zusage über Modell, Engine und Speicherbudget, die
+  // niemand nachlesen kann: die Leistungsbeschreibung liest genau dieses Feld.
+  if (platform.id && verification.level) changes.profile = platform.id;
   if (found.verdict !== "supported" && !existing.noted_on) changes.noted_on = today();
   if (!existing.status || existing.status === "planned") changes.status = "delivered";
 }
@@ -834,7 +1018,7 @@ if (arasul?.ok) {
   // Zertifikat dort liegt: es hat gerade zugesehen, wie es entstanden ist.
   changes.tls = "selfsigned";
 }
-writeFrontmatter(file, changes);
+if (!dryRun) writeFrontmatter(file, changes);
 
 const entry = [
   `### ${now()} · ${run.transport === "ssh" ? `SSH ${label}` : run.transport === "local" ? `lokal, SSH ${label} abgelehnt` : `keine Verbindung zu ${label}`}`,
@@ -843,6 +1027,10 @@ const entry = [
       `Docker: ${svc.docker.text}. Ollama: ${svc.ollama.text}. Arasul: ${svc.arasul.text}. ` +
       `Urteil: ${found.verdictText} (${found.reason}).`
     : `Keine Verbindung. ${run.message || ""}`.trim(),
+  // Profil, Stand, Quelle und Verifikationsstand gehören ins Protokoll und
+  // nicht nur auf den Bildschirm: in einem halben Jahr soll nachlesbar sein,
+  // worauf sich die Einrichtung dieses Geräts gestützt hat.
+  ...(known ? [profileLines().map((line) => line.replace(/^- /, "")).join(" · ")] : []),
   ...installed.map((i) => `Aufgesetzt: ${i.what}, ${i.ok ? "Installation durchgelaufen" : "Installation abgebrochen"}.`),
   ...(arasul
     ? [
@@ -868,9 +1056,10 @@ const entry = [
       ]
     : []),
 ].join("\n");
-appendFileSync(file, `\n${entry}\n`);
-
-writeState({ device: name, customer: customer || null });
+if (!dryRun) {
+  appendFileSync(file, `\n${entry}\n`);
+  writeState({ device: name, customer: customer || null });
+}
 
 // --- Nächste Schritte --------------------------------------------------------
 
@@ -887,6 +1076,31 @@ const where = `${customer ? `--customer ${customer} ` : ""}--device ${name}`;
 
 function nextSteps() {
   const steps = [];
+  if (dryRun) {
+    // Ein Trockenlauf hat kein Gerät, also auch keinen nächsten Schritt daran.
+    // Was er kann, ist die Erkennung zeigen, und was er nicht kann, sagt er.
+    steps.push(
+      t(
+        `The findings come from ${dryRun}, not from a device. Nothing was written and nothing was ` +
+          "changed. As soon as the device is there, the same run works without --probe: " +
+          `node .ara/tools/device.mjs --host <address> --user <name> --name ${name}`,
+        `Die Befunde kommen aus ${dryRun}, nicht von einem Gerät. Geschrieben wurde nichts und ` +
+          "verändert auch nichts. Sobald das Gerät dasteht, läuft derselbe Lauf ohne --probe: " +
+          `node .ara/tools/device.mjs --host <adresse> --user <name> --name ${name}`
+      )
+    );
+    if (!verification.level) {
+      steps.push(
+        t(
+          "The verification level stayed unread. It stands in the mirror, and the mirror comes into " +
+            "being at an installation: node .ara/tools/mirror.mjs --refresh fetches it just to read up.",
+          "Der Verifikationsstand blieb ungelesen. Er steht im Spiegel, und der entsteht bei einer " +
+            "Installation: node .ara/tools/mirror.mjs --refresh holt ihn nur zum Nachlesen."
+        )
+      );
+    }
+    return steps;
+  }
   if (run.transport === "none") {
     steps.push(
       t(
@@ -909,11 +1123,15 @@ function nextSteps() {
     );
   }
   if (found.verdict === "unsupported") {
+    // Was Arasul brächte, steht im Abschlussblock und nicht auch noch hier:
+    // zweimal derselbe Satz liest sich wie ein Verkaufsgespräch.
     steps.push(
       t(
-        `Noted in the file since ${changes.noted_on || existing.noted_on}. Without Arasul it ends here. `,
-        `Vorgemerkt in der Akte seit ${changes.noted_on || existing.noted_on}. Ohne Arasul endet es hier. `
-      ) + ARASUL_SENTENCE
+        `Noted in the file since ${changes.noted_on || existing.noted_on}. Without Arasul it ends here, ` +
+          "and the rest of the kit works on this computer.",
+        `Vorgemerkt in der Akte seit ${changes.noted_on || existing.noted_on}. Ohne Arasul endet es hier, ` +
+          "und der Rest des Kits läuft auf diesem Rechner."
+      )
     );
   } else if (found.verdict === "soon") {
     steps.push(
@@ -1000,6 +1218,56 @@ function nextSteps() {
 const steps = nextSteps();
 
 /**
+ * Das Ende auf einem Rechner, der Arasul nicht trägt.
+ *
+ * Ein Werkzeug, das hier nur "nicht unterstützt" sagt, lässt jemanden mit einem
+ * Nein stehen, der gerade zum ersten Mal etwas ausprobiert hat. Es gibt drei
+ * Dinge zu sagen, und keines davon ist ein Verkaufsgespräch: welche Geräte es
+ * heute trägt, dass Fragen zu Arasul auch ohne Gerät beantwortet werden, und
+ * einen ruhigen Satz zur Lizenz. Danach ist Schluss.
+ */
+function closingLines() {
+  if (found.verdict !== "unsupported") return [];
+  const carriers = supportedDevices(profiles);
+  return [
+    "",
+    t("## Without a matching device", "## Ohne passendes Gerät"),
+    "",
+    t(
+      `Arasul does not run on this computer. ${ARASUL_SENTENCE}`,
+      `Arasul läuft auf diesem Rechner nicht. ${ARASUL_SENTENCE}`
+    ),
+    "",
+    t("Which devices carry it, according to the sheets in the kit:", "Welche Geräte es tragen, nach den Blättern im Kit:"),
+    "",
+    ...carriers.map(
+      (device) =>
+        `- ${device.family}: ${VERDICTS[device.support]} (${device.sheet})`
+    ),
+    "",
+    t(
+      "Questions about Arasul do not need a device. Ask them here: what it is, what it needs, " +
+        "what it does not do. The kit answers them from .ara/knowledge/sales.md and " +
+        ".ara/knowledge/extensions.md, and it says when it does not know something.",
+      "Fragen zu Arasul brauchen kein Gerät. Stell sie hier: was es ist, was es braucht, was es " +
+        "nicht tut. Das Kit beantwortet sie aus .ara/knowledge/sales.de.md und " +
+        ".ara/knowledge/extensions.de.md, und es sagt, wenn es etwas nicht weiß."
+    ),
+    "",
+    t(
+      "On the licence, calmly: this kit is under the Apache licence 2.0 and stays usable without " +
+        "Arasul. Device files, runsheets, calculation and paperwork work on this computer as they " +
+        "are. What a licence for Arasul costs is governed by the contract and not by this tool, and " +
+        "the download token from the portal is free and is no licence check.",
+      "Zur Lizenz, ruhig: dieses Kit steht unter der Apache-Lizenz 2.0 und bleibt ohne Arasul " +
+        "brauchbar. Geräteakten, Laufzettel, Kalkulation und Papier laufen auf diesem Rechner so, " +
+        "wie sie sind. Was eine Lizenz für Arasul kostet, regelt der Vertrag und nicht dieses " +
+        "Werkzeug, und das Download-Token aus dem Portal kostet nichts und ist keine Lizenzprüfung."
+    ),
+  ];
+}
+
+/**
  * Was der Installer nicht konnte, noch einmal beisammen.
  *
  * Am 28.08.2026 liefen „SSH-Hardening fehlgeschlagen" und „Firewall-Setup
@@ -1042,7 +1310,8 @@ if (arg.json) {
       {
         name,
         customer,
-        file: relative(ROOT, file),
+        file: dryRun ? null : relative(ROOT, file),
+        dry_run: dryRun || null,
         fresh,
         host,
         user,
@@ -1050,6 +1319,22 @@ if (arg.json) {
         transport: run.transport,
         ssh: run.ssh,
         ...found,
+        // Das Blatt als Pfad, nicht als Objekt: was drinsteht, liest man dort.
+        profile: found.profile
+          ? {
+              id: found.profile.id,
+              vendor: found.profile.vendor,
+              family: found.profile.family,
+              sheet: found.profile.sheet,
+              as_of: found.profile.as_of,
+              source: found.profile.source,
+            }
+          : null,
+        platform: platform.id,
+        platform_reason: platform.reason,
+        verification: verification.level,
+        verification_reason: verification.reason,
+        verification_line: verificationLine(verification),
         docker: svc.docker,
         ollama: svc.ollama,
         arasul: svc.arasul,
@@ -1072,6 +1357,7 @@ if (arg.json) {
           : null,
         deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
         next: steps,
+        closing: closingLines().filter((line) => line && !line.startsWith("#")),
       },
       null,
       2
@@ -1081,20 +1367,29 @@ if (arg.json) {
 }
 
 const lines = [
-  `# ${place}${fresh ? t(" (file created)", " (Akte angelegt)") : ""}`,
+  `# ${place}${dryRun ? t(" (dry run)", " (Trockenlauf)") : fresh ? t(" (file created)", " (Akte angelegt)") : ""}`,
   "",
-  t(`- File: ${relative(ROOT, file)}`, `- Akte: ${relative(ROOT, file)}`),
-  t(
-    `- Connection: ${run.transport === "ssh" ? `SSH stands, ${label}` : run.transport === "local" ? `SSH ${label} refused, checked locally` : `none, ${label}`}`,
-    `- Verbindung: ${run.transport === "ssh" ? `SSH steht, ${label}` : run.transport === "local" ? `SSH ${label} abgelehnt, lokal geprüft` : `keine, ${label}`}`
-  ) + (run.message && run.transport !== "ssh" ? ` (${run.message})` : ""),
+  dryRun
+    ? t(
+        `- File: none. A dry run writes nothing, the findings come from ${dryRun}.`,
+        `- Akte: keine. Ein Trockenlauf schreibt nichts, die Befunde kommen aus ${dryRun}.`
+      )
+    : t(`- File: ${relative(ROOT, file)}`, `- Akte: ${relative(ROOT, file)}`),
 ];
+if (run.message && run.transport !== "ssh" && run.transport !== "dry-run") {
+  lines.push(t(`- SSH says: ${run.message}`, `- SSH sagt: ${run.message}`));
+}
+lines.push("", t("## Recognition", "## Erkennung"), "", ...recognitionLines());
 if (known) {
   lines.push(
-    `- Hardware: ${found.hardware}` + (found.gpu ? t(`, graphics ${found.gpu}`, `, Grafik ${found.gpu}`) : ""),
-    t(`- System: ${found.os} (${found.arch})`, `- System: ${found.os} (${found.arch})`) +
-      (found.memoryGb ? t(`, ${found.memoryGb} GB memory`, `, ${found.memoryGb} GB Arbeitsspeicher`) : "") +
-      (found.diskFreeGb !== null ? t(`, ${found.diskFreeGb} GB free`, `, ${found.diskFreeGb} GB frei`) : ""),
+    ...(found.gpu ? [t(`- Graphics: ${found.gpu}`, `- Grafik: ${found.gpu}`)] : []),
+    "",
+    t("## Device profile", "## Geräteprofil"),
+    "",
+    ...profileLines(),
+    "",
+    t("## What is on it", "## Was darauf ist"),
+    "",
     `- Docker: ${svc.docker.text}`,
     `- Ollama: ${svc.ollama.text}`,
     `- Arasul: ${svc.arasul.text}`,
@@ -1116,5 +1411,6 @@ if (known) {
 }
 lines.push(...troubleSection());
 lines.push("", t("## Next steps", "## Nächste Schritte"), "", ...steps.map((s) => `- ${s}`));
+lines.push(...closingLines());
 console.log(lines.join("\n"));
 process.exit(code);
