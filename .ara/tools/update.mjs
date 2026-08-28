@@ -1,5 +1,27 @@
 #!/usr/bin/env node
 /**
+ * Bring the kit up to date.
+ *
+ * Fetches the version from the Arasul repo and replaces only what belongs to
+ * Arasul: `.ara/` and the minimum of `.claude/` (CLAUDE.md, settings.json,
+ * commands/init.md, skills/). Everything else stays: business/, customers/,
+ * devices/, apps/, the generated commands under .claude/commands/, the mirror, the
+ * marker, the .env.
+ *
+ *   node .ara/tools/update.mjs           fetch the version, show the change, deploy it
+ *   node .ara/tools/update.mjs --check   only show what would change
+ *   node .ara/tools/update.mjs --json    the same as JSON, for the evaluation
+ *
+ * Needs no git and no upstream remote: the source is a tarball over HTTPS. That is
+ * why it also runs in a fork that knows nothing about Arasul's repo. Whoever keeps
+ * the kit in git sees the change in `git status` afterwards and commits it like any
+ * other.
+ *
+ * After deploying: `node .ara/tools/commands.mjs`, so that new or changed commands
+ * come from .ara/commands/ into .claude/commands/. /init does that.
+ *
+ * === deutsch ===
+ *
  * Kit auf den aktuellen Stand bringen.
  *
  * Holt den Stand aus dem Arasul-Repo und ersetzt nur, was Arasul gehoert: `.ara/`
@@ -125,11 +147,14 @@ async function download(target) {
   if (!response.ok) {
     throw new Error(
       response.status === 404
-        ? "Die Quelle wurde nicht gefunden. Ist die Adresse noch richtig?"
-        : `Die Quelle antwortet mit Status ${response.status}.`
+        ? t(
+            "The source was not found. Is the address still right?",
+            "Die Quelle wurde nicht gefunden. Ist die Adresse noch richtig?"
+          )
+        : t(`The source answers with status ${response.status}.`, `Die Quelle antwortet mit Status ${response.status}.`)
     );
   }
-  if (!response.body) throw new Error("Die Antwort war leer.");
+  if (!response.body) throw new Error(t("The answer was empty.", "Die Antwort war leer."));
 
   await new Promise((done, failed) => {
     // Die ._-Beiwerkdateien von macOS bleiben draußen, hier wie überall, wo das
@@ -175,26 +200,37 @@ function stand(root) {
  */
 function news(fresh, here) {
   if (!fresh.version) return [];
-  if (fresh.version === here.version) return [`Stand: ${here.version}, unverändert.`];
+  if (fresh.version === here.version) {
+    return [t(`Version: ${here.version}, unchanged.`, `Stand: ${here.version}, unverändert.`)];
+  }
   return standBlock({ version: fresh.version, changelog: fresh.changelog, since: here.version || null });
 }
 
 function describe(diff) {
+  const label = t(
+    { added: "new        ", changed: "changed    ", removed: "removed    " },
+    { added: "neu        ", changed: "geaendert  ", removed: "entfernt   " }
+  );
   const lines = [];
-  for (const rel of diff.added) lines.push(`neu        ${rel}`);
-  for (const rel of diff.changed) lines.push(`geaendert  ${rel}`);
-  for (const rel of diff.removed) lines.push(`entfernt   ${rel}`);
+  for (const rel of diff.added) lines.push(`${label.added}${rel}`);
+  for (const rel of diff.changed) lines.push(`${label.changed}${rel}`);
+  for (const rel of diff.removed) lines.push(`${label.removed}${rel}`);
   return lines.join("\n");
 }
 
 const work = mkdtempSync(join(tmpdir(), "ara-kit-update-"));
 
 try {
-  if (!arg.json) console.log("Hole den aktuellen Stand ...");
+  if (!arg.json) console.log(t("Fetching the current version ...", "Hole den aktuellen Stand ..."));
   await download(work);
 
   if (!existsSync(join(work, ".ara", "tools", "update.mjs"))) {
-    throw new Error("Der geholte Stand sieht nicht wie das Ara-Kit aus, es fehlt .ara/tools/. Nichts eingespielt.");
+    throw new Error(
+      t(
+        "The fetched version does not look like the Ara-Kit, .ara/tools/ is missing. Nothing deployed.",
+        "Der geholte Stand sieht nicht wie das Ara-Kit aus, es fehlt .ara/tools/. Nichts eingespielt."
+      )
+    );
   }
 
   const diff = compare(work, ROOT);
@@ -213,17 +249,20 @@ try {
     );
     if (arg.check || total === 0) process.exit(0);
   } else if (total === 0) {
-    console.log("Alles aktuell. Nichts zu tun.");
+    console.log(t("Everything current. Nothing to do.", "Alles aktuell. Nichts zu tun."));
     process.exit(0);
   } else if (arg.check) {
     console.log(
       [
         ...zeilen,
         zeilen.length ? "" : null,
-        `Es gibt einen neueren Stand, ${total} Datei(en) betroffen:`,
+        t(
+          `There is a newer version, ${total} file(s) affected:`,
+          `Es gibt einen neueren Stand, ${total} Datei(en) betroffen:`
+        ),
         describe(diff),
         "",
-        "Einspielen mit: node .ara/tools/update.mjs",
+        t("Deploy with: node .ara/tools/update.mjs", "Einspielen mit: node .ara/tools/update.mjs"),
       ]
         .filter((line) => line !== null)
         .join("\n")
@@ -238,21 +277,32 @@ try {
       [
         ...zeilen,
         zeilen.length ? "" : null,
-        `Eingespielt, ${total} Datei(en):`,
+        t(`Deployed, ${total} file(s):`, `Eingespielt, ${total} Datei(en):`),
         describe(diff),
         "",
-        "Nicht angefasst: business/, customers/, devices/, apps/, deine Zugaenge,",
-        "der Spiegel und die erzeugten Befehle unter .claude/commands/.",
-        "",
-        "Weiter mit: node .ara/tools/commands.mjs   (neue oder geaenderte Befehle)",
-        "Pruefen mit: node .ara/tools/selftest.mjs",
+        ...t(
+          [
+            "Not touched: business/, customers/, devices/, apps/, your credentials,",
+            "the mirror and the generated commands under .claude/commands/.",
+            "",
+            "Next: node .ara/tools/commands.mjs   (new or changed commands)",
+            "Check with: node .ara/tools/selftest.mjs",
+          ],
+          [
+            "Nicht angefasst: business/, customers/, devices/, apps/, deine Zugaenge,",
+            "der Spiegel und die erzeugten Befehle unter .claude/commands/.",
+            "",
+            "Weiter mit: node .ara/tools/commands.mjs   (neue oder geaenderte Befehle)",
+            "Pruefen mit: node .ara/tools/selftest.mjs",
+          ]
+        ),
       ]
         .filter((line) => line !== null)
         .join("\n")
     );
   }
 } catch (error) {
-  console.error(`Update fehlgeschlagen.\n${error.message}`);
+  console.error(t(`Update failed.\n${error.message}`, `Update fehlgeschlagen.\n${error.message}`));
   process.exit(1);
 } finally {
   rmSync(work, { recursive: true, force: true });

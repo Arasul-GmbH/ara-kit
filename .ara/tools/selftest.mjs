@@ -1,11 +1,30 @@
 #!/usr/bin/env node
 /**
+ * Self-test: checks whether the kit works on this computer.
+ *
+ * Runs without customer data, without network access to the portal and without a
+ * device. Useful after an update, at odd behaviour and while developing the kit.
+ *
+ *   node .ara/tools/selftest.mjs
+ *
+ * The test itself runs in German and starts every tool in German. That is
+ * deliberate: the acceptances of the control folder grip German lines, and this is
+ * the place where that wording is nailed down. The English side is checked by the
+ * section "Sprache" against the same tools.
+ *
+ * === deutsch ===
+ *
  * Selbsttest: prüft, ob das Kit auf diesem Rechner funktioniert.
  *
  * Läuft ohne Kundendaten, ohne Netzzugang zum Portal und ohne Gerät. Nützlich nach
  * einem Update, bei merkwürdigem Verhalten und in der Entwicklung des Kits.
  *
  *   node .ara/tools/selftest.mjs
+ *
+ * Der Test selbst läuft auf Deutsch und startet jedes Werkzeug auf Deutsch. Das ist
+ * Absicht: die Abnahmen des Steuerungsordners greifen deutsche Zeilen, und hier ist
+ * dieser Wortlaut festgenagelt. Die englische Seite prüft der Abschnitt "Sprache"
+ * gegen dieselben Werkzeuge.
  */
 
 import { createHash } from "node:crypto";

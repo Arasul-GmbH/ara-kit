@@ -1,5 +1,30 @@
 #!/usr/bin/env node
 /**
+ * /init without an interview: write the profile from an answer file and create the commands.
+ *
+ *   node .ara/tools/init.mjs --answers <file.json>    profile and commands from the answers
+ *   node .ara/tools/init.mjs --answers <file> --force overwrite an existing profile
+ *   node .ara/tools/init.mjs --show                   version of the kit, what is in the profile and what is missing
+ *   node .ara/tools/init.mjs --json                   the same as JSON
+ *
+ * Ara runs the interview along .ara/knowledge/init.md. This tool is the second way
+ * to the same result: an answer file whose fields are named like the frontmatter of
+ * business/profile.md, plus the prose sections and, for partners, the fields of
+ * business/company.md. Examples with all fields lie in
+ * .ara/templates/init-answers-partner.json and init-answers-company.json, and next
+ * to each of them the German version with `.de.json`.
+ *
+ * `language` in the answer file decides in which language the profile gets written
+ * and which scaffold gets used. Without it, the language of the environment applies,
+ * and in a fresh clone that is English.
+ *
+ * What it writes: business/profile.md, business/company.md (partners only), the
+ * technical state from check-environment.mjs, and it creates the commands of the
+ * branch. What it does not do: store secrets, create an SSH key, set up a backup.
+ * That stays manual work and gets named as open at the end.
+ *
+ * === deutsch ===
+ *
  * /init ohne Interview: Profil aus einer Antwortdatei schreiben und die Befehle anlegen.
  *
  *   node .ara/tools/init.mjs --answers <datei.json>   Profil und Befehle aus den Antworten
@@ -11,7 +36,12 @@
  * zweite Weg zum selben Ergebnis: eine Antwortdatei, deren Felder heissen wie das
  * Frontmatter von business/profile.md, dazu die Prosa-Abschnitte und fuer Partner
  * die Felder von business/company.md. Beispiele mit allen Feldern liegen in
- * .ara/templates/init-answers-partner.json und init-answers-company.json.
+ * .ara/templates/init-answers-partner.json und init-answers-company.json, daneben
+ * je die deutsche Fassung mit `.de.json`.
+ *
+ * `language` in der Antwortdatei entscheidet, in welcher Sprache das Profil
+ * geschrieben wird und welches Geruest genommen wird. Ohne Angabe gilt die Sprache
+ * der Umgebung, und im frischen Klon ist das Englisch.
  *
  * Was es schreibt: business/profile.md, business/company.md (nur Partner), den
  * Technikstand aus check-environment.mjs, und es legt die Befehle des Zweigs an.
