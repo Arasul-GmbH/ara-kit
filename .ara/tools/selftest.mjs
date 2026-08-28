@@ -3522,6 +3522,29 @@ check("Jede Datei gibt es in beiden Sprachen", () => {
   return `${pairs} Paare`;
 });
 
+check("Jede Route steht in beiden Fassungen des Blattes", () => {
+  // Eine Uebersetzung, die eine Route verliert, faellt sonst erst am Geraet auf,
+  // und dann nur in einer Sprache. Geprueft wird Blatt gegen Blatt: dieselben
+  // Routen, egal in welcher Sprache der Absatz geschrieben ist.
+  const dir = join(ROOT, ".ara", "knowledge");
+  const abweichend = [];
+  for (const name of readdirSync(dir).filter((n) => n.endsWith(".md") && !isVariant(n))) {
+    const german = name.replace(/\.md$/, ".de.md");
+    if (!existsSync(join(dir, german))) continue;
+    const routes = (file) =>
+      new Set(
+        collectRoutes([{ file, text: readFileSync(join(dir, file), "utf8") }]).map((r) => `${r.verb} ${r.path}`)
+      );
+    const links = routes(name);
+    const rechts = routes(german);
+    const nurEnglisch = [...links].filter((r) => !rechts.has(r));
+    const nurDeutsch = [...rechts].filter((r) => !links.has(r));
+    if (nurEnglisch.length) abweichend.push(`${german} fehlt: ${nurEnglisch.join(", ")}`);
+    if (nurDeutsch.length) abweichend.push(`${name} fehlt: ${nurDeutsch.join(", ")}`);
+  }
+  assert(abweichend.length === 0, `Routen nur in einer Sprache:\n    ${abweichend.join("\n    ")}`);
+});
+
 check("Ein frischer Klon spricht Englisch, das Profil stellt um", () => {
   // Vor `/init` gibt es kein Profil, und dann gilt Englisch. Geprueft an einem
   // Werkzeug, das ohne alles laeuft: die Lage der Befehle.

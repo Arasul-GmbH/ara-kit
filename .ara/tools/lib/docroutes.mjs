@@ -15,6 +15,7 @@
  */
 
 import { CONTRACT_PATH, findEndpoint } from "./contract.mjs";
+import { t } from "./i18n.mjs";
 
 /** Verben, die eine Route benennen. Alles andere ist Fließtext. */
 const VERBS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -135,15 +136,29 @@ export function planFor(route, contract) {
   const entry = findEndpoint(contract, route.verb, route.path);
   if (entry) {
     if (route.verb === "GET" && !hasPlaceholder(route.path)) {
-      return { kind: "kontrakt", how: "gerufen", entry, why: "steht im Kontrakt, wird mit dem Schlüssel gerufen" };
+      return {
+        kind: "kontrakt",
+        how: "gerufen",
+        entry,
+        why: t(
+          "stands in the contract, gets called with the key",
+          "steht im Kontrakt, wird mit dem Schlüssel gerufen"
+        ),
+      };
     }
     return {
       kind: "kontrakt",
       how: "kontrakt",
       entry,
       why: hasPlaceholder(route.path)
-        ? "steht im Kontrakt, trägt einen Wert, den das Kit nicht kennt"
-        : "steht im Kontrakt, verändert etwas und wird darum nicht gerufen",
+        ? t(
+            "stands in the contract, carries a value the kit does not know",
+            "steht im Kontrakt, trägt einen Wert, den das Kit nicht kennt"
+          )
+        : t(
+            "stands in the contract, changes something and is therefore not called",
+            "steht im Kontrakt, verändert etwas und wird darum nicht gerufen"
+          ),
     };
   }
   if (normalize(route.path).startsWith(`${EXTERNAL_PREFIX}/`)) {
@@ -151,14 +166,20 @@ export function planFor(route, contract) {
       kind: "extern-unbekannt",
       how: "kontrakt",
       entry: null,
-      why: "gehört zur äußeren Schnittstelle, das Gerät nennt ihn dort aber nicht",
+      why: t(
+        "belongs to the outer interface, but the device does not name it there",
+        "gehört zur äußeren Schnittstelle, das Gerät nennt ihn dort aber nicht"
+      ),
     };
   }
   return {
     kind: "sitzung",
     how: "ohne-schluessel",
     entry: null,
-    why: "ein Weg der Oberfläche, das Kit klopft ohne Ausweis an",
+    why: t(
+      "a route of the interface, the kit knocks without a credential",
+      "ein Weg der Oberfläche, das Kit klopft ohne Ausweis an"
+    ),
   };
 }
 
@@ -177,30 +198,60 @@ const ABSENT = new Set([404, 501]);
 export function judgeRoute(plan, answer) {
   if (plan.how === "kontrakt") {
     return plan.entry
-      ? { state: "ok", text: `Das Gerät nennt ${plan.entry.verb} ${plan.entry.pfad} in seinem Kontrakt.` }
+      ? {
+          state: "ok",
+          text: t(
+            `The device names ${plan.entry.verb} ${plan.entry.pfad} in its contract.`,
+            `Das Gerät nennt ${plan.entry.verb} ${plan.entry.pfad} in seinem Kontrakt.`
+          ),
+        }
       : {
           state: "fehlt",
-          text: "Das Gerät nennt diesen Weg nicht in seinem Kontrakt. Das Kit würde ihn nicht aufrufen.",
+          text: t(
+            "The device does not name this route in its contract. The kit would not call it.",
+            "Das Gerät nennt diesen Weg nicht in seinem Kontrakt. Das Kit würde ihn nicht aufrufen."
+          ),
         };
   }
   const status = answer?.status ?? 0;
   if (!status) {
-    return { state: "unklar", text: `Keine Antwort: ${answer?.error?.message || "die Verbindung kam nicht zustande"}` };
+    return {
+      state: "unklar",
+      text: t(
+        `No answer: ${answer?.error?.message || "the connection did not come about"}`,
+        `Keine Antwort: ${answer?.error?.message || "die Verbindung kam nicht zustande"}`
+      ),
+    };
   }
   if (ABSENT.has(status)) {
-    return { state: "fehlt", text: `Das Gerät antwortet mit ${status}: diesen Weg gibt es dort nicht.` };
+    return {
+      state: "fehlt",
+      text: t(
+        `The device answers with ${status}: this route does not exist there.`,
+        `Das Gerät antwortet mit ${status}: diesen Weg gibt es dort nicht.`
+      ),
+    };
   }
   if (EXISTS.has(status)) {
     return {
       state: "ok",
       text:
-        `Das Gerät antwortet mit ${status}` +
+        t(`The device answers with ${status}`, `Das Gerät antwortet mit ${status}`) +
         (plan.how === "ohne-schluessel" && status < 400
-          ? ". Der Weg ist da und antwortet ohne Ausweis, das gehört ins Gespräch."
-          : ": den Weg gibt es."),
+          ? t(
+              ". The route is there and answers without a credential, that belongs in the conversation.",
+              ". Der Weg ist da und antwortet ohne Ausweis, das gehört ins Gespräch."
+            )
+          : t(": the route exists.", ": den Weg gibt es.")),
     };
   }
-  return { state: "unklar", text: `Das Gerät antwortet mit ${status}, daraus folgt weder das eine noch das andere.` };
+  return {
+    state: "unklar",
+    text: t(
+      `The device answers with ${status}, and neither the one nor the other follows from that.`,
+      `Das Gerät antwortet mit ${status}, daraus folgt weder das eine noch das andere.`
+    ),
+  };
 }
 
 /**
