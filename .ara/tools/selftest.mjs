@@ -76,7 +76,8 @@ import {
 } from "./lib/invoice.mjs";
 import { buildXml, validateXml } from "./lib/zugferd.mjs";
 import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
-import { ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { HELP_SPLIT, ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 
 helpOnly(import.meta.url);
@@ -3431,6 +3432,155 @@ check("Browser-Werkzeug ist eingerichtet", () => {
     settings.permissions?.allow?.includes("mcp__playwright"),
     "Browser ist nicht freigegeben, jeder Aufruf wuerde nachfragen"
   );
+});
+
+// --- Sprache ----------------------------------------------------------------
+
+/**
+ * Was paarweise vorliegen muss, und was ausdruecklich nicht.
+ *
+ * Englisch ist die Grundfassung (`x.md`), Deutsch steht daneben (`x.de.md`).
+ * Ausgenommen ist nur, was einen Grund dafuer hat, und der steht hier, damit
+ * niemand ihn spaeter erraten muss.
+ */
+const PAIRED = [
+  { file: "README.md" },
+  { file: ".ara/CHANGELOG.md" },
+  { dir: ".ara/persona" },
+  { dir: ".ara/knowledge" },
+  { dir: ".ara/commands/all" },
+  { dir: ".ara/commands/partner" },
+  // Nur die Gerueste direkt darin. `app/` ist Quelltext einer App und keine
+  // Anleitung, es wird gebaut und nicht gelesen.
+  { dir: ".ara/templates", flat: true, extensions: [".md", ".json"] },
+];
+
+check("Jede Datei gibt es in beiden Sprachen", () => {
+  // Kein Halbzustand: was es auf Englisch gibt, gibt es auf Deutsch und
+  // umgekehrt. Ohne diese Pruefung faellt eine Sprache still zurueck, und zwar
+  // genau bei dem Blatt, das seit dem letzten Mal geaendert wurde.
+  const missing = [];
+  const copies = [];
+  let pairs = 0;
+
+  const files = (entry) => {
+    if (entry.file) return [entry.file];
+    const dir = join(ROOT, entry.dir);
+    if (!existsSync(dir)) return [];
+    const extensions = entry.extensions || [".md"];
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((e) => (entry.flat ? e.isFile() : e.isFile()) && extensions.some((x) => e.name.endsWith(x)))
+      .map((e) => `${entry.dir}/${e.name}`);
+  };
+
+  for (const entry of PAIRED) {
+    for (const path of files(entry)) {
+      const name = path.split("/").pop();
+      const base = isVariant(name) ? path.replace(/\.de\.(md|json)$/, ".$1") : path;
+      const german = base.replace(/\.(md|json)$/, ".de.$1");
+      if (!existsSync(join(ROOT, base))) {
+        missing.push(`${german} ohne englische Fassung ${base}`);
+        continue;
+      }
+      if (!existsSync(join(ROOT, german))) {
+        missing.push(`${base} ohne deutsche Fassung ${german}`);
+        continue;
+      }
+      if (isVariant(name)) continue;
+      pairs++;
+      // Ein Paar, das zweimal denselben Text traegt, ist kein Paar, sondern
+      // eine Behauptung. Die Vorlage einer App ist der einzige Fall, in dem
+      // derselbe Quelltext zweimal richtig waere, und die steht nicht in dieser
+      // Liste.
+      if (readFileSync(join(ROOT, base), "utf8") === readFileSync(join(ROOT, german), "utf8")) {
+        copies.push(base);
+      }
+    }
+  }
+  assert(missing.length === 0, `ohne Gegenstueck:\n    ${missing.join("\n    ")}`);
+  assert(copies.length === 0, `englisch und deutsch sind dieselbe Datei: ${copies.join(", ")}`);
+  assert(pairs >= 40, `nur ${pairs} Paare gefunden, das kann nicht stimmen`);
+  return `${pairs} Paare`;
+});
+
+check("Ein frischer Klon spricht Englisch, das Profil stellt um", () => {
+  // Vor `/init` gibt es kein Profil, und dann gilt Englisch. Geprueft an einem
+  // Werkzeug, das ohne alles laeuft: die Lage der Befehle.
+  const englisch = tool("commands.mjs", ["--role", "partner"], "", { ARA_LANGUAGE: "" });
+  assert(englisch.status === 0, `englischer Lauf fehlgeschlagen: ${englisch.stderr}`);
+  assert(/^Branch: partner, language: en$/m.test(englisch.stdout), `keine englische Ausgabe:\n${englisch.stdout}`);
+
+  const deutsch = tool("commands.mjs", ["--role", "partner"]);
+  assert(deutsch.status === 0, `deutscher Lauf fehlgeschlagen: ${deutsch.stderr}`);
+  assert(/^Zweig: Partner, Sprache: de$/m.test(deutsch.stdout), `keine deutsche Ausgabe:\n${deutsch.stdout}`);
+
+  // Und die Sprache steht wirklich im Profil, nicht nur in der Umgebung.
+  const dir = mkdtempSync(join(tmpdir(), "ara-lang-"));
+  try {
+    cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
+    mkdirSync(join(dir, "business"), { recursive: true });
+    writeFileSync(join(dir, "business", "profile.md"), "---\nrole: partner\nlanguage: de\n---\n\nMeins.\n");
+    const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs")], {
+      encoding: "utf8",
+      cwd: dir,
+      env: { ...process.env, ARA_LANGUAGE: "" },
+    });
+    assert(/^Zweig: Partner, Sprache: de$/m.test(run.stdout), `das Profil stellt nicht um:\n${run.stdout}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("Jede Kopfhilfe traegt beide Sprachen", () => {
+  // `--help` ist der Kommentarblock am Anfang der Datei, und darin stehen beide
+  // Sprachen untereinander. Fehlt die Trennlinie, antwortet das Werkzeug auf
+  // Deutsch mit englischem Text, ohne dass es jemandem auffaellt.
+  const dir = join(ROOT, ".ara", "tools");
+  const tools = readdirSync(dir)
+    .filter((name) => name.endsWith(".mjs") && name !== "guard.mjs")
+    .sort();
+  const einsprachig = [];
+  for (const name of tools) {
+    const url = new URL(`./${name}`, import.meta.url).href;
+    const en = headerHelp(url, "en");
+    const de = headerHelp(url, "de");
+    if (en === de) einsprachig.push(name);
+  }
+  assert(
+    einsprachig.length === 0,
+    `Kopfhilfe nur in einer Sprache (${HELP_SPLIT} fehlt): ${einsprachig.join(", ")}`
+  );
+  return `${tools.length} Werkzeuge`;
+});
+
+check("Die Befehle werden in der Sprache des Profils angelegt", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ara-cmd-lang-"));
+  try {
+    cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
+    cpSync(join(ROOT, ".claude"), join(dir, ".claude"), { recursive: true });
+    for (const name of readdirSync(join(dir, ".claude", "commands"))) {
+      if (name !== "init.md") rmSync(join(dir, ".claude", "commands", name));
+    }
+    const laufen = (lang) =>
+      spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", "partner", "--language", lang], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+
+    let run = laufen("de");
+    assert(run.status === 0, `deutscher Lauf fehlgeschlagen: ${run.stderr}`);
+    let angelegt = readFileSync(join(dir, ".claude", "commands", "offer.md"), "utf8");
+    assert(/^description: Angebot mit allen/m.test(angelegt), `nicht die deutsche Fassung:\n${angelegt.slice(0, 120)}`);
+
+    run = laufen("en");
+    assert(run.status === 0, `englischer Lauf fehlgeschlagen: ${run.stderr}`);
+    angelegt = readFileSync(join(dir, ".claude", "commands", "offer.md"), "utf8");
+    assert(/^description: Offer with all/m.test(angelegt), `nicht die englische Fassung:\n${angelegt.slice(0, 120)}`);
+    assert(!existsSync(join(dir, ".claude", "commands", "offer.de.md")), "die Sprachfassung landet unter ihrem eigenen Namen");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 // --- Verweise ---------------------------------------------------------------

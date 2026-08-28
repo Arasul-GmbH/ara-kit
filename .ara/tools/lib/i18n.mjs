@@ -78,16 +78,18 @@ export function t(en, de, lang = language()) {
  */
 export function localized(path, lang = language()) {
   if (lang === DEFAULT_LANGUAGE) return path;
-  const variant = path.replace(/\.md$/, `.${lang}.md`);
+  const variant = variantOf(path, lang);
   return existsSync(variant) ? variant : path;
 }
 
 /** Zu `x.md` die deutsche Fassung `x.de.md`, ohne zu pruefen, ob es sie gibt. */
 export function variantOf(path, lang) {
-  return lang === DEFAULT_LANGUAGE ? path : path.replace(/\.md$/, `.${lang}.md`);
+  return lang === DEFAULT_LANGUAGE ? path : path.replace(/\.([a-z]+)$/, `.${lang}.$1`);
 }
 
 /** Ist das die uebersetzte Fassung einer anderen Datei? */
 export function isVariant(name) {
-  return LANGUAGES.some((lang) => lang !== DEFAULT_LANGUAGE && name.endsWith(`.${lang}.md`));
+  return LANGUAGES.some(
+    (lang) => lang !== DEFAULT_LANGUAGE && new RegExp(`\\.${lang}\\.[a-z]+$`).test(name)
+  );
 }
