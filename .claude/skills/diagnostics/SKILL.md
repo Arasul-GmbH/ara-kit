@@ -1,17 +1,17 @@
 ---
-name: diagnose
-description: Störungen an einem Kundengerät feststellen und beheben. Nutzen, wenn ein Gerät nicht erreichbar ist, der Chat nicht oder unsinnig antwortet, Dokumente nicht gefunden werden, die Weboberfläche nicht lädt, etwas langsam geworden ist, oder wenn ein Kunde meldet, dass etwas nicht funktioniert.
+name: diagnostics
+description: Establish and fix faults on a customer device. Use when a device is not reachable, the chat does not answer or answers nonsense, documents are not found, the web interface does not load, something has become slow, or when a customer reports that something does not work.
 ---
 
-Verfahren: `.ara/knowledge/diagnostics.md`
+Procedure: `.ara/knowledge/diagnostics.md`
 
-Kurz:
+Short:
 
-- **Erst feststellen, dann ändern.** Ein Neustart als erste Handlung löscht die Spur.
-- Kette von außen nach innen: Was genau passiert? · Erreichbar? · Lebt das Gerät (Platz,
-  Uhrzeit, Laufzeit)? · Laufen die Dienste? · Was sagen die Protokolle zum Zeitpunkt des
-  Fehlers? · Was hat sich geändert?
-- Leere oder unsinnige Antworten heißen fast immer: kein Modell geladen.
-- Befund nennen, Vorschlag mit Rückweg, dann erst handeln.
-- Nie zwei Dinge gleichzeitig ändern. Nie in Kundendaten stöbern.
-- Ergebnis in `customers/<kunde>/history/`.
+- **Establish first, change second.** A restart as the first action wipes the trail.
+- A chain from the outside in: what exactly happens? · reachable? · is the device alive
+  (space, clock, uptime)? · are the services running? · what do the logs say at the time of
+  the fault? · what has changed?
+- Empty or nonsensical answers almost always mean: no model loaded.
+- Name the finding, suggest with a way back, only then act.
+- Never change two things at once. Never rummage in customer data.
+- Result into `customers/<customer>/history/`.

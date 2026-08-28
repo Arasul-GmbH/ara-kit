@@ -1,17 +1,17 @@
 ---
-name: verkauf
-description: Kundengespräche, Einwände und Angebote. Nutzen beim Erstkontakt mit einem Interessenten, wenn ein Kunde etwas einwendet ("zu teuer", "wir haben schon eine Cloudlösung", "können wir das nicht selbst"), wenn ein Angebot geschrieben oder geschärft werden soll, oder wenn es darum geht, wie man Arasul erklärt, ohne zu viel zu versprechen.
+name: sales
+description: Customer conversations, objections and offers. Use at first contact with a prospect, when a customer objects ("too expensive", "we already have a cloud solution", "can we not do that ourselves"), when an offer should be written or sharpened, or when it is about how to explain Arasul without promising too much.
 ---
 
-Verfahren: `.ara/knowledge/sales.md`
+Procedure: `.ara/knowledge/sales.md`
 
-Kurz:
+Short:
 
-- Vom Arbeitsschritt her denken, nicht von der Technik. Niemand kauft Technik.
-- Erst zuhören: Was macht heute unnötig Arbeit? Was passiert mit den Daten? Wer würde damit
-  arbeiten?
-- Vier Dinge früh und ehrlich sagen: es ist ein Fundament · lokale Modelle arbeiten anders
-  als Cloudmodelle · es braucht Betreuung · Hardware hat Lieferzeiten.
-- Ein Einwand ist eine Frage. Beantworte die Frage dahinter.
-- Angebot: Struktur liefern, Ton aus `business/company.md` übernehmen. Der Abschnitt „nicht
-  enthalten" ist der wichtigste.
+- Think from the work step, not from the technology. Nobody buys technology.
+- Listen first: what causes unnecessary work today? What happens to the data? Who would work
+  with it?
+- Say four things early and honestly: it is a foundation · local models work differently
+  from cloud models · it needs looking after · hardware has delivery times.
+- An objection is a question. Answer the question behind it.
+- Offer: provide the structure, take the tone from `business/company.md`. The section "not
+  included" is the most important one.

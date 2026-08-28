@@ -1,19 +1,19 @@
 ---
 name: customers
-description: Kundenpflege und Überblick über das eigene Geschäft. Nutzen, wenn jemand fragt was ansteht, was heute zu tun ist, wie es um die Kunden steht, wann eine Wartung ausläuft, bei wem man sich wieder melden wollte, oder wenn nach einem Gespräch die Akte nachgezogen werden soll.
+description: Customer care and an overview of your own business. Use when somebody asks what is due, what to do today, how the customers are doing, when a maintenance contract runs out, who they wanted to get back to, or when the file should be brought up to date after a conversation.
 ---
 
-Verfahren: `.ara/knowledge/crm.md`
+Procedure: `.ara/knowledge/crm.md`
 
-Kurz:
+Short:
 
-- **Was ansteht:** `node .ara/tools/agenda.mjs`: Wiedervorlagen, auslaufende Wartungen,
-  unterbrochene Einrichtungen, eingeschlafene Kontakte. Stell die Frage von dir aus, wenn
-  eine Sitzung ohne konkretes Anliegen beginnt.
-- **Nach jedem Kundenkontakt drei Dinge:** Eintrag unter `history/`, `last_contact`
-  aktualisieren, `follow_up` setzen oder `status` ändern.
-- Ein Gespräch ohne nächsten Termin ist ein Kunde, den man in drei Monaten vergessen hat.
-- Wartungsverlängerungen werden **vor** dem Ablauf besprochen, sie sind der
-  wiederkehrende Umsatz, der das Geschäft trägt.
-- Verlorene Kunden nicht löschen, auf `inactive` setzen. Die Historie ist später mehr wert
-  als jedes Angebot.
+- **What is due:** `node .ara/tools/agenda.mjs`: follow-ups, expiring maintenance,
+  interrupted setups, contacts gone quiet. Ask the question yourself when a session starts
+  without a concrete request.
+- **Three things after every customer contact:** an entry under `history/`, update
+  `last_contact`, set `follow_up` or change `status`.
+- A conversation without a next date is a customer forgotten in three months.
+- Maintenance extensions are discussed **before** the expiry, they are the recurring
+  revenue that carries the business.
+- Do not delete lost customers, set them to `inactive`. The history is later worth more
+  than any offer.

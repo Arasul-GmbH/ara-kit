@@ -1,17 +1,15 @@
 ---
-name: kalkulation
-description: Preise, Kosten und Margen für Arasul-Geräte und -Dienstleistungen rechnen. Nutzen, wenn jemand fragt, was etwas kostet, was ein Angebot ergeben soll, was bei einem Auftrag hängen bleibt, ob sich etwas lohnt, oder wenn Stundensätze, Aufschläge und Wartungspreise im Spiel sind.
+name: pricing
+description: Calculate prices, costs and margins for Arasul devices and services. Use when somebody asks what something costs, what an offer should come to, what is left over from a job, whether something is worth it, or when hourly rates, markups and maintenance prices are in play.
 ---
 
-Verfahren: `.ara/knowledge/pricing.md`
+Procedure: `.ara/knowledge/pricing.md`
 
-Kurz:
+Short:
 
-- **Erst nachsehen:** `node .ara/tools/calculation.mjs` sagt, welche der zehn Zahlen
-  vorliegt, welche fehlt und was deshalb nicht geht. Fehlt eine, trägt `/kalkulation` sie
-  einmal nach, danach wird nicht wieder gefragt.
-- Einkaufspreise stehen im Partnerportal, eigene Sätze in `business/company.md`. **Nie raten.**
-- Vier Posten: Hardware, Lizenz, Einrichtung, Laufendes. Fehlt einer, wird nachverhandelt.
-- Einmaliges und Wiederkehrendes getrennt ausweisen.
-- Immer dazusagen, was **nicht** enthalten ist und woran der Preis hängt.
-- Einkaufspreise sind vertraulich und gehören nie in ein Kundenangebot.
+- **Look first:** `node .ara/tools/calculation.mjs` says which of the ten numbers is there,
+  which is missing and what is therefore not possible. If one is missing, `/calculation`
+  adds it once, after that it is not asked for again.
+- Purchase prices stand in the partner portal, your own rates in `business/company.md`.
+  **Never guess.**
+- Four items: hardware, licence, setup, recurring. If one is missing, it gets renegotiated.
