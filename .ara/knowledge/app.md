@@ -35,7 +35,7 @@ live, it does not suggest `--check` and `--deploy` again, but the plan and the R
 is the kit's note about its own doing and not information about the device: `--status` gives
 that, and it asks there.
 
-**The argument.** `/app urlaubsantrag` means the app under `apps/urlaubsantrag/`. If it is
+**The argument.** `/app <app>` means the app under `apps/<app>/`. If it is
 missing: first the marker `.ara/state.json`, then the existing files. If there is exactly one,
 take it. Otherwise ask through the interview tool.
 
@@ -146,17 +146,20 @@ The rules next to it in `stil.css` use only the names of the tokens, not a singl
 Keep to that when you build something on: whatever stands as a colour in a rule falls behind at the
 next version.
 
-## Where the reference app helps
+## What the scaffold already is
 
-Under `apps/urlaubsantrag/` lies a finished app to look at: it files a request, stops at an
-approval and afterwards stands as approved or rejected. If somebody asks what such a thing looks
-like, show it instead of describing it. It is not a scaffold `/app` produces something from, it is
-an example that runs.
+The clone brings no app. What an app looks like stands in the scaffold under
+`.ara/templates/app/`, and what `--new` makes out of it runs from the first minute: an item is
+filed, the backend starts the flow `freigabe`, the flow stops at its approval step, a human decides
+in Arasul, and afterwards the item stands as approved or rejected, with the name of the one who
+decided and the sentence the flow wrote. Without Arasul the item is accepted and stays without a
+decision, and the page says so.
 
-**It belongs to the kit, so you do not work on it.** Its plan came with the clone, and moving it
-would make the working folder dirty: the next update would trip over it. `--plan-aktiv` and
-`--plan-erledigt` therefore refuse that for every plan that lies in version control. Whoever wants
-to practise creates an app of their own:
+The interface is built from six building blocks, and they carry the names of Arasul's design
+system: head, list, card, form, message, menu. In the scaffold they lie in
+`frontend/src/bausteine.jsx` as small components with the rules in `stil.css`. Whoever builds
+something on takes these blocks and does not write a second card next to the first. If somebody
+asks what such an app looks like, create one and show it, instead of describing it:
 
 ```
 node .ara/tools/app.mjs --app <name> --new

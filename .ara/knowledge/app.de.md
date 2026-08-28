@@ -36,7 +36,7 @@ gebaute Fassung schon live, schlägt es nicht noch einmal `--check` und `--deplo
 sondern den Plan und die README. Der Merker ist die Notiz des Kits über sein eigenes Tun
 und keine Auskunft über das Gerät: die gibt `--status`, und die fragt dort nach.
 
-**Das Argument.** `/app urlaubsantrag` meint die App unter `apps/urlaubsantrag/`. Fehlt
+**Das Argument.** `/app <app>` meint die App unter `apps/<app>/`. Fehlt
 es: erst der Merker `.ara/state.json`, dann die vorhandenen Akten. Gibt es genau eine,
 nimm sie. Sonst frag über das Interview-Werkzeug.
 
@@ -148,17 +148,21 @@ Die Regeln daneben in `stil.css` benutzen nur die Namen der Marken, keinen einzi
 Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer Regel steht,
 bleibt beim nächsten Stand zurück.
 
-## Wo die Referenz-App hilft
+## Was die Vorlage schon ist
 
-Unter `apps/urlaubsantrag/` liegt eine fertige App zum Ansehen: sie stellt einen Antrag,
-hält an einer Freigabe an und steht danach auf genehmigt oder abgelehnt. Wenn jemand
-fragt, wie so etwas aussieht, zeig sie, statt es zu beschreiben. Sie ist keine Vorlage,
-aus der `/app` etwas erzeugt, sondern ein Beispiel, das läuft.
+Der Klon bringt keine App mit. Wie eine App aussieht, steht in der Vorlage unter
+`.ara/templates/app/`, und was `--new` daraus macht, läuft von der ersten Minute an: ein
+Vorgang wird eingereicht, das Backend startet den Flow `freigabe`, der Flow hält an seinem
+Freigabe-Schritt an, ein Mensch entscheidet in Arasul, und danach steht der Vorgang auf
+genehmigt oder abgelehnt, mit dem Namen dessen, der entschieden hat, und dem Satz, den der
+Flow geschrieben hat. Ohne Arasul wird der Vorgang angenommen und bleibt ohne Entscheidung,
+und die Seite sagt das.
 
-**Sie gehört dem Kit, also arbeitest du nicht an ihr.** Ihr Plan kam mit dem Klon, und ihn
-zu verschieben würde den Arbeitsordner schmutzig machen: das nächste Update stolperte
-darüber. `--plan-aktiv` und `--plan-erledigt` verweigern das darum bei jedem Plan, der in
-der Versionsverwaltung liegt. Wer üben will, legt eine eigene App an:
+Die Oberfläche ist aus sechs Bausteinen gebaut, und sie tragen die Namen des
+Arasul-Designsystems: Kopf, Liste, Karte, Formular, Meldung, Menü. In der Vorlage liegen sie
+in `frontend/src/bausteine.jsx` als kleine Komponenten, die Regeln dazu in `stil.css`. Wer
+etwas dazubaut, nimmt diese Bausteine und schreibt keine zweite Karte neben die erste. Wenn
+jemand fragt, wie so eine App aussieht, leg eine an und zeig sie, statt es zu beschreiben:
 
 ```
 node .ara/tools/app.mjs --app <name> --new

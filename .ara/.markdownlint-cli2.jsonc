@@ -1,7 +1,9 @@
 {
   // Markdown-Lint fuer das Kit. Es gibt keine CI in diesem Repo, der Nachweis
-  // ist lokal: wer mergt, laesst vorher `npx --yes markdownlint-cli2@0.18.1`
-  // und `node .ara/tools/selftest.mjs` laufen.
+  // ist lokal: wer mergt, laesst vorher aus der Wurzel des Kits
+  //   npx --yes markdownlint-cli2@0.18.1 --config .ara/.markdownlint-cli2.jsonc "**/*.md"
+  // und `node .ara/tools/selftest.mjs` laufen. Die Datei liegt unter .ara/,
+  // damit die Wurzel klein bleibt; darum steht der Pfad im Aufruf.
   //
   // Geprueft wird die Struktur: Leerzeilen um Ueberschriften und Listen,
   // einheitliche Listenzeichen, keine doppelten Ueberschriften, kein
@@ -36,6 +38,7 @@
     // Interne Planung, liegt nur lokal.
     "entwicklung",
     "PHASE.md",
-    "NACHTRAG.md"
+    "NACHTRAG.md",
+    "AUFTRAG.md"
   ]
 }

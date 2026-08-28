@@ -1,6 +1,19 @@
 /**
  * Das Backend von {{name}}.
  *
+ * Es tut drei Dinge, und das dritte ist der Grund, warum eine App auf einem
+ * Arasul-Gerät mehr ist als eine Seite mit einem Formular:
+ *
+ *   1. Es nimmt einen Vorgang entgegen. Wer ihn einreicht, sagt die Plattform
+ *      über die Kopfzeilen vor dem Container, nicht das Formular.
+ *   2. Es startet den Flow `freigabe` mit dem Schlüssel, den das Gerät dieser
+ *      App und diesem Stand gegeben hat. Der Flow hält sofort an: sein erster
+ *      Schritt fordert eine Freigabe an.
+ *   3. Es **liest**, wie die Freigabe steht, und schreibt den Vorgang danach
+ *      fort. Es entscheidet nicht selbst. Eine App, die ihre eigene Freigabe
+ *      erteilen könnte, wäre keine: entschieden wird in der Oberfläche von
+ *      Arasul, von einem Menschen, dem die App freigegeben ist.
+ *
  * Ohne Abhängigkeiten, mit dem eingebauten `http`-Modul: eine App, die zum
  * Start einen zweiten Paketbaum mitbringt, ist eine, die in einem Jahr niemand
  * mehr bauen kann.
@@ -13,6 +26,12 @@
  * Arasul erreichbar: die Adresse der Schnittstelle und der Schlüssel dieser App
  * und dieses Standes. **Der Schlüssel verlässt diesen Prozess nicht.** Er geht
  * in eine Kopfzeile und in keine Antwort, in kein Protokoll und in keine Datei.
+ *
+ * Die Vorgänge liegen im Speicher. Ein Neustart des Containers vergisst sie,
+ * und das steht auch so in der README: eine App bekommt am Gerät heute keinen
+ * eigenen Datenordner, und eine Datenbank, die sich die App selbst mitbringt,
+ * wäre eine zweite Ablage neben der, die das Produkt später vorsieht. Was diese
+ * App wirklich braucht, entscheidet ihr Plan.
  */
 
 import { createServer } from "node:http";
@@ -21,6 +40,7 @@ const PORT = Number(process.env.PORT || 8080);
 const NAME = process.env.ARASUL_APP_NAME || "{{name}}";
 const API_URL = process.env.ARASUL_API_URL || "";
 const API_SCHLUESSEL = process.env.ARASUL_API_SCHLUESSEL || "";
+const FLOW = "freigabe";
 
 /**
  * Ein Kopfzeilenwert, wie die Plattform ihn meint.
@@ -59,15 +79,45 @@ async function arasul(verb, pfad, rumpf) {
   }
 }
 
-/**
- * Was diese App weiß, solange niemand sie neu startet.
- *
- * Eine Vorlage hält ihre Daten im Speicher: was eine App wirklich braucht,
- * entscheidet ihr Plan, und eine Datenbank, die sie vielleicht nie braucht,
- * stünde hier im Weg. Sag es dem Kunden, bevor er es merkt.
- */
-const eintraege = [];
+const vorgaenge = [];
 let naechsteNummer = 1;
+
+/** Wie die Freigabe steht, so steht der Vorgang. Die Namen links kommen vom Gerät. */
+const STATUS = {
+  offen: "wartet",
+  bestaetigt: "genehmigt",
+  abgelehnt: "abgelehnt",
+  abgelaufen: "abgelaufen",
+  verfallen: "abgelaufen",
+};
+
+/**
+ * Den Stand eines Vorgangs nachziehen.
+ *
+ * Gefragt wird das Gerät, und zwar nach der Freigabe zu genau diesem Lauf. Die
+ * App fragt nicht nach fremden Läufen und könnte es nicht: der Namensraum
+ * steckt im Schlüssel, nicht in der Anfrage.
+ */
+async function nachziehen(vorgang) {
+  if (!vorgang.lauf || vorgang.status !== "wartet") return;
+  const { code, daten } = await arasul("GET", `/freigaben?lauf=${vorgang.lauf}`);
+  if (code !== 200) return;
+  const freigabe = (daten?.freigaben || [])[0];
+  if (!freigabe) return;
+  vorgang.status = STATUS[freigabe.status] || vorgang.status;
+  vorgang.entschieden_von = freigabe.entschieden_von || null;
+  vorgang.begruendung = freigabe.begruendung || null;
+  vorgang.frist = freigabe.frist || null;
+
+  // Nach der Bestätigung läuft der Flow ab dem angehaltenen Schritt weiter und
+  // schreibt einen Satz. Der gehört an den Vorgang, sobald er da ist.
+  if (vorgang.status === "genehmigt" && !vorgang.bemerkung) {
+    const lauf = await arasul("GET", `/flows/runs/${vorgang.lauf}`);
+    if (lauf.code === 200 && lauf.daten?.status === "fertig") {
+      vorgang.bemerkung = lauf.daten.result || null;
+    }
+  }
+}
 
 function json(antwort, status, daten) {
   antwort.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -106,65 +156,54 @@ const server = createServer(async (anfrage, antwort) => {
     });
   }
 
-  if (pfad === "/eintraege" && anfrage.method === "GET") {
-    return json(antwort, 200, { eintraege });
+  if (pfad === "/vorgaenge" && anfrage.method === "GET") {
+    // Vor jeder Auskunft der Stand vom Gerät. Ein Vorgang, der hier auf
+    // "wartet" steht, während der Mensch längst entschieden hat, wäre eine
+    // Auskunft, die nicht stimmt.
+    await Promise.all(vorgaenge.map(nachziehen));
+    return json(antwort, 200, { vorgaenge });
   }
 
-  if (pfad === "/eintraege" && anfrage.method === "POST") {
+  if (pfad === "/vorgaenge" && anfrage.method === "POST") {
     const rumpf = await rumpfLesen(anfrage);
-    if (!rumpf || typeof rumpf.text !== "string" || !rumpf.text.trim()) {
-      return json(antwort, 400, { fehler: "Ohne Text gibt es keinen Eintrag." });
-    }
-    const eintrag = {
-      id: naechsteNummer++,
-      text: rumpf.text.trim().slice(0, 2000),
-      von: nutzer,
-      zeit: new Date().toISOString(),
-    };
-    eintraege.unshift(eintrag);
-    return json(antwort, 201, { eintrag });
-  }
+    if (!rumpf) return json(antwort, 400, { fehler: "Der Vorgang war nicht lesbar." });
+    const titel = String(rumpf.titel || "").trim().slice(0, 200);
+    if (!titel) return json(antwort, 400, { fehler: "Ohne Titel gibt es keinen Vorgang." });
 
-  // Ein Flow der App starten und nachsehen, wie weit er ist. Zwei Aufrufe und
-  // nicht einer: ein Flow kann Minuten laufen, und jedes Zeitlimit dazwischen
-  // ist kürzer.
-  if (pfad === "/flow" && anfrage.method === "POST") {
-    const rumpf = (await rumpfLesen(anfrage)) || {};
-    const { code, daten } = await arasul("POST", "/flows/freigabe/run", {
-      args: rumpf.args || {},
+    const vorgang = {
+      id: naechsteNummer++,
+      titel,
+      text: String(rumpf.text || "").trim().slice(0, 2000) || "ohne Angabe",
+      // Wer den Vorgang einreicht, sagt die Plattform. Stünde es im Formular,
+      // könnte jeder für jeden einreichen.
+      von: nutzer || "unbekannt",
+      gestellt: new Date().toISOString(),
+      status: "wartet",
+      lauf: null,
+      entschieden_von: null,
+      begruendung: null,
+      bemerkung: null,
+      hinweis: null,
+    };
+
+    const { code, daten } = await arasul("POST", `/flows/${FLOW}/run`, {
+      args: { sache: vorgang.titel, von: vorgang.von, text: vorgang.text },
       wait_for_result: false,
     });
-    return json(antwort, code === 202 ? 202 : 502, {
-      gestartet: code === 202,
-      antwort: code,
-      lauf: daten?.run_id ?? null,
-    });
-  }
+    if (code === 202 && daten?.run_id) {
+      vorgang.lauf = daten.run_id;
+    } else {
+      // Ohne Arasul gibt es keinen Lauf und damit keine Freigabe. Der Vorgang
+      // bleibt liegen, und es steht dran, warum: erfinden wäre schlimmer.
+      vorgang.status = "ohne entscheidung";
+      vorgang.hinweis =
+        code === null
+          ? "Dieses Gerät hat der App keine Schnittstelle gegeben. Ohne Arasul hält kein Flow an und niemand entscheidet."
+          : `Der Flow ${FLOW} ließ sich nicht starten (Antwort ${code}).`;
+    }
 
-  if (pfad === "/flow" && anfrage.method === "GET") {
-    const lauf = url.searchParams.get("lauf");
-    if (!lauf) return json(antwort, 400, { fehler: "GET /flow braucht ?lauf=<nummer>" });
-    const { code, daten } = await arasul("GET", `/flows/runs/${encodeURIComponent(lauf)}`);
-    return json(antwort, code === 200 ? 200 : 502, {
-      antwort: code,
-      status: daten?.status ?? null,
-      ergebnis: daten?.result ?? null,
-    });
-  }
-
-  // Woran hängt ein Lauf? Die App **liest** ihre Freigaben. Entschieden wird
-  // in der Oberfläche von Arasul, von einem Menschen, dem die App freigegeben
-  // ist. Eine App, die ihre eigene Freigabe erteilen könnte, wäre keine.
-  if (pfad === "/freigaben" && anfrage.method === "GET") {
-    const lauf = url.searchParams.get("lauf");
-    const { code, daten } = await arasul(
-      "GET",
-      `/freigaben${lauf ? `?lauf=${encodeURIComponent(lauf)}` : ""}`
-    );
-    return json(antwort, code === 200 ? 200 : 502, {
-      antwort: code,
-      freigaben: daten?.freigaben ?? null,
-    });
+    vorgaenge.unshift(vorgang);
+    return json(antwort, 201, { vorgang });
   }
 
   json(antwort, 404, { fehler: `${NAME} kennt ${pfad} nicht.` });

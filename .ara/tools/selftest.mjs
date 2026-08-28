@@ -83,7 +83,7 @@ import {
   ship,
   troubles,
 } from "./lib/install.mjs";
-import { lastStand, movePlan, nextSteps, readApp, versioned } from "./lib/appfile.mjs";
+import { lastStand, movePlan, nextSteps, versioned } from "./lib/appfile.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -2253,36 +2253,24 @@ check("Was live ist, wird nicht noch einmal vorgeschlagen", () => {
   return "ohne Merker, im Teststand, live, veraltet";
 });
 
-check("Der Plan der Referenz-App bleibt liegen", () => {
+check("Ein versionierter Plan bleibt liegen, ein eigener nicht", () => {
   // Fund 6 des zweiten Fremdtests am 28.08.2026. `--plan-erledigt` verschob den
-  // Plan der Referenz-App, und der war versioniert: der frische Klon war danach
-  // schmutzig, und das nächste Update stolperte darüber. Die Referenz-App gehört
-  // dem Kit und ist zum Ansehen da.
-  const listed = spawnSync("git", ["ls-files", "-z", "apps/urlaubsantrag/plans"], { cwd: ROOT, encoding: "utf8" });
+  // Plan der damaligen Referenz-App, und der war versioniert: der frische Klon
+  // war danach schmutzig, und das nächste Update stolperte darüber. Die
+  // Referenz-App gibt es seit 0.13.0 nicht mehr, der Klon bringt keine App mit.
+  // Die Regel bleibt: was in der Versionsverwaltung liegt, verschiebt das
+  // Werkzeug nicht, das trifft jeden Fork, der eine App mit einträgt.
+  const listed = spawnSync("git", ["ls-files", "-z", "apps"], { cwd: ROOT, encoding: "utf8" });
   if (listed.status !== 0) return "übersprungen, kein Git-Repository";
   const versionierte = listed.stdout.split("\0").filter(Boolean);
-  assert(versionierte.length > 0, "die Referenz-App bringt keinen Plan mehr mit");
+  assert(versionierte.length === 0, `der Klon bringt eine App mit: ${versionierte.slice(0, 3).join(", ")}`);
 
-  assert(versioned(join(ROOT, versionierte[0])), "eine versionierte Datei wird nicht als solche erkannt");
+  assert(versioned(join(ROOT, ".ara", "templates", "plan.md")), "eine versionierte Datei wird nicht als solche erkannt");
   assert(!versioned(join(ROOT, ".ara", "state.json")), "eine Datei außerhalb der Versionsverwaltung gilt als versioniert");
 
-  const app = readApp("urlaubsantrag");
-  const plan = app.plans.aktiv[0] || app.plans.offen[0];
-  assert(plan, "die Referenz-App hat keinen Plan, an dem sich das prüfen ließe");
-  let abgelehnt = null;
-  try {
-    movePlan(app, plan.file, "erledigt");
-  } catch (error) {
-    abgelehnt = error.message;
-  }
-  assert(abgelehnt, "der Plan der Referenz-App wurde verschoben");
-  assert(/Versionsverwaltung/.test(abgelehnt), `die Begründung nennt den Grund nicht: ${abgelehnt}`);
-  assert(existsSync(plan.path), "der Plan liegt nicht mehr da, wo er lag");
-
-  // Der Arbeitsordner bleibt sauber, an genau den zwei Stellen, an denen ihn der
-  // Fremdtest schmutzig gemacht hat. Der Rest der Referenz-App ist nicht gemeint:
-  // wer dort etwas ändert, tut es absichtlich.
-  const status = spawnSync("git", ["status", "--porcelain", "--", "apps/urlaubsantrag/plans", ".ara/mirror/.gitkeep"], {
+  // Der Platzhalter des Spiegels ist die zweite Stelle, an der der Fremdtest den
+  // Arbeitsordner schmutzig gemacht hat. Er bleibt, wie er ist.
+  const status = spawnSync("git", ["status", "--porcelain", "--", ".ara/mirror/.gitkeep"], {
     cwd: ROOT,
     encoding: "utf8",
   });
@@ -2305,7 +2293,7 @@ check("Der Plan der Referenz-App bleibt liegen", () => {
   } finally {
     rmSync(eigen.dir, { recursive: true, force: true });
   }
-  return `${versionierte.length} versionierte Pläne, keiner beweglich`;
+  return "keine App im Klon, ein eigener Plan beweglich";
 });
 
 check("Der Bau nimmt das Paket und lässt die Arbeit daran liegen", () => {
@@ -2380,18 +2368,21 @@ check("Ein Gerät ohne Arasul bekommt zwei Container und den Satz, was fehlt", (
   assert(!/location \/api\//.test(nginxConf({ ...manifest, backend: undefined })), "ohne Backend wird weitergereicht");
 });
 
-await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist genehmigt", async () => {
-  // Die Referenz-App, gegen ein Gerät, das gespielt wird. Geprüft wird der Weg,
-  // um den es in dieser App geht: sie startet einen Flow, der Lauf hält an, ein
-  // MENSCH entscheidet, und erst danach steht der Antrag auf genehmigt. Die App
-  // entscheidet dabei nichts: sie liest nur.
-  const backend = join(ROOT, "apps", "urlaubsantrag", "backend", "server.mjs");
-  if (!existsSync(backend)) return "übersprungen, die Referenz-App liegt nicht in diesem Klon";
+await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er ist genehmigt", async () => {
+  // Das Backend der Vorlage, gegen ein Gerät, das gespielt wird. Geprüft wird
+  // der Weg, um den es in jeder App aus der Vorlage geht: sie startet einen
+  // Flow, der Lauf hält an, ein MENSCH entscheidet, und erst danach steht der
+  // Vorgang auf genehmigt. Die App entscheidet dabei nichts: sie liest nur.
+  //
+  // Gefahren wird die Vorlage selbst, nicht eine Kopie: der Platzhalter
+  // {{name}} steht nur in einer Zeichenkette und stört den Start nicht, und
+  // der Name kommt hier ohnehin aus der Umgebung.
+  const backend = join(ROOT, ".ara", "templates", "app", "backend", "server.mjs");
 
   const freigabe = {
     id: 7,
     run_id: 7,
-    flow_name: "antrag",
+    flow_name: "freigabe",
     titel: "Urlaub",
     status: "offen",
     begruendung: null,
@@ -2409,7 +2400,7 @@ await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist gen
       };
       gesehen.key = anfrage.headers["x-api-key"] || null;
       if (gesehen.key !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
-      if (url.pathname === "/flows/antrag/run") {
+      if (url.pathname === "/flows/freigabe/run") {
         gesehen.start = JSON.parse(Buffer.concat(teile).toString("utf8")).args;
         return json(202, { success: true, run_id: 7 });
       }
@@ -2420,7 +2411,7 @@ await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist gen
         return json(200, {
           success: true,
           status: freigabe.status === "bestaetigt" ? "fertig" : "wartend",
-          result: freigabe.status === "bestaetigt" ? "Anna hat den Urlaub genehmigt." : null,
+          result: freigabe.status === "bestaetigt" ? "Anna hat den Vorgang genehmigt." : null,
         });
       }
       json(404, { error: { message: url.pathname } });
@@ -2435,7 +2426,7 @@ await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist gen
       PORT: "0",
       ARASUL_API_URL: api,
       ARASUL_API_SCHLUESSEL: "aras_selbsttest",
-      ARASUL_APP_NAME: "Urlaubsantrag",
+      ARASUL_APP_NAME: "Probe",
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -2473,38 +2464,37 @@ await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist gen
     assert(lage.daten.nutzer === "Jürgen", `die App liest den Angemeldeten nicht: ${JSON.stringify(lage.daten)}`);
     assert(lage.daten.arasul === true, "die App sieht die Schnittstelle des Geräts nicht");
 
-    const gestellt = await ruf("/antraege", {
+    const gestellt = await ruf("/vorgaenge", {
       method: "POST",
-      body: JSON.stringify({ von: "2026-09-07", bis: "2026-09-11", grund: "Familie" }),
+      body: JSON.stringify({ titel: "Neuer Monitor", text: "Der alte flackert." }),
     });
-    assert(gestellt.code === 201, `Antrag abgewiesen: ${JSON.stringify(gestellt.daten)}`);
-    assert(gestellt.daten.antrag.tage === 5, `Arbeitstage falsch gezählt: ${gestellt.daten.antrag.tage}`);
-    assert(gestellt.daten.antrag.antragsteller === "Jürgen", "der Antragsteller kommt nicht aus der Anmeldung");
-    assert(gestellt.daten.antrag.status === "wartet", `der Antrag wartet nicht: ${gestellt.daten.antrag.status}`);
-    assert(gestellt.daten.antrag.lauf === 7, "der Flow wurde nicht gestartet");
-    assert(gesehen.start?.antragsteller === "Jürgen", `der Flow bekam falsche Angaben: ${JSON.stringify(gesehen.start)}`);
+    assert(gestellt.code === 201, `Vorgang abgewiesen: ${JSON.stringify(gestellt.daten)}`);
+    assert(gestellt.daten.vorgang.von === "Jürgen", "der Einreicher kommt nicht aus der Anmeldung");
+    assert(gestellt.daten.vorgang.status === "wartet", `der Vorgang wartet nicht: ${gestellt.daten.vorgang.status}`);
+    assert(gestellt.daten.vorgang.lauf === 7, "der Flow wurde nicht gestartet");
+    assert(
+      gesehen.start?.von === "Jürgen" && gesehen.start?.sache === "Neuer Monitor",
+      `der Flow bekam falsche Angaben: ${JSON.stringify(gesehen.start)}`
+    );
 
-    // Ein Wochenende zählt nicht mit, und ein Zeitraum ohne Arbeitstag ist keiner.
-    const wochenende = await ruf("/antraege", {
-      method: "POST",
-      body: JSON.stringify({ von: "2026-09-05", bis: "2026-09-06" }),
-    });
-    assert(wochenende.code === 400, "ein Zeitraum ohne Arbeitstag wurde angenommen");
+    // Ohne Titel gibt es keinen Vorgang, und die App sagt es.
+    const leer = await ruf("/vorgaenge", { method: "POST", body: JSON.stringify({ text: "nur Text" }) });
+    assert(leer.code === 400, "ein Vorgang ohne Titel wurde angenommen");
 
     // Solange niemand entschieden hat, ändert sich nichts. Die App wartet, sie
     // hilft nicht nach.
-    let liste = await ruf("/antraege");
-    assert(liste.daten.antraege[0].status === "wartet", "der Antrag entscheidet sich selbst");
+    let liste = await ruf("/vorgaenge");
+    assert(liste.daten.vorgaenge[0].status === "wartet", "der Vorgang entscheidet sich selbst");
 
     // Jetzt der Mensch, in der Oberfläche von Arasul.
     freigabe.status = "bestaetigt";
     freigabe.entschieden_von = "Anna";
-    liste = await ruf("/antraege");
-    const antrag = liste.daten.antraege.find((a) => a.id === 1);
-    assert(antrag.status === "genehmigt", `nach der Bestätigung: ${antrag.status}`);
-    assert(antrag.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Antrag");
-    assert(/genehmigt/.test(antrag.bemerkung || ""), `der Satz des Laufs fehlt: ${antrag.bemerkung}`);
-    return "gestellt, gewartet, bestätigt, genehmigt";
+    liste = await ruf("/vorgaenge");
+    const vorgang = liste.daten.vorgaenge.find((v) => v.id === 1);
+    assert(vorgang.status === "genehmigt", `nach der Bestätigung: ${vorgang.status}`);
+    assert(vorgang.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Vorgang");
+    assert(/genehmigt/.test(vorgang.bemerkung || ""), `der Satz des Laufs fehlt: ${vorgang.bemerkung}`);
+    return "eingereicht, gewartet, bestätigt, genehmigt";
   } finally {
     app.kill();
     geraet.close();
@@ -2512,10 +2502,9 @@ await checkAsync("Ein Urlaubsantrag hält an, ein Mensch entscheidet, er ist gen
 });
 
 await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async () => {
-  const backend = join(ROOT, "apps", "urlaubsantrag", "backend", "server.mjs");
-  if (!existsSync(backend)) return "übersprungen, die Referenz-App liegt nicht in diesem Klon";
+  const backend = join(ROOT, ".ara", "templates", "app", "backend", "server.mjs");
   const app = spawn("node", [backend], {
-    env: { ...process.env, PORT: "0", ARASUL_API_URL: "", ARASUL_API_SCHLUESSEL: "" },
+    env: { ...process.env, PORT: "0", ARASUL_API_URL: "", ARASUL_API_SCHLUESSEL: "", ARASUL_APP_NAME: "Probe" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   const appUrl = await new Promise((done, failed) => {
@@ -2531,15 +2520,15 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
   try {
     const lage = await (await fetch(`${appUrl}/lage`)).json();
     assert(lage.arasul === false, "die App behauptet eine Schnittstelle, die sie nicht hat");
-    const gestellt = await fetch(`${appUrl}/antraege`, {
+    const gestellt = await fetch(`${appUrl}/vorgaenge`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ von: "2026-09-07", bis: "2026-09-08" }),
+      body: JSON.stringify({ titel: "Neuer Monitor" }),
     });
     const daten = await gestellt.json();
-    assert(daten.antrag.status !== "genehmigt", "ohne Freigabe gilt der Antrag als genehmigt");
-    assert(/Arasul|Flow/.test(daten.antrag.hinweis || ""), `der Antrag sagt nicht, warum niemand entscheidet: ${daten.antrag.hinweis}`);
-    return "Antrag angenommen, ohne Entscheidung, mit Begründung";
+    assert(daten.vorgang.status !== "genehmigt", "ohne Freigabe gilt der Vorgang als genehmigt");
+    assert(/Arasul|Flow/.test(daten.vorgang.hinweis || ""), `der Vorgang sagt nicht, warum niemand entscheidet: ${daten.vorgang.hinweis}`);
+    return "Vorgang angenommen, ohne Entscheidung, mit Begründung";
   } finally {
     app.kill();
   }
@@ -3122,9 +3111,8 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     "business/notes/gelerntes.md",
     "devices/zentrale/device.md",
     "apps/eigene-app/app.json",
-    // Der Bau einer App gehoert niemandem: er entsteht beim Bauen, auch bei der
-    // Referenz-App, die sonst als Einzige unter apps/ verfolgt wird.
-    "apps/urlaubsantrag/build/app.json",
+    // Der Auftrag eines Zweigs lebt im Worktree und wird nie committet.
+    "AUFTRAG.md",
     ".env",
     ".ara/mirror/VERSION",
     ".ara/state.json",
@@ -3155,10 +3143,14 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     // nicht angekommen, und ohne sie erkennt /device kein Geraet mehr.
     ".ara/knowledge/devices/orin.md",
     ".ara/knowledge/devices/orin.de.md",
-    // Die eine Ausnahme unter apps/: die Referenz-App gehoert dem Kit und kommt
-    // mit dem Klon mit. Ohne sie haette ein Fremder nichts zum Ansehen.
-    "apps/urlaubsantrag/app.json",
-    "apps/urlaubsantrag/flows/antrag.md",
+    // Die Vorlage einer App ist alles, was ein Fremder zum Ansehen hat: der
+    // Klon bringt keine App mehr mit, apps/ gehoert ganz dem Nutzer.
+    ".ara/templates/app/app.json",
+    ".ara/templates/app/backend/server.mjs",
+    // Die deutsche README und die Lint-Regeln liegen unter .ara/, damit die
+    // Wurzel klein bleibt. Beide muessen trotzdem mitkommen.
+    ".ara/README.de.md",
+    ".ara/.markdownlint-cli2.jsonc",
     "README.md",
     "LICENSE",
   ];
@@ -3946,7 +3938,10 @@ check("Browser-Werkzeug ist eingerichtet", () => {
  * niemand ihn spaeter erraten muss.
  */
 const PAIRED = [
-  { file: "README.md" },
+  // Die Wurzel traegt eine README, die, die GitHub zeigt. Ihre deutsche Haelfte
+  // liegt unter .ara/, damit oben so wenig wie moeglich steht. Das Paar bleibt
+  // ein Paar, nur der Ort der zweiten Haelfte steht hier ausdruecklich.
+  { file: "README.md", german: ".ara/README.de.md" },
   { file: ".ara/CHANGELOG.md" },
   { dir: ".ara/persona" },
   { dir: ".ara/knowledge" },
@@ -3982,7 +3977,7 @@ check("Jede Datei gibt es in beiden Sprachen", () => {
     for (const path of files(entry)) {
       const name = path.split("/").pop();
       const base = isVariant(name) ? path.replace(/\.de\.(md|json)$/, ".$1") : path;
-      const german = base.replace(/\.(md|json)$/, ".de.$1");
+      const german = entry.german || base.replace(/\.(md|json)$/, ".de.$1");
       if (!existsSync(join(ROOT, base))) {
         missing.push(`${german} ohne englische Fassung ${base}`);
         continue;
