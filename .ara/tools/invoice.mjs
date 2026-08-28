@@ -1,5 +1,38 @@
 #!/usr/bin/env node
 /**
+ * The invoice: assign a number, create a document, check the mandatory details, print.
+ *
+ * What lies with the customer in the end is a PDF with the invoice as a sheet for
+ * the human and the same numbers as an attached file for their accounting. That is
+ * ZUGFeRD, and since 2025 every company in Germany has to be able to receive such
+ * an invoice.
+ *
+ *   node .ara/tools/invoice.mjs                                number range and open documents
+ *   node .ara/tools/invoice.mjs --customer <customer>          the invoices of one customer
+ *   node .ara/tools/invoice.mjs --customer <customer> --new    create a document, assign a number
+ *       --from-offer <file>      take the line items from an offer
+ *       --position "Text|Quantity|Unit|Unit price"   one line item, repeatable
+ *       --empty                  without line items, one line to fill in
+ *       --date --service-date --service-from --service-to --due --terms
+ *       --tax-rate --tax-mode <standard|kleinunternehmer|reverse_charge>
+ *   node .ara/tools/invoice.mjs --check <document.md>          mandatory details under section 14 UStG
+ *   node .ara/tools/invoice.mjs --xml <document.md>            only write the invoice data
+ *   node .ara/tools/invoice.mjs --pdf <document.md>            print, attach the XML, record it
+ *   node .ara/tools/invoice.mjs --validate <file.pdf|.xml>     check a finished invoice
+ *   node .ara/tools/invoice.mjs --void <number> --reason "…"   cancel a number
+ *
+ * **The number is assigned on creation, not on printing.** A discarded draft thereby
+ * leaves a trace, and that is exactly why the range gets no gap. Whoever discards a
+ * document cancels its number instead of deleting it.
+ *
+ * The document itself is German: it is a German tax document, and the scaffold in
+ * .ara/vorlagen/rechnung.md stays in that language.
+ *
+ * Nothing goes outside: no service, no portal, no sending. What gets sent, the human
+ * decides.
+ *
+ * === deutsch ===
+ *
  * Die Rechnung: Nummer vergeben, Beleg anlegen, Pflichtangaben pruefen, drucken.
  *
  * Was am Ende beim Kunden liegt, ist ein PDF mit der Rechnung als Blatt fuer den
@@ -26,6 +59,9 @@
  * keine Luecke. Wer einen Beleg verwirft, storniert seine Nummer, statt sie zu
  * loeschen.
  *
+ * Der Beleg selbst ist deutsch: er ist ein deutscher Steuerbeleg, und das Geruest
+ * in .ara/vorlagen/rechnung.md bleibt in dieser Sprache.
+ *
  * Es geht nichts nach draussen: kein Dienst, kein Portal, kein Versand. Was
  * verschickt wird, entscheidet der Mensch.
  */
@@ -44,6 +80,7 @@ import {
   readFrontmatter,
   today,
 } from "./lib/kit.mjs";
+import { t } from "./lib/i18n.mjs";
 import {
   EXEMPTION,
   LEDGER,
@@ -91,19 +128,37 @@ const positionArgs = process.argv
 
 if (arg.void) {
   const number = str(arg.void);
-  if (!number || !splitNumber(number)) fail(`"${arg.void}" ist keine Rechnungsnummer in der Form JJJJ-NNNN.`);
+  if (!number || !splitNumber(number)) {
+    fail(
+      t(
+        `"${arg.void}" is not an invoice number in the form YYYY-NNNN.`,
+        `"${arg.void}" ist keine Rechnungsnummer in der Form JJJJ-NNNN.`
+      )
+    );
+  }
   const entry = findEntry(number);
-  if (!entry) fail(`Die Nummer ${number} steht nicht im Nummernkreis.`);
+  if (!entry) {
+    fail(t(`The number ${number} does not stand in the number range.`, `Die Nummer ${number} steht nicht im Nummernkreis.`));
+  }
   const reason = str(arg.reason);
-  if (!reason) fail('Zum Stornieren gehoert ein Grund: --reason "…".');
+  if (!reason) fail(t('Cancelling needs a reason: --reason "…".', 'Zum Stornieren gehoert ein Grund: --reason "…".'));
   updateEntry(number, { State: "storniert", Reason: reason });
   console.log(
-    `${number} steht jetzt als storniert im Nummernkreis. Die Nummer bleibt vergeben, ` +
-      "sonst haette der Kreis eine Luecke." +
-      (entry.Stand === "gestellt"
-        ? "\n\nAchtung: dieser Beleg war schon gedruckt. War er beim Kunden, genuegt der " +
-          "Vermerk hier nicht. Dann braucht es eine Stornorechnung mit eigener Nummer, und die " +
-          "schreibt das Kit nicht. Das laeuft ueber die Buchhaltung."
+    t(
+      `${number} now stands as cancelled in the number range. The number stays assigned, ` +
+        "otherwise the range would have a gap.",
+      `${number} steht jetzt als storniert im Nummernkreis. Die Nummer bleibt vergeben, ` +
+        "sonst haette der Kreis eine Luecke."
+    ) +
+      (entry.State === "gestellt"
+        ? t(
+            "\n\nCareful: this document was already printed. If it was with the customer, the note " +
+              "here is not enough. Then a cancellation invoice with its own number is needed, and the " +
+              "kit does not write that. That runs through the accounting.",
+            "\n\nAchtung: dieser Beleg war schon gedruckt. War er beim Kunden, genuegt der " +
+              "Vermerk hier nicht. Dann braucht es eine Stornorechnung mit eigener Nummer, und die " +
+              "schreibt das Kit nicht. Das laeuft ueber die Buchhaltung."
+          )
         : "")
   );
   process.exit(0);
@@ -113,30 +168,44 @@ if (arg.void) {
 
 if (arg.new) {
   const customer = str(arg.customer);
-  if (!customer) fail("Zum Anlegen brauche ich --customer <kunde>.");
+  if (!customer) fail(t("To create one I need --customer <customer>.", "Zum Anlegen brauche ich --customer <kunde>."));
   const dir = customerPath(customer);
   if (!existsSync(join(dir, "customer.md"))) {
     const known = listCustomers();
     fail(
-      `Den Kunden "${customer}" gibt es nicht.` +
-        (known.length ? ` Vorhanden: ${known.join(", ")}.` : " Es ist noch kein Kunde angelegt.")
+      t(`There is no customer "${customer}".`, `Den Kunden "${customer}" gibt es nicht.`) +
+        (known.length
+          ? t(` Known: ${known.join(", ")}.`, ` Vorhanden: ${known.join(", ")}.`)
+          : t(" No customer has been created yet.", " Es ist noch kein Kunde angelegt."))
     );
   }
 
   const seller = readSeller();
   if (!seller.exists) {
     fail(
-      "business/company.md fehlt. Ohne Firmenkopf gibt es keinen Absender und ohne Absender " +
-        "keine Rechnung. Anlegen mit /init."
+      t(
+        "business/company.md is missing. Without a company head there is no sender and without a sender " +
+          "no invoice. Create it with /init.",
+        "business/company.md fehlt. Ohne Firmenkopf gibt es keinen Absender und ohne Absender " +
+          "keine Rechnung. Anlegen mit /init."
+      )
     );
   }
 
   const date = str(arg.date) || today();
-  if (!isDate(date)) fail(`--date "${arg.date}" ist kein Datum in der Form JJJJ-MM-TT.`);
+  if (!isDate(date)) {
+    fail(t(`--date "${arg.date}" is not a date in the form YYYY-MM-DD.`, `--date "${arg.date}" ist kein Datum in der Form JJJJ-MM-TT.`));
+  }
   const mode = str(arg["tax-mode"]) || "standard";
-  if (!TAX_MODES[mode]) fail(`--tax-mode kennt nur ${Object.keys(TAX_MODES).join(", ")}.`);
+  if (!TAX_MODES[mode]) {
+    fail(
+      t(`--tax-mode only knows ${Object.keys(TAX_MODES).join(", ")}.`, `--tax-mode kennt nur ${Object.keys(TAX_MODES).join(", ")}.`)
+    );
+  }
   const rate = mode === "standard" ? Number(str(arg["tax-rate"]) ?? "19") : 0;
-  if (!Number.isFinite(rate)) fail(`--tax-rate "${arg["tax-rate"]}" ist keine Zahl.`);
+  if (!Number.isFinite(rate)) {
+    fail(t(`--tax-rate "${arg["tax-rate"]}" is not a number.`, `--tax-rate "${arg["tax-rate"]}" ist keine Zahl.`));
+  }
   const terms = Number(str(arg.terms) ?? seller.payment_terms ?? "14");
   const due = str(arg.due) || (Number.isFinite(terms) ? addDays(date, terms) : "");
   const period = servicePeriod(date);
@@ -170,24 +239,42 @@ if (arg.new) {
   const checks = checkVat14(written, seller);
   const open = checks.filter((check) => !check.ok);
   const lines = [
-    `Rechnung ${number} angelegt: ${relative(ROOT, file)}`,
-    `${written.positions.length} Position${written.positions.length === 1 ? "" : "en"} aus ${source.origin}, ` +
-      `netto ${formatAmount(written.net)} Euro, brutto ${formatAmount(written.gross)} Euro.`,
-    `Die Nummer steht im Nummernkreis unter ${relative(ROOT, LEDGER)}, Stand entwurf.`,
+    t(`Invoice ${number} created: ${relative(ROOT, file)}`, `Rechnung ${number} angelegt: ${relative(ROOT, file)}`),
+    t(
+      `${written.positions.length} line item${written.positions.length === 1 ? "" : "s"} from ${source.origin}, ` +
+        `net ${formatAmount(written.net)} euro, gross ${formatAmount(written.gross)} euro.`,
+      `${written.positions.length} Position${written.positions.length === 1 ? "" : "en"} aus ${source.origin}, ` +
+        `netto ${formatAmount(written.net)} Euro, brutto ${formatAmount(written.gross)} Euro.`
+    ),
+    t(
+      `The number stands in the number range under ${relative(ROOT, LEDGER)}, state entwurf.`,
+      `Die Nummer steht im Nummernkreis unter ${relative(ROOT, LEDGER)}, Stand entwurf.`
+    ),
   ];
   if (computed.problems.length) {
-    lines.push("", "An den Positionen nicht lesbar:", ...computed.problems.map((problem) => `  ${problem}`));
+    lines.push(
+      "",
+      t("Not readable in the line items:", "An den Positionen nicht lesbar:"),
+      ...computed.problems.map((problem) => `  ${problem}`)
+    );
   }
   if (open.length) {
     lines.push(
       "",
-      `${open.length} von ${checks.length} Pflichtangaben fehlen noch:`,
+      t(
+        `${open.length} of ${checks.length} mandatory details are still missing:`,
+        `${open.length} von ${checks.length} Pflichtangaben fehlen noch:`
+      ),
       ...open.map((check) => `  ${check.label}: ${check.hint}`),
       "",
-      `Fuellen, dann: node .ara/tools/invoice.mjs --check ${relative(ROOT, file)}`
+      t(`Fill them in, then: `, `Fuellen, dann: `) + `node .ara/tools/invoice.mjs --check ${relative(ROOT, file)}`
     );
   } else {
-    lines.push("", `Alle Pflichtangaben stehen. Drucken mit: node .ara/tools/invoice.mjs --pdf ${relative(ROOT, file)}`);
+    lines.push(
+      "",
+      t("All mandatory details are there. Print with: ", "Alle Pflichtangaben stehen. Drucken mit: ") +
+        `node .ara/tools/invoice.mjs --pdf ${relative(ROOT, file)}`
+    );
   }
   console.log(lines.join("\n"));
   process.exit(0);
@@ -197,20 +284,35 @@ if (arg.new) {
 
 if (str(arg.validate)) {
   const path = resolve(str(arg.validate));
-  if (!existsSync(path)) fail(`${arg.validate} gibt es nicht.`);
+  if (!existsSync(path)) fail(t(`${arg.validate} does not exist.`, `${arg.validate} gibt es nicht.`));
   const content = readFileSync(path);
   let xml;
   if (content.subarray(0, 5).toString("latin1") === "%PDF-") {
     const state = inspect(content);
-    if (!state.attachment) fail(`In ${basename(path)} steckt keine angehaengte Rechnungsdatei.`);
+    if (!state.attachment) {
+      fail(
+        t(
+          `No attached invoice file sits in ${basename(path)}.`,
+          `In ${basename(path)} steckt keine angehaengte Rechnungsdatei.`
+        )
+      );
+    }
     xml = state.attachment.xml;
     console.log(
-      `Anhang: ${state.attachment.name}, Beziehung ${state.attachment.relationship || "nicht gesetzt"}, ` +
-        `${Buffer.byteLength(xml)} Byte.\n` +
-        `Kennzeichnung: ${state.header}, PDF/A-3B ${state.pdfa ? "gesetzt" : "fehlt"}, ` +
-        `Ausgabeprofil ${state.outputIntent ? "vorhanden" : "fehlt"}, ` +
-        `Verweis /AF ${state.associated ? "vorhanden" : "fehlt"}, ` +
-        `Factur-X-Metadaten ${state.facturx ? "vorhanden" : "fehlen"}.`
+      t(
+        `Attachment: ${state.attachment.name}, relationship ${state.attachment.relationship || "not set"}, ` +
+          `${Buffer.byteLength(xml)} bytes.\n` +
+          `Marking: ${state.header}, PDF/A-3B ${state.pdfa ? "set" : "missing"}, ` +
+          `output intent ${state.outputIntent ? "present" : "missing"}, ` +
+          `reference /AF ${state.associated ? "present" : "missing"}, ` +
+          `Factur-X metadata ${state.facturx ? "present" : "missing"}.`,
+        `Anhang: ${state.attachment.name}, Beziehung ${state.attachment.relationship || "nicht gesetzt"}, ` +
+          `${Buffer.byteLength(xml)} Byte.\n` +
+          `Kennzeichnung: ${state.header}, PDF/A-3B ${state.pdfa ? "gesetzt" : "fehlt"}, ` +
+          `Ausgabeprofil ${state.outputIntent ? "vorhanden" : "fehlt"}, ` +
+          `Verweis /AF ${state.associated ? "vorhanden" : "fehlt"}, ` +
+          `Factur-X-Metadaten ${state.facturx ? "vorhanden" : "fehlen"}.`
+      )
     );
   } else {
     xml = content.toString("utf8");
@@ -231,7 +333,7 @@ if (!target) {
 // --- Einen Beleg lesen -------------------------------------------------------
 
 const path = resolve(target);
-if (!existsSync(path)) fail(`${target} gibt es nicht.`);
+if (!existsSync(path)) fail(t(`${target} does not exist.`, `${target} gibt es nicht.`));
 
 const seller = readSeller();
 let invoice;
@@ -254,21 +356,34 @@ if (str(arg.check)) {
     );
     process.exit(failed.length ? 1 : 0);
   }
-  console.log(`# Pflichtangaben nach § 14 UStG: ${basename(path)}\n`);
+  console.log(
+    t(
+      `# Mandatory details under section 14 UStG: ${basename(path)}\n`,
+      `# Pflichtangaben nach § 14 UStG: ${basename(path)}\n`
+    )
+  );
   for (const check of checks) {
     console.log(
-      `${check.ok ? "ok  " : "FEHL"} ${check.nr}  ${check.label}` +
+      `${check.ok ? "ok  " : t("GONE", "FEHL")} ${check.nr}  ${check.label}` +
         (check.ok || !check.hint ? "" : `\n     ${check.hint}`)
     );
   }
   console.log(
-    `\nNetto ${formatAmount(invoice.net)} Euro, Steuer ${formatAmount(invoice.tax)} Euro, ` +
-      `brutto ${formatAmount(invoice.gross)} Euro. ${TAX_MODES[invoice.mode]}.`
+    t(
+      `\nNet ${formatAmount(invoice.net)} euro, tax ${formatAmount(invoice.tax)} euro, ` +
+        `gross ${formatAmount(invoice.gross)} euro. ${TAX_MODES[invoice.mode]}.`,
+      `\nNetto ${formatAmount(invoice.net)} Euro, Steuer ${formatAmount(invoice.tax)} Euro, ` +
+        `brutto ${formatAmount(invoice.gross)} Euro. ${TAX_MODES[invoice.mode]}.`
+    )
   );
   if (failed.length) {
     console.log(
-      `\n${failed.length} von ${checks.length} Angaben fehlen. Solange eine fehlt, berechtigt die ` +
-        "Rechnung den Kunden nicht zum Vorsteuerabzug. Gedruckt wird so nicht."
+      t(
+        `\n${failed.length} of ${checks.length} details are missing. As long as one is missing, the ` +
+          "invoice does not entitle the customer to deduct input tax. It does not get printed like that.",
+        `\n${failed.length} von ${checks.length} Angaben fehlen. Solange eine fehlt, berechtigt die ` +
+          "Rechnung den Kunden nicht zum Vorsteuerabzug. Gedruckt wird so nicht."
+      )
     );
     process.exit(1);
   }
@@ -282,7 +397,7 @@ const xml = buildXml(invoice, seller);
 if (str(arg.xml)) {
   const out = resolve(str(arg.out) || path.replace(/\.md$/, ".xml"));
   writeFileSync(out, xml);
-  console.log(`Rechnungsdaten geschrieben: ${relative(ROOT, out)}`);
+  console.log(t(`Invoice data written: ${relative(ROOT, out)}`, `Rechnungsdaten geschrieben: ${relative(ROOT, out)}`));
   report(validateXml(xml), Boolean(arg.json));
   process.exit(0);
 }
@@ -290,22 +405,42 @@ if (str(arg.xml)) {
 // --- Drucken -----------------------------------------------------------------
 
 if (failed.length && !arg.force) {
-  console.error(`# Pflichtangaben nach § 14 UStG: ${basename(path)}\n`);
-  for (const check of failed) console.error(`FEHL ${check.nr}  ${check.label}\n     ${check.hint}`);
   console.error(
-    `\n${failed.length} von ${checks.length} Angaben fehlen, darum wird nicht gedruckt. Eine Rechnung ` +
-      "ohne sie berechtigt den Kunden nicht zum Vorsteuerabzug.\n" +
-      "Wer es trotzdem will und die Folge kennt: --force."
+    t(
+      `# Mandatory details under section 14 UStG: ${basename(path)}\n`,
+      `# Pflichtangaben nach § 14 UStG: ${basename(path)}\n`
+    )
+  );
+  for (const check of failed) console.error(`${t("GONE", "FEHL")} ${check.nr}  ${check.label}\n     ${check.hint}`);
+  console.error(
+    t(
+      `\n${failed.length} of ${checks.length} details are missing, so nothing gets printed. An invoice ` +
+        "without them does not entitle the customer to deduct input tax.\n" +
+        "Whoever wants it anyway and knows the consequence: --force.",
+      `\n${failed.length} von ${checks.length} Angaben fehlen, darum wird nicht gedruckt. Eine Rechnung ` +
+        "ohne sie berechtigt den Kunden nicht zum Vorsteuerabzug.\n" +
+        "Wer es trotzdem will und die Folge kennt: --force."
+    )
   );
   process.exit(1);
 }
 if (failed.length) {
-  console.error(`--force gesetzt, es wird trotz ${failed.length} fehlender Pflichtangaben gedruckt.\n`);
+  console.error(
+    t(
+      `--force is set, it gets printed despite ${failed.length} missing mandatory details.\n`,
+      `--force gesetzt, es wird trotz ${failed.length} fehlender Pflichtangaben gedruckt.\n`
+    )
+  );
 }
 
 const validation = validateXml(xml);
 if (!validation.ok) {
-  console.error("Die Rechnungsdaten sind nicht in Ordnung, es wird nicht gedruckt:");
+  console.error(
+    t(
+      "The invoice data is not in order, nothing gets printed:",
+      "Die Rechnungsdaten sind nicht in Ordnung, es wird nicht gedruckt:"
+    )
+  );
   for (const problem of validation.problems) console.error(`  ${problem}`);
   process.exit(1);
 }
@@ -325,7 +460,7 @@ const print = spawnSync(
 );
 if (print.status !== 0) {
   console.error(print.stdout || "");
-  console.error(print.stderr || "Das Drucken ist fehlgeschlagen.");
+  console.error(print.stderr || t("Printing failed.", "Das Drucken ist fehlgeschlagen."));
   process.exit(1);
 }
 
@@ -344,11 +479,18 @@ writeFileSync(
 // herausgeholt und noch einmal geprueft.
 const state = inspect(readFileSync(out));
 if (!state.attachment || state.attachment.xml.trim() !== xml.trim()) {
-  fail(`Das PDF ist geschrieben, aber der Anhang liest sich nicht zurueck: ${relative(ROOT, out)}`);
+  fail(
+    t(
+      `The PDF is written, but the attachment does not read back: ${relative(ROOT, out)}`,
+      `Das PDF ist geschrieben, aber der Anhang liest sich nicht zurueck: ${relative(ROOT, out)}`
+    )
+  );
 }
 const again = validateXml(state.attachment.xml);
 if (!again.ok) {
-  console.error("Der Anhang im fertigen PDF ist nicht in Ordnung:");
+  console.error(
+    t("The attachment in the finished PDF is not in order:", "Der Anhang im fertigen PDF ist nicht in Ordnung:")
+  );
   for (const problem of again.problems) console.error(`  ${problem}`);
   process.exit(1);
 }
@@ -365,17 +507,32 @@ if (number && findEntry(number)) {
 
 console.log(
   [
-    `PDF geschrieben: ${relative(ROOT, out)}`,
-    `Angehaengt: ${state.attachment.name}, ${Buffer.byteLength(state.attachment.xml)} Byte, ` +
-      `Profil ${PROFILE.name}, zurueckgelesen und geprueft.`,
-    `Kennzeichnung: ${state.header}, PDF/A-3B ${state.pdfa ? "gesetzt" : "fehlt"}, ` +
-      `Ausgabeprofil ${state.outputIntent ? "vorhanden" : "fehlt"}.`,
-    ...(number && findEntry(number) ? [`Im Nummernkreis steht ${number} jetzt als gestellt.`] : []),
+    t(`PDF written: ${relative(ROOT, out)}`, `PDF geschrieben: ${relative(ROOT, out)}`),
+    t(
+      `Attached: ${state.attachment.name}, ${Buffer.byteLength(state.attachment.xml)} bytes, ` +
+        `profile ${PROFILE.name}, read back and checked.`,
+      `Angehaengt: ${state.attachment.name}, ${Buffer.byteLength(state.attachment.xml)} Byte, ` +
+        `Profil ${PROFILE.name}, zurueckgelesen und geprueft.`
+    ),
+    t(
+      `Marking: ${state.header}, PDF/A-3B ${state.pdfa ? "set" : "missing"}, ` +
+        `output intent ${state.outputIntent ? "present" : "missing"}.`,
+      `Kennzeichnung: ${state.header}, PDF/A-3B ${state.pdfa ? "gesetzt" : "fehlt"}, ` +
+        `Ausgabeprofil ${state.outputIntent ? "vorhanden" : "fehlt"}.`
+    ),
+    ...(number && findEntry(number)
+      ? [
+          t(
+            `In the number range ${number} now stands as gestellt.`,
+            `Im Nummernkreis steht ${number} jetzt als gestellt.`
+          ),
+        ]
+      : []),
     "",
-    "Ungeprueft bleibt:",
+    t("What stays unchecked:", "Ungeprueft bleibt:"),
     ...UNCHECKED.map((line) => `  ${line}`),
     "",
-    "Verschickt wird nichts. Das entscheidet der Mensch.",
+    t("Nothing gets sent. The human decides that.", "Verschickt wird nichts. Das entscheidet der Mensch."),
   ].join("\n")
 );
 process.exit(0);
@@ -395,17 +552,29 @@ function survey() {
   }
   if (!ledger.exists) {
     console.log(
-      "Es gibt noch keinen Nummernkreis. Die erste Rechnung legt ihn an:\n" +
-        "    node .ara/tools/invoice.mjs --customer <kunde> --new"
+      t(
+        "There is no number range yet. The first invoice creates it:\n" +
+          "    node .ara/tools/invoice.mjs --customer <customer> --new",
+        "Es gibt noch keinen Nummernkreis. Die erste Rechnung legt ihn an:\n" +
+          "    node .ara/tools/invoice.mjs --customer <kunde> --new"
+      )
     );
     return;
   }
   console.log(
-    `Nummernkreis ${ledger.format}, Jahr ${ledger.year || "noch keins"}, zuletzt vergeben ` +
-      `${ledger.last || "keine"}. Naechste waere ${nextNumber(ledger)}.`
+    t(
+      `Number range ${ledger.format}, year ${ledger.year || "none yet"}, last assigned ` +
+        `${ledger.last || "none"}. The next would be ${nextNumber(ledger)}.`,
+      `Nummernkreis ${ledger.format}, Jahr ${ledger.year || "noch keins"}, zuletzt vergeben ` +
+        `${ledger.last || "keine"}. Naechste waere ${nextNumber(ledger)}.`
+    )
   );
   if (!rows.length) {
-    console.log(customer ? `Fuer "${customer}" ist noch keine Nummer vergeben.` : "Noch keine Nummer vergeben.");
+    console.log(
+      customer
+        ? t(`No number is assigned for "${customer}" yet.`, `Fuer "${customer}" ist noch keine Nummer vergeben.`)
+        : t("No number assigned yet.", "Noch keine Nummer vergeben.")
+    );
   }
   for (const row of rows.slice(-20)) {
     console.log(
@@ -414,14 +583,16 @@ function survey() {
     );
   }
   if (problems.length) {
-    console.log("\nAm Nummernkreis stimmt etwas nicht:");
+    console.log(t("\nSomething is wrong with the number range:", "\nAm Nummernkreis stimmt etwas nicht:"));
     for (const problem of problems) console.log(`  ${problem}`);
   }
   const drafts = rows.filter((row) => row.State === "entwurf");
   if (drafts.length) {
     console.log(
-      `\n${drafts.length} Beleg${drafts.length === 1 ? "" : "e"} noch nicht gedruckt: ` +
-        drafts.map((row) => row.Number).join(", ")
+      t(
+        `\n${drafts.length} document${drafts.length === 1 ? "" : "s"} not printed yet: `,
+        `\n${drafts.length} Beleg${drafts.length === 1 ? "" : "e"} noch nicht gedruckt: `
+      ) + drafts.map((row) => row.Number).join(", ")
     );
   }
 }
@@ -431,7 +602,7 @@ function nextNumber(ledger) {
   try {
     return peekNumber(today(), ledger).number;
   } catch {
-    return "nicht bestimmbar";
+    return t("cannot be determined", "nicht bestimmbar");
   }
 }
 
@@ -439,7 +610,7 @@ function nextNumber(ledger) {
 function positionSource(dir) {
   if (positionArgs.length) {
     return {
-      origin: "der Kommandozeile",
+      origin: t("the command line", "der Kommandozeile"),
       rows: positionArgs.map((text) => {
         const [name, quantity, unit, price, rate] = text.split("|").map((part) => part.trim());
         return { text: name, quantity: quantity || "1", unit: unit || "", price: price || "", rate: rate ?? "" };
@@ -456,18 +627,22 @@ function positionSource(dir) {
     if (candidates.length) offer = join(documents, candidates[candidates.length - 1]);
   }
   if (offer) {
-    if (!existsSync(offer)) fail(`${explicit} gibt es nicht.`);
+    if (!existsSync(offer)) fail(t(`${explicit} does not exist.`, `${explicit} gibt es nicht.`));
     const found = parsePositions(readFileSync(offer, "utf8"));
     if (!found.found) {
       fail(
-        `In ${relative(ROOT, offer)} steht keine Tabelle unter "Leistungen". Positionen dann einzeln ` +
-          'angeben: --position "Text|Menge|Einheit|Einzelpreis".'
+        t(
+          `${relative(ROOT, offer)} holds no table under "Leistungen". Then name the line items one by ` +
+            'one: --position "Text|Quantity|Unit|Unit price".',
+          `In ${relative(ROOT, offer)} steht keine Tabelle unter "Leistungen". Positionen dann einzeln ` +
+            'angeben: --position "Text|Menge|Einheit|Einzelpreis".'
+        )
       );
     }
     return { origin: relative(ROOT, offer), rows: found.rows };
   }
   return {
-    origin: "keiner Quelle, eine Zeile zum Ausfuellen",
+    origin: t("no source, one line to fill in", "keiner Quelle, eine Zeile zum Ausfuellen"),
     rows: [{ text: "{Was geleistet wurde}", quantity: "1", unit: "", price: "{Betrag}", rate: "" }],
   };
 }
@@ -478,7 +653,14 @@ function servicePeriod(date) {
   const to = str(arg["service-to"]) || "";
   const single = str(arg["service-date"]) || (from || to ? "" : date);
   for (const [name, value] of [["--service-date", single], ["--service-from", from], ["--service-to", to]]) {
-    if (value && !isDate(value)) fail(`${name} "${value}" ist kein Datum in der Form JJJJ-MM-TT.`);
+    if (value && !isDate(value)) {
+      fail(
+        t(
+          `${name} "${value}" is not a date in the form YYYY-MM-DD.`,
+          `${name} "${value}" ist kein Datum in der Form JJJJ-MM-TT.`
+        )
+      );
+    }
   }
   if (from && to) return { date: "", from, to, text: `${from} bis ${to}` };
   return { date: single, from: "", to: "", text: single };
@@ -626,13 +808,20 @@ function report(result, asJson) {
     return;
   }
   if (result.ok) {
-    console.log(`\nRechnungsdaten in Ordnung, Profil ${PROFILE.name}.`);
+    console.log(
+      t(`\nInvoice data in order, profile ${PROFILE.name}.`, `\nRechnungsdaten in Ordnung, Profil ${PROFILE.name}.`)
+    );
   } else {
-    console.log(`\nRechnungsdaten nicht in Ordnung, ${result.problems.length} Beanstandungen:`);
+    console.log(
+      t(
+        `\nInvoice data not in order, ${result.problems.length} objections:`,
+        `\nRechnungsdaten nicht in Ordnung, ${result.problems.length} Beanstandungen:`
+      )
+    );
     for (const problem of result.problems) console.log(`  ${problem}`);
   }
-  console.log("Geprueft:");
+  console.log(t("Checked:", "Geprueft:"));
   for (const line of result.checked) console.log(`  ${line}`);
-  console.log("Ungeprueft:");
+  console.log(t("Not checked:", "Ungeprueft:"));
   for (const line of result.unchecked) console.log(`  ${line}`);
 }
