@@ -28,8 +28,10 @@ later query than a log entry. Put them next to the handover document.
 **Read customer websites.** When creating a file, look for yourself instead of asking what
 stands there publicly.
 
-**Operate the partner portal.** Fetch download tokens, look up orders and purchase prices.
-Real business data lives there, so only when it belongs to the task.
+**Operate the partner portal.** Look up orders and purchase prices. Real business data lives
+there, so only when it belongs to the task. **Not the device token:** account and token the
+human fetches themselves at `https://www.arasul.de/kaufen` and pastes the token here, the way
+stands in `.ara/knowledge/device.md`, "The token".
 
 ## Which tool for what
 

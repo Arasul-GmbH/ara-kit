@@ -223,7 +223,7 @@ muss:
    --check`. Erst wenn das antwortet, darf das USB-C-Kabel weg. Eine feste Adresse, ein VPN
    oder ein Weg von außen sind `.ara/knowledge/remote-access.de.md`.
 4. **Docker, dann Arasul.** `node .ara/tools/device.mjs --name <gerät> --install docker`,
-   wenn es fehlt, dann `--install arasul` mit dem Download-Token aus dem Partnerportal; woher
+   wenn es fehlt, dann `--install arasul` mit dem Geräte-Token von `https://www.arasul.de/kaufen`; woher
    es kommt, in beiden Zweigen, steht in `.ara/knowledge/device.de.md`, „Arasul installieren". Beides sind
    Eingriffe der Stufe 2 und werden einmal bestätigt, mit Absicht, Ziel und Weg zurück.
 5. **Die Selbstheilung** ist, was sich danach um das laufende Gerät kümmert:

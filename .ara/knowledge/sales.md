@@ -79,3 +79,13 @@ command `/offer <customer>` leads through the whole way.
 one rule that should stick from this section. A generous promise in a sales conversation is
 the most expensive kind of friendliness: under the reseller contract the partner pays for it
 themselves.
+
+## Buying
+
+**Somebody who wants to buy needs no command.** Account and token come from
+<https://www.arasul.de/kaufen>: an account is free and brings exactly one free device token for
+personal use, every further installation is bought, commercial use needs the licence at 3,000
+euros net. That is as of 2026-08-28 and stands in `.ara/knowledge/device.md`, "The token", together
+with the way: ask through the interview tool, the human pastes the token, the kit checks and stores
+it and asks which device, if there are several. Say those three facts and nothing beyond them; what
+the page says today beats what stands here.

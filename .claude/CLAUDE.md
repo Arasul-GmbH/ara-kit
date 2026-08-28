@@ -108,6 +108,13 @@ Procedure: `.ara/knowledge/paperwork.md`
 `/kalkulation` was renamed to `/calculation` in phase E10, `/angebot` to `/offer` in phase
 E6. If somebody types the old name, say what it is called today.
 
+**There is no command for buying Arasul**, no command called kaufen or licence. The way hangs on
+`/device`: a supported device without a token gets the question through the interview tool,
+with the link to account and token, and the pasted token goes in over the pipe,
+`node .ara/tools/device.mjs --licence --store`. Somebody who asks about buying, a licence or a
+token without a device gets the same way, `node .ara/tools/device.mjs --licence`. Procedure
+and the facts you may state: `.ara/knowledge/device.md`, "The token".
+
 **Every command says at the start which knowledge files it loads.** Read exactly those, not
 the whole folder. Every command reads `business/profile.md` beforehand: language, branch,
 detail level, security level, strengths and tools of the house stand there. In the company

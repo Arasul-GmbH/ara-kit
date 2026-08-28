@@ -101,8 +101,8 @@ devices were asked about, and the human can pass that to the product team.
 none of them is a sales pitch: what Arasul would bring in one sentence (login, staging and going
 live for apps, permissions, flows, backup and maintenance), which devices carry it today
 according to the sheets, and a calm sentence on the licence. The kit is under the Apache licence
-2.0 and stays usable without Arasul; what a licence for Arasul costs is governed by the contract,
-and the download token from the portal costs nothing.
+2.0 and stays usable without Arasul; what Arasul costs stands under "The token" below, and the
+tool says it in one sentence.
 
 **Questions about Arasul need no device.** Somebody who tries the kit on their laptop and then
 asks what it actually is gets an answer, from `.ara/knowledge/sales.md` and
@@ -214,18 +214,58 @@ the kit can read, and a kit key in the file.
 ### The token
 
 **The token question comes up here and nowhere else.** At onboarding there is nothing to install,
-so `/init` needs no token, and it does not ask for one either.
+so `/init` needs no token, and it does not ask for one either. **There is no command for buying.**
+Not one called kaufen, not one called licence. The way hangs on `/device`, at the place where the verdict
+"supported" falls, and the tool takes it by itself.
 
-The token comes from the partner portal. **Every partner gets five download tokens there free of
-charge**, further ones on request by mail. It is a gate in front of the download, not a licence
-check: on the device Arasul checks no token, and the kit carries none there either. So whoever asks
-about the price: the token costs nothing, the licence is governed by the contract.
+What holds, as of 2026-08-28, and what you may say:
+
+- **Account and token come from <https://www.arasul.de/kaufen>.** That is the one address.
+- **An account is free of charge and brings exactly one free device token** for personal use.
+  Every further installation is bought. Commercial use needs the licence, 3,000 euros net.
+- The token has the form `ara_` followed by 32 hexadecimal characters. It is a gate in front of
+  the download, not a licence check: on the device Arasul checks no token, and the kit carries
+  none there either.
+
+**How it runs, in the interview tool, never in running text:**
+
+1. `/device` delivers the verdict **supported**, nothing of Arasul runs, no token is stored. The
+   tool then says so under "Next steps", with the link. You ask through the interview tool
+   whether Arasul should be installed on this device, with the link in the question and one
+   sentence on what the account brings and what a further device costs. Options: yes, no, and
+   the open one.
+2. **Yes:** the human opens the page, creates the account, copies the token and pastes it here.
+   That is all they have to do. You do not fetch the token, you do not open the page for them.
+3. **The pasted token goes in over the pipe, never as an argument**, and you never repeat it in
+   text:
+
+   ```
+   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store
+   ```
+
+   The tool checks the form, asks the portal (`GET /api/download?token=<token>&pruefen=1`,
+   without fetching the artifact), stores it under `ARASUL_TOKEN` in the chosen secret store,
+   and says which files an installation fits: supported, and Arasul does not run there. **One
+   file:** it names the call. **Several:** you ask through the interview tool which device it
+   should be. **None:** `/device <name>` first. A refused token comes back with the portal's
+   reason, and nothing is stored.
+4. Then `--install arasul` on the chosen file, as a level 2 intervention, further down.
+5. **No:** it stays noted in the file, nothing else happens, and you do not ask a second time in
+   the same session.
+
+**Somebody asks by themselves about buying, a licence or a token**, in any words and without a
+device in the sentence: the same way, and they need no command for it.
 
 ```
-node .ara/tools/secrets.mjs --set ARASUL_TOKEN
+node .ara/tools/device.mjs --licence
 ```
 
-You never read it out yourself and never display its value.
+That says whether a token is stored, shows the link and the sentences from above, and lists
+which files an installation would fit. From there it is step 1: ask through the interview tool,
+wait for the token, `--licence --store`, then the question which device, when there are several.
+
+You never read the token out yourself and never display its value. `node .ara/tools/secrets.mjs
+--show` says whether one is stored, without the value.
 
 ### The sequence
 
@@ -239,7 +279,7 @@ beforehand and have it confirmed. The tool stops at five points beforehand, and 
 not a maybe: no connection, no supported device, a running platform, no Docker, no token. Then it
 starts:
 
-1. **The installer is fetched**, over `arasul.de/api/download` with the token, and lands as a
+1. **The installer is fetched**, over `www.arasul.de/api/download` with the token, and lands as a
    mirror in `.ara/mirror/`, with version and source in `STATE.json`. **The mirror comes into being
    exactly here and nowhere else.**
 2. **It is pushed to the device**, over the already checked SSH connection, to

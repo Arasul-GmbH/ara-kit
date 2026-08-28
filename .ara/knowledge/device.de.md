@@ -107,8 +107,7 @@ Dingen, und keines davon ist ein Verkaufsgespräch: was Arasul brächte, in eine
 (Anmeldung, Teststand und Live-Schaltung für Apps, Freigaben, Flows, Sicherung und
 Wartung), welche Geräte es heute tragen, nach den Blättern, und ein ruhiger Satz zur
 Lizenz. Das Kit steht unter der Apache-Lizenz 2.0 und bleibt ohne Arasul brauchbar; was
-eine Lizenz für Arasul kostet, regelt der Vertrag, und das Download-Token aus dem Portal
-kostet nichts.
+Arasul kostet, steht unten unter „Das Token", und das Werkzeug sagt es in einem Satz.
 
 **Fragen zu Arasul brauchen kein Gerät.** Wer das Kit auf seinem Rechner ausprobiert und
 dann fragt, was das eigentlich ist, bekommt eine Antwort, aus
@@ -226,18 +225,62 @@ Gerät, dessen Kontrakt das Kit lesen kann, und einem Kit-Schlüssel in der Akte
 ### Das Token
 
 **Die Token-Frage stellt sich hier und sonst nirgends.** Beim Onboarding gibt es nichts
-zu installieren, also braucht `/init` kein Token, und es fragt auch nicht danach.
+zu installieren, also braucht `/init` kein Token, und es fragt auch nicht danach. **Einen
+Befehl zum Kaufen gibt es nicht.** Keinen, der kaufen heißt, keinen, der lizenz heißt. Der Weg hängt an
+`/device`, an der Stelle, an der das Urteil „unterstützt" fällt, und das Werkzeug geht ihn
+von selbst.
 
-Das Token kommt aus dem Partnerportal. **Jeder Partner bekommt dort fünf Download-Token
-kostenlos**, weitere auf Nachfrage per Mail. Es ist eine Schranke vor dem Download, keine
-Lizenzprüfung: am Gerät prüft Arasul kein Token, und das Kit trägt auch keines dorthin.
-Wer also nach dem Preis fragt: das Token kostet nichts, die Lizenz regelt der Vertrag.
+Was gilt, Stand 2026-08-28, und was du sagen darfst:
+
+- **Konto und Token kommen von <https://www.arasul.de/kaufen>.** Das ist die eine Adresse.
+- **Ein Konto ist kostenlos und bringt genau einen kostenlosen Geräte-Token** für den
+  persönlichen Gebrauch. Jede weitere Installation wird gekauft. Kommerzieller Einsatz
+  braucht die Lizenz, 3.000 Euro netto.
+- Der Token hat die Form `ara_` und 32 Hexzeichen dahinter. Er ist eine Schranke vor dem
+  Download, keine Lizenzprüfung: am Gerät prüft Arasul kein Token, und das Kit trägt auch
+  keines dorthin.
+
+**Wie es läuft, im Interview-Werkzeug, nie im Fließtext:**
+
+1. `/device` liefert das Urteil **unterstützt**, nichts von Arasul läuft, kein Token ist
+   hinterlegt. Das Werkzeug sagt das dann unter „Nächste Schritte", mit dem Link. Du fragst
+   über das Interview-Werkzeug, ob Arasul auf diesem Gerät installiert werden soll, mit dem
+   Link in der Frage und einem Satz dazu, was das Konto bringt und was ein weiteres Gerät
+   kostet. Optionen: ja, nein, und die offene.
+2. **Ja:** der Mensch öffnet die Seite, legt das Konto an, kopiert den Token und fügt ihn
+   hier ein. Mehr muss er nicht tun. Du holst den Token nicht, du öffnest die Seite nicht
+   für ihn.
+3. **Der eingefügte Token geht über die Leitung hinein, nie als Argument**, und du
+   wiederholst ihn nie im Text:
+
+   ```
+   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store
+   ```
+
+   Das Werkzeug prüft die Form, fragt das Portal (`GET /api/download?token=<token>&pruefen=1`,
+   ohne das Artefakt zu holen), legt ihn unter `ARASUL_TOKEN` in der gewählten Ablage ab und
+   sagt, auf welche Akten eine Installation passt: unterstützt, und Arasul läuft dort nicht.
+   **Eine Akte:** es nennt den Aufruf. **Mehrere:** du fragst über das Interview-Werkzeug,
+   welches Gerät es sein soll. **Keine:** erst `/device <name>`. Ein abgelehnter Token kommt
+   mit der Begründung des Portals zurück, und hinterlegt wird nichts.
+4. Danach `--install arasul` auf der gewählten Akte, als Eingriff der Stufe 2, weiter unten.
+5. **Nein:** es bleibt in der Akte vermerkt, sonst passiert nichts, und du fragst in derselben
+   Sitzung kein zweites Mal.
+
+**Fragt jemand von sich aus nach dem Kauf, einer Lizenz oder einem Token**, in beliebigen
+Worten und ohne Gerät im Satz: derselbe Weg, und er braucht dafür keinen Befehl.
 
 ```
-node .ara/tools/secrets.mjs --set ARASUL_TOKEN
+node .ara/tools/device.mjs --licence
 ```
 
-Du liest es nie selbst aus und zeigst seinen Wert nie an.
+Das sagt, ob ein Token hinterlegt ist, zeigt den Link und die Sätze von oben und zählt auf,
+auf welche Akten eine Installation passen würde. Von dort ist es Schritt 1: über das
+Interview-Werkzeug fragen, auf den Token warten, `--licence --store`, dann die Frage nach
+dem Gerät, wenn es mehrere gibt.
+
+Du liest das Token nie selbst aus und zeigst seinen Wert nie an. `node .ara/tools/secrets.mjs
+--show` sagt, ob eines hinterlegt ist, ohne den Wert.
 
 ### Der Ablauf
 
@@ -251,7 +294,7 @@ nennen und bestätigen lassen. Das Werkzeug hält vorher an fünf Stellen an, un
 ein Nein und kein Vielleicht: keine Verbindung, kein unterstütztes Gerät, eine laufende
 Plattform, kein Docker, kein Token. Dann geht es los:
 
-1. **Der Installer wird geholt**, über `arasul.de/api/download` mit dem Token, und landet
+1. **Der Installer wird geholt**, über `www.arasul.de/api/download` mit dem Token, und landet
    als Spiegel in `.ara/mirror/`, mit Stand und Quelle in `STATE.json`. **Der Spiegel
    entsteht genau hier und sonst nirgends.**
 2. **Er wird an das Gerät geschoben**, über die schon geprüfte SSH-Verbindung, nach
