@@ -26,6 +26,7 @@ Contract: up to 3
 - Legal notice under section 5 DDG in the README, linked from the first line. The paperwork under `.ara/vorlagen/` and the evidence under `.ara/nachweise/` stay German: they are legally binding text for the DACH market.
 - `.ara/commands/alle/` is now called `all/`, and `/kalkulation` is now called `/calculation`. The retired command stands in `RETIRED` and gets cleared away at the next `--apply`.
 - The number range in `business/invoices.md` carries its schema in English (`## Assigned numbers`, columns `Number | Date | ...`). A range that was created earlier keeps its German names, both are read, and the tool writes into the heading that stands in the file.
+- The skills under `.claude/skills/` and `.env.example` are English. They are instructions to Ara or to whoever opens the clone, they get loaded under exactly one name, and they stay in one language like `CLAUDE.md`. The skills were also still called `kalkulation`, `diagnose`, `erweiterungen` and `verkauf`; now each is called like its folder.
 
 ## 0.9.1 (2026-08-28)
 

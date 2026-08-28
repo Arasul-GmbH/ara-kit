@@ -28,6 +28,7 @@ Kontrakt: bis 3
 - Impressum nach § 5 DDG im README, verlinkt aus der ersten Zeile. Das Vertragspapier unter `.ara/vorlagen/` und die Nachweise unter `.ara/nachweise/` bleiben deutsch: es ist rechtlich gebundener Text für den DACH-Raum.
 - `.ara/commands/alle/` heißt jetzt `all/`, und `/kalkulation` heißt `/calculation`. Der abgelöste Befehl steht in `RETIRED` und wird beim nächsten `--apply` weggeräumt.
 - Der Nummernkreis in `business/invoices.md` trägt sein Schema englisch (`## Assigned numbers`, Spalten `Number | Date | ...`). Ein früher angelegter Nummernkreis behält seine deutschen Namen, gelesen werden beide, und geschrieben wird in die Überschrift, die in der Datei steht.
+- Die Skills unter `.claude/skills/` und `.env.example` sind englisch. Beides sind Anweisungen an Ara oder an den, der den Klon aufmacht, beides wird unter genau einem Namen geladen, und beides bleibt einsprachig wie `CLAUDE.md`. Die Skills hießen außerdem noch `kalkulation`, `diagnose`, `erweiterungen` und `verkauf`; jetzt heißt jeder wie sein Ordner.
 
 ## 0.9.1 (2026-08-28)
 
