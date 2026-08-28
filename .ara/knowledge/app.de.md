@@ -136,6 +136,10 @@ Betrieb mit echten Daten.
 Das ist ein Eingriff der Stufe 2: Absicht, Ziel und Rückweg nennen, bestätigen lassen,
 dann aufrufen. Der Rückweg steht am Ende der Ausgabe.
 
+Auch dieser Weg schreibt in den Merker, als `compose` und nicht als Teststand oder live.
+Ohne diese Notiz sagte die Lage, von einer App sei nichts an ein Gerät gegangen, während
+sie dort antwortete.
+
 ## Das Aussehen
 
 Die Vorlage bringt das Erscheinungsbild von Arasul mit, damit eine App neben der

@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.1 (2026-08-28)
+
+Kontrakt: bis 3
+
+- `--compose`, der Weg auf ein Gerät ohne Arasul, schreibt in den Merker wie jeder andere Weg an ein Gerät, als `compose` und nicht als Teststand oder live. Gefunden bei der Messung der Abnahme A3 an einem Jetson AGX Orin: die App antwortete unter `http://<gerät>:8080/`, und `node .ara/tools/app.mjs --app <name>` sagte, vom Kit sei noch nichts eingespielt worden. `lastStand` zählt einen Compose-Stand mit, die Lagezeile nennt ihn mit Fassung, Zeit, Adresse und dem Satz, dass Arasul dort nicht ist. Die Schritte bleiben, wie sie waren: `--check` und `--deploy` sind weiter das, was kommt, wenn das Gerät Arasul bekommt.
+
 ## 0.14.0 (2026-08-28)
 
 Kontrakt: bis 3

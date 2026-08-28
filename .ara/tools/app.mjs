@@ -576,6 +576,14 @@ function showApp(app) {
                     `live ${stand.live.version ?? "?"} seit ${stand.live.time}`
                   )
                 : null,
+              // Compose ist weder Teststand noch live: ein Stand, von Hand
+              // gestellt, ohne Anmeldung. Er wird als das benannt, was er ist.
+              stand.compose
+                ? t(
+                    `compose ${stand.compose.version ?? "?"} of ${stand.compose.time}, ${stand.compose.url}, without Arasul`,
+                    `Compose ${stand.compose.version ?? "?"} vom ${stand.compose.time}, ${stand.compose.url}, ohne Arasul`
+                  )
+                : null,
             ]
               .filter(Boolean)
               .join(", ") +
@@ -784,12 +792,17 @@ async function compose() {
   }
 
   const host = (fields.address || fields.hostname || "").replace(/^https?:\/\//, "").split(":")[0];
+  const url = `http://${host}:${port}/`;
+  // Auch dieser Weg hinterlaesst eine Notiz. Ohne sie stand am 28.08.2026 eine
+  // App auf einem Geraet, und die Seite ohne `--device` sagte, vom Kit sei noch
+  // nichts eingespielt worden.
+  noteStand(manifest.id, { compose: { version: manifest.version ?? null, time: now(), url } });
   console.log(
     [
       "",
       t(
-        `${manifest.name ?? manifest.id} runs: http://${host}:${port}/`,
-        `${manifest.name ?? manifest.id} läuft: http://${host}:${port}/`
+        `${manifest.name ?? manifest.id} runs: ${url}`,
+        `${manifest.name ?? manifest.id} läuft: ${url}`
       ),
       "",
       t("This is a device without Arasul. What is missing here:", "Das ist ein Gerät ohne Arasul. Was hier fehlt:"),
