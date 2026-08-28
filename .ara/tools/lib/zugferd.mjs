@@ -296,7 +296,7 @@ export function parseXml(text) {
   const source = String(text);
   const fail = (message) => {
     const line = source.slice(0, i).split("\n").length;
-    throw new Error(`XML nicht lesbar, Zeile ${line}: ${message}`);
+    throw new Error(t(`XML not readable, line ${line}: ${message}`, `XML nicht lesbar, Zeile ${line}: ${message}`));
   };
 
   const skip = (marker) => {
@@ -327,33 +327,37 @@ export function parseXml(text) {
       continue;
     }
     const close = source.indexOf(">", i);
-    if (close < 0) fail("ein Element wird nicht geschlossen");
+    if (close < 0) fail(t("an element is not closed", "ein Element wird nicht geschlossen"));
     const raw = source.slice(i + 1, close);
     i = close + 1;
 
     if (raw.startsWith("/")) {
       const name = raw.slice(1).trim();
       const node = stack.pop();
-      if (!node) fail(`</${name}> ohne oeffnendes Element`);
-      if (node.name !== name) fail(`</${name}> schliesst <${node.name}>`);
+      if (!node) fail(t(`</${name}> without an opening element`, `</${name}> ohne oeffnendes Element`));
+      if (node.name !== name) fail(t(`</${name}> closes <${node.name}>`, `</${name}> schliesst <${node.name}>`));
       continue;
     }
 
     const selfClosing = raw.endsWith("/");
     const inner = selfClosing ? raw.slice(0, -1) : raw;
     const nameMatch = inner.match(/^([A-Za-z_][\w.:-]*)/);
-    if (!nameMatch) fail(`"<${inner.slice(0, 20)}" ist kein Elementname`);
+    if (!nameMatch) {
+      fail(t(`"<${inner.slice(0, 20)}" is not an element name`, `"<${inner.slice(0, 20)}" ist kein Elementname`));
+    }
     const node = { name: nameMatch[1], attrs: {}, children: [], text: "" };
     for (const attr of inner.slice(nameMatch[1].length).matchAll(/([A-Za-z_][\w.:-]*)\s*=\s*"([^"]*)"/g)) {
       node.attrs[attr[1]] = attr[2];
     }
     if (stack.length) stack[stack.length - 1].children.push(node);
-    else if (root) fail("zwei Wurzelelemente");
+    else if (root) fail(t("two root elements", "zwei Wurzelelemente"));
     else root = node;
     if (!selfClosing) stack.push(node);
   }
-  if (stack.length) fail(`<${stack[stack.length - 1].name}> wird nicht geschlossen`);
-  if (!root) fail("kein Element gefunden");
+  if (stack.length) {
+    fail(t(`<${stack[stack.length - 1].name}> is not closed`, `<${stack[stack.length - 1].name}> wird nicht geschlossen`));
+  }
+  if (!root) fail(t("no element found", "kein Element gefunden"));
   return root;
 }
 

@@ -289,10 +289,10 @@ function pngSize(path) {
   const buffer = readFileSync(path);
   const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   if (buffer.length < 24 || !buffer.subarray(0, 8).equals(signature)) {
-    throw new Error("die Datei ist kein PNG");
+    throw new Error(t("the file is not a PNG", "die Datei ist kein PNG"));
   }
   if (buffer.subarray(12, 16).toString("latin1") !== "IHDR") {
-    throw new Error("dem PNG fehlt der Kopf (IHDR)");
+    throw new Error(t("the PNG has no header (IHDR)", "dem PNG fehlt der Kopf (IHDR)"));
   }
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }

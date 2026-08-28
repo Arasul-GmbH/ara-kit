@@ -296,19 +296,33 @@ export function auditLedger(ledger = readLedger()) {
  */
 export function peekNumber(date, ledger = readLedger()) {
   const year = Number(String(date).slice(0, 4));
-  if (!year) throw new Error(`"${date}" ist kein Datum in der Form JJJJ-MM-TT.`);
+  if (!year) {
+    throw new Error(
+      t(`"${date}" is not a date in the form YYYY-MM-DD.`, `"${date}" ist kein Datum in der Form JJJJ-MM-TT.`)
+    );
+  }
   const problems = auditLedger(ledger);
   if (problems.length) {
     throw new Error(
-      `Der Nummernkreis in ${relative(ROOT, LEDGER)} ist nicht in Ordnung:\n  ` +
+      t(
+        `The number range in ${relative(ROOT, LEDGER)} is not in order:\n  `,
+        `Der Nummernkreis in ${relative(ROOT, LEDGER)} ist nicht in Ordnung:\n  `
+      ) +
         problems.join("\n  ") +
-        "\nDas wird von Hand berichtigt, nicht ueberschrieben."
+        t(
+          "\nThat gets corrected by hand, not overwritten.",
+          "\nDas wird von Hand berichtigt, nicht ueberschrieben."
+        )
     );
   }
   if (ledger.year && year < ledger.year) {
     throw new Error(
-      `Es sind schon Nummern fuer ${ledger.year} vergeben. Eine Rechnung mit Datum aus ${year} ` +
-        "bekaeme eine Nummer hinter einer aelteren, und der Kreis waere nicht mehr fortlaufend."
+      t(
+        `Numbers for ${ledger.year} have already been assigned. An invoice dated ${year} ` +
+          "would get a number behind an older one, and the range would no longer be sequential.",
+        `Es sind schon Nummern fuer ${ledger.year} vergeben. Eine Rechnung mit Datum aus ${year} ` +
+          "bekaeme eine Nummer hinter einer aelteren, und der Kreis waere nicht mehr fortlaufend."
+      )
     );
   }
   const count = ledger.year === year ? ledger.last + 1 : 1;
@@ -349,7 +363,9 @@ export function updateEntry(number, changes) {
   const ledger = readLedger();
   const rows = ledger.rows.map((row) => (row.Number === number ? { ...row, ...changes } : row));
   if (!rows.some((row) => row.Number === number)) {
-    throw new Error(`Die Nummer ${number} steht nicht im Nummernkreis.`);
+    throw new Error(
+      t(`The number ${number} does not stand in the number range.`, `Die Nummer ${number} steht nicht im Nummernkreis.`)
+    );
   }
   writeRows(rows);
 }
@@ -565,13 +581,16 @@ export function totals(positions, mode) {
  * sehen damit dasselbe Blatt.
  */
 export function readInvoice(path) {
-  if (!existsSync(path)) throw new Error(`${path} gibt es nicht.`);
+  if (!existsSync(path)) throw new Error(t(`${path} does not exist.`, `${path} gibt es nicht.`));
   const raw = readFileSync(path, "utf8");
   const { fields } = readFrontmatter(path);
   const mode = fields.tax_mode || "standard";
   if (!TAX_MODES[mode]) {
     throw new Error(
-      `tax_mode "${mode}" kennt das Werkzeug nicht. Es gibt: ${Object.keys(TAX_MODES).join(", ")}.`
+      t(
+        `The tool does not know tax_mode "${mode}". There is: ${Object.keys(TAX_MODES).join(", ")}.`,
+        `tax_mode "${mode}" kennt das Werkzeug nicht. Es gibt: ${Object.keys(TAX_MODES).join(", ")}.`
+      )
     );
   }
   const defaultRate = fields.tax_rate === undefined || fields.tax_rate === "" ? null : parseQuantity(fields.tax_rate);

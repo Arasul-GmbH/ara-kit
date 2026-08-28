@@ -169,7 +169,14 @@ async function download(target) {
     tar.on("close", (code) =>
       code === 0
         ? done()
-        : failed(new Error(`Das Auspacken ist fehlgeschlagen: ${message.trim() || `Code ${code}`}`))
+        : failed(
+            new Error(
+              t(
+                `Unpacking failed: ${message.trim() || `code ${code}`}`,
+                `Das Auspacken ist fehlgeschlagen: ${message.trim() || `Code ${code}`}`
+              )
+            )
+          )
     );
     Readable.fromWeb(response.body).pipe(tar.stdin);
   });

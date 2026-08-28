@@ -14,6 +14,7 @@ import { createReadStream, statSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
+import { t } from "./i18n.mjs";
 
 /** Kopfzeile für den Schlüssel, solange der Kontrakt noch nicht gelesen ist. */
 const DEFAULT_KEY_HEADER = "X-API-Key";
@@ -29,7 +30,14 @@ const TLS_HINTS = new Set([
 /** Die Adresse aus der Geräteakte wird eine Basis-URL. Ohne Vorsatz gilt https. */
 export function baseUrl(address) {
   const text = String(address || "").trim();
-  if (!text) throw new Error("Ohne Adresse in der Geräteakte gibt es keine Schnittstelle.");
+  if (!text) {
+    throw new Error(
+      t(
+        "Without an address in the device file there is no interface.",
+        "Ohne Adresse in der Geräteakte gibt es keine Schnittstelle."
+      )
+    );
+  }
   if (/^https?:\/\//i.test(text)) return text.replace(/\/+$/, "");
   return `https://${text.replace(/\/+$/, "")}`;
 }
@@ -37,18 +45,28 @@ export function baseUrl(address) {
 function fehler(error, url) {
   if (TLS_HINTS.has(error.code)) {
     return new Error(
-      `Das Zertifikat von ${url} ist nicht überprüfbar (${error.code}).\n` +
-        "Ein Gerät im Kundennetz hat meist ein selbst ausgestelltes. Wenn du weißt, dass es\n" +
-        "dieses Gerät ist, trag `tls: selfsigned` in seine Akte ein oder gib einmalig --insecure an."
+      t(
+        `The certificate of ${url} cannot be verified (${error.code}).\n` +
+          "A device in a customer network usually has a self-signed one. If you know that it is\n" +
+          "this device, enter `tls: selfsigned` into its file or pass --insecure once.",
+        `Das Zertifikat von ${url} ist nicht überprüfbar (${error.code}).\n` +
+          "Ein Gerät im Kundennetz hat meist ein selbst ausgestelltes. Wenn du weißt, dass es\n" +
+          "dieses Gerät ist, trag `tls: selfsigned` in seine Akte ein oder gib einmalig --insecure an."
+      )
     );
   }
   if (error.code === "ECONNREFUSED" || error.code === "EHOSTUNREACH" || error.code === "ENOTFOUND") {
     return new Error(
-      `${url} antwortet nicht (${error.code}). Läuft die Plattform, stimmt die Adresse in der Akte?`
+      t(
+        `${url} does not answer (${error.code}). Is the platform running, is the address in the file right?`,
+        `${url} antwortet nicht (${error.code}). Läuft die Plattform, stimmt die Adresse in der Akte?`
+      )
     );
   }
   if (error.code === "ETIMEDOUT" || error.message === "zeit") {
-    return new Error(`${url} hat nicht in der vorgesehenen Zeit geantwortet.`);
+    return new Error(
+      t(`${url} did not answer within the intended time.`, `${url} hat nicht in der vorgesehenen Zeit geantwortet.`)
+    );
   }
   return new Error(`${url}: ${error.message}`);
 }
@@ -150,7 +168,9 @@ export async function call({
 
 /** Die Begründung des Geräts in einem Satz. Es begründet im Klartext, das ist wertvoller als eine Nummer. */
 export function reason(answer) {
-  const message = answer?.error?.message || `Das Gerät antwortet mit Status ${answer?.status}.`;
+  const message =
+    answer?.error?.message ||
+    t(`The device answers with status ${answer?.status}.`, `Das Gerät antwortet mit Status ${answer?.status}.`);
   const details = answer?.error?.details;
   if (!details) return message;
   const text = typeof details === "string" ? details : JSON.stringify(details);
