@@ -7,6 +7,7 @@ Betreuung für: **$1**
 
 Lies `.ara/knowledge/maintenance-flow.de.md` und arbeite danach. Wissen, das dieser Befehl
 lädt: `.ara/knowledge/maintenance-flow.de.md`, `.ara/knowledge/security.de.md`,
+`.ara/knowledge/self-healing.de.md`, wenn etwas von Arasul nicht läuft,
 `.ara/knowledge/diagnostics.de.md` bei einer Störung, `.ara/knowledge/extensions.de.md` bei
 einer Erweiterung, `.ara/knowledge/platform-services.de.md`, wenn es um die Sicherung oder
 einen Dienst der Plattform geht, `.ara/knowledge/live-knowledge.de.md` für jeden
@@ -78,6 +79,14 @@ Es startet nichts neu, spielt nichts ein und räumt nichts auf. **Jeder Eingriff
 eigene Entscheidung**, mit Absicht, Ziel und Rückweg, und bei einem Kundengerät mit einer
 Bestätigung davor (`.ara/knowledge/security.de.md`). Ein Wartungsvertrag erlaubt Wartung, er
 ist kein Freibrief für einen Neustart um elf Uhr vormittags.
+
+**Eine Ausnahme, mit Grenzen: die Selbstheilung.** Sagt die Statuszeile, dass ein
+Container von Arasul nicht läuft, ist `node .ara/tools/heal.mjs --device <gerät>` der
+erste Schritt, nicht die Diagnose: es startet, was nicht läuft, nur im Verzeichnisbaum von
+Arasul, protokolliert jeden Schritt in der Geräteakte und nimmt jeden auf Wunsch zurück
+(`--undo <id>`). Es fragt erst, wenn es aufgibt. Der Aufruf ist die Bestätigung der Stufe
+2, bei einem Kundengerät nennst du ihn darum vorher. Verfahren:
+`.ara/knowledge/self-healing.de.md`.
 
 Es rät auch keinen Pfad. Findet es zu einem Punkt nichts im Kontrakt des Geräts, steht
 dort "bietet dieses Gerät nicht an", und das ist die Antwort. Nicht ergänzen.

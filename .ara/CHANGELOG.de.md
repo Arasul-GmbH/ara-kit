@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.12.0 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Der Orin, bevor er ein Linux hat, ist eine Anleitung mit Prüfschritt je Abschnitt, `.ara/knowledge/flash-orin.de.md`: der x86-64-Host, das Release-Paket, der erste Benutzer vor dem Flash mit `l4t_create_default_user.sh`, der Recovery-Handgriff, der Flash, das Netz über das USB-C-Kabel unter `192.168.55.1`, und ab dort das Kit von selbst. Dokumentiert, nicht automatisiert. Jeder Schritt nennt, ob er aus NVIDIAs Dokumentation zur Fassung 36.4.4 kommt oder von einem laufenden Orin, und nichts darin gilt als verifiziert: das Testgerät wurde dafür nicht geflasht. Der Selbsttest hält fest, dass jeder Abschnitt einen Prüfschritt trägt.
+- Ab dem laufenden Linux arbeitet das Kit selbst, und das Stück nach der Installation ist die Selbstheilung: `node .ara/tools/heal.mjs --device <gerät>` startet, was von Arasul nicht läuft, ein Container nach dem anderen, prüft, dass es gewirkt hat, und protokolliert jeden Schritt in der Geräteakte unter Prüfungen und in `interventions.json` daneben, mit Zustand davor, Zustand danach und dem Weg zurück als Befehl. `--undo <id>` führt genau diesen Weg zurück aus und weist nach, dass der Stand davor wieder da ist. `--plan` sagt, was es täte, und ändert nichts.
+- Drei Grenzen, im Code und im Selbsttest: nur Container des Arasul-Verzeichnisbaums, nie der Bootloader oder das System, und nur, was einen Weg zurück hat. Ein Container außerhalb des Baums bleibt liegen und steht so im Bericht. Ein Container, der läuft und unhealthy meldet, bräuchte einen Neustart, und der hat keinen Weg zurück: das Kit fragt stattdessen, mit den letzten Protokollzeilen des Containers. Es fragt erst, wenn es aufgibt.
+
 ## 0.11.0 (2026-08-28)
 
 Kontrakt: bis 3

@@ -7,6 +7,7 @@ Care for: **$1**
 
 Read `.ara/knowledge/maintenance-flow.md` and work along it. Knowledge this command loads:
 `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/security.md`,
+`.ara/knowledge/self-healing.md` when something of Arasul does not run,
 `.ara/knowledge/diagnostics.md` for a fault, `.ara/knowledge/extensions.md` for an
 extension, `.ara/knowledge/platform-services.md` when it is about the backup or a service
 of the platform, `.ara/knowledge/live-knowledge.md` for every product value. You read the
@@ -77,6 +78,13 @@ It restarts nothing, deploys nothing and cleans up nothing. **Every intervention
 decision of its own**, with intent, target and way back, and for a customer device with a
 confirmation in front of it (`.ara/knowledge/security.md`). A maintenance contract permits
 maintenance, it is not a licence for a restart at eleven in the morning.
+
+**One exception, with limits: the self-healing.** When the status line says that a
+container of Arasul does not run, `node .ara/tools/heal.mjs --device <device>` is the
+first step, not the diagnosis: it starts what does not run, only inside the Arasul
+directory tree, records every step in the device file and takes each one back on request
+(`--undo <id>`). It asks only when it gives up. Calling it is the level 2 confirmation, so
+on a customer device you name it beforehand. Procedure: `.ara/knowledge/self-healing.md`.
 
 It also guesses no path. If it finds nothing in the device's contract on a point, it says
 "the device does not offer this", and that is the answer. Do not fill it in.

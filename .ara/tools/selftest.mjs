@@ -45,6 +45,7 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
+import { findFaults, insideTree, nextId, parseHealProbe, planFor as healPlan, reached, readVerify } from "./lib/heal.mjs";
 import {
   matchProfile,
   platformOf,
@@ -770,6 +771,168 @@ check("Vor dem Eingriff steht der Verifikationsstand im Protokoll", () => {
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
+});
+
+// --- Selbstheilung -----------------------------------------------------------
+
+/**
+ * Eine Attrappe von Docker: ein Shell-Skript im PATH, das `ps`, `inspect`,
+ * `start`, `stop` und `logs` beantwortet und seinen Zustand in Dateien hält.
+ * Ein Container namens `flattert` geht bei `start` sofort wieder aus: das ist
+ * der Fall, in dem das Kit aufgeben und fragen muss.
+ */
+function dockerAttrappe(dir, containers) {
+  const state = join(dir, "state");
+  mkdirSync(state, { recursive: true });
+  for (const [name, line] of Object.entries(containers)) writeFileSync(join(state, name), line);
+  const script = `#!/bin/sh
+S="${state}"
+cmd="$1"; shift
+case "$cmd" in
+  ps)
+    [ "$1" = "-a" ] || exit 0
+    for f in "$S"/*; do n=$(basename "$f"); printf '%s|%s\\n' "$n" "$(cat "$f")"; done ;;
+  inspect)
+    n="$3"; IFS='|' read -r st status rest < "$S/$n"
+    h=""; case "$status" in *"(healthy)"*) h=healthy;; *"(unhealthy)"*) h=unhealthy;; esac
+    printf '%s|%s\\n' "$st" "$h" ;;
+  start)
+    n="$1"; IFS='|' read -r st status rest < "$S/$n"
+    if [ "$n" = flattert ]; then printf 'exited|Exited (1)|%s\\n' "$rest" > "$S/$n"; else printf 'running|Up 1 second (healthy)|%s\\n' "$rest" > "$S/$n"; fi ;;
+  stop)
+    n="$1"; IFS='|' read -r st status rest < "$S/$n"
+    printf 'exited|Exited (0)|%s\\n' "$rest" > "$S/$n" ;;
+  logs) echo "attrappe: letzte zeile" ;;
+  *) exit 1 ;;
+esac
+`;
+  writeFileSync(join(dir, "docker"), script, { mode: 0o755 });
+  return {
+    stateOf: (name) => readFileSync(join(state, name), "utf8").split("|")[0],
+  };
+}
+
+check("Selbstheilung: Baum, Grenzen und Plan aus den Befunden", () => {
+  const facts = parseHealProbe(
+    "@tree=/home/x/arasul\n@docker=docker\n" +
+      "@container=dashboard-backend|exited|Exited (1)|arasul-platform|dashboard-backend|/home/x/arasul/arasul-jet\n" +
+      "@container=jetcam|exited|Exited (0)|jetcam|jetcam|/home/x/jetcam\n" +
+      "@container=arasul-app-urlaub-test|exited|Exited (0)|||\n" +
+      "@container=llm-service|running|Up 3 hours (unhealthy)|arasul-platform|llm-service|/home/x/arasul/arasul-jet\n" +
+      "@container=postgres-db|running|Up 3 hours (healthy)|arasul-platform|postgres-db|/home/x/arasul/arasul-jet\n@done=ja"
+  );
+  assert(insideTree("/home/x/arasul/arasul-jet", ["/home/x/arasul"]), "Unterordner nicht im Baum");
+  assert(!insideTree("/home/x/arasul-jet", ["/home/x/arasul"]), "Namensvetter zählt als im Baum");
+  assert(!insideTree("", ["/home/x/arasul"]), "leerer Pfad zählt als im Baum");
+  const { faults, outside } = findFaults(facts);
+  assert(faults.map((f) => f.name).join(",") === "dashboard-backend,arasul-app-urlaub-test,llm-service", `falsche Befunde im Baum: ${faults.map((f) => f.name)}`);
+  assert(outside.length === 1 && outside[0].name === "jetcam", "jetcam liegt außerhalb und wurde trotzdem geplant");
+  const start = healPlan(faults[0], "sudo -n docker");
+  assert(start.ok && /^sudo -n docker start 'dashboard-backend'$/.test(start.fix), `Plan falsch: ${start.fix}`);
+  assert(/stop 'dashboard-backend'/.test(start.undo), "kein Weg zurück im Plan");
+  const unhealthy = healPlan(faults[2]);
+  assert(!unhealthy.ok && /Neustart/.test(unhealthy.reason), "unhealthy bekam einen Plan, ein Neustart hat aber keinen Weg zurück");
+  assert(reached(readVerify("running|healthy\n"), "running") && !reached(readVerify("running|unhealthy"), "running"), "Nachweis liest falsch");
+  assert(!readVerify("running|starting").settled, "ein laufender Healthcheck gilt als fertig");
+  assert(nextId([]) === "H-0001" && nextId([{ id: "H-0007" }, { id: "H-0002" }]) === "H-0008", "Nummern nicht fortlaufend");
+});
+
+check("Selbstheilung: der Fehler steht im Protokoll, wird behoben, die Rücknahme stellt den Stand her", () => {
+  const name = "_selftest-heil";
+  const dir = join(ROOT, "devices", name);
+  const home = mkdtempSync(join(tmpdir(), "ara-heil-"));
+  const fake = join(home, "bin");
+  mkdirSync(join(home, "arasul", "arasul-jet"), { recursive: true });
+  mkdirSync(join(home, "jetcam"), { recursive: true });
+  const tree = join(home, "arasul", "arasul-jet");
+  const docker = dockerAttrappe(fake, {
+    "dashboard-backend": `exited|Exited (1)|arasul-platform|dashboard-backend|${tree}`,
+    "postgres-db": `running|Up 3 hours (healthy)|arasul-platform|postgres-db|${tree}`,
+    "llm-service": `running|Up 3 hours (unhealthy)|arasul-platform|llm-service|${tree}`,
+    "arasul-app-urlaub-test": "exited|Exited (0)|||",
+    jetcam: `exited|Exited (0)|jetcam|jetcam|${join(home, "jetcam")}`,
+    flattert: `exited|Exited (1)|arasul-platform|flattert|${tree}`,
+  });
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "device.md"), "---\nname: _selftest-heil\naddress: localhost\nssh_user: probe\nssh_port: 1\n---\n\n## Prüfungen\n");
+  const env = { HOME: home, PATH: `${fake}:${process.env.PATH}` };
+  try {
+    // Erst der Plan: er ändert nichts, und es entsteht kein Protokoll.
+    let run = tool("heal.mjs", ["--device", name, "--plan", "--wait", "0"], "", env);
+    assert(/Was es täte/.test(run.stdout) && /Geändert wurde nichts/.test(run.stdout), `Plan fehlt: ${run.stdout}`);
+    assert(!existsSync(join(dir, "interventions.json")), "der Plan hat protokolliert");
+    assert(docker.stateOf("dashboard-backend") === "exited", "der Plan hat gestartet");
+
+    // Dann der Lauf. Rückgabe 1, weil es zwei Fragen gibt: unhealthy und flattert.
+    run = tool("heal.mjs", ["--device", name, "--wait", "0", "--json"], "", env);
+    assert(run.status === 1, `Rückgabecode ${run.status}: ${run.stderr || run.stdout}`);
+    const out = JSON.parse(run.stdout);
+    assert(out.transport === "local", "lief nicht lokal");
+    assert(docker.stateOf("dashboard-backend") === "running", "dashboard-backend nicht gestartet");
+    assert(docker.stateOf("arasul-app-urlaub-test") === "running", "die App der Plattform ohne Compose-Marke wurde nicht als Teil des Baums erkannt");
+    assert(docker.stateOf("jetcam") === "exited", "jetcam außerhalb des Baums wurde angefasst");
+    assert(out.outside.some((o) => o.name === "jetcam"), "jetcam steht nicht als außerhalb im Bericht");
+    assert(out.done.length === 2 && out.done.every((d) => d.result === "fixed"), `erledigt: ${JSON.stringify(out.done)}`);
+    assert(out.questions.length === 2, `Fragen: ${JSON.stringify(out.questions)}`);
+    assert(out.questions.some((q) => q.target === "llm-service" && /Neustart/.test(q.reason)), "unhealthy wurde nicht als Frage gemeldet");
+    const gaveUp = out.questions.find((q) => q.target === "flattert");
+    assert(gaveUp && /^H-000\d$/.test(gaveUp.id) && /gibt hier auf/.test(gaveUp.reason) && /letzte zeile/.test(gaveUp.logs), "flattert: kein Aufgeben mit Protokoll und Logzeilen");
+
+    // Die Nummern folgen der Reihenfolge, in der Docker die Container nennt, und
+    // die ist hier nicht festgelegt. Gesucht wird darum nach dem Ziel.
+    const ledger = JSON.parse(readFileSync(join(dir, "interventions.json"), "utf8"));
+    const dash = ledger.find((e) => e.target === "dashboard-backend");
+    assert(ledger.length === 3 && ledger[0].id === "H-0001" && dash && dash.before.status === "exited", "Protokoll unvollständig");
+    assert(ledger.every((e) => e.undo && e.verify), "ein Eintrag ohne Weg zurück oder Nachweis");
+    let body = readFileSync(join(dir, "device.md"), "utf8");
+    assert(new RegExp(`### .* · Eingriff ${dash.id}\\n.*dashboard-backend`).test(body), "Eingriff steht nicht in der Akte");
+    assert(new RegExp(`Weg zurück: node \\.ara/tools/heal\\.mjs --device _selftest-heil --undo ${dash.id}`).test(body), "der Weg zurück steht nicht als Befehl in der Akte");
+    assert(new RegExp(`Eingriff ${gaveUp.id}.*\\n.*Ergebnis: failed`).test(body), "der gescheiterte Eingriff fehlt in der Akte");
+
+    // Die Rücknahme: der Stand davor ist exited, und danach ist er es wieder.
+    run = tool("heal.mjs", ["--device", name, "--undo", dash.id, "--wait", "0"], "", env);
+    assert(run.status === 0, `Rücknahme fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(/Der Stand davor ist wiederhergestellt/.test(run.stdout), "kein Nachweis der Rücknahme");
+    assert(docker.stateOf("dashboard-backend") === "exited", "die Rücknahme hat den Stand davor nicht hergestellt");
+    assert(docker.stateOf("arasul-app-urlaub-test") === "running", "die Rücknahme hat einen anderen Eingriff mitgenommen");
+    body = readFileSync(join(dir, "device.md"), "utf8");
+    assert(new RegExp(`Rücknahme ${dash.id}`).test(body), "die Rücknahme steht nicht in der Akte");
+    run = tool("heal.mjs", ["--device", name, "--undo", dash.id], "", env);
+    assert(run.status !== 0 && /schon/.test(run.stderr), "eine zweite Rücknahme wurde angenommen");
+    run = tool("heal.mjs", ["--device", name, "--undo", "H-0099"], "", env);
+    assert(run.status !== 0, "eine Rücknahme ohne Eintrag wurde angenommen");
+    run = tool("heal.mjs", ["--device", name, "--list"], "", env);
+    assert(new RegExp(`${dash.id} .*zurückgenommen`).test(run.stdout) && /H-0001/.test(run.stdout) && /H-0003/.test(run.stdout), `Liste unvollständig: ${run.stdout}`);
+    return "3 Eingriffe, 2 Fragen, 1 Rücknahme";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+check("Die Orin-Anleitung hat je Abschnitt einen Prüfschritt", () => {
+  // Die Anleitung ist Text, nicht Automatik. Was sie leisten muss: nach jedem
+  // Abschnitt weiß der Mensch, ob er weitergehen darf. Ein Abschnitt ohne
+  // Prüfschritt ist eine Lücke, und genau die soll eine Fremdlesung nicht finden.
+  const files = { "flash-orin.md": /^\*\*Check:\*\*/m, "flash-orin.de.md": /^\*\*Prüfschritt:\*\*/m };
+  const missing = [];
+  let sections = 0;
+  for (const [file, marker] of Object.entries(files)) {
+    const text = readFileSync(join(ROOT, ".ara", "knowledge", file), "utf8");
+    const parts = text.split(/^## /m).slice(1);
+    for (const part of parts) {
+      const title = part.split("\n")[0].trim();
+      // Nur die Schritte tragen Nummern. Der Rahmen davor und danach hat keinen.
+      if (!/^\d+\. /.test(title)) continue;
+      sections++;
+      if (!marker.test(part)) missing.push(`${file}: ${title}`);
+    }
+    assert(/^As of: |^Stand: /m.test(text) && /^Source: |^Quelle: /m.test(text), `${file} nennt Stand oder Quelle nicht`);
+  }
+  assert(missing.length === 0, `ohne Prüfschritt: ${missing.join("; ")}`);
+  assert(sections >= 12, `nur ${sections} Schritte in beiden Fassungen, das kann nicht stimmen`);
+  return `${sections / 2} Schritte je Fassung`;
 });
 
 // --- Agenda -----------------------------------------------------------------

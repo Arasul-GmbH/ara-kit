@@ -9,7 +9,8 @@ Read `.ara/knowledge/device.md` and work along it. Knowledge this command loads:
 `.ara/knowledge/device.md`, `.ara/knowledge/security.md`, plus, only after the verdict and
 only when needed, `.ara/knowledge/remote-access.md`, `.ara/knowledge/boot-and-flash.md`,
 `.ara/knowledge/identify-device.md`, the matching sheet under `.ara/knowledge/devices/`,
-`.ara/knowledge/handover.md`,
+`.ara/knowledge/flash-orin.md` for a Jetson AGX Orin without a Linux,
+`.ara/knowledge/handover.md`, `.ara/knowledge/self-healing.md` once Arasul runs,
 `.ara/knowledge/deploy.md` once Arasul runs on the device, and
 `.ara/knowledge/live-knowledge.md` for every product value. You read the profile in
 `business/profile.md` beforehand: language, branch, detail level, security level, SSH key.

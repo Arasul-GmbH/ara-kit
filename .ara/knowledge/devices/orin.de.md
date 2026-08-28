@@ -55,6 +55,12 @@ nennt dieses Katalogprofil darum erst ab 40 GB erkanntem Speicher und sagt sonst
 Katalog für diese Fassung kein Profil hat. Ein kleinerer Orin ist damit nicht nicht
 unterstützt, er ist unbeantwortet, und das ist eine Frage an das Produktteam.
 
+## Wie er zu seinem Linux kommt
+
+Der Weg vom leeren Orin zum laufenden Linux steht nicht in diesem Blatt, er ist eine eigene
+Anleitung mit Prüfschritt je Abschnitt: `.ara/knowledge/flash-orin.de.md`. Nichts darin ist
+vom Kit verifiziert, und die Anleitung sagt das selbst.
+
 ## Was das Kit hier nicht weiß
 
 Ob das Profil im Katalog an echter Hardware verifiziert wurde, steht nicht in diesem Blatt.

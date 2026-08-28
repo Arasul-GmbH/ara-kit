@@ -12,6 +12,12 @@ Der Grund ist nicht Ordnungsliebe: Ein Neustart löscht die Spur. Wenn du vorher
 was los war, weißt du es danach nie, und in drei Wochen steht dasselbe Problem wieder da,
 und du fängst von vorn an.
 
+**Das Eine, das vor dem Befund handeln darf, ist die Selbstheilung**,
+`.ara/knowledge/self-healing.de.md`, und sie darf es, weil sie keine Spur löscht: sie
+startet, was nicht läuft, nur im Verzeichnisbaum von Arasul, startet nichts neu, löscht
+nichts, und schreibt jeden Schritt mit seinem Weg zurück in die Geräteakte. Wo sie aufgibt,
+beginnt diese Kette, und ihr Protokoll ist das Erste, was du liest.
+
 ## Die Kette
 
 Arbeite von außen nach innen. Jede Stufe beantwortet eine Frage, bevor du zur nächsten

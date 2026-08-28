@@ -59,7 +59,14 @@ complete would be guessed.
 
 ### 1. Something is stuck
 
-Procedure in `.ara/knowledge/diagnostics.md`. Establish first, change second.
+If the status line says that a container of Arasul does not run, the self-healing goes
+first: `node .ara/tools/heal.mjs --device <device>`, procedure
+`.ara/knowledge/self-healing.md`. It starts what does not run, only inside the Arasul
+directory tree, records every step in the device file with its way back, and asks only when
+it gives up. Where it gives up, the diagnosis begins.
+
+For everything else the procedure is `.ara/knowledge/diagnostics.md`. Establish first,
+change second.
 
 ### 2. Regular look
 

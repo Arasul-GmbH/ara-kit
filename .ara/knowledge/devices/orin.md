@@ -56,6 +56,12 @@ therefore names that catalogue profile only from 40 GB of recognised memory upwa
 otherwise says that the catalogue has no profile for this variant. A smaller Orin is not
 thereby unsupported, it is unanswered, and that is a question for the product team.
 
+## How it gets its Linux
+
+The way from an empty Orin to a running Linux is not in this sheet, it is a guide of its own
+with a check step per section: `.ara/knowledge/flash-orin.md`. Nothing in it is verified by
+the kit, and the guide says so itself.
+
 ## What the kit does not know here
 
 Whether the profile in the catalogue was verified on real hardware does not stand in this

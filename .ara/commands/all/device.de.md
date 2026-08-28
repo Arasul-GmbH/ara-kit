@@ -9,7 +9,9 @@ Lies `.ara/knowledge/device.de.md` und arbeite danach. Wissen, das dieser Befehl
 `.ara/knowledge/device.de.md`, `.ara/knowledge/security.de.md`, dazu erst nach dem Urteil
 und nur bei Bedarf `.ara/knowledge/remote-access.de.md`, `.ara/knowledge/boot-and-flash.de.md`,
 `.ara/knowledge/identify-device.de.md`, das passende Blatt unter
-`.ara/knowledge/devices/`, `.ara/knowledge/handover.de.md`,
+`.ara/knowledge/devices/`, `.ara/knowledge/flash-orin.de.md` bei einem Jetson AGX Orin
+ohne Linux, `.ara/knowledge/handover.de.md`, `.ara/knowledge/self-healing.de.md`, sobald
+Arasul läuft,
 `.ara/knowledge/deploy.de.md`, sobald Arasul auf dem Gerät läuft, und
 `.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil in
 `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, SSH-Schlüssel.

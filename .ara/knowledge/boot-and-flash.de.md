@@ -49,6 +49,10 @@ Was du tust:
    nach, statt sie aus dem Gedächtnis zu nennen, die Werkzeuge ändern sich mit jeder
    Generation.
 
+Für den Jetson AGX Orin trägt das Kit den Weg selbst, als Anleitung mit Prüfschritt je
+Abschnitt: `.ara/knowledge/flash-orin.de.md`. Host, Release-Paket, erster Benutzer,
+Recovery-Handgriff, Flash, das Netz über das USB-C-Kabel, und ab dort das Kit von selbst.
+
 ## Boot-Medium schreiben (Fall B)
 
 Der einzige unumkehrbare Schritt der ganzen Einrichtung. Reihenfolge:

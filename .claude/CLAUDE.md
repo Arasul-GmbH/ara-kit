@@ -43,7 +43,7 @@ sentences. That holds for everything you write, customer documents and offers in
 | `apps/` | Own apps, independent of customers. Belongs to the user. Only `apps/urlaubsantrag/` belongs to the kit: the reference app to look at. |
 | `.ara/commands/` | Source of the commands: `all/` for every branch, `partner/` for partners only. `/init` puts them into `.claude/commands/`. |
 | `.ara/knowledge/` | **Procedures**: how to go about things. No product values. |
-| `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them |
+| `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them. The Orin before it has a Linux is a guide of its own, `.ara/knowledge/flash-orin.md`: a check step per section, documented, not automated |
 | `.ara/vorlagen/` | **The paperwork**: offer, annexes, handover record. The only place for it, see `.ara/vorlagen/README.md`. German. |
 | `.ara/nachweise/` | Evidence on AI classification and data processing. Annexes 4 and 5 to the offer. Mirrored from Arasul's control folder, do not edit here. German. |
 | `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. |
@@ -101,7 +101,7 @@ Procedure: `.ara/knowledge/paperwork.md`
 | `/invoice <customer>` | Partner only, and only with `invoice: yes` in the profile. Invoice as a ZUGFeRD PDF, number from the number range, mandatory details under section 14 UStG | `.ara/knowledge/invoicing.md` |
 | `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict, next steps. Install Arasul, fetch the kit key. `<customer>/<device>` for a customer device | `.ara/knowledge/device.md` |
 | `/app [<app>]` | Plan an app, build it, roll it into staging, switch it live. Reads the file and offers only the sensible next steps | `.ara/knowledge/app.md` |
-| `/maintain [<device>]` | Look after a running device. Starts with a status line, then you say in free text what is due. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md` |
+| `/maintain [<device>]` | Look after a running device. Starts with a status line, then you say in free text what is due. When something of Arasul does not run, the self-healing goes first. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/self-healing.md` |
 
 `/kalkulation` was renamed to `/calculation` in phase E10, `/angebot` to `/offer` in phase
 E6. If somebody types the old name, say what it is called today.
@@ -127,6 +127,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 | `app.mjs` | Two sides. Without `--device`: create an app from the scaffold, move plans, build, read the situation. With `--device`: read the contract, check `app.json` against it, package into staging, switch live, back, remove, and with `--compose` onto a device without Arasul |
 | `customer.mjs` | Create a customer file (`--new`) and read the picture: status, devices with their state, paperwork, history, what is due |
 | `maintain.mjs` | Read the state of a device: status line and maintenance report, over SSH and over the interface. Reads only, and says what could not be measured (`--line`, `--report`, `--json`) |
+| `heal.mjs` | Self-healing on a running device: start what does not run, only inside the Arasul directory tree, never the bootloader, every step recorded in the device file and taken back one by one (`--plan`, `--list`, `--undo <id>`). Asks only when it gives up |
 | `runsheet.mjs` | Read and write on the state of a setup |
 | `remote.mjs` | Run a command on a customer device (`--check`, `--log`) |
 | `find-device.mjs` | Is a device reachable, which services answer |

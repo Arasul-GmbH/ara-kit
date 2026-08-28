@@ -158,7 +158,7 @@ export function judge(facts, profiles = []) {
  * Geräts. Zwei Muster, weil ein Container der Plattform entweder ihren Namen
  * trägt oder die Oberfläche ist, an der man sie erkennt.
  */
-const PLATFORM_CONTAINERS = [/arasul/i, /^dashboard-backend$/i];
+export const PLATFORM_CONTAINERS = [/arasul/i, /^dashboard-backend$/i];
 
 /**
  * Docker, das Sprachmodell und Hinweise auf Arasul aus den Befunden.
