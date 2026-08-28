@@ -511,24 +511,47 @@ export function summarize(contract) {
   const version = checkVersion(contract);
   const lines = [
     `- ${version.text}`,
-    `- Systemversion des Geräts: ${contract?.arasul ?? "nicht genannt"}`,
-    `- Endpunkte: ${(contract?.endpunkte || []).length}`,
-    `- Kopfzeilen: ${contract?.koepfe?.benutzer ?? "?"}, ${contract?.koepfe?.rolle ?? "?"}` +
-      (contract?.koepfe?.rollen ? ` (Rollen: ${contract.koepfe.rollen.join(", ")})` : ""),
-    `- Schlüsselkopf: ${contract?.schluessel?.kopf ?? "?"}, Bereiche: ${(contract?.schluessel?.bereiche || []).join(", ") || "keine genannt"}`,
+    t(
+      `- System version of the device: ${contract?.arasul ?? "not named"}`,
+      `- Systemversion des Geräts: ${contract?.arasul ?? "nicht genannt"}`
+    ),
+    t(`- Endpoints: ${(contract?.endpunkte || []).length}`, `- Endpunkte: ${(contract?.endpunkte || []).length}`),
+    t(
+      `- Headers: ${contract?.koepfe?.benutzer ?? "?"}, ${contract?.koepfe?.rolle ?? "?"}`,
+      `- Kopfzeilen: ${contract?.koepfe?.benutzer ?? "?"}, ${contract?.koepfe?.rolle ?? "?"}`
+    ) +
+      (contract?.koepfe?.rollen
+        ? t(` (roles: ${contract.koepfe.rollen.join(", ")})`, ` (Rollen: ${contract.koepfe.rollen.join(", ")})`)
+        : ""),
+    t(
+      `- Key header: ${contract?.schluessel?.kopf ?? "?"}, scopes: ${(contract?.schluessel?.bereiche || []).join(", ") || "none named"}`,
+      `- Schlüsselkopf: ${contract?.schluessel?.kopf ?? "?"}, Bereiche: ${(contract?.schluessel?.bereiche || []).join(", ") || "keine genannt"}`
+    ),
   ];
   const flow = contract?.flow_frontmatter;
   if (flow) {
     lines.push(
-      `- Flow-Kopf: ${flow.schema ? "Schema vorhanden" : "kein Schema"}` +
-        `, ${(flow.regeln || []).length} Regeln für einen Flow aus einem Paket`
+      t(
+        `- Flow header: ${flow.schema ? "schema present" : "no schema"}` +
+          `, ${(flow.regeln || []).length} rules for a flow out of a package`,
+        `- Flow-Kopf: ${flow.schema ? "Schema vorhanden" : "kein Schema"}` +
+          `, ${(flow.regeln || []).length} Regeln für einen Flow aus einem Paket`
+      )
     );
   }
   const paket = contract?.paket;
   if (paket) {
     lines.push(
-      `- Paket: ${paket.format ?? "?"}, gepackt mit \`${paket.packen ?? "?"}\`` +
-        (paket.max_archiv_bytes ? `, höchstens ${Math.round(paket.max_archiv_bytes / 1024 / 1024)} MB` : "")
+      t(
+        `- Package: ${paket.format ?? "?"}, packed with \`${paket.packen ?? "?"}\``,
+        `- Paket: ${paket.format ?? "?"}, gepackt mit \`${paket.packen ?? "?"}\``
+      ) +
+        (paket.max_archiv_bytes
+          ? t(
+              `, at most ${Math.round(paket.max_archiv_bytes / 1024 / 1024)} MB`,
+              `, höchstens ${Math.round(paket.max_archiv_bytes / 1024 / 1024)} MB`
+            )
+          : "")
     );
   }
   return lines;

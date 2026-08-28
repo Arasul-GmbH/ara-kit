@@ -28,13 +28,26 @@ export const REMOTE_BASE = '"$HOME/apps"';
  * Kopf der erzeugten Compose-Datei: wer sie in einem halben Jahr am Gerät
  * findet, soll ohne Rückfrage wissen, was er da vor sich hat.
  */
-export const WAS_FEHLT = Object.freeze([
-  "Anmeldung: es gibt keine. Wer die Adresse und den Port erreicht, sieht die App. Die Kopfzeilen mit Benutzer und Rolle setzt sonst die Plattform, hier setzt sie niemand.",
-  "Flows: es läuft kein Sprachmodell und keine Flow-Maschine. Was die App an Flows mitbringt, liegt im Paket und tut nichts.",
-  "Freigaben: ohne Flow hält kein Lauf an, und es gibt keine Stelle, an der ein Mensch entscheidet.",
-  "Teststand und Livestand: es gibt einen Stand. Ein Rückweg auf die vorige Fassung ist das erneute Aufsetzen der vorigen Fassung.",
-  "Schlüssel und Schnittstelle: das Gerät gibt der App keinen Schlüssel, also erreicht sie auch keine Schnittstelle von Arasul.",
-]);
+import { t } from "./i18n.mjs";
+
+export const WAS_FEHLT = Object.freeze(
+  t(
+    [
+      "Login: there is none. Whoever reaches the address and the port sees the app. The headers with user and role are otherwise set by the platform, here nobody sets them.",
+      "Flows: no language model and no flow engine runs. What the app brings along as flows lies in the package and does nothing.",
+      "Permissions: without a flow no run stops, and there is no place where a human decides.",
+      "Staging and live slot: there is one slot. A way back to the previous version is setting up the previous version again.",
+      "Key and interface: the device gives the app no key, so it reaches no interface of Arasul either.",
+    ],
+    [
+      "Anmeldung: es gibt keine. Wer die Adresse und den Port erreicht, sieht die App. Die Kopfzeilen mit Benutzer und Rolle setzt sonst die Plattform, hier setzt sie niemand.",
+      "Flows: es läuft kein Sprachmodell und keine Flow-Maschine. Was die App an Flows mitbringt, liegt im Paket und tut nichts.",
+      "Freigaben: ohne Flow hält kein Lauf an, und es gibt keine Stelle, an der ein Mensch entscheidet.",
+      "Teststand und Livestand: es gibt einen Stand. Ein Rückweg auf die vorige Fassung ist das erneute Aufsetzen der vorigen Fassung.",
+      "Schlüssel und Schnittstelle: das Gerät gibt der App keinen Schlüssel, also erreicht sie auch keine Schnittstelle von Arasul.",
+    ]
+  )
+);
 
 /** Ein Wert für die Compose-Datei, immer in Anführungszeichen. */
 function quote(value) {
