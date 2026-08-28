@@ -289,10 +289,14 @@ async function adminLogin() {
   const password = getSecret(ref);
   if (!password) {
     fail(
-      `Unter ${ref} liegt kein Startpasswort.\n` +
-        "Es entsteht, wenn das Kit selbst installiert (--install arasul). Wurde das Gerät von Hand\n" +
-        "aufgesetzt, steht das Passwort in der Erstausgabe am Gerät. Von dort hinterlegen:\n" +
-        `  printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${ref}`
+      t(
+        `No start password lies under ${ref}.\n` +
+          "It comes into being when the kit installs itself (--install arasul). If the device was set\n" +
+          "up by hand, the password stands in the first output on the device. Store it from there:\n",
+        `Unter ${ref} liegt kein Startpasswort.\n` +
+          "Es entsteht, wenn das Kit selbst installiert (--install arasul). Wurde das Gerät von Hand\n" +
+          "aufgesetzt, steht das Passwort in der Erstausgabe am Gerät. Von dort hinterlegen:\n"
+      ) + `  printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${ref}`
     );
   }
 

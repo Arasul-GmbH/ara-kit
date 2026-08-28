@@ -3246,7 +3246,12 @@ check("Kein Absender von Arasul im Papier des Partners", () => {
       }
       if (!/\.md$/.test(entry.name)) continue;
       const path = join(dir, entry.name);
-      const lines = readFileSync(path, "utf8").split(/\r?\n/);
+      // Blockkommentare fallen weg, ihre Zeilen bleiben leer stehen: sonst
+      // zieht der Kopf einer Funktion die Ausgabezeile darueber mit hinein.
+      const source = readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, (block) =>
+        block.replace(/[^\n]/g, " ")
+      );
+      const lines = source.split(/\r?\n/);
       lines.forEach((line, index) => {
         for (const [pattern, what] of markers) {
           if (!pattern.test(line)) continue;
@@ -3584,6 +3589,46 @@ check("Ein frischer Klon spricht Englisch, das Profil stellt um", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+check("Keine Ausgabe steht nur auf Deutsch da", () => {
+  // Eine Zeile, die ohne `t()` deutsche Woerter ausgibt, ist eine Zeile, die ein
+  // englischer Nutzer nicht liest. Gesucht wird an der Ausgabestelle: console,
+  // fail, new Error, und ein Block ohne `t(` darum herum.
+  //
+  // Der Selbsttest selbst ist ausgenommen: er ist einsprachig, siehe sein Kopf.
+  const german =
+    /\b(nicht|kein|keine|keinen|eine|einen|und|oder|das|der|die|dem|den|ist|sind|wird|wurde|noch|schon|steht|gibt|von|fuer|für|Gerät|Geraet|Datei|Akte)\b/;
+  const emitting = /(console\.(log|error)\(|fail\(|new Error\()/;
+  const offenders = [];
+
+  const scan = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        scan(path);
+        continue;
+      }
+      if (!entry.name.endsWith(".mjs") || entry.name === "selftest.mjs") continue;
+      // Blockkommentare fallen weg, ihre Zeilen bleiben leer stehen: sonst
+      // zieht der Kopf einer Funktion die Ausgabezeile darueber mit hinein.
+      const source = readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, (block) =>
+        block.replace(/[^\n]/g, " ")
+      );
+      const lines = source.split(/\r?\n/);
+      lines.forEach((line, index) => {
+        // Der Kommentar hinter dem Code zaehlt nicht: dort steht die Begruendung.
+        if (!emitting.test(line.split("//")[0])) return;
+        const block = lines.slice(index, index + 10).join("\n");
+        if (/\bt\(/.test(block)) return;
+        const strings = [...block.matchAll(/(["`])((?:(?!\1).){6,})\1/g)].map((m) => m[2]).join(" ");
+        if (german.test(strings)) offenders.push(`${relative(ROOT, path)}:${index + 1}`);
+      });
+    }
+  };
+  scan(join(ROOT, ".ara", "tools"));
+
+  assert(offenders.length === 0, `nur auf Deutsch: ${offenders.slice(0, 10).join(", ")}`);
 });
 
 check("Jede Kopfhilfe traegt beide Sprachen", () => {

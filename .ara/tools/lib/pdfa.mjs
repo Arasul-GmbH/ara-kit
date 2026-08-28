@@ -353,8 +353,12 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
   const trailerAt = text.lastIndexOf("trailer");
   if (trailerAt < 0) {
     throw new Error(
-      "Diese Datei fuehrt ihre Querverweise als Strom. Das Werkzeug schreibt nur klassische " +
-        "Tabellen fort, wie Chromium sie druckt."
+      t(
+        "This file keeps its cross-references as a stream. The tool only writes on classic " +
+          "tables, the way Chromium prints them.",
+        "Diese Datei fuehrt ihre Querverweise als Strom. Das Werkzeug schreibt nur klassische " +
+          "Tabellen fort, wie Chromium sie druckt."
+      )
     );
   }
   const trailerOpen = text.indexOf("<<", trailerAt);
@@ -362,9 +366,9 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
     dictEntries(text.slice(trailerOpen + 2, endOfValue(text, trailerOpen) - 2)).map((e) => [e.key, e.value])
   );
   const rootNumber = Number((trailer.Root || "").match(/^(\d+)/)?.[1]);
-  if (!rootNumber) throw new Error("Im Trailer steht kein Katalog (/Root).");
+  if (!rootNumber) throw new Error(t("There is no catalogue (/Root) in the trailer.", "Im Trailer steht kein Katalog (/Root)."));
   const size = Number(trailer.Size);
-  if (!size) throw new Error("Im Trailer steht keine Groesse (/Size).");
+  if (!size) throw new Error(t("There is no size (/Size) in the trailer.", "Im Trailer steht keine Groesse (/Size)."));
 
   const info = Number((trailer.Info || "").match(/^(\d+)/)?.[1]) || null;
   const infoFields = info
