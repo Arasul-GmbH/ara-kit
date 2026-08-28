@@ -32,7 +32,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { listApps } from "./lib/appfile.mjs";
-import { ROOT, ensureDir, fail, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
+import { ROOT, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { reason } from "./lib/arasul.mjs";
 import {
@@ -45,6 +45,7 @@ import {
   topicEndpoints,
 } from "./lib/maintain.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 

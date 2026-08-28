@@ -27,10 +27,11 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import { ROOT, customerPath, devicePath, ensureDir, fail, now, parseArgs, readDevice, today } from "./lib/kit.mjs";
+import { ROOT, customerPath, devicePath, ensureDir, fail, helpOnly, now, parseArgs, readDevice, today } from "./lib/kit.mjs";
 import { modelNames } from "./lib/maintain.mjs";
 
 const TEMPLATE = join(ROOT, ".ara", "vorlagen", "leistungsbeschreibung.md");
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 

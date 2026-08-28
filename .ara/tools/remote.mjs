@@ -17,8 +17,9 @@
 
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { ROOT, fail, parseArgs, readDevice, sshArgs as sshArgsFrom } from "./lib/kit.mjs";
+import { ROOT, fail, helpOnly, parseArgs, readDevice, sshArgs as sshArgsFrom } from "./lib/kit.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 if (typeof arg.customer !== "string" && typeof arg.device !== "string") {

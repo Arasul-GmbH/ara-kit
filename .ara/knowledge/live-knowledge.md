@@ -54,6 +54,7 @@ mit dem Token ausgeliefert hat, samt Stand und Quelle in `STATE.json`.
 
 ```
 node .ara/tools/mirror.mjs --show      # was liegt da, von wann, aus welcher Quelle
+node .ara/tools/mirror.mjs --docs      # welche Anleitungen kamen mit
 node .ara/tools/mirror.mjs --refresh   # neu holen
 ```
 
@@ -65,8 +66,10 @@ Was du dort nachschlägst:
 | Frage | Wo im Artefakt |
 |---|---|
 | Welche Geräte kennt das Produkt, mit welchen Eckdaten? | `config/platforms/*.json` |
+| Womit wird installiert, und wie heißt der Einstiegspunkt? | `arasul-release.json` |
 | Wie läuft die Einrichtung ab, welche Schritte gibt es? | `scripts/` und die Kommandozeilenwerkzeuge im Wurzelverzeichnis |
-| Was sagt die Produktdokumentation? | `docs/` |
+| Was sagt die Produktdokumentation? | `docs/`, aufgelistet von `mirror.mjs --docs` |
+| Wie legt man einen Mitarbeiter an, wie gibt man eine App frei? | Admin-Handbuch und API-Referenz, beide unter `docs/` |
 | Welcher Stand ist das, woher kommt er? | `.ara/mirror/STATE.json` |
 
 **Vorsicht bei `docs/`:** Die Produktdokumentation ist an manchen Stellen älter als der

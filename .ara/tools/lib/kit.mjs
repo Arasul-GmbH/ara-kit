@@ -5,7 +5,7 @@
 
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
@@ -228,6 +228,40 @@ export function parseArgs(argv = process.argv.slice(2)) {
     }
   }
   return out;
+}
+
+/**
+ * Die Kopfhilfe eines Werkzeugs: der Kommentarblock am Anfang seiner Datei.
+ *
+ * Gelesen wird die Datei selbst und keine zweite Fassung daneben. Damit können
+ * Hilfe und Erklärung nicht auseinanderlaufen: wer den Kopf ändert, ändert die
+ * Hilfe.
+ */
+export function headerHelp(url) {
+  const path = fileURLToPath(url);
+  const block = readFileSync(path, "utf8").match(/^(?:#![^\n]*\r?\n)?\s*\/\*\*([\s\S]*?)\*\//);
+  if (!block) return `${basename(path)} hat keinen Kopf, aus dem eine Hilfe entstehen könnte.`;
+  return block[1]
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*\* ?/, ""))
+    .join("\n")
+    .trim();
+}
+
+/**
+ * `--help` beantwortet jedes Werkzeug mit seiner Kopfhilfe, und dann ist Schluss.
+ *
+ * Der Fremdtest am 28.08.2026 rief `device.mjs --help` auf und bekam eine
+ * Geräteprüfung, `mirror.mjs --help` lud den Spiegel. Ein Hilfeflag, das
+ * arbeitet, ist eine Falle: wer wissen will, was ein Werkzeug tut, hat sich
+ * gerade nicht dafür entschieden, dass es etwas tut. Darum steht der Aufruf in
+ * jedem Werkzeug vor der ersten Zeile Arbeit, und er sieht in `process.argv`
+ * nach statt in `parseArgs`: `--help` mit etwas dahinter bliebe dort ein Wert.
+ */
+export function helpOnly(url, argv = process.argv.slice(2)) {
+  if (!argv.some((part) => part === "--help" || part === "-h")) return;
+  console.log(headerHelp(url));
+  process.exit(0);
 }
 
 /** Legt einen Ordner an, falls er fehlt. */

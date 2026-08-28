@@ -17,8 +17,9 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { platform } from "node:os";
-import { fail, parseArgs } from "./lib/kit.mjs";
+import { fail, helpOnly, parseArgs } from "./lib/kit.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const SYSTEM = platform();
 

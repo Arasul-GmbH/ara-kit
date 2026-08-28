@@ -38,6 +38,7 @@ import {
   customerPath,
   ensureDir,
   fail,
+  helpOnly,
   listCustomers,
   parseArgs,
   readFrontmatter,
@@ -70,6 +71,7 @@ import {
 import { PROFILE, UNCHECKED, buildXml, validateXml } from "./lib/zugferd.mjs";
 import { embed, inspect } from "./lib/pdfa.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 // Schalter, hinter denen eine Datei steht. Steht die Datei woanders in der

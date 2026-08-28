@@ -48,7 +48,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
-import { ROOT, ensureDir, fail, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
+import { ROOT, ensureDir, fail, helpOnly, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
@@ -64,15 +64,18 @@ import {
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { designCss, readDesign } from "./lib/design.mjs";
-import { mirrorState, ship } from "./lib/install.mjs";
+import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 const TEMPLATE = join(ROOT, ".ara", "templates", "app");
 const PLAN_TEMPLATE = join(ROOT, ".ara", "templates", "plan.md");
 const STATE = join(ROOT, ".ara", "state.json");
 
-if (arg.help || process.argv.length <= 2) {
+// Ohne jedes Argument die Liste der Schalter. --help beantwortet der Kopf der
+// Datei, wie bei jedem Werkzeug des Kits.
+if (process.argv.length <= 2) {
   console.log(
     [
       "Der Lebenslauf einer App: anlegen, planen, bauen, einspielen, live schalten.",
@@ -268,6 +271,14 @@ function shiftPlan(app, file, to) {
 // --- Am Rechner: bauen -------------------------------------------------------
 
 /**
+ * Die Beiwerkdateien von macOS gehören in kein Paket. Sie entstehen, wenn eine
+ * Datei mit erweiterten Attributen auf ein Dateisystem wandert, das keine kennt,
+ * und sie sehen am Gerät aus wie halbe Dateien: eine davon hat am 28.08.2026
+ * Traefik angehalten.
+ */
+const noAppleDouble = (path) => !/(^|\/)\._/.test(path);
+
+/**
  * Bauen heißt: aus dem Ordner der App wird das Paket.
  *
  * Was **nicht** hineingehört, weiß das Kit von sich selbst: Pläne und die
@@ -307,7 +318,10 @@ function buildApp(app) {
       }
     }
     if (!script) {
-      cpSync(source, target, { recursive: true, filter: (path) => !path.includes("node_modules") });
+      cpSync(source, target, {
+        recursive: true,
+        filter: (path) => !path.includes("node_modules") && noAppleDouble(path),
+      });
       continue;
     }
 
@@ -331,7 +345,7 @@ function buildApp(app) {
           "Ins Paket geht das Ergebnis des Baus. Stell den Bau so ein, dass er nach dist/ schreibt."
       );
     }
-    cpSync(dist, target, { recursive: true });
+    cpSync(dist, target, { recursive: true, filter: noAppleDouble });
     gebaut.push(entry.name);
   }
 
@@ -728,14 +742,16 @@ if (arg.deploy !== undefined) {
   if (!version.ok) fail(`${version.text}\nNichts eingespielt.`);
 
   // Gepackt wird, was der Kontrakt sagt: der Inhalt des Ordners, nicht der
-  // Ordner. COPYFILE_DISABLE hält die ._-Beiwerkdateien von macOS heraus, sie
-  // wären am Gerät unbekannte Einträge im Paket.
+  // Ordner. Die ._-Beiwerkdateien von macOS bleiben doppelt draußen:
+  // COPYFILE_DISABLE hält tar davon ab, sie zu erzeugen, --exclude fängt die,
+  // die schon auf der Platte liegen. Am Gerät wären sie unbekannte Einträge im
+  // Paket, und im Artefakt haben sie am 28.08.2026 Traefik angehalten.
   const work = mkdtempSync(join(tmpdir(), "ara-app-"));
   const archive = join(work, "paket.tgz");
   try {
-    const packed = spawnSync("tar", ["-czf", archive, "-C", dir, "."], {
+    const packed = spawnSync("tar", ["-czf", archive, "--exclude", APPLEDOUBLE, "-C", dir, "."], {
       encoding: "utf8",
-      env: { ...process.env, COPYFILE_DISABLE: "1" },
+      env: packEnv(),
     });
     if (packed.status !== 0) fail(`Das Paket ließ sich nicht packen: ${(packed.stderr || "").trim()}`);
 

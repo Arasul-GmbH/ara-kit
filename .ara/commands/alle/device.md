@@ -45,12 +45,23 @@ aufrufen. Nur auf Linux.
 noch keins hat. Dafür braucht es zum ersten Mal ein Token aus dem Portal: fünf je Partner
 kostenlos, eine Schranke vor dem Download, keine Lizenzprüfung. Fehlt es, sagt das
 Werkzeug, wie es hinterlegt wird. Auch das ist Stufe 2, es dauert, und die Ausgabe des
-Installers wird mitgelesen.
+Installers wird mitgelesen. Der Installer bekommt Startpasswort und Netzname mit, denn
+nur dabei entstehen sie am Gerät; das Passwort würfelt das Kit und legt es in die
+Geheimnis-Ablage, den Netznamen setzt `--net-name <name>`, sonst gilt der Name der Akte.
+
+**Liegen Reste da, läuft aber nichts** (`arasul: traces`), sieh erst nach, was dort liegt,
+sag es dem Menschen und lass dir das Darüberhinweg bestätigen. Dann
+`--install arasul --despite-traces`. Läuft die Plattform dagegen wirklich, ist das kein
+Aufsetzen mehr, sondern ein Update, und das ist ein anderer Weg.
 
 **Läuft Arasul schon**, fehlt nur der Kit-Schlüssel für den Deploy: `--deploy-key` legt
 ihn am Gerät an und hinterlegt ihn. In der Akte steht nur sein Name, nie sein Wert.
 Danach ist der erste Nachweis der Kontrakt:
 `node .ara/tools/app.mjs --device <gerät> --contract`.
+
+**Der erste Mitarbeiter und die erste Freigabe** gehören noch zur Abnahme. Ohne Browser
+geht das über die Verwaltungsschnittstelle der Plattform; wo das beschrieben steht, sagt
+`node .ara/tools/mirror.mjs --docs`. Verfahren in `.ara/knowledge/device.md`.
 
 **Ohne Arasul endet es hier.** Das Werkzeug sagt in einem Satz, was Arasul brächte. Mehr
 nicht, kein Verkaufsgespräch. Mit Arasul auf einem unterstützten Gerät geht es nach dem

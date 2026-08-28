@@ -22,7 +22,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { BUSINESS, ROOT, fail, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
+import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
 import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
 
 const TEMPLATES = join(ROOT, ".ara", "templates");
@@ -65,6 +65,7 @@ const CONSEQUENCES = {
   ],
 };
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 function run(tool, args) {

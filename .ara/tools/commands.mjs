@@ -39,7 +39,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { RETIRED } from "./lib/commands.mjs";
-import { BUSINESS, ROOT, fail, parseArgs, readFrontmatter } from "./lib/kit.mjs";
+import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
 const SOURCE = join(ROOT, ".ara", "commands");
 const TARGET = join(ROOT, ".claude", "commands");
@@ -54,6 +54,7 @@ const BRANCHES = { partner: ["alle", "partner"], company: ["alle"] };
 // den Rechnungsbefehl nicht. Erst `invoice: yes` im Profil legt ihn an.
 const OPT_IN = { invoice: (profile) => profile.invoice === "yes" };
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 const profile = readFrontmatter(join(BUSINESS, "profile.md"));

@@ -45,7 +45,7 @@ if command -v ollama >/dev/null 2>&1; then
   p ollama_version "$(ollama --version 2>/dev/null | head -1)"
 fi
 command -v systemctl >/dev/null 2>&1 && p arasul_units "$(systemctl list-units --type=service --no-pager --plain 2>/dev/null | awk '{print $1}' | grep -i arasul | tr '\\n' ' ')"
-for d in /opt/arasul "$HOME/arasul"; do [ -d "$d" ] && p arasul_dir "$d"; done
+for d in /opt/arasul "$HOME/arasul" "$HOME"/arasul-*; do [ -d "$d" ] && p arasul_dir "$d"; done
 command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1 && p sudo "ohne Passwort"
 p user "$(id -un 2>/dev/null)"
 p done ja
@@ -127,6 +127,17 @@ export function judge(facts) {
 }
 
 /**
+ * Woran das Kit einen Container der Plattform erkennt.
+ *
+ * Eine Erkennungsregel des Kits, kein Produktwert: sie sagt nicht, welche
+ * Container es gibt, sondern nur, was das Kit als "da läuft die Plattform"
+ * durchgehen lässt. Die belastbare Auskunft ist und bleibt der Kontrakt des
+ * Geräts. Zwei Muster, weil ein Container der Plattform entweder ihren Namen
+ * trägt oder die Oberfläche ist, an der man sie erkennt.
+ */
+const PLATFORM_CONTAINERS = [/arasul/i, /^dashboard-backend$/i];
+
+/**
  * Docker, das Sprachmodell und Hinweise auf Arasul aus den Befunden.
  * Erkannt heißt nicht eingerichtet.
  */
@@ -153,15 +164,39 @@ export function services(facts) {
   // ein Anhaltspunkt, keine Aussage über den Produktstand. Der steht im Spiegel.
   // Ein Befehl namens arasul im Pfad zählt nicht: auf einem Entwicklungsrechner
   // liegt er auch dort, wo das Produkt nie lief.
-  const hints = [];
-  const containers = (facts.docker_names || "").split(/\s+/).filter((n) => /arasul/i.test(n));
-  if (containers.length) hints.push(`Container ${containers.join(", ")}`);
+  //
+  // **Ein laufender Container und ein liegengebliebener Ordner sind nicht
+  // dasselbe**, und bis zum 28.08.2026 waren sie es für das Kit. Auf einem
+  // zurückgesetzten Gerät lag nach dem ersten Versuch ein Ordner, nichts lief,
+  // und das Kit verweigerte jede weitere Installation: es hielt seine eigenen
+  // Reste für eine Plattform. Seitdem gibt es drei Antworten, und "Reste da,
+  // nichts läuft" ist eine davon.
+  const containers = (facts.docker_names || "").split(/\s+/).filter((n) => PLATFORM_CONTAINERS.some((p) => p.test(n)));
   const units = (facts.arasul_units || "").split(/\s+/).filter(Boolean);
-  if (units.length) hints.push(`Dienst ${units.join(", ")}`);
-  for (const dir of facts.arasul_dir || []) hints.push(`Ordner ${dir}`);
-  const arasul = hints.length
-    ? { state: "found", text: `Hinweise gefunden: ${hints.join("; ")}` }
-    : { state: "none", text: "keine Hinweise" };
+  const dirs = facts.arasul_dir || [];
+  const traces = [
+    ...(units.length ? [`Dienst ${units.join(", ")}`] : []),
+    ...dirs.map((dir) => `Ordner ${dir}`),
+  ];
+  const arasul = containers.length
+    ? {
+        state: "running",
+        text: `läuft, Container ${containers.join(", ")}${traces.length ? `; ${traces.join("; ")}` : ""}`,
+      }
+    : traces.length
+      ? { state: "traces", text: `Reste da, nichts läuft: ${traces.join("; ")}` }
+      : { state: "none", text: "keine Hinweise" };
 
   return { docker, ollama, arasul, sudo: facts.sudo === "ohne Passwort" };
+}
+
+/**
+ * Läuft die Plattform auf diesem Gerät?
+ *
+ * Beantwortet auch Akten, die noch `found` tragen: das war bis zum 28.08.2026
+ * der eine Zustand für alles, was nach Arasul aussah. Eine alte Akte umzudeuten
+ * wäre falsch, sie stehenzulassen und zu ignorieren auch.
+ */
+export function arasulRunning(state) {
+  return state === "running" || state === "found";
 }

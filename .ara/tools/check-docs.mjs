@@ -23,7 +23,7 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
-import { ROOT, fail, parseArgs, readDevice } from "./lib/kit.mjs";
+import { ROOT, fail, helpOnly, parseArgs, readDevice } from "./lib/kit.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import {
   bareApiPaths,
@@ -35,6 +35,7 @@ import {
 } from "./lib/docroutes.mjs";
 
 const KNOWLEDGE = join(ROOT, ".ara", "knowledge");
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 
