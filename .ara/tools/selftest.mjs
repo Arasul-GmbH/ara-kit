@@ -105,7 +105,7 @@ import {
 } from "./lib/invoice.mjs";
 import { buildXml, validateXml } from "./lib/zugferd.mjs";
 import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
-import { HELP_SPLIT, ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { HELP_SPLIT, ROOT, day, daysUntil, headerHelp, helpOnly, readFrontmatter, today, writeFrontmatter } from "./lib/kit.mjs";
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
@@ -1161,7 +1161,7 @@ check("Agenda erkennt Termine und Lücken", () => {
     const deviceDir = join(dir, "devices", "probe");
     spawnSync("mkdir", ["-p", deviceDir]);
 
-    const past = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+    const past = day(-5);
     writeFileSync(
       join(dir, "customer.md"),
       `---\nid: ${customer}\nlegal_name: Probe GmbH\nstatus: lead\nfollow_up: ${past}\nfollow_up_note: nachfassen\n---\n\nProbe.\n`
@@ -1175,7 +1175,7 @@ check("Agenda erkennt Termine und Lücken", () => {
     const ownDir = join(ROOT, "devices", "_selftest-own");
     rmSync(ownDir, { recursive: true, force: true });
     spawnSync("mkdir", ["-p", ownDir]);
-    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const soon = day(10);
     writeFileSync(join(ownDir, "device.md"), `---\nname: _selftest-own\nstatus: live\nmaintenance_until: ${soon}\n---\n`);
 
     const run = tool("agenda.mjs", []);
@@ -1202,9 +1202,6 @@ check("Kalkulationsblatt meldet jede fehlende Zahl mit ihrer Folge", () => {
   // beides, die Zählung und dass jede Zahl ihre Folge nennt.
   const dir = mkdtempSync(join(tmpdir(), "ara-kalk-"));
   const file = join(dir, "company.md");
-  const day = (offset) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
-
   try {
     // Das leere Blatt, so wie es aus der Vorlage entsteht.
     writeFileSync(file, readFileSync(join(ROOT, ".ara", "templates", "company.md"), "utf8"));
@@ -2348,7 +2345,7 @@ await checkAsync("Die Leistungsbeschreibung bekommt ihre Werte vom Geraet", asyn
   // nichts sagt, leer bleibt und mit einer Begruendung genannt wird.
   const name = "selftest-papier";
   const akte = join(ROOT, "devices", name);
-  const datei = join(akte, `leistungsbeschreibung-${new Date().toISOString().slice(0, 10)}.md`);
+  const datei = join(akte, `leistungsbeschreibung-${today()}.md`);
 
   // Zwei Geraete in einem: erst eines, das Modelle und Apps aufzaehlt, dann
   // eines, das beides nicht kennt.

@@ -17,7 +17,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { localized, t } from "./i18n.mjs";
-import { BUSINESS, ROOT, ensureDir, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
+import { BUSINESS, ROOT, day, ensureDir, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
 
 /** Der Nummernkreis. Gehoert dem Partner, liegt unter business/. */
 export const LEDGER = join(BUSINESS, "invoices.md");
@@ -148,12 +148,11 @@ export function roundCents(value) {
   return Math.sign(value) * Math.round(Math.abs(value));
 }
 
-/** Datum plus Tage, als JJJJ-MM-TT. */
+/** Datum plus Tage, als JJJJ-MM-TT. Gerechnet wird im Kalender vor Ort. */
 export function addDays(date, days) {
-  const base = new Date(`${String(date).slice(0, 10)}T00:00:00Z`);
+  const base = new Date(`${String(date).slice(0, 10)}T00:00:00`);
   if (Number.isNaN(base.getTime())) return "";
-  base.setUTCDate(base.getUTCDate() + Number(days || 0));
-  return base.toISOString().slice(0, 10);
+  return day(days, base);
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
