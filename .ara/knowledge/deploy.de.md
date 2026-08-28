@@ -33,12 +33,12 @@ Eingespielt wird nur in den ersten beiden Lagen. Ein Paket auf gut Glück zu sch
 heißt, den Fehler am Gerät zu suchen statt vorher.
 
 Was die App danach am Gerät benutzen kann, ist eine andere Frage und steht in
-`.ara/knowledge/platform-services.md`: Anmeldung, Freigaben, Flows, Sprachmodell,
+`.ara/knowledge/platform-services.de.md`: Anmeldung, Freigaben, Flows, Sprachmodell,
 Dokumente. Hier geht es nur darum, wie sie dorthin kommt.
 
 **Ohne Kit-Schlüssel geht keiner dieser Aufrufe.** Er steht in der Geräteakte unter
 `api_key_ref`, sein Wert in der Geheimnis-Ablage. Woher er kommt:
-`.ara/knowledge/device.md`, Abschnitt „Der Kit-Schlüssel".
+`.ara/knowledge/device.de.md`, Abschnitt „Der Kit-Schlüssel".
 
 ## Was in ein Paket gehört
 
@@ -104,7 +104,7 @@ node .ara/tools/app.mjs --device <gerät> --app <id> --back     die Version davo
 
 **Live schaltet ein Mensch.** Frag vorher, auch wenn du gerade selbst eingespielt hast:
 ab diesem Moment arbeiten die Leute damit. Das ist ein Eingriff der Stufe 2, siehe
-`.ara/knowledge/security.md`.
+`.ara/knowledge/security.de.md`.
 
 `--back` ist ein **Tausch**, keine Einbahnstraße: was live war, wird die vorige Version,
 ein zweites `--back` steht wieder am Anfang. Genau in dem Fall, in dem jemand hastig
@@ -141,4 +141,4 @@ und hol ein ausdrückliches Ja, bevor du es tippst.
   Sie sticht `address`, und `--base <url>` sticht beide, für den einen Versuch, der nicht
   in die Akte gehört. Was dauerhaft gilt, gehört in die Akte, nicht in den Aufruf.
 - **Gar keine Antwort.** Erst `node .ara/tools/find-device.mjs --host <adresse>`, dann
-  `.ara/knowledge/diagnostics.md`.
+  `.ara/knowledge/diagnostics.de.md`.

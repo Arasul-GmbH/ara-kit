@@ -5,11 +5,11 @@ argument-hint: <gerät> oder <kunde>/<gerät>
 
 Betreuung für: **$1**
 
-Lies `.ara/knowledge/maintenance-flow.md` und arbeite danach. Wissen, das dieser Befehl
-lädt: `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/security.md`,
-`.ara/knowledge/diagnostics.md` bei einer Störung, `.ara/knowledge/extensions.md` bei
-einer Erweiterung, `.ara/knowledge/platform-services.md`, wenn es um die Sicherung oder
-einen Dienst der Plattform geht, `.ara/knowledge/live-knowledge.md` für jeden
+Lies `.ara/knowledge/maintenance-flow.de.md` und arbeite danach. Wissen, das dieser Befehl
+lädt: `.ara/knowledge/maintenance-flow.de.md`, `.ara/knowledge/security.de.md`,
+`.ara/knowledge/diagnostics.de.md` bei einer Störung, `.ara/knowledge/extensions.de.md` bei
+einer Erweiterung, `.ara/knowledge/platform-services.de.md`, wenn es um die Sicherung oder
+einen Dienst der Plattform geht, `.ara/knowledge/live-knowledge.de.md` für jeden
 Produktwert. Das Profil
 in `business/profile.md` liest du vorher.
 
@@ -53,11 +53,11 @@ und ziehst das passende Verfahren:
 
 | Anliegen | Verfahren |
 |---|---|
-| Es klemmt | `.ara/knowledge/diagnostics.md`. Erst feststellen, dann ändern |
+| Es klemmt | `.ara/knowledge/diagnostics.de.md`. Erst feststellen, dann ändern |
 | Nur nachsehen | Der Bericht ist die Antwort. Ergebnis in den Verlauf, auch wenn alles in Ordnung war |
 | Eine App hängt | Stand aus dem Bericht, dann `/app`: zurückschalten auf die vorige Fassung ist der schnellste Rückweg |
-| Update einspielen | `.ara/knowledge/maintenance-flow.md`, Abschnitt "Update einspielen". Erst sichern, dann prüfen, dass die Sicherung existiert |
-| Erweiterung | `.ara/knowledge/extensions.md` |
+| Update einspielen | `.ara/knowledge/maintenance-flow.de.md`, Abschnitt "Update einspielen". Erst sichern, dann prüfen, dass die Sicherung existiert |
+| Erweiterung | `.ara/knowledge/extensions.de.md` |
 
 Bei einer Störung gilt: keine Reparatur ohne Befund, keine zwei Änderungen gleichzeitig.
 
@@ -76,7 +76,7 @@ dann, wenn du selbst etwas verändert hast.
 
 Es startet nichts neu, spielt nichts ein und räumt nichts auf. **Jeder Eingriff ist eine
 eigene Entscheidung**, mit Absicht, Ziel und Rückweg, und bei einem Kundengerät mit einer
-Bestätigung davor (`.ara/knowledge/security.md`). Ein Wartungsvertrag erlaubt Wartung, er
+Bestätigung davor (`.ara/knowledge/security.de.md`). Ein Wartungsvertrag erlaubt Wartung, er
 ist kein Freibrief für einen Neustart um elf Uhr vormittags.
 
 Es rät auch keinen Pfad. Findet es zu einem Punkt nichts im Kontrakt des Geräts, steht

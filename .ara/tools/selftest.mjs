@@ -3820,7 +3820,7 @@ check("Jeder Befehl nennt sein Wissen", () => {
   const names = /(Wissen, das dieser Befehl\s+lädt:|Knowledge this command\s+loads:)/;
   const silent = files.filter((file) => {
     const content = readFileSync(file, "utf8");
-    return !names.test(content) || !/\.ara\/knowledge\/[a-z-]+\.md/.test(content);
+    return !names.test(content) || !/\.ara\/knowledge\/[a-z.-]+\.md/.test(content);
   });
   assert(silent.length === 0, `ohne Wissensangabe: ${silent.map((f) => relative(ROOT, f)).join(", ")}`);
   return `${files.length} Befehle`;

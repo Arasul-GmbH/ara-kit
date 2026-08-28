@@ -13,7 +13,7 @@ braucht keine Einrichtung.
 Nachfragen vor einem Klick. Was du im Browser tust, gehört zur Arbeit, nicht zur
 Entscheidung.
 
-Die Grenzen bleiben trotzdem dieselben wie überall sonst (`.ara/knowledge/security.md`):
+Die Grenzen bleiben trotzdem dieselben wie überall sonst (`.ara/knowledge/security.de.md`):
 Was auf einem Kundengerät etwas **verändert**, ist eine Änderung, egal ob du sie über die
 Kommandozeile oder über eine Schaltfläche auslöst. Ein Neustart über das Dashboard bleibt
 ein Neustart. Erst fragen, dann klicken.

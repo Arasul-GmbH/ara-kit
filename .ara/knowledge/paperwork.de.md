@@ -7,7 +7,7 @@
 
 Was hier entsteht, wird unterschrieben. Eine Zahl, die in einem Angebot falsch ist, ist
 keine Ungenauigkeit, sondern eine Zusage, die nicht stimmt. Deshalb gilt in jedem Papier
-die Regel aus `.ara/knowledge/live-knowledge.md` doppelt: **kein Produktwert aus dem
+die Regel aus `.ara/knowledge/live-knowledge.de.md` doppelt: **kein Produktwert aus dem
 Gedächtnis und keiner, weil er in einer Vorlage steht.** Modellnamen, Plattformen,
 Fassungen und Erprobungsstände kommen aus dem Spiegel oder vom Gerät.
 
@@ -25,7 +25,7 @@ Zwei Unternehmen schreiben Papier, und sie werden leicht verwechselt.
 | Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen | der Partner gibt sie weiter | `.ara/vorlagen/` |
 | Nachweise zu KI-Einstufung und Datenverarbeitung | Arasul verfasst, der Partner legt sie bei | `.ara/nachweise/` |
 | Übergabeprotokoll | Partner und Kunde zeichnen | `.ara/vorlagen/uebergabeprotokoll.md` |
-| Rechnung an den Endkunden | **der Partner** | `.ara/vorlagen/rechnung.md`, Verfahren in `.ara/knowledge/invoicing.md` |
+| Rechnung an den Endkunden | **der Partner** | `.ara/vorlagen/rechnung.md`, Verfahren in `.ara/knowledge/invoicing.de.md` |
 | Partnervertrag, Kaufvertrag, Vereinbarung zur Auftragsverarbeitung | **Arasul** | nicht im Kit |
 
 Die drei letzten Zeilen sind der häufigste Irrtum. **Der Partnervertrag ist ein Papier,
@@ -43,8 +43,8 @@ verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
 ## Die Reihenfolge
 
 1. **Verstehen und rechnen.** Was der Kunde erreichen will, steht in seiner Akte und in
-   `customers/<kunde>/history/`. Gerechnet wird nach `.ara/knowledge/pricing.md`,
-   Aufbau und Ton nach `.ara/knowledge/sales.md`.
+   `customers/<kunde>/history/`. Gerechnet wird nach `.ara/knowledge/pricing.de.md`,
+   Aufbau und Ton nach `.ara/knowledge/sales.de.md`.
 2. **Spiegel holen.** `node .ara/tools/mirror.mjs --refresh`. Ohne frischen Spiegel
    entsteht kein Angebot, weil sonst Plattform und Erprobungsstand geraten wären.
 3. **Leistungsbeschreibung füllen.** Sie kommt vor dem Angebot, nicht danach. Sie legt
@@ -58,11 +58,11 @@ verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
 7. **PDF erzeugen.** `node .ara/tools/pdf.mjs <datei>`. Es weigert sich, solange noch ein
    Platzhalter in geschweiften Klammern im Text steht.
 8. **Ablegen und nachhalten.** Alles nach `customers/<kunde>/documents/`, Status auf
-   `quoted`, Gültigkeitsdatum als Wiedervorlage. Siehe `.ara/knowledge/crm.md`.
+   `quoted`, Gültigkeitsdatum als Wiedervorlage. Siehe `.ara/knowledge/crm.de.md`.
 
 Später, bei der Übergabe: Übergabeprotokoll und technische Abnahme, siehe
-`.ara/knowledge/handover.md`. Und danach die Rechnung, siehe
-`.ara/knowledge/invoicing.md`: sie ist das einzige Papier im Kit, dem ein Gesetz
+`.ara/knowledge/handover.de.md`. Und danach die Rechnung, siehe
+`.ara/knowledge/invoicing.de.md`: sie ist das einzige Papier im Kit, dem ein Gesetz
 vorschreibt, was drinstehen muss, und darum hat sie ein eigenes Verfahren.
 
 ## Die fünf Anlagen zum Angebot
@@ -212,7 +212,7 @@ einzeln versioniert und der Kunde legt sie einzeln ab.
 ## Wohin es abgelegt wird
 
 Alles unter `customers/<kunde>/documents/`, ein Datum im Dateinamen, Markdown und PDF
-nebeneinander. Aufbau der Kundenakte: `.ara/knowledge/customer-file.md`.
+nebeneinander. Aufbau der Kundenakte: `.ara/knowledge/customer-file.de.md`.
 
 Das Markdown bleibt liegen. Ein halbes Jahr später fragt jemand, was zugesagt wurde, und
 dann ist die Quelle mehr wert als das PDF.

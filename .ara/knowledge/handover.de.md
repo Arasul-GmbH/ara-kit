@@ -70,7 +70,7 @@ Jeder Punkt bekommt eines von drei Ergebnissen: **erfüllt**, **nicht erfüllt**
   eingerichtet und bestätigt das im Protokoll. Ohne diese Bestätigung steht der Hinweis
   auf die Fehlbarkeit von Ausgaben allein, und allein trägt er nicht.
 
-Verfahren: `.ara/knowledge/paperwork.md`
+Verfahren: `.ara/knowledge/paperwork.de.md`
 
 ## Wenn ein Punkt nicht erfüllt ist
 

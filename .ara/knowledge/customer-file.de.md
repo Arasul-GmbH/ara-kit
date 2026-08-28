@@ -37,7 +37,7 @@ ins Frontmatter.
 **`documents/` gegen `history/`:** In `documents/` liegt das Papier, das der Kunde
 bekommt, Markdown und PDF nebeneinander. In `history/` steht, was passiert ist, auch dass
 ein Angebot rausgegangen ist. Das eine wird unterschrieben, das andere gelesen.
-Verfahren: `.ara/knowledge/paperwork.md`.
+Verfahren: `.ara/knowledge/paperwork.de.md`.
 
 **Die Anschrift gehört ins Frontmatter, in drei Felder.** `street`, `postcode` und
 `city`, dazu `country` und `vat_id`, falls es eine gibt. Eine Rechnung braucht sie einzeln
@@ -59,7 +59,7 @@ node .ara/tools/device.mjs --name orin
 node .ara/tools/remote.mjs --device orin --check
 ```
 
-Verfahren: `.ara/knowledge/device.md`.
+Verfahren: `.ara/knowledge/device.de.md`.
 
 ## Anlegen
 
@@ -87,7 +87,7 @@ Ein leeres Feld ist besser als eine erfundene Antwort.
 
 **Am Ende der Runde immer:** Wann willst du dich wieder melden, und worum geht es dann?
 → `follow_up` und `follow_up_note`. Ein Gespräch ohne nächsten Termin ist ein Kunde, den
-man in drei Monaten vergessen hat (`.ara/knowledge/crm.md`).
+man in drei Monaten vergessen hat (`.ara/knowledge/crm.de.md`).
 
 ## Anlegen: was du schreibst
 
@@ -168,6 +168,6 @@ damit ältere Dokumente ihren Bezug behalten.
   (`node .ara/tools/secrets.mjs`). In der Geräteakte steht unter `secret_ref` nur, unter
   welchem Namen das Geheimnis abgelegt ist.
 - **Ungeprüfte Produktwerte.** Modellnamen, Ports und Versionen erst eintragen, wenn sie
-  vom Gerät bestätigt sind (`.ara/knowledge/live-knowledge.md`).
+  vom Gerät bestätigt sind (`.ara/knowledge/live-knowledge.de.md`).
 - **Kundendaten vom Gerät.** Dokumente, Chatverläufe und Datenbankinhalte bleiben beim
   Kunden.

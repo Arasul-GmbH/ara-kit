@@ -5,11 +5,11 @@ argument-hint: <kunde>
 
 Angebot für: **$1**
 
-Lies `.ara/knowledge/paperwork.md` und arbeite danach. Was hier steht, ist der Weg
+Lies `.ara/knowledge/paperwork.de.md` und arbeite danach. Was hier steht, ist der Weg
 durch dieses Verfahren, nicht ein zweites daneben. Wissen, das dieser Befehl lädt:
-`.ara/knowledge/paperwork.md`, `.ara/knowledge/leistungsbeschreibung.md`,
-`.ara/knowledge/pricing.md`, `.ara/knowledge/sales.md`, `.ara/knowledge/crm.md`,
-`.ara/knowledge/live-knowledge.md` für jeden Produktwert. Dazu `business/profile.md`
+`.ara/knowledge/paperwork.de.md`, `.ara/knowledge/leistungsbeschreibung.de.md`,
+`.ara/knowledge/pricing.de.md`, `.ara/knowledge/sales.de.md`, `.ara/knowledge/crm.de.md`,
+`.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Dazu `business/profile.md`
 und `business/company.md` für Absender und Sätze.
 
 Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere
@@ -67,11 +67,11 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    kein Angebot. Sie entsteht am Gerät und gegen den Spiegel, nicht am Schreibtisch,
    und nie aus einem alten Angebot kopiert: ein alter Reifegrad ist beim nächsten
    Produktstand eine falsche Zusage. Die sechs Schritte stehen in
-   `.ara/knowledge/paperwork.md` unter "Die Leistungsbeschreibung füllen". Gerüst:
+   `.ara/knowledge/paperwork.de.md` unter "Die Leistungsbeschreibung füllen". Gerüst:
    `.ara/vorlagen/leistungsbeschreibung.md`.
 
-5. **Rechnen.** Nach `.ara/knowledge/pricing.md`, mit den Zahlen aus Schritt 1 und im Ton
-   aus `.ara/knowledge/sales.md`. **Es wird mit dem gerechnet, was im Blatt steht, und
+5. **Rechnen.** Nach `.ara/knowledge/pricing.de.md`, mit den Zahlen aus Schritt 1 und im Ton
+   aus `.ara/knowledge/sales.de.md`. **Es wird mit dem gerechnet, was im Blatt steht, und
    nichts geschätzt.** Die verbindliche Quelle für einen Einkaufspreis ist das
    Partnerportal. Wartung Jahr 1 und ab Jahr 2 sind zwei verschiedene Zahlen, rechne
    beide.
@@ -116,7 +116,7 @@ einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
    danach ist etwas versandfähig. Markdown und PDF liegen nebeneinander in
    `customers/$1/documents/`, mit Datum im Dateinamen. Das Markdown bleibt liegen: in
    einem halben Jahr fragt jemand, was zugesagt wurde, und dann ist die Quelle mehr
-   wert als das PDF. Dann nach `.ara/knowledge/crm.md`: Eintrag in
+   wert als das PDF. Dann nach `.ara/knowledge/crm.de.md`: Eintrag in
    `customers/$1/history/`, `last_contact` auf heute, `status` auf `quoted`,
    `follow_up` auf das Gültigkeitsdatum mit einem Halbsatz, worum es geht.
 

@@ -5,12 +5,12 @@ argument-hint: [<gerät> oder <kunde>/<gerät>]
 
 Gerät: **$1**
 
-Lies `.ara/knowledge/device.md` und arbeite danach. Wissen, das dieser Befehl lädt:
-`.ara/knowledge/device.md`, `.ara/knowledge/security.md`, dazu erst nach dem Urteil
-und nur bei Bedarf `.ara/knowledge/remote-access.md`, `.ara/knowledge/boot-and-flash.md`,
-`.ara/knowledge/identify-device.md`, `.ara/knowledge/handover.md`,
-`.ara/knowledge/deploy.md`, sobald Arasul auf dem Gerät läuft, und
-`.ara/knowledge/live-knowledge.md` für jeden Produktwert. Das Profil in
+Lies `.ara/knowledge/device.de.md` und arbeite danach. Wissen, das dieser Befehl lädt:
+`.ara/knowledge/device.de.md`, `.ara/knowledge/security.de.md`, dazu erst nach dem Urteil
+und nur bei Bedarf `.ara/knowledge/remote-access.de.md`, `.ara/knowledge/boot-and-flash.de.md`,
+`.ara/knowledge/identify-device.de.md`, `.ara/knowledge/handover.de.md`,
+`.ara/knowledge/deploy.de.md`, sobald Arasul auf dem Gerät läuft, und
+`.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil in
 `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, SSH-Schlüssel.
 
 **Das Argument.** `zentrale` ist ein Gerät ohne Kunden, es liegt unter `devices/zentrale/`.
@@ -69,7 +69,7 @@ geht das über die Verwaltungsschnittstelle der Plattform. Die Sitzung dafür ho
 `--admin-login`: das Startpasswort aus der Installation geht aus der Geheimnis-Ablage
 direkt in die Anmeldung, zurück kommt ein Ausweis, und angezeigt wird das Passwort nie.
 Was du damit aufrufst, sagt `node .ara/tools/mirror.mjs --docs`. Verfahren in
-`.ara/knowledge/device.md`.
+`.ara/knowledge/device.de.md`.
 
 **Ohne Arasul endet es hier.** Das Werkzeug sagt in einem Satz, was Arasul brächte. Mehr
 nicht, kein Verkaufsgespräch. Mit Arasul auf einem unterstützten Gerät geht es nach dem

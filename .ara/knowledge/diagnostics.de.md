@@ -22,7 +22,7 @@ gehst.
    lass es dir zeigen.
 2. **Ist das Gerät erreichbar?** `node .ara/tools/find-device.mjs --host <adresse>`,
    dann `node .ara/tools/remote.mjs --customer <k> --check`. Wenn nicht: Verfahren in
-   `.ara/knowledge/remote-access.md`, Abschnitt „Wenn ein Gerät nicht mehr erreichbar ist".
+   `.ara/knowledge/remote-access.de.md`, Abschnitt „Wenn ein Gerät nicht mehr erreichbar ist".
 3. **Lebt das Gerät selbst?** Läuft es seit dem letzten Start durch? Ist Speicherplatz da?
    Ist die Systemzeit richtig? Ein volles Dateisystem und eine falsche Uhr sind die zwei
    Ursachen, die sich als alles Mögliche tarnen.

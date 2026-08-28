@@ -2,7 +2,7 @@
 
 > **Wann brauchst du das?** Wenn jemand etwas will, das das Produkt nicht ab Werk kann,
 > und daraus eine App auf einem Gerät werden soll. Wie ein fertiges Paket auf ein Gerät
-> kommt, steht in `.ara/knowledge/deploy.md`; hier steht, wie es überhaupt entsteht.
+> kommt, steht in `.ara/knowledge/deploy.de.md`; hier steht, wie es überhaupt entsteht.
 
 ## Der Lebenslauf
 
@@ -112,7 +112,7 @@ node .ara/tools/app.mjs --device <gerät> --app <name> --live
 Der Kontrakt des Geräts sagt, was gilt, und `--check` hält das Manifest dagegen, bevor
 etwas fliegt. **Ein Deploy rollt immer in den Teststand**, live schaltet ein Mensch, und
 zwar nach einer Rückfrage, auch wenn du gerade selbst eingespielt hast. Das Verfahren mit
-allem, was dazugehört, steht in `.ara/knowledge/deploy.md`.
+allem, was dazugehört, steht in `.ara/knowledge/deploy.de.md`.
 
 Nach dem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des Geräts,
 und die README der App fortschreiben. Sie ist der Ist-Stand in den Worten dessen, der die
@@ -178,6 +178,6 @@ node .ara/tools/app.mjs --app <name> --new
 - **Nichts einspielen, was du nicht geprüft hast.** Erst `--check`, dann `--deploy`.
 
 Was eine App von der Plattform bekommt, und wie sie es benutzt, steht in
-`.ara/knowledge/platform-services.md`: Anmeldung, Freigaben, Flows, die KI-Schnittstelle
+`.ara/knowledge/platform-services.de.md`: Anmeldung, Freigaben, Flows, die KI-Schnittstelle
 mit Schlüssel und der Weg für fremde Werkzeuge. Lies es, bevor du etwas nachbaust, was
 das Gerät schon mitbringt.

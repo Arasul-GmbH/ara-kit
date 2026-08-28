@@ -173,7 +173,7 @@ verlässt.
 
 ## Verwandtes
 
-- Angebot und seine Anlagen: `.ara/knowledge/paperwork.md`
-- Kundenakte, wo Anschrift und Ansprechpartner stehen: `.ara/knowledge/customer-file.md`
-- Verlauf und Wiedervorlage nach dem Versand: `.ara/knowledge/crm.md`
-- Preise und was sie hergeben: `.ara/knowledge/pricing.md`
+- Angebot und seine Anlagen: `.ara/knowledge/paperwork.de.md`
+- Kundenakte, wo Anschrift und Ansprechpartner stehen: `.ara/knowledge/customer-file.de.md`
+- Verlauf und Wiedervorlage nach dem Versand: `.ara/knowledge/crm.de.md`
+- Preise und was sie hergeben: `.ara/knowledge/pricing.de.md`

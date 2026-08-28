@@ -41,7 +41,7 @@ so einen Weg selbst ginge, bräuchte das Passwort eines Administrators.
 Schnittstelle, und wie sie geht, steht im Artefakt: Admin-Handbuch und API-Referenz,
 beide im Spiegel, zu finden mit `node .ara/tools/mirror.mjs --docs`. Der erste
 Mitarbeiter und die erste Freigabe sind der Fall, der einen sonst hängen lässt, und er
-steht in `.ara/knowledge/device.md` unter "Der erste Mitarbeiter und die erste Freigabe".
+steht in `.ara/knowledge/device.de.md` unter "Der erste Mitarbeiter und die erste Freigabe".
 
 ## Anmeldung: eine App bekommt keine eigene
 
@@ -213,7 +213,7 @@ node .ara/tools/app.mjs --device <gerät> --check <ordner>
 
 **Die Regeln ohne Schema sind kein Beiwerk.** Ein Manifest kann gegen das Schema gültig
 sein und trotzdem abgewiesen werden. Das Werkzeug gibt sie wörtlich aus, und du gehst sie
-einzeln durch. Der ganze Weg eines Pakets steht in `.ara/knowledge/deploy.md`.
+einzeln durch. Der ganze Weg eines Pakets steht in `.ara/knowledge/deploy.de.md`.
 
 ## Die Sicherung
 
@@ -263,7 +263,7 @@ ist er keiner: wer die Adresse und den Port erreicht, sieht die App.
 
 Nennt der Kontrakt einen Weg nicht, ruft das Kit ihn nicht auf. Das ist kein Fehler des
 Werkzeugs, sondern die Aussage, dass dieses Gerät ihn nicht anbietet, und meistens heißt
-das: es ist älter als das Kit. Was dann gilt, steht in `.ara/knowledge/deploy.md` unter
+das: es ist älter als das Kit. Was dann gilt, steht in `.ara/knowledge/deploy.de.md` unter
 der Kontraktversion.
 
 Fällt dir auf, dass dieses Blatt einen Weg nennt, den es an einem aktuellen Gerät nicht

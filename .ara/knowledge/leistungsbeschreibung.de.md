@@ -3,7 +3,7 @@
 > **Wann brauchst du das?** Vor jedem Angebot, und noch einmal vor jeder Übergabe.
 
 > **Stand 27.08.2026: unvollständig.** Die verbindliche Reihenfolge und die fünf Anlagen
-> stehen in `.ara/knowledge/paperwork.md`, Abschnitt „Die Leistungsbeschreibung füllen".
+> stehen in `.ara/knowledge/paperwork.de.md`, Abschnitt „Die Leistungsbeschreibung füllen".
 > Diese Datei vertieft nur den Reifegrad je Zeile. Widersprechen sich beide, gilt
 > `paperwork.md`. Was fehlt, ist der Bildnachweis je Zeile: `node .ara/tools/evidence.mjs`
 > läuft, aber die Schritte im Browser sind in kein Verfahren geschrieben, und darum
@@ -119,7 +119,7 @@ entsprechende Ziffer des Vertrages nicht erfüllt.
 ### 6. Ablegen
 
 `customers/<kunde>/documents/leistungsbeschreibung-<JJJJ-MM-TT>.md`, mit Datum im
-Namen, wie in `.ara/knowledge/paperwork.md` unter „Wohin es abgelegt wird". Dorthin legt
+Namen, wie in `.ara/knowledge/paperwork.de.md` unter „Wohin es abgelegt wird". Dorthin legt
 das Werkzeug sie schon in Schritt 2; bei einem Gerät ohne Kunden liegt sie in dessen
 Akte. Alte Fassungen bleiben liegen, und eine zweite Fassung desselben Tages ersetzt die
 erste nur mit `--force`. In einem Streit ist die Fassung entscheidend, die bei

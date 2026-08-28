@@ -2,9 +2,9 @@
 description: Preise hinterlegen und das Kalkulationsblatt pflegen
 ---
 
-Lies `.ara/knowledge/pricing.md`, Abschnitte „Das Kalkulationsblatt" und „Das Verfahren
+Lies `.ara/knowledge/pricing.de.md`, Abschnitte „Das Kalkulationsblatt" und „Das Verfahren
 `/calculation`", und arbeite danach. Wissen, das dieser Befehl lädt:
-`.ara/knowledge/pricing.md`, sonst nichts. Die Zahlen stehen in `business/company.md`.
+`.ara/knowledge/pricing.de.md`, sonst nichts. Die Zahlen stehen in `business/company.md`.
 
 **Zuerst, immer:**
 

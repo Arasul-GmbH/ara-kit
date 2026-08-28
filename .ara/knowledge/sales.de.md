@@ -62,7 +62,7 @@ Aufbau und Vollständigkeit.
 1. **Was wir verstanden haben.** Die Ausgangslage in ihren Worten. Wer sich verstanden
    fühlt, vergleicht weniger.
 2. **Was wir vorschlagen.** Gerät, Umfang, was es tun wird.
-3. **Was es kostet.** Einmalig und laufend getrennt (`.ara/knowledge/pricing.md`).
+3. **Was es kostet.** Einmalig und laufend getrennt (`.ara/knowledge/pricing.de.md`).
 4. **Was nicht enthalten ist.** Der wichtigste Abschnitt.
 5. **Wie es abläuft.** Bestellung, Lieferzeit, Einrichtungstermin, Abnahme, Betreuung.
 6. **Gültigkeit.** Hardwarepreise ändern sich.
@@ -72,7 +72,7 @@ seinen Auftritt geschrieben hat. Schreib nicht in einem Ton, den er nicht sprech
 
 **Fünf Anlagen gehören dazu, und ohne sie ist das Angebot unvollständig:**
 Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen und die beiden Nachweise aus
-`.ara/nachweise/`. Welche Folge es hat, wenn eine fehlt, steht in `.ara/knowledge/paperwork.md`. Der Befehl `/offer <kunde>` führt
+`.ara/nachweise/`. Welche Folge es hat, wenn eine fehlt, steht in `.ara/knowledge/paperwork.de.md`. Der Befehl `/offer <kunde>` führt
 durch den ganzen Weg.
 
 **Was du im Gespräch zusagst, muss in der Leistungsbeschreibung stehen.** Das ist die

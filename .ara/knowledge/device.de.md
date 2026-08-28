@@ -55,7 +55,7 @@ Drei Antworten, und jede hat eine Folge:
 
 Die Regel steht in `.ara/tools/lib/device.mjs`, und sie ist eine Regel des Kits, kein
 Produktwert. Was auf einem unterstützten Gerät gilt (Profil, Modell, Engine, Speicher),
-steht weiter nur im Spiegel: `.ara/knowledge/identify-device.md`.
+steht weiter nur im Spiegel: `.ara/knowledge/identify-device.de.md`.
 
 **Vormerken** heißt: `verdict` und `noted_on` stehen in der Akte. Damit bleibt sichtbar,
 welche Geräte nachgefragt wurden, und der Mensch kann das ans Produktteam geben.
@@ -71,7 +71,7 @@ Das Werkzeug legt die Akte trotzdem an und trägt `ssh: refused` ein. Dann gilt 
 Reihe nach:
 
 1. `node .ara/tools/find-device.mjs --host <adresse>`: antwortet dort überhaupt etwas?
-2. Schlüssel ausrollen, Verfahren `.ara/knowledge/remote-access.md`. Der private
+2. Schlüssel ausrollen, Verfahren `.ara/knowledge/remote-access.de.md`. Der private
    Schlüssel bleibt in `~/.ssh`, im Kit steht nur sein Name.
 3. Noch einmal `node .ara/tools/device.mjs --name <gerät>`.
 
@@ -86,7 +86,7 @@ Das Werkzeug erkennt beide und sagt, ob sie da sind. Aufsetzen tut es nur auf Wu
 node .ara/tools/device.mjs --name <gerät> --install docker,ollama
 ```
 
-Das ist ein Eingriff der Stufe 2 (`.ara/knowledge/security.md`): vorher Absicht, Ziel
+Das ist ein Eingriff der Stufe 2 (`.ara/knowledge/security.de.md`): vorher Absicht, Ziel
 und Rückweg nennen und bestätigen lassen. Es läuft nur auf Linux, braucht Root am Gerät
 und nutzt die Installationswege der Hersteller. Auf einem Mac bleibt es Handarbeit, das
 sagt das Werkzeug selbst. Nach der Installation prüft es erneut, damit die Akte den
@@ -127,7 +127,7 @@ Die Phasen des Laufzettels und was in jeder gilt:
   den Wert zu zeigen. Rückfallplan festlegen: was passiert, wenn es nicht fertig wird.
   Zeit ehrlich schätzen.
 - **1 Betriebssystem.** Nur, wenn das Gerät noch keins hat oder ein anderes braucht.
-  Verfahren `.ara/knowledge/boot-and-flash.md`. Ein Datenträger wird nur nach
+  Verfahren `.ara/knowledge/boot-and-flash.de.md`. Ein Datenträger wird nur nach
   ausdrücklichem Ja beschrieben.
 - **2 Erstkontakt.** Hat `/device` schon erledigt: SSH steht, die Akte hat Adresse,
   Anmeldename, Port und Schlüsselname. Ab jetzt läuft jeder Befehl über
@@ -139,9 +139,9 @@ Die Phasen des Laufzettels und was in jeder gilt:
 - **4 Nachbereitung.** Erst prüfen, ob etwas fehlt, das Produkt erledigt manches
   selbst. Modell vorhanden, Namensauflösung, Zugang härten (erst wenn die
   Schlüsselanmeldung nachweislich läuft, und die laufende Sitzung offen halten),
-  Netzabsicherung, Fernzugriff nach `.ara/knowledge/remote-access.md`. Ändert sich Port
+  Netzabsicherung, Fernzugriff nach `.ara/knowledge/remote-access.de.md`. Ändert sich Port
   oder Anmeldename: sofort in `device.md` nachziehen.
-- **5 Nachweis.** Prüfliste in `.ara/knowledge/handover.md`. Dienste gesund auch nach
+- **5 Nachweis.** Prüfliste in `.ara/knowledge/handover.de.md`. Dienste gesund auch nach
   Neustart, eine echte Anfrage liefert eine sinnvolle Antwort, ein Testdokument wird
   wiedergefunden, Fernzugriff von außerhalb des Netzes. Der letzte Punkt wird am
   häufigsten übersprungen, Mobilfunk reicht zum Prüfen.
@@ -236,7 +236,7 @@ unter **„Was der Installer nicht konnte"**, dazu in die Akte unter Prüfungen.
 Kunden.** Eine fehlgeschlagene SSH-Härtung und eine nicht eingerichtete Firewall sind für
 den Installer eine Randnotiz und für ein Gerät im fremden Netz eine offene Tür. Geh die
 Liste durch, bevor das Gerät ausgeliefert wird: Zugang härten nach
-`.ara/knowledge/remote-access.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
+`.ara/knowledge/remote-access.de.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
 hast und was offen bleibt, schreibst du in den Laufzettel.
 
 ### Reste, aber nichts läuft
@@ -284,8 +284,8 @@ node .ara/tools/app.mjs --device <gerät> --contract
 ```
 
 Antwortet er, dann steht die Plattform, der Schlüssel gilt und das Kit passt zu diesem
-Gerät. Wie ein fertiges Paket dorthin kommt, steht in `.ara/knowledge/deploy.md`; wie aus
-einem Kundenwunsch überhaupt eine App wird, in `.ara/knowledge/app.md`. Der nächste
+Gerät. Wie ein fertiges Paket dorthin kommt, steht in `.ara/knowledge/deploy.de.md`; wie aus
+einem Kundenwunsch überhaupt eine App wird, in `.ara/knowledge/app.de.md`. Der nächste
 Befehl ist dann `/app`.
 
 **Antwortet er nicht, obwohl SSH steht**, liegt die Schnittstelle woanders als der Zugang:
@@ -387,8 +387,8 @@ Phase 6, und es ist der Punkt, an dem ein Kunde nach einem halben Jahr nachfragt
 
 ## Nach dem Urteil: bald
 
-Vorgemerkt. Zugang darf schon gehärtet werden (`.ara/knowledge/remote-access.md`),
+Vorgemerkt. Zugang darf schon gehärtet werden (`.ara/knowledge/remote-access.de.md`),
 Docker und Ollama dürfen aufgesetzt werden. Sobald der Spiegel ein Profil für die
 Hardware führt, geht es bei Phase 0 weiter. Ein Profil im Katalog heißt noch nicht
-erprobt, `.ara/knowledge/identify-device.md` sagt, wie du das liest und dem Menschen
+erprobt, `.ara/knowledge/identify-device.de.md` sagt, wie du das liest und dem Menschen
 ehrlich sagst.

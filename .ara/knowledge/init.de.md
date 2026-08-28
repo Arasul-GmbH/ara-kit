@@ -4,8 +4,8 @@
 > Mal, und es gilt der lange Teil: das Onboarding in zehn Runden. Existiert die Datei,
 > gilt der kurze Teil am Ende: Kit nachziehen, Befehle anbieten, Profil ergänzen.
 >
-> **Wissen dazu:** `.ara/knowledge/security.md` für die drei Stufen in Runde 5,
-> `.ara/knowledge/browser.md` für Runde 8. Sonst nichts, der Rest steht hier.
+> **Wissen dazu:** `.ara/knowledge/security.de.md` für die drei Stufen in Runde 5,
+> `.ara/knowledge/browser.de.md` für Runde 8. Sonst nichts, der Rest steht hier.
 
 ## Das erste Mal
 
@@ -20,7 +20,7 @@ wieder gefragt werden. Rechne mit einer knappen halben Stunde.
 
 **Kein Token, kein Konto.** Das Onboarding braucht kein Token und kein Portal. Danach
 gefragt wird erst, wenn auf einem Gerät Arasul installiert wird, siehe
-`.ara/knowledge/device.md`. Wer schon eines hat, kann es mit
+`.ara/knowledge/device.de.md`. Wer schon eines hat, kann es mit
 `node .ara/tools/secrets.mjs --set ARASUL_TOKEN` hinterlegen, das ist keine Runde hier.
 
 ### Drei Regeln, die dieses Verfahren tragen
@@ -145,7 +145,7 @@ Dazu ein Satz zur E-Rechnungspflicht: Empfang beim Kunden ist seit 2025 Pflicht,
 Ausgabe kommt stufenweise ab 2027. Ins Frontmatter: `invoice` und `invoice_tool`. Bei ja
 legt das Kit `/invoice` an: Rechnung als ZUGFeRD-PDF, mit eigenem Nummernkreis in
 `business/`. Was dazugehört und was ausdrücklich nicht, steht in
-`.ara/knowledge/invoicing.md`.
+`.ara/knowledge/invoicing.de.md`.
 
 Antworten nach `tools` im Frontmatter (kommagetrennt) und in Prosa nach „Womit mein
 Haus arbeitet".
@@ -156,7 +156,7 @@ Haus arbeitet".
    installiert? Ehrliche Antwort hilft, es geht nicht um Bewertung.
 2. **Erklärtiefe:** wenig, mittel oder viel. Steuert deinen Ton ab jetzt.
 3. **Sicherheitsstufe:** Erklär die drei Stufen in vier Zeilen
-   (`.ara/knowledge/security.md`) und lass den Standard bestätigen. Wer lockern will, kann
+   (`.ara/knowledge/security.de.md`) und lass den Standard bestätigen. Wer lockern will, kann
    das, dann hältst du fest, **was genau** gelockert wurde und seit wann.
 
 ### Runde 6: Was du vorhast
@@ -224,7 +224,7 @@ Schritt, wenn Angebote anstehen.
    Bildschirmfotos für die Abnahme machen. Er startet beim ersten Zugriff von selbst.
    Erklär das in zwei Sätzen und frag, ob es so recht ist. Wer es nicht will, sagt das
    einmal, `browser: no` im Profil, und du fragst nicht wieder.
-   Verfahren: `.ara/knowledge/browser.md`
+   Verfahren: `.ara/knowledge/browser.de.md`
 
 4. **GitHub.** Prüf mit `gh auth status`, ob die Kommandozeile angemeldet ist. Damit
    kannst du später die Sicherung anlegen, Erweiterungen versionieren und Rückmeldungen
@@ -246,7 +246,7 @@ Schritt, wenn Angebote anstehen.
      oder ist es bestellt? Ein eigenes Gerät bekommt seinen Ort unter `devices/<gerät>/`,
      nicht unter `customers/`: ein Scheinkunde dafür verfälscht jede Auswertung. Der
      Name ist hier meist das Modell, Kundengeräte heißen nach Standort
-     (`.ara/knowledge/device.md`).
+     (`.ara/knowledge/device.de.md`).
    - **Unternehmen:** Hier ist das eigene Gerät der Normalfall. Welches Modell, steht es
      schon da oder ist es bestellt?
 

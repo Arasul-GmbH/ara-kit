@@ -5,9 +5,9 @@ argument-hint: <kunde>
 
 Rechnung für: **$1**
 
-Lies `.ara/knowledge/invoicing.md` und arbeite danach. Was hier steht, ist der Weg durch
+Lies `.ara/knowledge/invoicing.de.md` und arbeite danach. Was hier steht, ist der Weg durch
 dieses Verfahren, nicht ein zweites daneben. Wissen, das dieser Befehl lädt:
-`.ara/knowledge/invoicing.md`, `.ara/knowledge/crm.md`, `.ara/knowledge/customer-file.md`.
+`.ara/knowledge/invoicing.de.md`, `.ara/knowledge/crm.de.md`, `.ara/knowledge/customer-file.de.md`.
 Dazu `business/profile.md` und `business/company.md` für den Absender.
 
 Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere
@@ -88,7 +88,7 @@ Betriebsprüfer als Erstes.
    ihn noch einmal. Was dabei ungeprüft bleibt, sagt es selbst, und das sagst du weiter,
    statt es zu verschweigen.
 
-6. **Nachhalten.** Nach `.ara/knowledge/crm.md`: Eintrag in `customers/$1/history/` mit
+6. **Nachhalten.** Nach `.ara/knowledge/crm.de.md`: Eintrag in `customers/$1/history/` mit
    `type: invoice`, `last_contact` auf heute, `follow_up` auf das Fälligkeitsdatum mit
    einem Halbsatz, worum es geht. Der Nummernkreis führt den Beleg danach als `gestellt`.
 

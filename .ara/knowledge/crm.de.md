@@ -101,7 +101,7 @@ Datum genügen.
 Nicht hierhin gehört, was zu **einem** Kunden gehört, denn das steht in seiner Akte, und
 nichts, was aus dem Produkt kommt. Ein Modellname oder eine Fassungsnummer ist hier morgen
 falsch und wird von hier aus abgeschrieben. Produktwerte kommen aus dem Spiegel oder vom
-Gerät, siehe `.ara/knowledge/live-knowledge.md`.
+Gerät, siehe `.ara/knowledge/live-knowledge.de.md`.
 
 Der Ordner gehört dem Partner und ist von der Versionskontrolle ausgenommen, wie alles
 unter `business/`.
@@ -114,6 +114,6 @@ Geräten passiert.
 
 **Die eine Ausnahme ist die Ausgangsrechnung**, und auch die nur, wenn der Partner sie im
 Profil freigegeben hat. Dann schreibt `/invoice` die Rechnung, führt ihren Nummernkreis
-und druckt sie als ZUGFeRD-PDF, siehe `.ara/knowledge/invoicing.md`. Alles danach bleibt
+und druckt sie als ZUGFeRD-PDF, siehe `.ara/knowledge/invoicing.de.md`. Alles danach bleibt
 draußen: Zahlungseingänge, Mahnwesen, Voranmeldung, Eingangsrechnungen. Wer danach fragt,
 bekommt genau diese Antwort und keine Ausrede.

@@ -21,7 +21,7 @@ Was daraus folgt, gilt weiter:
 3. **Es bleibt beim Kunden.** Das Gerät trägt die App, auch wenn der Partner wechselt.
 
 Wie ein Paket auf ein Gerät kommt, in den Teststand und von dort live, steht in
-`.ara/knowledge/deploy.md`, und dort auch, was hineingehört: `app.json` in der Wurzel und
+`.ara/knowledge/deploy.de.md`, und dort auch, was hineingehört: `app.json` in der Wurzel und
 die Ordner, die das Manifest benennt. **Flows gehören dazu, als Lieferung**: das Paket
 bringt je Flow eine Datei mit Kopf mit, statt einen Namen zu fordern, den jemand am Gerät
 angelegt haben muss. Welche Felder in den Kopf gehören, sagt der Kontrakt des Geräts,
@@ -47,8 +47,8 @@ liefert das Gerät selbst, in einem Aufruf:
 `node .ara/tools/app.mjs --device <gerät> --contract`. Dort steht, was eine App mitbringen
 muss und welche Endpunkte es gibt. Wozu die einzelnen Dienste da sind, Anmeldung,
 Freigaben, Flows, Sprachmodell und Dokumente, steht in
-`.ara/knowledge/platform-services.md`. Wie eine App dann auf das Gerät kommt, steht in
-`.ara/knowledge/deploy.md`.
+`.ara/knowledge/platform-services.de.md`. Wie eine App dann auf das Gerät kommt, steht in
+`.ara/knowledge/deploy.de.md`.
 
 Die meisten Kundenwünsche brauchen keine neue Entwicklung, sondern eine Einrichtung.
 
@@ -92,7 +92,7 @@ Für den Betrieb einer Erweiterung wird weder Funktion noch Verfuegbarkeit noch
 Verträglichkeit mit kuenftigen Fassungen geschuldet. Sag das dem Kunden, bevor du
 etwas installierst, nicht danach.
 
-Verfahren für das Papier: `.ara/knowledge/paperwork.md`
+Verfahren für das Papier: `.ara/knowledge/paperwork.de.md`
 
 ## Abrechnung
 

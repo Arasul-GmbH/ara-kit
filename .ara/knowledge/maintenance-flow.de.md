@@ -47,7 +47,7 @@ füllst.** Die letzte Sicherung ist heute genau so ein Punkt.
 **Sie ist trotzdem messbar, nur nicht vom Kit.** Das Gerät beantwortet die zwei Fragen
 dazu über einen Weg seiner Oberfläche, und der verlangt eine Sitzung als Administrator,
 kein Schlüssel öffnet ihn. Wie du trotzdem herankommst und was in der Antwort steht,
-steht in `.ara/knowledge/platform-services.md` unter "Die Sicherung". Kommt einmal ein
+steht in `.ara/knowledge/platform-services.de.md` unter "Die Sicherung". Kommt einmal ein
 Weg mit Schlüssel dazu, findet ihn das Werkzeug beim nächsten Lauf von selbst.
 
 Dasselbe gilt für die Apps. Solange das Gerät keinen Endpunkt nennt, der sie aufzählt,
@@ -59,7 +59,7 @@ das. Eine Liste, die er vollständig nennen würde, wäre geraten.
 
 ### 1. Es klemmt
 
-Verfahren in `.ara/knowledge/diagnostics.md`. Erst feststellen, dann ändern.
+Verfahren in `.ara/knowledge/diagnostics.de.md`. Erst feststellen, dann ändern.
 
 ### 2. Regelmäßiger Blick
 
@@ -93,7 +93,7 @@ Ein Update ist ein Eingriff, kein Klick.
    Kunden abgesprochen? Ein Update während der Arbeitszeit ist eine Störung.
 2. **Sicherung anlegen und prüfen, dass sie existiert.** Nicht „läuft ja automatisch".
 3. **Einspielen**, dem Weg des Produkts folgend (im Spiegel nachlesen).
-4. **Danach die Nachweise aus `.ara/knowledge/handover.md`**: mindestens: Dienste gesund,
+4. **Danach die Nachweise aus `.ara/knowledge/handover.de.md`**: mindestens: Dienste gesund,
    fachliche Anfrage beantwortet, Fernzugriff steht. Ein Update, das durchläuft und danach
    ein totes System hinterlässt, ist der Normalfall bei ungeprüften Updates.
 5. **Rückweg kennen**, bevor du anfängst. Wenn es keinen gibt, ist das eine Information für
@@ -102,7 +102,7 @@ Ein Update ist ein Eingriff, kein Klick.
 ### 4. Erweiterung bauen
 
 Der Teil, mit dem der Partner zusätzlich Geld verdient. Verfahren:
-`.ara/knowledge/extensions.md`
+`.ara/knowledge/extensions.de.md`
 
 ## Ein Mitarbeiter kommt dazu, einer geht
 
@@ -118,7 +118,7 @@ Kit: Admin-Handbuch und API-Referenz, beide im Spiegel.
 node .ara/tools/mirror.mjs --docs
 ```
 
-Der ganze Ablauf mit der Form des Aufrufs steht in `.ara/knowledge/device.md` unter
+Der ganze Ablauf mit der Form des Aufrufs steht in `.ara/knowledge/device.de.md` unter
 "Der erste Mitarbeiter und die erste Freigabe". **Wer geht, verliert seine Freigaben
 sofort und nicht beim nächsten Besuch**, und das schreibst du in den Verlauf, mit Datum
 und mit dem Weg, auf dem du es gemacht hast.
