@@ -168,7 +168,8 @@ The phases of the runsheet and what applies in each:
   showing the value. Fix a fallback plan: what happens if it does not get finished. Estimate the
   time honestly.
 - **1 Operating system.** Only if the device has none yet or needs a different one. Procedure
-  `.ara/knowledge/boot-and-flash.md`. A disk gets written only after an explicit yes.
+  `.ara/knowledge/boot-and-flash.md`, for a Jetson AGX Orin `.ara/knowledge/flash-orin.md`
+  with a check step per section. A disk gets written only after an explicit yes.
 - **2 First contact.** `/device` has already done that: SSH stands, the file has address, login
   name, port and key name. From now on every command runs through
   `node .ara/tools/remote.mjs --device <device> --command "…"`.
@@ -192,6 +193,13 @@ The phases of the runsheet and what applies in each:
 
 If the device already carries Arasul when `/device` finds it, that is not a case for a setup but
 for the kit key and afterwards for `/maintain`.
+
+**From the running Linux onwards the kit works by itself**, and the piece after the
+installation is the self-healing: when something of Arasul does not run any more,
+`node .ara/tools/heal.mjs --device <device>` starts it again, only inside the Arasul
+directory tree, never the bootloader, with every step in the device file and a way back per
+step (`--undo <id>`). It asks only when it gives up. Procedure:
+`.ara/knowledge/self-healing.md`.
 
 ## Installing Arasul
 

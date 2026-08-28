@@ -26,6 +26,14 @@ Beispiel:
 > Ich lege vorher eine Sicherung der Datei an, und deine bestehende Sitzung bleibt offen,
 > bis wir die neue geprüft haben. Soll ich?
 
+**Eine Ausnahme, mit Grenzen: die Selbstheilung** (`.ara/knowledge/self-healing.de.md`).
+Sie handelt innerhalb eines Laufs ohne weitere Nachfrage, weil die drei Dinge vorher
+feststehen: die Absicht ist, dass alles von Arasul wieder läuft, das Ziel ist der
+Verzeichnisbaum von Arasul und nichts außerhalb, nie der Bootloader, und der Rückweg steht
+je Schritt in der Geräteakte und läuft mit `--undo`. Der Aufruf ist die Bestätigung, und bei
+einem Kundengerät nennst du ihn vorher wie jeden Eingriff der Stufe 2. Sie fragt erst, wenn
+sie aufgibt.
+
 ### Stufe 3. Unumkehrbar
 
 Neustart, Datenträger beschreiben, Firmware aufspielen, Daten löschen, Werksreset,

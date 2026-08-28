@@ -47,6 +47,10 @@ What you do:
 3. **If there is one:** the manufacturer's steps apply. Read them up in the current version
    instead of naming them from memory, the tools change with every generation.
 
+For the Jetson AGX Orin the kit carries the way itself, as a guide with a check step per
+section: `.ara/knowledge/flash-orin.md`. Host, release package, first user, recovery
+handhold, flash, the network over the USB-C cable, and from there the kit by itself.
+
 ## Writing the boot medium (case B)
 
 The only irreversible step of the whole setup. Order:

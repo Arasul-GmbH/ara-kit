@@ -59,7 +59,13 @@ das. Eine Liste, die er vollständig nennen würde, wäre geraten.
 
 ### 1. Es klemmt
 
-Verfahren in `.ara/knowledge/diagnostics.de.md`. Erst feststellen, dann ändern.
+Sagt die Statuszeile, dass ein Container von Arasul nicht läuft, geht die Selbstheilung
+vor: `node .ara/tools/heal.mjs --device <gerät>`, Verfahren
+`.ara/knowledge/self-healing.de.md`. Sie startet, was nicht läuft, nur im Verzeichnisbaum
+von Arasul, protokolliert jeden Schritt in der Geräteakte mit seinem Weg zurück, und fragt
+erst, wenn sie aufgibt. Wo sie aufgibt, beginnt die Diagnose.
+
+Für alles andere gilt `.ara/knowledge/diagnostics.de.md`. Erst feststellen, dann ändern.
 
 ### 2. Regelmäßiger Blick
 

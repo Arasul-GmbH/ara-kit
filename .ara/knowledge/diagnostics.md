@@ -12,6 +12,12 @@ The reason is not tidiness: a restart wipes the trail. If you do not know before
 going on, you never know afterwards, and in three weeks the same problem stands there again
 and you start over.
 
+**The one thing that may act before the finding is the self-healing**,
+`.ara/knowledge/self-healing.md`, and it may because it wipes no trail: it starts what
+does not run, only inside the Arasul directory tree, restarts nothing, deletes nothing, and
+writes every step with its way back into the device file. Where it gives up, this chain
+begins, and its record is the first thing you read.
+
 ## The chain
 
 Work from the outside in. Every stage answers one question before you go to the next.

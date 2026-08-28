@@ -178,8 +178,9 @@ Die Phasen des Laufzettels und was in jeder gilt:
   den Wert zu zeigen. Rückfallplan festlegen: was passiert, wenn es nicht fertig wird.
   Zeit ehrlich schätzen.
 - **1 Betriebssystem.** Nur, wenn das Gerät noch keins hat oder ein anderes braucht.
-  Verfahren `.ara/knowledge/boot-and-flash.de.md`. Ein Datenträger wird nur nach
-  ausdrücklichem Ja beschrieben.
+  Verfahren `.ara/knowledge/boot-and-flash.de.md`, bei einem Jetson AGX Orin
+  `.ara/knowledge/flash-orin.de.md` mit Prüfschritt je Abschnitt. Ein Datenträger wird nur
+  nach ausdrücklichem Ja beschrieben.
 - **2 Erstkontakt.** Hat `/device` schon erledigt: SSH steht, die Akte hat Adresse,
   Anmeldename, Port und Schlüsselname. Ab jetzt läuft jeder Befehl über
   `node .ara/tools/remote.mjs --device <gerät> --command "…"`.
@@ -204,6 +205,13 @@ Die Phasen des Laufzettels und was in jeder gilt:
 
 Trägt das Gerät Arasul schon, wenn `/device` es findet, ist das kein Fall für die
 Einrichtung, sondern für den Kit-Schlüssel und danach für `/maintain`.
+
+**Ab dem laufenden Linux arbeitet das Kit selbst**, und das Stück nach der Installation ist
+die Selbstheilung: läuft etwas von Arasul nicht mehr, startet
+`node .ara/tools/heal.mjs --device <gerät>` es wieder, nur im Verzeichnisbaum von Arasul, nie
+am Bootloader, mit jedem Schritt in der Geräteakte und einem Weg zurück je Schritt
+(`--undo <id>`). Es fragt erst, wenn es aufgibt. Verfahren:
+`.ara/knowledge/self-healing.de.md`.
 
 ## Arasul installieren
 

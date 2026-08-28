@@ -26,6 +26,13 @@ Example:
 > file beforehand, and your existing session stays open until we have checked the new one.
 > Shall I?
 
+**One exception, with limits: the self-healing** (`.ara/knowledge/self-healing.md`). It
+acts inside one run without asking again, because the three things are fixed beforehand:
+the intent is that everything of Arasul runs again, the target is the Arasul directory
+tree and nothing outside it, never the bootloader, and the way back stands per step in the
+device file and runs with `--undo`. Calling it is the confirmation, and on a customer
+device you name it beforehand like any level 2 intervention. It asks only when it gives up.
+
 ### Level 3. Irreversible
 
 Restart, write to a disk, flash firmware, delete data, factory reset, withdraw a licence,
