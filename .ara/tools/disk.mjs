@@ -1,5 +1,19 @@
 #!/usr/bin/env node
 /**
+ * Disks: recognise and write boot media safely.
+ *
+ * Writing a disk is the only step of a setup that cannot be undone: the wrong port
+ * wipes somebody else's hard disk. That is why this tool checks beforehand whether
+ * the target is a removable disk at all, and in every case first shows what would
+ * happen.
+ *
+ *   node .ara/tools/disk.mjs --list
+ *   node .ara/tools/disk.mjs --checksum image.iso
+ *   node .ara/tools/disk.mjs --write image.iso --to disk4
+ *   node .ara/tools/disk.mjs --write image.iso --to disk4 --yes --execute
+ *
+ * === deutsch ===
+ *
  * Datenträger: Boot-Medien sicher erkennen und beschreiben.
  *
  * Das Beschreiben eines Datenträgers ist der einzige Schritt der Einrichtung, der sich
@@ -17,6 +31,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { platform } from "node:os";
+import { t } from "./lib/i18n.mjs";
 import { fail, helpOnly, parseArgs } from "./lib/kit.mjs";
 
 helpOnly(import.meta.url);
@@ -95,33 +110,44 @@ function zeigeListe() {
 
   if (SYSTEM === "win32") {
     console.log(
-      "Unter Windows kann dieses Werkzeug keine Datenträger prüfen.\n" +
-        "Nutz Rufus oder den Raspberry Pi Imager und komm danach zurück."
+      t(
+        "On Windows this tool cannot check disks.\n" +
+          "Use Rufus or the Raspberry Pi Imager and come back afterwards.",
+        "Unter Windows kann dieses Werkzeug keine Datenträger prüfen.\n" +
+          "Nutz Rufus oder den Raspberry Pi Imager und komm danach zurück."
+      )
     );
     process.exit(0);
   }
 
   if (!alle.length) {
-    console.log("Keine externen Datenträger gefunden. Steckt der Stick?");
+    console.log(t("No external disks found. Is the stick plugged in?", "Keine externen Datenträger gefunden. Steckt der Stick?"));
     process.exit(0);
   }
 
-  console.log("# Angeschlossene externe Datenträger\n");
+  console.log(t("# Connected external disks\n", "# Angeschlossene externe Datenträger\n"));
   for (const d of alle) {
-    const marker = d.entfernbar && !d.intern ? "" : "  ← NICHT entfernbar, kommt nicht in Frage";
+    const marker =
+      d.entfernbar && !d.intern
+        ? ""
+        : t("  <- NOT removable, out of the question", "  ← NICHT entfernbar, kommt nicht in Frage");
     console.log(
       `- ${d.kennung} · ${d.bezeichnung} · ${gb(d.bytes)}${marker}` +
-        (d.eingehaengt.length ? `\n  eingehängt: ${d.eingehaengt.join(", ")}` : "")
+        (d.eingehaengt.length ? t(`\n  mounted: ${d.eingehaengt.join(", ")}`, `\n  eingehängt: ${d.eingehaengt.join(", ")}`) : "")
     );
   }
   console.log(
-    `\n${wechsel.length} beschreibbare${wechsel.length === 1 ? "r" : ""} Wechseldatenträger.` +
-      "\nPrüf die Größe und die Bezeichnung gegen den Stick in deiner Hand, bevor du weitermachst."
+    t(
+      `\n${wechsel.length} writable removable disk${wechsel.length === 1 ? "" : "s"}.` +
+        "\nCheck the size and the label against the stick in your hand before you carry on.",
+      `\n${wechsel.length} beschreibbare${wechsel.length === 1 ? "r" : ""} Wechseldatenträger.` +
+        "\nPrüf die Größe und die Bezeichnung gegen den Stick in deiner Hand, bevor du weitermachst."
+    )
   );
 }
 
 async function pruefsumme(datei) {
-  if (!existsSync(datei)) fail(`Die Datei ${datei} gibt es nicht.`);
+  if (!existsSync(datei)) fail(t(`The file ${datei} does not exist.`, `Die Datei ${datei} gibt es nicht.`));
   const hash = createHash("sha256");
   await new Promise((fertig, fehler) => {
     createReadStream(datei).on("data", (d) => hash.update(d)).on("end", fertig).on("error", fehler);
@@ -131,30 +157,42 @@ async function pruefsumme(datei) {
 
 function schreiben(abbild, zielKennung) {
   if (SYSTEM === "win32") {
-    fail("Unter Windows schreibt dieses Werkzeug keine Datenträger. Nutz Rufus.");
+    fail(t("On Windows this tool writes no disks. Use Rufus.", "Unter Windows schreibt dieses Werkzeug keine Datenträger. Nutz Rufus."));
   }
-  if (!existsSync(abbild)) fail(`Das Abbild ${abbild} gibt es nicht.`);
+  if (!existsSync(abbild)) fail(t(`The image ${abbild} does not exist.`, `Das Abbild ${abbild} gibt es nicht.`));
 
   const kennung = String(zielKennung).replace(/^\/dev\//, "").replace(/^r/, "");
   const ziel = liste().find((d) => d.kennung === kennung);
 
   if (!ziel) {
     fail(
-      `${kennung} ist kein erkannter externer Datenträger.\n` +
-        "Lass dir mit --list zeigen, was angeschlossen ist. Interne Datenträger werden hier nicht angeboten."
+      t(
+        `${kennung} is not a recognised external disk.\n` +
+          "Have --list show you what is connected. Internal disks are not offered here.",
+        `${kennung} ist kein erkannter externer Datenträger.\n` +
+          "Lass dir mit --list zeigen, was angeschlossen ist. Interne Datenträger werden hier nicht angeboten."
+      )
     );
   }
   if (ziel.intern || !ziel.entfernbar) {
-    fail(`${kennung} ist kein Wechseldatenträger. Das Werkzeug schreibt dort nicht.`);
+    fail(
+      t(
+        `${kennung} is not a removable disk. The tool does not write there.`,
+        `${kennung} ist kein Wechseldatenträger. Das Werkzeug schreibt dort nicht.`
+      )
+    );
   }
   if (ziel.eingehaengt.some((p) => p === "/" || p.startsWith("/System") || p.startsWith("/boot"))) {
-    fail(`${kennung} trägt Systemverzeichnisse. Abbruch.`);
+    fail(t(`${kennung} carries system directories. Aborting.`, `${kennung} trägt Systemverzeichnisse. Abbruch.`));
   }
 
   const abbildBytes = statSync(abbild).size;
   if (abbildBytes > ziel.bytes) {
     fail(
-      `Das Abbild ist größer als der Datenträger (${gb(abbildBytes)} auf ${gb(ziel.bytes)}). Das kann nicht passen.`
+      t(
+        `The image is larger than the disk (${gb(abbildBytes)} onto ${gb(ziel.bytes)}). That cannot fit.`,
+        `Das Abbild ist größer als der Datenträger (${gb(abbildBytes)} auf ${gb(ziel.bytes)}). Das kann nicht passen.`
+      )
     );
   }
 
@@ -171,15 +209,23 @@ function schreiben(abbild, zielKennung) {
 
   console.log(
     [
-      "# Das würde passieren",
+      t("# This is what would happen", "# Das würde passieren"),
       "",
-      `- Abbild:       ${abbild} (${gb(abbildBytes)})`,
-      `- Ziel:         ${ziel.kennung} · ${ziel.bezeichnung} · ${gb(ziel.bytes)}`,
-      ziel.eingehaengt.length ? `- Eingehängt:   ${ziel.eingehaengt.join(", ")}` : "- Eingehängt:   nichts",
+      t(`- Image:        ${abbild} (${gb(abbildBytes)})`, `- Abbild:       ${abbild} (${gb(abbildBytes)})`),
+      t(
+        `- Target:       ${ziel.kennung} · ${ziel.bezeichnung} · ${gb(ziel.bytes)}`,
+        `- Ziel:         ${ziel.kennung} · ${ziel.bezeichnung} · ${gb(ziel.bytes)}`
+      ),
+      ziel.eingehaengt.length
+        ? t(`- Mounted:      ${ziel.eingehaengt.join(", ")}`, `- Eingehängt:   ${ziel.eingehaengt.join(", ")}`)
+        : t("- Mounted:      nothing", "- Eingehängt:   nichts"),
       "",
-      "Der gesamte Inhalt dieses Datenträgers geht verloren und lässt sich nicht wiederherstellen.",
+      t(
+        "The entire contents of this disk will be lost and cannot be recovered.",
+        "Der gesamte Inhalt dieses Datenträgers geht verloren und lässt sich nicht wiederherstellen."
+      ),
       "",
-      "Befehle:",
+      t("Commands:", "Befehle:"),
       `  ${aushaengen[0]} ${aushaengen[1].join(" ")}`,
       `  sudo dd ${ddArgs.join(" ")}`,
       "",
@@ -187,31 +233,46 @@ function schreiben(abbild, zielKennung) {
   );
 
   if (!arg.yes) {
-    console.log("Zum Ausführen: dieselbe Zeile noch einmal mit --yes --execute.");
+    console.log(
+      t("To run it: the same line once more with --yes --execute.", "Zum Ausführen: dieselbe Zeile noch einmal mit --yes --execute.")
+    );
     return;
   }
   if (!arg.execute) {
     console.log(
-      "Geprüft und freigegeben, aber nicht ausgeführt.\n" +
-        "Führ die beiden Befehle oben in deinem Terminal aus, dd braucht dein Passwort.\n" +
-        "Sag mir danach Bescheid, dann prüfe ich den Stick."
+      t(
+        "Checked and cleared, but not run.\n" +
+          "Run the two commands above in your terminal, dd needs your password.\n" +
+          "Tell me afterwards, then I check the stick.",
+        "Geprüft und freigegeben, aber nicht ausgeführt.\n" +
+          "Führ die beiden Befehle oben in deinem Terminal aus, dd braucht dein Passwort.\n" +
+          "Sag mir danach Bescheid, dann prüfe ich den Stick."
+      )
     );
     return;
   }
 
-  console.log("Hänge den Datenträger aus ...");
+  console.log(t("Unmounting the disk ...", "Hänge den Datenträger aus ..."));
   const aus = spawnSync(aushaengen[0], aushaengen[1], { stdio: "inherit" });
-  if (aus.status !== 0) fail("Das Aushängen ist fehlgeschlagen. Ist der Datenträger in Benutzung?");
+  if (aus.status !== 0) {
+    fail(t("Unmounting failed. Is the disk in use?", "Das Aushängen ist fehlgeschlagen. Ist der Datenträger in Benutzung?"));
+  }
 
-  console.log("Schreibe. Das dauert je nach Stick einige Minuten ...");
+  console.log(
+    t("Writing. Depending on the stick this takes a few minutes ...", "Schreibe. Das dauert je nach Stick einige Minuten ...")
+  );
   const schreib = spawnSync("sudo", ["dd", ...ddArgs], { stdio: "inherit" });
   if (schreib.status !== 0) {
     fail(
-      "Das Schreiben ist fehlgeschlagen.\n" +
-        "Häufigster Grund: sudo hat kein Passwort bekommen. Führ die Befehle oben direkt im Terminal aus."
+      t(
+        "Writing failed.\n" +
+          "Most frequent reason: sudo got no password. Run the commands above directly in the terminal.",
+        "Das Schreiben ist fehlgeschlagen.\n" +
+          "Häufigster Grund: sudo hat kein Passwort bekommen. Führ die Befehle oben direkt im Terminal aus."
+      )
     );
   }
-  console.log(`Fertig. ${abbild} liegt auf ${ziel.kennung}.`);
+  console.log(t(`Done. ${abbild} lies on ${ziel.kennung}.`, `Fertig. ${abbild} liegt auf ${ziel.kennung}.`));
 }
 
 if (arg.list) {
@@ -219,17 +280,29 @@ if (arg.list) {
 } else if (typeof arg.checksum === "string") {
   await pruefsumme(arg.checksum);
 } else if (typeof arg.write === "string") {
-  if (typeof arg.to !== "string") fail("Es fehlt --to mit der Kennung des Ziels, etwa --to disk4.");
+  if (typeof arg.to !== "string") {
+    fail(t("--to with the id of the target is missing, --to disk4 for instance.", "Es fehlt --to mit der Kennung des Ziels, etwa --to disk4."));
+  }
   schreiben(arg.write, arg.to);
 } else {
   console.log(
-    [
-      "Datenträger-Werkzeug",
-      "",
-      "  --list                          zeigt angeschlossene externe Datenträger",
-      "  --checksum <datei>             sha256 einer Abbilddatei",
-      "  --write <abbild> --to disk4 prüft und zeigt, was passieren würde",
-      "  ... --yes --execute            führt es tatsächlich aus",
-    ].join("\n")
+    t(
+      [
+        "Disk tool",
+        "",
+        "  --list                       shows connected external disks",
+        "  --checksum <file>            sha256 of an image file",
+        "  --write <image> --to disk4   checks and shows what would happen",
+        "  ... --yes --execute          actually runs it",
+      ].join("\n"),
+      [
+        "Datenträger-Werkzeug",
+        "",
+        "  --list                          zeigt angeschlossene externe Datenträger",
+        "  --checksum <datei>             sha256 einer Abbilddatei",
+        "  --write <abbild> --to disk4 prüft und zeigt, was passieren würde",
+        "  ... --yes --execute            führt es tatsächlich aus",
+      ].join("\n")
+    )
   );
 }
