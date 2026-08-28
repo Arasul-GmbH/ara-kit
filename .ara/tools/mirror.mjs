@@ -49,6 +49,7 @@ import { t } from "./lib/i18n.mjs";
 import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
 import { APPLEDOUBLE, packEnv, releaseVersion } from "./lib/install.mjs";
 import { getSecret } from "./lib/secrets.mjs";
+import { STORE_CALL, buyLines, portalBase } from "./lib/licence.mjs";
 
 // ARA_MIRROR weicht vom Standardort ab. Wird vom Selbsttest genutzt, damit er
 // einen echten Spiegel nicht überschreibt.
@@ -88,8 +89,8 @@ async function fetchMirror(base, token) {
     if (response.status === 401 || response.status === 403) {
       throw new Error(
         t(
-          "The portal refused the token. Check in the partner portal whether it is still valid.",
-          "Das Portal hat den Token abgelehnt. Sieh im Partnerportal nach, ob er noch gültig ist."
+          "The portal refused the token. Under devices at https://www.arasul.de/kaufen stands which tokens hold.",
+          "Das Portal hat den Token abgelehnt. Unter Geräte auf https://www.arasul.de/kaufen steht, welche Token gelten."
         )
       );
     }
@@ -153,7 +154,7 @@ async function fetchMirror(base, token) {
 helpOnly(import.meta.url);
 const arg = parseArgs();
 const token = getSecret("ARASUL_TOKEN");
-const base = getSecret("ARASUL_BASIS") || "https://arasul.de";
+const base = portalBase();
 const state = readState();
 
 /**
@@ -272,14 +273,14 @@ if (!token) {
   console.log(
     t(
       "No token stored. Without one the portal does not deliver the installer.\n" +
-        "Every partner gets five download tokens free of charge in the portal, more on request.\n" +
-        "It is a gate in front of the download, not a licence check.\n" +
-        "Store one with: node .ara/tools/secrets.mjs --set ARASUL_TOKEN\n" +
+        buyLines().join("\n") +
+        "\n" +
+        `Hand it in with: ${STORE_CALL}\n` +
         "Without the artifact everything works except the installation and statements about the product.",
-      "Kein Token hinterlegt. Ohne eines liefert das Portal den Installer nicht aus.\n" +
-        "Jeder Partner bekommt im Portal fünf Download-Token kostenlos, weitere auf Nachfrage.\n" +
-        "Es ist eine Schranke vor dem Download, keine Lizenzprüfung.\n" +
-        "Hinterlegen mit: node .ara/tools/secrets.mjs --set ARASUL_TOKEN\n" +
+      "Kein Token hinterlegt. Ohne einen liefert das Portal den Installer nicht aus.\n" +
+        buyLines().join("\n") +
+        "\n" +
+        `Hineingeben mit: ${STORE_CALL}\n` +
         "Ohne Artefakt funktioniert alles außer der Installation und Aussagen über das Produkt."
     )
   );
