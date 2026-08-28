@@ -41,7 +41,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
@@ -109,6 +109,7 @@ import { HELP_SPLIT, ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatt
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
+import { keychainAvailable } from "./lib/secrets.mjs";
 
 helpOnly(import.meta.url);
 
@@ -142,6 +143,53 @@ async function checkAsync(name, fn) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+/**
+ * Was beim Durchgehen der Dateien liegen bleibt.
+ *
+ * Der Spiegel ist fremdes Gut: das Artefakt des Produkts, geholt und nie vom
+ * Kit geschrieben. Am 28.08.2026 stand er nach der ersten echten Installation
+ * im Ordner, und drei Pruefungen wurden rot, weil ein anderes Haus in seinen
+ * Dokumenten Gedankenstriche setzt, auf eigene Dateien verweist und eigene
+ * Befehle nennt. Gemessen war der Arbeitsordner und nicht das Kit.
+ */
+const MIRROR_DIR = join(ROOT, ".ara", "mirror");
+
+function skipEntry(path, name) {
+  return name.startsWith(".git") || name === "node_modules" || path === MIRROR_DIR;
+}
+
+/**
+ * Ein Trockenlauf laesst die Akten, wie sie waren. Das ist seine Zusage.
+ *
+ * Hier stand vorher ein `rmSync` auf `devices/<name>`, aufgeraeumt nach einem
+ * Lauf, der nichts anlegt. Die Namen waren `orin`, `mac`, `thor`,
+ * `dgx-spark`, und genau so heisst ein echtes Geraet: das Wissen des Kits
+ * empfiehlt, ein Geraet ohne Kunden nach seinem Modell zu benennen. Am
+ * 28.08.2026 loeschte ein Selbsttestlauf deshalb zweimal die Akte eines
+ * frisch installierten Orin samt Laufzettel. Ein Selbsttest fasst die Ordner
+ * des Nutzers nicht an, er prueft sie: der Stand vorher gegen den Stand
+ * danach. Ob dort schon eine Akte lag, entscheidet der Nutzer und nicht der
+ * Test.
+ */
+function akteStand(name) {
+  const akte = join(ROOT, "devices", name, "device.md");
+  return {
+    ordner: existsSync(join(ROOT, "devices", name)),
+    inhalt: existsSync(akte) ? readFileSync(akte, "utf8") : null,
+  };
+}
+
+function pruefeAkteUnveraendert(name, vorher) {
+  const nachher = akteStand(name);
+  assert(
+    nachher.ordner === vorher.ordner,
+    vorher.ordner
+      ? `der Trockenlauf hat die Akte devices/${name} entfernt`
+      : `der Trockenlauf hat eine Akte devices/${name} angelegt`
+  );
+  assert(nachher.inhalt === vorher.inhalt, `der Trockenlauf hat devices/${name}/device.md geaendert`);
 }
 
 /**
@@ -637,6 +685,7 @@ check("Trockenlauf: Thor und DGX Spark laufen ohne Gerät durch", () => {
   // Verifiziert wird dabei nichts, und der Lauf sagt das auch.
   const spiegel = attrappenSpiegel({ "thor-128": "emulation", "dgx-spark": "follow-up" });
   const work = mkdtempSync(join(tmpdir(), "ara-trocken-"));
+  const vorher = { thor: akteStand("thor"), "dgx-spark": akteStand("dgx-spark") };
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   try {
@@ -699,7 +748,7 @@ check("Trockenlauf: Thor und DGX Spark laufen ohne Gerät durch", () => {
   } finally {
     rmSync(work, { recursive: true, force: true });
     rmSync(spiegel, { recursive: true, force: true });
-    for (const n of ["thor", "dgx-spark"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    for (const n of ["thor", "dgx-spark"]) pruefeAkteUnveraendert(n, vorher[n]);
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -711,6 +760,7 @@ check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
   // Geräte es heute tragen, dass Fragen auch ohne Gerät beantwortet werden, und
   // ein ruhiger Satz zur Lizenz.
   const work = mkdtempSync(join(tmpdir(), "ara-mac-"));
+  const vorher = { mac: akteStand("mac"), orin: akteStand("orin") };
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   try {
@@ -736,7 +786,7 @@ check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
     assert(!/Ohne passendes Gerät/.test(orin.stdout), "ein unterstütztes Gerät bekommt den Abschluss auch");
   } finally {
     rmSync(work, { recursive: true, force: true });
-    for (const n of ["mac", "orin"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    for (const n of ["mac", "orin"]) pruefeAkteUnveraendert(n, vorher[n]);
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -865,6 +915,7 @@ check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht m
   // der Kaufweg unter den nächsten Schritten: Link, Frage im Interview, und wie
   // der eingefügte Token hineinkommt. Liegt ein Token, steht dort der Aufruf.
   const work = mkdtempSync(join(tmpdir(), "ara-kauf-orin-"));
+  const vorher = { orin: akteStand("orin"), mac: akteStand("mac") };
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   try {
@@ -900,7 +951,7 @@ check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht m
     return "ohne Token Kaufweg, mit Token keiner";
   } finally {
     rmSync(work, { recursive: true, force: true });
-    for (const n of ["orin", "mac"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    for (const n of ["orin", "mac"]) pruefeAkteUnveraendert(n, vorher[n]);
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -1279,6 +1330,54 @@ check("Ein Geheimnis lässt sich auch ohne Terminal hinterlegen", () => {
   }
 });
 
+check("Was in den Schlüsselbund geht, kommt gleich wieder heraus", () => {
+  // Der Fehler, an dem der erste Anlauf von G1 hing, am 28.08.2026. Das Kit
+  // legte das Token im Schlüsselbund ab, `security` meldete Erfolg, und der
+  // Eintrag war leer: `add-generic-password -w` fragt den Wert zweimal ab, zur
+  // Bestätigung, und wer ihn einmal über die Leitung schickt, bekommt
+  // "passwords don't match", einen leeren Eintrag und trotzdem Status 0.
+  // Getroffen hätte es das Startpasswort und den Kit-Schlüssel: beide werden
+  // einmal genannt, und danach wäre der Zugang zum Gerät weg gewesen.
+  //
+  // Ein Eintrag, der existiert, ist kein Eintrag, der stimmt. Deshalb wird hier
+  // wirklich geschrieben und wirklich zurückgelesen, an einem Wegwerf-Kit,
+  // dessen Profil den Schlüsselbund wählt, unter einem eigenen Namen.
+  if (!keychainAvailable()) return "übersprungen, hier gibt es keinen Schlüsselbund";
+  const name = "ARA_SELFTEST_BUND";
+  const wert = "sehr-geheim-0123456789";
+  const work = mkdtempSync(join(tmpdir(), "ara-bund-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara", "tools"), join(fork, ".ara", "tools"), { recursive: true });
+  mkdirSync(join(fork, "business"), { recursive: true });
+  writeFileSync(join(fork, "business", "profile.md"), "---\nlanguage: de\nsecrets_store: keychain\n---\n");
+  try {
+    const run = spawnSync("node", [join(fork, ".ara", "tools", "secrets.mjs"), "--set", name], {
+      encoding: "utf8",
+      input: `${wert}\n`,
+    });
+    assert(run.status === 0, `Hinterlegen im Schlüsselbund fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(!existsSync(join(fork, ".env")), "der Wert landete in der .env statt im Schlüsselbund");
+    assert(!new RegExp(wert).test(`${run.stdout}${run.stderr}`), "der Wert steht in der Ausgabe");
+
+    const zurueck = spawnSync("node", ["-e", `import(${JSON.stringify(join(fork, ".ara", "tools", "lib", "secrets.mjs"))}).then((m) => process.stdout.write(String((m.getSecret(${JSON.stringify(name)}) || "").length)))`], {
+      encoding: "utf8",
+    });
+    assert(zurueck.status === 0, `Zurücklesen fehlgeschlagen: ${zurueck.stderr}`);
+    assert(
+      zurueck.stdout === String(wert.length),
+      `der Schlüsselbund gibt ${zurueck.stdout} Zeichen zurück, hinein gingen ${wert.length}`
+    );
+    return `${wert.length} Zeichen hinein, ${zurueck.stdout} zurück`;
+  } finally {
+    if (platform() === "darwin") {
+      spawnSync("security", ["delete-generic-password", "-a", name, "-s", "ara-kit"], { encoding: "utf8" });
+    } else {
+      spawnSync("secret-tool", ["clear", "service", "ara-kit", "account", name], { encoding: "utf8" });
+    }
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu werden", async () => {
   // Fund 1 des zweiten Fremdtests am 28.08.2026. Die Installation legte das
   // Startpasswort des Administrators ordentlich unter ARASUL_START_<gerät> ab,
@@ -1326,11 +1425,15 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
       if (request.method !== "POST" || !["/api/auth/login", "/api/sitzung"].includes(request.url)) {
         return antwort(404, { error: { message: "Diesen Weg gibt es hier nicht" } });
       }
-      const nutzer = rumpf?.benutzer ?? rumpf?.konto;
-      if (rumpf?.passwort !== passwort || !["admin", "chef"].includes(nutzer)) {
+      const nutzer = rumpf?.username ?? rumpf?.benutzer ?? rumpf?.konto;
+      const wort = rumpf?.password ?? rumpf?.passwort;
+      if (wort !== passwort || !["admin", "chef"].includes(nutzer)) {
         return antwort(401, { error: { message: "Anmeldung abgelehnt" } });
       }
-      antwort(200, { data: { token: "ey.selbsttest.sitzung", gilt_bis: "2026-08-29T00:00:00Z" } });
+      // Ohne Umschlag, so wie das Geraet am 28.08.2026 wirklich antwortete. Die
+      // Attrappe legte den Ausweis vorher in ein `data`, und genau darum fiel
+      // nicht auf, dass das Kit alles wegwarf, was nicht in `data` steht.
+      antwort(200, { success: true, token: "ey.selbsttest.sitzung", expiresAt: "2026-08-29T00:00:00Z" });
     });
   });
   await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
@@ -1365,17 +1468,45 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
     assert(!new RegExp(passwort).test(`${run.stdout}${run.stderr}`), "das Startpasswort steht in der Ausgabe");
     const angemeldet = gesehen.find((eintrag) => eintrag.pfad === "/api/auth/login");
     assert(angemeldet, `es wurde nicht angemeldet: ${JSON.stringify(gesehen)}`);
-    assert(angemeldet.rumpf?.passwort === passwort, "das Passwort kam nicht am Gerät an");
+    assert(angemeldet.rumpf?.password === passwort, "das Passwort kam nicht am Gerät an");
+    assert(
+      angemeldet.rumpf?.username === "admin",
+      `der Benutzername kam unter dem falschen Feld an: ${JSON.stringify(Object.keys(angemeldet.rumpf || {}))}`
+    );
 
     // 3. Für ein Skript: nur der Ausweis, ohne Satz drumherum.
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login", "--token"], env);
     assert(run.stdout === "ey.selbsttest.sitzung", `--token gibt nicht nur den Ausweis: ${run.stdout}`);
 
+    // 3b. Heißen die Felder am Gerät anders, gibt der Mensch sie im Aufruf mit.
+    //     Ohne diesen Weg blieb ihm am 28.08.2026 nur, den Fehler zu lesen: die
+    //     Meldung nannte die Felder, mit denen gerufen wurde, und keinen Schalter,
+    //     mit dem er andere hätte mitgeben können.
+    run = await toolAsync(
+      "device.mjs",
+      ["--name", name, "--admin-login", "--login-user-field", "benutzer", "--login-password-field", "passwort"],
+      env
+    );
+    assert(run.status === 0, `Anmeldung mit eigenen Feldnamen fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    const mitFeldern = gesehen.at(-1);
+    assert(
+      mitFeldern.rumpf?.benutzer === "admin" && mitFeldern.rumpf?.passwort === passwort,
+      `die Feldnamen aus dem Aufruf kamen nicht an: ${JSON.stringify(Object.keys(mitFeldern.rumpf || {}))}`
+    );
+
+    // 3c. Und ein Gerät, das seine Auskunft doch in einen Umschlag legt, wird
+    //     weiter verstanden: der Ausweis wird in beidem gefunden.
+    assert(pickToken({ data: { token: "ey.im.umschlag" } }) === "ey.im.umschlag", "der Ausweis im Umschlag geht verloren");
+
     // 4. Sagt das Artefakt einen anderen Weg, gilt der und nicht der Rückfall.
     mkdirSync(mirror, { recursive: true });
     writeFileSync(
       join(mirror, "arasul-release.json"),
-      JSON.stringify({ fassung: "9.9.9", einstiegspunkt: "install.sh", anmeldung: { pfad: "/api/sitzung", benutzer: "chef" } })
+      JSON.stringify({
+        fassung: "9.9.9",
+        einstiegspunkt: "install.sh",
+        anmeldung: { pfad: "/api/sitzung", benutzer: "chef", benutzerfeld: "benutzer", passwortfeld: "passwort" },
+      })
     );
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], env);
     assert(run.status === 0, `Anmeldung über den Weg aus dem Artefakt fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -1440,9 +1571,21 @@ await checkAsync("Spiegel holt und packt aus", async () => {
   const base = `http://127.0.0.1:${server.address().port}`;
 
   try {
-    const env = { ARASUL_BASIS: base, ARA_MIRROR: targetMirror };
+    // Das Token kommt aus einer umgelenkten .env, und dann zaehlt nur sie: kein
+    // Schluesselbund, keine Prozessumgebung. Vorher stand es in der Umgebung,
+    // und die kommt in `getSecret` zuletzt: auf einem Rechner, der einmal
+    // wirklich installiert hat, lag im Schluesselbund ein echtes Token, das
+    // stach, und der Fall "abgelehnt" trat nie ein. Gemessen war dann der
+    // Rechner und nicht das Kit.
+    const envFile = join(work, "token.env");
+    const mitToken = (wert) => {
+      // Die Adresse des Portals ist selbst ein hinterlegter Wert, also gehoert
+      // sie in dieselbe Datei: sonst fragt das Werkzeug beim echten Portal.
+      writeFileSync(envFile, `ARASUL_TOKEN=${wert}\nARASUL_BASIS=${base}\n`);
+      return { ARA_MIRROR: targetMirror, ARA_ENV_FILE: envFile };
+    };
 
-    let run = await toolAsync("mirror.mjs", ["--refresh"], { ...env, ARASUL_TOKEN: "gueltig" });
+    let run = await toolAsync("mirror.mjs", ["--refresh"], mitToken("gueltig"));
     assert(run.status === 0, `Holen fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(existsSync(join(targetMirror, "VERSION")), "Wurzelordner nicht abgeschnitten");
     assert(
@@ -1453,11 +1596,11 @@ await checkAsync("Spiegel holt und packt aus", async () => {
     assert(state.version === "1.0.0", "Produktversion nicht übernommen");
 
     // Ein zweiter Lauf ohne --refresh darf nichts holen.
-    run = await toolAsync("mirror.mjs", [], { ...env, ARASUL_TOKEN: "gueltig" });
+    run = await toolAsync("mirror.mjs", [], mitToken("gueltig"));
     assert(/aktuell/.test(run.stdout), "frischer Spiegel wird unnötig neu geholt");
 
     // Die Begründung des Portals muss durchgereicht werden.
-    run = await toolAsync("mirror.mjs", ["--refresh"], { ...env, ARASUL_TOKEN: "abgelaufen" });
+    run = await toolAsync("mirror.mjs", ["--refresh"], mitToken("abgelaufen"));
     assert(run.status !== 0, "abgelehnter Token führt nicht zum Fehler");
     assert(/Wartungs-Abo/.test(run.stdout), "Begründung des Portals fehlt in der Meldung");
   } finally {
@@ -2858,6 +3001,54 @@ await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", asy
   assert(gefunden.some((zeile) => /Firewall/.test(zeile)), "die Firewall fehlt in der Liste");
   assert(!gefunden.some((zeile) => /Container gestartet/.test(zeile)), "eine gelungene Zeile steht in der Liste");
 
+  // Und dasselbe noch einmal in der Menge, in der es wirklich vorkommt. Am
+  // 28.08.2026 lief die Installation auf einem Orin durch, und die beiden
+  // Absagen standen wieder nicht in der Liste: davor lagen zwölf Warnungen,
+  // dieselbe achtmal mit wechselndem Zeitstempel, und die Grenze war erreicht,
+  // bevor die Absagen an der Reihe waren. Eine Liste, die abschneidet, muss die
+  // Absage vor der Warnung nehmen, sonst misst sie das Falsche.
+  const laut = [
+    "[0;34m[INFO][0m Docker gefunden.",
+    "[] Configuration has 2 warning(s)",
+    "⚠ 2 warning(s) found",
+    ...Array.from(
+      { length: 8 },
+      (_, i) => `time="2026-08-28T20:5${i}:33+02:00" level=warning msg="No services to build"`
+    ),
+    "[1;33m[WARNING][0m Der Browser warnt, bis das CA-Zertifikat verteilt ist",
+    "[0;34m[INFO][0m SSH-Hardening wird angewendet...",
+    "ERROR: This script must be run as root (sudo)",
+    "[1;33m[WARNING][0m SSH-Hardening fehlgeschlagen (nicht kritisch)",
+    "[0;34m[INFO][0m Firewall wird konfiguriert...",
+    "ERROR: This script must be run as root (sudo)",
+    "[1;33m[WARNING][0m Firewall-Setup fehlgeschlagen (nicht kritisch)",
+    "[0;32m[SUCCESS][0m Fertig.",
+  ].join("\n");
+  const ausDerMenge = troubles(laut);
+  assert(
+    ausDerMenge.some((zeile) => /SSH-Hardening fehlgeschlagen/.test(zeile)),
+    `die Härtung faellt aus der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    ausDerMenge.some((zeile) => /Firewall-Setup fehlgeschlagen/.test(zeile)),
+    `die Firewall faellt aus der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    ausDerMenge.some((zeile) => /must be run as root/.test(zeile)),
+    `der Grund faellt aus der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    ausDerMenge.filter((zeile) => /No services to build/.test(zeile)).length === 1,
+    `dieselbe Warnung steht mehrfach in der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    !ausDerMenge.some((zeile) => /\x1B\[/.test(zeile)),
+    "Farbcodes stehen in der Liste"
+  );
+  // Abgeschnitten wird nicht verschwiegen.
+  const eng = troubles(laut, { limit: 3 });
+  assert(eng.length === 4 && /4 weitere Zeilen/.test(eng[3]), `das Abschneiden wird nicht gesagt: ${JSON.stringify(eng)}`);
+
   // Am laufenden Installer, nicht nur am Text.
   const original = process.stdout.write.bind(process.stdout);
   process.stdout.write = () => true;
@@ -2875,7 +3066,7 @@ await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", asy
   assert(/arasul\.troubles/.test(werkzeug), "device.mjs nimmt die gesammelten Zeilen nicht auf");
   const wissen = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
   assert(/Was der Installer nicht konnte/.test(wissen), "das Verfahren sagt nichts über die Absagen des Installers");
-  return `${gefunden.length} Absagen aus ${ausgabe.split("\n").length} Zeilen`;
+  return `${gefunden.length} Absagen aus ${ausgabe.split("\n").length} Zeilen, und aus ${laut.split("\n").length} lauten Zeilen die drei, auf die es ankommt`;
 });
 
 await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {
@@ -3989,8 +4180,8 @@ check("Keine Gedankenstriche im Kit", () => {
   const offenders = [];
   const scan = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);
+      if (skipEntry(path, entry.name)) continue;
       if (entry.isDirectory()) {
         scan(path);
         continue;
@@ -4201,32 +4392,58 @@ check("Jede Route steht in beiden Fassungen des Blattes", () => {
   assert(abweichend.length === 0, `Routen nur in einer Sprache:\n    ${abweichend.join("\n    ")}`);
 });
 
+check("Der Selbsttest loescht keine Akte, die ihm nicht gehoert", () => {
+  // Am 28.08.2026 raeumte dieser Selbsttest nach einem Trockenlauf `devices/orin`
+  // und `devices/mac` weg, obwohl ein Trockenlauf nichts anlegt. Auf dem Rechner,
+  // auf dem ein Orin wirklich stand, loeschte jeder Lauf dessen Akte samt
+  // Laufzettel. Wer hier einen Namen loescht, der nicht dem Selbsttest gehoert,
+  // loescht die Arbeit eines Menschen.
+  const quelle = readFileSync(join(ROOT, ".ara", "tools", "selftest.mjs"), "utf8");
+  const treffer = [];
+  const muster = /rmSync\(\s*join\(\s*ROOT\s*,\s*"(devices|customers|apps)"\s*,\s*"([^"]+)"/g;
+  for (const fund of quelle.matchAll(muster)) {
+    const [, ordner, name] = fund;
+    if (/^_?selftest-/.test(name)) continue;
+    treffer.push(`${ordner}/${name}`);
+  }
+  assert(treffer.length === 0, `geloescht wird, was dem Nutzer gehoert: ${treffer.join(", ")}`);
+  return "devices, customers und apps bleiben dem Nutzer";
+});
+
 check("Ein frischer Klon spricht Englisch, das Profil stellt um", () => {
   // Vor `/init` gibt es kein Profil, und dann gilt Englisch. Geprueft an einem
   // Werkzeug, das ohne alles laeuft: die Lage der Befehle.
-  const englisch = tool("commands.mjs", ["--role", "partner"], "", { ARA_LANGUAGE: "" });
-  assert(englisch.status === 0, `englischer Lauf fehlgeschlagen: ${englisch.stderr}`);
-  assert(/^Branch: partner, language: en$/m.test(englisch.stdout), `keine englische Ausgabe:\n${englisch.stdout}`);
+  //
+  // Beide Faelle laufen in einem Wegwerf-Klon, und zwar seit dem 28.08.2026:
+  // vorher lief der englische Fall im echten Kit, und der hat dort ein Profil,
+  // sobald jemand einmal `/init` gerufen hat. Dann war die Zeile deutsch, die
+  // Pruefung rot, und gemessen war nicht das Kit, sondern der Arbeitsordner.
+  const fall = (profil) => {
+    const dir = mkdtempSync(join(tmpdir(), "ara-lang-"));
+    try {
+      cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
+      if (profil) {
+        mkdirSync(join(dir, "business"), { recursive: true });
+        writeFileSync(join(dir, "business", "profile.md"), profil);
+      }
+      const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--role", "partner"], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+      assert(run.status === 0, `Lauf fehlgeschlagen: ${run.stderr}`);
+      return run.stdout;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
 
-  const deutsch = tool("commands.mjs", ["--role", "partner"]);
-  assert(deutsch.status === 0, `deutscher Lauf fehlgeschlagen: ${deutsch.stderr}`);
-  assert(/^Zweig: Partner, Sprache: de$/m.test(deutsch.stdout), `keine deutsche Ausgabe:\n${deutsch.stdout}`);
+  const englisch = fall(null);
+  assert(/^Branch: partner, language: en$/m.test(englisch), `keine englische Ausgabe:\n${englisch}`);
 
   // Und die Sprache steht wirklich im Profil, nicht nur in der Umgebung.
-  const dir = mkdtempSync(join(tmpdir(), "ara-lang-"));
-  try {
-    cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
-    mkdirSync(join(dir, "business"), { recursive: true });
-    writeFileSync(join(dir, "business", "profile.md"), "---\nrole: partner\nlanguage: de\n---\n\nMeins.\n");
-    const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs")], {
-      encoding: "utf8",
-      cwd: dir,
-      env: { ...process.env, ARA_LANGUAGE: "" },
-    });
-    assert(/^Zweig: Partner, Sprache: de$/m.test(run.stdout), `das Profil stellt nicht um:\n${run.stdout}`);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  const deutsch = fall("---\nrole: partner\nlanguage: de\n---\n\nMeins.\n");
+  assert(/^Zweig: Partner, Sprache: de$/m.test(deutsch), `das Profil stellt nicht um:\n${deutsch}`);
 });
 
 check("Keine Ausgabe steht nur auf Deutsch da", () => {
@@ -4327,8 +4544,8 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   const files = [];
   const collect = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);
+      if (skipEntry(path, entry.name)) continue;
       if (entry.isDirectory()) collect(path);
       else if (/\.(md|json)$/.test(entry.name)) files.push(path);
     }
@@ -4370,8 +4587,8 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   const collect = (dir) => {
     if (dir === template) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);
+      if (skipEntry(path, entry.name)) continue;
       if (entry.isDirectory()) collect(path);
       else if (/\.(md|json)$/.test(entry.name)) files.push(path);
     }

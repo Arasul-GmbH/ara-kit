@@ -46,7 +46,9 @@
  * does, --admin-login gives a session: the start password from the installation goes
  * from the secret store straight into the login, back comes a credential, and the
  * password is never displayed. Route and user name come from the artifact when it
- * names them, otherwise from --login-path and --login-user. See lib/session.mjs.
+ * names them, otherwise from --login-path and --login-user. What the two fields of the
+ * login are called there is --login-user-field and --login-password-field. See
+ * lib/session.mjs.
  *
  * The trace search distinguishes three situations: the platform runs, only remains
  * lie there, or there is nothing. Installing over remains happens only when
@@ -106,7 +108,8 @@
  * Installation geht dabei aus der Geheimnis-Ablage direkt in die Anmeldung,
  * zurück kommt ein Ausweis, und angezeigt wird das Passwort nie. Weg und
  * Benutzername kommen aus dem Artefakt, wenn es sie nennt, sonst aus --login-path
- * und --login-user. Siehe lib/session.mjs.
+ * und --login-user. Wie die beiden Felder der Anmeldung dort heißen, sagen
+ * --login-user-field und --login-password-field. Siehe lib/session.mjs.
  *
  * Die Spurensuche unterscheidet drei Lagen: die Plattform läuft, es liegen nur
  * Reste da, oder da ist nichts. Über Reste hinweg wird nur installiert, wenn
@@ -493,6 +496,8 @@ async function adminLogin() {
   const spec = loginSpec(releaseData(), {
     path: str(arg["login-path"]),
     user: str(arg["login-user"]),
+    userField: str(arg["login-user-field"]),
+    passwordField: str(arg["login-password-field"]),
   });
   let base;
   try {
@@ -530,6 +535,22 @@ async function adminLogin() {
         ) + reason(answer)
       );
     }
+    if (answer.status === 429) {
+      // Die Anmeldung ist begrenzt, und das ist keine Fehlbedienung. Ohne
+      // diesen Zweig las die naechste Zeile sich, als stimmten die Feldnamen
+      // nicht: am 28.08.2026 war das nach ein paar Laeufen der Fall, und
+      // check-docs.mjs klopft bei jedem Lauf einmal mit an.
+      fail(
+        t(
+          `${place} is counting the logins and refuses further ones for now (429). Wait, then the
+` +
+            "same call again. Every run of check-docs.mjs knocks here once as well.\n",
+          `${place} zählt die Anmeldungen und weist weitere vorerst ab (429). Warte, dann derselbe
+` +
+            "Aufruf noch einmal. Jeder Lauf von check-docs.mjs klopft hier ebenfalls einmal an.\n"
+        ) + reason(answer)
+      );
+    }
     if (answer.status === 401 || answer.status === 403) {
       fail(
         t(
@@ -546,15 +567,17 @@ async function adminLogin() {
       t(
         `${place} did not accept the login (status ${answer.status}).\n` +
           `Called was POST ${spec.path} with the fields ${spec.userField} and ${spec.passwordField}.\n` +
-          "Which ones this device expects stands in the API reference: node .ara/tools/mirror.mjs --docs\n",
+          "Which ones this device expects stands in the API reference: node .ara/tools/mirror.mjs --docs\n" +
+          "Pass them from there: --login-user-field <name> --login-password-field <name>.\n",
         `${place} hat die Anmeldung nicht angenommen (Status ${answer.status}).\n` +
           `Gerufen wurde POST ${spec.path} mit den Feldern ${spec.userField} und ${spec.passwordField}.\n` +
-          "Welche dieses Gerät erwartet, steht in der API-Referenz: node .ara/tools/mirror.mjs --docs\n"
+          "Welche dieses Gerät erwartet, steht in der API-Referenz: node .ara/tools/mirror.mjs --docs\n" +
+          "Von dort mitgeben: --login-user-field <name> --login-password-field <name>.\n"
       ) + reason(answer)
     );
   }
 
-  const token = pickToken(answer.data);
+  const token = pickToken(answer.data ?? answer.body);
   if (!token) {
     fail(
       t(

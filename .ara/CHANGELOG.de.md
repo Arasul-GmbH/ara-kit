@@ -15,6 +15,40 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.5 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Eine wegen zu vieler Versuche abgewiesene Anmeldung (429) las sich, als stimmten die Feldnamen nicht. Das Gerät zählt die Anmeldungen, zehn je fünfzehn Minuten, und jeder Lauf von `check-docs.mjs` klopft dort ebenfalls einmal an. Sie bekommt jetzt eine eigene Antwort: warten, dann derselbe Aufruf noch einmal.
+- Die Route des Portals stand in `device.md` ohne ihren Rechnernamen da, als `GET /api/download`. Der Dokumentations-Selbsttest hielt sie deshalb gegen das Gerät, wo es sie nicht gibt, und meldete das Wissen des Kits als falsch. Sie nennt jetzt ihren Rechnernamen, und alle 20 Routen des Wissens gibt es an einem Gerät mit 0.3.0.
+
+## 0.14.4 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Der Selbsttest löschte Akten, die ihm nicht gehörten. Nach Trockenläufen, die nichts anlegen, räumte er `devices/orin`, `devices/mac`, `devices/thor` und `devices/dgx-spark` weg, und genau so heißt ein Gerät ohne Kunden nach dem eigenen Wissen des Kits. Am 28.08.2026 löschte jeder Selbsttestlauf die Akte und den Laufzettel eines frisch installierten Jetson AGX Orin. Er vergleicht jetzt den Stand vorher gegen den Stand danach, statt aufzuräumen, und eine eigene Prüfung verbietet, unter `devices/`, `customers/` oder `apps/` etwas zu löschen, das der Selbsttest nicht selbst angelegt hat.
+- `--admin-login` konnte an einem echten Gerät nicht funktionieren. Jede Antwort ohne `data`-Umschlag fiel in `call()` weg, und die Anmeldung von Produkt 0.3.0 antwortet ohne einen: das Kit sagte "kein Ausweis in der Antwort", während er dort stand. Die Antwort trägt jetzt `body` neben `data`.
+- Die Felder der Anmeldung hießen im Rückfall des Kits `benutzer` und `passwort`. An einem Jetson AGX Orin mit 0.3.0 gemessen: das Gerät weist die beiden mit einem Validierungsfehler ab und nimmt `username` und `password`. Der Rückfall sagt jetzt, was gemessen wurde. Was das Artefakt sagt, sticht ihn weiter, und was im Aufruf steht, sticht beides.
+- `--login-user-field` und `--login-password-field` geben die beiden Feldnamen im Aufruf mit, und die Absage nennt sie. Vorher sagte der Fehler, mit welchen Feldern gerufen wurde, und bot keinen Weg, andere mitzugeben.
+- Die Attrappe im Selbsttest antwortete, wie das Kit es sich wünschte, mit dem Ausweis in einem `data`-Umschlag. Sie antwortet jetzt wie das echte Gerät, und der Fall mit Umschlag wird daneben geprüft.
+
+## 0.14.3 (2026-08-28)
+
+Kontrakt: bis 3
+
+- "Was der Installer nicht konnte" ließ genau das weg, wofür es da ist. Gemessen an einem Jetson AGX Orin, erste echte Installation: die Liste hörte bei zwölf Zeilen auf, und die zwölf waren das Rauschen. `SSH-Hardening fehlgeschlagen`, `Firewall-Setup fehlgeschlagen` und `must be run as root` kamen später in der Ausgabe und fielen hinten heraus, und das Gerät ging als fertig durch, ohne Härtung und ohne Firewall. Dieselbe Warnung mit wechselndem Zeitstempel zählt jetzt als eine Zeile, Absagen kommen vor Warnungen, wenn die Liste abschneiden muss, Farbcodes fallen weg, und was abgeschnitten wurde, wird mit seiner Zahl gesagt.
+- Der Selbsttest maß das an sechs erfundenen Zeilen, wo nichts etwas verdrängen kann. Er misst es jetzt ein zweites Mal in der Menge, in der es wirklich vorkommt.
+- Drei Prüfungen maßen den Arbeitsordner statt das Kit und wurden auf jedem Rechner rot, der einmal installiert hat: der Spiegel ist das Artefakt des Produkts, geholt und nie vom Kit geschrieben, und er trägt Gedankenstriche, Verweise auf eigene Dateien und eigene Befehle. Gedankenstriche, Verweise und Befehle halten jetzt vor `.ara/mirror/` an.
+- `Spiegel holt und packt aus` reichte sein Token über die Prozessumgebung, und die kommt in `getSecret` zuletzt. Mit einem echten Token im Schlüsselbund trat der abgelehnte Fall nie ein. Die Prüfung läuft jetzt gegen eine umgelenkte `.env`, und dann zählt nur sie.
+
+## 0.14.2 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Ein Geheimnis ging in den macOS-Schlüsselbund und war danach nicht da. `security add-generic-password -w` fragt den Wert zweimal ab, zur Bestätigung, und wer ihn einmal über die Leitung schickt, bekommt "passwords don't match", einen leeren Eintrag und trotzdem Status 0: das Kit meldete Erfolg und hatte nichts abgelegt. Gefunden beim Messen der Abnahme A2 an einem Jetson AGX Orin, wo das Download-Token der leere Eintrag war und die Installation daran nicht erreichbar war. Der Wert geht jetzt zweimal hinein und wird danach zurückgelesen, und ein Wert, der sich anders zurückliest, ist ein Fehler und kein abgelegtes Geheimnis. Getroffen hätte es auch das Startpasswort und den Kit-Schlüssel, und beide werden genau einmal genannt.
+- Der Selbsttest schreibt einmal wirklich in den Schlüsselbund und liest zurück, unter einem eigenen Namen, den er wieder wegräumt, denn ein Eintrag, der existiert, ist kein Eintrag, der stimmt.
+- `Ein frischer Klon spricht Englisch` maß den Arbeitsordner statt das Kit: der englische Fall lief im echten Kit, und das hat ein Profil, sobald jemand einmal `/init` gerufen hat. Beide Fälle laufen jetzt in einem Wegwerf-Klon.
+
 ## 0.14.1 (2026-08-28)
 
 Kontrakt: bis 3

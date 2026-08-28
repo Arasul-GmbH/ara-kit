@@ -13,6 +13,40 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.5 (2026-08-28)
+
+Contract: up to 3
+
+- A refused login because of too many attempts (429) read as if the field names were wrong. The device counts logins, ten per fifteen minutes, and every run of `check-docs.mjs` knocks there once as well. It now gets its own answer: wait, then the same call again.
+- The portal route in `device.md` stood there without its host, as `GET /api/download`. The documentation self-test therefore held it against the device, where it does not exist, and reported the kit's knowledge as wrong. It now names its host, and all 20 routes of the knowledge exist at a device with 0.3.0.
+
+## 0.14.4 (2026-08-28)
+
+Contract: up to 3
+
+- The self-test deleted device files that were not its own. After dry runs, which create nothing, it removed `devices/orin`, `devices/mac`, `devices/thor` and `devices/dgx-spark`, and those are exactly the names the kit's own knowledge recommends for a device without a customer. On 28.08.2026 every self-test run deleted the file and the runsheet of a freshly installed Jetson AGX Orin. It now compares the state before against the state after instead of cleaning up, and a check of its own forbids deleting anything under `devices/`, `customers/` or `apps/` that the self-test did not create itself.
+- `--admin-login` could not work against a real device. Every answer without a `data` envelope was thrown away in `call()`, and the login of product 0.3.0 answers without one: the kit said "no credential in the answer" while it stood there. The answer now carries `body` next to `data`.
+- The fields of the login were called `benutzer` and `passwort` in the kit's fallback. Measured on a Jetson AGX Orin with 0.3.0: the device refuses those with a validation error and takes `username` and `password`. The fallback now says what was measured. What the artifact says still beats it, and what stands in the call beats both.
+- `--login-user-field` and `--login-password-field` pass the two field names in the call, and the refusal names them. Before, the error said which fields it had called with and offered no way to pass different ones.
+- The fake device in the self-test answered the way the kit hoped, with the credential inside a `data` envelope. It now answers the way the real one does, and the envelope case is checked next to it.
+
+## 0.14.3 (2026-08-28)
+
+Contract: up to 3
+
+- "What the installer could not do" left out exactly what it exists for. Measured on a Jetson AGX Orin, first real installation: the list stopped at twelve lines, and the twelve were the noise. `SSH-Hardening fehlgeschlagen`, `Firewall-Setup fehlgeschlagen` and `must be run as root` came later in the output and fell off the end, and the device went through as finished, without hardening and without a firewall. The same warning with a changing timestamp now counts as one line, refusals come before warnings when the list has to cut, colour codes are stripped, and what was cut off is said with its number.
+- The self-test measured that on six lines of made-up output, where nothing can crowd anything out. It now measures it a second time on the volume in which it really occurs.
+- Three checks measured the working directory instead of the kit, and they went red on any computer that had installed once: the mirror is the product's artifact, fetched and never written by the kit, and it carries dashes, links to its own files and commands of its own. Dashes, links and commands now stop at `.ara/mirror/`.
+- `Spiegel holt und packt aus` passed its token through the process environment, and that comes last in `getSecret`. With a real token in the keychain the refused case never happened. It now runs against a redirected `.env`, and then only that counts.
+
+## 0.14.2 (2026-08-28)
+
+Contract: up to 3
+
+- A secret went into the macOS keychain and was not there afterwards. `security add-generic-password -w` asks for the value twice, for confirmation, and whoever sends it once over the pipe gets "passwords don't match", an empty entry and status 0 nevertheless: the kit reported success and had stored nothing. Found while measuring acceptance A2 on a Jetson AGX Orin, where the download token was the empty entry and the installation was unreachable because of it. The value now goes in twice and is read back afterwards, and a value that does not read back the same is an error and not a stored secret. It would have hit the start password and the kit key too, and both are named exactly once.
+- The self-test writes into the real keychain once and reads back, under a name of its own that it clears away again, because an entry that exists is not an entry that is right.
+- `Ein frischer Klon spricht Englisch` measured the working directory instead of the kit: the English case ran in the real kit, and that has a profile as soon as somebody has called `/init` once. Both cases now run in a throwaway clone.
+
 ## 0.14.1 (2026-08-28)
 
 Contract: up to 3

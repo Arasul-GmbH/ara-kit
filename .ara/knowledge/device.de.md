@@ -257,7 +257,7 @@ Was gilt, Stand 2026-08-28, und was du sagen darfst:
    printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store
    ```
 
-   Das Werkzeug prüft die Form, fragt das Portal (`GET /api/download?token=<token>&pruefen=1`,
+   Das Werkzeug prüft die Form, fragt das Portal (`GET https://www.arasul.de/api/download?token=<token>&pruefen=1`,
    ohne das Artefakt zu holen), legt ihn unter `ARASUL_TOKEN` in der gewählten Ablage ab und
    sagt, auf welche Akten eine Installation passt: unterstützt, und Arasul läuft dort nicht.
    **Eine Akte:** es nennt den Aufruf. **Mehrere:** du fragst über das Interview-Werkzeug,
@@ -433,8 +433,10 @@ node .ara/tools/check-docs.mjs --device <gerät>
 
 Nennt das Artefakt in `arasul-release.json` einen anderen Weg oder einen anderen Namen für
 den Administrator, gilt der. Stimmt beides nicht, gibst du es im Aufruf mit:
-`--login-path <weg>` und `--login-user <name>`. Das Werkzeug schreibt jedes Mal dazu, woher
-es seine Angaben hat.
+`--login-path <weg>` und `--login-user <name>`, und wie die beiden Felder der Anmeldung dort
+heißen, sagen `--login-user-field <name>` und `--login-password-field <name>`. Das Werkzeug
+schreibt jedes Mal dazu, woher es seine Angaben hat, und seine Absage nennt die Felder, mit
+denen es gerufen hat.
 
 Weist das Gerät die Anmeldung ab, hat das meist einen von zwei Gründen: der Administrator
 heißt dort anders, oder das Startpasswort wurde am Gerät schon geändert. Dann ist der

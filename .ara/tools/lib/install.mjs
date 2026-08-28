@@ -202,16 +202,56 @@ export function createMasker(secrets = []) {
 const TROUBLE =
   /(fehlgeschlagen|schlug fehl|nicht kritisch|übersprungen|uebersprungen|konnte nicht|verweigert|warnung|warning|failed|failure|skipped|skipping|not critical|must be run as root|permission denied|no such file)/i;
 
+/**
+ * Eine Absage sagt, dass ein Schritt nicht stattgefunden hat. Eine Warnung sagt,
+ * dass etwas auffiel. Beides kommt in die Liste, die Absagen zuerst: wenn
+ * abgeschnitten werden muss, faellt die Warnung und nicht die Absage.
+ */
+const REFUSAL =
+  /(fehlgeschlagen|schlug fehl|nicht kritisch|übersprungen|uebersprungen|konnte nicht|verweigert|failed|failure|skipped|skipping|not critical|must be run as root|permission denied|no such file)/i;
+
+/**
+ * Der Schluessel, an dem zwei Zeilen als dieselbe gelten. Der Installer schreibt
+ * dieselbe Warnung mit einem Zeitstempel davor, und ohne diesen Schritt steht
+ * sie achtmal in der Liste und draengt heraus, worauf es ankommt.
+ */
+function troubleKey(line) {
+  return line
+    .replace(/\btime="[^"]*"\s*/g, "")
+    .replace(/\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}:?\d{2}|Z)?/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 export function troubles(text, { limit = 12 } = {}) {
-  const found = [];
+  const refusals = [];
+  const warnings = [];
+  const seen = new Set();
   for (const raw of String(text || "").split(/\r?\n/)) {
-    const line = scrub(raw).replace(/\s+/g, " ").trim();
+    // Farbcodes sind keine Worte: sie stehen dem Lesen im Weg und sonst nichts.
+    const line = scrub(raw)
+      .replace(/\x1B\[[0-9;]*m/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
     if (!line || !TROUBLE.test(line)) continue;
-    if (found.includes(line)) continue;
-    found.push(line);
-    if (found.length >= limit) break;
+    const key = troubleKey(line);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    (REFUSAL.test(line) ? refusals : warnings).push(line);
   }
-  return found;
+  const found = [...refusals, ...warnings];
+  if (found.length <= limit) return found;
+  // Abgeschnitten wird gesagt, nicht verschwiegen: sonst sieht die Liste
+  // vollstaendig aus und ist es nicht.
+  const rest = found.length - limit;
+  return [
+    ...found.slice(0, limit),
+    t(
+      `and ${rest} more lines of the same kind, in the installer's output`,
+      `und ${rest} weitere Zeilen dieser Art, in der Ausgabe des Installers`
+    ),
+  ];
 }
 
 // --- Der Spiegel -------------------------------------------------------------

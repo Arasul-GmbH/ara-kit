@@ -98,8 +98,9 @@ Danach ist der erste Nachweis der Kontrakt:
 geht das über die Verwaltungsschnittstelle der Plattform. Die Sitzung dafür holt
 `--admin-login`: das Startpasswort aus der Installation geht aus der Geheimnis-Ablage
 direkt in die Anmeldung, zurück kommt ein Ausweis, und angezeigt wird das Passwort nie.
-Was du damit aufrufst, sagt `node .ara/tools/mirror.mjs --docs`. Verfahren in
-`.ara/knowledge/device.de.md`.
+Was du damit aufrufst, sagt `node .ara/tools/mirror.mjs --docs`. Das Gerät zählt die
+Anmeldungen: ein 429 ist keine Fehlbedienung, sondern die Grenze, und dann wird gewartet.
+Verfahren in `.ara/knowledge/device.de.md`.
 
 **Ohne Arasul endet es hier, und zwar hilfreich.** Das Werkzeug schließt von selbst mit
 dem, was Arasul brächte, mit den Geräten, die es tragen, und mit einem ruhigen Satz zur
