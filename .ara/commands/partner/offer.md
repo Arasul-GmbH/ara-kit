@@ -1,155 +1,155 @@
 ---
-description: Angebot mit allen fünf Anlagen, als Markdown und als PDF
-argument-hint: <kunde>
+description: Offer with all five annexes, as Markdown and as PDF
+argument-hint: <customer>
 ---
 
-Angebot für: **$1**
+Offer for: **$1**
 
-Lies `.ara/knowledge/paperwork.md` und arbeite danach. Was hier steht, ist der Weg
-durch dieses Verfahren, nicht ein zweites daneben. Wissen, das dieser Befehl lädt:
+Read `.ara/knowledge/paperwork.md` and work along it. What stands here is the way through
+that procedure, not a second one beside it. Knowledge this command loads:
 `.ara/knowledge/paperwork.md`, `.ara/knowledge/leistungsbeschreibung.md`,
 `.ara/knowledge/pricing.md`, `.ara/knowledge/sales.md`, `.ara/knowledge/crm.md`,
-`.ara/knowledge/live-knowledge.md` für jeden Produktwert. Dazu `business/profile.md`
-und `business/company.md` für Absender und Sätze.
+`.ara/knowledge/live-knowledge.md` for every product value. Plus `business/profile.md` and
+`business/company.md` for sender and rates.
 
-Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere
-Kundenordner, auch nicht, um ein altes Angebot als Muster zu nehmen.
+The paperwork itself is German. `.ara/vorlagen/` is contract text for the DACH market and
+stays in that language, whatever language you speak with the human.
 
-**Kein Argument angegeben:** Kunden auflisten, je eine Zeile mit Status und letztem
-Kontakt (`node .ara/tools/customer.mjs`), und fragen, für wen das Angebot ist. Keine
-Akte vorhanden: zuerst `/customer`.
+From now on you work exclusively in `customers/$1/`. No look into other customer folders,
+not even to take an old offer as a pattern.
 
-## Der Grundsatz, bevor die erste Zahl fällt
+**No argument given:** list the customers, one line each with status and last contact
+(`node .ara/tools/customer.mjs`), and ask who the offer is for. No file present: `/customer`
+first.
 
-Was hier entsteht, wird unterschrieben. Kein Produktwert aus dem Gedächtnis und keiner,
-weil er in einer Vorlage steht. Modellnamen, Plattformen, Fassungen und Erprobungsstände
-kommen aus dem Spiegel oder vom Gerät.
+## The principle, before the first number falls
 
-**Die Einkaufspreise des Partners tauchen in keinem Kundendokument auf**, auch nicht in
-einer Zwischensumme, aus der sich die Marge zurückrechnen lässt.
+What comes into being here gets signed. No product value from memory and none because it
+stands in a template. Model names, platforms, versions and trial levels come from the mirror
+or from the device.
 
-## Die neun Schritte
+**The partner's purchase prices appear in no customer document**, not even in a subtotal
+from which the margin can be worked back.
 
-1. **Kalkulationsblatt lesen, bevor du fragst.**
+## The nine steps
+
+1. **Read the calculation sheet before you ask.**
 
    ```
    node .ara/tools/calculation.mjs
    ```
 
-   Es sagt, welche der zehn Zahlen vorliegen, welche fehlen und was ohne sie nicht geht.
-   Liegen alle vor, wird nach keiner einzigen gefragt, und zwei Angebote desselben
-   Partners für denselben Gerätetyp kommen auf dieselben Zahlen. Fehlt eine blockierende
-   Zahl, hört das Werkzeug mit Rückgabecode 1 auf: dann gehört sie **in dieselbe
-   Interview-Runde wie Schritt 2** und danach über `/kalkulation` ins Blatt, mit dem
-   Datum, an dem sie bestätigt wurde. Eine Zahl, die nur in diesem einen Angebot steht,
-   ist beim nächsten wieder weg.
+   It says which of the ten numbers are there, which are missing and what is not possible
+   without them. If all are there, not a single one is asked for, and two offers by the same
+   partner for the same device type land on the same numbers. If a blocking number is
+   missing, the tool stops with return code 1: then it belongs **into the same interview
+   round as step 2** and afterwards into the sheet via `/calculation`, with the date on
+   which it was confirmed. A number that only stands in this one offer is gone again at the
+   next.
 
-   Meldet das Werkzeug eine Zahl als veraltet, ist das ein Hinweis und kein Halt. Frag
-   einmal nach, ob sie noch gilt, und schreib die Antwort ins Blatt.
+   If the tool reports a number as stale, that is a hint and not a halt. Ask once whether it
+   still holds, and write the answer into the sheet.
 
-2. **Akte lesen.** `node .ara/tools/customer.mjs --customer $1` gibt das Lagebild:
-   Stand, Geräte mit ihrem Zustand, vorhandenes Papier, letzter Verlaufseintrag. Was der
-   Kunde erreichen will, steht in `customers/$1/customer.md` und in den letzten Einträgen
-   aus `customers/$1/history/` in seinen Worten, und genau die gehören später in den
-   Abschnitt "Worum es geht". Fehlt dir etwas, das nur der Mensch weiß, frag es gebündelt
-   in einer Runde, nicht Schritt für Schritt.
+2. **Read the file.** `node .ara/tools/customer.mjs --customer $1` gives the picture:
+   status, devices with their state, existing paperwork, last history entry. What the
+   customer wants to achieve stands in `customers/$1/customer.md` and in the latest entries
+   from `customers/$1/history/` in their own words, and exactly those belong later into the
+   section "Worum es geht". If you are missing something only the human knows, ask it
+   bundled in one round, not step by step.
 
-   **Wofür das Angebot ist, sagt die Akte mit.** Einrichtung eines Geräts, eine App,
-   mehrere Apps, Wartung, oder mehreres zusammen. Steht in der Akte schon ein Gerät, ist
-   die Einrichtung dafür der Normalfall und du fragst nicht, ob es eines geben soll.
+   **What the offer is for, the file says along.** Setting up a device, an app, several
+   apps, maintenance, or several of those together. If the file already holds a device, the
+   setup for it is the normal case and you do not ask whether there should be one.
 
-3. **Spiegel holen.** `node .ara/tools/mirror.mjs --refresh`. Ohne frischen Spiegel
-   entsteht kein Angebot, weil Plattform und Erprobungsstand sonst geraten wären. Ist
-   der Spiegel nicht erreichbar, sag das und schreib nichts hin.
+3. **Fetch the mirror.** `node .ara/tools/mirror.mjs --refresh`. Without a fresh mirror no
+   offer comes into being, because platform and trial level would otherwise be guessed. If
+   the mirror is not reachable, say so and write nothing down.
 
-4. **Leistungsbeschreibung füllen.** Sie kommt **vor** dem Angebot, nicht danach. Sie
-   legt fest, was geschuldet ist, und das Angebot verweist nur noch auf sie. Ohne sie
-   kein Angebot. Sie entsteht am Gerät und gegen den Spiegel, nicht am Schreibtisch,
-   und nie aus einem alten Angebot kopiert: ein alter Reifegrad ist beim nächsten
-   Produktstand eine falsche Zusage. Die sechs Schritte stehen in
-   `.ara/knowledge/paperwork.md` unter "Die Leistungsbeschreibung füllen". Gerüst:
+4. **Fill in the service description.** It comes **before** the offer, not after. It fixes
+   what is owed, and the offer only refers to it. Without it no offer. It comes into being
+   on the device and against the mirror, not at the desk, and never copied out of an old
+   offer: an old trial level is a false promise at the next product version. The six steps
+   are in `.ara/knowledge/paperwork.md` under "Die Leistungsbeschreibung füllen". Scaffold:
    `.ara/vorlagen/leistungsbeschreibung.md`.
 
-5. **Rechnen.** Nach `.ara/knowledge/pricing.md`, mit den Zahlen aus Schritt 1 und im Ton
-   aus `.ara/knowledge/sales.md`. **Es wird mit dem gerechnet, was im Blatt steht, und
-   nichts geschätzt.** Die verbindliche Quelle für einen Einkaufspreis ist das
-   Partnerportal. Wartung Jahr 1 und ab Jahr 2 sind zwei verschiedene Zahlen, rechne
-   beide.
+5. **Calculate.** Along `.ara/knowledge/pricing.md`, with the numbers from step 1 and in the
+   tone from `.ara/knowledge/sales.md`. **What is in the sheet is what gets calculated, and
+   nothing is estimated.** The binding source for a purchase price is the partner portal.
+   Maintenance year 1 and from year 2 are two different numbers, calculate both.
 
-6. **Angebot schreiben.** Gerüst `.ara/vorlagen/angebot.md`. Briefkopf, USt-IdNr., IBAN und
-   Zahlungsziel kommen aus `business/company.md`, der Name unter der Unterschrift aus
-   `business/profile.md`. **Der Absender ist der Partner, nicht Arasul.** Fehlt ein
-   Feld, wird es in `business/company.md` nachgetragen und nicht im Angebot erfunden.
+6. **Write the offer.** Scaffold `.ara/vorlagen/angebot.md`. Letterhead, VAT ID, IBAN and
+   payment terms come from `business/company.md`, the name under the signature from
+   `business/profile.md`. **The sender is the partner, not Arasul.** If a field is missing,
+   it gets added in `business/company.md` and not invented in the offer.
 
-7. **Fünf Anlagen zusammenstellen**, nicht drei. Sie werden Vertragsbestandteil und
-   werden im Abschnitt "Anlagen" des Angebots einzeln benannt:
+7. **Assemble five annexes**, not three. They become part of the contract and are named one
+   by one in the offer's section "Anlagen":
 
-   | Nr | Anlage | Woher |
+   | No | Annex | From |
    |---|---|---|
-   | 1 | Leistungsbeschreibung | `.ara/vorlagen/leistungsbeschreibung.md`, je Kunde neu |
-   | 2 | Endkundenbedingungen | `.ara/vorlagen/endkundenbedingungen.md`, unverändert |
-   | 3 | Drittlizenzen | `.ara/vorlagen/drittlizenzen.md`, unverändert |
-   | 4 | Nachweis KI-Einstufung | `.ara/nachweise/ki-einstufung.md`, Abrufdatum prüfen |
-   | 5 | Nachweis Datenverarbeitung | `.ara/nachweise/datenverarbeitung.md`, Abschnitt 3 |
+   | 1 | Leistungsbeschreibung | `.ara/vorlagen/leistungsbeschreibung.md`, new per customer |
+   | 2 | Endkundenbedingungen | `.ara/vorlagen/endkundenbedingungen.md`, unchanged |
+   | 3 | Drittlizenzen | `.ara/vorlagen/drittlizenzen.md`, unchanged |
+   | 4 | Nachweis KI-Einstufung | `.ara/nachweise/ki-einstufung.md`, check the retrieval date |
+   | 5 | Nachweis Datenverarbeitung | `.ara/nachweise/datenverarbeitung.md`, section 3 |
 
-   `.ara/nachweise/` und `.ara/vorlagen/bausteine/` werden aus Arasuls Steuerungsordner
-   gespiegelt. **Hier nicht bearbeiten.** Wer darin einen Fehler findet, sagt es Arasul.
+   `.ara/nachweise/` and `.ara/vorlagen/bausteine/` are mirrored from Arasul's control
+   folder. **Do not edit them here.** Whoever finds a mistake in them tells Arasul.
 
-   Der Nachweis Datenverarbeitung ist ein **Gerüst**, kein ausgefülltes Blatt.
-   Abschnitt 3 wird je Auslieferung am Gerät gemessen. Steht noch kein Gerät, bleibt er
-   leer und bekommt eine Zeile, dass bei der Übergabe gemessen und das Ergebnis
-   nachgereicht wird. Ohne diese Zeile liest der Kunde einen Platzhalter als Aussage.
+   The Nachweis Datenverarbeitung is a **scaffold**, not a filled-in sheet. Section 3 is
+   measured on the device per delivery. If no device stands there yet, it stays empty and
+   gets a line saying that it will be measured at handover and the result supplied
+   afterwards. Without that line the customer reads a placeholder as a statement.
 
-8. **PDF erzeugen**, für das Angebot und für **jede Anlage einzeln**. Sie sind einzeln
-   Vertragsbestandteil und werden einzeln abgelegt.
+8. **Produce PDFs**, for the offer and for **every annex separately**. They are part of the
+   contract individually and are filed individually.
 
    ```
-   node .ara/tools/pdf.mjs customers/$1/documents/JJJJ-MM-TT-angebot.md
-   node .ara/tools/pdf.mjs <datei> --check      nur prüfen, nichts drucken
+   node .ara/tools/pdf.mjs customers/$1/documents/YYYY-MM-DD-angebot.md
+   node .ara/tools/pdf.mjs <file> --check      only check, print nothing
    ```
 
-   Das Werkzeug bricht ab, solange noch ein Platzhalter in geschweiften Klammern im
-   Text steht. Das ist sein Zweck: `{Betrag} Euro` beim Kunden ist der Fehler, den es
-   verhindert.
+   The tool stops as long as a placeholder in curly braces still stands in the text. That is
+   its purpose: `{Betrag} Euro` at the customer is the mistake it prevents.
 
-9. **Prüfliste vorlegen, ablegen, nachhalten.** Die Prüfliste steht unten, und erst
-   danach ist etwas versandfähig. Markdown und PDF liegen nebeneinander in
-   `customers/$1/documents/`, mit Datum im Dateinamen. Das Markdown bleibt liegen: in
-   einem halben Jahr fragt jemand, was zugesagt wurde, und dann ist die Quelle mehr
-   wert als das PDF. Dann nach `.ara/knowledge/crm.md`: Eintrag in
-   `customers/$1/history/`, `last_contact` auf heute, `status` auf `quoted`,
-   `follow_up` auf das Gültigkeitsdatum mit einem Halbsatz, worum es geht.
+9. **Present the checklist, file, follow up.** The checklist is below, and only after it is
+   anything ready to send. Markdown and PDF sit next to each other in
+   `customers/$1/documents/`, with the date in the file name. The Markdown stays: in half a
+   year someone asks what was promised, and then the source is worth more than the PDF. Then
+   along `.ara/knowledge/crm.md`: entry in `customers/$1/history/`, `last_contact` to today,
+   `status` to `quoted`, `follow_up` to the validity date with half a sentence on what it is
+   about.
 
-## Verschickt wird nichts
+## Nothing gets sent
 
-Erzeugen ist frei. **Versenden entscheidet der Partner.** Du legst das fertige Papier
-vor und sagst, was noch offen ist. Du verschickst keine Mail und lädst nichts hoch.
+Producing is free. **Sending is the partner's decision.** You present the finished paper and
+say what is still open. You send no mail and upload nothing.
 
-## Die Prüfliste
+## The checklist
 
-Leg sie dem Menschen vor, bevor etwas rausgeht. Jede Zeile, die du nicht selbst geprüft
-hast, sagst du als ungeprüft an.
+Present it to the human before anything goes out. Every line you did not check yourself, you
+announce as unchecked.
 
-- [ ] `node .ara/tools/calculation.mjs` lief, und jede Zahl im Angebot stammt aus dem
-      Blatt. Keine geschätzt, keine nur für dieses eine Angebot erfunden
-- [ ] Briefkopf, USt-IdNr., IBAN und Unterschrift aus `business/company.md` gelesen,
-      nicht aus der Vorlage und nicht aus dem Gedächtnis
-- [ ] Kein Einkaufspreis und keine Marge im Dokument, auch nicht in einer Zwischensumme
-- [ ] Plattform und Erprobungsstand frisch aus dem Spiegel dieser Sitzung
-- [ ] Anlage 1 Leistungsbeschreibung erzeugt, mit Datum, gegen Spiegel oder Gerät. Ohne
-      sie ist die Beschaffenheit nicht vereinbart, § 434 Abs. 2 Nr. 2 BGB
-- [ ] Anlage 2 Endkundenbedingungen beigefügt **und** der Kunde vor Vertragsschluss
-      darauf hingewiesen. Nachreichen hilft nicht, § 305 Abs. 2 BGB
-- [ ] Anlage 3 Drittlizenzen beigefügt und ihre Sperre beachtet
-- [ ] Anlage 4 Nachweis KI-Einstufung beigefügt und das Abrufdatum der Rechtsquellen am
-      Ende des Blattes geprüft. Recht ändert sich, das Blatt nicht von allein
-- [ ] Anlage 5 Nachweis Datenverarbeitung beigefügt und Abschnitt 3 entweder am Gerät
-      gemessen oder ausdrücklich als noch zu messen gekennzeichnet
-- [ ] Steht eine Plattform drin, die in der Leistungsbeschreibung nicht als erprobt
-      geführt wird? Dann ist der Vorbehaltsabsatz zwingend, im Angebot **und** im
-      Kaufvertrag, § 444 BGB
-- [ ] Wartung Jahr 1 und ab Jahr 2 einzeln gerechnet
-- [ ] Gültigkeitsdatum gesetzt und als `follow_up` in `customer.md` eingetragen
-- [ ] **`node .ara/tools/pdf.mjs` lief ohne `--force` durch.** Ein Angebot, das nur mit
-      `--force` druckt, enthält noch einen Platzhalter und wird nicht verschickt
-- [ ] Keine Gedankenstriche als Trenner, keine Emojis
+- [ ] `node .ara/tools/calculation.mjs` ran, and every number in the offer comes from the
+      sheet. None estimated, none invented for this one offer
+- [ ] Letterhead, VAT ID, IBAN and signature read from `business/company.md`, not from the
+      template and not from memory
+- [ ] No purchase price and no margin in the document, not even in a subtotal
+- [ ] Platform and trial level fresh from this session's mirror
+- [ ] Annex 1 Leistungsbeschreibung produced, with date, against mirror or device. Without
+      it the condition is not agreed, section 434(2) no. 2 BGB
+- [ ] Annex 2 Endkundenbedingungen attached **and** the customer pointed to it before the
+      contract was concluded. Supplying it afterwards does not help, section 305(2) BGB
+- [ ] Annex 3 Drittlizenzen attached and its restriction observed
+- [ ] Annex 4 Nachweis KI-Einstufung attached and the retrieval date of the legal sources at
+      the end of the sheet checked. Law changes, the sheet does not change by itself
+- [ ] Annex 5 Nachweis Datenverarbeitung attached and section 3 either measured on the
+      device or explicitly marked as still to be measured
+- [ ] Is a platform named in it that the service description does not carry as tried? Then
+      the reservation paragraph is mandatory, in the offer **and** in the sales contract,
+      section 444 BGB
+- [ ] Maintenance year 1 and from year 2 calculated separately
+- [ ] Validity date set and entered as `follow_up` in `customer.md`
+- [ ] **`node .ara/tools/pdf.mjs` ran through without `--force`.** An offer that only prints
+      with `--force` still contains a placeholder and does not get sent
+- [ ] No dashes as separators, no emojis

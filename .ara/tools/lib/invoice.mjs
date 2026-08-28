@@ -16,16 +16,36 @@
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { localized, t } from "./i18n.mjs";
 import { BUSINESS, ROOT, ensureDir, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
 
 /** Der Nummernkreis. Gehoert dem Partner, liegt unter business/. */
 export const LEDGER = join(BUSINESS, "invoices.md");
 
-/** Die Ueberschrift, unter der die vergebenen Nummern stehen. */
-const LEDGER_HEADING = "## Vergebene Nummern";
+/**
+ * Ueberschrift und Spalten der Nummernliste. Sie sind das Schema der Datei und
+ * darum englisch wie jedes andere Feld, das ein Werkzeug liest, und nicht wie
+ * der Fliesstext darum herum.
+ *
+ * Ein Nummernkreis, der vor Phase E10 angelegt wurde, traegt die deutschen
+ * Namen. Gelesen werden beide, geschrieben wird in die Ueberschrift, die in der
+ * Datei steht: eine bestehende Liste umzubenennen waere eine Aenderung an einem
+ * Buchungsbeleg, und die macht kein Werkzeug ungefragt.
+ */
+const LEDGER_HEADING = "## Assigned numbers";
+const LEDGER_HEADING_DE = "## Vergebene Nummern";
+const LEDGER_COLUMNS = ["Number", "Date", "Customer", "Net", "Gross", "State", "Reason", "File"];
+const LEDGER_COLUMNS_DE = ["Nummer", "Datum", "Kunde", "Netto", "Brutto", "Stand", "Grund", "Datei"];
 
-/** Spalten der Nummernliste, in dieser Reihenfolge. */
-const LEDGER_COLUMNS = ["Nummer", "Datum", "Kunde", "Netto", "Brutto", "Stand", "Grund", "Datei"];
+/** Die Ueberschrift, die in dieser Datei wirklich steht. */
+function headingOf(content) {
+  return content.includes(LEDGER_HEADING_DE) ? LEDGER_HEADING_DE : LEDGER_HEADING;
+}
+
+/** Die Spalten, die zu dieser Ueberschrift gehoeren. */
+function columnsOf(content) {
+  return headingOf(content) === LEDGER_HEADING_DE ? LEDGER_COLUMNS_DE : LEDGER_COLUMNS;
+}
 
 /** Die Staende einer Rechnung. Ein vergebener Zettel verschwindet nie. */
 export const STATES = {
@@ -154,15 +174,19 @@ export function splitNumber(number) {
 
 /** Die Zeilen der Nummernliste aus dem Rumpf der Datei. */
 function parseRows(body) {
-  const section = body.split(/^## /m).find((part) => part.startsWith("Vergebene Nummern"));
+  const section = body
+    .split(/^## /m)
+    .find((part) => part.startsWith("Assigned numbers") || part.startsWith("Vergebene Nummern"));
   if (!section) return [];
   const rows = [];
   for (const line of section.split(/\r?\n/)) {
     if (!/^\s*\|/.test(line)) continue;
     const cells = line.replace(/^\s*\|/, "").replace(/\|\s*$/, "").split("|").map((c) => c.trim());
-    if (cells[0] === "Nummer" || /^[-:\s]+$/.test(cells[0])) continue;
+    if (cells[0] === "Number" || cells[0] === "Nummer" || /^[-:\s]+$/.test(cells[0])) continue;
     if (!splitNumber(cells[0])) continue;
     const row = {};
+    // Gelesen wird immer auf die englischen Schluessel, egal wie die Spalten in
+    // der Datei heissen: sonst muesste jeder Aufrufer beide Namen kennen.
     LEDGER_COLUMNS.forEach((name, index) => (row[name] = cells[index] ?? ""));
     rows.push(row);
   }
@@ -177,7 +201,7 @@ export function readLedger() {
     file: LEDGER,
     year: Number(fields.year) || null,
     last: Number(fields.last) || 0,
-    format: fields.format || "JJJJ-NNNN",
+    format: fields.format || "YYYY-NNNN",
     rows: exists ? parseRows(body) : [],
   };
 }
@@ -186,7 +210,7 @@ export function readLedger() {
 export function ensureLedger() {
   if (existsSync(LEDGER)) return false;
   ensureDir(BUSINESS);
-  const template = join(ROOT, ".ara", "templates", "invoices.md");
+  const template = localized(join(ROOT, ".ara", "templates", "invoices.md"));
   writeFileSync(LEDGER, readFileSync(template, "utf8"));
   writeFrontmatter(LEDGER, { year: "", last: 0, created: today() });
   return true;
@@ -195,19 +219,28 @@ export function ensureLedger() {
 /** Schreibt die Nummernliste neu, Frontmatter und Rumpf bleiben sonst stehen. */
 function writeRows(rows) {
   const content = readFileSync(LEDGER, "utf8");
-  const head = `| ${LEDGER_COLUMNS.join(" | ")} |\n| ${LEDGER_COLUMNS.map(() => "---").join(" | ")} |`;
+  const heading = headingOf(content);
+  const columns = columnsOf(content);
+  const head = `| ${columns.join(" | ")} |\n| ${columns.map(() => "---").join(" | ")} |`;
   const table = rows.length
     ? `${head}\n${rows
         .map((row) => `| ${LEDGER_COLUMNS.map((name) => row[name] ?? "").join(" | ")} |`)
         .join("\n")}`
-    : `${head}\n\nNoch keine Nummer vergeben.`;
+    : `${head}\n\n${t("No number assigned yet.", "Noch keine Nummer vergeben.")}`;
 
-  const index = content.indexOf(LEDGER_HEADING);
-  if (index < 0) throw new Error(`In ${relative(ROOT, LEDGER)} fehlt der Abschnitt "${LEDGER_HEADING}".`);
-  const rest = content.slice(index + LEDGER_HEADING.length);
+  const index = content.indexOf(heading);
+  if (index < 0) {
+    throw new Error(
+      t(
+        `${relative(ROOT, LEDGER)} has no section "${heading}".`,
+        `In ${relative(ROOT, LEDGER)} fehlt der Abschnitt "${heading}".`
+      )
+    );
+  }
+  const rest = content.slice(index + heading.length);
   const nextHeading = rest.search(/^## /m);
   const tail = nextHeading < 0 ? "" : rest.slice(nextHeading);
-  writeFileSync(LEDGER, `${content.slice(0, index)}${LEDGER_HEADING}\n\n${table}\n${tail ? `\n${tail}` : ""}`);
+  writeFileSync(LEDGER, `${content.slice(0, index)}${heading}\n\n${table}\n${tail ? `\n${tail}` : ""}`);
 }
 
 /**
@@ -221,7 +254,7 @@ export function auditLedger(ledger = readLedger()) {
   const problems = [];
   const byYear = new Map();
   for (const row of ledger.rows) {
-    const parts = splitNumber(row.Nummer);
+    const parts = splitNumber(row.Number);
     if (!parts) continue;
     if (!byYear.has(parts.year)) byYear.set(parts.year, []);
     byYear.get(parts.year).push(parts.count);
@@ -263,19 +296,33 @@ export function auditLedger(ledger = readLedger()) {
  */
 export function peekNumber(date, ledger = readLedger()) {
   const year = Number(String(date).slice(0, 4));
-  if (!year) throw new Error(`"${date}" ist kein Datum in der Form JJJJ-MM-TT.`);
+  if (!year) {
+    throw new Error(
+      t(`"${date}" is not a date in the form YYYY-MM-DD.`, `"${date}" ist kein Datum in der Form JJJJ-MM-TT.`)
+    );
+  }
   const problems = auditLedger(ledger);
   if (problems.length) {
     throw new Error(
-      `Der Nummernkreis in ${relative(ROOT, LEDGER)} ist nicht in Ordnung:\n  ` +
+      t(
+        `The number range in ${relative(ROOT, LEDGER)} is not in order:\n  `,
+        `Der Nummernkreis in ${relative(ROOT, LEDGER)} ist nicht in Ordnung:\n  `
+      ) +
         problems.join("\n  ") +
-        "\nDas wird von Hand berichtigt, nicht ueberschrieben."
+        t(
+          "\nThat gets corrected by hand, not overwritten.",
+          "\nDas wird von Hand berichtigt, nicht ueberschrieben."
+        )
     );
   }
   if (ledger.year && year < ledger.year) {
     throw new Error(
-      `Es sind schon Nummern fuer ${ledger.year} vergeben. Eine Rechnung mit Datum aus ${year} ` +
-        "bekaeme eine Nummer hinter einer aelteren, und der Kreis waere nicht mehr fortlaufend."
+      t(
+        `Numbers for ${ledger.year} have already been assigned. An invoice dated ${year} ` +
+          "would get a number behind an older one, and the range would no longer be sequential.",
+        `Es sind schon Nummern fuer ${ledger.year} vergeben. Eine Rechnung mit Datum aus ${year} ` +
+          "bekaeme eine Nummer hinter einer aelteren, und der Kreis waere nicht mehr fortlaufend."
+      )
     );
   }
   const count = ledger.year === year ? ledger.last + 1 : 1;
@@ -296,14 +343,14 @@ export function claimNumber({ date, customer, file }) {
   const rows = [
     ...ledger.rows,
     {
-      Nummer: next.number,
-      Datum: date,
-      Kunde: customer || "",
-      Netto: "",
-      Brutto: "",
-      Stand: "entwurf",
-      Grund: "",
-      Datei: file || "",
+      Number: next.number,
+      Date: date,
+      Customer: customer || "",
+      Net: "",
+      Gross: "",
+      State: "entwurf",
+      Reason: "",
+      File: file || "",
     },
   ];
   writeRows(rows);
@@ -314,16 +361,18 @@ export function claimNumber({ date, customer, file }) {
 /** Traegt Betraege, Stand oder Datei einer vergebenen Nummer nach. */
 export function updateEntry(number, changes) {
   const ledger = readLedger();
-  const rows = ledger.rows.map((row) => (row.Nummer === number ? { ...row, ...changes } : row));
-  if (!rows.some((row) => row.Nummer === number)) {
-    throw new Error(`Die Nummer ${number} steht nicht im Nummernkreis.`);
+  const rows = ledger.rows.map((row) => (row.Number === number ? { ...row, ...changes } : row));
+  if (!rows.some((row) => row.Number === number)) {
+    throw new Error(
+      t(`The number ${number} does not stand in the number range.`, `Die Nummer ${number} steht nicht im Nummernkreis.`)
+    );
   }
   writeRows(rows);
 }
 
 /** Der Eintrag zu einer Nummer, oder null. */
 export function findEntry(number, ledger = readLedger()) {
-  return ledger.rows.find((row) => row.Nummer === number) || null;
+  return ledger.rows.find((row) => row.Number === number) || null;
 }
 
 // --- Der Absender ------------------------------------------------------------
@@ -532,13 +581,16 @@ export function totals(positions, mode) {
  * sehen damit dasselbe Blatt.
  */
 export function readInvoice(path) {
-  if (!existsSync(path)) throw new Error(`${path} gibt es nicht.`);
+  if (!existsSync(path)) throw new Error(t(`${path} does not exist.`, `${path} gibt es nicht.`));
   const raw = readFileSync(path, "utf8");
   const { fields } = readFrontmatter(path);
   const mode = fields.tax_mode || "standard";
   if (!TAX_MODES[mode]) {
     throw new Error(
-      `tax_mode "${mode}" kennt das Werkzeug nicht. Es gibt: ${Object.keys(TAX_MODES).join(", ")}.`
+      t(
+        `The tool does not know tax_mode "${mode}". There is: ${Object.keys(TAX_MODES).join(", ")}.`,
+        `tax_mode "${mode}" kennt das Werkzeug nicht. Es gibt: ${Object.keys(TAX_MODES).join(", ")}.`
+      )
     );
   }
   const defaultRate = fields.tax_rate === undefined || fields.tax_rate === "" ? null : parseQuantity(fields.tax_rate);

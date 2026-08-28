@@ -1,183 +1,180 @@
-# Verfahren: eine App bauen, von der ersten Frage bis live
+# Procedure: building an app, from the first question to live
 
-> **Wann brauchst du das?** Wenn jemand etwas will, das das Produkt nicht ab Werk kann,
-> und daraus eine App auf einem Gerät werden soll. Wie ein fertiges Paket auf ein Gerät
-> kommt, steht in `.ara/knowledge/deploy.md`; hier steht, wie es überhaupt entsteht.
+> **When do you need this?** When somebody wants something the product cannot do out of the box,
+> and an app on a device should come out of it. How a finished package gets onto a device stands
+> in `.ara/knowledge/deploy.md`; here stands how it comes into being in the first place.
 
-## Der Lebenslauf
+## The life cycle
 
-Eine App läuft im Kreis, und `/app` steht an jeder Station:
+An app runs in a circle, and `/app` stands at every station:
 
-1. **Planen.** Es gibt keine Akte. Interview nach der Prüfliste unten, dann die Akte aus
-   der Vorlage und ein Plan unter `plans/offen/`.
-2. **Bauen.** Ein Plan ist aktiv. Erst die Annahmen darin durchgehen, dann bauen, dann
-   das Paket packen.
-3. **Test.** Das Paket geht auf ein Gerät und landet im Teststand. Der Fachmensch
-   probiert es mit echter Anmeldung.
-4. **Live.** Ein Mensch schaltet um. Der Plan wandert nach `erledigt/`, die README der
-   App wird fortgeschrieben.
-5. **Weiter.** Kein Plan offen: Lage zeigen, Interview zur Erweiterung, neuer Plan. Der
-   Kreis beginnt bei 1.
+1. **Plan.** There is no file. Interview along the checklist below, then the file from the
+   scaffold and a plan under `plans/offen/`.
+2. **Build.** A plan is active. First go through the assumptions in it, then build, then pack the
+   package.
+3. **Test.** The package goes to a device and lands in staging. The person from the business side
+   tries it with a real login.
+4. **Live.** A human switches over. The plan moves into `erledigt/`, the app's README gets
+   written on.
+5. **Next.** No plan open: show the situation, interview about an extension, new plan. The circle
+   starts at 1.
 
-**Wo im Kreis ihr steht, sagt das Werkzeug, nicht du:**
+**Where in the circle you stand, the tool says, not you:**
 
 ```
 node .ara/tools/app.mjs --app <name>
 ```
 
-Es liest die Akte und nennt die nächsten Schritte, jeweils mit dem Aufruf dazu. Es zählt
-nicht auf, was alles ginge: eine Liste aller Möglichkeiten ist eine Bedienungsanleitung
-und kein Vorschlag. Sag dem Menschen, was ansteht, in seinen Worten, und ruf dann das auf,
-was das Werkzeug genannt hat.
+It reads the file and names the next steps, each with the call for it. It does not list
+everything that would be possible: a list of all possibilities is a manual and not a suggestion.
+Tell the human what is due, in their words, and then call what the tool named.
 
-**Dazu weiß es, was es selbst an ein Gerät geschickt hat**: welche Fassung im Teststand
-steht und welche live ist, je App und Gerät, aus dem Merker `.ara/state.json`. Ist die
-gebaute Fassung schon live, schlägt es nicht noch einmal `--check` und `--deploy` vor,
-sondern den Plan und die README. Der Merker ist die Notiz des Kits über sein eigenes Tun
-und keine Auskunft über das Gerät: die gibt `--status`, und die fragt dort nach.
+**It also knows what it sent to a device itself**: which version stands in staging and which is
+live, per app and device, out of the marker `.ara/state.json`. If the built version is already
+live, it does not suggest `--check` and `--deploy` again, but the plan and the README. The marker
+is the kit's note about its own doing and not information about the device: `--status` gives
+that, and it asks there.
 
-**Das Argument.** `/app urlaubsantrag` meint die App unter `apps/urlaubsantrag/`. Fehlt
-es: erst der Merker `.ara/state.json`, dann die vorhandenen Akten. Gibt es genau eine,
-nimm sie. Sonst frag über das Interview-Werkzeug.
+**The argument.** `/app urlaubsantrag` means the app under `apps/urlaubsantrag/`. If it is
+missing: first the marker `.ara/state.json`, then the existing files. If there is exactly one,
+take it. Otherwise ask through the interview tool.
 
-## Die Prüfliste des Interviews
+## The interview checklist
 
-Gefragt wird, bis jeder Punkt beantwortet ist oder ausdrücklich offen bleibt. Was offen
-bleibt, wird eine **Annahme** und steht so im Plan. Frag gebündelt, nicht einzeln, und
-lies vorher `business/profile.md`: womit das Haus arbeitet, gehört in den ersten Entwurf.
+Asking goes on until every point is answered or explicitly left open. What stays open becomes an
+**assumption** and stands as such in the plan. Ask bundled, not one by one, and read
+`business/profile.md` beforehand: what the house works with belongs in the first draft.
 
-| Was | Warum es entscheidet |
+| What | Why it decides |
 | --- | --- |
-| **Der Arbeitsschritt dahinter** | Nicht die gewünschte Lösung. „Wir wollen einen Bot für Urlaub" heißt: jemand liest Mails und trägt sie in eine Tabelle |
-| **Wer es benutzt** | Wer die App sieht, entscheidet der Kunde am Gerät. Aber ob es einer, zehn oder hundert sind, entscheidet den Bau |
-| **Welche Daten** | Was hinein geht, was liegen bleibt, was hinaus geht. Personenbezogenes ausdrücklich benennen |
-| **Die Schritte** | Der Ablauf aus Sicht des Menschen davor, ein Schritt je Zeile |
-| **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Was nur Daten hin und her schiebt, ist ein Programm und kein Flow |
-| **Wo ein Mensch entscheidet** | Jede Stelle, an der ein Lauf anhalten und auf eine Freigabe warten soll, und was der Mensch dabei sehen muss |
-| **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
-| **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
-| **Was passiert, wenn es einmal falsch ist** | Das entscheidet die Bauweise. Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |
+| **The work step behind it** | Not the wished-for solution. "We want a bot for holidays" means: somebody reads mails and enters them into a table |
+| **Who uses it** | Who sees the app the customer decides on the device. But whether it is one, ten or a hundred decides the build |
+| **Which data** | What goes in, what stays, what goes out. Name personal data explicitly |
+| **The steps** | The sequence from the point of view of the human in front of it, one step per line |
+| **Where a flow is needed** | Where a language model really does the work. What only shifts data back and forth is a program and not a flow |
+| **Where a human decides** | Every place where a run should stop and wait for an approval, and what the human has to see while doing it |
+| **What does not belong to it** | The paragraph that saves the disappointment later |
+| **How you see that it is finished** | One sentence you can check |
+| **What happens when it is wrong once** | That decides the construction. Something that gets checked is an afternoon. Something that may never be wrong is a project |
 
-Aus dem Ergebnis wird der Plan:
-
-```
-node .ara/tools/app.mjs --app <name> --new --titel "<Anzeigename>"
-node .ara/tools/app.mjs --app <name> --plan "<titel>"
-```
-
-`--new` legt die Akte aus der Vorlage an: Oberfläche, Backend, ein Flow mit
-Freigabe-Schritt, README, `app.json`. Das Aussehen kommt aus dem Spiegel, siehe unten.
-`--plan` legt die Plandatei an, und die füllst du im Gespräch aus, Abschnitt für
-Abschnitt. Ein Plan, den niemand gelesen hat, ist ein Formular.
-
-## Der Plan
-
-Er liegt unter `apps/<name>/plans/` in drei Ständen, und der Ordnername ist der Stand:
+Out of the result comes the plan:
 
 ```
-node .ara/tools/app.mjs --app <name> --plan-aktiv <datei>     offen wird aktiv
-node .ara/tools/app.mjs --app <name> --plan-erledigt <datei>  aktiv wird erledigt
+node .ara/tools/app.mjs --app <name> --new --titel "<display name>"
+node .ara/tools/app.mjs --app <name> --plan "<title>"
 ```
 
-**Aktiv ist höchstens einer.** Zwei aktive Pläne heißen, dass niemand mehr sagen kann,
-woran gerade gebaut wird; das Werkzeug lässt es nicht zu. Erledigt wird ein Plan erst,
-wenn seine Fassung **live** steht, nicht wenn der Quelltext fertig ist.
+`--new` creates the file from the scaffold: frontend, backend, one flow with an approval step,
+README, `app.json`. The appearance comes from the mirror, see below. `--plan` creates the plan
+file, and you fill it in during the conversation, section by section. A plan nobody read is a
+form.
 
-## Bauen
+## The plan
+
+It lies under `apps/<name>/plans/` in three states, and the folder name is the state:
+
+```
+node .ara/tools/app.mjs --app <name> --plan-aktiv <file>     open becomes active
+node .ara/tools/app.mjs --app <name> --plan-erledigt <file>  active becomes done
+```
+
+**At most one is active.** Two active plans mean that nobody can say any more what is currently
+being built; the tool does not allow it. A plan is done only when its version stands **live**, not
+when the source code is finished.
+
+## Building
 
 ```
 node .ara/tools/app.mjs --app <name> --build
 ```
 
-Aus dem Ordner wird das Paket unter `build/`. Was nicht hineingehört, weiß das Kit von
-sich selbst: Pläne, README und der Bau selbst sind die Arbeit am Ding, nicht das Ding.
-Ein Ordner mit einem eigenen Bau wird gebaut, und ins Paket geht sein Ergebnis; alles
-andere wandert, wie es ist.
+Out of the folder comes the package under `build/`. What does not belong in it, the kit knows from
+itself: plans, README and the build itself are the work on the thing, not the thing. A folder with
+a build of its own gets built, and its result goes into the package; everything else moves as it
+is.
 
-**Lokal läuft der Bau, nicht die App.** Was sie tut, sieht man am Gerät, mit echter
-Anmeldung und echtem Modell. Wer sie auf dem eigenen Rechner „mal laufen lässt", hat
-weder das eine noch das andere und glaubt trotzdem, es gesehen zu haben.
+**Locally the build runs, not the app.** What it does you see on the device, with a real login and
+a real model. Whoever "just runs it" on their own computer has neither the one nor the other and
+still believes they have seen it.
 
-Ein Bau, der älter ist als der Quelltext, wird nicht eingespielt: das Werkzeug sagt es
-und hört auf. Sonst ginge der Stand von vorgestern an das Gerät, und niemand sähe es.
+A build older than the source code does not get deployed: the tool says so and stops. Otherwise the
+version from the day before yesterday would go to the device and nobody would see it.
 
-## Auf ein Gerät mit Arasul
-
-```
-node .ara/tools/app.mjs --device <gerät> --app <name> --check
-node .ara/tools/app.mjs --device <gerät> --app <name> --deploy
-node .ara/tools/app.mjs --device <gerät> --app <name> --live
-```
-
-Der Kontrakt des Geräts sagt, was gilt, und `--check` hält das Manifest dagegen, bevor
-etwas fliegt. **Ein Deploy rollt immer in den Teststand**, live schaltet ein Mensch, und
-zwar nach einer Rückfrage, auch wenn du gerade selbst eingespielt hast. Das Verfahren mit
-allem, was dazugehört, steht in `.ara/knowledge/deploy.md`.
-
-Nach dem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des Geräts,
-und die README der App fortschreiben. Sie ist der Ist-Stand in den Worten dessen, der die
-App benutzt: was sie heute kann, was sie nicht kann, was man wissen muss.
-
-## Auf ein Gerät ohne Arasul
+## Onto a device with Arasul
 
 ```
-node .ara/tools/app.mjs --device <gerät> --app <name> --compose --port 8080
+node .ara/tools/app.mjs --device <device> --app <name> --check
+node .ara/tools/app.mjs --device <device> --app <name> --deploy
+node .ara/tools/app.mjs --device <device> --app <name> --live
 ```
 
-Die Dateien gehen über SSH an das Gerät, dort stellt Compose zwei Container: einen
-Webserver für die Oberfläche und einen für das Backend, gebaut aus dem Bauplan im Paket.
+The device's contract says what applies, and `--check` holds the manifest against it before
+anything flies. **A deploy always rolls into staging**, a human switches live, and only after
+asking, even if you deployed it yourself a minute ago. The procedure with everything that belongs
+to it stands in `.ara/knowledge/deploy.md`.
 
-**Sag vorher, was dabei fehlt**, und sag es in denselben Worten, die das Werkzeug
-hinterher ausgibt: keine Anmeldung, kein Flow, keine Freigabe, ein Stand statt zwei, kein
-Schlüssel und damit keine Schnittstelle von Arasul. Wer die Adresse und den Port erreicht,
-sieht die App. Das ist ein Weg zum Vorführen und zum Ausprobieren, kein Weg für einen
-Betrieb mit echten Daten.
+After the switch: one line into the customer's history or into the device's runsheet, and write on
+the app's README. It is the state as it is, in the words of whoever uses the app: what it can do
+today, what it cannot do, what you have to know.
 
-Das ist ein Eingriff der Stufe 2: Absicht, Ziel und Rückweg nennen, bestätigen lassen,
-dann aufrufen. Der Rückweg steht am Ende der Ausgabe.
+## Onto a device without Arasul
 
-## Das Aussehen
+```
+node .ara/tools/app.mjs --device <device> --app <name> --compose --port 8080
+```
 
-Die Vorlage bringt das Erscheinungsbild von Arasul mit, damit eine App neben der
-Oberfläche des Geräts nicht wie ein Fremdkörper steht. Die Werte dafür stehen in
-`frontend/src/design.css`, und sie kommen **aus dem Spiegel**: `.ara/mirror/` ist das
-Artefakt, mit dem installiert wurde, und darin steht, was heute gilt. Liegt kein Spiegel
-vor, schreibt das Kit seine eigene Vorgabe hinein, und die Datei sagt das in ihrem Kopf.
+The files go to the device over SSH, and there Compose puts up two containers: a web server for
+the frontend and one for the backend, built from the build file in the package.
 
-Die Regeln daneben in `stil.css` benutzen nur die Namen der Marken, keinen einzigen
-Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer Regel steht,
-bleibt beim nächsten Stand zurück.
+**Say beforehand what is missing there**, and say it in the same words the tool prints afterwards:
+no login, no flow, no permission, one slot instead of two, no key and therefore no interface from
+Arasul. Whoever reaches the address and the port sees the app. That is a way to demonstrate and to
+try out, not a way for an operation with real data.
 
-## Wo die Referenz-App hilft
+That is a level 2 intervention: name intent, target and way back, have it confirmed, then call it.
+The way back stands at the end of the output.
 
-Unter `apps/urlaubsantrag/` liegt eine fertige App zum Ansehen: sie stellt einen Antrag,
-hält an einer Freigabe an und steht danach auf genehmigt oder abgelehnt. Wenn jemand
-fragt, wie so etwas aussieht, zeig sie, statt es zu beschreiben. Sie ist keine Vorlage,
-aus der `/app` etwas erzeugt, sondern ein Beispiel, das läuft.
+## The appearance
 
-**Sie gehört dem Kit, also arbeitest du nicht an ihr.** Ihr Plan kam mit dem Klon, und ihn
-zu verschieben würde den Arbeitsordner schmutzig machen: das nächste Update stolperte
-darüber. `--plan-aktiv` und `--plan-erledigt` verweigern das darum bei jedem Plan, der in
-der Versionsverwaltung liegt. Wer üben will, legt eine eigene App an:
+The scaffold brings Arasul's look with it, so that an app does not stand next to the device's
+interface like a foreign body. The values for that stand in `frontend/src/design.css`, and they
+come **out of the mirror**: `.ara/mirror/` is the artifact that was installed with, and it holds
+what applies today. If no mirror is there, the kit writes its own default in, and the file says so
+in its header.
+
+The rules next to it in `stil.css` use only the names of the tokens, not a single colour value.
+Keep to that when you build something on: whatever stands as a colour in a rule falls behind at the
+next version.
+
+## Where the reference app helps
+
+Under `apps/urlaubsantrag/` lies a finished app to look at: it files a request, stops at an
+approval and afterwards stands as approved or rejected. If somebody asks what such a thing looks
+like, show it instead of describing it. It is not a scaffold `/app` produces something from, it is
+an example that runs.
+
+**It belongs to the kit, so you do not work on it.** Its plan came with the clone, and moving it
+would make the working folder dirty: the next update would trip over it. `--plan-aktiv` and
+`--plan-erledigt` therefore refuse that for every plan that lies in version control. Whoever wants
+to practise creates an app of their own:
 
 ```
 node .ara/tools/app.mjs --app <name> --new
 ```
 
-## Was du dabei nicht tust
+## What you do not do while doing this
 
-- **Keine Produktwerte aus dem Kopf.** Modelle, Pfade, Endpunkte und Grenzen stehen im
-  Kontrakt des Geräts. Auch für eine App gilt das: `--contract` fragen, nicht raten.
-- **Keine zweite Ablage erfinden.** Ein eigener Datenordner je App ist am Gerät noch
-  nicht vorgesehen. Was eine App im Speicher hält, ist nach einem Neustart weg, und das
-  gehört in die README und ins Gespräch, bevor es jemand merkt.
-- **Keine eigene Anmeldung.** Wer angemeldet ist, sagt die Plattform über die Kopfzeilen
-  vor dem Container. Ein Feld im Formular, in das jemand einen Namen tippt, ist keine.
-- **Keine Freigabe, die die App selbst erteilt.** Sie liest ihren Stand und entscheidet
-  nicht. Entschieden wird in Arasul, von einem Menschen, dem die App freigegeben ist.
-- **Nichts einspielen, was du nicht geprüft hast.** Erst `--check`, dann `--deploy`.
+- **No product values from your head.** Models, paths, endpoints and limits stand in the device's
+  contract. That holds for an app too: ask `--contract`, do not guess.
+- **Do not invent a second store.** A data folder of its own per app is not provided for on the
+  device yet. What an app holds in memory is gone after a restart, and that belongs in the README
+  and in the conversation, before somebody notices it.
+- **No login of your own.** Who is logged in the platform says over the headers in front of the
+  container. A field in a form somebody types a name into is not a login.
+- **No approval the app grants itself.** It reads its state and does not decide. Deciding happens
+  in Arasul, by a human to whom the app is shared.
+- **Deploy nothing you have not checked.** First `--check`, then `--deploy`.
 
-Was eine App von der Plattform bekommt, und wie sie es benutzt, steht in
-`.ara/knowledge/platform-services.md`: Anmeldung, Freigaben, Flows, die KI-Schnittstelle
-mit Schlüssel und der Weg für fremde Werkzeuge. Lies es, bevor du etwas nachbaust, was
-das Gerät schon mitbringt.
+What an app gets from the platform, and how it uses it, stands in
+`.ara/knowledge/platform-services.md`: login, permissions, flows, the AI interface with a key and
+the way for outside tools. Read it before you rebuild something the device already brings along.

@@ -1,91 +1,89 @@
-# Verfahren: die Dienste der Plattform, und wie eine App sie benutzt
+# Procedure: the platform's services, and how an app uses them
 
-> **Wann brauchst du das?** Wenn eine App etwas von Arasul will: eine Anmeldung, eine
-> Entscheidung durch einen Menschen, ein Sprachmodell, ein Dokument, einen Flow. Und
-> wenn jemand fragt, was von alldem ohne Arasul übrig bleibt.
+> **When do you need this?** When an app wants something from Arasul: a login, a decision by a
+> human, a language model, a document, a flow. And when somebody asks what of all that is left
+> without Arasul.
 
-## Die Regel zuerst
+## The rule first
 
-Dieses Blatt sagt, **wozu** ein Dienst da ist und wie man ihn benutzt. Was er auf einem
-bestimmten Gerät heißt, unter welchem Weg er antwortet und welche Grenzen dort gelten,
-sagt das Gerät:
-
-```
-node .ara/tools/app.mjs --device <gerät> --contract
-```
-
-Jeder Weg, der hier steht, steht als Verweis darauf, was im Kontrakt nachzuschlagen ist,
-und nicht als Zusage. Genannt wird er trotzdem, denn sonst könnte niemand prüfen, ob
-dieses Blatt noch stimmt. Genau dafür gibt es das Werkzeug:
+This sheet says **what** a service is for and how it is used. What it is called on a particular
+device, at which route it answers and which limits apply there, the device says:
 
 ```
-node .ara/tools/check-docs.mjs --device <gerät>
+node .ara/tools/app.mjs --device <device> --contract
 ```
 
-Es liest jede Route, die im Wissen des Kits steht, hält sie gegen die Endpunktliste des
-Kontrakts und ruft am Gerät an. Was dort nicht mehr existiert, fällt auf, bevor ein
-Partner danach arbeitet oder es einem Kunden zusagt.
+Every route standing here stands as a pointer to what has to be looked up in the contract, not as
+a promise. It is named nevertheless, because otherwise nobody could check whether this sheet is
+still right. That is exactly what the tool is for:
 
-**Zwei Arten von Weg, und der Unterschied entscheidet, wer ihn gehen kann:**
+```
+node .ara/tools/check-docs.mjs --device <device>
+```
 
-| Art | Wer sich ausweist | Steht im Kontrakt |
+It reads every route that stands in the kit's knowledge, holds it against the contract's endpoint
+list and calls on the device. What no longer exists there shows up before a partner works along
+it or promises it to a customer.
+
+**Two kinds of route, and the difference decides who can walk it:**
+
+| Kind | Who identifies themselves | Stands in the contract |
 |---|---|---|
-| Die äußere Schnittstelle | ein Schlüssel in der Kopfzeile, keine Sitzung | ja, mit dem Bereich, den jeder verlangt |
-| Ein Weg der Oberfläche | die Sitzung eines angemeldeten Menschen | nein |
+| The outer interface | a key in the header, no session | yes, with the scope each one demands |
+| A route of the interface | the session of a logged-in human | no |
 
-Das Kit hat einen Schlüssel und keine Sitzung. Alles, was eine Sitzung braucht, macht
-also ein Mensch, im Browser am Gerät, und du siehst zu und schreibst mit. Ein Kit, das
-so einen Weg selbst ginge, bräuchte das Passwort eines Administrators.
+The kit has a key and no session. Everything that needs a session is therefore done by a human, in
+the browser on the device, and you watch and write along. A kit that walked such a route itself
+would need an administrator's password.
 
-**Ohne Browser ist das kein Ende.** Die Plattform hat für ihre Verwaltung eine eigene
-Schnittstelle, und wie sie geht, steht im Artefakt: Admin-Handbuch und API-Referenz,
-beide im Spiegel, zu finden mit `node .ara/tools/mirror.mjs --docs`. Der erste
-Mitarbeiter und die erste Freigabe sind der Fall, der einen sonst hängen lässt, und er
-steht in `.ara/knowledge/device.md` unter "Der erste Mitarbeiter und die erste Freigabe".
+**Without a browser that is not the end.** The platform has an interface of its own for its
+administration, and how it works stands in the artifact: admin handbook and API reference, both in
+the mirror, to be found with `node .ara/tools/mirror.mjs --docs`. The first employee and the first
+permission are the case that otherwise leaves you stuck, and it stands in
+`.ara/knowledge/device.md` under "Der erste Mitarbeiter und die erste Freigabe".
 
-## Anmeldung: eine App bekommt keine eigene
+## Login: an app gets none of its own
 
-Wer an Arasul angemeldet ist und die App freigegeben hat, ist in der App angemeldet. Wer
-nicht, kommt nicht hinein. Es gibt keine Sonderregel für Administratoren.
+Whoever is logged in to Arasul and has the app shared with them is logged in to the app. Whoever is
+not does not get in. There is no special rule for administrators.
 
-Durchgesetzt wird das **vor** dem Container: die Plattform prüft die Anfrage und setzt
-zwei Kopfzeilen, eine mit dem Benutzernamen und eine mit der Rolle. **Wie sie heißen und
-welche Rollen es gibt, steht im Kontrakt** unter `koepfe`, samt dem Hinweis, wie der Name
-zu lesen ist. Schreib die Namen nicht ab, lies sie dort.
+That is enforced **in front of** the container: the platform checks the request and sets two
+headers, one with the user name and one with the role. **What they are called and which roles
+there are stands in the contract** under `koepfe`, together with the note on how the name is to be
+read. Do not copy the names down, read them there.
 
-Sie sind nicht fälschbar: was von außen in der Anfrage steht, wird gelöscht, bevor die
-Plattform ihre eigenen setzt.
+They cannot be forged: whatever comes in from outside in the request gets deleted before the
+platform sets its own.
 
-Bequemer als die Kopfzeilen ist der Weg, den die Plattform der App dafür freihält:
+More convenient than the headers is the route the platform keeps free for the app:
 
 ```
 GET /apps/<id>/api/me
 ```
 
-Er antwortet mit Kennung, Stand, Benutzer und Rolle. Der Teststand hat seinen eigenen
-darunter. Welche Namen unter `/apps/<id>/` der Plattform gehören und welche der App,
-steht im Kontrakt unter `apps.vergeben`.
+It answers with the id, the slot, the user and the role. Staging has its own one underneath. Which
+names under `/apps/<id>/` belong to the platform and which to the app stands in the contract under
+`apps.vergeben`.
 
-**Was du daraus nicht baust:** kein Anmeldeformular in der App, kein Feld, in das jemand
-seinen Namen tippt, keine eigene Benutzerliste. Das wäre eine zweite Anmeldung neben der
-echten, und sie würde niemanden abhalten.
+**What you do not build out of that:** no login form in the app, no field somebody types their name
+into, no user list of your own. That would be a second login next to the real one, and it would
+hold nobody back.
 
-## Freigaben: ein Lauf hält an, ein Mensch entscheidet
+## Permissions: a run stops, a human decides
 
-Ein Flow kann anhalten und um Freigabe bitten. Das Werkzeug dafür heißt
-`freigabe_anfordern` und steht in der Schritt-Kette des Flows, mit einem Titel, dem
-Zusammenhang und einer Frist. Der Lauf steht danach auf wartend, und ohne Entscheidung
-läuft nichts weiter.
+A flow can stop and ask for approval. The tool for that is called `freigabe_anfordern` and stands
+in the flow's step chain, with a title, the context and a deadline. The run then stands as waiting,
+and without a decision nothing goes further.
 
-Das ist etwas anderes als eine Rückfrage im Gespräch: eine Rückfrage geht an den, der
-gerade zusieht, und ohne Antwort läuft der Flow mit einer Annahme weiter. Eine Freigabe
-geht an jeden, dem die App freigegeben ist, und **ohne Antwort läuft gar nichts weiter**.
+That is something other than a question in the conversation: a question goes to whoever is watching
+right now, and without an answer the flow carries on with an assumption. An approval goes to
+everybody the app is shared with, and **without an answer nothing goes further at all**.
 
-Drei Ausgänge, und sie stehen am Lauf: bestätigt, dann läuft er ab dem angehaltenen
-Schritt weiter. Abgelehnt, dann endet er, und die Begründung ist sein Grund. Niemand
-entscheidet bis zur Frist, dann endet er ebenfalls.
+Three outcomes, and they stand on the run: approved, then it carries on from the stopped step.
+Rejected, then it ends, and the reason is its reason. Nobody decides by the deadline, then it ends
+as well.
 
-**Entschieden wird über die Sitzung eines Menschen**, nicht über einen Schlüssel:
+**Deciding happens over a human's session**, not over a key:
 
 ```
 GET  /api/freigabe-anfragen
@@ -93,48 +91,45 @@ POST /api/freigabe-anfragen/<id>/bestaetigen
 POST /api/freigabe-anfragen/<id>/ablehnen
 ```
 
-Diese drei Wege stehen darum nicht im Kontrakt, und das Kit ruft sie nicht. Wer
-entscheiden will, ist angemeldet, und das ist der Kunde.
+Those three routes therefore do not stand in the contract, and the kit does not call them. Whoever
+wants to decide is logged in, and that is the customer.
 
-**Die App liest ihren Stand und entscheidet nicht:**
+**The app reads its state and does not decide:**
 
 ```
 GET /api/v1/external/freigaben
 ```
 
-Mit ihrem eigenen Schlüssel, mit der Lauf-Nummer als Frage dahinter. Eine App, die ihre
-eigene Freigabe erteilen könnte, wäre keine.
+With its own key, with the run number as the question behind it. An app that could grant its own
+approval would not be one.
 
-**Wer entscheiden darf, sagt der Kunde, nicht der Flow.** Ein Flow nennt keine Person und
-keine Rolle, er beschreibt die Sache. Die Zuständigkeit ist dieselbe Freigabe, mit der
-jemand die App überhaupt benutzen darf.
+**Who may decide the customer says, not the flow.** A flow names no person and no role, it
+describes the matter. The responsibility is the same permission with which somebody may use the app
+at all.
 
-Was du dem Kunden **nicht** ungeprüft zusagst: dass ein wartender Lauf beliebig lange
-steht. Frag das am Gerät nach, bevor ein Ablauf darauf gebaut wird, in dem eine Freigabe
-tagelang offen liegt.
+What you do **not** promise the customer unchecked: that a waiting run stands for an arbitrarily
+long time. Ask that on the device before a process is built on it in which an approval lies open
+for days.
 
-## Flows: eine Datei je Flow, das Modell steht im Kopf
+## Flows: one file per flow, the model stands in the header
 
-Ein Flow ist eine Aufgabe, die ein Sprachmodell mit Werkzeugen erledigt. Als Datei ist er
-Markdown mit einem Kopf: der Kopf sagt, was der Flow braucht und darf, der Text darunter
-ist der Auftrag.
+A flow is a task a language model carries out with tools. As a file it is Markdown with a header:
+the header says what the flow needs and may do, the text below is the instruction.
 
-**Ein Flow im Paket ist eine Lieferung.** Das Paket bringt die Dateien mit, das Gerät
-registriert sie je App und Stand. Der Namensraum ist die App: zwei Apps dürfen denselben
-Flow-Namen tragen.
+**A flow in a package is a delivery.** The package brings the files along, the device registers
+them per app and slot. The namespace is the app: two apps may carry the same flow name.
 
-**Das Schema des Kopfes und die Regeln für einen Flow aus einem Paket stehen im
-Kontrakt** unter `flow_frontmatter`: das Schema als Schema, dazu die Regeln als Sätze und
-der Hinweis, dass der Auftrag der Rumpf ist und kein Feld im Kopf. `--contract` gibt
-beides wörtlich aus. Schreib es nicht ab, lies es an dem Gerät, um das es geht.
+**The schema of the header and the rules for a flow out of a package stand in the contract** under
+`flow_frontmatter`: the schema as a schema, plus the rules as sentences and the note that the
+instruction is the body and not a field in the header. `--contract` prints both word for word. Do
+not copy it down, read it on the device in question.
 
-**Das Modell im Kopf ist der Vorschlag des Partners.** Der Administrator am Gerät darf es
-je Flow überschreiben; seine Entscheidung liegt am Gerät und nicht in der Datei und
-überlebt darum jedes App-Update. Zwei Folgen für dich: schreib in die README einer App
-nicht, mit welchem Modell sie läuft, und such einen Unterschied im Verhalten nicht zuerst
-im Paket.
+**The model in the header is the partner's suggestion.** The administrator on the device may
+override it per flow; their decision lies on the device and not in the file and therefore survives
+every app update. Two consequences for you: do not write in an app's README which model it runs on,
+and do not look for a difference in behaviour in the package first.
 
-Von außen angestoßen wird ein Flow über die äußere Schnittstelle:
+A flow is triggered from outside over the outer interface:
 
 ```
 GET  /api/v1/external/flows
@@ -142,18 +137,18 @@ POST /api/v1/external/flows/<name>/run
 GET  /api/v1/external/flows/runs/<id>
 ```
 
-Was ein Schlüssel dabei sieht, entscheidet der Schlüssel: der einer App sieht nur ihre
-eigenen Flows in ihrem Stand. Wiederkehrende Starts löst du von außen über denselben Weg
-aus, aus einem Zeitplan auf einem Rechner, der ohnehin läuft.
+What a key sees in doing so the key decides: an app's key sees only its own flows in its own slot.
+Recurring starts you trigger from outside over the same route, from a schedule on a computer that
+runs anyway.
 
-**Ein Flow mit Freigabe-Schritt wird gestartet, ohne auf das Ergebnis zu warten.** Er
-hält an, bis ein Mensch entscheidet, und das kann dauern; ein wartender Aufruf läuft
-vorher in sein Zeitlimit. Die Lauf-Nummer kommt sofort, den Rest fragst du nach.
+**A flow with an approval step is started without waiting for the result.** It stops until a human
+decides, and that can take a while; a waiting call runs into its time limit before that. The run
+number comes back immediately, the rest you ask for.
 
-## Die KI-Schnittstelle: mit Schlüssel, ohne Sitzung
+## The AI interface: with a key, without a session
 
-Ein Sprachmodell fragen, den Stand eines Auftrags lesen, sehen, welche Modelle am Gerät
-sind, Text aus einer Datei holen und sie auswerten lassen:
+Ask a language model, read the state of a job, see which models are on the device, get text out of a
+file and have it evaluated:
 
 ```
 POST /api/v1/external/llm/chat
@@ -165,26 +160,23 @@ POST /api/v1/external/document/extract-structured
 POST /api/v1/external/document/analyze
 ```
 
-**Welche davon dieses eine Gerät führt, steht in seinem Kontrakt**, und dort steht auch,
-welchen Bereich ein Schlüssel dafür tragen muss. Das Kit ruft nichts auf, was das Gerät
-nicht verspricht. Fehlt einem Schlüssel der Bereich, weist das Gerät ab, und das ist kein
-Fehler des Kits, sondern eine Entscheidung des Administrators.
+**Which of those this one device carries stands in its contract**, and there stands too which scope
+a key has to carry for it. The kit calls nothing the device does not promise. If a key lacks the
+scope, the device rejects it, and that is not a fault of the kit but a decision of the
+administrator.
 
-Die Kopfzeile für den Schlüssel und sein Vorsatz stehen ebenfalls im Kontrakt, unter
-`schluessel`. Der Schlüssel des Kits kommt aus `/device` mit `--deploy-key`; den Schlüssel
-einer App legt das Gerät beim Einspielen selbst in den Container, zusammen mit der
-Adresse der Schnittstelle. Welche Namen die beiden Werte tragen, sagt der Kontrakt unter
-`umgebung`.
+The header for the key and its prefix likewise stand in the contract, under `schluessel`. The kit's
+key comes from `/device` with `--deploy-key`; an app's key the device puts into the container
+itself at deployment, together with the address of the interface. Which names the two values carry
+the contract says under `umgebung`.
 
-**Der Chat ist zustandslos.** Jeder Aufruf ist ein eigener Auftrag mit genau der
-Vorgeschichte, die mitgeschickt wird. Wer einen Verlauf will, führt ihn selbst und schickt
-ihn mit. Eine App, die auf ein Gedächtnis am Gerät baut, baut auf etwas, das es nicht
-gibt.
+**The chat is stateless.** Every call is a job of its own with exactly the history that is sent
+along. Whoever wants a conversation keeps it themselves and sends it along. An app that builds on a
+memory on the device builds on something that does not exist.
 
-## Der Weg für fremde Werkzeuge
+## The route for outside tools
 
-Neben der eigenen Schnittstelle beantwortet das Gerät die Aufrufe, die verbreitete
-KI-Bibliotheken sprechen:
+Next to its own interface the device answers the calls that widespread AI libraries speak:
 
 ```
 POST /v1/chat/completions
@@ -192,80 +184,76 @@ POST /v1/embeddings
 GET  /v1/models
 ```
 
-Angemeldet wird mit demselben Schlüssel, in der Schlüsselkopfzeile oder als
-`Authorization: Bearer`. Wofür das gut ist: das Backend einer App nimmt eine fertige
-Bibliothek und richtet sie auf das Gerät, statt einen eigenen Client zu bauen.
+Authentication is with the same key, in the key header or as `Authorization: Bearer`. What that is
+good for: an app's backend takes a ready-made library and points it at the device instead of
+building a client of its own.
 
-**Diese Wege stehen nicht im Kontrakt.** Der Kontrakt beschreibt, was zwischen Kit und
-Gerät vereinbart ist, und dieser Weg ist für fremde Werkzeuge da. Daraus folgt zweierlei:
-das Kit ruft ihn nicht von sich aus, und **bevor du ihn einem Kunden zusagst, prüfst du
-ihn an seinem Gerät.** `node .ara/tools/check-docs.mjs --device <gerät>` fragt ohne
-Schlüssel an und sagt, ob es den Weg dort gibt.
+**These routes do not stand in the contract.** The contract describes what is agreed between kit
+and device, and this route is there for outside tools. Two things follow from that: the kit does not
+call it of its own accord, and **before you promise it to a customer, you check it on their
+device.** `node .ara/tools/check-docs.mjs --device <device>` asks without a key and says whether the
+route exists there.
 
-## `app.json` und der Flow-Kopf: das Schema liegt am Gerät
+## `app.json` and the flow header: the schema lies on the device
 
-Was in ein Manifest gehört, ist keine Sache dieses Blattes. Das Gerät gibt sein Schema
-aus, und daneben die Regeln, die kein Schema tragen kann. Beides prüft das Kit für dich:
+What belongs in a manifest is not a matter for this sheet. The device prints its schema, and next to
+it the rules no schema can carry. The kit checks both for you:
 
 ```
-node .ara/tools/app.mjs --device <gerät> --check <ordner>
+node .ara/tools/app.mjs --device <device> --check <folder>
 ```
 
-**Die Regeln ohne Schema sind kein Beiwerk.** Ein Manifest kann gegen das Schema gültig
-sein und trotzdem abgewiesen werden. Das Werkzeug gibt sie wörtlich aus, und du gehst sie
-einzeln durch. Der ganze Weg eines Pakets steht in `.ara/knowledge/deploy.md`.
+**The rules without a schema are not trimmings.** A manifest can be valid against the schema and
+still be rejected. The tool prints them word for word, and you go through them one by one. The whole
+way of a package stands in `.ara/knowledge/deploy.md`.
 
-## Die Sicherung
+## The backup
 
-Die Frage, die ein Kunde nach einem halben Jahr stellt, hat zwei Teile: **sichert das
-Gerät wirklich**, und **wann lag zuletzt eine Kopie außerhalb des Geräts**. Beide
-beantwortet ein Weg der Oberfläche:
+The question a customer asks after half a year has two parts: **does the device really back up**,
+and **when did a copy last lie outside the device**. Both are answered by a route of the interface:
 
 ```
 GET /api/backup/status
 ```
 
-Er verlangt eine Sitzung als Administrator. Kein Kit-Schlüssel öffnet ihn, er steht darum
-nicht im Kontrakt, und `/maintain` sagt in diesem Fall „das Gerät nennt dafür keinen
-Endpunkt". Das heißt nicht, dass nicht gesichert wird, sondern dass das Kit es auf diesem
-Weg nicht messen kann.
+It demands a session as administrator. No kit key opens it, so it does not stand in the contract,
+and `/maintain` in that case says "das Gerät nennt dafür keinen Endpunkt". That does not mean no
+backup happens, it means the kit cannot measure it this way.
 
-Zwei Wege, und du sagst, welchen du gegangen bist:
+Two ways, and you say which one you took:
 
-1. **Im Browser am Gerät**, der Mensch ist angemeldet. Du siehst die Antwort, er auch.
-2. **Über SSH**, mit dem, was am Gerät dafür da ist.
+1. **In the browser on the device**, the human is logged in. You see the answer, so do they.
+2. **Over SSH**, with whatever is there on the device for it.
 
-Ein Ziel außerhalb ist eine Platte oder eine Freigabe im Kundennetz, kein Ziel in einer
-Cloud. Fehlt es, sagt die Antwort den Grund, und der gehört ins Gespräch: eine Sicherung,
-die neben dem Gerät liegt, ist nach einem Wasserschaden auch weg.
+A target outside is a disk or a share in the customer network, not a target in a cloud. If it is
+missing, the answer gives the reason, and that belongs in the conversation: a backup lying next to
+the device is gone too after water damage.
 
-**In eine Leistungsbeschreibung oder ein Übergabeprotokoll kommt nur, was du gesehen
-hast**, mit Datum und mit dem Weg, auf dem du es gesehen hast.
+**Into a service description or a handover record goes only what you have seen**, with a date and
+with the way you saw it.
 
-## Was ohne Arasul fehlt
+## What is missing without Arasul
 
-Dieselbe App läuft auch auf einem Gerät ohne Arasul, über Compose:
+The same app also runs on a device without Arasul, over Compose:
 
 ```
-node .ara/tools/app.mjs --device <gerät> --app <name> --compose --port 8080
+node .ara/tools/app.mjs --device <device> --app <name> --compose --port 8080
 ```
 
-Dann fällt alles weg, was auf diesem Blatt steht: die Anmeldung, die Flows, die
-Freigaben, der zweite Stand und der Schlüssel, mit dem eine App die Schnittstelle
-erreicht. Das Werkzeug zählt es beim Aufsetzen auf und schreibt es in den Kopf der
-erzeugten Datei. **Sag es vorher und mit denselben Worten**, statt es hinterher in der
-Ausgabe stehen zu lassen.
+Then everything on this sheet falls away: the login, the flows, the permissions, the second slot and
+the key with which an app reaches the interface. The tool lists it at setup and writes it into the
+header of the generated file. **Say it beforehand and in the same words**, instead of leaving it
+standing in the output afterwards.
 
-Das ist ein Weg zum Vorführen und zum Ausprobieren. Für einen Betrieb mit echten Daten
-ist er keiner: wer die Adresse und den Port erreicht, sieht die App.
+That is a way to demonstrate and to try out. For an operation with real data it is not: whoever
+reaches the address and the port sees the app.
 
-## Wenn ein Weg fehlt
+## When a route is missing
 
-Nennt der Kontrakt einen Weg nicht, ruft das Kit ihn nicht auf. Das ist kein Fehler des
-Werkzeugs, sondern die Aussage, dass dieses Gerät ihn nicht anbietet, und meistens heißt
-das: es ist älter als das Kit. Was dann gilt, steht in `.ara/knowledge/deploy.md` unter
-der Kontraktversion.
+If the contract does not name a route, the kit does not call it. That is not a fault of the tool but
+the statement that this device does not offer it, and usually that means: it is older than the kit.
+What applies then stands in `.ara/knowledge/deploy.md` under the contract version.
 
-Fällt dir auf, dass dieses Blatt einen Weg nennt, den es an einem aktuellen Gerät nicht
-mehr gibt, ist das eine Rückmeldung ans Kit und keine Kleinigkeit. `check-docs.mjs` mit
-`--device` sagt es dir mit einem Satz je Route.
+If you notice that this sheet names a route that no longer exists on a current device, that is
+feedback for the kit and not a trifle. `check-docs.mjs` with `--device` tells you with one sentence
+per route.

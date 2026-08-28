@@ -1,5 +1,20 @@
 #!/usr/bin/env node
 /**
+ * Agenda: what is due.
+ *
+ * Collects dates from all customer files and devices, including the ones without
+ * a customer under devices/: follow-ups, expiring maintenance contracts,
+ * interrupted setups, contacts gone quiet.
+ *
+ * None of it runs automatically. The tool answers when asked, deliberately not a
+ * watchman that sends messages by itself.
+ *
+ *   node .ara/tools/agenda.mjs                 everything that is due
+ *   node .ara/tools/agenda.mjs --days 30       only the next 30 days
+ *   node .ara/tools/agenda.mjs --json          machine readable
+ *
+ * === deutsch ===
+ *
  * Agenda: was steht an.
  *
  * Sammelt Termine aus allen Kundenakten und Geräten, auch denen ohne Kunden unter
@@ -16,6 +31,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { t } from "./lib/i18n.mjs";
 import {
   customerPath,
   daysUntil,
@@ -55,7 +71,9 @@ for (const customer of listCustomers()) {
       days: follow,
       type: "follow_up",
       customer,
-      text: `Wiedervorlage ${label}${fields.follow_up_note ? `: ${fields.follow_up_note}` : ""}`,
+      text:
+        t(`Follow-up ${label}`, `Wiedervorlage ${label}`) +
+        (fields.follow_up_note ? `: ${fields.follow_up_note}` : ""),
     });
   }
 
@@ -71,7 +89,10 @@ for (const customer of listCustomers()) {
       days: 0,
       type: "stale",
       customer,
-      text: `${label}, seit ${-lastContact} Tagen kein Kontakt, Stand "${fields.status}"`,
+      text: t(
+        `${label}, no contact for ${-lastContact} days, status "${fields.status}"`,
+        `${label}, seit ${-lastContact} Tagen kein Kontakt, Stand "${fields.status}"`
+      ),
     });
   }
 
@@ -95,8 +116,11 @@ function collectDevices(customer, label) {
         device,
         text:
           until < 0
-            ? `Wartung ${place} ist seit ${-until} Tagen abgelaufen`
-            : `Wartung ${place} läuft in ${until} Tagen aus`,
+            ? t(
+                `Maintenance ${place} expired ${-until} days ago`,
+                `Wartung ${place} ist seit ${-until} Tagen abgelaufen`
+              )
+            : t(`Maintenance ${place} expires in ${until} days`, `Wartung ${place} läuft in ${until} Tagen aus`),
       });
     }
 
@@ -110,7 +134,10 @@ function collectDevices(customer, label) {
           type: "paused",
           customer,
           device,
-          text: `Einrichtung ${place} unterbrochen in Phase ${run.phase ?? "?"} (seit ${run.updated || "unbekannt"})`,
+          text: t(
+            `Setup ${place} interrupted in phase ${run.phase ?? "?"} (since ${run.updated || "unknown"})`,
+            `Einrichtung ${place} unterbrochen in Phase ${run.phase ?? "?"} (seit ${run.updated || "unbekannt"})`
+          ),
         });
       }
     }
@@ -122,7 +149,10 @@ function collectDevices(customer, label) {
         type: "gap",
         customer,
         device,
-        text: `${place} läuft, aber es ist keine Wartungslaufzeit hinterlegt`,
+        text: t(
+          `${place} runs, but no maintenance term is stored`,
+          `${place} läuft, aber es ist keine Wartungslaufzeit hinterlegt`
+        ),
       });
     }
   }
@@ -142,9 +172,16 @@ if (!items.length) {
   const own = listDevices(null).length;
   console.log(
     count || own
-      ? `Nichts steht an. ${count} Kunde${count === 1 ? "" : "n"}, ${own} Gerät${own === 1 ? "" : "e"} ohne Kunden, ` +
-          `keine Termine in den nächsten ${horizon} Tagen.`
-      : "Noch kein Kunde und kein Gerät angelegt. Anlegen mit /customer <name> oder /device <name>."
+      ? t(
+          `Nothing is due. ${count} customer${count === 1 ? "" : "s"}, ${own} device${own === 1 ? "" : "s"} without a customer, ` +
+            `no dates in the next ${horizon} days.`,
+          `Nichts steht an. ${count} Kunde${count === 1 ? "" : "n"}, ${own} Gerät${own === 1 ? "" : "e"} ohne Kunden, ` +
+            `keine Termine in den nächsten ${horizon} Tagen.`
+        )
+      : t(
+          "No customer and no device created yet. Create one with /customer <name> or /device <name>.",
+          "Noch kein Kunde und kein Gerät angelegt. Anlegen mit /customer <name> oder /device <name>."
+        )
   );
   process.exit(0);
 }
@@ -153,14 +190,14 @@ const overdue = items.filter((i) => i.days < 0);
 const now = items.filter((i) => i.days >= 0 && i.days <= 14);
 const later = items.filter((i) => i.days > 14);
 
-const out = ["# Was ansteht", ""];
+const out = [t("# What is due", "# Was ansteht"), ""];
 if (overdue.length) {
-  out.push("## Überfällig", ...overdue.map((i) => `- ${i.text}`), "");
+  out.push(t("## Overdue", "## Überfällig"), ...overdue.map((i) => `- ${i.text}`), "");
 }
 if (now.length) {
-  out.push("## Nächste zwei Wochen", ...now.map((i) => `- ${i.text}`), "");
+  out.push(t("## Next two weeks", "## Nächste zwei Wochen"), ...now.map((i) => `- ${i.text}`), "");
 }
 if (later.length) {
-  out.push("## Später", ...later.map((i) => `- ${i.text}`), "");
+  out.push(t("## Later", "## Später"), ...later.map((i) => `- ${i.text}`), "");
 }
 console.log(out.join("\n").trimEnd());

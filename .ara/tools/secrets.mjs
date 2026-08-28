@@ -1,5 +1,23 @@
 #!/usr/bin/env node
 /**
+ * Manage secrets.
+ *
+ *   node .ara/tools/secrets.mjs --show                 where they lie, which names, what is set
+ *   node .ara/tools/secrets.mjs --set ARASUL_TOKEN     the value is asked for, not displayed
+ *   node .ara/tools/secrets.mjs --store keychain       change the store
+ *
+ * `--show` lists every name the kit assigns: the known credentials and every entry
+ * a device file points at, so the administrator's start password too. Names, not
+ * values.
+ *
+ * The value is never passed as an argument: otherwise it would stand in the process
+ * list and in the shell history. At a terminal it gets asked for and hidden while
+ * typed; if there is no terminal, it gets read from standard input:
+ *
+ *   printf '%s' "$VALUE" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN
+ *
+ * === deutsch ===
+ *
  * Geheimnisse verwalten.
  *
  *   node .ara/tools/secrets.mjs --show                 wo liegen sie, welche Namen, was ist gesetzt
@@ -20,6 +38,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { t } from "./lib/i18n.mjs";
 import {
   ROOT,
   devicePath,
@@ -44,9 +63,18 @@ import {
 const KNOWN = [
   {
     name: "ARASUL_TOKEN",
-    info: "Download-Token aus dem Partnerportal, fünf je Partner kostenlos. Erst für die Installation nötig",
+    info: t(
+      "download token from the partner portal, five per partner free of charge. Only needed for the installation",
+      "Download-Token aus dem Partnerportal, fünf je Partner kostenlos. Erst für die Installation nötig"
+    ),
   },
-  { name: "ARASUL_BASIS", info: "Adresse des Portals (nur bei abweichender Installation)" },
+  {
+    name: "ARASUL_BASIS",
+    info: t(
+      "address of the portal (only for a deviating installation)",
+      "Adresse des Portals (nur bei abweichender Installation)"
+    ),
+  },
 ];
 
 /**
@@ -60,9 +88,15 @@ const KNOWN = [
  * Namen nicht: das Geheimnis lag da, und niemand kam an es heran.
  */
 const REF_FIELDS = [
-  { field: "api_key_ref", info: "Kit-Schlüssel für den Deploy (app:deploy)" },
-  { field: "start_password_ref", info: "Startpasswort des Administrators aus der Installation" },
-  { field: "secret_ref", info: "Geheimnis dieser Akte" },
+  { field: "api_key_ref", info: t("kit key for the deploy (app:deploy)", "Kit-Schlüssel für den Deploy (app:deploy)") },
+  {
+    field: "start_password_ref",
+    info: t(
+      "the administrator's start password from the installation",
+      "Startpasswort des Administrators aus der Installation"
+    ),
+  },
+  { field: "secret_ref", info: t("secret of this file", "Geheimnis dieser Akte") },
 ];
 
 function deviceSecrets() {
@@ -93,27 +127,38 @@ const arg = parseArgs();
 const PROFILE = join(ROOT, "business", "profile.md");
 
 function storeLabel(store) {
-  return store === "keychain" ? `Schlüsselbund (${keychainHint()})` : ".env-Datei im Kit";
+  return store === "keychain"
+    ? t(`keychain (${keychainHint()})`, `Schlüsselbund (${keychainHint()})`)
+    : t(".env file in the kit", ".env-Datei im Kit");
 }
 
 // Ablage wechseln
 if (typeof arg.store === "string") {
   const wanted = arg.store.toLowerCase();
-  if (!["env", "keychain"].includes(wanted)) fail("--store nimmt env oder keychain.");
+  if (!["env", "keychain"].includes(wanted)) fail(t("--store takes env or keychain.", "--store nimmt env oder keychain."));
   if (wanted === "keychain" && !keychainAvailable()) {
     fail(
-      `Der Schlüsselbund ist hier nicht nutzbar: ${keychainHint()}.\n` +
-        "Bleib bei der .env oder installier das fehlende Werkzeug."
+      t(
+        `The keychain is not usable here: ${keychainHint()}.\n` +
+          "Stay with the .env or install the missing tool.",
+        `Der Schlüsselbund ist hier nicht nutzbar: ${keychainHint()}.\n` +
+          "Bleib bei der .env oder installier das fehlende Werkzeug."
+      )
     );
   }
   if (!existsSync(PROFILE)) {
-    fail("business/profile.md gibt es noch nicht. Lauf zuerst durch /init.");
+    fail(t("business/profile.md does not exist yet. Run /init first.", "business/profile.md gibt es noch nicht. Lauf zuerst durch /init."));
   }
   writeFrontmatter(PROFILE, { secrets_store: wanted });
   console.log(
-    `Ablage umgestellt auf: ${storeLabel(wanted)}.\n` +
-      "Bereits hinterlegte Geheimnisse bleiben, wo sie sind, sie werden weiterhin gefunden.\n" +
-      "Wenn du sie umziehen willst, setz sie einmal neu."
+    t(
+      `Store changed to: ${storeLabel(wanted)}.\n` +
+        "Secrets already stored stay where they are, they are still found.\n" +
+        "If you want to move them, set them once again.",
+      `Ablage umgestellt auf: ${storeLabel(wanted)}.\n` +
+        "Bereits hinterlegte Geheimnisse bleiben, wo sie sind, sie werden weiterhin gefunden.\n" +
+        "Wenn du sie umziehen willst, setz sie einmal neu."
+    )
   );
   process.exit(0);
 }
@@ -121,24 +166,28 @@ if (typeof arg.store === "string") {
 // Setzen
 if (typeof arg.set === "string") {
   const name = arg.set;
-  if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) fail("Der Name darf nur Großbuchstaben und _ enthalten.");
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) {
+    fail(t("The name may only contain capital letters and _.", "Der Name darf nur Großbuchstaben und _ enthalten."));
+  }
 
   /** Ein Wert ist die erste Zeile. Was danach kommt, war Beiwerk der Eingabe. */
   const store = (raw) => {
     const value = String(raw).split(/\r?\n/)[0].trim();
-    if (!value) fail(`Für ${name} kam kein Wert an. Es ist nichts hinterlegt worden.`);
+    if (!value) {
+      fail(t(`No value arrived for ${name}. Nothing has been stored.`, `Für ${name} kam kein Wert an. Es ist nichts hinterlegt worden.`));
+    }
     try {
       const used = setSecret(name, value);
-      console.log(`${name} hinterlegt in: ${storeLabel(used)}.`);
+      console.log(t(`${name} stored in: ${storeLabel(used)}.`, `${name} hinterlegt in: ${storeLabel(used)}.`));
     } catch (error) {
-      console.error(`Konnte ${name} nicht speichern: ${error.message}`);
+      console.error(t(`Could not save ${name}: ${error.message}`, `Konnte ${name} nicht speichern: ${error.message}`));
       process.exit(1);
     }
   };
 
   if (process.stdin.isTTY) {
     // Am Terminal wird gefragt, und die Eingabe bleibt verdeckt.
-    const question = `Wert für ${name} (wird nicht angezeigt): `;
+    const question = t(`Value for ${name} (not displayed): `, `Wert für ${name} (wird nicht angezeigt): `);
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
     rl._writeToOutput = function (text) {
       if (text.includes(question)) rl.output.write(question);
@@ -168,29 +217,42 @@ if (typeof arg.set === "string") {
 } else {
   const store = activeStore();
   const lines = [
-    "# Geheimnisse",
+    t("# Secrets", "# Geheimnisse"),
     "",
-    `- Ablage: ${storeLabel(store)}`,
-    `- Schlüsselbund verfügbar: ${keychainAvailable() ? "ja" : `nein (${keychainHint()})`}`,
+    t(`- Store: ${storeLabel(store)}`, `- Ablage: ${storeLabel(store)}`),
+    t(
+      `- Keychain available: ${keychainAvailable() ? "yes" : `no (${keychainHint()})`}`,
+      `- Schlüsselbund verfügbar: ${keychainAvailable() ? "ja" : `nein (${keychainHint()})`}`
+    ),
     "",
   ];
   const named = new Set();
   for (const entry of KNOWN) {
     named.add(entry.name);
-    lines.push(`- ${entry.name}: ${hasSecret(entry.name) ? "hinterlegt" : "fehlt"}: ${entry.info}`);
+    lines.push(
+      `- ${entry.name}: ${hasSecret(entry.name) ? t("stored", "hinterlegt") : t("missing", "fehlt")}: ${entry.info}`
+    );
   }
 
   const devices = deviceSecrets();
   if (devices.length) {
-    lines.push("", "Geheimnisse der Geräte, Namen aus der jeweiligen Akte:");
+    lines.push("", t("Secrets of the devices, names from their files:", "Geheimnisse der Geräte, Namen aus der jeweiligen Akte:"));
     for (const entry of devices) {
       named.add(entry.ref);
-      lines.push(`- ${entry.ref}: ${entry.set ? "hinterlegt" : "fehlt"}: Gerät ${entry.place}, ${entry.info}`);
+      lines.push(
+        t(
+          `- ${entry.ref}: ${entry.set ? "stored" : "missing"}: device ${entry.place}, ${entry.info}`,
+          `- ${entry.ref}: ${entry.set ? "hinterlegt" : "fehlt"}: Gerät ${entry.place}, ${entry.info}`
+        )
+      );
       // Das Startpasswort ist kein Wert zum Ansehen, sondern einer zum Benutzen.
       // Darum steht hier der Handgriff und nicht nur der Name.
       if (entry.field === "start_password_ref" && entry.set) {
         lines.push(
-          "  Erste Anmeldung als Administrator, gibt eine Sitzung und zeigt das Passwort nicht:",
+          t(
+            "  First login as administrator, gives a session and does not display the password:",
+            "  Erste Anmeldung als Administrator, gibt eine Sitzung und zeigt das Passwort nicht:"
+          ),
           `    node .ara/tools/device.mjs ${entry.customer ? `--customer ${entry.customer} ` : ""}` +
             `--name ${entry.device} --admin-login`
         );
@@ -204,24 +266,45 @@ if (typeof arg.set === "string") {
   if (rest.length) {
     lines.push(
       "",
-      "Weitere Namen in der Ablage, die zu keiner Akte und zu keinem bekannten Eintrag gehören:",
+      t(
+        "Further names in the store that belong to no file and to no known entry:",
+        "Weitere Namen in der Ablage, die zu keiner Akte und zu keinem bekannten Eintrag gehören:"
+      ),
       ...rest.map((name) => `- ${name}`)
     );
   }
   if (store === "keychain") {
     lines.push(
       "",
-      "Der Schlüsselbund lässt sich nicht auflisten. Aufgezählt ist, was das Kit selbst vergibt;",
-      "ob ein Name dort einen Wert hat, steht oben."
+      ...t(
+        [
+          "The keychain cannot be listed. What is listed is what the kit assigns itself;",
+          "whether a name has a value there stands above.",
+        ],
+        [
+          "Der Schlüsselbund lässt sich nicht auflisten. Aufgezählt ist, was das Kit selbst vergibt;",
+          "ob ein Name dort einen Wert hat, steht oben.",
+        ]
+      )
     );
   }
 
   lines.push(
     "",
-    "Werte werden nie angezeigt. Setzen mit:",
-    "  node .ara/tools/secrets.mjs --set ARASUL_TOKEN",
-    "Ohne Terminal kommt der Wert von der Standardeingabe:",
-    "  printf '%s' \"$WERT\" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN"
+    ...t(
+      [
+        "Values are never displayed. Set them with:",
+        "  node .ara/tools/secrets.mjs --set ARASUL_TOKEN",
+        "Without a terminal the value comes from standard input:",
+        "  printf '%s' \"$VALUE\" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN",
+      ],
+      [
+        "Werte werden nie angezeigt. Setzen mit:",
+        "  node .ara/tools/secrets.mjs --set ARASUL_TOKEN",
+        "Ohne Terminal kommt der Wert von der Standardeingabe:",
+        "  printf '%s' \"$WERT\" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN",
+      ]
+    )
   );
   console.log(lines.join("\n"));
 }

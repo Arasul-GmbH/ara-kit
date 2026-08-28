@@ -18,6 +18,8 @@
  */
 
 /** Die Fassung des Profils, die das Kit schreibt. */
+import { t } from "./i18n.mjs";
+
 export const PROFILE = {
   id: "urn:cen.eu:en16931:2017",
   name: "EN 16931",
@@ -294,7 +296,7 @@ export function parseXml(text) {
   const source = String(text);
   const fail = (message) => {
     const line = source.slice(0, i).split("\n").length;
-    throw new Error(`XML nicht lesbar, Zeile ${line}: ${message}`);
+    throw new Error(t(`XML not readable, line ${line}: ${message}`, `XML nicht lesbar, Zeile ${line}: ${message}`));
   };
 
   const skip = (marker) => {
@@ -325,33 +327,37 @@ export function parseXml(text) {
       continue;
     }
     const close = source.indexOf(">", i);
-    if (close < 0) fail("ein Element wird nicht geschlossen");
+    if (close < 0) fail(t("an element is not closed", "ein Element wird nicht geschlossen"));
     const raw = source.slice(i + 1, close);
     i = close + 1;
 
     if (raw.startsWith("/")) {
       const name = raw.slice(1).trim();
       const node = stack.pop();
-      if (!node) fail(`</${name}> ohne oeffnendes Element`);
-      if (node.name !== name) fail(`</${name}> schliesst <${node.name}>`);
+      if (!node) fail(t(`</${name}> without an opening element`, `</${name}> ohne oeffnendes Element`));
+      if (node.name !== name) fail(t(`</${name}> closes <${node.name}>`, `</${name}> schliesst <${node.name}>`));
       continue;
     }
 
     const selfClosing = raw.endsWith("/");
     const inner = selfClosing ? raw.slice(0, -1) : raw;
     const nameMatch = inner.match(/^([A-Za-z_][\w.:-]*)/);
-    if (!nameMatch) fail(`"<${inner.slice(0, 20)}" ist kein Elementname`);
+    if (!nameMatch) {
+      fail(t(`"<${inner.slice(0, 20)}" is not an element name`, `"<${inner.slice(0, 20)}" ist kein Elementname`));
+    }
     const node = { name: nameMatch[1], attrs: {}, children: [], text: "" };
     for (const attr of inner.slice(nameMatch[1].length).matchAll(/([A-Za-z_][\w.:-]*)\s*=\s*"([^"]*)"/g)) {
       node.attrs[attr[1]] = attr[2];
     }
     if (stack.length) stack[stack.length - 1].children.push(node);
-    else if (root) fail("zwei Wurzelelemente");
+    else if (root) fail(t("two root elements", "zwei Wurzelelemente"));
     else root = node;
     if (!selfClosing) stack.push(node);
   }
-  if (stack.length) fail(`<${stack[stack.length - 1].name}> wird nicht geschlossen`);
-  if (!root) fail("kein Element gefunden");
+  if (stack.length) {
+    fail(t(`<${stack[stack.length - 1].name}> is not closed`, `<${stack[stack.length - 1].name}> wird nicht geschlossen`));
+  }
+  if (!root) fail(t("no element found", "kein Element gefunden"));
   return root;
 }
 
@@ -691,11 +697,18 @@ export function validateXml(text) {
     ok: problems.length === 0,
     problems,
     root,
-    checked: [
-      "lesbar als XML",
-      `Ordnung der Elemente gegen das Modell im Kit (${PROFILE.name})`,
-      "Geschaeftsregeln der EN 16931, soweit sie am Dokument pruefbar sind",
-    ],
+    checked: t(
+      [
+        "readable as XML",
+        `order of the elements against the model in the kit (${PROFILE.name})`,
+        "business rules of EN 16931, as far as they are checkable on the document",
+      ],
+      [
+        "lesbar als XML",
+        `Ordnung der Elemente gegen das Modell im Kit (${PROFILE.name})`,
+        "Geschaeftsregeln der EN 16931, soweit sie am Dokument pruefbar sind",
+      ]
+    ),
     unchecked: UNCHECKED,
   };
 }
@@ -705,9 +718,17 @@ export function validateXml(text) {
  *
  * Steht hier, damit niemand aus einem gruenen Lauf mehr liest, als er sagt.
  */
-export const UNCHECKED = [
-  "das amtliche XSD der UN/CEFACT. Es liegt dem Kit nicht bei, und geholt wird zur Laufzeit nichts",
-  "die Schematron-Regeln der KoSIT und die deutschen Zusatzregeln BR-DE-*",
-  "die Codelisten in voller Laenge, geprueft wird nur die Form der Codes",
-  "die Konformitaet des PDF zu PDF/A-3. Dafuer braucht es einen Pruefer wie veraPDF",
-];
+export const UNCHECKED = t(
+  [
+    "the official XSD of UN/CEFACT. It is not shipped with the kit, and nothing gets fetched at runtime",
+    "the Schematron rules of KoSIT and the German additional rules BR-DE-*",
+    "the code lists in full length, only the form of the codes gets checked",
+    "the conformity of the PDF to PDF/A-3. That needs a validator like veraPDF",
+  ],
+  [
+    "das amtliche XSD der UN/CEFACT. Es liegt dem Kit nicht bei, und geholt wird zur Laufzeit nichts",
+    "die Schematron-Regeln der KoSIT und die deutschen Zusatzregeln BR-DE-*",
+    "die Codelisten in voller Laenge, geprueft wird nur die Form der Codes",
+    "die Konformitaet des PDF zu PDF/A-3. Dafuer braucht es einen Pruefer wie veraPDF",
+  ]
+);

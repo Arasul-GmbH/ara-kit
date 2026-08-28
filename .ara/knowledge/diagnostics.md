@@ -1,76 +1,73 @@
-# Verfahren: Diagnose
+# Procedure: diagnosis
 
-> **Wann brauchst du das?** Wenn etwas nicht funktioniert, bei `/maintain` oder wenn
-> jemand „bei Müller geht der Chat nicht" sagt.
+> **When do you need this?** When something does not work, at `/maintain` or when somebody
+> says "the chat at Müller is broken".
 
-## Der Grundsatz
+## The principle
 
-**Erst feststellen, dann ändern.** Keine Reparatur ohne Befund. Kein „probier mal einen
-Neustart" als erste Handlung.
+**Establish first, change second.** No repair without a finding. No "try a restart" as the
+first action.
 
-Der Grund ist nicht Ordnungsliebe: Ein Neustart löscht die Spur. Wenn du vorher nicht weißt,
-was los war, weißt du es danach nie, und in drei Wochen steht dasselbe Problem wieder da,
-und du fängst von vorn an.
+The reason is not tidiness: a restart wipes the trail. If you do not know beforehand what was
+going on, you never know afterwards, and in three weeks the same problem stands there again
+and you start over.
 
-## Die Kette
+## The chain
 
-Arbeite von außen nach innen. Jede Stufe beantwortet eine Frage, bevor du zur nächsten
-gehst.
+Work from the outside in. Every stage answers one question before you go to the next.
 
-1. **Was genau passiert?** Nicht „geht nicht". Was hat wer gemacht, was hätte passieren
-   sollen, was ist stattdessen passiert, wann zuletzt gut? Wenn der Kunde das nicht weiß,
-   lass es dir zeigen.
-2. **Ist das Gerät erreichbar?** `node .ara/tools/find-device.mjs --host <adresse>`,
-   dann `node .ara/tools/remote.mjs --customer <k> --check`. Wenn nicht: Verfahren in
-   `.ara/knowledge/remote-access.md`, Abschnitt „Wenn ein Gerät nicht mehr erreichbar ist".
-3. **Lebt das Gerät selbst?** Läuft es seit dem letzten Start durch? Ist Speicherplatz da?
-   Ist die Systemzeit richtig? Ein volles Dateisystem und eine falsche Uhr sind die zwei
-   Ursachen, die sich als alles Mögliche tarnen.
-4. **Laufen die Dienste?** Welche laufen, welche nicht, welche starten immer wieder neu.
-   Ein Dienst, der in Schleife neu startet, ist die häufigste Ursache für „antwortet
-   manchmal, manchmal nicht".
-5. **Was sagen die Protokolle?** Vom Zeitpunkt des Fehlers, nicht die letzten tausend
-   Zeilen. Wenn der Kunde sagt „seit gestern Nachmittag", dann schau dort.
-6. **Was hat sich geändert?** Update, Stromausfall, neuer Router, neue Firewall, jemand hat
-   etwas eingerichtet. Ein System, das monatelang lief und plötzlich nicht mehr, hat fast
-   immer eine Ursache außerhalb seiner selbst.
+1. **What exactly happens?** Not "does not work". What did who do, what should have happened,
+   what happened instead, when was it last good? If the customer does not know, have them
+   show you.
+2. **Is the device reachable?** `node .ara/tools/find-device.mjs --host <address>`, then
+   `node .ara/tools/remote.mjs --customer <c> --check`. If not: procedure in
+   `.ara/knowledge/remote-access.md`, section "Wenn ein Gerät nicht mehr erreichbar ist".
+3. **Is the device itself alive?** Has it been running since the last boot? Is there disk
+   space? Is the system time right? A full file system and a wrong clock are the two causes
+   that disguise themselves as anything at all.
+4. **Are the services running?** Which run, which do not, which keep restarting. A service
+   restarting in a loop is the most frequent cause of "answers sometimes, sometimes not".
+5. **What do the logs say?** From the time of the fault, not the last thousand lines. If the
+   customer says "since yesterday afternoon", look there.
+6. **What has changed?** Update, power cut, new router, new firewall, somebody set something
+   up. A system that ran for months and suddenly does not almost always has a cause outside
+   itself.
 
-Wie man das jeweils abfragt, steht im Produkt. Lies es im Spiegel nach, statt Befehle aus
-dem Gedächtnis zu verwenden.
+How each of those is queried stands in the product. Read it up in the mirror instead of using
+commands from memory.
 
-## Häufige Muster
+## Frequent patterns
 
-| Symptom | Wo du zuerst schaust |
+| Symptom | Where you look first |
 |---|---|
-| Antwortet gar nicht | Läuft die Sprachverarbeitung? Ist ein Modell geladen? |
-| Antwortet leer oder unsinnig | Meist kein Modell geladen, sieht aus wie ein Denkfehler, ist ein fehlendes Modell |
-| Antwortet sehr langsam | Läuft die Berechnung auf der Grafikeinheit oder auf dem Hauptprozessor? |
-| Findet Dokumente nicht | Wurde das Dokument aufgenommen? Ist das Format überhaupt lesbar? |
-| Weboberfläche nicht erreichbar | Netzweg, Zertifikat, oder Dienst dahinter |
-| Ging gestern noch | Update, Neustart, Änderung im Kundennetz |
+| Answers not at all | Is the language processing running? Is a model loaded? |
+| Answers empty or nonsensical | Usually no model loaded, looks like a reasoning fault, is a missing model |
+| Answers very slowly | Is the computation running on the graphics unit or on the main processor? |
+| Does not find documents | Was the document ingested? Is the format readable at all? |
+| Web interface unreachable | Network path, certificate, or the service behind it |
+| Worked yesterday | Update, restart, change in the customer network |
 
-Die Tabelle ersetzt die Kette nicht. Sie sagt nur, wo man zuerst hinschaut.
+The table does not replace the chain. It only says where to look first.
 
-## Bevor du etwas änderst
+## Before you change anything
 
-Sag den Befund in zwei Sätzen: was du festgestellt hast und was du daraus schließt. Dann
-den Vorschlag, mit Rückweg. Erst dann handeln.
+Say the finding in two sentences: what you established and what you conclude from it. Then the
+suggestion, with a way back. Only then act.
 
-> Der Dienst für die Sprachverarbeitung startet seit gestern 14 Uhr alle zwei Minuten neu,
-> im Protokoll steht ein Speicherfehler. Das passt dazu, dass gestern ein größeres Modell
-> geladen wurde. Vorschlag: zurück auf das Modell aus dem Geräteprofil. Rückweg: das
-> größere lässt sich jederzeit wieder laden. Soll ich?
+> The service for the language processing has been restarting every two minutes since 2 pm
+> yesterday, the log holds a memory error. That fits with a larger model having been loaded
+> yesterday. Suggestion: back to the model from the device profile. Way back: the larger one
+> can be loaded again at any time. Shall I?
 
-## Was du nicht tust
+## What you do not do
 
-- **Nicht mehrere Dinge gleichzeitig ändern.** Dann weißt du nicht, was geholfen hat.
-- **Nicht in Kundendaten stöbern.** Protokolle ja, Dokumente und Gesprächsverläufe nein.
-- **Nicht raten und dann prüfen, ob es geholfen hat.** Das ist keine Diagnose, das ist
-  Würfeln mit fremder Infrastruktur.
+- **Do not change several things at once.** Then you do not know what helped.
+- **Do not rummage in customer data.** Logs yes, documents and conversation histories no.
+- **Do not guess and then check whether it helped.** That is not diagnosis, that is throwing
+  dice with somebody else's infrastructure.
 
-## Danach
+## Afterwards
 
-Was war, was du getan hast, was es gebracht hat, in `customers/<k>/history/`. Beim nächsten
-Mal ist das der erste Ort, an dem du nachsiehst. Wenn dieselbe Ursache zum zweiten Mal
-auftritt, ist das keine Störung mehr, sondern ein Konstruktionsfehler, und der gehört
-gemeldet.
+What was, what you did, what it achieved, into `customers/<c>/history/`. Next time that is the
+first place you look. If the same cause comes up a second time, it is no longer a fault but a
+design defect, and that belongs reported.

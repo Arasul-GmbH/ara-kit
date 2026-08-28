@@ -1,173 +1,168 @@
-# Verfahren: Kundenakte
+# Procedure: the customer file
 
-> **Wann brauchst du das?** Bei `/customer`: anlegen, öffnen und pflegen einer Kundenakte.
+> **When do you need this?** At `/customer`: creating, opening and keeping a customer file.
 
-## Aufbau
+## Structure
 
 ```
 customers/mueller-metallbau/
-├── customer.md                    Wer das ist, was er vorhat, wo es steht
+├── customer.md                    Who that is, what they intend, where it stands
 ├── devices/
 │   └── zentrale/
-│       ├── device.md              Ein Gerät: Typ, Netz, Zugang, Schnittstelle, Wartung
-│       ├── runsheet.md            Ablaufzustand der Einrichtung (bei /device)
-│       ├── handover.md            Abnahmedokument (am Ende von /device)
+│       ├── device.md              One device: type, network, access, interface, maintenance
+│       ├── runsheet.md            Progress state of the setup (at /device)
+│       ├── handover.md            Handover document (at the end of /device)
 │       └── reports/
-│           └── JJJJ-MM-TT-wartung.md   Wartungsberichte (bei /maintain)
+│           └── YYYY-MM-DD-wartung.md   Maintenance reports (at /maintain)
 ├── documents/
-│   ├── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
-│   └── JJJJ-MM-TT-rechnung-JJJJ-NNNN.md   Rechnungen, Markdown und PDF nebeneinander
+│   ├── YYYY-MM-DD-angebot.md      The paperwork: offer, annexes, records
+│   └── YYYY-MM-DD-rechnung-YYYY-NNNN.md   Invoices, Markdown and PDF side by side
 └── history/
-    └── JJJJ-MM-TT-thema.md        Gespräche, Störungen, Wartungen
+    └── YYYY-MM-DD-topic.md        Conversations, faults, maintenance
 ```
 
-**Nachsehen, statt die Akte zu lesen.** Was hier verteilt liegt, sammelt ein Werkzeug an
-einer Stelle:
+**Look, instead of reading the file.** What lies scattered here a tool collects in one place:
 
 ```
-node .ara/tools/customer.mjs                          welche Kunden es gibt
-node .ara/tools/customer.mjs --customer mueller       Lagebild eines Kunden
+node .ara/tools/customer.mjs                          which customers there are
+node .ara/tools/customer.mjs --customer mueller       the picture of one customer
 node .ara/tools/customer.mjs --customer mueller --json
 ```
 
-Es liest nur, außer mit `--new`. Es urteilt nicht über den Kunden und schreibt nichts in
-seine Akte: was besprochen wurde, gehört in den Verlauf, und der Stand wandert von Hand
-ins Frontmatter.
+It only reads, except with `--new`. It passes no judgement on the customer and writes nothing
+into their file: what was discussed belongs into the history, and the status moves into the
+frontmatter by hand.
 
-**`documents/` gegen `history/`:** In `documents/` liegt das Papier, das der Kunde
-bekommt, Markdown und PDF nebeneinander. In `history/` steht, was passiert ist, auch dass
-ein Angebot rausgegangen ist. Das eine wird unterschrieben, das andere gelesen.
-Verfahren: `.ara/knowledge/paperwork.md`.
+**`documents/` against `history/`:** in `documents/` lies the paperwork the customer receives,
+Markdown and PDF side by side. In `history/` stands what happened, including that an offer went
+out. One gets signed, the other gets read. Procedure: `.ara/knowledge/paperwork.md`.
 
-**Die Anschrift gehört ins Frontmatter, in drei Felder.** `street`, `postcode` und
-`city`, dazu `country` und `vat_id`, falls es eine gibt. Eine Rechnung braucht sie einzeln
-und vollständig, § 14 Abs. 4 Nr. 1 UStG, und ein Angebot ohne Anschrift geht auch nicht
-raus. Schreib sie hin, sobald du sie hast, nicht erst, wenn ein Dokument darauf wartet.
+**The address belongs in the frontmatter, in three fields.** `street`, `postcode` and `city`,
+plus `country` and `vat_id` if there is one. An invoice needs them individually and completely,
+section 14(4) no. 1 UStG, and an offer without an address does not go out either. Write them down
+as soon as you have them, not only when a document is waiting on them.
 
-**Ordnername:** sprechend, klein, mit Bindestrichen, ohne Rechtsform.
-`mueller-metallbau`, nicht `Müller Metallbau GmbH` und nicht `kunde-01`.
-Die vollständige Firmierung steht im Frontmatter unter `legal_name`.
+**Folder name:** speaking, lower case, with hyphens, without the legal form.
+`mueller-metallbau`, not `Müller Metallbau GmbH` and not `kunde-01`. The full legal name stands
+in the frontmatter under `legal_name`.
 
-**Die eigenen Geräte des Partners** (Vorführung, Übung, eigener Betrieb) gehören keinem
-Kunden und liegen darum nicht hier, sondern unter `devices/<gerät>/`, wie beim
-Unternehmen. Kein Scheinkunde dafür: ein erfundener Kunde verfälscht jede Auswertung,
-jede Agenda und jede Antwort auf „wie steht mein Geschäft". Angelegt werden sie mit
-`/device <gerät>`, angesprochen ohne `--customer`:
+**The partner's own devices** (demonstration, practice, own operation) belong to no customer and
+therefore do not lie here, but under `devices/<device>/`, as with a company. No dummy customer
+for them: an invented customer falsifies every evaluation, every agenda and every answer to "how
+is my business doing". They are created with `/device <device>`, addressed without `--customer`:
 
 ```
 node .ara/tools/device.mjs --name orin
 node .ara/tools/remote.mjs --device orin --check
 ```
 
-Verfahren: `.ara/knowledge/device.md`.
+Procedure: `.ara/knowledge/device.md`.
 
-## Anlegen
+## Creating
 
-Prüf zuerst, ob es die Akte schon gibt, auch unter ähnlichem Namen. Wenn ja: öffnen.
+Check first whether the file already exists, including under a similar name. If yes: open it.
 
-**Vor dem Fragen: nachsehen.** Wenn eine Website genannt wird oder du sie findest, lies
-sie. Branche, Größe, Standorte, Ansprechpartner, das steht meist öffentlich da. Frag
-nicht nach, was du lesen kannst.
+**Before asking: look.** If a website is named or you find one, read it. Industry, size,
+locations, contacts, that usually stands there publicly. Do not ask about what you can read.
 
-Dann **eine** Interview-Runde mit gebündelten Fragen:
+Then **one** interview round with bundled questions:
 
-1. **Ansprechpartner.** Name, Rolle, wie erreichbar.
-2. **Wer entscheidet.** Wer unterschreibt, wer nutzt es, wer kann es verhindern. Bei
-   kleinen Firmen oft dieselbe Person, dann steht genau das da.
-3. **Was sie vorhaben.** In ihren Worten, ein bis zwei Sätze. Das ist später die Grundlage
-   für Abnahme und Schulung.
-4. **Stand.** Erstgespräch, Angebot draußen, beauftragt, Gerät schon da?
-5. **Gerät.** Schon klar, welches? Bestellt, geliefert, aufgebaut?
-6. **Ort und Netz.** Wo soll es stehen, wer betreut dort das Netzwerk?
-7. **Besonderheiten.** Branche mit besonderen Anforderungen (Kanzlei, Praxis, Behörde)?
-   Bestehende IT-Betreuung, mit der man sich abstimmen muss?
+1. **Contact.** Name, role, how to reach them.
+2. **Who decides.** Who signs, who uses it, who can prevent it. In small firms often the same
+   person, and then that is exactly what stands there.
+3. **What they intend.** In their words, one or two sentences. That is later the ground for
+   handover and training.
+4. **Status.** First conversation, offer out, ordered, device already there?
+5. **Device.** Already clear which one? Ordered, delivered, set up?
+6. **Place and network.** Where should it stand, who looks after the network there?
+7. **Particularities.** An industry with special requirements (law firm, practice, authority)?
+   Existing IT support you have to coordinate with?
 
-Frag nur, was du brauchst. Bei einem frühen Interessenten reichen die ersten vier Punkte.
-Ein leeres Feld ist besser als eine erfundene Antwort.
+Ask only what you need. For an early prospect the first four points are enough. An empty field is
+better than an invented answer.
 
-**Am Ende der Runde immer:** Wann willst du dich wieder melden, und worum geht es dann?
-→ `follow_up` und `follow_up_note`. Ein Gespräch ohne nächsten Termin ist ein Kunde, den
-man in drei Monaten vergessen hat (`.ara/knowledge/crm.md`).
+**At the end of the round always:** when do you want to get back in touch, and what will it be
+about then? → `follow_up` and `follow_up_note`. A conversation without a next date is a customer
+forgotten in three months (`.ara/knowledge/crm.md`).
 
-## Anlegen: was du schreibst
+## Creating: what you write
 
 ```
-node .ara/tools/customer.mjs --customer <ordnername> --new --legal-name "<Firmierung>"
+node .ara/tools/customer.mjs --customer <folder name> --new --legal-name "<legal name>"
 ```
 
-Das legt `customer.md` aus der Vorlage an, dazu `history/` und `documents/`, und setzt
-`id`, `status`, `created` und `last_contact`. Gibt es schon eine Akte mit ähnlichem
-Namen, hört es auf und nennt sie: derselbe Kunde ein zweites Mal ist der häufigste Weg zu
-zwei halben Akten. Ist es wirklich ein anderer, geht es mit `--force`.
+That creates `customer.md` from the template, plus `history/` and `documents/`, and sets `id`,
+`status`, `created` and `last_contact`. If a file with a similar name already exists, it stops
+and names it: the same customer a second time is the most frequent way to two half files. If it
+really is a different one, `--force` carries on.
 
-Danach von Hand, aus dem Gespräch:
+After that by hand, out of the conversation:
 
-- **Das Frontmatter füllen** und den Freitext in eigenen Worten schreiben, lesbar, nicht
-  als Stichpunktliste der Interviewantworten.
-- `history/JJJJ-MM-TT-erstgespraech.md` mit dem, was besprochen wurde. Auch wenn es kurz
-  ist: der erste Eintrag setzt den Rahmen.
-- `devices/<name>/device.md` **nur wenn schon klar ist, welches Gerät es wird**, und
-  angelegt wird es mit `/device <kunde>/<gerät>`, nicht von Hand. Sonst gar nicht: ein
-  leerer Geräteordner suggeriert einen Stand, den es nicht gibt.
+- **Fill the frontmatter** and write the free text in your own words, readable, not as a bullet
+  list of the interview answers.
+- `history/YYYY-MM-DD-erstgespraech.md` with what was discussed. Even if it is short: the first
+  entry sets the frame.
+- `devices/<name>/device.md` **only when it is already clear which device it will be**, and it
+  gets created with `/device <customer>/<device>`, not by hand. Otherwise not at all: an empty
+  device folder suggests a state that does not exist.
 
-Danach in drei Zeilen: was angelegt wurde, was noch fehlt, was der nächste Schritt ist.
+After that in three lines: what was created, what is still missing, what the next step is.
 
-## Öffnen
+## Opening
 
 ```
 node .ara/tools/customer.mjs --customer <name>
 ```
 
-Das ist deine Grundlage, nicht dein Text. **Nicht vorlesen.** Gib ein Lagebild:
+That is your ground, not your text. **Do not read it out.** Give a picture:
 
-- wer das ist, in einer Zeile
-- wo es steht (Status, letzter Kontakt, wie lange her)
-- welche Geräte es gibt und in welchem Zustand
-- was ansteht (Wiedervorlage, Wartungsende, unterbrochene Einrichtung, fehlendes Papier)
+- who that is, in one line
+- where it stands (status, last contact, how long ago)
+- which devices there are and in what state
+- what is due (follow-up, end of maintenance, interrupted setup, missing paperwork)
 
-Dann fragen, was zu tun ist. Kein Vorschlagskatalog.
+Then ask what to do. No catalogue of suggestions.
 
-## Der Kunde und seine Geräte
+## The customer and their devices
 
-Ein Kundengerät liegt unter `customers/<kunde>/devices/<gerät>/`. Was in seiner Akte
-steht, entscheidet, ob das Kit es überhaupt ansprechen kann:
+A customer device lies under `customers/<customer>/devices/<device>/`. What stands in its file
+decides whether the kit can address it at all:
 
-| Feld | Wofür |
+| Field | For what |
 |---|---|
-| `address` | die Adresse im Kundennetz, darüber läuft SSH |
-| `api_base` | die Schnittstelle, wenn sie woanders liegt als der SSH-Zugang, etwa hinter einem Tunnel |
-| `tls` | `selfsigned`, wenn das Gerät ein selbst ausgestelltes Zertifikat trägt |
-| `api_key_ref` | der Name des Kit-Schlüssels in der Geheimnis-Ablage, nie sein Wert |
-| `maintenance_until` | Ende des Wartungsvertrags, daraus wird die Wiedervorlage |
+| `address` | the address in the customer network, SSH runs over it |
+| `api_base` | the interface, when it sits elsewhere than the SSH access, behind a tunnel for instance |
+| `tls` | `selfsigned`, when the device carries a self-signed certificate |
+| `api_key_ref` | the name of the kit key in the secret store, never its value |
+| `maintenance_until` | end of the maintenance contract, the follow-up comes out of it |
 
-**Was das Werkzeug dazu ausgibt, ist eine Aussage über die Akte und keine über das
-Gerät.** Ob es antwortet, wie es ihm geht und welche Apps darauf stehen, sagt das Gerät
-selbst: `/maintain <kunde>/<gerät>`.
+**What the tool prints about that is a statement about the file and not one about the device.**
+Whether it answers, how it is doing and which apps stand on it, the device says itself:
+`/maintain <customer>/<device>`.
 
-Ein Gerät ohne `api_key_ref` kann keine App bekommen, und eines mit einem Namen, hinter
-dem kein Eintrag in der Ablage steht, auch nicht. Beides fällt im Lagebild auf, bevor der
-erste Deploy daran scheitert.
+A device without `api_key_ref` cannot receive an app, and one with a name behind which no entry
+stands in the store cannot either. Both show up in the picture before the first deploy fails on
+them.
 
-## Pflegen
+## Keeping it
 
-Nach **jedem** Kontakt drei Dinge, das ist die Minute, die den Unterschied macht:
+After **every** contact three things, that is the minute that makes the difference:
 
-1. Eintrag unter `history/` (Vorlage: `.ara/templates/history-entry.md`)
-2. `last_contact` aktualisieren
-3. `follow_up` setzen oder `status` ändern
+1. Entry under `history/` (template: `.ara/templates/history-entry.md`)
+2. Update `last_contact`
+3. Set `follow_up` or change `status`
 
-Ändert sich etwas Grundlegendes (Ansprechpartner, Firmierung), pflege es im Frontmatter,
-nicht nur im Verlaufseintrag.
+If something fundamental changes (contact, legal name), keep it in the frontmatter, not only in
+the history entry.
 
-**Wenn ein Ordner umbenannt wird**, zieh die Verweise nach. Die `id` bleibt unverändert,
-damit ältere Dokumente ihren Bezug behalten.
+**When a folder gets renamed**, pull the references along. The `id` stays unchanged, so that
+older documents keep their reference.
 
-## Was nicht in die Akte gehört
+## What does not belong in the file
 
-- **Passwörter und Token.** Die gehören in die Geheimnis-Ablage
-  (`node .ara/tools/secrets.mjs`). In der Geräteakte steht unter `secret_ref` nur, unter
-  welchem Namen das Geheimnis abgelegt ist.
-- **Ungeprüfte Produktwerte.** Modellnamen, Ports und Versionen erst eintragen, wenn sie
-  vom Gerät bestätigt sind (`.ara/knowledge/live-knowledge.md`).
-- **Kundendaten vom Gerät.** Dokumente, Chatverläufe und Datenbankinhalte bleiben beim
-  Kunden.
+- **Passwords and tokens.** Those belong in the secret store (`node .ara/tools/secrets.mjs`). The
+  device file only says under `secret_ref` under which name the secret is stored.
+- **Unchecked product values.** Only enter model names, ports and versions once they are
+  confirmed by the device (`.ara/knowledge/live-knowledge.md`).
+- **Customer data from the device.** Documents, chat histories and database contents stay with
+  the customer.

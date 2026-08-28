@@ -1,30 +1,30 @@
 ---
 date:
 type:                    # call | quote | invoice | incident | maintenance | update | extension
-device:                  # falls es um ein bestimmtes geht
-duration:                # für die Abrechnung
+device:                  # if it is about a particular one
+duration:                # for the billing
 ---
 
-# <!-- Thema in vier Worten -->
+# <!-- topic in four words -->
 
-## Anlass
+## Occasion
 
-<!-- Was war der Auslöser. Bei einer Störung: was der Kunde beschrieben hat,
-     in seinen Worten. -->
+<!-- What triggered it. For a fault: what the customer described,
+     in their words. -->
 
-## Befund
+## Finding
 
-<!-- Was tatsächlich festgestellt wurde. Bei Gesprächen: was besprochen wurde. -->
+<!-- What was actually established. For conversations: what was discussed. -->
 
-## Getan
+## Done
 
-<!-- Was verändert wurde. Konkret genug, dass es jemand rückgängig machen könnte. -->
+<!-- What was changed. Concrete enough that somebody could undo it. -->
 
-## Nachweis
+## Evidence
 
-<!-- Wie geprüft wurde, dass es jetzt geht. Nicht "läuft wieder", sondern was
-     du geprüft hast und was dabei herauskam. -->
+<!-- How it was checked that it works now. Not "runs again", but what
+     you checked and what came out of it. -->
 
-## Offen
+## Open
 
-<!-- Was noch aussteht, wer am Zug ist, bis wann. -->
+<!-- What is still outstanding, whose move it is, by when. -->

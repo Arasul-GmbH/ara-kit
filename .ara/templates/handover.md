@@ -2,59 +2,59 @@
 customer:
 device:
 accepted_on:
-accepted_by:             # wer beim Kunden dabei war
+accepted_by:             # who was there on the customer's side
 installed_by:
-product_version:         # Version, die installiert wurde
-profile:                 # bestätigtes Plattformprofil
+product_version:         # version that was installed
+profile:                 # confirmed platform profile
 ---
 
-# Abnahme
+# Handover
 
-<!-- Entsteht aus dem Laufzettel. Nicht frei formulieren, nicht schönen.
-     Was nicht geprüft wurde, wird als nicht geprüft eingetragen. -->
+<!-- Comes into being out of the runsheet. Do not word it freely, do not prettify it.
+     What was not checked gets entered as not checked. -->
 
-## Was hier steht
+## What this is about
 
-<!-- Ein Satz: welches Gerät, an welchem Ort, wofür. -->
+<!-- One sentence: which device, at which place, for what. -->
 
-## Wie man herankommt
+## How to get in
 
 | | |
 |---|---|
-| Adresse im Netz | |
-| Name im Netz | |
-| Weboberfläche | |
-| Anmeldung Kunde | <!-- Benutzername; Passwort separat übergeben --> |
+| Address on the network | |
+| Name on the network | |
+| Web interface | |
+| Customer login | <!-- user name; hand over the password separately --> |
 
-## Was geprüft wurde
+## What was checked
 
-| Punkt | Ergebnis |
+| Point | Result |
 |---|---|
-| Dienste laufen, auch nach Neustart | |
-| Fachliche Anfrage wird sinnvoll beantwortet | |
-| Dokument wird aufgenommen und wiedergefunden | |
-| Fernzugriff von außerhalb des Kundennetzes | |
-| Anmeldung nur mit Schlüssel, kein Passwort | |
-| Kunde kann die Fernwartung selbst abschalten | |
+| Services run, also after a restart | |
+| A question about substance is answered sensibly | |
+| A document is ingested and found again | |
+| Remote access from outside the customer network | |
+| Login with a key only, no password | |
+| The customer can switch remote maintenance off themselves | |
 
-<!-- Ergebnis jeweils: erfüllt / nicht erfüllt / nicht geprüft, mit einem Halbsatz dazu. -->
+<!-- Result in each case: met / not met / not checked, with half a sentence on it. -->
 
-## Fernwartung
+## Remote maintenance
 
-<!-- Welcher Weg, wer darf zugreifen, wann. -->
+<!-- Which way, who may access, when. -->
 
-**Abschalten durch den Kunden:**
+**Switching off by the customer:**
 
-<!-- Konkret und nachvollziehbar. Dazu: was danach nicht mehr geht. -->
+<!-- Concrete and traceable. Plus: what no longer works afterwards. -->
 
-## Wartung
+## Maintenance
 
-<!-- Laufzeit des Wartungsvertrags, was enthalten ist, wann verlängert wird. -->
+<!-- Term of the maintenance contract, what is included, when it gets extended. -->
 
-## Offene Punkte
+## Open points
 
-<!-- Was nicht erledigt ist, warum, und was als Nächstes passiert. Mit Datum. -->
+<!-- What is not done, why, and what happens next. With a date. -->
 
-## Wer hilft
+## Who helps
 
-<!-- Ansprechpartner beim Partner, Erreichbarkeit, Reaktionszeit. -->
+<!-- Contact at the partner, availability, response time. -->

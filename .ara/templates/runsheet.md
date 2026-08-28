@@ -1,28 +1,28 @@
 ---
 customer:
 device:
-profile:                  # Plattformprofil, nur eintragen, wenn vom Gerät bestätigt
+profile:                  # platform profile, only enter it when confirmed by the device
 phase: 0
 state: open               # open | running | paused | done
 started:
 updated:
 ---
 
-# Laufzettel
+# Runsheet
 
-Der Ablaufzustand dieser Einrichtung. Wird fortgeschrieben, nie überschrieben.
-Am Ende entsteht daraus die Abnahmedokumentation.
+The progress state of this setup. Written on, never overwritten.
+At the end the handover documentation comes out of it.
 
-Die sieben Abschnitte:
+The seven sections:
 
-| Phase | Was passiert |
+| Phase | What happens |
 |---|---|
-| 0 | Vorbereitung am Schreibtisch |
-| 1 | Betriebssystem |
-| 2 | Erstkontakt über das Netz |
-| 3 | Arasul installieren |
-| 4 | Nachbereitung |
-| 5 | Nachweis |
-| 6 | Abnahme |
+| 0 | Preparation at the desk |
+| 1 | Operating system |
+| 2 | First contact over the network |
+| 3 | Install Arasul |
+| 4 | Follow-up |
+| 5 | Evidence |
+| 6 | Handover |
 
-## Protokoll
+## Record

@@ -1,119 +1,114 @@
-# Verfahren: Kundenpflege
+# Procedure: customer care
 
-> **Wann brauchst du das?** Wenn jemand fragt „was steht an", wenn ein Kontakt oder ein
-> Vertrag nachgehalten werden soll, und nach jedem Gespräch mit einem Kunden.
+> **When do you need this?** When somebody asks "what is due", when a contact or a contract
+> should be followed up, and after every conversation with a customer.
 
-## Warum das hier steht
+## Why this stands here
 
-Ein Solo-Selbstständiger verliert Geschäft nicht durch schlechte Arbeit, sondern durch
-Vergessen. Der Interessent, bei dem man im März nachfassen wollte. Die Wartung, die
-ausgelaufen ist, bevor jemand sie verlängert hat. Beides sind Termine, die zwischen zwei
-Kundenterminen untergehen.
+A one-person business does not lose deals through bad work, it loses them through forgetting.
+The prospect you wanted to chase up in March. The maintenance that ran out before anybody
+extended it. Both are dates that fall between two customer appointments.
 
-Das Kit überwacht nichts von selbst (dazu müsste dauernd etwas laufen). Es antwortet aber
-jederzeit auf die Frage, was ansteht:
+The kit monitors nothing by itself (that would need something running all the time). But it
+answers the question of what is due at any moment:
 
 ```
 node .ara/tools/agenda.mjs
 node .ara/tools/agenda.mjs --days 30
 ```
 
-**Stell diese Frage von dir aus**, wenn eine Sitzung ohne konkretes Anliegen beginnt oder
-wenn jemand nach dem Stand seines Geschäfts fragt. Nicht bei jeder Gelegenheit, einmal
-am Anfang genügt.
+**Ask that question on your own initiative** when a session starts without a concrete request or
+when somebody asks about the state of their business. Not at every opportunity, once at the
+start is enough.
 
-## Die vier Termine, die zählen
+## The four dates that count
 
-### 1. Wiedervorlage (`follow_up` in `customer.md`)
+### 1. Follow-up (`follow_up` in `customer.md`)
 
-Immer wenn ein Gespräch ohne Abschluss endet, gehört ein Datum in die Akte. „Meldet sich
-wieder" ist kein Zustand, sondern ein verlorener Kunde.
+Whenever a conversation ends without a conclusion, a date belongs in the file. "Will get back to
+us" is not a state, it is a lost customer.
 
 ```
 follow_up: 2026-09-15
-follow_up_note: nach der Messe nachfassen, wollte intern klären
+follow_up_note: chase up after the trade fair, wanted to clarify internally
 ```
 
-Der Halbsatz ist wichtiger als das Datum. In sechs Wochen weiß niemand mehr, worum es ging.
+The half sentence is more important than the date. In six weeks nobody knows what it was about.
 
-### 2. Wartungsvertrag (`maintenance_until` in `device.md`)
+### 2. Maintenance contract (`maintenance_until` in `device.md`)
 
-Die Verlängerung ist wiederkehrender Umsatz und der Grund, warum sich das Geschäft trägt.
-Sie wird **vor** dem Ablauf besprochen, nicht danach, die Agenda meldet sie zwei Monate
-vorher.
+The extension is recurring revenue and the reason the business carries itself. It is discussed
+**before** the expiry, not after; the agenda reports it two months in advance.
 
-Ein Gerät im Betrieb ohne hinterlegte Laufzeit ist eine Lücke. Die Agenda weist darauf hin.
+A device in operation without a stored term is a gap. The agenda points that out.
 
-### 3. Eingeschlafener Kontakt (`last_contact`)
+### 3. Contact gone quiet (`last_contact`)
 
-Bei laufenden Verkaufsvorgängen: Wer seit über drei Monaten nichts gehört hat, ist kein
-Interessent mehr. Entweder nachfassen oder auf `inactive` setzen. Beides ist besser, als
-eine Akte im Ungewissen zu lassen.
+For running sales processes: whoever has not heard anything for more than three months is no
+longer a prospect. Either chase up or set them to `inactive`. Both are better than leaving a
+file in limbo.
 
-Pfleg `last_contact` nach jedem Gespräch mit. Das ist eine Zeile und macht die Agenda
-brauchbar.
+Keep `last_contact` up to date after every conversation. That is one line and it makes the
+agenda usable.
 
-### 4. Unterbrochene Einrichtung
+### 4. Interrupted setup
 
-Ein Laufzettel im Zustand „unterbrochen" heißt: Bei einem Kunden steht ein halb
-eingerichtetes Gerät. Das ist der dringendste Eintrag von allen.
+A runsheet in state "unterbrochen" means: a half-configured device is standing at a customer.
+That is the most urgent entry of all.
 
-## Der Lebenslauf eines Kunden
+## The life of a customer
 
-Der Status in `customer.md` bildet ab, wo jemand steht:
+The status in `customer.md` reflects where somebody stands:
 
-| Status | Bedeutung | Was als Nächstes zählt |
+| Status | Meaning | What counts next |
 |---|---|---|
-| `lead` | Interesse, nichts Konkretes | Wiedervorlage setzen |
-| `quoted` | Angebot ist draußen | Nachfassdatum, Gültigkeit im Blick |
-| `won` | Beauftragt | Termin planen, Gerät bestellen |
-| `installed` | Läuft, Abnahme erfolgt | Wartungslaufzeit hinterlegen |
-| `maintenance` | In Betreuung | Verlängerung, regelmäßiger Blick |
-| `inactive` | Vorbei oder verloren | nichts, aber die Akte bleibt |
+| `lead` | Interest, nothing concrete | Set a follow-up |
+| `quoted` | Offer is out | Chase-up date, keep an eye on validity |
+| `won` | Ordered | Plan the appointment, order the device |
+| `installed` | Runs, handover done | Store the maintenance term |
+| `maintenance` | Under care | Extension, regular look |
+| `inactive` | Over or lost | Nothing, but the file stays |
 
-**Verlorene Kunden werden nicht gelöscht.** In zwei Jahren fragt jemand wieder an, und
-dann ist die Historie mehr wert als jedes Angebot.
+**Lost customers do not get deleted.** In two years somebody asks again, and then the history is
+worth more than any offer.
 
-## Nach jedem Kundenkontakt
+## After every customer contact
 
-Drei Dinge, jedes Mal:
+Three things, every time:
 
-1. Eintrag unter `customers/<kunde>/history/JJJJ-MM-TT-thema.md`. Der Ordner wächst,
-   und das ist in Ordnung: `node .ara/tools/customer.mjs --customer <name>` nennt die
-   letzten fünf Einträge und zählt den Rest, es entsteht ein Lagebild statt einer
-   Vorlesung. Wird es dir zu unübersichtlich, verschieb alte Jahrgänge von Hand nach
-   `history/archive/<jahr>/`. Von dort wird mitgelesen und mitgezählt, nur eben als
-   Archiv. **Verschoben wird nichts von selbst**, das sind Kundendaten.
-2. `last_contact` aktualisieren
-3. `follow_up` setzen oder den Status ändern
+1. Entry under `customers/<customer>/history/YYYY-MM-DD-topic.md`. The folder grows, and that is
+   fine: `node .ara/tools/customer.mjs --customer <name>` names the last five entries and counts
+   the rest, so a picture comes out instead of a lecture. If it gets too crowded for you, move
+   old years by hand into `history/archive/<year>/`. From there they are read along and counted
+   along, just as an archive. **Nothing is moved by itself**, that is customer data.
+2. Update `last_contact`
+3. Set `follow_up` or change the status
 
-Das dauert eine Minute und ist der Unterschied zwischen einer Kundenakte und einem Ordner
-voller Dateien.
+That takes a minute and is the difference between a customer file and a folder full of files.
 
-## Gelerntes: `business/notes/`
+## What was learned: `business/notes/`
 
-Hierhin gehört, was **über einen Kunden hinaus** gilt und beim nächsten Angebot oder der
-nächsten Einrichtung Zeit spart: welcher Einwand womit entkräftet wurde, wie lange ein
-Gerätetyp beim ersten Mal wirklich gebraucht hat, welcher Lieferant liefert, welche
-Pauschale zu knapp war. Eine Datei je Thema, `business/notes/<thema>.md`, ein Satz und ein
-Datum genügen.
+Here belongs what holds **beyond one customer** and saves time at the next offer or the next
+setup: which objection was countered with what, how long a device type really took the first
+time, which supplier delivers, which flat rate was too tight. One file per topic,
+`business/notes/<topic>.md`, one sentence and a date are enough.
 
-Nicht hierhin gehört, was zu **einem** Kunden gehört, denn das steht in seiner Akte, und
-nichts, was aus dem Produkt kommt. Ein Modellname oder eine Fassungsnummer ist hier morgen
-falsch und wird von hier aus abgeschrieben. Produktwerte kommen aus dem Spiegel oder vom
-Gerät, siehe `.ara/knowledge/live-knowledge.md`.
+Here does not belong what belongs to **one** customer, because that stands in their file, and
+nothing that comes out of the product. A model name or a version number is wrong here tomorrow
+and gets copied from here. Product values come from the mirror or from the device, see
+`.ara/knowledge/live-knowledge.md`.
 
-Der Ordner gehört dem Partner und ist von der Versionskontrolle ausgenommen, wie alles
-unter `business/`.
+The folder belongs to the partner and is excluded from version control, like everything under
+`business/`.
 
-## Was das Kit nicht ist
+## What the kit is not
 
-Keine Buchhaltung und keine Zeiterfassung. Dafür haben die meisten längst ein Werkzeug,
-und der Steuerberater will es ohnehin anders. Das Kit hält fest, was mit Kunden und ihren
-Geräten passiert.
+Not accounting and not time tracking. Most people have had a tool for that for a long time, and
+the tax adviser wants it differently anyway. The kit records what happens with customers and
+their devices.
 
-**Die eine Ausnahme ist die Ausgangsrechnung**, und auch die nur, wenn der Partner sie im
-Profil freigegeben hat. Dann schreibt `/invoice` die Rechnung, führt ihren Nummernkreis
-und druckt sie als ZUGFeRD-PDF, siehe `.ara/knowledge/invoicing.md`. Alles danach bleibt
-draußen: Zahlungseingänge, Mahnwesen, Voranmeldung, Eingangsrechnungen. Wer danach fragt,
-bekommt genau diese Antwort und keine Ausrede.
+**The one exception is the outgoing invoice**, and even that only when the partner has enabled
+it in the profile. Then `/invoice` writes the invoice, keeps its number range and prints it as a
+ZUGFeRD PDF, see `.ara/knowledge/invoicing.md`. Everything after that stays out: incoming
+payments, dunning, VAT returns, incoming invoices. Whoever asks about that gets exactly this
+answer and no excuse.

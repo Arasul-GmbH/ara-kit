@@ -1,139 +1,133 @@
-# Verfahren: Leistungsbeschreibung erstellen
+# Procedure: producing the Leistungsbeschreibung
 
-> **Wann brauchst du das?** Vor jedem Angebot, und noch einmal vor jeder Übergabe.
+> **When do you need this?** Before every offer, and once more before every handover.
 
-> **Stand 27.08.2026: unvollständig.** Die verbindliche Reihenfolge und die fünf Anlagen
-> stehen in `.ara/knowledge/paperwork.md`, Abschnitt „Die Leistungsbeschreibung füllen".
-> Diese Datei vertieft nur den Reifegrad je Zeile. Widersprechen sich beide, gilt
-> `paperwork.md`. Was fehlt, ist der Bildnachweis je Zeile: `node .ara/tools/evidence.mjs`
-> läuft, aber die Schritte im Browser sind in kein Verfahren geschrieben, und darum
-> entsteht `abgenommen` bis dahin von Hand am Gerät. Es ist keiner Phase zugeordnet.
+> **As of 27.08.2026: incomplete.** The binding order and the five annexes stand in
+> `.ara/knowledge/paperwork.md`, section "Die Leistungsbeschreibung füllen". This file only goes
+> deeper into the trial level per line. If the two contradict each other, `paperwork.md` applies.
+> What is missing is the picture evidence per line: `node .ara/tools/evidence.mjs` runs, but the
+> steps in the browser are written into no procedure, and that is why `abgenommen` comes about by
+> hand on the device until then. It is assigned to no phase.
 
-## Was dieses Dokument ist
+The document itself is German, like all the paperwork under `.ara/vorlagen/`. This procedure exists
+in both languages.
 
-Die Leistungsbeschreibung ist die Anlage, die festlegt, **was geschuldet ist**. Sie ist
-kein Werbetext und kein Haftungsausschluss. Sie wirkt in die andere Richtung als ein
-Ausschluss: ein Ausschluss nimmt etwas weg und wird geprüft, eine Beschreibung legt fest,
-woran ein Mangel überhaupt gemessen wird.
+## What this document is
 
-**Was hier nicht steht, ist nicht zugesagt.** Deshalb ist sie das Papier, das dich am
-meisten schützt, und deshalb darf sie nicht abgeschrieben werden.
+The Leistungsbeschreibung is the annex that fixes **what is owed**. It is not marketing copy and not
+a disclaimer. It works in the other direction from an exclusion: an exclusion takes something away
+and gets scrutinised, a description fixes what a defect is measured against in the first place.
 
-## Die zwei Zeitpunkte
+**What does not stand here is not promised.** That is why it is the paper that protects you most,
+and that is why it must not be copied.
 
-| Zeitpunkt | Wofür | Grundlage |
+## The two points in time
+
+| Point | For what | Ground |
 | --- | --- | --- |
-| **Vor dem Angebot** | Das ist die Zusage. Sie wird Vertragsbestandteil | Spiegel plus ein Gerät, das du kennst |
-| **Vor der Übergabe** | Das ist der Nachweis. Sie muss zum Übergabeprotokoll passen | genau dieses Gerät |
+| **Before the offer** | That is the promise. It becomes part of the contract | mirror plus a device you know |
+| **Before the handover** | That is the evidence. It has to match the Übergabeprotokoll | exactly this device |
 
-Beide tragen ein Datum. Weichen sie voneinander ab, ist das ein offener Punkt oder ein
-Mangel, und beides gehört auf den Tisch, nicht unter den Teppich.
+Both carry a date. If they diverge, that is an open point or a defect, and both belong on the table,
+not under the carpet.
 
-## Die drei Stufen, und was sie kosten
+## The three levels, and what they cost
 
-| Stufe | Bedeutung | Was du damit zusagst |
+| Level | Meaning | What you promise with it |
 | --- | --- | --- |
-| **abgenommen** | wird bei der Übergabe vorgeführt und abgezeichnet | volle Gewährleistung |
-| **in Erprobung** | vorhanden, aber nicht Gegenstand der Abnahme | nichts. Nutzung auf eigenes Risiko |
-| **Vorschau** | sichtbar, noch nicht fertig | nichts. Kann sich ändern oder entfallen |
+| **abgenommen** | gets demonstrated and signed off at the handover | full warranty |
+| **in Erprobung** | present, but not the subject of the acceptance | nothing. Use at your own risk |
+| **Vorschau** | visible, not finished yet | nothing. Can change or fall away |
 
-**Setz eine Zeile nur dann auf "abgenommen", wenn du sie vorführen wirst.** Eine Zeile,
-die hier "abgenommen" trägt und bei der Übergabe nicht gezeigt wird, ist ein Widerspruch
-in deinen eigenen Papieren, und er geht zu deinen Lasten.
+**Only set a line to "abgenommen" if you are going to demonstrate it.** A line that carries
+"abgenommen" here and does not get shown at the handover is a contradiction in your own papers, and
+it works against you.
 
-Im Zweifel: **in Erprobung**. Eine Funktion, die der Kunde nutzt und die zufällig gut
-läuft, kostet dich nichts. Eine Funktion, die du zugesagt hast und die ausfällt, schon.
+In case of doubt: **in Erprobung**. A function the customer uses and that happens to run well costs
+you nothing. A function you promised and that fails does.
 
-## So gehst du vor
+## How you go about it
 
-### 1. Den Spiegel holen
+### 1. Fetch the mirror
 
 ```
 node .ara/tools/mirror.mjs --refresh
 ```
 
-Daraus kommen die Funktionsbereiche und die Liste der Zielplattformen mit ihrem Stand
-der Erprobung. **Übernimm den Stand der Erprobung wörtlich.** Steht eine Plattform nicht
-auf `live`, hat sie nie auf echter Hardware gelaufen, und das gehört in das Angebot und
-in Ziffer 2a des Vertrages. Ohne diesen Hinweis verschweigst du einen Umstand, den der
-Kunde kennen müsste.
+Out of it come the functional areas and the list of target platforms with their trial level. **Take
+the trial level word for word.** If a platform does not stand at `live`, it has never run on real
+hardware, and that belongs into the offer and into clause 2a of the contract. Without that notice you
+conceal a circumstance the customer would need to know.
 
-### 2. Das Gerät befragen
+### 2. Ask the device
 
 ```
-node .ara/tools/service-description.mjs --customer <kunde> --device <gerät>
+node .ara/tools/service-description.mjs --customer <customer> --device <device>
 ```
 
-Das Werkzeug legt die Anlage an und trägt ein, was das Gerät über seine Schnittstelle
-beantwortet, mit der Quelle je Wert:
+The tool creates the annex and enters what the device answers over its interface, with the source per
+value:
 
-- Der Softwarestand und die Kontraktfassung, aus dem Kontrakt des Geräts
-- Welche Sprachmodelle dort liegen, mit ihrer Kennung
-- Welche Apps darauf stehen, mit ihrem Stand, für Abschnitt 6
+- The software version and the contract version, out of the device's contract
+- Which language models lie there, with their ids
+- Which apps stand on it, with their version, for section 6
 
-**Was es nicht messen konnte, bleibt Platzhalter** und wird in der Ausgabe genannt. Eine
-leere Antwort auf gefragte Kennungen wird dabei nicht zu einem zugesagten „keine": das
-sagt es und lässt den Platzhalter stehen.
+**What it could not measure stays a placeholder** and gets named in the output. An empty answer to
+requested ids does not become a promised "none" in doing so: it says that and leaves the placeholder
+standing.
 
-Die Verbindungen nach außen (Abschnitt 7) misst es nicht. Die bleiben Handarbeit am
-Gerät, und ohne sie geht die Anlage nicht raus.
+The connections to the outside (section 7) it does not measure. Those stay manual work on the device,
+and without them the annex does not go out.
 
-**Nichts davon schreibst du aus dem Gedächtnis oder aus einer Kit-Datei.** Das ist die
-wichtigste Regel des Kits und sie gilt hier doppelt, weil das Dokument unterschrieben
-wird.
+**None of that do you write from memory or from a kit file.** That is the kit's most important rule
+and it counts double here, because the document gets signed.
 
-Steht das Gerät noch nicht, weil es erst bestellt wird: nimm ein vergleichbares Gerät,
-das du betreust, und schreib das Datum und die Herkunft in den Kopf. Danach vor der
-Übergabe neu erheben.
+If the device is not there yet because it is only being ordered: take a comparable device you look
+after, and write the date and the origin into the header. Then take it again before the handover.
 
-### 3. Den Reifegrad setzen
+### 3. Set the trial level
 
-Geh die Bereiche einzeln durch und frag dich je Bereich genau eine Sache: **Werde ich
-das bei der Übergabe vorführen?**
+Go through the areas one by one and ask yourself exactly one thing per area: **am I going to
+demonstrate this at the handover?**
 
-Ja, sicher: `abgenommen`. Nein oder unsicher: `in Erprobung`. Noch nicht fertig:
-`Vorschau`.
+Yes, certainly: `abgenommen`. No or unsure: `in Erprobung`. Not finished yet: `Vorschau`.
 
-Wenn du das für einen Bereich nicht entscheiden kannst, weil du ihn nicht kennst:
-**probier ihn auf dem Gerät aus**, bevor du ihn einträgst. Das dauert Minuten und ist
-der Unterschied zwischen einer Zusage und einer Vermutung.
+If you cannot decide that for an area because you do not know it: **try it out on the device** before
+you enter it. That takes minutes and is the difference between a promise and a guess.
 
-### 4. Was nicht enthalten ist, ausfüllen
+### 4. Fill in what is not included
 
-Abschnitt 4 der Vorlage ist Teil der Beschaffenheitsvereinbarung, nicht Beiwerk.
-**Ergänze, was in diesem konkreten Fall besprochen wurde und nicht dabei ist.** Der
-Kunde hat im Gespräch etwas erwähnt, das nicht im Angebot steht? Dann steht es hier,
-und zwar mit seinen Worten.
+Section 4 of the template is part of the agreement on condition, not trimmings. **Add what was
+discussed in this concrete case and is not part of it.** The customer mentioned something in the
+conversation that does not stand in the offer? Then it stands here, and in their words.
 
-Das ist der Abschnitt, der Streit verhindert, und es ist der, den man am liebsten kurz
-hält. Halt ihn lang.
+That is the section that prevents disputes, and it is the one people most like to keep short. Keep it
+long.
 
-### 5. Die Schutzmaßnahmen mit dem Kunden durchgehen
+### 5. Go through the protective measures with the customer
 
-Abschnitt 8 ist eine Liste von Dingen, die **der Kunde** einrichtet, nicht du. Geh sie
-mit ihm durch, bevor du das Angebot schickst, damit er weiß, was auf ihn zukommt.
+Section 8 is a list of things **the customer** sets up, not you. Go through them with them before you
+send the offer, so that they know what is coming.
 
-Bei der Übergabe bestätigt er sie im Protokoll. Ohne diese Bestätigung ist die
-entsprechende Ziffer des Vertrages nicht erfüllt.
+At the handover they confirm them in the record. Without that confirmation the corresponding clause
+of the contract is not fulfilled.
 
-### 6. Ablegen
+### 6. File it
 
-`customers/<kunde>/documents/leistungsbeschreibung-<JJJJ-MM-TT>.md`, mit Datum im
-Namen, wie in `.ara/knowledge/paperwork.md` unter „Wohin es abgelegt wird". Dorthin legt
-das Werkzeug sie schon in Schritt 2; bei einem Gerät ohne Kunden liegt sie in dessen
-Akte. Alte Fassungen bleiben liegen, und eine zweite Fassung desselben Tages ersetzt die
-erste nur mit `--force`. In einem Streit ist die Fassung entscheidend, die bei
-Vertragsschluss galt, und die musst du wiederfinden können.
+`customers/<customer>/documents/leistungsbeschreibung-<YYYY-MM-DD>.md`, with the date in the name, as
+in `.ara/knowledge/paperwork.md` under "Wohin es abgelegt wird". The tool already puts it there in
+step 2; for a device without a customer it lies in that device's file. Old versions stay, and a second
+version from the same day replaces the first only with `--force`. In a dispute the version that
+applied at the conclusion of the contract is decisive, and you have to be able to find it again.
 
-Dazu ein Eintrag in `customers/<kunde>/history/`: welche Fassung an welchem Tag rausging.
+Plus an entry in `customers/<customer>/history/`: which version went out on which day.
 
-## Der häufigste Fehler
+## The most frequent mistake
 
-Die Anlage aus dem letzten Angebot kopieren und das Datum ändern.
+Copying the annex from the last offer and changing the date.
 
-Sie beschreibt dann einen Softwarestand, ein Modell und einen Erprobungsstand, die es so
-nicht mehr gibt. Das Dokument sagt dann etwas Falsches aus, und zwar in einem Papier,
-das der Kunde unterschrieben hat. Genau das ist der Fall, in dem eine Haftungsklausel
-nichts mehr nützt.
+It then describes a software version, a model and a trial level that no longer exist that way. The
+document then states something false, and in a paper the customer has signed. That is exactly the case
+in which a liability clause is of no more use.
 
-Zwanzig Minuten am Gerät sind billiger.
+Twenty minutes on the device are cheaper.

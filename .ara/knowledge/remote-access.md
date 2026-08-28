@@ -1,82 +1,82 @@
-# Verfahren: Fernzugriff
+# Procedure: remote access
 
-> **Wann brauchst du das?** In Phase 4 einer Einrichtung und immer, wenn ein Gerät später
-> nicht mehr erreichbar ist.
+> **When do you need this?** In phase 4 of a setup, and whenever a device is no longer
+> reachable later.
 
-## Die Reihenfolge
+## The order
 
-**Erst der direkte Weg, dann das Vermittlungsnetz.** Nicht umgekehrt.
+**The direct way first, the relay network second.** Not the other way round.
 
-Ein direkter, abgesicherter Zugang ist einfacher, schneller, hat weniger bewegliche Teile
-und hängt von keinem fremden Dienst ab. Ein Vermittlungsnetz löst genau ein Problem: dass
-das Gerät von außen nicht erreichbar ist. Wenn dieses Problem nicht besteht, schafft es nur
-zusätzliche Abhängigkeit.
+A direct, secured access is simpler, faster, has fewer moving parts and depends on no outside
+service. A relay network solves exactly one problem: that the device is not reachable from
+outside. If that problem does not exist, it only creates additional dependency.
 
-### Schritt 1: Prüfen, ob der direkte Weg geht
+### Step 1: check whether the direct way works
 
-Von außerhalb des Kundennetzes: ist das Gerät erreichbar?
-`node .ara/tools/find-device.mjs --host <adresse>`
+From outside the customer network: is the device reachable?
+`node .ara/tools/find-device.mjs --host <address>`
 
-Das setzt voraus, dass der Anschluss eine erreichbare Adresse hat und die Weiterleitung
-eingerichtet ist. Beides klärt man mit dem, der das Kundennetz betreut, nicht im
-Alleingang. Eine Portfreigabe ist ein Eingriff in fremde Infrastruktur.
+That assumes the connection has a reachable address and the forwarding is set up. Both are
+settled with whoever looks after the customer network, not on your own. A port forwarding is
+an intervention in somebody else's infrastructure.
 
-### Schritt 2: Absichern
+### Step 2: secure it
 
-Egal welcher Weg: Anmeldung nur mit Schlüssel, kein Passwort, nur die Benutzer, die es
-brauchen. Die konkreten Einstellungen und Werkzeuge dafür bringt das Produkt mit. Lies im
-Spiegel nach, was es tut, statt eigene Konfiguration zu erfinden.
+Whichever way: login with a key only, no password, only the users who need it. The concrete
+settings and tools for that come with the product. Read up in the mirror what it does instead
+of inventing your own configuration.
 
-**Reihenfolge beachten:** Schlüsselanmeldung nachweisen, *dann* Passwort abschalten, und
-die laufende Sitzung offen halten, bis die neue geprüft ist.
+**Mind the order:** prove key login, *then* switch off the password, and keep the running
+session open until the new one has been checked.
 
-### Schritt 3: Vermittlungsnetz, wenn es nicht anders geht
+### Step 3: relay network, if there is no other way
 
-Wenn der Anschluss keine erreichbare Adresse hat, hilft ein Vermittlungsnetz, das Gerät
-baut die Verbindung von innen auf. Das Produkt bringt eine solche Anbindung mit; die
-Einzelheiten stehen im Spiegel.
+If the connection has no reachable address, a relay network helps, the device builds the
+connection from the inside. The product brings such a link with it; the details are in the
+mirror.
 
-Drei Dinge, die dabei regelmäßig übersehen werden:
+Three things that regularly get overlooked:
 
-1. **Ablaufende Anmeldungen.** Solche Netze arbeiten mit Anmeldungen, die nach einiger Zeit
-   verfallen. Ein Gerät, das dauerhaft erreichbar sein soll, muss so eingetragen sein, dass
-   das nicht passiert. Sonst verschwindet es Monate später lautlos aus dem Netz, meist
-   genau dann, wenn man es braucht.
-2. **Fremder Dienst in der Kette.** Bei Kunden mit Berufsgeheimnis (Kanzlei, Praxis,
-   Steuerberatung) ist das erklärungsbedürftig. Sag es von dir aus, bevor der Kunde fragt.
-3. **Es bleibt eine Vereinbarung.** Kein Dauerzugriff ohne Wissen des Kunden.
+1. **Expiring registrations.** Such networks work with registrations that lapse after a while.
+   A device that is meant to stay reachable has to be entered in a way that prevents that.
+   Otherwise it silently vanishes from the network months later, usually exactly when it is
+   needed.
+2. **An outside service in the chain.** With customers under professional secrecy (law firm,
+   practice, tax adviser) that needs explaining. Say it yourself before the customer asks.
+3. **It stays an agreement.** No permanent access without the customer's knowledge.
 
-### Schritt 4: Not-Aus
+### Step 4: emergency off
 
-Der Kunde muss die Fernwartung **jederzeit selbst abschalten** können. Das ist keine
-Höflichkeit, sondern Voraussetzung dafür, dass er die Kontrolle behält.
+The customer has to be able to switch remote maintenance off **themselves at any time**. That
+is not politeness, it is the precondition for them keeping control.
 
-Bei der Abnahme wird der Schalter **gezeigt**, nicht erwähnt, und in `handover.md`
-beschrieben. Dazu gehört auch, was danach nicht mehr geht, sonst schaltet jemand ab und
-wundert sich, warum niemand hilft.
+At the handover the switch is **shown**, not mentioned, and described in `handover.md`. That
+includes what no longer works afterwards, otherwise somebody switches it off and wonders why
+nobody helps.
 
-## Dokumentieren
+## Documenting
 
 In `device.md`:
 
-- unter welcher Adresse und welchem Port,
-- mit welchem Anmeldenamen und welchem Schlüssel (Name, nicht Schlüssel),
-- welcher Weg (direkt oder Vermittlungsnetz),
-- wie der Not-Aus geht.
+- under which address and which port,
+- with which login name and which key (the name, not the key),
+- which way (direct or relay network),
+- how the emergency off works.
 
-Nichts davon ist geheim. Die Geheimnisse liegen in der `.env`.
+None of that is secret. The secrets lie in the `.env`.
 
-## Wenn ein Gerät nicht mehr erreichbar ist
+## When a device is no longer reachable
 
-Der Reihe nach, nicht durcheinander:
+One after the other, not all at once:
 
-1. Antwortet die Adresse überhaupt? (`find-device.mjs`)
-2. Hat sie sich geändert? Automatisch vergebene Adressen wandern nach einem Stromausfall.
-3. Ist der Dienst da, aber der Port ein anderer? Nach einer Härtung ist das erwartbar.
-4. Ist der Schlüssel noch der richtige? Ist er im Agenten geladen?
-5. Wurde beim Kunden etwas am Netz geändert? Neuer Router, neue Firewall, neuer
-   Dienstleister, der häufigste Grund, wenn es monatelang lief und plötzlich nicht mehr.
-6. Ist der Not-Aus betätigt worden? Dann war das eine Entscheidung, keine Störung, anrufen.
+1. Does the address answer at all? (`find-device.mjs`)
+2. Has it changed? Automatically assigned addresses wander after a power cut.
+3. Is the service there but the port a different one? After a hardening that is to be
+   expected.
+4. Is the key still the right one? Is it loaded in the agent?
+5. Was something changed on the network at the customer? New router, new firewall, new
+   provider, the most frequent reason when it ran for months and suddenly does not.
+6. Has the emergency off been pressed? Then that was a decision, not a fault, call them.
 
-Erst wenn all das ausscheidet, ist es ein Problem am Gerät selbst. Dann braucht es jemanden
-vor Ort.
+Only when all of that is ruled out is it a problem on the device itself. Then it needs
+somebody on site.

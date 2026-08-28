@@ -1,144 +1,142 @@
-# Verfahren: Apps auf ein Gerät bringen
+# Procedure: bringing apps onto a device
 
-> **Wann brauchst du das?** Wenn auf einem Gerät mit Arasul eine App landen soll: prüfen,
-> ob Kit und Gerät zusammenpassen, einspielen, live schalten, zurückschalten, entfernen.
+> **When do you need this?** When an app should land on a device with Arasul: check whether kit
+> and device fit together, deploy, switch live, switch back, remove.
 
-## Der Kontrakt ist die Quelle, nicht dieses Blatt
+## The contract is the source, not this sheet
 
-Ein Gerät sagt selbst, was es verspricht. Ein Aufruf, und du weißt es:
-
-```
-node .ara/tools/app.mjs --device <gerät> --contract
-```
-
-Was dabei herauskommt, ist die **einzige** Quelle für: das Schema von `app.json`, die
-Regeln, die kein Schema trägt, den Kopf einer Flow-Datei, die Namen der Kopfzeilen, die
-Grenzen eines Pakets, die Pfade unter `/apps/` und die Liste der Endpunkte mit dem
-Bereich, den jeder verlangt. **Schreib nichts davon ab.** Es steht deshalb auch hier
-nicht: was heute gilt, sagt das Gerät, das vor dir steht.
-
-Der Kontrakt trägt eine **Kontraktversion**. Das Kit kennt nicht eine Zahl, für die es
-gebaut wäre, sondern die höchste Fassung, die es versteht. Daraus folgen drei Lagen:
-
-- **Das Gerät führt dieselbe oder eine kleinere Zahl.** Es geht weiter. Geprüft wird
-  ohnehin gegen das Schema dieses Geräts, und gerufen wird nur, was in dessen Kontrakt
-  steht. Ein Gerät, das seit einem halben Jahr niemand angefasst hat, ist kein Fehlerfall,
-  sondern der Normalfall in einem Bestand.
-- **Das Gerät führt eine größere Zahl.** Das Kit hört auf und sagt, was ihm fehlt: welche
-  Fassungen es nicht kennt, und welche Felder das Gerät nennt, die es nicht liest. Hol den
-  aktuellen Stand des Kits mit `/init`, dann noch einmal.
-- **Das Gerät nennt gar keine.** Dann ist es älter als der Kontrakt selbst.
-
-Eingespielt wird nur in den ersten beiden Lagen. Ein Paket auf gut Glück zu schicken
-heißt, den Fehler am Gerät zu suchen statt vorher.
-
-Was die App danach am Gerät benutzen kann, ist eine andere Frage und steht in
-`.ara/knowledge/platform-services.md`: Anmeldung, Freigaben, Flows, Sprachmodell,
-Dokumente. Hier geht es nur darum, wie sie dorthin kommt.
-
-**Ohne Kit-Schlüssel geht keiner dieser Aufrufe.** Er steht in der Geräteakte unter
-`api_key_ref`, sein Wert in der Geheimnis-Ablage. Woher er kommt:
-`.ara/knowledge/device.md`, Abschnitt „Der Kit-Schlüssel".
-
-## Was in ein Paket gehört
-
-In der Wurzel liegt `app.json`, daneben die Ordner, die das Manifest selbst benennt.
-**Welche Felder einen Ordner benennen, sagt der Kontrakt** in der Wurzel seines Pakets: er
-schreibt sie als Platzhalter, und jeder Platzhalter zeigt auf das Feld im Manifest, das
-den Ordnernamen trägt. Das Kit liest sie dort und zählt sie nicht selbst auf. Kommt im
-Produkt einer dazu, steht er beim nächsten Aufruf mit im Kontrakt.
-
-**Flows sind eine Lieferung, keine Forderung.** Verspricht das Manifest einen Ordner für
-Flows, bringt das Paket die Dateien mit: eine Datei je Flow, mit einem Kopf im Frontmatter
-und dem Auftrag als Text darunter. Was in den Kopf gehört und was für einen Flow aus einem
-Paket gilt, steht im Kontrakt, und `--contract` gibt beides aus: das Schema des Kopfes und
-die Regeln wörtlich. Schreib sie nicht ab, lies sie an dem Gerät, um das es geht.
-
-Was das Manifest verspricht, prüft das Kit vor dem Packen: dass es den Ordner gibt und
-dass er nicht leer ist. Das ersetzt die Regeln des Kontrakts nicht, es spart den Weg
-über ein abgewiesenes Paket.
-
-## Ein Paket prüfen, bevor es fliegt
+A device says itself what it promises. One call, and you know:
 
 ```
-node .ara/tools/app.mjs --device <gerät> --check <ordner>
+node .ara/tools/app.mjs --device <device> --contract
 ```
 
-Das Werkzeug liest `app.json` aus dem Ordner und hält es gegen das Schema **dieses**
-Geräts. Es meldet jede Abweichung mit dem Feld, um das es geht, und es sagt dazu, was es
-nicht prüfen konnte. Zwei Dinge musst du dabei selbst tun:
+What comes out of it is the **only** source for: the schema of `app.json`, the rules no schema
+carries, the header of a flow file, the names of the header lines, the limits of a package, the
+paths under `/apps/` and the list of endpoints with the scope each one demands. **Copy none of
+it down.** That is why it does not stand here either: what applies today, the device in front of
+you says.
 
-1. **Die Regeln lesen, die kein Schema trägt.** Das Werkzeug gibt sie aus, wörtlich aus
-   dem Kontrakt. Sie sind keine Fußnote: „mindestens eines von Frontend und Backend",
-   „mit Backend braucht es einen Port" und was sonst dort steht, weist das Gerät ab,
-   auch wenn das Schema zufrieden war. Geh sie einzeln durch.
-2. **Nachsehen, was der Kontrakt zum Paket sagt.** Wie gepackt wird, was nicht
-   hineingehört, wie groß es sein darf, und was für einen Flow aus dem Paket gilt. Auch
-   diese Regeln gibt das Werkzeug wörtlich aus, sobald das Gerät welche nennt.
+The contract carries a **contract version**. The kit does not know one number it was built for,
+it knows the highest version it understands. Three situations follow from that:
 
-## Einspielen
+- **The device carries the same or a lower number.** It goes on. Checking happens against this
+  device's schema anyway, and only what stands in its contract gets called. A device nobody has
+  touched for half a year is not an error case, it is the normal case in an installed base.
+- **The device carries a higher number.** The kit stops and says what it is missing: which
+  versions it does not know, and which fields the device names that it does not read. Fetch the
+  current version of the kit with `/init`, then try again.
+- **The device names none at all.** Then it is older than the contract itself.
+
+Deployment happens only in the first two situations. Sending a package on the off-chance means
+looking for the mistake on the device instead of beforehand.
+
+What the app can use on the device afterwards is a different question and stands in
+`.ara/knowledge/platform-services.md`: login, permissions, flows, language model, documents.
+Here it is only about how it gets there.
+
+**Without the kit key none of these calls work.** It stands in the device file under
+`api_key_ref`, its value in the secret store. Where it comes from:
+`.ara/knowledge/device.md`, section "Der Kit-Schlüssel".
+
+## What belongs in a package
+
+At the root lies `app.json`, next to it the folders the manifest itself names. **Which fields
+name a folder, the contract says** at the root of its package: it writes them as placeholders,
+and every placeholder points at the field in the manifest that carries the folder name. The kit
+reads them there and does not list them itself. If one is added in the product, it stands in the
+contract at the next call.
+
+**Flows are a delivery, not a demand.** If the manifest promises a folder for flows, the package
+brings the files along: one file per flow, with a header in the frontmatter and the instruction
+as text below it. What belongs in the header and what applies to a flow out of a package stands
+in the contract, and `--contract` prints both: the schema of the header and the rules word for
+word. Do not copy them down, read them on the device in question.
+
+What the manifest promises the kit checks before packing: that the folder exists and that it is
+not empty. That does not replace the contract's rules, it saves the detour through a rejected
+package.
+
+## Checking a package before it flies
 
 ```
-node .ara/tools/app.mjs --device <gerät> --deploy <ordner>
+node .ara/tools/app.mjs --device <device> --check <folder>
 ```
 
-Das Werkzeug prüft erst das Manifest, packt dann den **Inhalt** des Ordners so, wie der
-Kontrakt es vorschreibt, vergleicht die Größe mit der Grenze des Geräts und schickt es.
-Passt das Manifest nicht, wird nichts geschickt.
+The tool reads `app.json` from the folder and holds it against **this** device's schema. It
+reports every deviation with the field in question, and it says what it could not check. Two
+things you have to do yourself:
 
-**Ein Deploy rollt immer in den Teststand.** Einen Schalter dafür gibt es nicht, und das
-ist keine Bequemlichkeitsfrage: der Livestand ist das, womit die Belegschaft arbeitet.
-Das Gerät baut das Backend selbst aus dem Bauplan im Paket, und das dauert. Wartezeit ist
-kein Fehler.
+1. **Read the rules no schema carries.** The tool prints them, word for word out of the contract.
+   They are not a footnote: "at least one of frontend and backend", "with a backend a port is
+   needed" and whatever else stands there, the device rejects, even when the schema was
+   satisfied. Go through them one by one.
+2. **Look at what the contract says about the package.** How it is packed, what does not belong
+   in it, how big it may be, and what applies to a flow out of the package. Those rules too the
+   tool prints word for word, as soon as the device names any.
 
-Weist das Gerät ab, begründet es das im Klartext und das Werkzeug reicht die Begründung
-durch. Lies sie, statt den Aufruf zu wiederholen.
-
-## Live schalten und zurück
+## Deploying
 
 ```
-node .ara/tools/app.mjs --device <gerät> --app <id> --status   welche Version steht wo
-node .ara/tools/app.mjs --device <gerät> --app <id> --live     Teststand wird Livestand
-node .ara/tools/app.mjs --device <gerät> --app <id> --back     die Version davor
+node .ara/tools/app.mjs --device <device> --deploy <folder>
 ```
 
-**Live schaltet ein Mensch.** Frag vorher, auch wenn du gerade selbst eingespielt hast:
-ab diesem Moment arbeiten die Leute damit. Das ist ein Eingriff der Stufe 2, siehe
+The tool first checks the manifest, then packs the **contents** of the folder the way the
+contract prescribes, compares the size with the device's limit and sends it. If the manifest does
+not fit, nothing gets sent.
+
+**A deploy always rolls into staging.** There is no switch for that, and it is not a question of
+convenience: the live slot is what the workforce works with. The device builds the backend itself
+from the build file in the package, and that takes a while. Waiting is not a fault.
+
+If the device rejects it, it gives its reason in plain words and the tool passes the reason
+through. Read it instead of repeating the call.
+
+## Going live and back
+
+```
+node .ara/tools/app.mjs --device <device> --app <id> --status   which version stands where
+node .ara/tools/app.mjs --device <device> --app <id> --live     staging becomes live
+node .ara/tools/app.mjs --device <device> --app <id> --back     the version before
+```
+
+**A human switches live.** Ask beforehand, even if you deployed it yourself a minute ago: from
+that moment on people work with it. That is a level 2 intervention, see
 `.ara/knowledge/security.md`.
 
-`--back` ist ein **Tausch**, keine Einbahnstraße: was live war, wird die vorige Version,
-ein zweites `--back` steht wieder am Anfang. Genau in dem Fall, in dem jemand hastig
-zurückschaltet, ist das die Rettung.
+`--back` is a **swap**, not a one-way street: what was live becomes the previous version, a
+second `--back` stands at the start again. Exactly in the case where somebody switches back in a
+hurry, that is the rescue.
 
-Nach jedem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des
-Geräts. Welche App, welche Version, wer es wollte, was danach geprüft wurde.
+After every switch: one line into the customer's history or into the device's runsheet. Which
+app, which version, who wanted it, what was checked afterwards.
 
-## Entfernen
+## Removing
 
 ```
-node .ara/tools/app.mjs --device <gerät> --app <id> --remove --confirm <id>
+node .ara/tools/app.mjs --device <device> --app <id> --remove --confirm <id>
 ```
 
-**Stufe 3, unumkehrbar.** Es fallen beide Container mitsamt ihren Volumen, beide Stände,
-alle Freigaben und die Schlüssel der App. Ohne die abgetippte Kennung passiert nichts,
-und das Werkzeug sagt vorher genau, was fällt. Sag es dem Menschen mit denselben Worten
-und hol ein ausdrückliches Ja, bevor du es tippst.
+**Level 3, irreversible.** Both containers fall together with their volumes, both slots, all
+permissions and the app's keys. Without the id typed out nothing happens, and the tool says
+beforehand exactly what falls. Say it to the human in the same words and get an explicit yes
+before you type it.
 
-## Wenn das Gerät nicht antwortet
+## When the device does not answer
 
-- **Zertifikat nicht überprüfbar.** Ein Gerät im Kundennetz trägt meist ein selbst
-  ausgestelltes. Wenn du sicher bist, dass es dieses Gerät ist: `tls: selfsigned` in die
-  Akte, oder einmalig `--insecure`. Nicht ungefragt und nicht dauerhaft aus Bequemlichkeit.
-  Hat das Kit selbst installiert, steht der Eintrag schon da: dann weiß es, welches
-  Zertifikat dort liegt, es hat zugesehen, wie es entstanden ist.
-- **401.** Der Schlüssel wurde am Gerät widerrufen oder gehört zu einem anderen Gerät.
-  Am Gerät nachsehen, sonst einen neuen anlegen (`/device` mit `--deploy-key`).
-- **Der Endpunkt steht nicht im Kontrakt.** Dann ruft das Kit ihn auch nicht. Das ist kein
-  Fehler des Werkzeugs, sondern die Aussage, dass Kit und Gerät nicht zusammenpassen.
-- **Die Schnittstelle liegt woanders als der SSH-Zugang.** Ein Gerät, das nur über einen
-  Tunnel erreichbar ist oder sein Zertifikat unter einem anderen Namen führt, bekommt
-  `api_base` in die Akte: die Adresse, unter der die Schnittstelle antwortet, mit Vorsatz.
-  Sie sticht `address`, und `--base <url>` sticht beide, für den einen Versuch, der nicht
-  in die Akte gehört. Was dauerhaft gilt, gehört in die Akte, nicht in den Aufruf.
-- **Gar keine Antwort.** Erst `node .ara/tools/find-device.mjs --host <adresse>`, dann
+- **Certificate cannot be verified.** A device in a customer network usually carries a self-signed
+  one. If you are sure it is this device: `tls: selfsigned` into the file, or a one-off
+  `--insecure`. Not unasked and not permanently out of convenience. If the kit installed it
+  itself, the entry is already there: then it knows which certificate lies there, it watched it
+  come into being.
+- **401.** The key was revoked on the device or belongs to another device. Look on the device,
+  otherwise create a new one (`/device` with `--deploy-key`).
+- **The endpoint does not stand in the contract.** Then the kit does not call it either. That is
+  not a fault of the tool, it is the statement that kit and device do not fit together.
+- **The interface sits elsewhere than the SSH access.** A device that is only reachable through a
+  tunnel or carries its certificate under a different name gets `api_base` in the file: the
+  address at which the interface answers, deliberately. It beats `address`, and `--base <url>`
+  beats both, for the one attempt that does not belong in the file. What holds permanently belongs
+  in the file, not in the call.
+- **No answer at all.** First `node .ara/tools/find-device.mjs --host <address>`, then
   `.ara/knowledge/diagnostics.md`.

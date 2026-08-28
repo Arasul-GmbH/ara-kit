@@ -11,6 +11,8 @@
  * Das Prüfskript. Läuft als POSIX-Shell auf dem Gerät, liest nur, und gibt je
  * Befund eine Zeile `@schlüssel=wert` aus. Was ein Gerät nicht hat, fehlt einfach.
  */
+import { t } from "./i18n.mjs";
+
 export const PROBE = `
 # Eine SSH-Sitzung ohne Login-Shell kennt die Pfade von Homebrew, Docker Desktop
 # und snap nicht. Ohne diese Zeile fehlt Docker auf jedem Mac.
@@ -70,11 +72,10 @@ export function parseProbe(output) {
 }
 
 /** Die drei Urteile, mit dem Satz, der dem Menschen gesagt wird. */
-export const VERDICTS = {
-  supported: "unterstützt",
-  soon: "bald",
-  unsupported: "nicht unterstützt, wir merken es vor",
-};
+export const VERDICTS = t(
+  { supported: "supported", soon: "soon", unsupported: "not supported, we note it down" },
+  { supported: "unterstützt", soon: "bald", unsupported: "nicht unterstützt, wir merken es vor" }
+);
 
 /**
  * Hardware und Betriebssystem aus den Befunden, dazu das Urteil.
@@ -94,16 +95,22 @@ export function judge(facts) {
   if (!os && facts.uname) os = facts.uname;
 
   let verdict = "unsupported";
-  let reason = "keine NVIDIA-Hardware erkannt";
+  let reason = t("no NVIDIA hardware recognised", "keine NVIDIA-Hardware erkannt");
   if (/\b(orin|thor)\b/i.test(model)) {
     verdict = "supported";
-    reason = `Jetson ${/thor/i.test(model) ? "Thor" : "Orin"} erkannt`;
+    reason = t(
+      `Jetson ${/thor/i.test(model) ? "Thor" : "Orin"} recognised`,
+      `Jetson ${/thor/i.test(model) ? "Thor" : "Orin"} erkannt`
+    );
   } else if (/dgx\s*spark|\bspark\b/i.test(`${model} ${gpu}`)) {
     verdict = "soon";
-    reason = "DGX Spark erkannt, angekündigt";
+    reason = t("DGX Spark recognised, announced", "DGX Spark erkannt, angekündigt");
   } else if (nvidia) {
     verdict = "soon";
-    reason = `NVIDIA-Hardware erkannt (${gpu || facts.tegra || model}), angekündigt`;
+    reason = t(
+      `NVIDIA hardware recognised (${gpu || facts.tegra || model}), announced`,
+      `NVIDIA-Hardware erkannt (${gpu || facts.tegra || model}), angekündigt`
+    );
   }
 
   const memoryGb = facts.mem_kb
@@ -114,8 +121,8 @@ export function judge(facts) {
   const diskFreeGb = facts.disk_free_kb ? Math.round(Number(facts.disk_free_kb) / 1024 / 1024) : null;
 
   return {
-    hardware: model || (nvidia ? gpu : "") || "unbekannt",
-    os: os || "unbekannt",
+    hardware: model || (nvidia ? gpu : "") || t("unknown", "unbekannt"),
+    os: os || t("unknown", "unbekannt"),
     arch,
     gpu: gpu || (facts.tegra ? "Tegra" : ""),
     memoryGb,
@@ -144,9 +151,15 @@ const PLATFORM_CONTAINERS = [/arasul/i, /^dashboard-backend$/i];
 export function services(facts) {
   const docker = facts.docker_bin
     ? facts.docker_server
-      ? { state: "running", text: `läuft, Server ${facts.docker_server}` }
-      : { state: "present", text: "installiert, Dienst antwortet nicht oder keine Rechte" }
-    : { state: "missing", text: "fehlt" };
+      ? { state: "running", text: t(`runs, server ${facts.docker_server}`, `läuft, Server ${facts.docker_server}`) }
+      : {
+          state: "present",
+          text: t(
+            "installed, the service does not answer or there are no rights",
+            "installiert, Dienst antwortet nicht oder keine Rechte"
+          ),
+        }
+    : { state: "missing", text: t("missing", "fehlt") };
 
   // Ein Sprachmodell läuft nicht überall als Programm auf dem Gerät. Auf einem
   // Gerät mit Arasul fährt es in einem Container, und dort gibt es kein Binary
@@ -155,10 +168,19 @@ export function services(facts) {
   // Satz nennt, was gefunden wurde, statt es zu deuten.
   const llmContainers = (facts.docker_names || "").split(/\s+/).filter((n) => /ollama|llm/i.test(n));
   const ollama = facts.ollama_bin
-    ? { state: "present", text: `installiert${facts.ollama_version ? `, ${facts.ollama_version}` : ""}` }
+    ? {
+        state: "present",
+        text: t("installed", "installiert") + (facts.ollama_version ? `, ${facts.ollama_version}` : ""),
+      }
     : llmContainers.length
-      ? { state: "container", text: `läuft im Container ${llmContainers.join(", ")}, nicht als Programm auf dem Gerät` }
-      : { state: "missing", text: "fehlt" };
+      ? {
+          state: "container",
+          text: t(
+            `runs in the container ${llmContainers.join(", ")}, not as a program on the device`,
+            `läuft im Container ${llmContainers.join(", ")}, nicht als Programm auf dem Gerät`
+          ),
+        }
+      : { state: "missing", text: t("missing", "fehlt") };
 
   // Hinweise auf Arasul: Container, Dienste oder Ordner mit dem Namen. Das ist
   // ein Anhaltspunkt, keine Aussage über den Produktstand. Der steht im Spiegel.
@@ -176,16 +198,21 @@ export function services(facts) {
   const dirs = facts.arasul_dir || [];
   const traces = [
     ...(units.length ? [`Dienst ${units.join(", ")}`] : []),
-    ...dirs.map((dir) => `Ordner ${dir}`),
+    ...dirs.map((dir) => t(`folder ${dir}`, `Ordner ${dir}`)),
   ];
   const arasul = containers.length
     ? {
         state: "running",
-        text: `läuft, Container ${containers.join(", ")}${traces.length ? `; ${traces.join("; ")}` : ""}`,
+        text:
+          t(`runs, containers ${containers.join(", ")}`, `läuft, Container ${containers.join(", ")}`) +
+          (traces.length ? `; ${traces.join("; ")}` : ""),
       }
     : traces.length
-      ? { state: "traces", text: `Reste da, nichts läuft: ${traces.join("; ")}` }
-      : { state: "none", text: "keine Hinweise" };
+      ? {
+          state: "traces",
+          text: t(`traces there, nothing runs: ${traces.join("; ")}`, `Reste da, nichts läuft: ${traces.join("; ")}`),
+        }
+      : { state: "none", text: t("no traces", "keine Hinweise") };
 
   return { docker, ollama, arasul, sudo: facts.sudo === "ohne Passwort" };
 }

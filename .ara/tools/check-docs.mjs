@@ -1,5 +1,29 @@
 #!/usr/bin/env node
 /**
+ * Documentation self-test: is what the kit's knowledge says about the routes of a
+ * device still right?
+ *
+ *   node .ara/tools/check-docs.mjs                     which routes stand in the knowledge
+ *   node .ara/tools/check-docs.mjs --device orin       check every one of them live on the device
+ *   node .ara/tools/check-docs.mjs --customer m --device werk2
+ *   node .ara/tools/check-docs.mjs --device orin --json
+ *   node .ara/tools/check-docs.mjs --device orin --base <url> --insecure
+ *
+ * **Why this exists.** The kit copies no product values, but its procedures name
+ * routes: without a named route nobody can look up whether the sheet is still
+ * right. So they get named, and here they get checked, against exactly one device
+ * and with its own endpoint list as the yardstick.
+ *
+ * Both language versions of a sheet get read. A route that stands in only one of
+ * them shows up in the list of files next to it.
+ *
+ * **It changes nothing.** Only reading routes from the contract get called. What
+ * changes something counts as evidenced when the device names it in its contract
+ * itself: a check that removes an app is not one. Routes of the interface get a
+ * knock without a credential, and the refusal is the evidence.
+ *
+ * === deutsch ===
+ *
  * Doku-Selbsttest: stimmt noch, was im Wissen des Kits über die Wege eines
  * Geräts steht?
  *
@@ -19,10 +43,14 @@
  * Kontrakt nennt: eine Prüfung, die eine App entfernt, ist keine. Wege der
  * Oberfläche bekommen ein Anklopfen ohne Ausweis, und die Abweisung ist der
  * Beleg.
+ *
+ * Gelesen werden beide Sprachfassungen eines Blattes. Eine Route, die nur in einer
+ * davon steht, faellt in der Dateiliste daneben auf.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
+import { t } from "./lib/i18n.mjs";
 import { ROOT, fail, helpOnly, parseArgs, readDevice } from "./lib/kit.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import {
@@ -56,18 +84,27 @@ const bare = bareApiPaths(files);
 
 if (!str(arg.device) && !str(arg.customer)) {
   const lines = [
-    `${routes.length} Routen stehen im Wissen des Kits, aus ${files.length} Dateien.`,
+    t(
+      `${routes.length} routes stand in the kit's knowledge, from ${files.length} files.`,
+      `${routes.length} Routen stehen im Wissen des Kits, aus ${files.length} Dateien.`
+    ),
     "",
     ...routes.map((route) => `  ${route.verb.padEnd(6)} ${route.path}   (${route.files.join(", ")})`),
   ];
   if (bare.length) {
     lines.push(
       "",
-      "Ohne Verb genannt und darum nicht prüfbar:",
+      t("Named without a verb and therefore not checkable:", "Ohne Verb genannt und darum nicht prüfbar:"),
       ...bare.map((entry) => `  ${entry.path}   (${entry.files.join(", ")})`)
     );
   }
-  lines.push("", "Live prüfen: node .ara/tools/check-docs.mjs --device <gerät>");
+  lines.push(
+    "",
+    t(
+      "Check live: node .ara/tools/check-docs.mjs --device <device>",
+      "Live prüfen: node .ara/tools/check-docs.mjs --device <gerät>"
+    )
+  );
   if (arg.json) console.log(JSON.stringify({ routes, bare }, null, 2));
   else console.log(lines.join("\n"));
   process.exit(0);
@@ -135,12 +172,22 @@ if (arg.json) {
   process.exit(missing.length ? 1 : 0);
 }
 
-const label = { gerufen: "gerufen", kontrakt: "laut Kontrakt", "ohne-schluessel": "ohne Ausweis" };
-const mark = { ok: "ok   ", fehlt: "FEHLT", unklar: "?    " };
+const label = t(
+  { gerufen: "called", kontrakt: "per contract", "ohne-schluessel": "without a credential" },
+  { gerufen: "gerufen", kontrakt: "laut Kontrakt", "ohne-schluessel": "ohne Ausweis" }
+);
+const mark = t(
+  { ok: "ok   ", fehlt: "GONE ", unklar: "?    " },
+  { ok: "ok   ", fehlt: "FEHLT", unklar: "?    " }
+);
 
 console.log(
-  `${link.place}: Arasul ${link.contract?.arasul ?? "ohne Angabe"}, Kontrakt ${link.contract?.kontrakt ?? "?"}. ` +
-    `${routes.length} Routen aus ${files.length} Wissensdateien.`
+  t(
+    `${link.place}: Arasul ${link.contract?.arasul ?? "without a statement"}, contract ${link.contract?.kontrakt ?? "?"}. ` +
+      `${routes.length} routes from ${files.length} knowledge files.`,
+    `${link.place}: Arasul ${link.contract?.arasul ?? "ohne Angabe"}, Kontrakt ${link.contract?.kontrakt ?? "?"}. ` +
+      `${routes.length} Routen aus ${files.length} Wissensdateien.`
+  )
 );
 console.log("");
 for (const result of results) {
@@ -150,31 +197,46 @@ for (const result of results) {
 
 if (bare.length) {
   console.log("");
-  console.log("Ohne Verb genannt und darum nicht prüfbar:");
+  console.log(t("Named without a verb and therefore not checkable:", "Ohne Verb genannt und darum nicht prüfbar:"));
   for (const entry of bare) console.log(`  ${entry.path}   (${entry.files.join(", ")})`);
 }
 
 if (extra.length) {
   console.log("");
-  console.log(`${extra.length} Endpunkte nennt dieses Gerät, ohne dass ein Verfahren sie beschreibt:`);
+  console.log(
+    t(
+      `This device names ${extra.length} endpoints that no procedure describes:`,
+      `${extra.length} Endpunkte nennt dieses Gerät, ohne dass ein Verfahren sie beschreibt:`
+    )
+  );
   for (const entry of extra) console.log(`  ${entry.verb.padEnd(6)} ${entry.path}   ${entry.was}`);
 }
 
 console.log("");
 if (missing.length) {
   console.log(
-    `${missing.length} von ${routes.length} Routen gibt es an diesem Gerät nicht. ` +
-      "Das Wissen des Kits ist an diesen Stellen falsch, und wer danach arbeitet, läuft ins Leere:"
+    t(
+      `${missing.length} of ${routes.length} routes do not exist on this device. ` +
+        "The kit's knowledge is wrong in these places, and whoever works along it runs into nothing:",
+      `${missing.length} von ${routes.length} Routen gibt es an diesem Gerät nicht. ` +
+        "Das Wissen des Kits ist an diesen Stellen falsch, und wer danach arbeitet, läuft ins Leere:"
+    )
   );
   for (const result of missing) {
-    console.log(`  ${result.verb} ${result.path}   genannt in ${result.files.join(", ")}`);
+    console.log(
+      `  ${result.verb} ${result.path}   ` +
+        t(`named in ${result.files.join(", ")}`, `genannt in ${result.files.join(", ")}`)
+    );
   }
 } else {
-  console.log(`Alle ${routes.length} Routen gibt es an diesem Gerät.`);
+  console.log(t(`All ${routes.length} routes exist on this device.`, `Alle ${routes.length} Routen gibt es an diesem Gerät.`));
 }
 if (unclear.length) {
   console.log(
-    `${unclear.length} Routen blieben unklar, das Gerät hat dazu nichts Verwertbares gesagt. Kein Beleg in die eine und keiner in die andere Richtung.`
+    t(
+      `${unclear.length} routes stayed unclear, the device said nothing usable about them. No evidence in the one direction and none in the other.`,
+      `${unclear.length} Routen blieben unklar, das Gerät hat dazu nichts Verwertbares gesagt. Kein Beleg in die eine und keiner in die andere Richtung.`
+    )
   );
 }
 process.exit(missing.length ? 1 : 0);

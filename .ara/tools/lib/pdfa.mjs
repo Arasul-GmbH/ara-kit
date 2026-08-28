@@ -20,6 +20,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { t } from "./i18n.mjs";
 
 // --- Ein sehr kleines Stueck PDF-Syntax --------------------------------------
 
@@ -44,7 +45,7 @@ function endOfValue(text, start) {
         i = endOfLiteral(text, i);
       } else i++;
     }
-    throw new Error("Ein Verzeichnis im PDF wird nicht geschlossen.");
+    throw new Error(t("A dictionary in the PDF is not closed.", "Ein Verzeichnis im PDF wird nicht geschlossen."));
   }
   if (text[i] === "[") {
     let depth = 0;
@@ -61,7 +62,7 @@ function endOfValue(text, start) {
       }
       i++;
     }
-    throw new Error("Ein Feld im PDF wird nicht geschlossen.");
+    throw new Error(t("A field in the PDF is not closed.", "Ein Feld im PDF wird nicht geschlossen."));
   }
   if (text[i] === "(") return endOfLiteral(text, i);
   if (text[i] === "<") return text.indexOf(">", i) + 1;
@@ -89,7 +90,7 @@ function endOfLiteral(text, start) {
     }
     i++;
   }
-  throw new Error("Eine Zeichenkette im PDF wird nicht geschlossen.");
+  throw new Error(t("A string in the PDF is not closed.", "Eine Zeichenkette im PDF wird nicht geschlossen."));
 }
 
 /** Die Eintraege eines Verzeichnisses, oberste Ebene, in ihrer Reihenfolge. */
@@ -114,9 +115,9 @@ export function dictEntries(inner) {
 /** Der Rumpf eines Objekts: alles zwischen << und >>. */
 function objectDict(text, number) {
   const start = text.search(new RegExp(`(^|[^0-9])${number}\\s+0\\s+obj\\b`));
-  if (start < 0) throw new Error(`Objekt ${number} steht nicht in der Datei.`);
+  if (start < 0) throw new Error(t(`Object ${number} does not stand in the file.`, `Objekt ${number} steht nicht in der Datei.`));
   const open = text.indexOf("<<", start);
-  if (open < 0) throw new Error(`Objekt ${number} ist kein Verzeichnis.`);
+  if (open < 0) throw new Error(t(`Object ${number} is not a dictionary.`, `Objekt ${number} ist kein Verzeichnis.`));
   const end = endOfValue(text, open);
   return { start, open, end, inner: text.slice(open + 2, end - 2) };
 }
@@ -339,14 +340,25 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
   const text = pdf.toString("latin1");
 
   const startxref = [...text.matchAll(/startxref\s+(\d+)/g)].pop();
-  if (!startxref) throw new Error("In der Datei steht kein startxref, das ist kein vollstaendiges PDF.");
+  if (!startxref) {
+    throw new Error(
+      t(
+        "There is no startxref in the file, this is not a complete PDF.",
+        "In der Datei steht kein startxref, das ist kein vollstaendiges PDF."
+      )
+    );
+  }
   const previous = Number(startxref[1]);
 
   const trailerAt = text.lastIndexOf("trailer");
   if (trailerAt < 0) {
     throw new Error(
-      "Diese Datei fuehrt ihre Querverweise als Strom. Das Werkzeug schreibt nur klassische " +
-        "Tabellen fort, wie Chromium sie druckt."
+      t(
+        "This file keeps its cross-references as a stream. The tool only writes on classic " +
+          "tables, the way Chromium prints them.",
+        "Diese Datei fuehrt ihre Querverweise als Strom. Das Werkzeug schreibt nur klassische " +
+          "Tabellen fort, wie Chromium sie druckt."
+      )
     );
   }
   const trailerOpen = text.indexOf("<<", trailerAt);
@@ -354,9 +366,9 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
     dictEntries(text.slice(trailerOpen + 2, endOfValue(text, trailerOpen) - 2)).map((e) => [e.key, e.value])
   );
   const rootNumber = Number((trailer.Root || "").match(/^(\d+)/)?.[1]);
-  if (!rootNumber) throw new Error("Im Trailer steht kein Katalog (/Root).");
+  if (!rootNumber) throw new Error(t("There is no catalogue (/Root) in the trailer.", "Im Trailer steht kein Katalog (/Root)."));
   const size = Number(trailer.Size);
-  if (!size) throw new Error("Im Trailer steht keine Groesse (/Size).");
+  if (!size) throw new Error(t("There is no size (/Size) in the trailer.", "Im Trailer steht keine Groesse (/Size)."));
 
   const info = Number((trailer.Info || "").match(/^(\d+)/)?.[1]) || null;
   const infoFields = info
@@ -370,8 +382,12 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
   const names = dictEntries(catalog.inner).find((entry) => entry.key === "Names");
   if (names) {
     throw new Error(
-      "Der Katalog dieses PDF fuehrt schon einen Namensbaum. Das Werkzeug wuerde ihn ueberschreiben " +
-        "und tut es darum nicht."
+      t(
+        "The catalogue of this PDF already carries a name tree. The tool would overwrite it " +
+          "and therefore does not.",
+        "Der Katalog dieses PDF fuehrt schon einen Namensbaum. Das Werkzeug wuerde ihn ueberschreiben " +
+          "und tut es darum nicht."
+      )
     );
   }
 

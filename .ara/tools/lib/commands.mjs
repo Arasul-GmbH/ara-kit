@@ -27,4 +27,7 @@ export const RETIRED = Object.freeze({
   // Phase E6, 27.08.2026: /offer nach kit-grundriss.md, englisch wie die
   // uebrigen Befehle.
   angebot: "offer",
+  // Phase E10, 28.08.2026: Englisch ist die Hauptsprache des Kits, und ein
+  // Befehlsname ist keine Ausnahme. Er heisst wie sein Werkzeug.
+  kalkulation: "calculation",
 });

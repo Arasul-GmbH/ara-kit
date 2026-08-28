@@ -1,53 +1,53 @@
 ---
-name:                     # Standort oder Rolle, z.B. zentrale, werk2, praxis-eg
-customer:                 # id aus customer.md, leer bei einem Gerät ohne Kunden
-model:                    # wie das Gerät heißt, laut Lieferschein
-hardware:                 # was das Gerät von sich sagt, von device.mjs eingetragen
-os:                       # Betriebssystem, von device.mjs eingetragen
-arch:                     # Architektur, von device.mjs eingetragen
-profile:                  # Plattformprofil. NUR wenn vom Gerät bestätigt
+name:                     # location or role, e.g. zentrale, werk2, praxis-eg
+customer:                 # id from customer.md, empty for a device without a customer
+model:                    # what the device is called, according to the delivery note
+hardware:                 # what the device says about itself, entered by device.mjs
+os:                       # operating system, entered by device.mjs
+arch:                     # architecture, entered by device.mjs
+profile:                  # platform profile. ONLY when confirmed by the device
 serial:
 status: planned           # planned | delivered | installing | live | retired
-verdict:                  # supported | soon | unsupported, von device.mjs eingetragen
-noted_on:                 # JJJJ-MM-TT. Wann ein nicht unterstütztes Gerät vorgemerkt wurde
-location:                 # Raum, Gebäude
+verdict:                  # supported | soon | unsupported, entered by device.mjs
+noted_on:                 # YYYY-MM-DD. When an unsupported device was noted down
+location:                 # room, building
 hostname:
-address:                  # IP oder Name im Kundennetz, darüber läuft SSH
-api_base:                 # Schnittstelle, wenn sie nicht unter address liegt, z.B. hinter einem Tunnel
-ssh_user:                 # Anmeldename auf dem Gerät
-ssh_port:                 # nach der Härtung der neue Port
-ssh_key:                  # Name des Schlüssels in ~/.ssh, ohne Pfad
-ssh:                      # ok | refused | local, Ergebnis der letzten Prüfung
-tls:                      # selfsigned, wenn das Gerät ein selbst ausgestelltes Zertifikat trägt
+address:                  # IP or name in the customer network, SSH runs over it
+api_base:                 # interface, when it does not sit under address, e.g. behind a tunnel
+ssh_user:                 # login name on the device
+ssh_port:                 # the new port after the hardening
+ssh_key:                  # name of the key in ~/.ssh, without a path
+ssh:                      # ok | refused | local, result of the last check
+tls:                      # selfsigned, when the device carries a self-signed certificate
 docker:                   # running | present | missing
-ollama:                   # present | container | missing, Programm oder Container
-arasul:                   # running | traces | none, was am Gerät gefunden wurde, kein Produktstand
-net_name:                 # Name, unter dem das Gerät im Kundennetz auftritt, vom Installer gesetzt
-api_key_ref:              # Kit-Schlüssel (app:deploy) für den Deploy: Name des Eintrags, kein Wert
-start_password_ref:       # Startpasswort aus der Installation: Name des Eintrags, kein Wert
-checked:                  # Zeitpunkt der letzten Prüfung durch device.mjs
+ollama:                   # present | container | missing, program or container
+arasul:                   # running | traces | none, what was found on the device, not a product version
+net_name:                 # name under which the device appears in the customer network, set by the installer
+api_key_ref:              # kit key (app:deploy) for the deploy: name of the entry, not a value
+start_password_ref:       # start password from the installation: name of the entry, not a value
+checked:                  # time of the last check by device.mjs
 remote_access:            # none | direct | vpn
-secret_ref:               # Name des Eintrags in der Geheimnis-Ablage, kein Wert
-license:                  # Kennzeichnung der Lizenz, kein Token
-maintenance_until:        # JJJJ-MM-TT. Ende des Wartungsvertrags
+secret_ref:               # name of the entry in the secret store, not a value
+license:                  # designation of the licence, not a token
+maintenance_until:        # YYYY-MM-DD. End of the maintenance contract
 delivered_on:
 accepted_on:
 ---
 
-## Umgebung
+## Surroundings
 
-<!-- Netz, Adressvergabe, Firewall, wer dort zuständig ist, Besonderheiten
-     (kein Internet, Gastnetz, DS-Lite, feste Adresse). -->
+<!-- Network, address assignment, firewall, who is responsible there, particularities
+     (no internet, guest network, DS-Lite, fixed address). -->
 
-## Besonderheiten
+## Particularities
 
-<!-- Alles, was beim nächsten Mal wichtig ist: enger Schrank, Strom nur über eine
-     Leiste, Schlüssel beim Hausmeister, Ansprechpartner nur dienstags. -->
+<!-- Everything that matters next time: tight cabinet, power only over one strip,
+     key with the caretaker, contact available only on Tuesdays. -->
 
-## Entscheidungen
+## Decisions
 
-<!-- Warum etwas so gemacht wurde. Überlebt bis zur Verlängerung. -->
+<!-- Why something was done the way it was. Survives until the extension. -->
 
-## Prüfungen
+## Checks
 
-<!-- Von device.mjs fortgeschrieben: je Lauf ein Eintrag mit Befund und Urteil. -->
+<!-- Written on by device.mjs: one entry per run with finding and verdict. -->

@@ -25,6 +25,8 @@
  * bedient; nur bei einer größeren fehlt dem Kit etwas, und dann soll es sagen,
  * was.
  */
+import { t } from "./i18n.mjs";
+
 export const KIT_CONTRACT_VERSIONS = Object.freeze([
   {
     version: 1,
@@ -162,7 +164,7 @@ const at = (path) => (path ? `\`${path}\`` : "app.json");
 function walk(schema, value, path, context) {
   const problems = [];
   if (schema === true || schema === undefined) return problems;
-  if (schema === false) return [`${at(path)} ist hier nicht erlaubt.`];
+  if (schema === false) return [t(`${at(path)} is not allowed here.`, `${at(path)} ist hier nicht erlaubt.`)];
   if (typeof schema !== "object") return problems;
 
   for (const key of Object.keys(schema)) {
@@ -177,66 +179,116 @@ function walk(schema, value, path, context) {
   if (schema.type !== undefined) {
     const types = Array.isArray(schema.type) ? schema.type : [schema.type];
     if (!types.some((t) => matchesType(value, t))) {
-      return [`${at(path)} ist ${typeOf(value)}, erwartet wird ${types.join(" oder ")}.`];
+      return [
+        t(
+          `${at(path)} is ${typeOf(value)}, expected is ${types.join(" or ")}.`,
+          `${at(path)} ist ${typeOf(value)}, erwartet wird ${types.join(" oder ")}.`
+        ),
+      ];
     }
   }
 
   if (schema.const !== undefined && JSON.stringify(value) !== JSON.stringify(schema.const)) {
-    problems.push(`${at(path)} muss ${JSON.stringify(schema.const)} sein.`);
+    problems.push(
+      t(`${at(path)} has to be ${JSON.stringify(schema.const)}.`, `${at(path)} muss ${JSON.stringify(schema.const)} sein.`)
+    );
   }
 
   if (Array.isArray(schema.enum) && !schema.enum.some((o) => JSON.stringify(o) === JSON.stringify(value))) {
-    problems.push(`${at(path)} muss einer von diesen Werten sein: ${schema.enum.map((o) => JSON.stringify(o)).join(", ")}.`);
+    problems.push(
+      t(
+        `${at(path)} has to be one of these values: ${schema.enum.map((o) => JSON.stringify(o)).join(", ")}.`,
+        `${at(path)} muss einer von diesen Werten sein: ${schema.enum.map((o) => JSON.stringify(o)).join(", ")}.`
+      )
+    );
   }
 
   if (typeof value === "string") {
     if (schema.minLength !== undefined && value.length < schema.minLength) {
-      problems.push(`${at(path)} ist zu kurz, mindestens ${schema.minLength} Zeichen.`);
+      problems.push(
+        t(
+          `${at(path)} is too short, at least ${schema.minLength} characters.`,
+          `${at(path)} ist zu kurz, mindestens ${schema.minLength} Zeichen.`
+        )
+      );
     }
     if (schema.maxLength !== undefined && value.length > schema.maxLength) {
-      problems.push(`${at(path)} ist zu lang, höchstens ${schema.maxLength} Zeichen.`);
+      problems.push(
+        t(
+          `${at(path)} is too long, at most ${schema.maxLength} characters.`,
+          `${at(path)} ist zu lang, höchstens ${schema.maxLength} Zeichen.`
+        )
+      );
     }
     if (schema.pattern !== undefined) {
       let expression = null;
       try {
         expression = new RegExp(schema.pattern, "u");
       } catch {
-        context.unchecked.add(`Muster ${schema.pattern}`);
+        context.unchecked.add(t(`pattern ${schema.pattern}`, `Muster ${schema.pattern}`));
       }
       if (expression && !expression.test(value)) {
-        problems.push(`${at(path)} passt nicht zum Muster ${schema.pattern}.`);
+        problems.push(
+          t(
+            `${at(path)} does not match the pattern ${schema.pattern}.`,
+            `${at(path)} passt nicht zum Muster ${schema.pattern}.`
+          )
+        );
       }
     }
   }
 
   if (typeof value === "number") {
     if (schema.minimum !== undefined && value < schema.minimum) {
-      problems.push(`${at(path)} ist kleiner als ${schema.minimum}.`);
+      problems.push(t(`${at(path)} is smaller than ${schema.minimum}.`, `${at(path)} ist kleiner als ${schema.minimum}.`));
     }
     if (schema.maximum !== undefined && value > schema.maximum) {
-      problems.push(`${at(path)} ist größer als ${schema.maximum}.`);
+      problems.push(t(`${at(path)} is larger than ${schema.maximum}.`, `${at(path)} ist größer als ${schema.maximum}.`));
     }
     if (schema.exclusiveMinimum !== undefined && value <= schema.exclusiveMinimum) {
-      problems.push(`${at(path)} muss größer als ${schema.exclusiveMinimum} sein.`);
+      problems.push(
+        t(
+          `${at(path)} has to be larger than ${schema.exclusiveMinimum}.`,
+          `${at(path)} muss größer als ${schema.exclusiveMinimum} sein.`
+        )
+      );
     }
     if (schema.exclusiveMaximum !== undefined && value >= schema.exclusiveMaximum) {
-      problems.push(`${at(path)} muss kleiner als ${schema.exclusiveMaximum} sein.`);
+      problems.push(
+        t(
+          `${at(path)} has to be smaller than ${schema.exclusiveMaximum}.`,
+          `${at(path)} muss kleiner als ${schema.exclusiveMaximum} sein.`
+        )
+      );
     }
     if (schema.multipleOf !== undefined && Math.abs(value % schema.multipleOf) > 1e-9) {
-      problems.push(`${at(path)} muss ein Vielfaches von ${schema.multipleOf} sein.`);
+      problems.push(
+        t(
+          `${at(path)} has to be a multiple of ${schema.multipleOf}.`,
+          `${at(path)} muss ein Vielfaches von ${schema.multipleOf} sein.`
+        )
+      );
     }
   }
 
   if (Array.isArray(value)) {
     if (schema.minItems !== undefined && value.length < schema.minItems) {
-      problems.push(`${at(path)} braucht mindestens ${schema.minItems} Einträge.`);
+      problems.push(
+        t(`${at(path)} needs at least ${schema.minItems} entries.`, `${at(path)} braucht mindestens ${schema.minItems} Einträge.`)
+      );
     }
     if (schema.maxItems !== undefined && value.length > schema.maxItems) {
-      problems.push(`${at(path)} hat mehr als ${schema.maxItems} Einträge.`);
+      problems.push(
+        t(`${at(path)} has more than ${schema.maxItems} entries.`, `${at(path)} hat mehr als ${schema.maxItems} Einträge.`)
+      );
     }
     if (schema.uniqueItems === true) {
       const seen = new Set(value.map((entry) => JSON.stringify(entry)));
-      if (seen.size !== value.length) problems.push(`${at(path)} enthält denselben Eintrag mehrfach.`);
+      if (seen.size !== value.length) {
+        problems.push(
+          t(`${at(path)} contains the same entry more than once.`, `${at(path)} enthält denselben Eintrag mehrfach.`)
+        );
+      }
     }
     if (schema.items !== undefined) {
       value.forEach((entry, index) => {
@@ -247,21 +299,30 @@ function walk(schema, value, path, context) {
 
   if (typeOf(value) === "object") {
     for (const key of schema.required || []) {
-      if (!(key in value)) problems.push(`${at(path ? `${path}.${key}` : key)} fehlt.`);
+      if (!(key in value)) {
+        problems.push(
+          t(`${at(path ? `${path}.${key}` : key)} is missing.`, `${at(path ? `${path}.${key}` : key)} fehlt.`)
+        );
+      }
     }
     const declared = schema.properties || {};
     for (const [key, entry] of Object.entries(value)) {
       const next = path ? `${path}.${key}` : key;
       if (schema.propertyNames !== undefined) {
         const wrong = walk(schema.propertyNames, key, next, context);
-        if (wrong.length) problems.push(`Der Name ${at(next)} ist nicht erlaubt.`);
+        if (wrong.length) problems.push(t(`The name ${at(next)} is not allowed.`, `Der Name ${at(next)} ist nicht erlaubt.`));
       }
       if (key in declared) {
         problems.push(...walk(declared[key], entry, next, context));
         continue;
       }
       if (schema.additionalProperties === false) {
-        problems.push(`${at(next)} kennt das Gerät nicht. Unbekannte Felder werden abgewiesen, nicht übergangen.`);
+        problems.push(
+          t(
+            `${at(next)} is unknown to the device. Unknown fields are refused, not passed over.`,
+            `${at(next)} kennt das Gerät nicht. Unbekannte Felder werden abgewiesen, nicht übergangen.`
+          )
+        );
       } else if (typeof schema.additionalProperties === "object") {
         problems.push(...walk(schema.additionalProperties, entry, next, context));
       }
@@ -275,7 +336,14 @@ function walk(schema, value, path, context) {
     const branches = schema[key];
     if (!Array.isArray(branches)) continue;
     const fits = branches.some((branch) => walk(branch, value, path, context).length === 0);
-    if (!fits) problems.push(`${at(path)} passt zu keiner der Formen, die das Gerät unter ${key} erlaubt.`);
+    if (!fits) {
+      problems.push(
+        t(
+          `${at(path)} matches none of the shapes the device allows under ${key}.`,
+          `${at(path)} passt zu keiner der Formen, die das Gerät unter ${key} erlaubt.`
+        )
+      );
+    }
   }
 
   return problems;
@@ -352,10 +420,24 @@ export function checkVersion(contract) {
   const device = contract?.kontrakt;
   const kit = KIT_CONTRACT_VERSION;
   if (typeof device !== "number") {
-    return { ok: false, state: "unknown", text: "Dieses Gerät nennt keine Kontraktversion. Es ist älter als der Kontrakt selbst." };
+    return {
+      ok: false,
+      state: "unknown",
+      text: t(
+        "This device names no contract version. It is older than the contract itself.",
+        "Dieses Gerät nennt keine Kontraktversion. Es ist älter als der Kontrakt selbst."
+      ),
+    };
   }
   if (device === kit) {
-    return { ok: true, state: "same", text: `Kontraktversion ${device}, dieses Kit versteht sie.` };
+    return {
+      ok: true,
+      state: "same",
+      text: t(
+        `Contract version ${device}, this kit understands it.`,
+        `Kontraktversion ${device}, dieses Kit versteht sie.`
+      ),
+    };
   }
   if (device < kit) {
     const ungenutzt = KIT_CONTRACT_VERSIONS.filter((entry) => entry.version > device);
@@ -363,10 +445,17 @@ export function checkVersion(contract) {
       ok: true,
       state: "device-older",
       text:
-        `Das Gerät führt Kontraktversion ${device}, dieses Kit versteht bis ${kit}. Es arbeitet mit dem, ` +
-        "was dieses Gerät verspricht: geprüft wird gegen dessen Schema, gerufen wird nur, was in dessen Kontrakt steht." +
+        t(
+          `The device carries contract version ${device}, this kit understands up to ${kit}. It works with ` +
+            "what this device promises: checking happens against its schema, and only what stands in its contract gets called.",
+          `Das Gerät führt Kontraktversion ${device}, dieses Kit versteht bis ${kit}. Es arbeitet mit dem, ` +
+            "was dieses Gerät verspricht: geprüft wird gegen dessen Schema, gerufen wird nur, was in dessen Kontrakt steht."
+        ) +
         (ungenutzt.length
-          ? ` Ungenutzt bleibt hier, was das Kit erst ab Fassung ${ungenutzt[0].version} tut: ${ungenutzt.map((e) => e.kann).join(" ")}`
+          ? t(
+              ` Unused here is what the kit only does from version ${ungenutzt[0].version} on: ${ungenutzt.map((e) => e.kann).join(" ")}`,
+              ` Ungenutzt bleibt hier, was das Kit erst ab Fassung ${ungenutzt[0].version} tut: ${ungenutzt.map((e) => e.kann).join(" ")}`
+            )
           : ""),
     };
   }
@@ -375,11 +464,24 @@ export function checkVersion(contract) {
     ok: false,
     state: "device-newer",
     text:
-      `Das Gerät führt Kontraktversion ${device}, dieses Kit versteht bis ${kit}. ` +
-      `Was in ${device - kit === 1 ? `Fassung ${device}` : `den Fassungen ${kit + 1} bis ${device}`} steht, kennt es nicht: ` +
-      "es kann weder packen noch prüfen, was dort gefordert wird." +
-      (fremd.length ? ` Das Gerät nennt außerdem ${fremd.join(", ")}, damit fängt dieses Kit nichts an.` : "") +
-      " Hol den aktuellen Stand des Kits mit /init, bevor du etwas einspielst.",
+      t(
+        `The device carries contract version ${device}, this kit understands up to ${kit}. ` +
+          `What stands in ${device - kit === 1 ? `version ${device}` : `versions ${kit + 1} to ${device}`} it does not know: ` +
+          "it can neither pack nor check what is demanded there.",
+        `Das Gerät führt Kontraktversion ${device}, dieses Kit versteht bis ${kit}. ` +
+          `Was in ${device - kit === 1 ? `Fassung ${device}` : `den Fassungen ${kit + 1} bis ${device}`} steht, kennt es nicht: ` +
+          "es kann weder packen noch prüfen, was dort gefordert wird."
+      ) +
+      (fremd.length
+        ? t(
+            ` The device also names ${fremd.join(", ")}, and this kit makes nothing of that.`,
+            ` Das Gerät nennt außerdem ${fremd.join(", ")}, damit fängt dieses Kit nichts an.`
+          )
+        : "") +
+      t(
+        " Fetch the current version of the kit with /init before you deploy anything.",
+        " Hol den aktuellen Stand des Kits mit /init, bevor du etwas einspielst."
+      ),
   };
 }
 
@@ -409,24 +511,47 @@ export function summarize(contract) {
   const version = checkVersion(contract);
   const lines = [
     `- ${version.text}`,
-    `- Systemversion des Geräts: ${contract?.arasul ?? "nicht genannt"}`,
-    `- Endpunkte: ${(contract?.endpunkte || []).length}`,
-    `- Kopfzeilen: ${contract?.koepfe?.benutzer ?? "?"}, ${contract?.koepfe?.rolle ?? "?"}` +
-      (contract?.koepfe?.rollen ? ` (Rollen: ${contract.koepfe.rollen.join(", ")})` : ""),
-    `- Schlüsselkopf: ${contract?.schluessel?.kopf ?? "?"}, Bereiche: ${(contract?.schluessel?.bereiche || []).join(", ") || "keine genannt"}`,
+    t(
+      `- System version of the device: ${contract?.arasul ?? "not named"}`,
+      `- Systemversion des Geräts: ${contract?.arasul ?? "nicht genannt"}`
+    ),
+    t(`- Endpoints: ${(contract?.endpunkte || []).length}`, `- Endpunkte: ${(contract?.endpunkte || []).length}`),
+    t(
+      `- Headers: ${contract?.koepfe?.benutzer ?? "?"}, ${contract?.koepfe?.rolle ?? "?"}`,
+      `- Kopfzeilen: ${contract?.koepfe?.benutzer ?? "?"}, ${contract?.koepfe?.rolle ?? "?"}`
+    ) +
+      (contract?.koepfe?.rollen
+        ? t(` (roles: ${contract.koepfe.rollen.join(", ")})`, ` (Rollen: ${contract.koepfe.rollen.join(", ")})`)
+        : ""),
+    t(
+      `- Key header: ${contract?.schluessel?.kopf ?? "?"}, scopes: ${(contract?.schluessel?.bereiche || []).join(", ") || "none named"}`,
+      `- Schlüsselkopf: ${contract?.schluessel?.kopf ?? "?"}, Bereiche: ${(contract?.schluessel?.bereiche || []).join(", ") || "keine genannt"}`
+    ),
   ];
   const flow = contract?.flow_frontmatter;
   if (flow) {
     lines.push(
-      `- Flow-Kopf: ${flow.schema ? "Schema vorhanden" : "kein Schema"}` +
-        `, ${(flow.regeln || []).length} Regeln für einen Flow aus einem Paket`
+      t(
+        `- Flow header: ${flow.schema ? "schema present" : "no schema"}` +
+          `, ${(flow.regeln || []).length} rules for a flow out of a package`,
+        `- Flow-Kopf: ${flow.schema ? "Schema vorhanden" : "kein Schema"}` +
+          `, ${(flow.regeln || []).length} Regeln für einen Flow aus einem Paket`
+      )
     );
   }
   const paket = contract?.paket;
   if (paket) {
     lines.push(
-      `- Paket: ${paket.format ?? "?"}, gepackt mit \`${paket.packen ?? "?"}\`` +
-        (paket.max_archiv_bytes ? `, höchstens ${Math.round(paket.max_archiv_bytes / 1024 / 1024)} MB` : "")
+      t(
+        `- Package: ${paket.format ?? "?"}, packed with \`${paket.packen ?? "?"}\``,
+        `- Paket: ${paket.format ?? "?"}, gepackt mit \`${paket.packen ?? "?"}\``
+      ) +
+        (paket.max_archiv_bytes
+          ? t(
+              `, at most ${Math.round(paket.max_archiv_bytes / 1024 / 1024)} MB`,
+              `, höchstens ${Math.round(paket.max_archiv_bytes / 1024 / 1024)} MB`
+            )
+          : "")
     );
   }
   return lines;

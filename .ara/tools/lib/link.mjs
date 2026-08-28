@@ -20,6 +20,7 @@ import { baseUrl, call, reason } from "./arasul.mjs";
 import { CONTRACT_PATH, checkVersion, findEndpoint } from "./contract.mjs";
 import { ROOT } from "./kit.mjs";
 import { getSecret } from "./secrets.mjs";
+import { t } from "./i18n.mjs";
 
 /** Der Aufruf, mit dem ein Kit-Schlüssel für dieses Gerät entsteht. */
 function keyCommand(device) {
@@ -47,8 +48,13 @@ export function connect(device, { base: override = null, insecure: force = false
     base = baseUrl(override || fields.api_base || fields.address || fields.hostname);
   } catch (error) {
     throw new Error(
-      `${error.message}\nTrag address in ${relative(ROOT, device.file)} ein, ` +
-        "oder api_base, wenn die Schnittstelle woanders liegt als der SSH-Zugang."
+      `${error.message}\n` +
+        t(
+          `Enter address in ${relative(ROOT, device.file)}, ` +
+            "or api_base if the interface sits elsewhere than the SSH access.",
+          `Trag address in ${relative(ROOT, device.file)} ein, ` +
+            "oder api_base, wenn die Schnittstelle woanders liegt als der SSH-Zugang."
+        )
     );
   }
 
@@ -57,17 +63,21 @@ export function connect(device, { base: override = null, insecure: force = false
   const keyRef = fields.api_key_ref;
   if (!keyRef) {
     throw new Error(
-      `Für ${place} ist kein Kit-Schlüssel hinterlegt.\n` +
-        "Am Gerät anlegen und in die Ablage legen:\n  " +
-        keyCommand(device)
+      t(
+        `No kit key is stored for ${place}.\nCreate one on the device and put it into the store:\n  `,
+        `Für ${place} ist kein Kit-Schlüssel hinterlegt.\nAm Gerät anlegen und in die Ablage legen:\n  `
+      ) + keyCommand(device)
     );
   }
   const key = getSecret(keyRef);
   if (!key) {
     throw new Error(
-      `Die Akte nennt den Eintrag ${keyRef}, in der Geheimnis-Ablage steht er nicht.\n` +
-        "Entweder wurde er nie gesetzt oder die Ablage wurde gewechselt. Neu anlegen:\n  " +
-        keyCommand(device)
+      t(
+        `The file names the entry ${keyRef}, it does not stand in the secret store.\n` +
+          "Either it was never set or the store was changed. Create a new one:\n  ",
+        `Die Akte nennt den Eintrag ${keyRef}, in der Geheimnis-Ablage steht er nicht.\n` +
+          "Entweder wurde er nie gesetzt oder die Ablage wurde gewechselt. Neu anlegen:\n  "
+      ) + keyCommand(device)
     );
   }
 
@@ -94,18 +104,30 @@ export async function withContract(link, device) {
   if (!answer.ok) {
     if (answer.status === 401) {
       throw new Error(
-        `${link.place} weist den Kit-Schlüssel ab (401). Wurde er am Gerät widerrufen?\n` +
-          "Am Gerät nachsehen mit kit-schluessel.sh liste, sonst einen neuen anlegen:\n  " +
-          keyCommand(device)
+        t(
+          `${link.place} refuses the kit key (401). Was it revoked on the device?\n` +
+            "Look on the device with kit-schluessel.sh liste, otherwise create a new one:\n  ",
+          `${link.place} weist den Kit-Schlüssel ab (401). Wurde er am Gerät widerrufen?\n` +
+            "Am Gerät nachsehen mit kit-schluessel.sh liste, sonst einen neuen anlegen:\n  "
+        ) + keyCommand(device)
       );
     }
     if (answer.status === 404) {
       throw new Error(
-        `${link.place} kennt ${CONTRACT_PATH} nicht. Die Plattform auf diesem Gerät ist älter als der Kontrakt.\n` +
-          "Erst das Gerät aktualisieren, dann noch einmal."
+        t(
+          `${link.place} does not know ${CONTRACT_PATH}. The platform on this device is older than the contract.\n` +
+            "Update the device first, then try again.",
+          `${link.place} kennt ${CONTRACT_PATH} nicht. Die Plattform auf diesem Gerät ist älter als der Kontrakt.\n` +
+            "Erst das Gerät aktualisieren, dann noch einmal."
+        )
       );
     }
-    throw new Error(`Der Kontrakt von ${link.place} ließ sich nicht lesen.\n${reason(answer)}`);
+    throw new Error(
+      t(
+        `The contract of ${link.place} could not be read.\n${reason(answer)}`,
+        `Der Kontrakt von ${link.place} ließ sich nicht lesen.\n${reason(answer)}`
+      )
+    );
   }
 
   const contract = answer.data;
@@ -127,8 +149,12 @@ export async function withContract(link, device) {
     endpoint: (verb, path, options = {}) => {
       if (!findEndpoint(contract, verb, path)) {
         throw new Error(
-          `${link.place} nennt ${verb} ${path} nicht in seinem Kontrakt. ${version.text}\n` +
-            "Das Kit ruft nichts auf, was das Gerät nicht verspricht."
+          t(
+            `${link.place} does not name ${verb} ${path} in its contract. ${version.text}\n` +
+              "The kit calls nothing the device does not promise.",
+            `${link.place} nennt ${verb} ${path} nicht in seinem Kontrakt. ${version.text}\n` +
+              "Das Kit ruft nichts auf, was das Gerät nicht verspricht."
+          )
         );
       }
       return link.ask({ method: verb, path, keyHeader, ...options });

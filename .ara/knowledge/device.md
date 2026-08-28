@@ -1,394 +1,372 @@
-# Verfahren: /device
+# Procedure: /device
 
-> **Wann brauchst du das?** Bei `/device`: ein Gerät anlegen, prüfen, beurteilen, und
-> danach wissen, was als Nächstes kommt. Von der Akte bis zur Abnahme.
+> **When do you need this?** At `/device`: create a device, check it, judge it, and then know
+> what comes next. From the file to the handover.
 
-## Was `/device` tut
+## What `/device` does
 
-Ein Befehl, zwei Lagen. **Ohne Akte** legt er sie an und prüft das Gerät. **Mit Akte**
-prüft er erneut und sagt, wo es steht. Beides macht dasselbe Werkzeug:
+One command, two situations. **Without a file** it creates one and checks the device. **With a
+file** it checks again and says where things stand. The same tool does both:
 
 ```
-node .ara/tools/device.mjs --host <adresse> --user <name> --name <gerät>   erstes Mal
-node .ara/tools/device.mjs --name <gerät>                                  jedes weitere Mal
-node .ara/tools/device.mjs --name <gerät> --json                           für die Auswertung
+node .ara/tools/device.mjs --host <address> --user <name> --name <device>   first time
+node .ara/tools/device.mjs --name <device>                                  every further time
+node .ara/tools/device.mjs --name <device> --json                           for evaluation
 ```
 
-Bei einem Kundengerät kommt `--customer <kunde>` dazu. Das Werkzeug:
+For a customer device `--customer <customer>` comes along. The tool:
 
-1. legt die Akte `device.md` aus `.ara/templates/device.md` an, falls sie fehlt,
-2. prüft die SSH-Verbindung mit Schlüssel, ohne Passwortabfrage,
-3. lässt auf dem Gerät ein Leseskript laufen: Hardware, System, Speicher, Docker,
-   Ollama als Programm oder als Container, Hinweise auf Arasul,
-4. fällt das Urteil und schreibt Befund und Urteil in die Akte, unter „Prüfungen",
-5. merkt sich das Gerät in `.ara/state.json`,
-6. nennt den nächsten Schritt.
+1. creates the file `device.md` from `.ara/templates/device.md` if it is missing,
+2. checks the SSH connection with a key, without a password prompt,
+3. runs a reading script on the device: hardware, system, memory, Docker, Ollama as a program or
+   as a container, traces of Arasul,
+4. delivers the verdict and writes finding and verdict into the file, under "Prüfungen",
+5. remembers the device in `.ara/state.json`,
+6. names the next step.
 
-Es liest nur. Eingriffe sind `--install` und `--deploy-key`, beide weiter unten, beide
-nur auf Wunsch und nach Bestätigung.
+It only reads. The interventions are `--install` and `--deploy-key`, both further down, both only
+on request and after confirmation.
 
-## Wo die Akte liegt
+## Where the file lies
 
-| Gerät | Ort | Aufruf |
+| Device | Place | Call |
 | --- | --- | --- |
-| ohne Kunden, beide Zweige | `devices/<gerät>/` | `--name <gerät>` |
-| Kundengerät, nur Partner | `customers/<kunde>/devices/<gerät>/` | `--customer <kunde> --name <gerät>` |
+| without a customer, both branches | `devices/<device>/` | `--name <device>` |
+| customer device, partner only | `customers/<customer>/devices/<device>/` | `--customer <customer> --name <device>` |
 
-Ein Unternehmen hat nur den ersten Fall. Ein Partner hat beide: die eigenen Geräte
-(Vorführung, Übung, eigener Betrieb) liegen unter `devices/`, die der Kunden unter dem
-Kunden. Kein Scheinkunde für ein eigenes Gerät, das verfälscht jede Auswertung.
+A company has only the first case. A partner has both: their own devices (demonstration, practice,
+own operation) lie under `devices/`, the customers' under the customer. No dummy customer for an
+own device, that falsifies every evaluation.
 
-**Gerätename:** klein, Ziffern, Bindestriche. Bei Kundengeräten nach Standort oder Rolle
-(`zentrale`, `werk2`, `praxis-eg`), nicht nach Modell: das Modell steht in der Akte und
-kann sich ändern, der Standort bleibt. Bei Geräten ohne Kunden ist das Modell ein guter
-Name (`orin`, `dgx-spark`), weil der Standort sie nicht unterscheidet.
+**Device name:** lower case, digits, hyphens. For customer devices after location or role
+(`zentrale`, `werk2`, `praxis-eg`), not after the model: the model stands in the file and can
+change, the location stays. For devices without a customer the model is a good name (`orin`,
+`dgx-spark`), because the location does not tell them apart.
 
-## Das Urteil
+## The verdict
 
-Drei Antworten, und jede hat eine Folge:
+Three answers, and each has a consequence:
 
-| Urteil | Woran erkannt | Was folgt |
+| Verdict | Recognised by | What follows |
 | --- | --- | --- |
-| **unterstützt** | Jetson Orin oder Jetson Thor | Arasul kann darauf laufen. Weiter unten bei „Nach dem Urteil" |
-| **bald** | DGX Spark, andere Rechner mit NVIDIA-Grafik | Angekündigt. Vorgemerkt in der Akte, weiter, sobald der Spiegel ein Profil dafür führt |
-| **nicht unterstützt, wir merken es vor** | alles andere, etwa ein Mac oder ein Rechner ohne NVIDIA-Grafik | Vorgemerkt in der Akte mit Datum. Ohne Arasul endet es hier |
+| **supported** | Jetson Orin or Jetson Thor | Arasul can run on it. Continue below at "After the verdict" |
+| **soon** | DGX Spark, other computers with NVIDIA graphics | Announced. Noted in the file, continue as soon as the mirror carries a profile for it |
+| **not supported, we note it down** | everything else, a Mac for instance or a computer without NVIDIA graphics | Noted in the file with a date. Without Arasul it ends here |
 
-Die Regel steht in `.ara/tools/lib/device.mjs`, und sie ist eine Regel des Kits, kein
-Produktwert. Was auf einem unterstützten Gerät gilt (Profil, Modell, Engine, Speicher),
-steht weiter nur im Spiegel: `.ara/knowledge/identify-device.md`.
+The rule stands in `.ara/tools/lib/device.mjs`, and it is a rule of the kit, not a product value.
+What applies on a supported device (profile, model, engine, memory) still stands only in the
+mirror: `.ara/knowledge/identify-device.md`.
 
-**Vormerken** heißt: `verdict` und `noted_on` stehen in der Akte. Damit bleibt sichtbar,
-welche Geräte nachgefragt wurden, und der Mensch kann das ans Produktteam geben.
+**Noting down** means: `verdict` and `noted_on` stand in the file. That keeps it visible which
+devices were asked about, and the human can pass that to the product team.
 
-**Ohne Arasul endet es hier.** Das Werkzeug sagt in einem Satz, was Arasul brächte:
-Anmeldung, Teststand und Live-Schaltung für Apps, Freigaben, Flows, Sicherung und
-Wartung. Das ist die ganze Ansage. Kein Verkaufsgespräch hinterher, es sei denn, der
-Mensch fängt eins an.
+**Without Arasul it ends here.** The tool says in one sentence what Arasul would bring: login,
+staging and going live for apps, permissions, flows, backup and maintenance. That is the whole
+announcement. No sales pitch afterwards, unless the human starts one.
 
-## Wenn SSH nicht steht
+## When SSH does not stand
 
-Das Werkzeug legt die Akte trotzdem an und trägt `ssh: refused` ein. Dann gilt der
-Reihe nach:
+The tool creates the file anyway and enters `ssh: refused`. Then, in this order:
 
-1. `node .ara/tools/find-device.mjs --host <adresse>`: antwortet dort überhaupt etwas?
-2. Schlüssel ausrollen, Verfahren `.ara/knowledge/remote-access.md`. Der private
-   Schlüssel bleibt in `~/.ssh`, im Kit steht nur sein Name.
-3. Noch einmal `node .ara/tools/device.mjs --name <gerät>`.
+1. `node .ara/tools/find-device.mjs --host <address>`: does anything answer there at all?
+2. Roll out a key, procedure `.ara/knowledge/remote-access.md`. The private key stays in `~/.ssh`,
+   the kit only holds its name.
+3. Once more `node .ara/tools/device.mjs --name <device>`.
 
-Ist das Ziel dieser Rechner selbst (`localhost`) und SSH aus, prüft das Werkzeug lokal
-und schreibt `ssh: local` in die Akte. Das reicht für die Akte, nicht für Fernzugriff.
+If the target is this computer itself (`localhost`) and SSH is off, the tool checks locally and
+writes `ssh: local` into the file. That is enough for the file, not for remote access.
 
-## Docker und Ollama
+## Docker and Ollama
 
-Das Werkzeug erkennt beide und sagt, ob sie da sind. Aufsetzen tut es nur auf Wunsch:
+The tool recognises both and says whether they are there. It sets them up only on request:
 
 ```
-node .ara/tools/device.mjs --name <gerät> --install docker,ollama
+node .ara/tools/device.mjs --name <device> --install docker,ollama
 ```
 
-Das ist ein Eingriff der Stufe 2 (`.ara/knowledge/security.md`): vorher Absicht, Ziel
-und Rückweg nennen und bestätigen lassen. Es läuft nur auf Linux, braucht Root am Gerät
-und nutzt die Installationswege der Hersteller. Auf einem Mac bleibt es Handarbeit, das
-sagt das Werkzeug selbst. Nach der Installation prüft es erneut, damit die Akte den
-Zustand trägt, nicht die Absicht.
+That is a level 2 intervention (`.ara/knowledge/security.md`): name intent, target and way back
+beforehand and have it confirmed. It runs on Linux only, needs root on the device and uses the
+manufacturers' installation routes. On a Mac it stays manual work, the tool says so itself. After
+the installation it checks again, so that the file carries the state and not the intention.
 
-**Ollama kann als Programm auf dem Gerät liegen oder in einem Container fahren.** Das
-Werkzeug erkennt beides und sagt, was es gefunden hat: `present` für das Programm,
-`container` mit dem Namen des Containers, `missing` für nichts davon. Auf einem Gerät mit
-Arasul ist der Container der Normalfall, und dort wäre „fehlt" falsch: ein zweites Ollama
-danebenzusetzen hieße, ein zweites Modell in denselben Speicher zu legen. Aufsetzen bietet
-das Werkzeug deshalb nur an, wo wirklich nichts läuft.
+**Ollama can lie on the device as a program or run in a container.** The tool recognises both and
+says what it found: `present` for the program, `container` with the name of the container,
+`missing` for neither. On a device with Arasul the container is the normal case, and "missing"
+would be wrong there: putting a second Ollama next to it would mean putting a second model into the
+same memory. That is why the tool only offers to set it up where nothing really runs.
 
-Auf einem Gerät, das nicht unterstützt ist, sind Docker und Ollama trotzdem sinnvoll:
-damit lassen sich Apps bauen und Modelle ausprobieren. Was fehlt, ist Arasul.
+On a device that is not supported, Docker and Ollama still make sense: apps can be built and models
+tried out with them. What is missing is Arasul.
 
-## Nach dem Urteil: unterstützt
+## After the verdict: supported
 
-Ab hier gilt die Schleife jeder Einrichtung: **Vorbedingung prüfen, tun, nachweisen, in
-den Laufzettel schreiben.** Das Gedächtnis ist der Laufzettel, nicht das Gespräch, weil
-eine Einrichtung Stunden dauert und Sitzungen überlebt.
+From here on the loop of every setup applies: **check the precondition, do it, prove it, write it
+into the runsheet.** The memory is the runsheet, not the conversation, because a setup takes hours
+and survives sessions.
 
 ```
-node .ara/tools/runsheet.mjs --create --device <gerät>            anlegen
-node .ara/tools/runsheet.mjs --device <gerät> --show               Stand lesen
-node .ara/tools/runsheet.mjs --device <gerät> --phase <n> --state <done|paused> \
-  --entry "Was getan wurde. Nachweis: was du geprüft hast und was dabei herauskam."
+node .ara/tools/runsheet.mjs --create --device <device>            create
+node .ara/tools/runsheet.mjs --device <device> --show               read the state
+node .ara/tools/runsheet.mjs --device <device> --phase <n> --state <done|paused> \
+  --entry "What was done. Evidence: what you checked and what came out of it."
 ```
 
-Bei Kundengeräten mit `--customer <kunde>`. Ein Eintrag ohne Nachweis ist wertlos.
-„SSH gehärtet" sagt nichts. „SSH gehärtet, Anmeldung mit Passwort wird jetzt abgelehnt,
-mit Schlüssel geht sie" ist ein Nachweis. Klemmt etwas: `--state paused`, sagen, was du
-siehst, nicht über den Fehler hinweg weiterprobieren.
+For customer devices with `--customer <customer>`. An entry without evidence is worthless. "SSH
+hardened" says nothing. "SSH hardened, login with a password is now refused, with a key it works"
+is evidence. If something is stuck: `--state paused`, say what you see, do not keep trying past
+the fault.
 
-Die Phasen des Laufzettels und was in jeder gilt:
+The phases of the runsheet and what applies in each:
 
-- **0 Vorbereitung.** Netzfrage klären mit dem, der das Netz betreut: feste Adresse,
-  Internet, Firewall. Token hinterlegt? `node .ara/tools/secrets.mjs --show` sagt es, ohne
-  den Wert zu zeigen. Rückfallplan festlegen: was passiert, wenn es nicht fertig wird.
-  Zeit ehrlich schätzen.
-- **1 Betriebssystem.** Nur, wenn das Gerät noch keins hat oder ein anderes braucht.
-  Verfahren `.ara/knowledge/boot-and-flash.md`. Ein Datenträger wird nur nach
-  ausdrücklichem Ja beschrieben.
-- **2 Erstkontakt.** Hat `/device` schon erledigt: SSH steht, die Akte hat Adresse,
-  Anmeldename, Port und Schlüsselname. Ab jetzt läuft jeder Befehl über
-  `node .ara/tools/remote.mjs --device <gerät> --command "…"`.
-- **3 Arasul installieren.** Ein Aufruf, siehe „Arasul installieren" weiter unten:
-  `node .ara/tools/device.mjs --name <gerät> --install arasul`. Ausgabe mitlesen, bei
-  Fehlern anhalten. Nachweis: der Kontrakt des Geräts lässt sich lesen und passt zum Kit,
-  `node .ara/tools/app.mjs --device <gerät> --contract`.
-- **4 Nachbereitung.** Erst prüfen, ob etwas fehlt, das Produkt erledigt manches
-  selbst. Modell vorhanden, Namensauflösung, Zugang härten (erst wenn die
-  Schlüsselanmeldung nachweislich läuft, und die laufende Sitzung offen halten),
-  Netzabsicherung, Fernzugriff nach `.ara/knowledge/remote-access.md`. Ändert sich Port
-  oder Anmeldename: sofort in `device.md` nachziehen.
-- **5 Nachweis.** Prüfliste in `.ara/knowledge/handover.md`. Dienste gesund auch nach
-  Neustart, eine echte Anfrage liefert eine sinnvolle Antwort, ein Testdokument wird
-  wiedergefunden, Fernzugriff von außerhalb des Netzes. Der letzte Punkt wird am
-  häufigsten übersprungen, Mobilfunk reicht zum Prüfen.
-- **6 Abnahme.** `handover.md` aus dem Laufzettel, Kurzanleitung aus
-  `.ara/templates/quickstart.md`, Zugänge übergeben, Not-Aus zeigen. `status: live` und
-  `accepted_on` in `device.md`, Laufzettel auf `done`. Beim eigenen Gerät gibt es
-  niemanden, dem übergeben wird: dann bleiben `device.md`, Laufzettel und der Nachweis
-  aus Phase 5.
+- **0 Preparation.** Settle the network question with whoever looks after the network: fixed
+  address, internet, firewall. Token stored? `node .ara/tools/secrets.mjs --show` says so without
+  showing the value. Fix a fallback plan: what happens if it does not get finished. Estimate the
+  time honestly.
+- **1 Operating system.** Only if the device has none yet or needs a different one. Procedure
+  `.ara/knowledge/boot-and-flash.md`. A disk gets written only after an explicit yes.
+- **2 First contact.** `/device` has already done that: SSH stands, the file has address, login
+  name, port and key name. From now on every command runs through
+  `node .ara/tools/remote.mjs --device <device> --command "…"`.
+- **3 Install Arasul.** One call, see "Installing Arasul" further down:
+  `node .ara/tools/device.mjs --name <device> --install arasul`. Read the output along, stop at
+  errors. Evidence: the device's contract can be read and fits the kit,
+  `node .ara/tools/app.mjs --device <device> --contract`.
+- **4 Follow-up.** First check whether something is missing, the product handles some of it
+  itself. Model present, name resolution, harden access (only once key login demonstrably works,
+  and keep the running session open), network hardening, remote access along
+  `.ara/knowledge/remote-access.md`. If port or login name change: pull them into `device.md`
+  immediately.
+- **5 Evidence.** Checklist in `.ara/knowledge/handover.md`. Services healthy also after a restart,
+  a real question delivers a sensible answer, a test document is found again, remote access from
+  outside the network. The last point is skipped most often, a mobile connection is enough to
+  check.
+- **6 Handover.** `handover.md` out of the runsheet, short guide from
+  `.ara/templates/quickstart.md`, hand over the access, show the emergency off. `status: live` and
+  `accepted_on` in `device.md`, runsheet to `done`. With an own device there is nobody to hand over
+  to: then `device.md`, the runsheet and the evidence from phase 5 remain.
 
-Trägt das Gerät Arasul schon, wenn `/device` es findet, ist das kein Fall für die
-Einrichtung, sondern für den Kit-Schlüssel und danach für `/maintain`.
+If the device already carries Arasul when `/device` finds it, that is not a case for a setup but
+for the kit key and afterwards for `/maintain`.
 
-## Arasul installieren
+## Installing Arasul
 
-**Zwei Wege führen zu einem Gerät mit Arasul, und beide enden am selben Punkt:** einem
-Gerät, dessen Kontrakt das Kit lesen kann, und einem Kit-Schlüssel in der Akte.
+**Two ways lead to a device with Arasul, and both end at the same point:** a device whose contract
+the kit can read, and a kit key in the file.
 
-| Lage | Was zu tun ist |
+| Situation | What to do |
 | --- | --- |
-| Das Gerät läuft schon (`arasul: running`) | Nur der Schlüssel fehlt: `--deploy-key` |
-| Das Gerät ist unterstützt, aber leer | `--install arasul`, der Schlüssel kommt danach von selbst |
+| The device already runs (`arasul: running`) | Only the key is missing: `--deploy-key` |
+| The device is supported but empty | `--install arasul`, the key comes afterwards by itself |
 
-### Das Token
+### The token
 
-**Die Token-Frage stellt sich hier und sonst nirgends.** Beim Onboarding gibt es nichts
-zu installieren, also braucht `/init` kein Token, und es fragt auch nicht danach.
+**The token question comes up here and nowhere else.** At onboarding there is nothing to install,
+so `/init` needs no token, and it does not ask for one either.
 
-Das Token kommt aus dem Partnerportal. **Jeder Partner bekommt dort fünf Download-Token
-kostenlos**, weitere auf Nachfrage per Mail. Es ist eine Schranke vor dem Download, keine
-Lizenzprüfung: am Gerät prüft Arasul kein Token, und das Kit trägt auch keines dorthin.
-Wer also nach dem Preis fragt: das Token kostet nichts, die Lizenz regelt der Vertrag.
+The token comes from the partner portal. **Every partner gets five download tokens there free of
+charge**, further ones on request by mail. It is a gate in front of the download, not a licence
+check: on the device Arasul checks no token, and the kit carries none there either. So whoever asks
+about the price: the token costs nothing, the licence is governed by the contract.
 
 ```
 node .ara/tools/secrets.mjs --set ARASUL_TOKEN
 ```
 
-Du liest es nie selbst aus und zeigst seinen Wert nie an.
+You never read it out yourself and never display its value.
 
-### Der Ablauf
-
-```
-node .ara/tools/device.mjs --name <gerät> --install arasul
-node .ara/tools/device.mjs --name <gerät> --install arasul --net-name werk2
-```
-
-Das ist ein **Eingriff der Stufe 2**, und er dauert. Vorher Absicht, Ziel und Rückweg
-nennen und bestätigen lassen. Das Werkzeug hält vorher an fünf Stellen an, und jede ist
-ein Nein und kein Vielleicht: keine Verbindung, kein unterstütztes Gerät, eine laufende
-Plattform, kein Docker, kein Token. Dann geht es los:
-
-1. **Der Installer wird geholt**, über `arasul.de/api/download` mit dem Token, und landet
-   als Spiegel in `.ara/mirror/`, mit Stand und Quelle in `STATE.json`. **Der Spiegel
-   entsteht genau hier und sonst nirgends.**
-2. **Er wird an das Gerät geschoben**, über die schon geprüfte SSH-Verbindung, nach
-   `$HOME/arasul-<fassung>`, und dort ausgepackt. Das Token bleibt auf dem Rechner des
-   Partners.
-3. **Der Installer läuft auf dem Gerät.** Wie er heißt, sagt das Artefakt selbst in
-   `arasul-release.json`; das Kit liest es dort und rät nicht, und es liest dort auch die
-   Fassung. Gerufen wird er mit Startpasswort und Netzname, denn **nur dabei entstehen
-   Netzname, Fassung, Startpasswort und die Erstausgabe am Gerät**. Seine Ausgabe läuft
-   über den Bildschirm, du liest mit, und das Kit liest mit: es maskiert dabei, was wie
-   ein Schlüssel oder ein Passwort aussieht. Bricht er ab, wird nichts schöngeredet:
-   Ursache lesen, beheben, denselben Befehl noch einmal.
-4. **Der Kit-Schlüssel wird angelegt**, siehe unten.
-
-**`tls: selfsigned` trägt die Akte danach von selbst.** Ein frisch installiertes Gerät
-stellt sein Zertifikat aus einer eigenen Geräte-CA aus. Ohne diesen Eintrag scheitert der
-erste Aufruf gegen die Schnittstelle an `SELF_SIGNED_CERT_IN_CHAIN`, und zwar nach einer
-Installation, die das Kit selbst gemacht hat. Bekommt das Gerät später ein Zertifikat, das
-sich prüfen lässt, nimmst du den Eintrag von Hand wieder heraus.
-
-**Das Startpasswort würfelt das Kit und legt es sofort in die Geheimnis-Ablage**, unter
-dem Namen, den die Akte in `start_password_ref` trägt. Es steht in keinem Protokoll, in
-keiner Ausgabe und in keiner Datei des Kits. Am Gerät steht es zusätzlich in der
-Erstausgabe, die der Installer schreibt: das ist die Fassung, die dem Administrator des
-Geräts gehört. Wer ein eigenes vergeben will, legt es vorher selbst ab:
+### The sequence
 
 ```
-printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set <eintrag>
+node .ara/tools/device.mjs --name <device> --install arasul
+node .ara/tools/device.mjs --name <device> --install arasul --net-name werk2
 ```
 
-**Der Netzname** ist ohne Angabe der Name der Akte. `--net-name <name>` setzt einen
-anderen. Er landet in `net_name` in der Geräteakte.
+That is a **level 2 intervention**, and it takes a while. Name intent, target and way back
+beforehand and have it confirmed. The tool stops at five points beforehand, and each is a no and
+not a maybe: no connection, no supported device, a running platform, no Docker, no token. Then it
+starts:
 
-### Was der Installer nicht konnte
+1. **The installer is fetched**, over `arasul.de/api/download` with the token, and lands as a
+   mirror in `.ara/mirror/`, with version and source in `STATE.json`. **The mirror comes into being
+   exactly here and nowhere else.**
+2. **It is pushed to the device**, over the already checked SSH connection, to
+   `$HOME/arasul-<version>`, and unpacked there. The token stays on the partner's computer.
+3. **The installer runs on the device.** What it is called the artifact says itself in
+   `arasul-release.json`; the kit reads it there and does not guess, and it reads the version there
+   too. It is called with a start password and a network name, because **only then do network name,
+   version, start password and the first output come into being on the device**. Its output runs
+   across the screen, you read along, and the kit reads along: it masks whatever looks like a key or
+   a password. If it aborts, nothing gets talked up: read the cause, fix it, the same command again.
+4. **The kit key is created**, see below.
 
-Der Installer erledigt nicht alles, und er sagt das mitten in mehreren hundert Zeilen. Das
-Kit liest seine Ausgabe mit, sammelt diese Zeilen und legt sie am Ende noch einmal hin,
-unter **„Was der Installer nicht konnte"**, dazu in die Akte unter Prüfungen.
+**`tls: selfsigned` the file carries afterwards by itself.** A freshly installed device issues its
+certificate from a device CA of its own. Without that entry the first call against the interface
+fails at `SELF_SIGNED_CERT_IN_CHAIN`, and that after an installation the kit did itself. If the
+device gets a certificate later that can be verified, you take the entry out again by hand.
 
-**„Nicht kritisch" sagt der Installer über seinen eigenen Lauf, nicht über das Gerät beim
-Kunden.** Eine fehlgeschlagene SSH-Härtung und eine nicht eingerichtete Firewall sind für
-den Installer eine Randnotiz und für ein Gerät im fremden Netz eine offene Tür. Geh die
-Liste durch, bevor das Gerät ausgeliefert wird: Zugang härten nach
-`.ara/knowledge/remote-access.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
-hast und was offen bleibt, schreibst du in den Laufzettel.
+**The kit rolls the start password and puts it into the secret store immediately**, under the name
+the file carries in `start_password_ref`. It stands in no log, in no output and in no file of the
+kit. On the device it additionally stands in the first output the installer writes: that is the
+version that belongs to the device's administrator. Whoever wants to assign their own puts it there
+themselves beforehand:
 
-### Reste, aber nichts läuft
+```
+printf '%s' "<password>" | node .ara/tools/secrets.mjs --set <entry>
+```
 
-Die Spurensuche kennt drei Antworten, und der Unterschied entscheidet, was als Nächstes
-geht:
+**The network name** is, without an entry, the name of the file. `--net-name <name>` sets a
+different one. It lands in `net_name` in the device file.
 
-| `arasul:` in der Akte | Woran erkannt | Was folgt |
+### What the installer could not do
+
+The installer does not do everything, and it says so in the middle of several hundred lines. The
+kit reads its output along, collects those lines and lays them down once more at the end, under
+**"Was der Installer nicht konnte"**, and into the file under Prüfungen.
+
+**"Not critical" the installer says about its own run, not about the device at the customer.** A
+failed SSH hardening and a firewall that was not set up are a footnote to the installer and an open
+door for a device in somebody else's network. Go through the list before the device is delivered:
+harden access along `.ara/knowledge/remote-access.md`, everything else on the device with root
+rights. What you caught up on and what stays open you write into the runsheet.
+
+### Traces, but nothing runs
+
+The trace search knows three answers, and the difference decides what goes next:
+
+| `arasul:` in the file | Recognised by | What follows |
 | --- | --- | --- |
-| `running` | ein Container der Plattform läuft | kein Aufsetzen mehr, das wäre ein Update. Fehlt nur der Schlüssel: `--deploy-key` |
-| `traces` | Ordner oder Dienste da, aber nichts läuft | Installieren geht, ausdrücklich: `--install arasul --despite-traces` |
-| `none` | nichts gefunden | der normale Weg |
+| `running` | a container of the platform runs | no setup any more, that would be an update. If only the key is missing: `--deploy-key` |
+| `traces` | folders or services there, but nothing runs | installing works, explicitly: `--install arasul --despite-traces` |
+| `none` | nothing found | the normal way |
 
-`traces` ist der Zustand nach einem abgebrochenen Versuch oder nach einem Werksreset, bei
-dem etwas stehen geblieben ist. **Sieh vorher nach, was da liegt** (`node
-.ara/tools/remote.mjs --device <gerät> --command "ls -la ~"`), sag dem Menschen, was du
-gefunden hast, und lass dir das Darüberhinweg bestätigen. Eine Installation über Reste
-kann auf Vorhandenes treffen, und das ist kein Fall für ein stilles Ja.
+`traces` is the state after an aborted attempt or after a factory reset where something stayed
+behind. **Look first at what lies there** (`node .ara/tools/remote.mjs --device <device> --command
+"ls -la ~"`), tell the human what you found, and have going ahead confirmed. An installation over
+traces can meet what is already there, and that is not a case for a silent yes.
 
-### Der Kit-Schlüssel
+### The kit key
 
-Damit rollt das Kit später Apps auf das Gerät: **kein SSH, kein Passwort, keine Sitzung,
-nur ein Schlüssel mit dem Bereich `app:deploy`.** Er entsteht am Gerät, gehört dem
-Administrator dort und ist von ihm jederzeit widerrufbar.
-
-```
-node .ara/tools/device.mjs --name <gerät> --deploy-key
-```
-
-Auf einem Gerät, das schon läuft, ist das der einzige Schritt. Nach `--install arasul`
-passiert es von selbst.
-
-**Der Klartext erscheint genau einmal.** Das Werkzeug legt ihn in die Geheimnis-Ablage
-und schreibt nur den Namen des Eintrags in die Akte, unter `api_key_ref`. Er steht in
-keiner Datei des Kits, in keinem Protokoll und **nie im Portal**: das Portal gibt
-Download-Token aus, keine Geräteschlüssel. Ist er verloren, legst du einen neuen an und
-lässt den alten am Gerät widerrufen, nachschlagen geht nicht.
-
-### Der Nachweis
-
-Installiert ist nicht abgenommen. Der erste Nachweis ist der Kontrakt:
+With it the kit later rolls apps onto the device: **no SSH, no password, no session, only a key
+with the scope `app:deploy`.** It comes into being on the device, belongs to the administrator there
+and can be revoked by them at any time.
 
 ```
-node .ara/tools/app.mjs --device <gerät> --contract
+node .ara/tools/device.mjs --name <device> --deploy-key
 ```
 
-Antwortet er, dann steht die Plattform, der Schlüssel gilt und das Kit passt zu diesem
-Gerät. Wie ein fertiges Paket dorthin kommt, steht in `.ara/knowledge/deploy.md`; wie aus
-einem Kundenwunsch überhaupt eine App wird, in `.ara/knowledge/app.md`. Der nächste
-Befehl ist dann `/app`.
+On a device that already runs, that is the only step. After `--install arasul` it happens by itself.
 
-**Antwortet er nicht, obwohl SSH steht**, liegt die Schnittstelle woanders als der Zugang:
-hinter einem Tunnel, unter einem anderen Namen, auf einem anderen Port. Dann trägt die
-Akte `api_base`, die Adresse mit Vorsatz, unter der die Schnittstelle wirklich antwortet.
-Sie sticht `address`, bleibt in der Akte stehen und muss nicht bei jedem Aufruf mitgetippt
-werden. `--base <url>` gibt es weiter, für den einen Versuch, der nicht in die Akte gehört.
+**The plain text appears exactly once.** The tool puts it into the secret store and writes only the
+name of the entry into the file, under `api_key_ref`. It stands in no file of the kit, in no log and
+**never in the portal**: the portal issues download tokens, not device keys. If it is lost, you
+create a new one and have the old one revoked on the device, looking it up is not possible.
 
-## Der erste Mitarbeiter und die erste Freigabe
+### The evidence
 
-Nach der Installation läuft die Plattform, und **niemand darf hinein außer dem
-Administrator**, dessen Startpasswort aus Schritt 3 stammt. Bevor ein Mensch beim Kunden
-etwas sieht, braucht es zwei Dinge: einen Mitarbeiter und eine Freigabe für das, was er
-benutzen soll. Beides gehört zur Abnahme und nicht zum Nachher.
-
-**Der übliche Weg ist die Oberfläche**, im Browser am Gerät, angemeldet als Administrator.
-
-### Die Sitzung: `--admin-login`
-
-Das Kit hat einen Kit-Schlüssel mit `app:deploy` und keine Sitzung. Eine Sitzung holt es
-sich aber, und zwar aus dem Startpasswort, das bei der Installation entstanden ist:
+Installed is not handed over. The first piece of evidence is the contract:
 
 ```
-node .ara/tools/device.mjs --name <gerät> --admin-login
+node .ara/tools/app.mjs --device <device> --contract
 ```
 
-Das meldet sich am Gerät an und gibt den Ausweis aus, mit dem die nächsten Aufrufe gehen.
-**Das Passwort wird dabei nicht angezeigt**, es geht aus der Geheimnis-Ablage direkt in
-die Anmeldung. Der Weg läuft über die Schnittstelle und nicht über SSH: es braucht dafür
-weder einen Anmeldenamen noch einen Schlüssel, nur `address` oder `api_base` in der Akte.
-Für ein Skript gibt `--token` nur den Ausweis:
+If it answers, the platform stands, the key holds and the kit fits this device. How a finished
+package gets there stands in `.ara/knowledge/deploy.md`; how a customer wish becomes an app at all,
+in `.ara/knowledge/app.md`. The next command is then `/app`.
+
+**If it does not answer although SSH stands**, the interface sits elsewhere than the access: behind
+a tunnel, under a different name, on a different port. Then the file carries `api_base`, the address
+with a prefix at which the interface really answers. It beats `address`, stays in the file and does
+not have to be typed along at every call. `--base <url>` still exists, for the one attempt that does
+not belong in the file.
+
+## The first employee and the first permission
+
+After the installation the platform runs, and **nobody may get in except the administrator**, whose
+start password comes from step 3. Before a human at the customer sees anything, two things are
+needed: an employee and a permission for what they should use. Both belong to the handover and not
+to afterwards.
+
+**The usual way is the interface**, in the browser on the device, logged in as the administrator.
+
+### The session: `--admin-login`
+
+The kit has a kit key with `app:deploy` and no session. But it can fetch a session, and out of the
+start password that came into being at the installation:
 
 ```
-SITZUNG=$(node .ara/tools/device.mjs --name <gerät> --admin-login --token)
+node .ara/tools/device.mjs --name <device> --admin-login
 ```
 
-Der Weg dorthin ist `POST /api/auth/login`, und das ist eine Angabe über das Produkt wie
-jede andere: **sie gehört an einem Gerät geprüft.** Das tut der Doku-Selbsttest:
+That logs in on the device and prints the credential the next calls go with. **The password is not
+displayed in doing so**, it goes from the secret store straight into the login. The route runs over
+the interface and not over SSH: it needs neither a login name nor a key for that, only `address` or
+`api_base` in the file. For a script `--token` gives only the credential:
 
 ```
-node .ara/tools/check-docs.mjs --device <gerät>
+SESSION=$(node .ara/tools/device.mjs --name <device> --admin-login --token)
 ```
 
-Nennt das Artefakt in `arasul-release.json` einen anderen Weg oder einen anderen Namen für
-den Administrator, gilt der. Stimmt beides nicht, gibst du es im Aufruf mit:
-`--login-path <weg>` und `--login-user <name>`. Das Werkzeug schreibt jedes Mal dazu, woher
-es seine Angaben hat.
+The route there is `POST /api/auth/login`, and that is a statement about the product like any other:
+**it belongs checked on a device.** The documentation self-test does that:
 
-Weist das Gerät die Anmeldung ab, hat das meist einen von zwei Gründen: der Administrator
-heißt dort anders, oder das Startpasswort wurde am Gerät schon geändert. Dann ist der
-Eintrag in der Ablage veraltet, und der Mensch, der es geändert hat, kennt das neue.
+```
+node .ara/tools/check-docs.mjs --device <device>
+```
 
-**Welche Namen die Ablage führt**, sagt `node .ara/tools/secrets.mjs --show`. Dort steht
-auch der Eintrag mit dem Startpasswort, mit dem Gerät daneben. Werte stehen dort nie.
+If the artifact in `arasul-release.json` names a different route or a different name for the
+administrator, that one applies. If neither is right, you pass it in the call: `--login-path
+<route>` and `--login-user <name>`. The tool writes down every time where it got its details from.
 
-### Weg und Rumpf stehen im Artefakt
+If the device refuses the login, that usually has one of two reasons: the administrator is called
+something else there, or the start password has already been changed on the device. Then the entry
+in the store is stale, and the human who changed it knows the new one.
 
-Was du mit der Sitzung dann aufrufst, steht nicht im Kit, sondern im Artefakt. Der Spiegel
-bringt die Anleitungen mit, die zu genau dieser Fassung gehören:
+**Which names the store holds**, `node .ara/tools/secrets.mjs --show` says. There stands the entry
+with the start password too, with the device next to it. Values never stand there.
+
+### Route and body stand in the artifact
+
+What you then call with the session does not stand in the kit but in the artifact. The mirror brings
+the manuals that belong to exactly this version:
 
 ```
 node .ara/tools/mirror.mjs --docs
 ```
 
-Zwei davon brauchst du hier, und beide liegen unter `.ara/mirror/`:
+Two of them you need here, and both lie under `.ara/mirror/`:
 
-- **Das Admin-Handbuch**, Kapitel zu Mitarbeitern und zu Freigaben. Es sagt, was ein
-  Mitarbeiter ist, was eine Freigabe erlaubt und in welcher Reihenfolge beides angelegt
-  wird.
-- **Die API-Referenz.** Sie nennt die Wege dafür, die verlangten Felder und die Antwort.
+- **The admin handbook**, chapters on employees and on permissions. It says what an employee is,
+  what a permission allows and in which order both are created.
+- **The API reference.** It names the routes for it, the required fields and the answer.
 
-Der Aufruf hat die Form, die jede Schnittstelle dort hat: ein Ausweis in der Kopfzeile,
-sonst nichts.
+The call has the shape every interface there has: a credential in the header, nothing else.
 
 ```
 curl -sS -X POST \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
-  -d '<rumpf aus der API-Referenz>' \
-  https://<gerät>/<weg aus der API-Referenz>
+  -d '<body from the API reference>' \
+  https://<device>/<route from the API reference>
 ```
 
-**Drei Dinge, die du dabei nicht rätst:**
+**Three things you do not guess while doing this:**
 
-1. **Den Weg und den Rumpf.** Beide stehen in der API-Referenz dieser Fassung. Schreib sie
-   nicht aus dem Gedächtnis und nicht aus einem älteren Blatt ab.
-2. **Den Token.** Er kommt aus `--admin-login`, sonst aus dem Weg, den die API-Referenz
-   beschreibt. Der Kit-Schlüssel ist es **nicht**: der trägt `app:deploy` und sonst
-   nichts, und das Gerät weist ihn hier ab. Das ist keine Panne, sondern die Trennung, für
-   die es ihn gibt.
-3. **Das Passwort.** Der Administrator gibt das Startpasswort beim ersten Mal weiter und
-   ändert es danach. Es steht in der Erstausgabe am Gerät und in der Geheimnis-Ablage des
-   Kits, unter dem Namen aus `start_password_ref`. Du zeigst es nie an, du benutzt es über
-   `--admin-login`.
+1. **The route and the body.** Both stand in this version's API reference. Do not write them from
+   memory and do not copy them from an older sheet.
+2. **The token.** It comes from `--admin-login`, otherwise from the route the API reference
+   describes. The kit key it is **not**: that carries `app:deploy` and nothing else, and the device
+   refuses it here. That is not a mishap but the separation it exists for.
+3. **The password.** The administrator passes the start password on the first time and changes it
+   afterwards. It stands in the first output on the device and in the kit's secret store, under the
+   name from `start_password_ref`. You never display it, you use it through `--admin-login`.
 
-**Was du aufschreibst:** dass ein Mitarbeiter angelegt wurde, wer es war, was ihm
-freigegeben ist und auf welchem Weg du es gemacht hast. Das gehört in den Laufzettel,
-Phase 6, und es ist der Punkt, an dem ein Kunde nach einem halben Jahr nachfragt.
+**What you write down:** that an employee was created, who it was, what is shared with them and by
+which route you did it. That belongs into the runsheet, phase 6, and it is the point a customer asks
+about after half a year.
 
-## Nach dem Urteil: bald
+## After the verdict: soon
 
-Vorgemerkt. Zugang darf schon gehärtet werden (`.ara/knowledge/remote-access.md`),
-Docker und Ollama dürfen aufgesetzt werden. Sobald der Spiegel ein Profil für die
-Hardware führt, geht es bei Phase 0 weiter. Ein Profil im Katalog heißt noch nicht
-erprobt, `.ara/knowledge/identify-device.md` sagt, wie du das liest und dem Menschen
-ehrlich sagst.
+Noted. Access may already be hardened (`.ara/knowledge/remote-access.md`), Docker and Ollama may be
+set up. As soon as the mirror carries a profile for the hardware, it continues at phase 0. A profile
+in the catalogue does not yet mean tried, `.ara/knowledge/identify-device.md` says how you read that
+and tell the human honestly.

@@ -1,67 +1,63 @@
-# Verfahren: Browser und weitere Werkzeuge
+# Procedure: browser and further tools
 
-> **Wann brauchst du das?** Immer wenn etwas nur über eine Weboberfläche geht, und bei der
-> Frage, welches Werkzeug für eine Aufgabe das richtige ist.
+> **When do you need this?** Whenever something only works through a web interface, and for
+> the question which tool is the right one for a task.
 
-## Der Browser
+## The browser
 
-Das Kit bringt einen Browser mit, den du selbst bedienen kannst: Seiten öffnen, lesen,
-klicken, Formulare ausfüllen, Bildschirmfotos machen. Er startet beim ersten Zugriff und
-braucht keine Einrichtung.
+The kit brings a browser you can operate yourself: open pages, read, click, fill in forms,
+take screenshots. It starts on first access and needs no setup.
 
-**Du darfst ihn selbstständig benutzen.** Kein Nachfragen vor dem Öffnen einer Seite, kein
-Nachfragen vor einem Klick. Was du im Browser tust, gehört zur Arbeit, nicht zur
-Entscheidung.
+**You may use it on your own.** No asking before opening a page, no asking before a click.
+What you do in the browser belongs to the work, not to the decision.
 
-Die Grenzen bleiben trotzdem dieselben wie überall sonst (`.ara/knowledge/security.md`):
-Was auf einem Kundengerät etwas **verändert**, ist eine Änderung, egal ob du sie über die
-Kommandozeile oder über eine Schaltfläche auslöst. Ein Neustart über das Dashboard bleibt
-ein Neustart. Erst fragen, dann klicken.
+The limits nevertheless stay the same as everywhere else (`.ara/knowledge/security.md`):
+whatever **changes** something on a customer device is a change, no matter whether you
+trigger it from the command line or from a button. A restart through the dashboard stays a
+restart. Ask first, click second.
 
-## Wofür du ihn benutzt
+## What you use it for
 
-**Die Oberfläche eines Kundengeräts prüfen und bedienen.** Nach der Installation
-nachsehen, ob wirklich alles läuft. Den Chat mit einer echten Frage testen, statt nur die
-Dienste abzufragen. Einstellungen vornehmen, die es nur dort gibt.
+**Check and operate the interface of a customer device.** After the installation, look
+whether everything really runs. Test the chat with a real question instead of only querying
+the services. Make settings that exist only there.
 
-**Belege für die Abnahme sammeln.** Ein Bildschirmfoto vom laufenden System sagt bei einer
-späteren Rückfrage mehr als ein Protokolleintrag. Leg sie neben das Abnahmedokument.
+**Collect evidence for the handover.** A screenshot of the running system says more at a
+later query than a log entry. Put them next to the handover document.
 
-**Kundenwebsites lesen.** Beim Anlegen einer Akte selbst nachsehen, statt zu fragen, was
-öffentlich dasteht.
+**Read customer websites.** When creating a file, look for yourself instead of asking what
+stands there publicly.
 
-**Das Partnerportal bedienen.** Download-Token holen, Bestellungen und Einkaufspreise
-nachsehen. Dort liegen echte Geschäftsdaten, also nur, wenn es zur Aufgabe gehört.
+**Operate the partner portal.** Fetch download tokens, look up orders and purchase prices.
+Real business data lives there, so only when it belongs to the task.
 
-## Welches Werkzeug wofür
+## Which tool for what
 
-Der Browser ist mächtig, aber nicht immer das richtige Mittel. Die Reihenfolge:
+The browser is powerful, but not always the right means. The order:
 
-1. **Ein eigenes Werkzeug des Kits**, wenn es eines gibt. `remote.mjs` für Befehle auf dem
-   Gerät, `find-device.mjs` für Erreichbarkeit, `agenda.mjs` für Termine. Sie kennen die
-   Verbindungsdaten, protokollieren mit und können nicht das falsche Gerät erwischen.
-2. **Die Kommandozeile auf dem Gerät** über `remote.mjs`, wenn es dort einen Befehl gibt.
-   Nachvollziehbar, schnell, protokollierbar.
-3. **Der Browser**, wenn es nur über die Oberfläche geht oder wenn du sehen musst, was ein
-   Mensch sieht.
+1. **A tool of the kit itself**, if there is one. `remote.mjs` for commands on the device,
+   `find-device.mjs` for reachability, `agenda.mjs` for dates. They know the connection
+   details, log along and cannot hit the wrong device.
+2. **The command line on the device** through `remote.mjs`, if there is a command there.
+   Traceable, fast, loggable.
+3. **The browser**, when it only works through the interface or when you have to see what a
+   human sees.
 
-Wenn ein Weg nicht funktioniert, nimm den nächsten, statt aufzugeben. Sag dabei, welchen
-Weg du genommen hast.
+If one way does not work, take the next one instead of giving up. Say which way you took.
 
 ## GitHub
 
-Für alles, was mit Repositories zu tun hat, ist die Kommandozeile `gh` da. Sie ist auf den
-meisten Rechnern schon angemeldet und braucht kein Token im Kit.
+For everything to do with repositories the `gh` command line is there. It is already logged
+in on most computers and needs no token in the kit.
 
-Wofür du sie benutzt:
+What you use it for:
 
-- **Die Arbeit des Partners sichern.** Das private Repository für `customers` und
-  `business` anlegen und pflegen, ohne dass er Git-Befehle lernen muss.
-- **Erweiterungen versionieren.** Was für einen Kunden gebaut wurde, bekommt eine
-  Historie und kann beim nächsten wiederverwendet werden.
-- **Rückmeldung ans Kit geben.** Wenn dem Partner etwas fehlt oder etwas falsch ist, kannst
-  du daraus einen Vorgang im Kit-Repository machen. Frag vorher, was genau gemeldet werden
-  soll, und zeig ihm den Text.
+- **Back up the partner's work.** Create and keep the private repository for `customers` and
+  `business`, without them having to learn git commands.
+- **Version extensions.** What was built for one customer gets a history and can be reused at
+  the next.
+- **Give feedback to the kit.** If the partner is missing something or something is wrong,
+  you can turn that into an issue in the kit repository. Ask beforehand what exactly should
+  be reported, and show them the text.
 
-Ist `gh` nicht angemeldet, sag es und nenn den Anmeldebefehl. Richte keine Zugänge
-heimlich ein.
+If `gh` is not logged in, say so and name the login command. Do not set up access secretly.

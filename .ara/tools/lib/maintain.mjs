@@ -1,6 +1,9 @@
 /**
  * Wartung: den Zustand eines Geräts lesen und beurteilen.
  *
+ * Die Zustandswerte ("ungemessen", "gelesen") sind Kennungen im Code und keine
+ * Ausgabe. Uebersetzt wird der Text daneben.
+ *
  * Reine Funktionen, ohne Netz und ohne Dateien, damit der Selbsttest sie mit
  * erfundenen Befunden prüfen kann. Was hier steht, sind die Schwellen des Kits
  * und keine Produktwerte: „ab 85 Prozent voll wird die Platte genannt" ist eine
@@ -14,6 +17,8 @@
  * Zeile `@schlüssel=wert`, mehrfach für Listen. Was ein Gerät nicht hat, fehlt
  * einfach.
  */
+import { t } from "./i18n.mjs";
+
 export const HEALTH_PROBE = `
 PATH="$PATH:/usr/local/bin:/opt/homebrew/bin:/usr/sbin:/sbin:/snap/bin:/usr/local/sbin"
 p() { printf '@%s=%s\\n' "$1" "$2"; }
@@ -111,35 +116,52 @@ export function readHealth(facts) {
   if (disk.usedPct !== null && disk.usedPct >= DISK_ALARM_PCT) {
     findings.push({
       level: "achtung",
-      text: `Die Platte ist zu ${disk.usedPct} Prozent voll, ${disk.freeGb ?? "?"} GB frei. Ab hier fallen Dienste aus.`,
+      text: t(
+        `The disk is ${disk.usedPct} percent full, ${disk.freeGb ?? "?"} GB free. From here on services fail.`,
+        `Die Platte ist zu ${disk.usedPct} Prozent voll, ${disk.freeGb ?? "?"} GB frei. Ab hier fallen Dienste aus.`
+      ),
     });
   } else if (disk.usedPct !== null && disk.usedPct >= DISK_WARN_PCT) {
     findings.push({
       level: "hinweis",
-      text: `Die Platte ist zu ${disk.usedPct} Prozent voll, ${disk.freeGb ?? "?"} GB frei.`,
+      text: t(
+        `The disk is ${disk.usedPct} percent full, ${disk.freeGb ?? "?"} GB free.`,
+        `Die Platte ist zu ${disk.usedPct} Prozent voll, ${disk.freeGb ?? "?"} GB frei.`
+      ),
     });
   }
   if (stopped.length) {
     findings.push({
       level: "achtung",
       text:
-        `${stopped.length} von ${containers.length} Containern ${stopped.length === 1 ? "läuft" : "laufen"} nicht: ` +
-        stopped.map((c) => `${c.name} (${c.state || "ohne Zustand"})`).join(", "),
+        t(
+          `${stopped.length} of ${containers.length} containers ${stopped.length === 1 ? "is" : "are"} not running: `,
+          `${stopped.length} von ${containers.length} Containern ${stopped.length === 1 ? "läuft" : "laufen"} nicht: `
+        ) + stopped.map((c) => `${c.name} (${c.state || t("without a state", "ohne Zustand")})`).join(", "),
     });
   }
   if (failedUnits.length) {
-    findings.push({ level: "achtung", text: `Fehlgeschlagene Dienste: ${failedUnits.join(", ")}` });
+    findings.push({
+      level: "achtung",
+      text: t(`Failed services: ${failedUnits.join(", ")}`, `Fehlgeschlagene Dienste: ${failedUnits.join(", ")}`),
+    });
   }
   if (logs.length) {
     findings.push({
       level: "hinweis",
-      text: `${logs.length} Fehlerzeile${logs.length === 1 ? "" : "n"} in den Protokollen der letzten 24 Stunden.`,
+      text: t(
+        `${logs.length} error line${logs.length === 1 ? "" : "s"} in the logs of the last 24 hours.`,
+        `${logs.length} Fehlerzeile${logs.length === 1 ? "" : "n"} in den Protokollen der letzten 24 Stunden.`
+      ),
     });
   }
   if (facts.log_read === "nein") {
     findings.push({
       level: "hinweis",
-      text: "Die Protokolle waren nicht lesbar, dem Anmeldenamen fehlen dafür die Rechte.",
+      text: t(
+        "The logs were not readable, the login name lacks the rights for it.",
+        "Die Protokolle waren nicht lesbar, dem Anmeldenamen fehlen dafür die Rechte."
+      ),
     });
   }
 
@@ -224,34 +246,48 @@ export function needsParameter(path) {
  */
 export function statusLine({ place, platform, apps, backup, health, unmeasured = [] }) {
   const parts = [];
+  const unmessbar = t("unmeasured", "ungemessen");
 
-  parts.push(platform?.text || "Plattform ungemessen");
+  parts.push(platform?.text || t("platform unmeasured", "Plattform ungemessen"));
 
-  if (!apps || apps.state === "ungemessen") parts.push("Apps ungemessen");
-  else if (!apps.found?.length) parts.push("keine App gefunden");
+  if (!apps || apps.state === "ungemessen") parts.push(t("apps unmeasured", "Apps ungemessen"));
+  else if (!apps.found?.length) parts.push(t("no app found", "keine App gefunden"));
   else {
     parts.push(
       `Apps: ${apps.found
-        .map((a) => `${a.id} ${[a.live && `live ${a.live}`, a.test && `Test ${a.test}`].filter(Boolean).join(", ") || "ohne Stand"}`)
+        .map(
+          (a) =>
+            `${a.id} ${
+              [a.live && `live ${a.live}`, a.test && t(`test ${a.test}`, `Test ${a.test}`)]
+                .filter(Boolean)
+                .join(", ") || t("without a version", "ohne Stand")
+            }`
+        )
         .join("; ")}`
     );
   }
 
-  parts.push(`Sicherung: ${backup?.text || "ungemessen"}`);
+  parts.push(t(`Backup: ${backup?.text || unmessbar}`, `Sicherung: ${backup?.text || unmessbar}`));
 
-  if (!health) parts.push("Zustand ungemessen");
+  if (!health) parts.push(t("state unmeasured", "Zustand ungemessen"));
   else {
     const achtung = health.findings.filter((f) => f.level === "achtung").length;
     const hinweise = health.findings.filter((f) => f.level === "hinweis").length;
     parts.push(
       achtung
-        ? `${achtung} mal Achtung, ${hinweise} Hinweis${hinweise === 1 ? "" : "e"}`
+        ? t(
+            `${achtung} times attention, ${hinweise} note${hinweise === 1 ? "" : "s"}`,
+            `${achtung} mal Achtung, ${hinweise} Hinweis${hinweise === 1 ? "" : "e"}`
+          )
         : hinweise
-          ? `nichts Dringendes, ${hinweise} Hinweis${hinweise === 1 ? "" : "e"}`
-          : "nichts auffällig"
+          ? t(
+              `nothing urgent, ${hinweise} note${hinweise === 1 ? "" : "s"}`,
+              `nichts Dringendes, ${hinweise} Hinweis${hinweise === 1 ? "" : "e"}`
+            )
+          : t("nothing conspicuous", "nichts auffällig")
     );
   }
 
   const line = `${place}: ${parts.join(" · ")}`;
-  return unmeasured.length ? `${line} · ungemessen: ${unmeasured.join(", ")}` : line;
+  return unmeasured.length ? `${line} · ${unmessbar}: ${unmeasured.join(", ")}` : line;
 }

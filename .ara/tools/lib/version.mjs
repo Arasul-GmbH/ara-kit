@@ -17,6 +17,7 @@
  */
 
 import { KIT_CONTRACT_VERSION } from "./contract.mjs";
+import { t } from "./i18n.mjs";
 
 /** Zerlegt eine Nummer der Form 1.2.3 in Zahlen. Was nicht passt, wird zu null. */
 function parts(version) {
@@ -41,9 +42,12 @@ export function compareVersions(a, b) {
  * Die Einträge der Änderungsliste.
  *
  * Ein Eintrag beginnt mit `## <nummer> (<datum>)`, darunter steht optional die
- * Zeile `Kontrakt: bis <zahl>` und danach die Punkte als Aufzählung. Alles
- * andere im Text wird überlesen: die Datei hat oben eine Erklärung für
- * Menschen, und die soll nicht als Änderung durchgehen.
+ * Zeile `Contract: up to <zahl>` (deutsch: `Kontrakt: bis <zahl>`) und danach die
+ * Punkte als Aufzählung. Alles andere im Text wird überlesen: die Datei hat oben
+ * eine Erklärung für Menschen, und die soll nicht als Änderung durchgehen.
+ *
+ * Beide Fassungen der Änderungsliste tragen dieselben Nummern und dieselben
+ * Punkte, nur in ihrer Sprache. Gelesen wird die, die zur Sprache passt.
  */
 export function parseChangelog(text) {
   const entries = [];
@@ -60,7 +64,7 @@ export function parseChangelog(text) {
       continue;
     }
     if (!current) continue;
-    const contract = line.match(/^Kontrakt:\s*bis\s+(\d+)\s*$/);
+    const contract = line.match(/^(?:Contract:\s*up\s+to|Kontrakt:\s*bis)\s+(\d+)\s*$/);
     if (contract) {
       current.contract = Number(contract[1]);
       continue;
@@ -86,9 +90,18 @@ export function entriesSince(entries, version) {
  */
 export function compatibility() {
   return [
-    `Versteht Kontraktfassungen bis ${KIT_CONTRACT_VERSION}.`,
-    "Ein Gerät mit einer kleineren Fassung wird bedient, bei einer größeren sagt das Kit, was ihm fehlt.",
-    "Welche Fassung ein Gerät führt, sagt sein Kontrakt: node .ara/tools/app.mjs --device <gerät> --contract",
+    t(
+      `Understands contract versions up to ${KIT_CONTRACT_VERSION}.`,
+      `Versteht Kontraktfassungen bis ${KIT_CONTRACT_VERSION}.`
+    ),
+    t(
+      "A device with a lower version is served, with a higher one the kit says what it is missing.",
+      "Ein Gerät mit einer kleineren Fassung wird bedient, bei einer größeren sagt das Kit, was ihm fehlt."
+    ),
+    t(
+      "Which version a device carries its contract says: node .ara/tools/app.mjs --device <device> --contract",
+      "Welche Fassung ein Gerät führt, sagt sein Kontrakt: node .ara/tools/app.mjs --device <gerät> --contract"
+    ),
   ];
 }
 
@@ -104,16 +117,25 @@ export function standBlock({ version, changelog, since = null }) {
   const lines = [];
   const top = entries[0];
   lines.push(
-    `Stand: ${version || "ohne Nummer"}${top && top.version === version ? ` vom ${top.date}` : ""}`
+    t(
+      `Version: ${version || "without a number"}${top && top.version === version ? ` of ${top.date}` : ""}`,
+      `Stand: ${version || "ohne Nummer"}${top && top.version === version ? ` vom ${top.date}` : ""}`
+    )
   );
   if (!relevant.length) {
-    lines.push(since ? `Neues seit ${since}: nichts.` : "Neues: die Änderungsliste nennt nichts.");
+    lines.push(
+      since
+        ? t(`New since ${since}: nothing.`, `Neues seit ${since}: nichts.`)
+        : t("New: the change list names nothing.", "Neues: die Änderungsliste nennt nichts.")
+    );
   } else {
-    lines.push(since ? `Neu seit ${since}:` : "Neu in diesem Stand:");
+    lines.push(
+      since ? t(`New since ${since}:`, `Neu seit ${since}:`) : t("New in this version:", "Neu in diesem Stand:")
+    );
     for (const entry of relevant) {
       for (const point of entry.lines) lines.push(`  ${point}`);
     }
   }
-  lines.push(`Verträglichkeit: ${compatibility()[0]} ${compatibility()[1]}`);
+  lines.push(t(`Compatibility: ${compatibility()[0]} ${compatibility()[1]}`, `Verträglichkeit: ${compatibility()[0]} ${compatibility()[1]}`));
   return lines;
 }

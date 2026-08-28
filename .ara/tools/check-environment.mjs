@@ -1,11 +1,28 @@
 #!/usr/bin/env node
 /**
+ * Technical check for the onboarding.
+ *
+ * Establishes what the computer can do and reports it readably. Changes nothing.
+ *
+ *   node .ara/tools/check-environment.mjs
+ *   node .ara/tools/check-environment.mjs --json
+ *
+ * The keys of the JSON are German, as they have been from the beginning. They
+ * are read by init.mjs and by the acceptances of the control folder, and a
+ * renaming would be a change to an interface and not to a language.
+ *
+ * === deutsch ===
+ *
  * Technikcheck für das Onboarding.
  *
  * Stellt fest, was der Rechner kann, und meldet es lesbar. Ändert nichts.
  *
  *   node .ara/tools/check-environment.mjs
  *   node .ara/tools/check-environment.mjs --json
+ *
+ * Die Schlüssel des JSON sind deutsch, seit es das Werkzeug gibt. Sie werden von
+ * init.mjs und von den Abnahmen des Steuerungsordners gelesen, und ein Umbenennen
+ * wäre eine Änderung an einer Schnittstelle und nicht an einer Sprache.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -13,6 +30,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir, platform, arch, release, totalmem } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { t } from "./lib/i18n.mjs";
 import { helpOnly } from "./lib/kit.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
 
@@ -122,37 +140,63 @@ if (process.argv.includes("--json")) {
   process.exit(0);
 }
 
-const ja = (wert) => (wert ? "ja" : "nein");
+const ja = (wert) => (wert ? t("yes", "ja") : t("no", "nein"));
 const zeilen = [
-  "# Technikcheck",
+  t("# Technical check", "# Technikcheck"),
   "",
-  `- Betriebssystem: ${befund.betriebssystem} (${befund.architektur})`,
-  `- Arbeitsspeicher: ${befund.arbeitsspeicher_gb} GB` +
+  t(
+    `- Operating system: ${befund.betriebssystem} (${befund.architektur})`,
+    `- Betriebssystem: ${befund.betriebssystem} (${befund.architektur})`
+  ),
+  t(`- Memory: ${befund.arbeitsspeicher_gb} GB`, `- Arbeitsspeicher: ${befund.arbeitsspeicher_gb} GB`) +
     (befund.freier_speicher_gb !== null
-      ? `, freier Plattenplatz hier: ${befund.freier_speicher_gb} GB`
+      ? t(
+          `, free disk space here: ${befund.freier_speicher_gb} GB`,
+          `, freier Plattenplatz hier: ${befund.freier_speicher_gb} GB`
+        )
       : ""),
-  `- Node: ${befund.node}${befund.node_ausreichend ? "" : "  ← zu alt, ab Version 20 nötig"}`,
-  `- git: ${befund.git ?? "fehlt"}`,
-  `- ssh: ${befund.ssh ?? "fehlt"}`,
+  `- Node: ${befund.node}` +
+    (befund.node_ausreichend ? "" : t("  <- too old, version 20 or newer needed", "  ← zu alt, ab Version 20 nötig")),
+  `- git: ${befund.git ?? t("missing", "fehlt")}`,
+  `- ssh: ${befund.ssh ?? t("missing", "fehlt")}`,
   `- tar: ${ja(befund.tar)}`,
-  `- SSH-Schlüssel: ${schluessel.length ? schluessel.join(", ") : "keiner gefunden"}`,
-  `- Zugangsdatei .env: ${ja(befund.env_datei)}, Download-Token hinterlegt: ${ja(befund.token_hinterlegt)}` +
-    (befund.token_hinterlegt ? "" : "  (erst nötig, wenn auf einem Gerät Arasul installiert wird)"),
-  `- Als Flash-Rechner für eingebettete Ziele (z. B. Jetson Thor) geeignet: ${ja(befund.flash_host_geeignet)}` +
-    (befund.flash_host_geeignet ? "" : "  (dafür braucht es x86-Linux; nur für Thor nötig)"),
+  t(
+    `- SSH keys: ${schluessel.length ? schluessel.join(", ") : "none found"}`,
+    `- SSH-Schlüssel: ${schluessel.length ? schluessel.join(", ") : "keiner gefunden"}`
+  ),
+  t(
+    `- Credentials file .env: ${ja(befund.env_datei)}, download token stored: ${ja(befund.token_hinterlegt)}`,
+    `- Zugangsdatei .env: ${ja(befund.env_datei)}, Download-Token hinterlegt: ${ja(befund.token_hinterlegt)}`
+  ) +
+    (befund.token_hinterlegt
+      ? ""
+      : t(
+          "  (only needed once Arasul gets installed on a device)",
+          "  (erst nötig, wenn auf einem Gerät Arasul installiert wird)"
+        )),
+  t(
+    `- Fit as a flash host for embedded targets (Jetson Thor for instance): ${ja(befund.flash_host_geeignet)}`,
+    `- Als Flash-Rechner für eingebettete Ziele (z. B. Jetson Thor) geeignet: ${ja(befund.flash_host_geeignet)}`
+  ) +
+    (befund.flash_host_geeignet
+      ? ""
+      : t(
+          "  (that needs x86 Linux; only needed for Thor)",
+          "  (dafür braucht es x86-Linux; nur für Thor nötig)"
+        )),
 ];
 
 const offen = [];
-if (!befund.node_ausreichend) offen.push("Node auf Version 20 oder neuer bringen");
-if (!befund.git) offen.push("git installieren");
-if (!befund.ssh) offen.push("ssh installieren");
-if (!befund.tar) offen.push("tar installieren");
-if (!schluessel.length) offen.push("SSH-Schlüssel anlegen");
+if (!befund.node_ausreichend) offen.push(t("bring Node to version 20 or newer", "Node auf Version 20 oder neuer bringen"));
+if (!befund.git) offen.push(t("install git", "git installieren"));
+if (!befund.ssh) offen.push(t("install ssh", "ssh installieren"));
+if (!befund.tar) offen.push(t("install tar", "tar installieren"));
+if (!schluessel.length) offen.push(t("create an SSH key", "SSH-Schlüssel anlegen"));
 
 if (offen.length) {
-  zeilen.push("", "## Offen", ...offen.map((punkt) => `- ${punkt}`));
+  zeilen.push("", t("## Open", "## Offen"), ...offen.map((punkt) => `- ${punkt}`));
 } else {
-  zeilen.push("", "Alles vorhanden.");
+  zeilen.push("", t("Everything is there.", "Alles vorhanden."));
 }
 
 console.log(zeilen.join("\n"));

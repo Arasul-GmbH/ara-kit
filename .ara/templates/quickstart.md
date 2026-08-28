@@ -1,34 +1,34 @@
-<!-- Eine Seite für die Mitarbeiter des Kunden. Regeln beim Ausfüllen:
-     keine Fachbegriffe, keine Erklärung der Technik, alles in ihrer Sprache.
-     Wer das liest, will arbeiten, nicht verstehen, wie es funktioniert. -->
+<!-- One page for the customer's staff. Rules for filling it in:
+     no jargon, no explanation of the technology, everything in their language.
+     Whoever reads this wants to work, not to understand how it works. -->
 
-# So arbeitest du mit eurem System
+# How you work with your system
 
-## Was das ist
+## What this is
 
-<!-- Zwei Sätze. Was es für sie tut, und dass alles im Haus bleibt. -->
+<!-- Two sentences. What it does for them, and that everything stays in the house. -->
 
-## So kommst du rein
+## How you get in
 
-1. Im Browser aufrufen: <!-- Adresse -->
-2. Anmelden mit deinen Zugangsdaten
-3. <!-- erster sinnvoller Schritt -->
+1. Open in the browser: <!-- address -->
+2. Log in with your credentials
+3. <!-- first sensible step -->
 
-## Was du damit machen kannst
+## What you can do with it
 
-<!-- Drei bis fünf Dinge aus ihrem Arbeitsalltag, nicht aus dem Funktionsumfang.
-     "Frag nach dem Inhalt eines Angebots, ohne es zu suchen" statt "RAG-Suche". -->
+<!-- Three to five things from their working day, not from the feature list.
+     "Ask what is in an offer without having to search for it" instead of "RAG search". -->
 
-## Was du wissen solltest
+## What you should know
 
-- Die Antworten entstehen im Haus. Es geht nichts nach außen.
-- Das System kann sich irren. Bei Wichtigem gegenprüfen.
-- <!-- Antwortzeiten, Grenzen, Besonderheiten dieser Installation -->
+- The answers come into being in the house. Nothing goes outside.
+- The system can be wrong. Cross-check anything important.
+- <!-- response times, limits, particularities of this installation -->
 
-## Wenn etwas nicht geht
+## When something does not work
 
-1. Seite neu laden
-2. <!-- interner Ansprechpartner -->
-3. <!-- Partner: Name, Telefon, E-Mail -->
+1. Reload the page
+2. <!-- internal contact -->
+3. <!-- partner: name, phone, email -->
 
-<!-- Nicht: "Neustart durchführen". Endanwender starten keine Geräte neu. -->
+<!-- Not: "perform a restart". End users do not restart devices. -->
