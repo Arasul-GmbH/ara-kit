@@ -1,5 +1,34 @@
 #!/usr/bin/env node
 /**
+ * Picture evidence: backs every line of the Leistungsbeschreibung with a picture from the device.
+ *
+ * Section 3 of the Leistungsbeschreibung fixes what is owed. Setting a line to
+ * "abgenommen" means demonstrating it at the handover and being liable for it. This
+ * tool therefore only allows "abgenommen" when a checked picture from the real device
+ * lies next to it. Every other line falls back to "in Erprobung", with the reason.
+ *
+ * The tool does not take the pictures itself. Ara does that with the browser
+ * (`.ara/knowledge/browser.md`). The tool says what has to be recorded, checks the
+ * result and writes the document.
+ *
+ *   node .ara/tools/evidence.mjs --customer mueller --views-init
+ *   node .ara/tools/evidence.mjs --customer mueller --plan
+ *   node .ara/tools/evidence.mjs --customer mueller --record --line 1 \
+ *        --image /tmp/shot.png --snapshot /tmp/shot.md \
+ *        --url https://10.0.0.5/... --marker "Angemeldet als"
+ *   node .ara/tools/evidence.mjs --customer mueller --miss --line 4 \
+ *        --reason "the view answers with error 502"
+ *   node .ara/tools/evidence.mjs --customer mueller --render
+ *
+ * Values about the product come from the mirror or from the device, never from this
+ * script (`.ara/knowledge/live-knowledge.md`). Which view backs which line therefore
+ * stands in `evidence/views.json` at the customer and gets established on the device.
+ *
+ * The document it writes is German, like all the paperwork under `.ara/vorlagen/`.
+ * The level names ("abgenommen", "in Erprobung") are its vocabulary and stay in it.
+ *
+ * === deutsch ===
+ *
  * Bildnachweis: belegt jede Zeile der Leistungsbeschreibung mit einem Bild vom Gerät.
  *
  * Abschnitt 3 der Leistungsbeschreibung legt fest, was geschuldet ist. Eine Zeile auf
@@ -24,6 +53,10 @@
  * Werte über das Produkt kommen aus dem Spiegel oder vom Gerät, nie aus diesem Skript
  * (`.ara/knowledge/live-knowledge.md`). Welche Ansicht welche Zeile belegt, steht
  * deshalb in `evidence/views.json` beim Kunden und wird am Gerät festgestellt.
+ *
+ * Das Dokument, das es schreibt, ist deutsch, wie alles Papier unter
+ * `.ara/vorlagen/`. Die Namen der Stufen ("abgenommen", "in Erprobung") sind sein
+ * Vokabular und bleiben darin.
  */
 
 import { createHash } from "node:crypto";
@@ -40,6 +73,7 @@ import {
   resolveDevice,
   today,
 } from "./lib/kit.mjs";
+import { t } from "./lib/i18n.mjs";
 
 const VORLAGE = join(ROOT, ".ara", "vorlagen", "leistungsbeschreibung.md");
 const MIRROR = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
@@ -98,7 +132,12 @@ function stamp() {
  */
 function readSpecLines() {
   if (!existsSync(VORLAGE)) {
-    fail(`Die Vorlage fehlt: ${VORLAGE}. Ohne sie ist nicht bekannt, welche Zeilen zu belegen sind.`);
+    fail(
+      t(
+        `The template is missing: ${VORLAGE}. Without it, which lines have to be backed is unknown.`,
+        `Die Vorlage fehlt: ${VORLAGE}. Ohne sie ist nicht bekannt, welche Zeilen zu belegen sind.`
+      )
+    );
   }
   const rows = [];
   let inTable = false;
@@ -116,8 +155,12 @@ function readSpecLines() {
   }
   if (rows.length === 0) {
     fail(
-      "In der Vorlage ist die Tabelle der Funktionsbereiche nicht auffindbar.\n" +
-        "Erwartet wird in Abschnitt 3 eine Tabelle, deren erste Spalte \"Funktionsbereich\" heisst."
+      t(
+        "The table of functional areas cannot be found in the template.\n" +
+          'Expected in section 3 is a table whose first column is called "Funktionsbereich".',
+        "In der Vorlage ist die Tabelle der Funktionsbereiche nicht auffindbar.\n" +
+          'Erwartet wird in Abschnitt 3 eine Tabelle, deren erste Spalte "Funktionsbereich" heisst.'
+      )
     );
   }
   return rows;
@@ -158,7 +201,7 @@ function readLedger(place, lines) {
     try {
       stored = JSON.parse(readFileSync(ledgerFile(place), "utf8"));
     } catch (error) {
-      fail(`${ledgerFile(place)} ist unlesbar: ${error.message}`);
+      fail(t(`${ledgerFile(place)} is not readable: ${error.message}`, `${ledgerFile(place)} ist unlesbar: ${error.message}`));
     }
   }
   const merged = {};
@@ -166,7 +209,7 @@ function readLedger(place, lines) {
     merged[line.slug] = stored.lines?.[line.slug] ?? {
       label: line.label,
       state: "trial",
-      reason: "noch nicht am Gerät belegt",
+      reason: t("not backed on the device yet", "noch nicht am Gerät belegt"),
       evidence: null,
     };
     merged[line.slug].label = line.label;
@@ -203,27 +246,39 @@ function readViews(place) {
   try {
     return JSON.parse(readFileSync(viewsFile(place), "utf8"));
   } catch (error) {
-    fail(`${viewsFile(place)} ist unlesbar: ${error.message}`);
+    fail(t(`${viewsFile(place)} is not readable: ${error.message}`, `${viewsFile(place)} ist unlesbar: ${error.message}`));
   }
 }
 
 /** Findet eine Zeile über Nummer, Kennung oder Beschriftung. */
 function resolveLine(lines, wanted) {
   if (wanted === undefined || wanted === true) {
-    fail("--line fehlt. Nimm die Nummer aus --plan, die Kennung oder die Beschriftung.");
+    fail(
+      t(
+        "--line is missing. Take the number from --plan, the id or the label.",
+        "--line fehlt. Nimm die Nummer aus --plan, die Kennung oder die Beschriftung."
+      )
+    );
   }
   const text = String(wanted).trim();
   if (/^\d+$/.test(text)) {
     const line = lines[Number(text) - 1];
-    if (!line) fail(`Es gibt keine Zeile ${text}. Die Vorlage hat ${lines.length} Zeilen.`);
+    if (!line) {
+      fail(
+        t(
+          `There is no line ${text}. The template has ${lines.length} lines.`,
+          `Es gibt keine Zeile ${text}. Die Vorlage hat ${lines.length} Zeilen.`
+        )
+      );
+    }
     return line;
   }
   const wantedSlug = slugify(text);
   const line = lines.find((entry) => entry.slug === wantedSlug || slugify(entry.label) === wantedSlug);
   if (!line) {
     fail(
-      `Keine Zeile passt zu "${text}".\n` +
-        `Vorhanden: ${lines.map((entry, index) => `${index + 1} ${entry.slug}`).join(", ")}`
+      t(`No line matches "${text}".\nKnown: `, `Keine Zeile passt zu "${text}".\nVorhanden: `) +
+        lines.map((entry, index) => `${index + 1} ${entry.slug}`).join(", ")
     );
   }
   return line;
@@ -321,33 +376,60 @@ function stampSnippet(place, fields) {
 
 function commandHelp() {
   console.log(
-    [
-      "Bildnachweis für die Leistungsbeschreibung",
-      "",
-      "  --customer <name>       welcher Kunde (Pflicht)",
-      "  --device <name>         welches Gerät (nur nötig, wenn es mehrere gibt)",
-      "",
-      "  --views-init            Zuordnung Ansicht zu Zeile anlegen, wird am Gerät gefüllt",
-      "  --plan                  was aufzunehmen ist, mit den Browserschritten",
-      "  --show                  Stand der Belege",
-      "  --record --line <n>     ein aufgenommenes Bild prüfen und eintragen",
-      "      --image <pfad> --snapshot <pfad> --url <adresse> --marker \"<text>\"",
-      "  --miss --line <n> --reason \"<grund>\"",
-      "                          Ansicht nicht erreichbar, Zeile bleibt in Erprobung",
-      "  --set --line <n> --state trial|preview --reason \"<grund>\"",
-      "                          Stufe von Hand setzen. accepted geht nur über --record",
-      "  --render [--model \"<kennung>\"] [--force]",
-      "                          Leistungsbeschreibung in die Kundenakte schreiben",
-      "",
-      "Die Bilder liegen beim Kunden unter devices/<gerät>/evidence/ und nie im Kit-Repo.",
-    ].join("\n")
+    t(
+      [
+        "Picture evidence for the Leistungsbeschreibung",
+        "",
+        "  --customer <name>       which customer (mandatory)",
+        "  --device <name>         which device (only needed when there are several)",
+        "",
+        "  --views-init            create the mapping of view to line, gets filled on the device",
+        "  --plan                  what has to be recorded, with the browser steps",
+        "  --show                  state of the evidence",
+        "  --record --line <n>     check a recorded picture and enter it",
+        '      --image <path> --snapshot <path> --url <address> --marker "<text>"',
+        '  --miss --line <n> --reason "<reason>"',
+        "                          view not reachable, the line stays in Erprobung",
+        '  --set --line <n> --state trial|preview --reason "<reason>"',
+        "                          set the level by hand. accepted only works over --record",
+        '  --render [--model "<id>"] [--force]',
+        "                          write the Leistungsbeschreibung into the customer file",
+        "",
+        "The pictures lie at the customer under devices/<device>/evidence/ and never in the kit repo.",
+      ].join("\n"),
+      [
+        "Bildnachweis für die Leistungsbeschreibung",
+        "",
+        "  --customer <name>       welcher Kunde (Pflicht)",
+        "  --device <name>         welches Gerät (nur nötig, wenn es mehrere gibt)",
+        "",
+        "  --views-init            Zuordnung Ansicht zu Zeile anlegen, wird am Gerät gefüllt",
+        "  --plan                  was aufzunehmen ist, mit den Browserschritten",
+        "  --show                  Stand der Belege",
+        "  --record --line <n>     ein aufgenommenes Bild prüfen und eintragen",
+        "      --image <pfad> --snapshot <pfad> --url <adresse> --marker \"<text>\"",
+        "  --miss --line <n> --reason \"<grund>\"",
+        "                          Ansicht nicht erreichbar, Zeile bleibt in Erprobung",
+        "  --set --line <n> --state trial|preview --reason \"<grund>\"",
+        "                          Stufe von Hand setzen. accepted geht nur über --record",
+        "  --render [--model \"<kennung>\"] [--force]",
+        "                          Leistungsbeschreibung in die Kundenakte schreiben",
+        "",
+        "Die Bilder liegen beim Kunden unter devices/<gerät>/evidence/ und nie im Kit-Repo.",
+      ].join("\n")
+    )
   );
 }
 
 function commandViewsInit(place, lines) {
   const file = viewsFile(place);
   if (existsSync(file) && !arg.force) {
-    fail(`Es gibt schon eine Zuordnung: ${file}\nÜberschreiben mit --force, das verwirft die bisherige.`);
+    fail(
+      t(
+        `There is already a mapping: ${file}\nOverwrite with --force, that discards the existing one.`,
+        `Es gibt schon eine Zuordnung: ${file}\nÜberschreiben mit --force, das verwirft die bisherige.`
+      )
+    );
   }
   const { fields } = readFrontmatter(join(place.path, "device.md"));
   const views = {};
@@ -377,12 +459,21 @@ function commandViewsInit(place, lines) {
   );
   console.log(
     [
-      `Zuordnung angelegt: ${file.replace(ROOT + "/", "")}`,
-      `${lines.length} Zeilen, alle noch ohne Ansicht.`,
+      t(`Mapping created: ${file.replace(ROOT + "/", "")}`, `Zuordnung angelegt: ${file.replace(ROOT + "/", "")}`),
+      t(`${lines.length} lines, all still without a view.`, `${lines.length} Zeilen, alle noch ohne Ansicht.`),
       "",
-      "Nächster Schritt: Oberfläche des Geräts öffnen, Navigation durchgehen und je Zeile",
-      "path und marker eintragen. marker ist ein Text, der auf genau dieser Ansicht steht",
-      "und auf keiner anderen. Er ist die Probe, dass das Bild zeigt, was die Zeile behauptet.",
+      ...t(
+        [
+          "Next step: open the device's interface, go through the navigation and enter path and",
+          "marker per line. marker is a text that stands on exactly this view and on no other.",
+          "It is the proof that the picture shows what the line claims.",
+        ],
+        [
+          "Nächster Schritt: Oberfläche des Geräts öffnen, Navigation durchgehen und je Zeile",
+          "path und marker eintragen. marker ist ein Text, der auf genau dieser Ansicht steht",
+          "und auf keiner anderen. Er ist die Probe, dass das Bild zeigt, was die Zeile behauptet.",
+        ]
+      ),
     ].join("\n")
   );
 }
@@ -391,18 +482,29 @@ function commandPlan(place, lines, ledger) {
   const { fields } = readFrontmatter(join(place.path, "device.md"));
   const views = readViews(place);
   const out = [
-    `# Aufnahmeplan: ${place.customer} / ${place.device}`,
+    t(
+      `# Recording plan: ${place.customer} / ${place.device}`,
+      `# Aufnahmeplan: ${place.customer} / ${place.device}`
+    ),
     "",
-    `Zeilen in Abschnitt 3: ${lines.length}`,
+    t(`Lines in section 3: ${lines.length}`, `Zeilen in Abschnitt 3: ${lines.length}`),
   ];
 
   if (!views) {
     out.push(
       "",
-      "Es gibt noch keine Zuordnung von Ansicht zu Zeile. Ohne sie kann kein Bild",
-      "aufgenommen werden, das seine Zeile belegt, und jede Zeile bleibt in Erprobung.",
+      ...t(
+        [
+          "There is no mapping of view to line yet. Without it no picture can be recorded",
+          "that backs its line, and every line stays in Erprobung.",
+        ],
+        [
+          "Es gibt noch keine Zuordnung von Ansicht zu Zeile. Ohne sie kann kein Bild",
+          "aufgenommen werden, das seine Zeile belegt, und jede Zeile bleibt in Erprobung.",
+        ]
+      ),
       "",
-      `Anlegen: node .ara/tools/evidence.mjs --customer ${place.customer} --views-init`
+      t("Create it: ", "Anlegen: ") + `node .ara/tools/evidence.mjs --customer ${place.customer} --views-init`
     );
     console.log(out.join("\n"));
     return 1;
@@ -410,16 +512,24 @@ function commandPlan(place, lines, ledger) {
 
   out.push(
     "",
-    "## Vor jeder Aufnahme",
+    t("## Before every recording", "## Vor jeder Aufnahme"),
     "",
-    "Diesen Ausdruck über browser_evaluate laufen lassen. Er legt Kennung, Adresse und",
-    "Uhrzeit in die Seite und in den Seitentitel. Ohne ihn wird das Bild abgelehnt.",
+    ...t(
+      [
+        "Run this expression over browser_evaluate. It puts the id, the address and the time",
+        "into the page and into the page title. Without it the picture gets refused.",
+      ],
+      [
+        "Diesen Ausdruck über browser_evaluate laufen lassen. Er legt Kennung, Adresse und",
+        "Uhrzeit in die Seite und in den Seitentitel. Ohne ihn wird das Bild abgelehnt.",
+      ]
+    ),
     "",
     "```js",
     stampSnippet(place, fields),
     "```",
     "",
-    "## Je Zeile"
+    t("## Per line", "## Je Zeile")
   );
 
   let offen = 0;
@@ -428,15 +538,24 @@ function commandPlan(place, lines, ledger) {
     const state = ledger.lines[line.slug];
     const nummer = index + 1;
     if (state?.state === "accepted") {
-      out.push("", `${nummer}. ${line.label}: belegt am ${state.evidence?.captured}, nichts zu tun.`);
+      out.push(
+        "",
+        t(
+          `${nummer}. ${line.label}: backed on ${state.evidence?.captured}, nothing to do.`,
+          `${nummer}. ${line.label}: belegt am ${state.evidence?.captured}, nichts zu tun.`
+        )
+      );
       return;
     }
     if (!view?.path || !view?.marker) {
       offen++;
       out.push(
         "",
-        `${nummer}. ${line.label}: keine Ansicht zugeordnet.`,
-        `   Bleibt in Erprobung, solange path und marker in views.json fehlen.`
+        t(`${nummer}. ${line.label}: no view assigned.`, `${nummer}. ${line.label}: keine Ansicht zugeordnet.`),
+        t(
+          "   Stays in Erprobung as long as path and marker are missing from views.json.",
+          "   Bleibt in Erprobung, solange path und marker in views.json fehlen."
+        )
       );
       return;
     }
@@ -447,18 +566,24 @@ function commandPlan(place, lines, ledger) {
     } catch {
       out.push(
         "",
-        `${nummer}. ${line.label}: die Ansicht "${view.path}" ergibt keine Adresse.`,
-        `   In views.json fehlt base, oder path ist keine gültige Adresse.`
+        t(
+          `${nummer}. ${line.label}: the view "${view.path}" does not yield an address.`,
+          `${nummer}. ${line.label}: die Ansicht "${view.path}" ergibt keine Adresse.`
+        ),
+        t(
+          "   base is missing from views.json, or path is not a valid address.",
+          "   In views.json fehlt base, oder path ist keine gültige Adresse."
+        )
       );
       return;
     }
     out.push(
       "",
       `${nummer}. ${line.label}`,
-      `   Ansicht: ${ziel}`,
-      `   Probe: "${view.marker}"`,
+      t(`   View: ${ziel}`, `   Ansicht: ${ziel}`),
+      t(`   Proof: "${view.marker}"`, `   Probe: "${view.marker}"`),
       `   1. browser_navigate ${ziel}`,
-      `   2. browser_evaluate mit dem Ausdruck von oben`,
+      t("   2. browser_evaluate with the expression from above", "   2. browser_evaluate mit dem Ausdruck von oben"),
       `   3. browser_snapshot --filename /tmp/${place.device}-${line.slug}.md`,
       `   4. browser_take_screenshot --filename /tmp/${place.device}-${line.slug}.png`,
       `   5. node .ara/tools/evidence.mjs --customer ${place.customer} --device ${place.device} \\`,
@@ -471,16 +596,24 @@ function commandPlan(place, lines, ledger) {
 
   out.push(
     "",
-    `Offen: ${offen} von ${lines.length}.`,
-    "Was am Ende offen bleibt, steht als \"in Erprobung\" mit Grund im Dokument.",
-    "Eine Zeile ohne Bild wird nicht zugesagt."
+    t(`Open: ${offen} of ${lines.length}.`, `Offen: ${offen} von ${lines.length}.`),
+    ...t(
+      [
+        'What stays open in the end stands as "in Erprobung" with a reason in the document.',
+        "A line without a picture does not get promised.",
+      ],
+      [
+        'Was am Ende offen bleibt, steht als "in Erprobung" mit Grund im Dokument.',
+        "Eine Zeile ohne Bild wird nicht zugesagt.",
+      ]
+    )
   );
   console.log(out.join("\n"));
   return 0;
 }
 
 function commandShow(place, lines, ledger) {
-  const out = [`# Belege: ${place.customer} / ${place.device}`, ""];
+  const out = [t(`# Evidence: ${place.customer} / ${place.device}`, `# Belege: ${place.customer} / ${place.device}`), ""];
   let belegt = 0;
   lines.forEach((line, index) => {
     const entry = ledger.lines[line.slug];
@@ -489,15 +622,30 @@ function commandShow(place, lines, ledger) {
     out.push(
       `${String(index + 1).padStart(2)} ${line.label}: ${stufe}` +
         (entry.state === "accepted" && entry.evidence
-          ? `\n     Bild: ${entry.evidence.image}, aufgenommen ${entry.evidence.captured}`
-          : `\n     Grund: ${entry.reason || "kein Grund vermerkt"}`)
+          ? t(
+              `\n     Picture: ${entry.evidence.image}, recorded ${entry.evidence.captured}`,
+              `\n     Bild: ${entry.evidence.image}, aufgenommen ${entry.evidence.captured}`
+            )
+          : t(
+              `\n     Reason: ${entry.reason || "no reason noted"}`,
+              `\n     Grund: ${entry.reason || "kein Grund vermerkt"}`
+            ))
     );
   });
-  out.push("", `${belegt} von ${lines.length} Zeilen mit Bildnachweis.`);
+  out.push(
+    "",
+    t(
+      `${belegt} of ${lines.length} lines with picture evidence.`,
+      `${belegt} von ${lines.length} Zeilen mit Bildnachweis.`
+    )
+  );
   if (ledger.retired) {
     out.push(
       "",
-      `Nicht mehr in der Vorlage, bleibt aber im Beleg-Stand: ${ledger.retired.join(", ")}`
+      t(
+        `No longer in the template, but still in the evidence record: ${ledger.retired.join(", ")}`,
+        `Nicht mehr in der Vorlage, bleibt aber im Beleg-Stand: ${ledger.retired.join(", ")}`
+      )
     );
   }
   console.log(out.join("\n"));
@@ -513,9 +661,14 @@ function commandRecord(place, lines, ledger) {
   const marker = typeof arg.marker === "string" ? arg.marker : null;
   if (!bild || !abbild || !url || !marker) {
     fail(
-      "Zum Eintragen brauche ich --image, --snapshot, --url und --marker.\n" +
-        "--marker ist der Text, der auf genau dieser Ansicht steht. Er ist die Probe,\n" +
-        "dass das Bild zeigt, was die Zeile behauptet."
+      t(
+        "To enter it I need --image, --snapshot, --url and --marker.\n" +
+          "--marker is the text that stands on exactly this view. It is the proof\n" +
+          "that the picture shows what the line claims.",
+        "Zum Eintragen brauche ich --image, --snapshot, --url und --marker.\n" +
+          "--marker ist der Text, der auf genau dieser Ansicht steht. Er ist die Probe,\n" +
+          "dass das Bild zeigt, was die Zeile behauptet."
+      )
     );
   }
 
@@ -532,19 +685,30 @@ function commandRecord(place, lines, ledger) {
     writeLedger(place, ledger);
     console.log(
       [
-        `Abgelehnt: ${line.label}`,
+        t(`Refused: ${line.label}`, `Abgelehnt: ${line.label}`),
         grund,
         "",
-        `Die Zeile steht auf "in Erprobung", der Grund liegt im Beleg-Stand und kommt so`,
-        "ins Dokument. Ein Bild, das nicht zeigt, was die Zeile behauptet, ist schlimmer",
-        "als keins.",
+        ...t(
+          [
+            'The line stands at "in Erprobung", the reason lies in the evidence record and goes',
+            "into the document that way. A picture that does not show what the line claims is worse",
+            "than none.",
+          ],
+          [
+            'Die Zeile steht auf "in Erprobung", der Grund liegt im Beleg-Stand und kommt so',
+            "ins Dokument. Ein Bild, das nicht zeigt, was die Zeile behauptet, ist schlimmer",
+            "als keins.",
+          ]
+        ),
       ].join("\n")
     );
     process.exit(1);
   };
 
-  if (!existsSync(bild)) ablehnen(`Das Bild ${bild} ist nicht da.`);
-  if (!existsSync(abbild)) ablehnen(`Das Textabbild ${abbild} ist nicht da.`);
+  if (!existsSync(bild)) ablehnen(t(`The picture ${bild} is not there.`, `Das Bild ${bild} ist nicht da.`));
+  if (!existsSync(abbild)) {
+    ablehnen(t(`The text snapshot ${abbild} is not there.`, `Das Textabbild ${abbild} ist nicht da.`));
+  }
 
   let groesse;
   try {
@@ -554,17 +718,26 @@ function commandRecord(place, lines, ledger) {
   }
   if (groesse.width < MIN_BREITE || groesse.height < MIN_HOEHE) {
     ablehnen(
-      `Das Bild ist ${groesse.width} mal ${groesse.height} Bildpunkte gross. ` +
-        `Ein Bildschirmfoto der Oberfläche hat mindestens ${MIN_BREITE} mal ${MIN_HOEHE}.`
+      t(
+        `The picture is ${groesse.width} by ${groesse.height} pixels. ` +
+          `A screenshot of the interface has at least ${MIN_BREITE} by ${MIN_HOEHE}.`,
+        `Das Bild ist ${groesse.width} mal ${groesse.height} Bildpunkte gross. ` +
+          `Ein Bildschirmfoto der Oberfläche hat mindestens ${MIN_BREITE} mal ${MIN_HOEHE}.`
+      )
     );
   }
 
   const text = normalize(readFileSync(abbild, "utf8"));
   if (!text.includes(normalize(kennung))) {
     ablehnen(
-      `Im Textabbild fehlt die Kennung "${kennung}". Damit ist nicht belegt, dass der ` +
-        "Aufnahmestempel zur Aufnahmezeit in der Seite lag. Lauf den Ausdruck aus --plan " +
-        "vor der Aufnahme, nicht danach."
+      t(
+        `The id "${kennung}" is missing from the text snapshot. That does not back that the ` +
+          "recording stamp lay in the page at recording time. Run the expression from --plan " +
+          "before the recording, not after.",
+        `Im Textabbild fehlt die Kennung "${kennung}". Damit ist nicht belegt, dass der ` +
+          "Aufnahmestempel zur Aufnahmezeit in der Seite lag. Lauf den Ausdruck aus --plan " +
+          "vor der Aufnahme, nicht danach."
+      )
     );
   }
   // Ohne Verfahren und ohne Schlussschrägstrich vergleichen: der Browser schreibt die
@@ -573,14 +746,22 @@ function commandRecord(place, lines, ledger) {
   const adressprobe = normalize(url.replace(/^https?:\/\//, "").replace(/\/+$/, ""));
   if (adressprobe && !text.includes(adressprobe)) {
     ablehnen(
-      `Im Textabbild steht nicht die Adresse ${url}. Entweder ist das Abbild von einer ` +
-        "anderen Seite, oder die Aufnahme ist woanders entstanden."
+      t(
+        `The address ${url} does not stand in the text snapshot. Either the snapshot is from a ` +
+          "different page, or the recording came about elsewhere.",
+        `Im Textabbild steht nicht die Adresse ${url}. Entweder ist das Abbild von einer ` +
+          "anderen Seite, oder die Aufnahme ist woanders entstanden."
+      )
     );
   }
   if (!text.includes(normalize(marker))) {
     ablehnen(
-      `Auf der Seite steht "${marker}" nicht. Die Ansicht zeigt nicht, was die Zeile ` +
-        `"${line.label}" behauptet, oder sie hat nicht geladen.`
+      t(
+        `"${marker}" does not stand on the page. The view does not show what the line ` +
+          `"${line.label}" claims, or it did not load.`,
+        `Auf der Seite steht "${marker}" nicht. Die Ansicht zeigt nicht, was die Zeile ` +
+          `"${line.label}" behauptet, oder sie hat nicht geladen.`
+      )
     );
   }
 
@@ -633,14 +814,17 @@ function commandRecord(place, lines, ledger) {
 
   console.log(
     [
-      `Belegt: ${line.label}`,
-      `  Bild: evidence/${beleg.image} (${beleg.pixels})`,
-      `  Aufgenommen: ${beleg.captured}`,
-      `  Ansicht: ${url}`,
-      `  Probe gefunden: "${marker}"`,
-      `  Prüfsumme: ${beleg.sha256_image.slice(0, 16)}`,
+      t(`Backed: ${line.label}`, `Belegt: ${line.label}`),
+      t(`  Picture: evidence/${beleg.image} (${beleg.pixels})`, `  Bild: evidence/${beleg.image} (${beleg.pixels})`),
+      t(`  Recorded: ${beleg.captured}`, `  Aufgenommen: ${beleg.captured}`),
+      t(`  View: ${url}`, `  Ansicht: ${url}`),
+      t(`  Proof found: "${marker}"`, `  Probe gefunden: "${marker}"`),
+      t(`  Checksum: ${beleg.sha256_image.slice(0, 16)}`, `  Prüfsumme: ${beleg.sha256_image.slice(0, 16)}`),
       "",
-      'Die Zeile steht auf "abgenommen". Sie muss bei der Übergabe vorgeführt werden.',
+      t(
+        'The line stands at "abgenommen". It has to be demonstrated at the handover.',
+        'Die Zeile steht auf "abgenommen". Sie muss bei der Übergabe vorgeführt werden.'
+      ),
     ].join("\n")
   );
 }
@@ -650,8 +834,12 @@ function commandMiss(place, lines, ledger) {
   const grund = typeof arg.reason === "string" ? arg.reason.trim() : "";
   if (!grund) {
     fail(
-      '--reason fehlt. Ohne Grund ist eine Lücke nicht nachvollziehbar.\n' +
-        'Beispiel: --reason "Ansicht antwortet mit Fehler 502, Dienst läuft nicht"'
+      t(
+        "--reason is missing. Without a reason a gap cannot be followed.\n" +
+          'Example: --reason "the view answers with error 502, the service does not run"',
+        "--reason fehlt. Ohne Grund ist eine Lücke nicht nachvollziehbar.\n" +
+          'Beispiel: --reason "Ansicht antwortet mit Fehler 502, Dienst läuft nicht"'
+      )
     );
   }
   ledger.lines[line.slug] = {
@@ -663,7 +851,10 @@ function commandMiss(place, lines, ledger) {
   };
   writeLedger(place, ledger);
   console.log(
-    `${line.label}: in Erprobung.\nGrund: ${grund}\nDer Grund steht so im Dokument, er wird nicht verschwiegen.`
+    t(
+      `${line.label}: in Erprobung.\nReason: ${grund}\nThe reason stands like that in the document, it is not kept quiet.`,
+      `${line.label}: in Erprobung.\nGrund: ${grund}\nDer Grund steht so im Dokument, er wird nicht verschwiegen.`
+    )
   );
 }
 
@@ -672,16 +863,33 @@ function commandSet(place, lines, ledger) {
   const state = typeof arg.state === "string" ? arg.state : "";
   if (state === "accepted" || state === "abgenommen") {
     fail(
-      '"abgenommen" lässt sich nicht von Hand setzen. Die Stufe entsteht aus einem geprüften\n' +
-        "Bild vom Gerät, sonst steht eine Zusage auf einer Einschätzung.\n" +
-        `Weg dorthin: node .ara/tools/evidence.mjs --customer ${place.customer} --plan`
+      t(
+        '"abgenommen" cannot be set by hand. The level comes out of a checked\n' +
+          "picture from the device, otherwise a promise stands on an estimate.\n" +
+          `The way there: node .ara/tools/evidence.mjs --customer ${place.customer} --plan`,
+        '"abgenommen" lässt sich nicht von Hand setzen. Die Stufe entsteht aus einem geprüften\n' +
+          "Bild vom Gerät, sonst steht eine Zusage auf einer Einschätzung.\n" +
+          `Weg dorthin: node .ara/tools/evidence.mjs --customer ${place.customer} --plan`
+      )
     );
   }
   if (!STUFEN[state]) {
-    fail(`--state muss trial oder preview sein. Bekommen: "${state || "nichts"}".`);
+    fail(
+      t(
+        `--state has to be trial or preview. Got: "${state || "nothing"}".`,
+        `--state muss trial oder preview sein. Bekommen: "${state || "nichts"}".`
+      )
+    );
   }
   const grund = typeof arg.reason === "string" ? arg.reason.trim() : "";
-  if (!grund) fail("--reason fehlt. Jede Stufe unter \"abgenommen\" braucht einen Grund.");
+  if (!grund) {
+    fail(
+      t(
+        '--reason is missing. Every level below "abgenommen" needs a reason.',
+        '--reason fehlt. Jede Stufe unter "abgenommen" braucht einen Grund.'
+      )
+    );
+  }
   ledger.lines[line.slug] = {
     label: line.label,
     state,
@@ -690,7 +898,7 @@ function commandSet(place, lines, ledger) {
     checked: now(),
   };
   writeLedger(place, ledger);
-  console.log(`${line.label}: ${STUFEN[state]}.\nGrund: ${grund}`);
+  console.log(`${line.label}: ${STUFEN[state]}.\n` + t(`Reason: ${grund}`, `Grund: ${grund}`));
 }
 
 function commandRender(place, lines, ledger) {
@@ -858,27 +1066,48 @@ function commandRender(place, lines, ledger) {
   const ziel = join(place.path, `leistungsbeschreibung-${today()}.md`);
   if (existsSync(ziel) && !arg.force) {
     fail(
-      `Es gibt schon ${ziel.replace(ROOT + "/", "")}.\n` +
-        "Ein unterschriebenes Dokument wird nicht überschrieben. Mit --force überschreiben,\n" +
-        "wenn es noch nicht heraus ist."
+      t(
+        `${ziel.replace(ROOT + "/", "")} already exists.\n` +
+          "A signed document does not get overwritten. Overwrite with --force\n" +
+          "if it has not gone out yet.",
+        `Es gibt schon ${ziel.replace(ROOT + "/", "")}.\n` +
+          "Ein unterschriebenes Dokument wird nicht überschrieben. Mit --force überschreiben,\n" +
+          "wenn es noch nicht heraus ist."
+      )
     );
   }
   writeFileSync(ziel, text);
 
   console.log(
     [
-      `Geschrieben: ${ziel.replace(ROOT + "/", "")}`,
-      `Bildnachweise: ${belege.length} von ${lines.length} Zeilen.`,
+      t(`Written: ${ziel.replace(ROOT + "/", "")}`, `Geschrieben: ${ziel.replace(ROOT + "/", "")}`),
+      t(
+        `Picture evidence: ${belege.length} of ${lines.length} lines.`,
+        `Bildnachweise: ${belege.length} von ${lines.length} Zeilen.`
+      ),
       ohneBeleg.length
-        ? `Ohne Beleg und deshalb "in Erprobung": ${ohneBeleg.map((line) => line.label).join(", ")}`
-        : "Alle Zeilen belegt.",
+        ? t(
+            `Without evidence and therefore "in Erprobung": ${ohneBeleg.map((line) => line.label).join(", ")}`,
+            `Ohne Beleg und deshalb "in Erprobung": ${ohneBeleg.map((line) => line.label).join(", ")}`
+          )
+        : t("All lines backed.", "Alle Zeilen belegt."),
       "",
-      offen.length ? "Von Hand zu füllen:" : "Nichts offen.",
+      offen.length ? t("To fill in by hand:", "Von Hand zu füllen:") : t("Nothing open.", "Nichts offen."),
       ...offen.map((item) => `  - ${item}`),
-      reste.length ? `\nNoch Platzhalter im Text: ${reste.join(", ")}` : "",
+      reste.length
+        ? t(`\nStill placeholders in the text: ${reste.join(", ")}`, `\nNoch Platzhalter im Text: ${reste.join(", ")}`)
+        : "",
       "",
-      "Jede Zeile mit \"abgenommen\" muss im Übergabeprotokoll vorgeführt und abgezeichnet",
-      "werden (.ara/vorlagen/uebergabeprotokoll.md). Sonst ist es ein Widerspruch zu Lasten von Arasul.",
+      ...t(
+        [
+          'Every line with "abgenommen" has to be demonstrated and signed off in the Übergabeprotokoll',
+          "(.ara/vorlagen/uebergabeprotokoll.md). Otherwise it is a contradiction at Arasul's expense.",
+        ],
+        [
+          'Jede Zeile mit "abgenommen" muss im Übergabeprotokoll vorgeführt und abgezeichnet',
+          "werden (.ara/vorlagen/uebergabeprotokoll.md). Sonst ist es ein Widerspruch zu Lasten von Arasul.",
+        ]
+      ),
     ].join("\n")
   );
 }
