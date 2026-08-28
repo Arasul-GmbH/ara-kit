@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.6 (2026-08-29)
+
+Contract: up to 3
+
+- A fresh clone from GitHub failed its own self-test. Measured on 29.08.2026 at 01:05: `git clone`, then `node .ara/tools/selftest.mjs`, and the first command a stranger runs said "the kit is not reliable in this state". Two checks were red, both because the self-test read a calendar date out of `toISOString()`, and that counts in UTC. In Central Europe between 22:00 and midnight UTC is still on the day before: a maintenance contract set up "in ten days" was read back as nine, and the service description looked for its paper under yesterday's date. In the worktree the same state was green, because nobody measured there at night.
+- A calendar date in the kit is now the day the human in front of the computer sees. `day(offset)` in `.ara/tools/lib/kit.mjs` is the one place where a date comes into being, `today()` is `day(0)`, and both count in local time. The step over the date parts instead of over milliseconds also holds on the days of the clock change, when a day does not have 24 hours.
+- `addDays` in the invoice and the build time of an app went the same way through UTC. Both now count locally, like every other date in the kit.
+- Two checks against it happening again. One nails the dates down at fixed points in time, among them the measured failure itself, so that it does not depend on when the self-test runs. The other rebuilds a blank clone in a throwaway folder, only what is in version control, without profile, mirror or device file, and runs the whole self-test there.
+
 ## 0.14.5 (2026-08-28)
 
 Contract: up to 3

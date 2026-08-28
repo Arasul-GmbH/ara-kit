@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.6 (2026-08-29)
+
+Kontrakt: bis 3
+
+- Ein frischer Klon von GitHub fiel im eigenen Selbsttest durch. Gemessen am 29.08.2026 um 01:05: `git clone`, dann `node .ara/tools/selftest.mjs`, und der erste Befehl, den ein Fremder ausführt, sagte "Das Kit ist in diesem Zustand nicht verlässlich". Zwei Prüfungen waren rot, beide, weil der Selbsttest sich ein Kalenderdatum aus `toISOString()` schnitt, und das rechnet in UTC. In Mitteleuropa ist es zwischen 22 Uhr und Mitternacht dort noch der Vortag: eine Wartung, die "in zehn Tagen" angelegt wurde, kam als neun zurück, und die Leistungsbeschreibung suchte ihr Papier unter dem Datum von gestern. Im Worktree lief derselbe Stand grün, weil dort niemand nachts gemessen hat.
+- Ein Datum im Kit ist jetzt der Tag, den der Mensch vor dem Rechner sieht. `day(offset)` in `.ara/tools/lib/kit.mjs` ist die eine Stelle, an der ein Datum entsteht, `today()` ist `day(0)`, und beide rechnen vor Ort. Der Schritt über die Bestandteile statt über Millisekunden hält auch an den Tagen der Zeitumstellung, an denen ein Tag keine 24 Stunden hat.
+- `addDays` in der Rechnung und die Bauzeit einer App gingen denselben Weg über UTC. Beide rechnen jetzt vor Ort, wie jedes andere Datum im Kit.
+- Zwei Prüfungen dagegen, dass es wiederkommt. Die eine nagelt die Daten an festen Zeitpunkten fest, darunter der gemessene Fehlschlag selbst, damit sie nicht davon abhängt, wann der Selbsttest läuft. Die andere baut in einem Wegwerfordner einen blanken Klon nach, nur was in der Versionsverwaltung liegt, ohne Profil, Spiegel und Geräteakte, und lässt dort den ganzen Selbsttest laufen.
+
 ## 0.14.5 (2026-08-28)
 
 Kontrakt: bis 3
