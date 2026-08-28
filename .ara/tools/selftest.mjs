@@ -108,6 +108,7 @@ import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
 import { HELP_SPLIT, ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
+import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
 
 helpOnly(import.meta.url);
 
@@ -736,6 +737,170 @@ check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
   } finally {
     rmSync(work, { recursive: true, force: true });
     for (const n of ["mac", "orin"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Der Kaufweg hängt an /device: Form, Portal, Ablage, Gerät", () => {
+  // Kolja am 28.08.2026: kein Befehl, der /kaufen heißt. Der Weg hängt dort, wo
+  // das Urteil „unterstützt" fällt, und der eingefügte Token geht über die
+  // Leitung hinein, nie als Argument. Geprüft wird gegen ein gespieltes Portal
+  // und eine eigene .env, damit die echte Ablage unberührt bleibt.
+  assert(TOKEN_SHAPE.test("ara_" + "0123456789abcdef".repeat(2)), "die Form nimmt einen richtigen Token nicht an");
+  assert(!tokenShape("ara_kaputt").ok, "ein zu kurzer Token gilt als richtig");
+  assert(!tokenShape("xyz_" + "a".repeat(32)).ok, "ein Token ohne ara_ gilt als richtig");
+  assert(!tokenShape("ara_" + "g".repeat(32)).ok, "ein Token mit Zeichen außerhalb von hex gilt als richtig");
+  assert(tokenShape("ara_" + "a".repeat(32)).ok, "ein Token der richtigen Form wird abgewiesen");
+  assert(cleanToken(`  "token=ARA_${"A".repeat(32)}"\n`) === "ara_" + "a".repeat(32), "Eingefügtes wird nicht bereinigt");
+  assert(!/ara_kaputt/.test(tokenShape("ara_kaputt").reason), "die Begründung wiederholt den Token");
+  return "Form geprüft";
+});
+
+await checkAsync("Der Kaufweg: eingefügter Token wird geprüft, hinterlegt, und dann kommt das Gerät", async () => {
+  const gueltig = "ara_" + "0123456789abcdef".repeat(2);
+  const widerrufen = "ara_" + "f".repeat(32);
+  const gesehen = [];
+  const server = createServer((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    gesehen.push({ pruefen: url.searchParams.get("pruefen"), token: url.searchParams.get("token") });
+    if (url.searchParams.get("token") === gueltig) {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ ok: true, typ: "device", artefakt: "bereit" }));
+      return;
+    }
+    response.writeHead(403, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: false, fehler: "token_ungueltig", meldung: "Ungueltiger Token. Kaufen unter arasul.de/kaufen." }));
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const work = mkdtempSync(join(tmpdir(), "ara-kauf-"));
+  const envFile = join(work, "env");
+  writeFileSync(envFile, `ARASUL_BASIS=${base}\n`);
+  const env = { ARA_ENV_FILE: envFile };
+  const akten = ["_selftest-kauf-a", "_selftest-kauf-b"];
+  const anlegen = (name, arasul) => {
+    mkdirSync(join(ROOT, "devices", name), { recursive: true });
+    writeFileSync(join(ROOT, "devices", name, "device.md"), `---\nname: ${name}\nverdict: supported\narasul: ${arasul}\n---\n`);
+  };
+  const store = (token) =>
+    new Promise((done) => {
+      const child = spawn("node", [join(ROOT, ".ara", "tools", "device.mjs"), "--licence", "--store"], {
+        env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ...env },
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => (stdout += d));
+      child.stderr.on("data", (d) => (stderr += d));
+      child.on("close", (status) => done({ status, stdout, stderr }));
+      child.stdin.end(`${token}\n`);
+    });
+  try {
+    // Ohne Token: der Link, die Sätze, und die Aufforderung, im Interview zu fragen.
+    let run = await toolAsync("device.mjs", ["--licence"], env);
+    assert(run.status === 0, `--licence fehlgeschlagen: ${run.stderr}`);
+    assert(/keiner hinterlegt/.test(run.stdout), `es wird nicht gesagt, dass kein Token liegt:\n${run.stdout}`);
+    assert(run.stdout.includes("https://www.arasul.de/kaufen"), "der Link zu Konto und Token fehlt");
+    assert(/genau einen kostenlosen Geräte-Token/.test(run.stdout), "was das Konto bringt, fehlt");
+    assert(/3\.000 Euro netto/.test(run.stdout), "was die Lizenz kostet, fehlt");
+    assert(/Interview-Werkzeug/.test(run.stdout), "die Frage läuft nicht über das Interview-Werkzeug");
+    assert(/--licence --store/.test(run.stdout), "der Weg für den eingefügten Token fehlt");
+    assert(gesehen.length === 0, "ohne Token wurde das Portal gefragt");
+
+    // Falsche Form: kein Portal, keine Ablage.
+    run = await store("ara_kaputt");
+    assert(run.status !== 0, "ein Token falscher Form wurde angenommen");
+    assert(/kein Geräte-Token/.test(run.stderr), `die Form wird nicht benannt: ${run.stderr}`);
+    assert(gesehen.length === 0, "bei falscher Form wurde das Portal gefragt");
+    assert(!/ARASUL_TOKEN/.test(readFileSync(envFile, "utf8")), "ein Token falscher Form wurde hinterlegt");
+
+    // Abgelehnt: die Begründung des Portals, und nichts hinterlegt.
+    run = await store(widerrufen);
+    assert(run.status !== 0, "ein abgelehnter Token wurde angenommen");
+    assert(/token_ungueltig/.test(run.stderr), `die Begründung des Portals fehlt: ${run.stderr}`);
+    assert(gesehen.length === 1 && gesehen[0].pruefen === "1", "die Prüfung lief nicht mit pruefen=1");
+    assert(!/ARASUL_TOKEN/.test(readFileSync(envFile, "utf8")), "ein abgelehnter Token wurde hinterlegt");
+
+    // Gültig, ohne Akte: hinterlegt, und der Hinweis auf /device.
+    run = await store(gueltig);
+    assert(run.status === 0, `ein gültiger Token wurde abgewiesen: ${run.stderr}`);
+    assert(new RegExp(`^ARASUL_TOKEN=${gueltig}$`, "m").test(readFileSync(envFile, "utf8")), "der Token liegt nicht in der Ablage");
+    assert(!run.stdout.includes(gueltig) && !run.stderr.includes(gueltig), "der Token steht in der Ausgabe");
+    assert(/geprüft und hinterlegt/.test(run.stdout), `es wird nicht gesagt, dass er liegt:\n${run.stdout}`);
+    assert(/Typ device.*Artefakt bereit/.test(run.stdout), "die Antwort des Portals wird nicht wiedergegeben");
+    assert(/noch keine Akte/.test(run.stdout), "ohne Akte fehlt der Hinweis auf /device");
+
+    // Eine passende Akte: das Werkzeug nennt sie und den Aufruf.
+    anlegen(akten[0], "none");
+    run = await store(gueltig);
+    assert(/Eine Akte passt: _selftest-kauf-a/.test(run.stdout), `die eine Akte wird nicht genannt:\n${run.stdout}`);
+    assert(/--name _selftest-kauf-a --install arasul/.test(run.stdout), "der Aufruf zur Installation fehlt");
+
+    // Zwei passende Akten: die Frage, welches Gerät, über das Interview-Werkzeug.
+    anlegen(akten[1], "none");
+    run = await store(gueltig);
+    assert(/2 Akten passen/.test(run.stdout), `zwei Akten werden nicht gezählt:\n${run.stdout}`);
+    assert(/Interview-Werkzeug, welches Gerät/.test(run.stdout), "bei mehreren Akten wird nicht gefragt");
+    // Eine Akte, auf der Arasul läuft, ist kein Ziel.
+    anlegen(akten[1], "running");
+    run = await toolAsync("device.mjs", ["--licence", "--json"], env);
+    const out = JSON.parse(run.stdout);
+    assert(out.stored === true, "mit Token sagt --licence, es liege keiner");
+    assert(out.targets.length === 1 && out.targets[0].name === akten[0], "ein laufendes Gerät gilt als Ziel");
+
+    // Mit Token: kein Kaufweg mehr, nur der Aufruf.
+    run = await toolAsync("device.mjs", ["--licence"], env);
+    assert(/hinterlegt\. Für diese Installation ist nichts zu kaufen/.test(run.stdout), `mit Token wird weiter verkauft:\n${run.stdout}`);
+    assert(!run.stdout.includes("https://www.arasul.de/kaufen"), "mit Token steht der Kauflink noch da");
+    return "Form, Portal, Ablage, eine Akte, zwei Akten";
+  } finally {
+    server.close();
+    rmSync(work, { recursive: true, force: true });
+    for (const n of akten) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+  }
+});
+
+check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht mehr", () => {
+  // Dort, wo /device ein unterstütztes Gerät erkennt und kein Token liegt, steht
+  // der Kaufweg unter den nächsten Schritten: Link, Frage im Interview, und wie
+  // der eingefügte Token hineinkommt. Liegt ein Token, steht dort der Aufruf.
+  const work = mkdtempSync(join(tmpdir(), "ara-kauf-orin-"));
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  try {
+    const datei = join(work, "orin.txt");
+    writeFileSync(datei, ATTRAPPEN.orin + "\n");
+    const ohne = join(work, "ohne.env");
+    writeFileSync(ohne, "");
+    let run = tool("device.mjs", ["--name", "orin", "--probe", datei], "", { ARA_ENV_FILE: ohne });
+    assert(run.status === 0, `Trockenlauf fehlgeschlagen: ${run.stderr}`);
+    assert(run.stdout.includes("https://www.arasul.de/kaufen"), `der Kaufweg fehlt:\n${run.stdout}`);
+    assert(/kein Token hinterlegt/.test(run.stdout), "es wird nicht gesagt, dass kein Token liegt");
+    assert(/Interview-Werkzeug/.test(run.stdout), "die Frage läuft nicht über das Interview-Werkzeug");
+    assert(/--licence --store/.test(run.stdout), "der Weg für den eingefügten Token fehlt");
+    assert(/Nein heißt/.test(run.stdout), "was ein Nein bedeutet, fehlt");
+    assert(!/--install arasul/.test(run.stdout), "ohne Token wird die Installation angeboten");
+    run = tool("device.mjs", ["--name", "orin", "--probe", datei, "--json"], "", { ARA_ENV_FILE: ohne });
+    assert(JSON.parse(run.stdout).licence?.token_stored === false, "das JSON sagt nicht, dass kein Token liegt");
+
+    const mit = join(work, "mit.env");
+    writeFileSync(mit, `ARASUL_TOKEN=ara_${"1".repeat(32)}\n`);
+    run = tool("device.mjs", ["--name", "orin", "--probe", datei], "", { ARA_ENV_FILE: mit });
+    // Ein Trockenlauf installiert nie, also nennt er auch mit Token keinen Aufruf. Der Kaufweg ist weg.
+    assert(run.status === 0, `Trockenlauf mit Token fehlgeschlagen: ${run.stderr}`);
+    assert(!run.stdout.includes("https://www.arasul.de/kaufen"), `mit Token steht der Kauflink noch da:\n${run.stdout}`);
+    assert(!/Interview-Werkzeug/.test(run.stdout), "mit Token wird noch gefragt");
+    assert(!run.stdout.includes("1".repeat(32)), "der Token steht in der Ausgabe");
+
+    // Ein Gerät, das Arasul nicht trägt, bekommt keinen Kaufweg, nur den ruhigen Satz.
+    writeFileSync(join(work, "mac.txt"), ATTRAPPEN.mac + "\n");
+    run = tool("device.mjs", ["--name", "mac", "--probe", join(work, "mac.txt")], "", { ARA_ENV_FILE: ohne });
+    assert(!/Interview-Werkzeug/.test(run.stdout), "ein nicht unterstütztes Gerät bekommt die Kauffrage");
+    assert(/3\.000 Euro netto/.test(run.stdout), "der Satz zur Lizenz nennt den Preis nicht");
+    return "ohne Token Kaufweg, mit Token keiner";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+    for (const n of ["orin", "mac"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }

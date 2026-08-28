@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.0 (2026-08-28)
+
+Contract: up to 3
+
+- The way to buy Arasul hangs on `/device`, and there is no command for it: no command called kaufen or licence. When the verdict is supported, nothing of Arasul runs and no token is stored, the tool says so under "Next steps", with the link `https://www.arasul.de/kaufen`, and the question whether to install runs through the interview tool. Account and token the human fetches there themselves: an account is free and brings exactly one free device token for personal use, every further installation is bought, commercial use needs the licence at 3,000 euros net. The facts stand in one place, `.ara/tools/lib/licence.mjs`, and in `.ara/knowledge/device.md` under "The token"; the story of five tokens per partner from the portal is gone from every sheet and every tool.
+- The pasted token goes in over the pipe, never as an argument: `printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store`. The tool checks the form, `ara_` and 32 hexadecimal characters, asks the portal with `pruefen=1` without fetching the artifact, stores it under `ARASUL_TOKEN` and says which file to install on: one fitting file is named with its call, with several the tool asks for the interview, with none it points to `/device`. A refused token comes back with the portal's reason and nothing is stored. Somebody who asks about buying without a device gets the same way, `node .ara/tools/device.mjs --licence`, and `sales.md` says as much.
+- The self-test plays the portal and holds all of it: the form, the refused token, the stored one, one file, two files, a running device that is no target, the buy block on a supported device without a token and the plain call with one. `ARA_ENV_FILE` redirects the `.env` for exactly that, then only it counts.
+
 ## 0.13.0 (2026-08-28)
 
 Contract: up to 3

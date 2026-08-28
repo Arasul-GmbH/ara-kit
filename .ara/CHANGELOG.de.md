@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.0 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Der Weg, Arasul zu kaufen, hängt an `/device`, und einen Befehl dafür gibt es nicht: keinen Befehl namens kaufen oder lizenz. Ist das Urteil unterstützt, läuft nichts von Arasul und ist kein Token hinterlegt, sagt das Werkzeug das unter „Nächste Schritte", mit dem Link `https://www.arasul.de/kaufen`, und die Frage, ob installiert wird, läuft über das Interview-Werkzeug. Konto und Token holt der Mensch dort selbst: ein Konto ist kostenlos und bringt genau einen kostenlosen Geräte-Token für den persönlichen Gebrauch, jede weitere Installation wird gekauft, kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto. Die Fakten stehen an einer Stelle, `.ara/tools/lib/licence.mjs`, und in `.ara/knowledge/device.de.md` unter „Das Token"; die Geschichte von fünf Token je Partner aus dem Portal ist aus jedem Blatt und jedem Werkzeug verschwunden.
+- Der eingefügte Token geht über die Leitung hinein, nie als Argument: `printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store`. Das Werkzeug prüft die Form, `ara_` und 32 Hexzeichen, fragt das Portal mit `pruefen=1`, ohne das Artefakt zu holen, legt ihn unter `ARASUL_TOKEN` ab und sagt, auf welche Akte installiert wird: eine passende Akte wird mit ihrem Aufruf genannt, bei mehreren verlangt das Werkzeug die Frage im Interview, bei keiner zeigt es auf `/device`. Ein abgelehnter Token kommt mit der Begründung des Portals zurück, und hinterlegt wird nichts. Wer ohne Gerät nach dem Kauf fragt, bekommt denselben Weg, `node .ara/tools/device.mjs --licence`, und `sales.de.md` sagt das auch.
+- Der Selbsttest spielt das Portal und hält all das fest: die Form, den abgelehnten Token, den hinterlegten, eine Akte, zwei Akten, ein laufendes Gerät, das kein Ziel ist, den Kaufblock an einem unterstützten Gerät ohne Token und den schlichten Aufruf mit einem. `ARA_ENV_FILE` lenkt die `.env` genau dafür um, dann zählt nur sie.
+
 ## 0.13.0 (2026-08-28)
 
 Kontrakt: bis 3
