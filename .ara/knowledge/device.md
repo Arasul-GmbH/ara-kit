@@ -243,7 +243,7 @@ What holds, as of 2026-08-28, and what you may say:
    printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store
    ```
 
-   The tool checks the form, asks the portal (`GET /api/download?token=<token>&pruefen=1`,
+   The tool checks the form, asks the portal (`GET https://www.arasul.de/api/download?token=<token>&pruefen=1`,
    without fetching the artifact), stores it under `ARASUL_TOKEN` in the chosen secret store,
    and says which files an installation fits: supported, and Arasul does not run there. **One
    file:** it names the call. **Several:** you ask through the interview tool which device it

@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.5 (2026-08-28)
+
+Contract: up to 3
+
+- A refused login because of too many attempts (429) read as if the field names were wrong. The device counts logins, ten per fifteen minutes, and every run of `check-docs.mjs` knocks there once as well. It now gets its own answer: wait, then the same call again.
+- The portal route in `device.md` stood there without its host, as `GET /api/download`. The documentation self-test therefore held it against the device, where it does not exist, and reported the kit's knowledge as wrong. It now names its host, and all 20 routes of the knowledge exist at a device with 0.3.0.
+
 ## 0.14.4 (2026-08-28)
 
 Contract: up to 3

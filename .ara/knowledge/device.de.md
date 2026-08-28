@@ -257,7 +257,7 @@ Was gilt, Stand 2026-08-28, und was du sagen darfst:
    printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store
    ```
 
-   Das Werkzeug prüft die Form, fragt das Portal (`GET /api/download?token=<token>&pruefen=1`,
+   Das Werkzeug prüft die Form, fragt das Portal (`GET https://www.arasul.de/api/download?token=<token>&pruefen=1`,
    ohne das Artefakt zu holen), legt ihn unter `ARASUL_TOKEN` in der gewählten Ablage ab und
    sagt, auf welche Akten eine Installation passt: unterstützt, und Arasul läuft dort nicht.
    **Eine Akte:** es nennt den Aufruf. **Mehrere:** du fragst über das Interview-Werkzeug,

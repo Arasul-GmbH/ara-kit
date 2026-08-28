@@ -535,6 +535,22 @@ async function adminLogin() {
         ) + reason(answer)
       );
     }
+    if (answer.status === 429) {
+      // Die Anmeldung ist begrenzt, und das ist keine Fehlbedienung. Ohne
+      // diesen Zweig las die naechste Zeile sich, als stimmten die Feldnamen
+      // nicht: am 28.08.2026 war das nach ein paar Laeufen der Fall, und
+      // check-docs.mjs klopft bei jedem Lauf einmal mit an.
+      fail(
+        t(
+          `${place} is counting the logins and refuses further ones for now (429). Wait, then the
+` +
+            "same call again. Every run of check-docs.mjs knocks here once as well.\n",
+          `${place} zählt die Anmeldungen und weist weitere vorerst ab (429). Warte, dann derselbe
+` +
+            "Aufruf noch einmal. Jeder Lauf von check-docs.mjs klopft hier ebenfalls einmal an.\n"
+        ) + reason(answer)
+      );
+    }
     if (answer.status === 401 || answer.status === 403) {
       fail(
         t(

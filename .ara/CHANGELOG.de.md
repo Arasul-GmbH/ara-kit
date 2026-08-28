@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.5 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Eine wegen zu vieler Versuche abgewiesene Anmeldung (429) las sich, als stimmten die Feldnamen nicht. Das Gerät zählt die Anmeldungen, zehn je fünfzehn Minuten, und jeder Lauf von `check-docs.mjs` klopft dort ebenfalls einmal an. Sie bekommt jetzt eine eigene Antwort: warten, dann derselbe Aufruf noch einmal.
+- Die Route des Portals stand in `device.md` ohne ihren Rechnernamen da, als `GET /api/download`. Der Dokumentations-Selbsttest hielt sie deshalb gegen das Gerät, wo es sie nicht gibt, und meldete das Wissen des Kits als falsch. Sie nennt jetzt ihren Rechnernamen, und alle 20 Routen des Wissens gibt es an einem Gerät mit 0.3.0.
+
 ## 0.14.4 (2026-08-28)
 
 Kontrakt: bis 3
