@@ -1,5 +1,33 @@
 #!/usr/bin/env node
 /**
+ * Paper to PDF: Markdown in, PDF in the house style out.
+ *
+ * A customer gets their offer as a PDF, not as Markdown. This tool makes a
+ * sendable document out of a filled-in template.
+ *
+ * **It refuses as long as a placeholder is still in it.** An offer with
+ * "{Betrag} Euro" at the customer is the mistake this tool prevents.
+ *
+ * Printing happens with the Chromium that Playwright brings along anyway. No new
+ * dependency, no npm install.
+ *
+ *   node .ara/tools/pdf.mjs .ara/vorlagen/angebot.md
+ *   node .ara/tools/pdf.mjs <file.md> --out <file.pdf>
+ *   node .ara/tools/pdf.mjs <file.md> --check      only check, do not print
+ *   node .ara/tools/pdf.mjs <file.md> --force      print despite placeholders
+ *   node .ara/tools/pdf.mjs <file.md> --keep-notes print the template notes too
+ *   node .ara/tools/pdf.mjs <file.md> --html       write HTML instead of printing
+ *   node .ara/tools/pdf.mjs --browser              which Chromium gets used
+ *
+ * What never lands in the PDF:
+ *   - HTML comments. The checklists stand there, and nobody but you reads them.
+ *   - The frontmatter. That is the machine-readable side of a document, an invoice
+ *     for instance, and not a line for the customer.
+ *   - The note blocks of the template, so every quote line before the first
+ *     heading. With --keep-notes they stay in.
+ *
+ * === deutsch ===
+ *
  * Papier zu PDF: Markdown rein, PDF im Hausstil raus.
  *
  * Ein Kunde bekommt sein Angebot als PDF, nicht als Markdown. Dieses Werkzeug
@@ -39,6 +67,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
+import { t } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
 helpOnly(import.meta.url);
@@ -74,7 +103,10 @@ function findBrowser() {
   if (process.env.ARA_CHROMIUM) {
     if (!existsSync(process.env.ARA_CHROMIUM)) {
       throw new Error(
-        `ARA_CHROMIUM zeigt auf ${process.env.ARA_CHROMIUM}, dort liegt nichts.`
+        t(
+          `ARA_CHROMIUM points at ${process.env.ARA_CHROMIUM}, nothing lies there.`,
+          `ARA_CHROMIUM zeigt auf ${process.env.ARA_CHROMIUM}, dort liegt nichts.`
+        )
       );
     }
     return { path: process.env.ARA_CHROMIUM, source: "ARA_CHROMIUM" };
@@ -127,16 +159,21 @@ function findBrowser() {
   }
 
   throw new Error(
-    "Kein Chromium gefunden. Playwright bringt einen mit, er ist hier nur noch nicht " +
-      "geholt worden:\n    npx playwright install chromium\n" +
-      "Oder den Pfad zu einem vorhandenen Chrome setzen: ARA_CHROMIUM=/pfad/zum/browser"
+    t(
+      "No Chromium found. Playwright brings one along, it has only not been fetched " +
+        "here yet:\n    npx playwright install chromium\n" +
+        "Or set the path to an existing Chrome: ARA_CHROMIUM=/path/to/browser",
+      "Kein Chromium gefunden. Playwright bringt einen mit, er ist hier nur noch nicht " +
+        "geholt worden:\n    npx playwright install chromium\n" +
+        "Oder den Pfad zu einem vorhandenen Chrome setzen: ARA_CHROMIUM=/pfad/zum/browser"
+    )
   );
 }
 
 if (arg.browser) {
   try {
     const found = findBrowser();
-    console.log(`${found.path}\nHerkunft: ${found.source}`);
+    console.log(`${found.path}\n` + t(`Origin: ${found.source}`, `Herkunft: ${found.source}`));
     process.exit(0);
   } catch (error) {
     console.error(error.message);
@@ -149,15 +186,19 @@ if (arg.browser) {
 const source = arg._[0];
 if (!source) {
   console.error(
-    "Es fehlt die Datei. Beispiel:\n" +
-      "    node .ara/tools/pdf.mjs customers/mueller/documents/2026-08-25-angebot.md"
+    t(
+      "The file is missing. Example:\n" +
+        "    node .ara/tools/pdf.mjs customers/mueller/documents/2026-08-25-angebot.md",
+      "Es fehlt die Datei. Beispiel:\n" +
+        "    node .ara/tools/pdf.mjs customers/mueller/documents/2026-08-25-angebot.md"
+    )
   );
   process.exit(1);
 }
 
 const sourcePath = resolve(source);
 if (!existsSync(sourcePath)) {
-  console.error(`${source} gibt es nicht.`);
+  console.error(t(`${source} does not exist.`, `${source} gibt es nicht.`));
   process.exit(1);
 }
 
@@ -240,21 +281,29 @@ const placeholders = findPlaceholders(content);
 
 if (placeholders.length > 0) {
   console.error(
-    `${placeholders.length} ungefuellte Platzhalter in ${basename(sourcePath)}:`
+    t(
+      `${placeholders.length} unfilled placeholders in ${basename(sourcePath)}:`,
+      `${placeholders.length} ungefuellte Platzhalter in ${basename(sourcePath)}:`
+    )
   );
   for (const hit of placeholders) {
-    console.error(`  Zeile ${hit.line}: ${hit.text}`);
+    console.error(t(`  line ${hit.line}: ${hit.text}`, `  Zeile ${hit.line}: ${hit.text}`));
   }
   console.error(
-    "\nJeder davon wuerde so beim Kunden landen. Fuellen, dann noch einmal."
+    t(
+      "\nEvery one of them would land at the customer like that. Fill them in, then try again.",
+      "\nJeder davon wuerde so beim Kunden landen. Fuellen, dann noch einmal."
+    )
   );
   if (!arg.force) {
-    console.error("Wenn ein Platzhalter absichtlich stehen bleibt: --force.");
+    console.error(
+      t("If a placeholder stays on purpose: --force.", "Wenn ein Platzhalter absichtlich stehen bleibt: --force.")
+    );
     process.exit(1);
   }
-  console.error("--force gesetzt, es wird trotzdem gedruckt.\n");
+  console.error(t("--force is set, it gets printed anyway.\n", "--force gesetzt, es wird trotzdem gedruckt.\n"));
 } else {
-  console.log(`Keine Platzhalter in ${basename(sourcePath)}.`);
+  console.log(t(`No placeholders in ${basename(sourcePath)}.`, `Keine Platzhalter in ${basename(sourcePath)}.`));
 }
 
 if (arg.check) {
@@ -487,14 +536,24 @@ function logoTag() {
 
   const path = resolve(fields.logo.startsWith("/") ? fields.logo : join(ROOT, fields.logo));
   if (!existsSync(path) || !statSync(path).isFile()) {
-    console.error(`Hinweis: logo in business/company.md zeigt auf ${fields.logo}, dort liegt nichts. Ohne Logo gedruckt.`);
+    console.error(
+      t(
+        `Note: logo in business/company.md points at ${fields.logo}, nothing lies there. Printed without a logo.`,
+        `Hinweis: logo in business/company.md zeigt auf ${fields.logo}, dort liegt nichts. Ohne Logo gedruckt.`
+      )
+    );
     return "";
   }
 
   const types = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".svg": "image/svg+xml", ".webp": "image/webp" };
   const type = types[extname(path).toLowerCase()];
   if (!type) {
-    console.error(`Hinweis: ${extname(path)} als Logo wird nicht unterstuetzt. Ohne Logo gedruckt.`);
+    console.error(
+      t(
+        `Note: ${extname(path)} as a logo is not supported. Printed without a logo.`,
+        `Hinweis: ${extname(path)} als Logo wird nicht unterstuetzt. Ohne Logo gedruckt.`
+      )
+    );
     return "";
   }
   const data = readFileSync(path).toString("base64");
@@ -592,7 +651,12 @@ const target = resolve(
 // man nachsehen kann, was gedruckt wuerde, statt es aus dem PDF zu erraten.
 if (arg.html) {
   writeFileSync(target, document);
-  console.log(`HTML geschrieben: ${target}\nNicht gedruckt, --html war gesetzt.`);
+  console.log(
+    t(
+      `HTML written: ${target}\nNot printed, --html was set.`,
+      `HTML geschrieben: ${target}\nNicht gedruckt, --html war gesetzt.`
+    )
+  );
   process.exit(0);
 }
 
@@ -630,20 +694,28 @@ try {
     { encoding: "utf8", timeout: 120_000 }
   );
 
-  if (run.error) throw new Error(`Chromium liess sich nicht starten: ${run.error.message}`);
+  if (run.error) {
+    throw new Error(
+      t(`Chromium could not be started: ${run.error.message}`, `Chromium liess sich nicht starten: ${run.error.message}`)
+    );
+  }
   if (!existsSync(target)) {
     throw new Error(
-      `Chromium hat kein PDF geschrieben (Status ${run.status}).` +
-        `${run.stderr ? `\n${run.stderr.trim()}` : ""}`
+      t(
+        `Chromium wrote no PDF (status ${run.status}).`,
+        `Chromium hat kein PDF geschrieben (Status ${run.status}).`
+      ) + `${run.stderr ? `\n${run.stderr.trim()}` : ""}`
     );
   }
 
   const size = statSync(target).size;
-  if (size === 0) throw new Error("Das erzeugte PDF ist leer.");
+  if (size === 0) throw new Error(t("The produced PDF is empty.", "Das erzeugte PDF ist leer."));
 
   console.log(
-    `PDF geschrieben: ${target}\n` +
-      `${Math.round(size / 1024)} kB, gedruckt mit ${browser.source}-Chromium.`
+    t(
+      `PDF written: ${target}\n${Math.round(size / 1024)} kB, printed with ${browser.source} Chromium.`,
+      `PDF geschrieben: ${target}\n${Math.round(size / 1024)} kB, gedruckt mit ${browser.source}-Chromium.`
+    )
   );
 } catch (error) {
   console.error(error.message);
