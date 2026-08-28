@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.2 (2026-08-28)
+
+Contract: up to 3
+
+- A secret went into the macOS keychain and was not there afterwards. `security add-generic-password -w` asks for the value twice, for confirmation, and whoever sends it once over the pipe gets "passwords don't match", an empty entry and status 0 nevertheless: the kit reported success and had stored nothing. Found while measuring acceptance A2 on a Jetson AGX Orin, where the download token was the empty entry and the installation was unreachable because of it. The value now goes in twice and is read back afterwards, and a value that does not read back the same is an error and not a stored secret. It would have hit the start password and the kit key too, and both are named exactly once.
+- The self-test writes into the real keychain once and reads back, under a name of its own that it clears away again, because an entry that exists is not an entry that is right.
+- `Ein frischer Klon spricht Englisch` measured the working directory instead of the kit: the English case ran in the real kit, and that has a profile as soon as somebody has called `/init` once. Both cases now run in a throwaway clone.
+
 ## 0.14.1 (2026-08-28)
 
 Contract: up to 3

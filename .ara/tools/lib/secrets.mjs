@@ -115,19 +115,31 @@ function keychainGet(name) {
 
 function keychainSet(name, value) {
   const system = platform();
+  if (/[\r\n]/.test(value)) {
+    throw new Error(
+      t(
+        "A value with a line break does not go into the keychain.",
+        "Ein Wert mit Zeilenumbruch geht nicht in den Schlüsselbund."
+      )
+    );
+  }
   if (system === "darwin") {
     // Der Wert geht über die Standardeingabe, damit er nicht in der Prozessliste steht.
+    //
+    // `-w` ohne Argument fragt zweimal, einmal zur Bestätigung. Wer den Wert nur
+    // einmal über die Leitung schickt, bekommt „passwords don't match", einen
+    // leeren Eintrag und trotzdem Status 0. Der Eintrag existiert dann, und
+    // gemerkt wird das erst, wenn das Geheimnis gebraucht wird und weg ist.
+    // Deshalb zweimal hinein, und unten wird zurückgelesen.
     const run = spawnSync(
       "security",
       ["add-generic-password", "-U", "-a", name, "-s", SERVICE, "-w"],
-      { input: value, encoding: "utf8" }
+      { input: `${value}\n${value}\n`, encoding: "utf8" }
     );
     if (run.status !== 0) {
       throw new Error((run.stderr || "").trim() || t("The keychain refuses.", "Schlüsselbund lehnt ab."));
     }
-    return;
-  }
-  if (system === "linux") {
+  } else if (system === "linux") {
     const run = spawnSync(
       "secret-tool",
       ["store", "--label", `${SERVICE} ${name}`, "service", SERVICE, "account", name],
@@ -136,14 +148,23 @@ function keychainSet(name, value) {
     if (run.status !== 0) {
       throw new Error((run.stderr || "").trim() || t("secret-tool refuses.", "secret-tool lehnt ab."));
     }
-    return;
+  } else {
+    throw new Error(
+      t(
+        "There is no supported keychain store on this operating system.",
+        "Auf diesem Betriebssystem gibt es keine unterstützte Schlüsselbund-Ablage."
+      )
+    );
   }
-  throw new Error(
-    t(
-      "There is no supported keychain store on this operating system.",
-      "Auf diesem Betriebssystem gibt es keine unterstützte Schlüsselbund-Ablage."
-    )
-  );
+  // Ein Eintrag, der existiert, ist kein Eintrag, der stimmt.
+  if (keychainGet(name) !== value) {
+    throw new Error(
+      t(
+        `The entry ${name} reads back differently than it went in. What lies there now is wrong.`,
+        `Der Eintrag ${name} liest sich anders zurück, als er hineingegangen ist. Was dort liegt, stimmt nicht.`
+      )
+    );
+  }
 }
 
 // --- Schnittstelle ------------------------------------------------------

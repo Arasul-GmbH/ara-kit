@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.2 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Ein Geheimnis ging in den macOS-Schlüsselbund und war danach nicht da. `security add-generic-password -w` fragt den Wert zweimal ab, zur Bestätigung, und wer ihn einmal über die Leitung schickt, bekommt "passwords don't match", einen leeren Eintrag und trotzdem Status 0: das Kit meldete Erfolg und hatte nichts abgelegt. Gefunden beim Messen der Abnahme A2 an einem Jetson AGX Orin, wo das Download-Token der leere Eintrag war und die Installation daran nicht erreichbar war. Der Wert geht jetzt zweimal hinein und wird danach zurückgelesen, und ein Wert, der sich anders zurückliest, ist ein Fehler und kein abgelegtes Geheimnis. Getroffen hätte es auch das Startpasswort und den Kit-Schlüssel, und beide werden genau einmal genannt.
+- Der Selbsttest schreibt einmal wirklich in den Schlüsselbund und liest zurück, unter einem eigenen Namen, den er wieder wegräumt, denn ein Eintrag, der existiert, ist kein Eintrag, der stimmt.
+- `Ein frischer Klon spricht Englisch` maß den Arbeitsordner statt das Kit: der englische Fall lief im echten Kit, und das hat ein Profil, sobald jemand einmal `/init` gerufen hat. Beide Fälle laufen jetzt in einem Wegwerf-Klon.
+
 ## 0.14.1 (2026-08-28)
 
 Kontrakt: bis 3

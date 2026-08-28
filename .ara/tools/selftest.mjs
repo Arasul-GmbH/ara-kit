@@ -41,7 +41,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
+import { platform, tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
@@ -109,6 +109,7 @@ import { HELP_SPLIT, ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatt
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
+import { keychainAvailable } from "./lib/secrets.mjs";
 
 helpOnly(import.meta.url);
 
@@ -1275,6 +1276,54 @@ check("Ein Geheimnis lässt sich auch ohne Terminal hinterlegen", () => {
     assert(!/ARA_SELFTEST_LEER/.test(readFileSync(join(fork, ".env"), "utf8")), "der leere Eintrag steht in der .env");
     return "gesetzt, gefunden, leer abgewiesen";
   } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+check("Was in den Schlüsselbund geht, kommt gleich wieder heraus", () => {
+  // Der Fehler, an dem der erste Anlauf von G1 hing, am 28.08.2026. Das Kit
+  // legte das Token im Schlüsselbund ab, `security` meldete Erfolg, und der
+  // Eintrag war leer: `add-generic-password -w` fragt den Wert zweimal ab, zur
+  // Bestätigung, und wer ihn einmal über die Leitung schickt, bekommt
+  // "passwords don't match", einen leeren Eintrag und trotzdem Status 0.
+  // Getroffen hätte es das Startpasswort und den Kit-Schlüssel: beide werden
+  // einmal genannt, und danach wäre der Zugang zum Gerät weg gewesen.
+  //
+  // Ein Eintrag, der existiert, ist kein Eintrag, der stimmt. Deshalb wird hier
+  // wirklich geschrieben und wirklich zurückgelesen, an einem Wegwerf-Kit,
+  // dessen Profil den Schlüsselbund wählt, unter einem eigenen Namen.
+  if (!keychainAvailable()) return "übersprungen, hier gibt es keinen Schlüsselbund";
+  const name = "ARA_SELFTEST_BUND";
+  const wert = "sehr-geheim-0123456789";
+  const work = mkdtempSync(join(tmpdir(), "ara-bund-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara", "tools"), join(fork, ".ara", "tools"), { recursive: true });
+  mkdirSync(join(fork, "business"), { recursive: true });
+  writeFileSync(join(fork, "business", "profile.md"), "---\nlanguage: de\nsecrets_store: keychain\n---\n");
+  try {
+    const run = spawnSync("node", [join(fork, ".ara", "tools", "secrets.mjs"), "--set", name], {
+      encoding: "utf8",
+      input: `${wert}\n`,
+    });
+    assert(run.status === 0, `Hinterlegen im Schlüsselbund fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(!existsSync(join(fork, ".env")), "der Wert landete in der .env statt im Schlüsselbund");
+    assert(!new RegExp(wert).test(`${run.stdout}${run.stderr}`), "der Wert steht in der Ausgabe");
+
+    const zurueck = spawnSync("node", ["-e", `import(${JSON.stringify(join(fork, ".ara", "tools", "lib", "secrets.mjs"))}).then((m) => process.stdout.write(String((m.getSecret(${JSON.stringify(name)}) || "").length)))`], {
+      encoding: "utf8",
+    });
+    assert(zurueck.status === 0, `Zurücklesen fehlgeschlagen: ${zurueck.stderr}`);
+    assert(
+      zurueck.stdout === String(wert.length),
+      `der Schlüsselbund gibt ${zurueck.stdout} Zeichen zurück, hinein gingen ${wert.length}`
+    );
+    return `${wert.length} Zeichen hinein, ${zurueck.stdout} zurück`;
+  } finally {
+    if (platform() === "darwin") {
+      spawnSync("security", ["delete-generic-password", "-a", name, "-s", "ara-kit"], { encoding: "utf8" });
+    } else {
+      spawnSync("secret-tool", ["clear", "service", "ara-kit", "account", name], { encoding: "utf8" });
+    }
     rmSync(work, { recursive: true, force: true });
   }
 });
@@ -4204,29 +4253,37 @@ check("Jede Route steht in beiden Fassungen des Blattes", () => {
 check("Ein frischer Klon spricht Englisch, das Profil stellt um", () => {
   // Vor `/init` gibt es kein Profil, und dann gilt Englisch. Geprueft an einem
   // Werkzeug, das ohne alles laeuft: die Lage der Befehle.
-  const englisch = tool("commands.mjs", ["--role", "partner"], "", { ARA_LANGUAGE: "" });
-  assert(englisch.status === 0, `englischer Lauf fehlgeschlagen: ${englisch.stderr}`);
-  assert(/^Branch: partner, language: en$/m.test(englisch.stdout), `keine englische Ausgabe:\n${englisch.stdout}`);
+  //
+  // Beide Faelle laufen in einem Wegwerf-Klon, und zwar seit dem 28.08.2026:
+  // vorher lief der englische Fall im echten Kit, und der hat dort ein Profil,
+  // sobald jemand einmal `/init` gerufen hat. Dann war die Zeile deutsch, die
+  // Pruefung rot, und gemessen war nicht das Kit, sondern der Arbeitsordner.
+  const fall = (profil) => {
+    const dir = mkdtempSync(join(tmpdir(), "ara-lang-"));
+    try {
+      cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
+      if (profil) {
+        mkdirSync(join(dir, "business"), { recursive: true });
+        writeFileSync(join(dir, "business", "profile.md"), profil);
+      }
+      const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--role", "partner"], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+      assert(run.status === 0, `Lauf fehlgeschlagen: ${run.stderr}`);
+      return run.stdout;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
 
-  const deutsch = tool("commands.mjs", ["--role", "partner"]);
-  assert(deutsch.status === 0, `deutscher Lauf fehlgeschlagen: ${deutsch.stderr}`);
-  assert(/^Zweig: Partner, Sprache: de$/m.test(deutsch.stdout), `keine deutsche Ausgabe:\n${deutsch.stdout}`);
+  const englisch = fall(null);
+  assert(/^Branch: partner, language: en$/m.test(englisch), `keine englische Ausgabe:\n${englisch}`);
 
   // Und die Sprache steht wirklich im Profil, nicht nur in der Umgebung.
-  const dir = mkdtempSync(join(tmpdir(), "ara-lang-"));
-  try {
-    cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
-    mkdirSync(join(dir, "business"), { recursive: true });
-    writeFileSync(join(dir, "business", "profile.md"), "---\nrole: partner\nlanguage: de\n---\n\nMeins.\n");
-    const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs")], {
-      encoding: "utf8",
-      cwd: dir,
-      env: { ...process.env, ARA_LANGUAGE: "" },
-    });
-    assert(/^Zweig: Partner, Sprache: de$/m.test(run.stdout), `das Profil stellt nicht um:\n${run.stdout}`);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  const deutsch = fall("---\nrole: partner\nlanguage: de\n---\n\nMeins.\n");
+  assert(/^Zweig: Partner, Sprache: de$/m.test(deutsch), `das Profil stellt nicht um:\n${deutsch}`);
 });
 
 check("Keine Ausgabe steht nur auf Deutsch da", () => {
