@@ -43,6 +43,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
 import {
   KIT_CONTRACT_VERSION,
@@ -144,9 +145,21 @@ function assert(condition, message) {
  */
 const TOOL_LANGUAGE = "de";
 
-// Auch die Funktionen, die dieser Lauf selbst aufruft, sprechen dann Deutsch:
-// `language()` liest die Umgebung beim ersten Mal, und das ist nach dieser Zeile.
-process.env.ARA_LANGUAGE ||= TOOL_LANGUAGE;
+/**
+ * Auch die Funktionen, die dieser Lauf selbst aufruft, sollen Deutsch sprechen.
+ *
+ * Eine Umgebungsvariable hier zu setzen kaeme zu spaet: die Module sind da schon
+ * geladen, und was in ihnen auf oberster Ebene steht (`VERDICTS`, `STATUS`) hat
+ * seine Sprache dann bereits gewaehlt. Der Lauf startet sich darum einmal neu,
+ * mit gesetzter Sprache, und der erste Prozess tut sonst nichts.
+ */
+if (!process.env.ARA_LANGUAGE) {
+  const again = spawnSync(process.execPath, [fileURLToPath(import.meta.url), ...process.argv.slice(2)], {
+    stdio: "inherit",
+    env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE },
+  });
+  process.exit(again.status ?? 1);
+}
 
 function tool(file, args, input, env = {}) {
   return spawnSync("node", [join(ROOT, ".ara", "tools", file), ...args], {
