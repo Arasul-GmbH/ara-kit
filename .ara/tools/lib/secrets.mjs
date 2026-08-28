@@ -21,7 +21,13 @@ import { join } from "node:path";
 import { ROOT, readFrontmatter } from "./kit.mjs";
 import { t } from "./i18n.mjs";
 
-const ENV_FILE = join(ROOT, ".env");
+/**
+ * ARA_ENV_FILE lenkt die .env um, und dann zählt nur sie: kein Schlüsselbund, keine
+ * Prozessumgebung. Das ist für den Selbsttest da, der „kein Token" prüfen muss,
+ * ohne den echten Ablagen etwas zu tun.
+ */
+const ENV_ONLY = Boolean(process.env.ARA_ENV_FILE);
+const ENV_FILE = process.env.ARA_ENV_FILE || join(ROOT, ".env");
 const SERVICE = "ara-kit";
 
 /** Welche Ablage gilt? */
@@ -148,6 +154,7 @@ function keychainSet(name, value) {
  * Wechsel der Ablage und in automatisierten Läufen.
  */
 export function getSecret(name) {
+  if (ENV_ONLY) return readEnvFile()[name] || null;
   const store = activeStore();
   const order = store === "keychain" ? ["keychain", "env"] : ["env", "keychain"];
   for (const source of order) {
@@ -160,7 +167,7 @@ export function getSecret(name) {
 /** Legt ein Geheimnis in der gewählten Ablage ab. */
 export function setSecret(name, value) {
   if (!value) throw new Error(t("An empty value is not saved.", "Ein leerer Wert wird nicht gespeichert."));
-  if (activeStore() === "keychain") {
+  if (!ENV_ONLY && activeStore() === "keychain") {
     keychainSet(name, value);
     return "keychain";
   }

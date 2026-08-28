@@ -30,8 +30,10 @@ späteren Rückfrage mehr als ein Protokolleintrag. Leg sie neben das Abnahmedok
 **Kundenwebsites lesen.** Beim Anlegen einer Akte selbst nachsehen, statt zu fragen, was
 öffentlich dasteht.
 
-**Das Partnerportal bedienen.** Download-Token holen, Bestellungen und Einkaufspreise
-nachsehen. Dort liegen echte Geschäftsdaten, also nur, wenn es zur Aufgabe gehört.
+**Das Partnerportal bedienen.** Bestellungen und Einkaufspreise nachsehen. Dort liegen
+echte Geschäftsdaten, also nur, wenn es zur Aufgabe gehört. **Nicht den Geräte-Token:**
+Konto und Token holt der Mensch selbst unter `https://www.arasul.de/kaufen` und fügt den
+Token hier ein, der Weg steht in `.ara/knowledge/device.de.md`, „Das Token".
 
 ## Welches Werkzeug wofür
 

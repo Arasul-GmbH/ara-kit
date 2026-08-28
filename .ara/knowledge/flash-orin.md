@@ -216,8 +216,8 @@ them at the table:
    --check`. Only when that answers may the USB-C cable go. A fixed address, a VPN or a
    route from outside are `.ara/knowledge/remote-access.md`.
 4. **Docker, then Arasul.** `node .ara/tools/device.mjs --name <device> --install docker`
-   if it is missing, then `--install arasul` with the download token from the partner
-   portal; where it comes from, in both branches, stands in `.ara/knowledge/device.md`,
+   if it is missing, then `--install arasul` with the device token from
+   `https://www.arasul.de/kaufen`; where it comes from and how it gets in, in both branches, stands in `.ara/knowledge/device.md`,
    "Installing Arasul".
    Both are level 2 interventions and get confirmed once, with intent, target and way back.
 5. **The self-healing** is what looks after the running device afterwards:

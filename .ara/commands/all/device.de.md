@@ -61,9 +61,20 @@ ist ein Eingriff der Stufe 2: Absicht, Ziel und Rückweg nennen, bestätigen las
 aufrufen. Nur auf Linux.
 
 **Arasul installieren** geht mit `--install arasul`, auf einem unterstützten Gerät, das
-noch keins hat. Dafür braucht es zum ersten Mal ein Token aus dem Portal: fünf je Partner
-kostenlos, eine Schranke vor dem Download, keine Lizenzprüfung. Fehlt es, sagt das
-Werkzeug, wie es hinterlegt wird. Auch das ist Stufe 2, es dauert, und die Ausgabe des
+noch keins hat. Dafür braucht es zum ersten Mal einen Geräte-Token, und **einen Befehl
+zum Kaufen gibt es nicht**: der Weg hängt hier. Ist das Urteil unterstützt, läuft nichts
+von Arasul und ist kein Token hinterlegt, sagt das Werkzeug das unter „Nächste Schritte",
+mit dem Link `https://www.arasul.de/kaufen`. Du fragst über das Interview-Werkzeug, ob
+Arasul installiert werden soll, mit dem Link in der Frage: ein Konto ist kostenlos und
+bringt einen kostenlosen Geräte-Token für den persönlichen Gebrauch, jede weitere
+Installation wird gekauft, kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto.
+Ja heißt: der Mensch fügt den Token hier ein, du gibst ihn über die Leitung hinein,
+`printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store`, nie als Argument
+und nie im Text wiederholt. Das Werkzeug prüft ihn beim Portal, hinterlegt ihn und sagt,
+auf welche Akte installiert wird; passen mehrere, fragst du, welches Gerät. Wer ohne Gerät
+nach dem Kauf fragt, bekommt denselben Weg, `node .ara/tools/device.mjs --licence`.
+Verfahren in `.ara/knowledge/device.de.md`, „Das Token". Die Installation selbst ist auch
+Stufe 2, es dauert, und die Ausgabe des
 Installers wird mitgelesen. Der Installer bekommt Startpasswort und Netzname mit, denn
 nur dabei entstehen sie am Gerät; das Passwort würfelt das Kit und legt es in die
 Geheimnis-Ablage, den Netznamen setzt `--net-name <name>`, sonst gilt der Name der Akte.

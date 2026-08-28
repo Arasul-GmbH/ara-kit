@@ -64,8 +64,8 @@ const KNOWN = [
   {
     name: "ARASUL_TOKEN",
     info: t(
-      "download token from the partner portal, five per partner free of charge. Only needed for the installation",
-      "Download-Token aus dem Partnerportal, fünf je Partner kostenlos. Erst für die Installation nötig"
+      "device token from https://www.arasul.de/kaufen, one free per account for personal use. Only needed for the installation, /device shows the way",
+      "Geräte-Token von https://www.arasul.de/kaufen, einer je Konto kostenlos für den persönlichen Gebrauch. Erst für die Installation nötig, /device zeigt den Weg"
     ),
   },
   {

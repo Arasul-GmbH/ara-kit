@@ -60,9 +60,19 @@ a level 2 intervention: name intent, target and way back, have it confirmed, the
 Linux only.
 
 **Installing Arasul** works with `--install arasul`, on a supported device that has none
-yet. For that it needs a token from the portal the first time: five per partner free of
-charge, a gate in front of the download, not a licence check. If it is missing, the tool
-says how to store it. That is level 2 as well, it takes a while, and the installer's
+yet. For that it needs a device token the first time, and **there is no command for
+buying it**: the way hangs here. If the verdict is supported, nothing of Arasul runs and no
+token is stored, the tool says so under "Next steps", with the link
+`https://www.arasul.de/kaufen`. You ask through the interview tool whether Arasul should
+be installed, with the link in the question: an account is free and brings one free device
+token for personal use, every further installation is bought, commercial use needs the
+licence at 3,000 euros net. Yes means: the human pastes the token here, you hand it in
+over the pipe, `printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store`,
+never as an argument and never repeated in text. The tool checks it with the portal,
+stores it and says which file to install on; with several fitting files you ask which
+device. Somebody who asks about buying without a device gets the same way,
+`node .ara/tools/device.mjs --licence`. Procedure in `.ara/knowledge/device.md`, "The
+token". The installation itself is level 2 as well, it takes a while, and the installer's
 output is read along. The installer gets a start password and a network name, because only
 then do they come into being on the device; the kit rolls the password and puts it into the
 secret store, the network name is set by `--net-name <name>`, otherwise the name of the

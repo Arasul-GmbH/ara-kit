@@ -79,3 +79,14 @@ durch den ganzen Weg.
 eine Regel, die aus diesem Abschnitt hängen bleiben soll. Eine großzügige Zusage im
 Verkaufsgespräch ist die teuerste Sorte Freundlichkeit: nach dem Reseller-Vertrag zahlt
 der Partner sie selbst.
+
+## Kaufen
+
+**Wer kaufen will, braucht keinen Befehl.** Konto und Token kommen von
+<https://www.arasul.de/kaufen>: ein Konto ist kostenlos und bringt genau einen kostenlosen
+Geräte-Token für den persönlichen Gebrauch, jede weitere Installation wird gekauft,
+kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto. Das ist Stand 2026-08-28 und
+steht in `.ara/knowledge/device.de.md`, „Das Token", zusammen mit dem Weg: über das
+Interview-Werkzeug fragen, der Mensch fügt den Token ein, das Kit prüft und hinterlegt ihn und
+fragt nach dem Gerät, wenn es mehrere gibt. Sag diese drei Dinge und nichts darüber hinaus; was
+die Seite heute sagt, schlägt, was hier steht.

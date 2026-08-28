@@ -13,6 +13,8 @@
  *   node .ara/tools/device.mjs --name orin --admin-login          get a session as administrator
  *   node .ara/tools/device.mjs --name orin --admin-login --token  only the credential, for a script
  *   node .ara/tools/device.mjs --name thor --probe findings.txt   dry run, findings from a file
+ *   node .ara/tools/device.mjs --licence                          the way to account and token, no device needed
+ *   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store   check the pasted token, store it
  *   node .ara/tools/device.mjs                                    which files there are
  *   node .ara/tools/device.mjs --name mac --json                  the same as JSON
  *   node .ara/tools/device.mjs --help                             this help, nothing else
@@ -63,6 +65,8 @@
  *   node .ara/tools/device.mjs --name mac                         Akte da: Zustand und nächste Schritte
  *   node .ara/tools/device.mjs --name mac --install docker,ollama Docker und Ollama aufsetzen (Linux)
  *   node .ara/tools/device.mjs --name orin --install arasul       Arasul installieren (Token nötig)
+ *   node .ara/tools/device.mjs --licence                          der Weg zu Konto und Token, ohne Gerät
+ *   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store   eingefügten Token prüfen und hinterlegen
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
  *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
@@ -138,6 +142,7 @@ import { localized, t } from "./lib/i18n.mjs";
 import { getSecret, hasSecret, setSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, reason } from "./lib/arasul.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
+import { BUY_URL, STORE_CALL, buyLines, checkToken, cleanToken, installTargets, knownDevices, tokenShape } from "./lib/licence.mjs";
 import {
   createKey,
   fetchMirror,
@@ -161,13 +166,18 @@ const SERVICES = ["docker", "ollama"];
  * Die Token-Frage stellt sich genau hier und sonst nirgends: beim Onboarding
  * gibt es nichts zu installieren, und ohne Installation braucht das Kit kein
  * Token. Es ist eine Schranke vor dem Download, keine Lizenzprüfung. Am Gerät
- * prüft Arasul kein Token, und das Kit trägt auch keines dorthin.
+ * prüft Arasul kein Token, und das Kit trägt auch keines dorthin. Woher er
+ * kommt und was er kostet, steht in lib/licence.mjs, an einer Stelle.
  */
 const TOKEN_QUESTION =
-  "Für den Installer braucht es ein Token aus dem Partnerportal.\n" +
-  "Jeder Partner bekommt dort fünf Download-Token kostenlos, weitere auf Nachfrage per Mail.\n" +
-  "Es ist eine Schranke vor dem Download, keine Lizenzprüfung: am Gerät prüft Arasul kein Token.\n" +
-  "Hinterlegen mit: node .ara/tools/secrets.mjs --set ARASUL_TOKEN";
+  t(
+    "The installer needs a token, and none is stored.",
+    "Für den Installer braucht es einen Token, und es ist keiner hinterlegt."
+  ) +
+  "\n" +
+  buyLines().join("\n") +
+  "\n" +
+  t(`Hand it in with: ${STORE_CALL}`, `Hineingeben mit: ${STORE_CALL}`);
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -209,6 +219,126 @@ if (dryRun) {
       )
     );
   }
+}
+
+// --- Der Kaufweg -------------------------------------------------------------
+
+/**
+ * Konto, Token, Gerät: ohne eigenen Befehl, ohne Gerät im Aufruf.
+ *
+ * Wer nach dem Kauf fragt, landet hier, und /device landet hier von selbst,
+ * sobald ein unterstütztes Gerät ohne Token vor ihm steht. Ohne --store sagt
+ * der Lauf, wo es Konto und Token gibt und ob schon einer liegt. Mit --store
+ * liest er den eingefügten Token von der Standardeingabe, prüft die Form, fragt
+ * das Portal, legt ihn ab und sagt, auf welche Akten eine Installation passt.
+ * Der Token steht dabei nie in einem Argument und nie in einer Ausgabe.
+ */
+async function licencePath() {
+  const stored = hasSecret("ARASUL_TOKEN");
+  const devices = knownDevices();
+  const targets = installTargets(devices);
+  const result = { stored, buy_url: BUY_URL, devices, targets, checked: null, stored_in: null };
+
+  if (arg.store) {
+    if (process.stdin.isTTY) {
+      fail(
+        t(
+          `--store reads the token from the pipe, not from an argument: ${STORE_CALL}`,
+          `--store liest den Token aus der Leitung, nicht aus einem Argument: ${STORE_CALL}`
+        )
+      );
+    }
+    let raw = "";
+    process.stdin.setEncoding("utf8");
+    for await (const chunk of process.stdin) raw += chunk;
+    const token = cleanToken(raw);
+    const shape = tokenShape(token);
+    if (!shape.ok) {
+      fail(
+        t(
+          `That is not a device token: ${shape.reason}. It comes from ${BUY_URL}, under devices.`,
+          `Das ist kein Geräte-Token: ${shape.reason}. Er kommt von ${BUY_URL}, unter Geräte.`
+        )
+      );
+    }
+    const check = await checkToken(token);
+    result.checked = { ok: check.ok, reachable: check.reachable, status: check.status, error: check.error || null, message: check.message };
+    if (!check.ok) fail(check.message);
+    result.stored_in = setSecret("ARASUL_TOKEN", token);
+    result.stored = true;
+  }
+
+  const targetLines = () => {
+    if (!targets.length) {
+      return [
+        t(
+          "No file of a supported device without Arasul lies here yet. Create one first: /device <name>, " +
+            "with address and login name. The verdict says whether Arasul runs on it.",
+          "Es liegt noch keine Akte eines unterstützten Geräts ohne Arasul hier. Leg erst eine an: /device <name>, " +
+            "mit Adresse und Anmeldename. Das Urteil sagt, ob Arasul darauf läuft."
+        ),
+      ];
+    }
+    if (targets.length === 1) {
+      return [
+        t(
+          `One file fits: ${targets[0].place}. Install there, after a confirmation: ${targets[0].call}`,
+          `Eine Akte passt: ${targets[0].place}. Dort installieren, nach Bestätigung: ${targets[0].call}`
+        ),
+      ];
+    }
+    return [
+      t(
+        `${targets.length} files fit. Ask through the interview tool which device it should be, then, after a confirmation:`,
+        `${targets.length} Akten passen. Frag über das Interview-Werkzeug, welches Gerät es sein soll, dann, nach Bestätigung:`
+      ),
+      ...targets.map((d) => `  ${d.place}: ${d.call}`),
+    ];
+  };
+
+  if (arg.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  const lines = [t("# Arasul on a device", "# Arasul auf einem Gerät"), ""];
+  if (arg.store) {
+    lines.push(
+      t(`- Token: checked with the portal and stored in ${result.stored_in}. ${result.checked.message}`,
+        `- Token: beim Portal geprüft und hinterlegt in ${result.stored_in}. ${result.checked.message}`),
+      "",
+      ...targetLines()
+    );
+  } else if (stored) {
+    lines.push(
+      t("- Token: stored. Nothing to buy for this installation.", "- Token: hinterlegt. Für diese Installation ist nichts zu kaufen."),
+      "",
+      ...targetLines()
+    );
+  } else {
+    lines.push(
+      t("- Token: none stored.", "- Token: keiner hinterlegt."),
+      "",
+      ...buyLines(),
+      "",
+      t(
+        "Ask through the interview tool whether Arasul should be installed, with the link in the question. " +
+          `Yes means: the human opens ${BUY_URL}, creates the account, copies the token and pastes it here. ` +
+          `Then: ${STORE_CALL}`,
+        "Frag über das Interview-Werkzeug, ob Arasul installiert werden soll, mit dem Link in der Frage. " +
+          `Ja heißt: der Mensch öffnet ${BUY_URL}, legt das Konto an, kopiert den Token und fügt ihn hier ein. ` +
+          `Dann: ${STORE_CALL}`
+      ),
+      "",
+      t("Which files an installation would fit afterwards:", "Auf welche Akten eine Installation danach passt:"),
+      ...(targets.length ? targets.map((d) => `  ${d.place}`) : [t("  none yet, /device <name> first", "  noch keine, erst /device <name>")])
+    );
+  }
+  console.log(lines.join("\n"));
+}
+
+if (arg.licence || arg.license || arg.lizenz) {
+  await licencePath();
+  process.exit(0);
 }
 
 // --- Merker -----------------------------------------------------------------
@@ -841,8 +971,8 @@ async function installArasul() {
 
   console.log(
     t(
-      "Fetching the installer, with the token from the partner portal. The mirror comes into being right now.",
-      "Installer holen, mit dem Token aus dem Partnerportal. Der Spiegel entsteht genau jetzt."
+      "Fetching the installer, with the stored token. The mirror comes into being right now.",
+      "Installer holen, mit dem hinterlegten Token. Der Spiegel entsteht genau jetzt."
     )
   );
   const fetched = fetchMirror();
@@ -1074,6 +1204,26 @@ const keyRef = deployKey?.ok ? deployKey.ref : existing.api_key_ref || "";
 const startPwRef = arasul?.ok ? arasul.passwordRef : existing.start_password_ref || "";
 const where = `${customer ? `--customer ${customer} ` : ""}--device ${name}`;
 
+/**
+ * Der Kaufweg als nächster Schritt: unterstütztes Gerät, nichts von Arasul
+ * läuft, kein Token liegt. Hier beginnt er, und nirgends sonst.
+ */
+function buyStep() {
+  return (
+t(
+        "This device carries Arasul, and no token is stored. Ask through the interview tool whether it should " +
+          `be installed, with the link in the question: ${BUY_URL}. `,
+        "Dieses Gerät trägt Arasul, und es ist kein Token hinterlegt. Frag über das Interview-Werkzeug, ob es " +
+          `installiert werden soll, mit dem Link in der Frage: ${BUY_URL}. `
+      ) +
+        buyLines().slice(1, 3).join(" ") +
+        t(
+          ` Yes means: the human pastes the token here, you hand it in with ${STORE_CALL}, and the tool says which file to install on. No means: it stays noted here, nothing else happens.`,
+          ` Ja heißt: der Mensch fügt den Token hier ein, du gibst ihn hinein mit ${STORE_CALL}, und das Werkzeug sagt, auf welche Akte installiert wird. Nein heißt: es bleibt hier vermerkt, sonst passiert nichts.`
+        )
+  );
+}
+
 function nextSteps() {
   const steps = [];
   if (dryRun) {
@@ -1098,6 +1248,9 @@ function nextSteps() {
             "Installation: node .ara/tools/mirror.mjs --refresh holt ihn nur zum Nachlesen."
         )
       );
+    }
+    if (found.verdict === "supported" && svc.arasul.state !== "running" && !hasSecret("ARASUL_TOKEN")) {
+      steps.push(buyStep());
     }
     return steps;
   }
@@ -1181,6 +1334,8 @@ function nextSteps() {
       }
       steps.push(t(`Running operation: /maintain ${place}.`, `Laufender Betrieb: /maintain ${place}.`));
     }
+  } else if (!hasSecret("ARASUL_TOKEN")) {
+    steps.push(buyStep());
   } else {
     const traces = svc.arasul.state === "traces";
     steps.push(
@@ -1195,9 +1350,9 @@ function nextSteps() {
         `node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --install arasul` +
         `${traces ? " --despite-traces" : ""}. ` +
         t(
-          "That fetches the installer with the token from the portal (five per partner free of charge), pushes it onto the device, " +
+          "That fetches the installer with the stored token, pushes it onto the device, " +
             "calls it with a start password and a network name and creates the kit key afterwards. Create a runsheet beforehand: ",
-          "Das holt den Installer mit dem Token aus dem Portal (fünf je Partner kostenlos), schiebt ihn auf das Gerät, " +
+          "Das holt den Installer mit dem hinterlegten Token, schiebt ihn auf das Gerät, " +
             "ruft ihn mit Startpasswort und Netzname und legt danach den Kit-Schlüssel an. Vorher Laufzettel anlegen: "
         ) +
         `node .ara/tools/runsheet.mjs --create${customer ? ` --customer ${customer}` : ""} --device ${name}. ` +
@@ -1257,12 +1412,15 @@ function closingLines() {
     t(
       "On the licence, calmly: this kit is under the Apache licence 2.0 and stays usable without " +
         "Arasul. Device files, runsheets, calculation and paperwork work on this computer as they " +
-        "are. What a licence for Arasul costs is governed by the contract and not by this tool, and " +
-        "the download token from the portal is free and is no licence check.",
+        "are. What Arasul costs: an account at " + BUY_URL + " is free and brings one free device token " +
+        "for personal use, every further installation is bought, commercial use needs the licence at " +
+        "3,000 euros net. The token is a gate in front of the download and no licence check.",
       "Zur Lizenz, ruhig: dieses Kit steht unter der Apache-Lizenz 2.0 und bleibt ohne Arasul " +
         "brauchbar. Geräteakten, Laufzettel, Kalkulation und Papier laufen auf diesem Rechner so, " +
-        "wie sie sind. Was eine Lizenz für Arasul kostet, regelt der Vertrag und nicht dieses " +
-        "Werkzeug, und das Download-Token aus dem Portal kostet nichts und ist keine Lizenzprüfung."
+        "wie sie sind. Was Arasul kostet: ein Konto unter " + BUY_URL + " ist kostenlos und bringt einen " +
+        "kostenlosen Geräte-Token für den persönlichen Gebrauch, jede weitere Installation wird gekauft, " +
+        "kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto. Der Token ist eine Schranke vor dem " +
+        "Download und keine Lizenzprüfung."
     ),
   ];
 }
@@ -1357,6 +1515,7 @@ if (arg.json) {
           : null,
         deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
         next: steps,
+        licence: { token_stored: hasSecret("ARASUL_TOKEN"), buy_url: BUY_URL, store_call: STORE_CALL },
         closing: closingLines().filter((line) => line && !line.startsWith("#")),
       },
       null,
