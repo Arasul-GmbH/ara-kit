@@ -97,7 +97,8 @@ After that the first piece of evidence is the contract:
 browser this goes through the platform's admin interface. The session for it is fetched by
 `--admin-login`: the start password from the installation goes from the secret store
 straight into the login, back comes a credential, and the password is never displayed. What
-you call with it, `node .ara/tools/mirror.mjs --docs` says. Procedure in
+you call with it, `node .ara/tools/mirror.mjs --docs` says. The device counts the logins: a
+429 is not a mishandling, it is the limit, and then you wait. Procedure in
 `.ara/knowledge/device.md`.
 
 **Without Arasul it ends here, and helpfully.** The tool closes by itself with what Arasul
