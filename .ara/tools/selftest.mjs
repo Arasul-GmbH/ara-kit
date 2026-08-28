@@ -113,10 +113,26 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function tool(file, args, input) {
+/**
+ * Werkzeuge laufen hier auf Deutsch, wenn nichts anderes dabeisteht.
+ *
+ * Der Ueberordner greift in seinen Abnahmen deutsche Zeilen ("Eingespielt",
+ * "ist live auf", "Kontraktversion"). Dieser Selbsttest ist die Stelle, an der
+ * dieser Wortlaut festgenagelt ist: was hier steht, hat das Kit vor der
+ * Zweisprachigkeit auch gesagt. Die englische Fassung prueft der Abschnitt
+ * "Sprache" weiter unten, gegen dieselben Werkzeuge.
+ */
+const TOOL_LANGUAGE = "de";
+
+// Auch die Funktionen, die dieser Lauf selbst aufruft, sprechen dann Deutsch:
+// `language()` liest die Umgebung beim ersten Mal, und das ist nach dieser Zeile.
+process.env.ARA_LANGUAGE ||= TOOL_LANGUAGE;
+
+function tool(file, args, input, env = {}) {
   return spawnSync("node", [join(ROOT, ".ara", "tools", file), ...args], {
     encoding: "utf8",
     input,
+    env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ...env },
   });
 }
 
@@ -128,7 +144,7 @@ function tool(file, args, input) {
 function toolAsync(file, args, env = {}) {
   return new Promise((done) => {
     const child = spawn("node", [join(ROOT, ".ara", "tools", file), ...args], {
-      env: { ...process.env, ...env },
+      env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ...env },
     });
     let stdout = "";
     let stderr = "";
@@ -2210,17 +2226,21 @@ await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", asyn
   // Plattform lief, aber der erste Mitarbeiter und seine Freigabe entstehen in
   // der Oberfläche, und der Prüfer hatte keinen Browser. Das Wissen muss den
   // zweiten Weg nennen, und das Kit muss zeigen, wo er beschrieben steht.
-  const wissen = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
-  for (const [muster, was] of [
-    [/Mitarbeiter/, "der Fall selbst"],
-    [/Freigabe/, "die Freigabe"],
-    [/Admin-Handbuch/, "das Admin-Handbuch im Artefakt"],
-    [/API-Referenz/, "die API-Referenz im Artefakt"],
-    [/Authorization: Bearer/, "die Form des Aufrufs"],
-    [/mirror\.mjs --docs/, "der Weg zu den Anleitungen"],
-    [/--despite-traces/, "der benannte Weg über liegengebliebene Reste"],
-  ]) {
-    assert(muster.test(wissen), `in .ara/knowledge/device.md fehlt ${was}`);
+  // Beide Fassungen des Blattes muessen den Weg nennen. Eine Uebersetzung, die
+  // ihn verliert, laesst genau den Pruefer stehen, fuer den der Absatz da ist.
+  for (const blatt of ["device.md", "device.de.md"]) {
+    const wissen = readFileSync(join(ROOT, ".ara", "knowledge", blatt), "utf8");
+    for (const [muster, was] of [
+      [/Mitarbeiter|employee/, "der Fall selbst"],
+      [/Freigabe|permission/, "die Freigabe"],
+      [/Admin-Handbuch|admin handbook/, "das Admin-Handbuch im Artefakt"],
+      [/API-Referenz|API reference/, "die API-Referenz im Artefakt"],
+      [/Authorization: Bearer/, "die Form des Aufrufs"],
+      [/mirror\.mjs --docs/, "der Weg zu den Anleitungen"],
+      [/--despite-traces/, "der benannte Weg über liegengebliebene Reste"],
+    ]) {
+      assert(muster.test(wissen), `in .ara/knowledge/${blatt} fehlt ${was}`);
+    }
   }
   // Und das Werkzeug tut, was das Blatt verspricht.
   const werkzeug = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
@@ -2635,7 +2655,7 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".claude/settings.json",
     ".claude/commands/init.md",
     ".ara/tools/selftest.mjs",
-    ".ara/commands/alle/device.md",
+    ".ara/commands/all/device.md",
     ".ara/commands/partner/customer.md",
     // Die eine Ausnahme unter apps/: die Referenz-App gehoert dem Kit und kommt
     // mit dem Klon mit. Ohne sie haette ein Fremder nichts zum Ansehen.
@@ -3353,6 +3373,9 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
     const parts = path.split("/");
     const name = parts.pop();
     if (parts.some((dir) => !/^[a-z0-9._-]+$/.test(dir))) return true;
+    // README.de.md ist die deutsche Fassung von README.md und darf darum so
+    // heissen wie sie. Der Sprachteil steht vor der Endung, nicht im Namen.
+    if (fixed.has(name.replace(/\.[a-z]{2}\.md$/, ".md"))) return false;
     if (fixed.has(name)) return false;
     if (mirrored.test(path)) return /[^A-Za-z0-9._-]/.test(name);
     return !/^[a-z0-9._-]+$/.test(name);
@@ -3383,7 +3406,7 @@ check("Jedes Werkzeug beantwortet --help und tut sonst nichts", () => {
   for (const name of tools) {
     const run = tool(name, ["--help"], "");
     assert(run.status === 0, `${name} --help endet mit ${run.status}: ${run.stderr || run.stdout}`);
-    const expected = headerHelp(new URL(`./${name}`, import.meta.url).href).trim();
+    const expected = headerHelp(new URL(`./${name}`, import.meta.url).href, TOOL_LANGUAGE).trim();
     assert(expected.length > 40, `${name} hat keinen brauchbaren Kopf, aus dem eine Hilfe würde`);
     assert(
       run.stdout.trim() === expected,
@@ -3490,7 +3513,7 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   // .claude/commands/. Was dort sonst liegt, ist erzeugt und zaehlt nicht.
   const exists = (name) =>
     (name === "init" && existsSync(join(ROOT, ".claude", "commands", "init.md"))) ||
-    ["alle", "partner"].some((group) =>
+    ["all", "partner"].some((group) =>
       existsSync(join(ROOT, ".ara", "commands", group, `${name}.md`))
     );
   const missing = [];
@@ -3537,13 +3560,17 @@ check("Jeder Befehl nennt sein Wissen", () => {
   // statt dass Ara den ganzen Ordner liest. Wer keine nennt, laedt entweder alles
   // oder nichts, und beides ist falsch.
   const files = [join(ROOT, ".claude", "commands", "init.md")];
-  for (const group of ["alle", "partner"]) {
+  for (const group of ["all", "partner"]) {
     const dir = join(ROOT, ".ara", "commands", group);
     for (const name of readdirSync(dir)) files.push(join(dir, name));
   }
+  // Der Satz heisst in beiden Sprachen anders und meint dasselbe. Geprueft wird
+  // jede Fassung: eine Uebersetzung, die den Satz verliert, laedt entweder alles
+  // oder nichts, und dann faellt es nur in einer Sprache auf.
+  const names = /(Wissen, das dieser Befehl\s+lädt:|Knowledge this command\s+loads:)/;
   const silent = files.filter((file) => {
     const content = readFileSync(file, "utf8");
-    return !/Wissen, das dieser Befehl\s+lädt:/.test(content) || !/\.ara\/knowledge\/[a-z-]+\.md/.test(content);
+    return !names.test(content) || !/\.ara\/knowledge\/[a-z-]+\.md/.test(content);
   });
   assert(silent.length === 0, `ohne Wissensangabe: ${silent.map((f) => relative(ROOT, f)).join(", ")}`);
   return `${files.length} Befehle`;
@@ -3609,19 +3636,30 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   const neuerStand = stand.replace(/^(\d+)\.(\d+)\.\d+$/, (_, major, minor) => `${major}.${Number(minor) + 1}.0`);
   assert(neuerStand !== stand, `aus "${stand}" laesst sich keine naechste Nummer bilden`);
   writeFileSync(join(source, ".ara", "VERSION"), `${neuerStand}\n`);
-  writeFileSync(
-    join(source, ".ara", "CHANGELOG.md"),
-    read(".ara/CHANGELOG.md").replace(
-      `## ${stand} (`,
-      `## ${neuerStand} (2026-09-01)\n\nKontrakt: bis 3\n\n- Ein erfundener Punkt fuer den Selbsttest.\n\n## ${stand} (`
-    )
-  );
+  // Beide Fassungen der Aenderungsliste bekommen den neuen Eintrag: welche
+  // gelesen wird, entscheidet die Sprache, und dieser Test soll in beiden gruen
+  // sein. Die Kontraktzeile heisst je Fassung anders, gelesen werden beide.
+  for (const [datei, kontrakt] of [
+    ["CHANGELOG.md", "Contract: up to 3"],
+    ["CHANGELOG.de.md", "Kontrakt: bis 3"],
+  ]) {
+    writeFileSync(
+      join(source, ".ara", datei),
+      read(`.ara/${datei}`).replace(
+        `## ${stand} (`,
+        `## ${neuerStand} (2026-09-01)\n\n${kontrakt}\n\n- Ein erfundener Punkt fuer den Selbsttest.\n\n## ${stand} (`
+      )
+    );
+  }
   writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
   rmSync(join(source, ".ara", "knowledge", "sales.md"));
-  writeFileSync(
-    join(source, ".ara", "commands", "alle", "device.md"),
-    read(".ara/commands/alle/device.md") + "\nNeu im Kit.\n"
-  );
+  // Auch hier beide Sprachen: kopiert wird die Fassung, die zur Sprache passt.
+  for (const datei of ["device.md", "device.de.md"]) {
+    writeFileSync(
+      join(source, ".ara", "commands", "all", datei),
+      read(`.ara/commands/all/${datei}`) + "\nNeu im Kit.\n"
+    );
+  }
   mkdirSync(join(source, "business"), { recursive: true });
   writeFileSync(join(source, "business", "profile.md"), "---\nrole: company\n---\n\nKoeder.\n");
   writeFileSync(join(source, ".claude", "commands", "eigener.md"), "Koeder.\n");
@@ -3644,7 +3682,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/eigener\s+\/eigener/.test(run.stdout), "eigener Befehl wird nicht als solcher erkannt");
     run = await forkTool("commands.mjs", ["--apply"]);
     assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}`);
-    assert(has(".claude/commands/device.md"), "Befehl aus alle/ nicht angelegt");
+    assert(has(".claude/commands/device.md"), "Befehl aus all/ nicht angelegt");
     assert(has(".claude/commands/customer.md"), "Befehl aus partner/ nicht angelegt");
     assert(/Meiner\./.test(read(".claude/commands/eigener.md")), "eigener Befehl ueberschrieben");
 
@@ -3652,7 +3690,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     run = await forkTool("commands.mjs", ["--json", "--role", "company"]);
     const lage = JSON.parse(run.stdout);
     assert(!lage.commands.some((c) => c.group === "partner"), "Unternehmen bekommt Partnerbefehle");
-    assert(lage.commands.some((c) => c.name === "device"), "Unternehmen bekommt alle/ nicht");
+    assert(lage.commands.some((c) => c.name === "device"), "Unternehmen bekommt all/ nicht");
 
     // Ohne Profil und ohne --role wird nicht geraten.
     rmSync(join(fork, "business", "profile.md"));
@@ -3677,7 +3715,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(has(".ara/knowledge/probe.md"), "neue Datei fehlt");
     assert(!has(".ara/knowledge/sales.md"), "entfernte Datei liegt noch da");
     assert(/Neu\.\s*$/.test(read(".ara/persona/ara.md")), "geaenderte Datei nicht ersetzt");
-    assert(/Neu im Kit/.test(read(".ara/commands/alle/device.md")), "Befehlsquelle nicht ersetzt");
+    assert(/Neu im Kit/.test(read(".ara/commands/all/device.md")), "Befehlsquelle nicht ersetzt");
     // Die Koeder.
     assert(/Meins\./.test(read("business/profile.md")), "business/ wurde angefasst");
     assert(/Meiner\./.test(read(".claude/commands/eigener.md")), "erzeugter Befehl wurde angefasst");
@@ -3702,7 +3740,10 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     run = await forkTool("commands.mjs", ["--apply"]);
     assert(/Meine Zeile/.test(read(".claude/commands/customer.md")), "--apply hat die eigene Aenderung ueberschrieben");
     // Kit und Mensch haben beide geaendert.
-    write(".ara/commands/partner/customer.md", read(".ara/commands/partner/customer.md") + "\nAuch neu im Kit.\n");
+    // Geaendert wird die Quelle, aus der der Befehl kopiert wurde, und das ist
+    // die Fassung in der Sprache dieses Laufs.
+    const quelle = `.ara/commands/partner/customer${TOOL_LANGUAGE === "en" ? "" : `.${TOOL_LANGUAGE}`}.md`;
+    write(quelle, read(quelle) + "\nAuch neu im Kit.\n");
     run = await forkTool("commands.mjs", []);
     assert(/beides\s+\/customer/.test(run.stdout), "beidseitige Aenderung wird nicht erkannt");
     run = await forkTool("commands.mjs", ["--apply"]);
@@ -3751,19 +3792,41 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     for (const name of readdirSync(join(fork, ".claude", "commands"))) {
       if (name !== "init.md") rmSync(join(fork, ".claude", "commands", name));
     }
-    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-company.json")]);
+    // Die Antwortdatei gibt es in beiden Sprachen, und sie entscheidet, in
+    // welcher das Profil geschrieben wird. Geprueft wird die deutsche, weil ihre
+    // Ueberschriften hier belegt sind; die englische kommt gleich danach.
+    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-company.de.json")]);
     assert(run.status === 0, `Unternehmen: init.mjs fehlgeschlagen: ${run.stderr || run.stdout}`);
     assert(has("business/profile.md"), "Unternehmen: kein Profil");
     assert(!has("business/company.md"), "Unternehmen: company.md angelegt, obwohl es keine Angebote gibt");
     assert(/^role: company$/m.test(read("business/profile.md")), "Unternehmen: Zweig fehlt im Profil");
+    assert(/^language: de$/m.test(read("business/profile.md")), "Unternehmen: Sprache fehlt im Profil");
     assert(/^## Was ich vorhabe\n\nDas Geraet/m.test(read("business/profile.md")), "Unternehmen: Prosa nicht eingesetzt");
     assert(!/<!--[\s\S]*Wo du hin willst/.test(read("business/profile.md")), "Unternehmen: Vorlagenkommentar steht noch im Profil");
     assert(/Technikstand dieses Rechners\n\nStand \d{4}-\d{2}-\d{2}:/.test(read("business/profile.md")), "Unternehmen: Technikstand fehlt");
     assert(has(".claude/commands/device.md"), "Unternehmen: Befehle nicht angelegt");
     assert(!has(".claude/commands/customer.md"), "Unternehmen: bekommt den Kundenbefehl");
-    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.json")]);
+
+    // Dieselbe Antwortdatei auf Englisch: englisches Geruest, englische
+    // Ueberschriften, englische Befehle. Sonst waere die zweite Sprache eine
+    // Behauptung.
+    run = await forkTool("init.mjs", [
+      "--answers",
+      join(ROOT, ".ara", "templates", "init-answers-company.json"),
+      "--force",
+    ]);
+    assert(run.status === 0, `Englisch: init.mjs fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(/^language: en$/m.test(read("business/profile.md")), "Englisch: Sprache fehlt im Profil");
+    assert(/^## What I intend\n\nThe device/m.test(read("business/profile.md")), "Englisch: Prosa nicht eingesetzt");
+    assert(
+      /Technical state of this computer\n\nAs of \d{4}-\d{2}-\d{2}:/.test(read("business/profile.md")),
+      "Englisch: Technikstand fehlt"
+    );
+    assert(/Read `\.ara\/knowledge\/device\.md`/.test(read(".claude/commands/device.md")), "Englisch: deutscher Befehl angelegt");
+
+    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.de.json")]);
     assert(run.status !== 0, "zweiter Lauf ueberschreibt das Profil ohne --force");
-    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.json"), "--force"]);
+    run = await forkTool("init.mjs", ["--answers", join(ROOT, ".ara", "templates", "init-answers-partner.de.json"), "--force"]);
     assert(run.status === 0, `Partner: init.mjs fehlgeschlagen: ${run.stderr || run.stdout}`);
     assert(/^role: partner$/m.test(read("business/profile.md")), "Partner: Zweig fehlt im Profil");
     assert(/^hourly_rate: 95$/m.test(read("business/company.md")), "Partner: Stundensatz nicht in company.md");
