@@ -185,8 +185,11 @@ if (!arg["no-ssh"]) {
 let link = null;
 let platform = null;
 let apps = { state: "ungemessen", source: "", asked: [], found: [], unknown: [], note: "" };
-let backup = { state: "ungemessen", text: "ungemessen" };
-let models = { state: "ungemessen", text: "ungemessen" };
+// "ungemessen" ist der Zustandswert und bleibt englisch wie deutsch derselbe.
+// Der Text daneben ist Ausgabe und wird uebersetzt.
+const UNMEASURED = t("unmeasured", "ungemessen");
+let backup = { state: "ungemessen", text: UNMEASURED };
+let models = { state: "ungemessen", text: UNMEASURED };
 let apiLogs = null;
 
 if (!arg["no-api"]) {
