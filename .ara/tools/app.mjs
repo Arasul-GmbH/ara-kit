@@ -48,13 +48,14 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve } from "node:path";
-import { ROOT, ensureDir, fail, helpOnly, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
+import { ROOT, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
 import {
   NOT_IN_PACKAGE,
   appPath,
+  lastStand,
   listApps,
   movePlan,
   nextSteps,
@@ -370,9 +371,10 @@ function buildApp(app) {
 // --- Am Rechner: die Lage ----------------------------------------------------
 
 function showApp(app) {
-  const steps = nextSteps(app, { device: str(arg.device) });
+  const stand = lastStand(readState().apps?.[app.name], str(arg.device));
+  const steps = nextSteps(app, { device: str(arg.device), stand });
   if (arg.json) {
-    console.log(JSON.stringify({ ...app, steps }, null, 2));
+    console.log(JSON.stringify({ ...app, stand, steps }, null, 2));
     return app.exists && !app.manifestProblem ? 0 : 1;
   }
   const lines = [`# ${app.name}`, ""];
@@ -391,6 +393,19 @@ function showApp(app) {
         app.build.exists
           ? `${app.build.version ?? "?"} vom ${app.build.time}${app.build.stale ? ", älter als der Quelltext" : ""}`
           : "noch keiner"
+      }`,
+      // Was das Kit selbst an ein Gerät geschickt hat. Es ist der Merker und
+      // nicht das Gerät: gefragt wird dort, sobald jemand --status ruft.
+      `- Am Gerät: ${
+        stand
+          ? [
+              `${stand.place}`,
+              stand.deployed ? `Teststand ${stand.deployed.version ?? "?"} vom ${stand.deployed.time}` : null,
+              stand.live ? `live ${stand.live.version ?? "?"} seit ${stand.live.time}` : null,
+            ]
+              .filter(Boolean)
+              .join(", ") + " (aus dem Merker, nicht vom Gerät gefragt)"
+          : "vom Kit ist noch nichts eingespielt worden"
       }`
     );
   }
@@ -456,6 +471,23 @@ try {
 
 const place = device.customer ? `${device.customer}/${device.device}` : device.device;
 const fields = device.fields;
+
+/**
+ * Was an dieses Gerät ging, in den Merker.
+ *
+ * Ohne diese Notiz kennt die Seite ohne `--device` nur die Platte: sie sah am
+ * 28.08.2026 einen frischen Bau und schlug `--check` und `--deploy` vor,
+ * obwohl dieselbe Fassung längst live war. Notiert wird, was das Kit selbst
+ * getan hat, je App und Gerät. Es ist ein Merker und keine Auskunft über das
+ * Gerät: die gibt `--status`, und die fragt dort nach.
+ */
+function noteStand(appId, changes) {
+  const apps = { ...(readState().apps || {}) };
+  const record = { ...(apps[appId] || {}) };
+  record[place] = { ...(record[place] || {}), ...changes };
+  apps[appId] = record;
+  writeState({ apps });
+}
 
 /**
  * Welcher Ordner eingespielt wird.
@@ -778,6 +810,14 @@ if (arg.deploy !== undefined) {
     });
     if (!sent.ok) fail(`${place} hat das Paket abgewiesen (Status ${sent.status}).\n${reason(sent)}`);
 
+    noteStand(sent.data?.app_id ?? manifest.id, {
+      deployed: {
+        version: sent.data?.version ?? manifest.version ?? null,
+        stand: sent.data?.stand ?? "test",
+        time: now(),
+      },
+    });
+
     if (arg.json) {
       console.log(JSON.stringify({ device: place, eingespielt: sent.data }, null, 2));
     } else {
@@ -833,6 +873,8 @@ if (arg.live || arg.back) {
     json: { ziel },
   });
   if (!switched.ok) fail(`${place} hat nicht geschaltet (Status ${switched.status}).\n${reason(switched)}`);
+  // Auch --back ändert, was live ist. Beides ist dieselbe Notiz.
+  noteStand(app, { live: { version: switched.data?.version ?? null, time: now() } });
   if (arg.json) {
     showStand(switched.data);
   } else {
@@ -858,6 +900,8 @@ if (arg.remove) {
   }
   const gone = await endpoint("DELETE", `/api/v1/external/apps/${app}?bestaetigung=${app}`);
   if (!gone.ok) fail(`${place} hat ${app} nicht entfernt (Status ${gone.status}).\n${reason(gone)}`);
+  // Was es dort nicht mehr gibt, steht auch nicht mehr im Merker.
+  noteStand(app, { deployed: null, live: null });
   if (arg.json) showStand(gone.data);
   else console.log(`${app} ist von ${place} entfernt.`);
   process.exit(0);

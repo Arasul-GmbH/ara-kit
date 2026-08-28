@@ -86,7 +86,7 @@ Ruf sie auf, statt ihre Aufgabe nachzubauen. Alle liegen unter `.ara/tools/`.
 |---|---|
 | `mirror.mjs` | Das Installationsartefakt holen und ansehen (`--show`, `--refresh`). Ruft `/device` selbst auf |
 | `check-environment.mjs` | Was kann dieser Rechner (`--json` für die Auswertung) |
-| `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen, Arasul installieren, Kit-Schlüssel holen (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--json`) |
+| `device.mjs` | Geräteakte anlegen, SSH prüfen, Hardware und System erkennen, Urteil fällen, Arasul installieren, Kit-Schlüssel holen, mit dem Startpasswort eine Sitzung als Administrator holen, ohne es zu zeigen (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--admin-login`, `--json`) |
 | `app.mjs` | Zwei Seiten. Ohne `--device`: App aus der Vorlage anlegen, Pläne schieben, bauen, Lage lesen. Mit `--device`: Kontrakt lesen, `app.json` dagegen prüfen, Paket in den Teststand, live schalten, zurück, entfernen, und mit `--compose` auf ein Gerät ohne Arasul |
 | `customer.mjs` | Kundenakte anlegen (`--new`) und das Lagebild lesen: Stand, Geräte mit ihrem Zustand, Papier, Verlauf, was ansteht |
 | `maintain.mjs` | Zustand eines Geräts lesen: Statuszeile und Wartungsbericht, über SSH und über die Schnittstelle. Liest nur, und sagt, was nicht gemessen werden konnte (`--line`, `--report`, `--json`) |

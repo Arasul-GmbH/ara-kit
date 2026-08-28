@@ -199,12 +199,19 @@ Plattform, kein Docker, kein Token. Dann geht es los:
    `$HOME/arasul-<fassung>`, und dort ausgepackt. Das Token bleibt auf dem Rechner des
    Partners.
 3. **Der Installer läuft auf dem Gerät.** Wie er heißt, sagt das Artefakt selbst in
-   `arasul-release.json`; das Kit liest es dort und rät nicht. Gerufen wird er mit
-   Startpasswort und Netzname, denn **nur dabei entstehen Netzname, Fassung,
-   Startpasswort und die Erstausgabe am Gerät**. Seine Ausgabe läuft durch, du liest mit.
-   Bricht er ab, wird nichts schöngeredet: Ursache lesen, beheben, denselben Befehl noch
-   einmal.
+   `arasul-release.json`; das Kit liest es dort und rät nicht, und es liest dort auch die
+   Fassung. Gerufen wird er mit Startpasswort und Netzname, denn **nur dabei entstehen
+   Netzname, Fassung, Startpasswort und die Erstausgabe am Gerät**. Seine Ausgabe läuft
+   über den Bildschirm, du liest mit, und das Kit liest mit: es maskiert dabei, was wie
+   ein Schlüssel oder ein Passwort aussieht. Bricht er ab, wird nichts schöngeredet:
+   Ursache lesen, beheben, denselben Befehl noch einmal.
 4. **Der Kit-Schlüssel wird angelegt**, siehe unten.
+
+**`tls: selfsigned` trägt die Akte danach von selbst.** Ein frisch installiertes Gerät
+stellt sein Zertifikat aus einer eigenen Geräte-CA aus. Ohne diesen Eintrag scheitert der
+erste Aufruf gegen die Schnittstelle an `SELF_SIGNED_CERT_IN_CHAIN`, und zwar nach einer
+Installation, die das Kit selbst gemacht hat. Bekommt das Gerät später ein Zertifikat, das
+sich prüfen lässt, nimmst du den Eintrag von Hand wieder heraus.
 
 **Das Startpasswort würfelt das Kit und legt es sofort in die Geheimnis-Ablage**, unter
 dem Namen, den die Akte in `start_password_ref` trägt. Es steht in keinem Protokoll, in
@@ -218,6 +225,19 @@ printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set <eintrag>
 
 **Der Netzname** ist ohne Angabe der Name der Akte. `--net-name <name>` setzt einen
 anderen. Er landet in `net_name` in der Geräteakte.
+
+### Was der Installer nicht konnte
+
+Der Installer erledigt nicht alles, und er sagt das mitten in mehreren hundert Zeilen. Das
+Kit liest seine Ausgabe mit, sammelt diese Zeilen und legt sie am Ende noch einmal hin,
+unter **„Was der Installer nicht konnte"**, dazu in die Akte unter Prüfungen.
+
+**„Nicht kritisch" sagt der Installer über seinen eigenen Lauf, nicht über das Gerät beim
+Kunden.** Eine fehlgeschlagene SSH-Härtung und eine nicht eingerichtete Firewall sind für
+den Installer eine Randnotiz und für ein Gerät im fremden Netz eine offene Tür. Geh die
+Liste durch, bevor das Gerät ausgeliefert wird: Zugang härten nach
+`.ara/knowledge/remote-access.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
+hast und was offen bleibt, schreibst du in den Laufzettel.
 
 ### Reste, aber nichts läuft
 
@@ -282,10 +302,49 @@ etwas sieht, braucht es zwei Dinge: einen Mitarbeiter und eine Freigabe für das
 benutzen soll. Beides gehört zur Abnahme und nicht zum Nachher.
 
 **Der übliche Weg ist die Oberfläche**, im Browser am Gerät, angemeldet als Administrator.
-Das Kit hat einen Schlüssel und keine Sitzung, es kann das nicht für dich tun.
 
-**Ohne Browser gibt es trotzdem einen Weg**, und er steht nicht im Kit, sondern im
-Artefakt. Der Spiegel bringt die Anleitungen mit, die zu genau dieser Fassung gehören:
+### Die Sitzung: `--admin-login`
+
+Das Kit hat einen Kit-Schlüssel mit `app:deploy` und keine Sitzung. Eine Sitzung holt es
+sich aber, und zwar aus dem Startpasswort, das bei der Installation entstanden ist:
+
+```
+node .ara/tools/device.mjs --name <gerät> --admin-login
+```
+
+Das meldet sich am Gerät an und gibt den Ausweis aus, mit dem die nächsten Aufrufe gehen.
+**Das Passwort wird dabei nicht angezeigt**, es geht aus der Geheimnis-Ablage direkt in
+die Anmeldung. Der Weg läuft über die Schnittstelle und nicht über SSH: es braucht dafür
+weder einen Anmeldenamen noch einen Schlüssel, nur `address` oder `api_base` in der Akte.
+Für ein Skript gibt `--token` nur den Ausweis:
+
+```
+SITZUNG=$(node .ara/tools/device.mjs --name <gerät> --admin-login --token)
+```
+
+Der Weg dorthin ist `POST /api/auth/login`, und das ist eine Angabe über das Produkt wie
+jede andere: **sie gehört an einem Gerät geprüft.** Das tut der Doku-Selbsttest:
+
+```
+node .ara/tools/check-docs.mjs --device <gerät>
+```
+
+Nennt das Artefakt in `arasul-release.json` einen anderen Weg oder einen anderen Namen für
+den Administrator, gilt der. Stimmt beides nicht, gibst du es im Aufruf mit:
+`--login-path <weg>` und `--login-user <name>`. Das Werkzeug schreibt jedes Mal dazu, woher
+es seine Angaben hat.
+
+Weist das Gerät die Anmeldung ab, hat das meist einen von zwei Gründen: der Administrator
+heißt dort anders, oder das Startpasswort wurde am Gerät schon geändert. Dann ist der
+Eintrag in der Ablage veraltet, und der Mensch, der es geändert hat, kennt das neue.
+
+**Welche Namen die Ablage führt**, sagt `node .ara/tools/secrets.mjs --show`. Dort steht
+auch der Eintrag mit dem Startpasswort, mit dem Gerät daneben. Werte stehen dort nie.
+
+### Weg und Rumpf stehen im Artefakt
+
+Was du mit der Sitzung dann aufrufst, steht nicht im Kit, sondern im Artefakt. Der Spiegel
+bringt die Anleitungen mit, die zu genau dieser Fassung gehören:
 
 ```
 node .ara/tools/mirror.mjs --docs
@@ -313,12 +372,14 @@ curl -sS -X POST \
 
 1. **Den Weg und den Rumpf.** Beide stehen in der API-Referenz dieser Fassung. Schreib sie
    nicht aus dem Gedächtnis und nicht aus einem älteren Blatt ab.
-2. **Den Token.** Wie ein Administrator zu einem kommt, steht ebenfalls dort. Der
-   Kit-Schlüssel ist es **nicht**: der trägt `app:deploy` und sonst nichts, und das Gerät
-   weist ihn hier ab. Das ist keine Panne, sondern die Trennung, für die es ihn gibt.
+2. **Den Token.** Er kommt aus `--admin-login`, sonst aus dem Weg, den die API-Referenz
+   beschreibt. Der Kit-Schlüssel ist es **nicht**: der trägt `app:deploy` und sonst
+   nichts, und das Gerät weist ihn hier ab. Das ist keine Panne, sondern die Trennung, für
+   die es ihn gibt.
 3. **Das Passwort.** Der Administrator gibt das Startpasswort beim ersten Mal weiter und
    ändert es danach. Es steht in der Erstausgabe am Gerät und in der Geheimnis-Ablage des
-   Kits, unter dem Namen aus `start_password_ref`. Du zeigst es nie an.
+   Kits, unter dem Namen aus `start_password_ref`. Du zeigst es nie an, du benutzt es über
+   `--admin-login`.
 
 **Was du aufschreibst:** dass ein Mitarbeiter angelegt wurde, wer es war, was ihm
 freigegeben ist und auf welchem Weg du es gemacht hast. Das gehört in den Laufzettel,

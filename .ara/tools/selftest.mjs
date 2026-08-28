@@ -10,6 +10,7 @@
 
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
 import { spawn, spawnSync } from "node:child_process";
 import {
   cpSync,
@@ -41,7 +42,20 @@ import {
   planFor,
   undocumented,
 } from "./lib/docroutes.mjs";
-import { installCommand, installTarget, installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
+import {
+  createMasker,
+  installCommand,
+  installTarget,
+  installerEntry,
+  mirrorState,
+  releaseVersion,
+  runInstaller,
+  scrub,
+  ship,
+  troubles,
+} from "./lib/install.mjs";
+import { lastStand, movePlan, nextSteps, readApp, versioned } from "./lib/appfile.mjs";
+import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
   needsParameter,
@@ -591,6 +605,127 @@ check("Ein Geheimnis lässt sich auch ohne Terminal hinterlegen", () => {
   }
 });
 
+await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu werden", async () => {
+  // Fund 1 des zweiten Fremdtests am 28.08.2026. Die Installation legte das
+  // Startpasswort des Administrators ordentlich unter ARASUL_START_<gerät> ab,
+  // und dann kam es dort nie wieder heraus: `secrets.mjs --show` nannte nur die
+  // Kit-Schlüssel, und kein Werkzeug reichte es für die erste Anmeldung weiter.
+  // Ein Geheimnis, an das niemand herankommt, ist ein verlorener Zugang.
+  //
+  // Zuerst die Mechanik für sich: was das Artefakt sagt, sticht den Rückfall des
+  // Kits, und was im Aufruf steht, sticht beides. Das Kit behauptet hier nichts,
+  // ohne dazuzusagen, woher es das hat.
+  assert(loginSpec(null).sources.path === "kit", "der Rückfall gibt sich nicht als solcher zu erkennen");
+  const ausArtefakt = loginSpec({ anmeldung: { pfad: "/api/sitzung", benutzer: "chef" } });
+  assert(ausArtefakt.path === "/api/sitzung" && ausArtefakt.sources.path === "artefakt", "das Artefakt sticht nicht");
+  assert(ausArtefakt.user === "chef" && ausArtefakt.sources.user === "artefakt", "der Benutzername aus dem Artefakt gilt nicht");
+  const ausAufruf = loginSpec({ anmeldung: { pfad: "/api/sitzung" } }, { path: "/api/anders" });
+  assert(ausAufruf.path === "/api/anders" && ausAufruf.sources.path === "aufruf", "der Aufruf sticht nicht");
+  assert(pickToken({ token: "ey.abc" }) === "ey.abc", "der Ausweis wird nicht gefunden");
+  assert(pickToken({ sitzung: { access_token: "ey.tief" } }) === "ey.tief", "ein Ausweis im Umschlag wird nicht gefunden");
+  assert(pickToken({ irgendwas: 1 }) === null, "es wird ein Ausweis behauptet, wo keiner steht");
+
+  const name = "selftest-login";
+  const akte = join(ROOT, "devices", name);
+  const ref = "ARASUL_START_SELFTEST_LOGIN";
+  const passwort = "start-geheim-4711";
+  const work = mkdtempSync(join(tmpdir(), "ara-login-"));
+  const mirror = join(work, "spiegel");
+
+  // Das Gerät, gespielt: es nimmt genau eine Anmeldung an und gibt einen Ausweis.
+  const gesehen = [];
+  const server = createServer((request, response) => {
+    const teile = [];
+    request.on("data", (chunk) => teile.push(chunk));
+    request.on("end", () => {
+      const antwort = (status, body) => {
+        response.writeHead(status, { "Content-Type": "application/json" });
+        response.end(JSON.stringify(body));
+      };
+      let rumpf = null;
+      try {
+        rumpf = JSON.parse(Buffer.concat(teile).toString("utf8") || "null");
+      } catch {
+        rumpf = null;
+      }
+      gesehen.push({ pfad: request.url, method: request.method, rumpf });
+      if (request.method !== "POST" || !["/api/auth/login", "/api/sitzung"].includes(request.url)) {
+        return antwort(404, { error: { message: "Diesen Weg gibt es hier nicht" } });
+      }
+      const nutzer = rumpf?.benutzer ?? rumpf?.konto;
+      if (rumpf?.passwort !== passwort || !["admin", "chef"].includes(nutzer)) {
+        return antwort(401, { error: { message: "Anmeldung abgelehnt" } });
+      }
+      antwort(200, { data: { token: "ey.selbsttest.sitzung", gilt_bis: "2026-08-29T00:00:00Z" } });
+    });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    start_password_ref: ref,
+  });
+  // Das Geheimnis kommt aus der Umgebung: der Selbsttest fasst die echte
+  // Geheimnis-Ablage des Partners nicht an.
+  const env = { [ref]: passwort, ARA_MIRROR: mirror };
+
+  try {
+    // 1. Das Blatt nennt den Namen. Vorher stand dort nur ARASUL_KEY_...
+    let run = await toolAsync("secrets.mjs", ["--show"], env);
+    assert(run.status === 0, `Anzeige fehlgeschlagen: ${run.stderr}`);
+    assert(new RegExp(ref).test(run.stdout), `der Name des Startpassworts fehlt: ${run.stdout}`);
+    assert(/--admin-login/.test(run.stdout), "es wird nicht gesagt, wozu das Startpasswort da ist");
+    assert(!new RegExp(passwort).test(run.stdout), "das Startpasswort steht in der Übersicht");
+
+    // 2. Aus dem Passwort wird eine Sitzung, und zwar ohne das Passwort zu zeigen.
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], env);
+    assert(run.status === 0, `Anmeldung fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/ey\.selbsttest\.sitzung/.test(run.stdout), `der Ausweis fehlt in der Ausgabe: ${run.stdout}`);
+    assert(!new RegExp(passwort).test(`${run.stdout}${run.stderr}`), "das Startpasswort steht in der Ausgabe");
+    const angemeldet = gesehen.find((eintrag) => eintrag.pfad === "/api/auth/login");
+    assert(angemeldet, `es wurde nicht angemeldet: ${JSON.stringify(gesehen)}`);
+    assert(angemeldet.rumpf?.passwort === passwort, "das Passwort kam nicht am Gerät an");
+
+    // 3. Für ein Skript: nur der Ausweis, ohne Satz drumherum.
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-login", "--token"], env);
+    assert(run.stdout === "ey.selbsttest.sitzung", `--token gibt nicht nur den Ausweis: ${run.stdout}`);
+
+    // 4. Sagt das Artefakt einen anderen Weg, gilt der und nicht der Rückfall.
+    mkdirSync(mirror, { recursive: true });
+    writeFileSync(
+      join(mirror, "arasul-release.json"),
+      JSON.stringify({ fassung: "9.9.9", einstiegspunkt: "install.sh", anmeldung: { pfad: "/api/sitzung", benutzer: "chef" } })
+    );
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], env);
+    assert(run.status === 0, `Anmeldung über den Weg aus dem Artefakt fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/aus dem Artefakt/.test(run.stdout), `es wird nicht gesagt, woher der Weg kommt: ${run.stdout}`);
+    assert(gesehen.some((e) => e.pfad === "/api/sitzung" && e.rumpf?.benutzer === "chef"), "der Weg aus dem Artefakt wurde nicht genommen");
+
+    // 5. Einen Weg, den es nicht gibt, behauptet das Kit nicht: es schickt zur
+    //    API-Referenz im Artefakt, denn dort steht der richtige.
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-login", "--login-path", "/api/nirgendwo"], env);
+    assert(run.status !== 0, "ein Weg, den es nicht gibt, endet mit Erfolg");
+    assert(/mirror\.mjs --docs/.test(run.stderr), `es wird nicht zur API-Referenz geschickt: ${run.stderr}`);
+
+    // 6. Ohne hinterlegtes Passwort sagt das Werkzeug, wie es dorthin kommt.
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], { ARA_MIRROR: mirror });
+    assert(run.status !== 0, "ohne Startpasswort wurde angemeldet");
+    assert(new RegExp(`secrets\\.mjs --set ${ref}`).test(run.stderr), `der Weg zum Hinterlegen fehlt: ${run.stderr}`);
+    return "Name genannt, Sitzung geholt, Passwort nie gezeigt";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 // --- Spiegel ----------------------------------------------------------------
 
 await checkAsync("Spiegel holt und packt aus", async () => {
@@ -652,6 +787,75 @@ await checkAsync("Spiegel holt und packt aus", async () => {
     assert(run.status !== 0, "abgelehnter Token führt nicht zum Fehler");
     assert(/Wartungs-Abo/.test(run.stdout), "Begründung des Portals fehlt in der Meldung");
   } finally {
+    server.close();
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Die Fassung steht im Artefakt, also nennt der Spiegel sie", async () => {
+  // Fund 4 des zweiten Fremdtests am 28.08.2026. Der Spiegel lag da, in ihm lag
+  // arasul-release.json mit der Fassung, und trotzdem sagten `--show` und die
+  // Geräteakte „Fassung unbekannt": das Kit las die Zahl nur aus einer Datei
+  // VERSION, und die bringt das Artefakt nicht mit.
+  const work = mkdtempSync(join(tmpdir(), "ara-fassung-"));
+  const source = join(work, "arasul-jet-abc1234");
+  const targetMirror = join(work, "ziel");
+  const gemerkt = process.env.ARA_MIRROR;
+
+  mkdirSync(source, { recursive: true });
+  // Ein Artefakt ohne VERSION, so wie es wirklich kommt.
+  writeFileSync(
+    join(source, "arasul-release.json"),
+    JSON.stringify({ fassung: "2.4.1", einstiegspunkt: "install.sh" }, null, 2)
+  );
+  writeFileSync(join(source, "install.sh"), "#!/bin/sh\n");
+  const tar = spawnSync("tar", ["-czf", join(work, "paket.tar.gz"), "-C", work, "arasul-jet-abc1234"]);
+  assert(tar.status === 0, "Testpaket ließ sich nicht bauen");
+  const packet = readFileSync(join(work, "paket.tar.gz"));
+
+  const server = createServer((request, response) => {
+    response.writeHead(200, { "Content-Type": "application/gzip" });
+    response.end(packet);
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const env = { ARASUL_BASIS: base, ARA_MIRROR: targetMirror, ARASUL_TOKEN: "gueltig" };
+    let run = await toolAsync("mirror.mjs", ["--refresh"], env);
+    assert(run.status === 0, `Holen fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/2\.4\.1/.test(run.stdout), `die Fassung fehlt in der Meldung: ${run.stdout}`);
+
+    const state = JSON.parse(readFileSync(join(targetMirror, "STATE.json"), "utf8"));
+    assert(state.version === "2.4.1", `die Fassung kam nicht in den Stand: ${state.version}`);
+
+    // Der Platzhalter, der den Ordner im Repository hält, überlebt das
+    // Auspacken. Ohne ihn meldete `git status` im frischen Klon nach der ersten
+    // Installation eine gelöschte Datei, die niemand angefasst hatte.
+    assert(existsSync(join(targetMirror, ".gitkeep")), ".gitkeep ist beim Auspacken verschwunden");
+
+    run = await toolAsync("mirror.mjs", ["--show"], env);
+    assert(/Produktversion: 2\.4\.1/.test(run.stdout), `--show nennt die Fassung nicht: ${run.stdout}`);
+
+    // Ein Spiegel aus der Zeit davor trägt im Stand keine Zahl. Sie liegt
+    // trotzdem daneben, also wird sie gelesen statt „unbekannt" gesagt.
+    writeFileSync(
+      join(targetMirror, "STATE.json"),
+      JSON.stringify({ fetched: new Date().toISOString(), source: base, version: null })
+    );
+    run = await toolAsync("mirror.mjs", ["--show"], env);
+    assert(/Produktversion: 2\.4\.1/.test(run.stdout), `ein alter Stand bleibt unbekannt: ${run.stdout}`);
+    assert(/arasul-release\.json/.test(run.stdout), "es wird nicht gesagt, woher die Fassung kommt");
+
+    // Und dieselbe Zahl geht in den Ordnernamen am Gerät, statt „installer".
+    process.env.ARA_MIRROR = targetMirror;
+    assert(releaseVersion(targetMirror) === "2.4.1", "die Fassung wird aus dem Artefakt nicht gelesen");
+    assert(mirrorState().version === "2.4.1", "der Stand liefert die Fassung nicht nach");
+    assert(/arasul-2\.4\.1/.test(installTarget(mirrorState().version)), "das Ziel am Gerät trägt die Fassung nicht");
+    return "2.4.1 aus arasul-release.json";
+  } finally {
+    if (gemerkt === undefined) delete process.env.ARA_MIRROR;
+    else process.env.ARA_MIRROR = gemerkt;
     server.close();
     rmSync(work, { recursive: true, force: true });
   }
@@ -985,11 +1189,20 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert(run.status === 0, `Zurückschalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.geschaltet.join(",") === "live,zurueck", `falsch geschaltet: ${gesehen.geschaltet}`);
 
+    // Das Kit merkt sich, was es selbst an dieses Gerät geschickt hat. Ohne diese
+    // Notiz schlug die Seite ohne --device danach wieder --check und --deploy vor.
+    let merker = JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name];
+    assert(merker?.deployed?.version === "1.0.0", `der Teststand steht nicht im Merker: ${JSON.stringify(merker)}`);
+    assert(merker?.live?.version === "0.9.0", `das Zurückschalten steht nicht im Merker: ${JSON.stringify(merker)}`);
+
     // Entfernen ist unumkehrbar: ohne die abgetippte Kennung passiert nichts.
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove"], env);
     assert(run.status !== 0 && gesehen.entfernt === null, "--remove hat ohne Bestätigung entfernt");
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove", "--confirm", "probeapp"], env);
     assert(run.status === 0 && gesehen.entfernt === "bestaetigung=probeapp", "die Rückfrage wird nicht durchgereicht");
+    // Was es dort nicht mehr gibt, steht auch nicht mehr im Merker.
+    merker = JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name];
+    assert(!merker?.deployed && !merker?.live, `die entfernte App steht noch im Merker: ${JSON.stringify(merker)}`);
 
     // Ein Manifest, das einen Ordner verspricht, den es nicht gibt: das Gerät
     // würde es abweisen, und das Kit sieht es vorher, ohne Paket und ohne Bau.
@@ -1053,6 +1266,74 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     rmSync(appDir, { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
+  }
+});
+
+await checkAsync("Ein selbst installiertes Gerät kennt sein eigenes Zertifikat", async () => {
+  // Fund 3 des zweiten Fremdtests am 28.08.2026. Nach `--install arasul` trug
+  // die Akte `tls:` leer, und der erste Aufruf gegen die Schnittstelle scheiterte
+  // an SELF_SIGNED_CERT_IN_CHAIN. Das Gerät trägt eine eigene Geräte-CA, und das
+  // Kit hat zugesehen, wie sie entstanden ist: es weiß hier Bescheid.
+  const work = mkdtempSync(join(tmpdir(), "ara-tls-"));
+  const keyFile = join(work, "schluessel.pem");
+  const certFile = join(work, "zertifikat.pem");
+  const gemacht = spawnSync(
+    "openssl",
+    ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", keyFile, "-out", certFile,
+      "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"],
+    { encoding: "utf8" }
+  );
+  if (gemacht.status !== 0) {
+    rmSync(work, { recursive: true, force: true });
+    return "übersprungen, openssl stellt hier kein Zertifikat aus";
+  }
+
+  const name = "selftest-tls";
+  const akte = join(ROOT, "devices", name);
+  const server = createHttpsServer(
+    { key: readFileSync(keyFile), cert: readFileSync(certFile) },
+    (request, response) => {
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ data: KONTRAKT }));
+    }
+  );
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `https://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST_TLS: "aras_selbsttest" };
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST_TLS",
+  });
+
+  try {
+    // So sah es beim Fremdtest aus: die Akte schweigt zum Zertifikat.
+    let run = await toolAsync("app.mjs", ["--device", name, "--contract"], env);
+    assert(run.status !== 0, "ein selbst ausgestelltes Zertifikat wurde stillschweigend angenommen");
+    assert(/tls: selfsigned/.test(run.stderr), `der Weg heraus fehlt in der Meldung: ${run.stderr}`);
+
+    // Mit dem Eintrag geht es, und nur für dieses eine Gerät.
+    writeFrontmatter(join(akte, "device.md"), { tls: "selfsigned" });
+    run = await toolAsync("app.mjs", ["--device", name, "--contract"], env);
+    assert(run.status === 0, `mit tls: selfsigned scheitert der Kontrakt: ${run.stdout}${run.stderr}`);
+
+    // Und das Werkzeug trägt den Eintrag nach der eigenen Installation selbst
+    // ein, statt den Partner in diesen Fehler laufen zu lassen.
+    const werkzeug = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+    assert(/changes\.tls = "selfsigned"/.test(werkzeug), "device.mjs setzt tls nach der Installation nicht");
+    const vorlage = readFrontmatter(join(ROOT, ".ara", "templates", "device.md"));
+    assert("tls" in vorlage.fields, "die Vorlage der Geräteakte kennt das Feld tls nicht");
+    return "ohne Eintrag abgewiesen, mit Eintrag angenommen";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
   }
 });
 
@@ -1402,6 +1683,122 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
   }
 });
 
+check("Was live ist, wird nicht noch einmal vorgeschlagen", () => {
+  // Fund 5 des zweiten Fremdtests am 28.08.2026. `--app <name>` ohne `--device`
+  // kannte nur die Platte: es sah einen frischen Bau und schlug `--check` und
+  // `--deploy` vor, obwohl dieselbe Fassung längst live war. Ein Vorschlag, der
+  // einen erledigten Schritt wiederholt, ist keiner.
+  const app = {
+    name: "probeapp",
+    dir: join(ROOT, "apps", "probeapp"),
+    exists: true,
+    manifest: { id: "probeapp", version: "1.0.0" },
+    manifestProblem: null,
+    readme: true,
+    plans: {
+      offen: [],
+      aktiv: [{ file: "2026-08-27-erste.md", state: "aktiv", path: "", titel: "Erste Fassung" }],
+      erledigt: [],
+    },
+    build: { exists: true, version: "1.0.0", id: "probeapp", stale: false, time: "2026-08-28 09:00" },
+  };
+  const wie = (steps) => steps.map((s) => s.wie || "").join(" ");
+  const was = (steps) => steps.map((s) => s.was).join(" ");
+
+  // Ohne Merker bleibt alles, wie es war: prüfen, dann einspielen.
+  const ohne = nextSteps(app, {});
+  assert(/--check/.test(wie(ohne)) && /--deploy/.test(wie(ohne)), `ohne Merker fehlt der Weg an das Gerät: ${wie(ohne)}`);
+
+  // Im Teststand: live schalten, und nicht noch einmal einspielen.
+  const teststand = {
+    place: "orin",
+    deployed: { version: "1.0.0", stand: "test", time: "2026-08-28 10:00" },
+  };
+  const imTest = nextSteps(app, { stand: teststand });
+  assert(/--live/.test(wie(imTest)), `der nächste Schritt ist nicht das Schalten: ${wie(imTest)}`);
+  assert(!/--deploy/.test(wie(imTest)), `es wird noch einmal eingespielt: ${wie(imTest)}`);
+  assert(/ --device orin/.test(wie(imTest)), `das Gerät aus dem Merker fehlt im Aufruf: ${wie(imTest)}`);
+
+  // Live: am Gerät ist nichts offen, dran ist der Plan.
+  const live = { ...teststand, live: { version: "1.0.0", time: "2026-08-28 10:30" } };
+  const istLive = nextSteps(app, { stand: live });
+  assert(!/--deploy|--check|--live/.test(wie(istLive)), `nach live wird weiter geschaltet: ${wie(istLive)}`);
+  assert(/live/.test(was(istLive)), `es wird nicht gesagt, dass die Fassung live ist: ${was(istLive)}`);
+  assert(/--plan-erledigt/.test(wie(istLive)), `der Plan wird nicht zum Abschluss gebracht: ${wie(istLive)}`);
+
+  // Eine ältere Fassung am Gerät sagt über die neue nichts.
+  const alt = { place: "orin", live: { version: "0.9.0", time: "2026-08-20 08:00" } };
+  assert(/--deploy/.test(wie(nextSteps(app, { stand: alt }))), "eine alte Live-Fassung hält den neuen Bau auf");
+
+  // Und der Merker wählt das Gerät: ohne Angabe das jüngste, mit Angabe genau das.
+  const merker = {
+    orin: { live: { version: "1.0.0", time: "2026-08-20 08:00" } },
+    "kunde/werk2": { deployed: { version: "1.0.0", stand: "test", time: "2026-08-28 12:00" } },
+  };
+  assert(lastStand(merker)?.place === "kunde/werk2", "ohne Angabe gilt nicht der jüngste Eintrag");
+  assert(lastStand(merker, "orin")?.place === "orin", "mit Angabe wird das falsche Gerät genommen");
+  assert(lastStand(merker, "werk2")?.place === "kunde/werk2", "ein Kundengerät wird über seinen Namen nicht gefunden");
+  assert(lastStand({}, null) === null, "ein leerer Merker liefert einen Stand");
+  const beiKunde = nextSteps(app, { stand: lastStand(merker) });
+  assert(/--customer kunde --device werk2/.test(wie(beiKunde)), `das Kundengerät fehlt im Aufruf: ${wie(beiKunde)}`);
+  return "ohne Merker, im Teststand, live, veraltet";
+});
+
+check("Der Plan der Referenz-App bleibt liegen", () => {
+  // Fund 6 des zweiten Fremdtests am 28.08.2026. `--plan-erledigt` verschob den
+  // Plan der Referenz-App, und der war versioniert: der frische Klon war danach
+  // schmutzig, und das nächste Update stolperte darüber. Die Referenz-App gehört
+  // dem Kit und ist zum Ansehen da.
+  const listed = spawnSync("git", ["ls-files", "-z", "apps/urlaubsantrag/plans"], { cwd: ROOT, encoding: "utf8" });
+  if (listed.status !== 0) return "übersprungen, kein Git-Repository";
+  const versionierte = listed.stdout.split("\0").filter(Boolean);
+  assert(versionierte.length > 0, "die Referenz-App bringt keinen Plan mehr mit");
+
+  assert(versioned(join(ROOT, versionierte[0])), "eine versionierte Datei wird nicht als solche erkannt");
+  assert(!versioned(join(ROOT, ".ara", "state.json")), "eine Datei außerhalb der Versionsverwaltung gilt als versioniert");
+
+  const app = readApp("urlaubsantrag");
+  const plan = app.plans.aktiv[0] || app.plans.offen[0];
+  assert(plan, "die Referenz-App hat keinen Plan, an dem sich das prüfen ließe");
+  let abgelehnt = null;
+  try {
+    movePlan(app, plan.file, "erledigt");
+  } catch (error) {
+    abgelehnt = error.message;
+  }
+  assert(abgelehnt, "der Plan der Referenz-App wurde verschoben");
+  assert(/Versionsverwaltung/.test(abgelehnt), `die Begründung nennt den Grund nicht: ${abgelehnt}`);
+  assert(existsSync(plan.path), "der Plan liegt nicht mehr da, wo er lag");
+
+  // Der Arbeitsordner bleibt sauber, an genau den zwei Stellen, an denen ihn der
+  // Fremdtest schmutzig gemacht hat. Der Rest der Referenz-App ist nicht gemeint:
+  // wer dort etwas ändert, tut es absichtlich.
+  const status = spawnSync("git", ["status", "--porcelain", "--", "apps/urlaubsantrag/plans", ".ara/mirror/.gitkeep"], {
+    cwd: ROOT,
+    encoding: "utf8",
+  });
+  assert(status.stdout.trim() === "", `der Arbeitsordner ist schmutzig: ${status.stdout}`);
+  assert(existsSync(join(ROOT, ".ara", "mirror", ".gitkeep")), "der Platzhalter des Spiegels fehlt");
+
+  // Für eine eigene App bleibt der Weg offen.
+  const eigen = {
+    name: "selftest-eigen",
+    dir: mkdtempSync(join(tmpdir(), "ara-plan-")),
+    plans: { offen: [], aktiv: [], erledigt: [] },
+  };
+  try {
+    mkdirSync(join(eigen.dir, "plans", "aktiv"), { recursive: true });
+    const datei = "2026-08-28-eigener-plan.md";
+    writeFileSync(join(eigen.dir, "plans", "aktiv", datei), "---\nstand: aktiv\n---\n\nText\n");
+    eigen.plans.aktiv = [{ file: datei, state: "aktiv", path: join(eigen.dir, "plans", "aktiv", datei), titel: "Eigen" }];
+    const bewegt = movePlan(eigen, datei, "erledigt");
+    assert(bewegt.to === "erledigt" && existsSync(bewegt.path), "ein eigener Plan lässt sich nicht abschließen");
+  } finally {
+    rmSync(eigen.dir, { recursive: true, force: true });
+  }
+  return `${versionierte.length} versionierte Pläne, keiner beweglich`;
+});
+
 check("Der Bau nimmt das Paket und lässt die Arbeit daran liegen", () => {
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
@@ -1706,6 +2103,106 @@ await checkAsync("Das Artefakt sagt selbst, wie es installiert wird, und geht sa
     else process.env.ARA_MIRROR = gemerkt;
     rmSync(work, { recursive: true, force: true });
   }
+});
+
+await checkAsync("Aus der Erstausgabe des Installers kommt kein Klartext", async () => {
+  // Fund 2 des zweiten Fremdtests am 28.08.2026. Der Installer druckt den
+  // Kit-Schlüssel in seine Erstausgabe, das Kit reichte diese Ausgabe
+  // unverändert durch und schrieb danach „Klartext wird nicht angezeigt". Der
+  // Schlüssel stand da schon auf dem Bildschirm.
+  const schluessel = "aras_9Zk3mQx7BvT2Lw";
+  const passwort = "start-geheim-4711";
+
+  // Zuerst das Stück für sich: ein Geheimnis, das über zwei Stücke des Stroms
+  // verteilt ankommt, darf nicht durchrutschen.
+  const masker = createMasker([passwort]);
+  let gesehen = "";
+  gesehen += masker.push("Kit-Schluessel: ara");
+  gesehen += masker.push("s_9Zk3mQx7BvT2Lw\nPasswort: start-");
+  gesehen += masker.push("geheim-4711\n");
+  gesehen += masker.flush();
+  assert(!gesehen.includes(schluessel), `der Schlüssel kam über zwei Stücke durch: ${gesehen}`);
+  assert(!gesehen.includes(passwort), `das Passwort kam über zwei Stücke durch: ${gesehen}`);
+  assert(/aras_…/.test(gesehen), `der Schlüssel wurde nicht als solcher benannt: ${gesehen}`);
+
+  // Eine angefangene Zeile, aus der kein Geheimnis mehr werden kann, wartet
+  // nicht: sonst bliebe die Frage des Installers nach dem sudo-Passwort
+  // unsichtbar, bis jemand blind Enter drückt.
+  const frage = createMasker([passwort]);
+  assert(
+    frage.push("[sudo] password for arasul: ").includes("password for arasul:"),
+    "eine Eingabeaufforderung ohne Zeilenende wird zurückgehalten"
+  );
+
+  // Und dann der ganze Weg: ein Installer, der beides ausgibt, lokal gerufen.
+  const skript = [
+    `echo "Arasul eingerichtet."`,
+    `echo "Kit-Schluessel: ${schluessel}"`,
+    `echo "Administrator: admin / ${passwort}"`,
+    `echo "Oberflaeche: https://werk2.local/"`,
+  ].join("; ");
+
+  const original = process.stdout.write.bind(process.stdout);
+  let bildschirm = "";
+  process.stdout.write = (chunk) => {
+    bildschirm += String(chunk);
+    return true;
+  };
+  let lauf;
+  try {
+    lauf = await runInstaller(null, "local", skript, { secrets: [passwort] });
+  } finally {
+    process.stdout.write = original;
+  }
+
+  assert(lauf.status === 0, `der gespielte Installer ist mit ${lauf.status} beendet`);
+  assert(!bildschirm.includes(schluessel), `der Kit-Schlüssel stand auf dem Bildschirm: ${bildschirm}`);
+  assert(!bildschirm.includes(passwort), `das Startpasswort stand auf dem Bildschirm: ${bildschirm}`);
+  assert(!lauf.output.includes(schluessel), "der Kit-Schlüssel steht in dem, was das Kit behält");
+  assert(!lauf.output.includes(passwort), "das Startpasswort steht in dem, was das Kit behält");
+  // Mitgelesen heißt nicht verschluckt: alles andere kommt an.
+  assert(/Arasul eingerichtet/.test(bildschirm), `die Ausgabe des Installers fehlt: ${bildschirm}`);
+  assert(/werk2\.local/.test(bildschirm), "die Adresse der Oberfläche kam nicht durch");
+  return "Schlüssel und Passwort maskiert, der Rest kam durch";
+});
+
+await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", async () => {
+  // Fund 7 des zweiten Fremdtests am 28.08.2026. „SSH-Hardening fehlgeschlagen"
+  // und „Firewall-Setup fehlgeschlagen (nicht kritisch), must be run as root"
+  // liefen durch das Kit hindurch, mitten in mehreren hundert Zeilen. Danach
+  // galt das Gerät als fertig, ohne Härtung und ohne Firewall.
+  const ausgabe = [
+    "Docker gefunden.",
+    "Container gestartet: 7 von 7.",
+    "WARNUNG: SSH-Hardening fehlgeschlagen",
+    "Firewall-Setup fehlgeschlagen (nicht kritisch), must be run as root",
+    "WARNUNG: SSH-Hardening fehlgeschlagen",
+    "Fertig.",
+  ].join("\n");
+  const gefunden = troubles(ausgabe);
+  assert(gefunden.length === 2, `falsch gesammelt: ${JSON.stringify(gefunden)}`);
+  assert(gefunden.some((zeile) => /SSH-Hardening/.test(zeile)), "die Härtung fehlt in der Liste");
+  assert(gefunden.some((zeile) => /Firewall/.test(zeile)), "die Firewall fehlt in der Liste");
+  assert(!gefunden.some((zeile) => /Container gestartet/.test(zeile)), "eine gelungene Zeile steht in der Liste");
+
+  // Am laufenden Installer, nicht nur am Text.
+  const original = process.stdout.write.bind(process.stdout);
+  process.stdout.write = () => true;
+  let lauf;
+  try {
+    lauf = await runInstaller(null, "local", ausgabe.split("\n").map((z) => `echo ${JSON.stringify(z)}`).join("; "));
+  } finally {
+    process.stdout.write = original;
+  }
+  assert(lauf.troubles.length === 2, `der Lauf sammelt nicht: ${JSON.stringify(lauf.troubles)}`);
+
+  // Und das Werkzeug legt sie am Ende noch einmal hin, unter dieser Überschrift.
+  const werkzeug = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+  assert(/Was der Installer nicht konnte/.test(werkzeug), "device.mjs kennt den Abschnitt nicht");
+  assert(/arasul\.troubles/.test(werkzeug), "device.mjs nimmt die gesammelten Zeilen nicht auf");
+  const wissen = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
+  assert(/Was der Installer nicht konnte/.test(wissen), "das Verfahren sagt nichts über die Absagen des Installers");
+  return `${gefunden.length} Absagen aus ${ausgabe.split("\n").length} Zeilen`;
 });
 
 await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {

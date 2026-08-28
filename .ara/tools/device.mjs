@@ -10,6 +10,8 @@
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
  *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
+ *   node .ara/tools/device.mjs --name orin --admin-login          Sitzung als Administrator holen
+ *   node .ara/tools/device.mjs --name orin --admin-login --token  nur den Ausweis, für ein Skript
  *   node .ara/tools/device.mjs                                    welche Akten es gibt
  *   node .ara/tools/device.mjs --name mac --json                  dasselbe als JSON
  *   node .ara/tools/device.mjs --help                             diese Hilfe, sonst nichts
@@ -27,6 +29,13 @@
  * auf dem die Plattform schon läuft, braucht nur noch den Kit-Schlüssel
  * (--deploy-key); eines ohne bekommt sie mit --install arasul. Wie das abläuft,
  * steht in lib/install.mjs.
+ *
+ * Der Kit-Schlüssel trägt app:deploy und sonst nichts. Für alles, was ein
+ * Administrator tut, gibt --admin-login eine Sitzung: das Startpasswort aus der
+ * Installation geht dabei aus der Geheimnis-Ablage direkt in die Anmeldung,
+ * zurück kommt ein Ausweis, und angezeigt wird das Passwort nie. Weg und
+ * Benutzername kommen aus dem Artefakt, wenn es sie nennt, sonst aus --login-path
+ * und --login-user. Siehe lib/session.mjs.
  *
  * Die Spurensuche unterscheidet drei Lagen: die Plattform läuft, es liegen nur
  * Reste da, oder da ist nichts. Über Reste hinweg wird nur installiert, wenn
@@ -58,13 +67,16 @@ import {
   writeFrontmatter,
 } from "./lib/kit.mjs";
 import { getSecret, hasSecret, setSecret } from "./lib/secrets.mjs";
+import { baseUrl, call, reason } from "./lib/arasul.mjs";
+import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
 import {
   createKey,
   fetchMirror,
   installCommand,
   installTarget,
   installerEntry,
-  runRemote,
+  releaseData,
+  runInstaller,
   scrub,
   ship,
 } from "./lib/install.mjs";
@@ -157,14 +169,171 @@ const fresh = !existsSync(file);
 // --- Verbindung -------------------------------------------------------------
 
 const existing = fresh ? {} : readFrontmatter(file).fields;
-const host = str(arg.host) || existing.address || existing.hostname;
+
+/**
+ * `--admin-login` geht nicht über SSH, sondern an die Schnittstelle des Geräts.
+ * Es braucht darum nur eine Adresse, keinen Anmeldenamen und keinen Schlüssel.
+ */
+const loginOnly = Boolean(arg["admin-login"]);
+const host = str(arg.host) || existing.address || existing.hostname || (loginOnly ? existing.api_base || "" : "");
 if (!host) {
   fail(
     fresh
       ? `Beim ersten Mal brauche ich die Adresse: node .ara/tools/device.mjs --host <adresse> --name ${name}`
-      : `In ${relative(ROOT, file)} steht keine Adresse. Nachreichen mit --host <adresse>.`
+      : `In ${relative(ROOT, file)} steht weder eine Adresse noch eine Schnittstelle. Nachreichen mit --host <adresse>.`
   );
 }
+
+/**
+ * Der Namensteil, unter dem die Geheimnisse dieses Geräts liegen. Die Akte
+ * trägt nur diese Namen, nie die Werte.
+ */
+const secretSlug = (customer ? `${customer}_${name}` : name).toUpperCase().replace(/[^A-Z0-9]/g, "_");
+const startRef = `ARASUL_START_${secretSlug}`;
+
+// --- Die erste Anmeldung als Administrator -----------------------------------
+
+/**
+ * Aus dem Startpasswort wird eine Sitzung, ohne dass das Passwort sichtbar wird.
+ *
+ * Der Fremdtest am 28.08.2026 kam an dieser Stelle nicht weiter. Das Kit hatte
+ * das Startpasswort bei der Installation gewürfelt und ordentlich abgelegt, es
+ * gab aber keinen Weg, es für die erste Anmeldung zu benutzen: kein Werkzeug
+ * reichte es weiter, und anzeigen darf man es nicht. Ein Geheimnis, an das
+ * niemand herankommt, ist kein Geheimnis, sondern ein verlorener Zugang.
+ *
+ * Das Werkzeug meldet sich darum selbst an. Es braucht dafür keine Verbindung
+ * über SSH und kein Urteil über die Hardware, nur die Adresse aus der Akte und
+ * den Eintrag aus der Ablage, und es läuft deshalb vor der Geräteprüfung.
+ */
+async function adminLogin() {
+  if (fresh) {
+    fail(
+      `Für ${place} gibt es noch keine Akte, also auch keine Adresse und kein Startpasswort.\n` +
+        `Erst: node .ara/tools/device.mjs --host <adresse> --name ${name}`
+    );
+  }
+  const ref = existing.start_password_ref || startRef;
+  const password = getSecret(ref);
+  if (!password) {
+    fail(
+      `Unter ${ref} liegt kein Startpasswort.\n` +
+        "Es entsteht, wenn das Kit selbst installiert (--install arasul). Wurde das Gerät von Hand\n" +
+        "aufgesetzt, steht das Passwort in der Erstausgabe am Gerät. Von dort hinterlegen:\n" +
+        `  printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${ref}`
+    );
+  }
+
+  const spec = loginSpec(releaseData(), {
+    path: str(arg["login-path"]),
+    user: str(arg["login-user"]),
+  });
+  let base;
+  try {
+    base = baseUrl(existing.api_base || host);
+  } catch (error) {
+    fail(`${error.message}\nNachsehen in ${relative(ROOT, file)}.`);
+  }
+  const insecure = Boolean(arg.insecure) || (existing.tls || "").toLowerCase() === "selfsigned";
+
+  let answer;
+  try {
+    answer = await call({
+      base,
+      method: "POST",
+      path: spec.path,
+      json: loginBody(spec, password),
+      insecure,
+    });
+  } catch (error) {
+    fail(error.message);
+  }
+
+  if (!answer.ok) {
+    if (answer.status === 404) {
+      fail(
+        `${place} kennt ${spec.path} nicht. Wo dieses Gerät seine Anmeldung führt, steht in der\n` +
+          "API-Referenz des Artefakts, nicht im Kit:\n" +
+          "  node .ara/tools/mirror.mjs --docs\n" +
+          `Den Weg von dort mitgeben: --login-path <weg>.\n${reason(answer)}`
+      );
+    }
+    if (answer.status === 401 || answer.status === 403) {
+      fail(
+        `${place} weist die Anmeldung ab (${answer.status}). Zwei Gründe kommen infrage: der\n` +
+          `Administrator heißt dort nicht "${spec.user}" (dann --login-user <name>), oder das\n` +
+          `Startpasswort aus ${ref} gilt nicht mehr, weil es am Gerät geändert wurde.\n${reason(answer)}`
+      );
+    }
+    fail(
+      `${place} hat die Anmeldung nicht angenommen (Status ${answer.status}).\n` +
+        `Gerufen wurde POST ${spec.path} mit den Feldern ${spec.userField} und ${spec.passwordField}.\n` +
+        "Welche dieses Gerät erwartet, steht in der API-Referenz: node .ara/tools/mirror.mjs --docs\n" +
+        reason(answer)
+    );
+  }
+
+  const token = pickToken(answer.data);
+  if (!token) {
+    fail(
+      `${place} hat die Anmeldung angenommen, in der Antwort steht aber kein Ausweis, mit dem das\n` +
+        `Kit etwas anfangen kann. Gesucht wurde unter: ${TOKEN_FIELDS.join(", ")}.\n` +
+        "Wie die Antwort dieses Geräts aussieht, steht in der API-Referenz des Artefakts."
+    );
+  }
+
+  // Für ein Skript: nur der Ausweis, ohne einen Satz drumherum. Beendet wird
+  // erst, wenn er wirklich draußen ist: auf einer Leitung schreibt Node
+  // verzögert, und ein sofortiges Ende schnitte ihn ab.
+  if (arg.token) {
+    await new Promise((geschrieben) => process.stdout.write(token, geschrieben));
+    process.exit(0);
+  }
+  if (arg.json) {
+    console.log(
+      JSON.stringify(
+        { device: place, base, path: spec.path, user: spec.user, sources: spec.sources, password_ref: ref, bearer: token },
+        null,
+        2
+      )
+    );
+    process.exit(0);
+  }
+
+  const woher = { aufruf: "aus dem Aufruf", artefakt: "aus dem Artefakt", kit: "aus dem Rückfall des Kits" };
+  const wo = `${customer ? `--customer ${customer} ` : ""}--name ${name}`;
+  console.log(
+    [
+      `# Sitzung für ${place}`,
+      "",
+      `- Angemeldet an ${base} mit POST ${spec.path}, als "${spec.user}"`,
+      `- Der Weg kommt ${woher[spec.sources.path]}, der Benutzername ${woher[spec.sources.user]}`,
+      `- Das Startpasswort kam aus ${ref}. Angezeigt wird es nicht.`,
+      "",
+      "Ausweis für die Kopfzeile:",
+      "",
+      `  ${token}`,
+      "",
+      "Damit gehen die Handgriffe, für die das Kit keinen Befehl hat, allen voran der erste",
+      "Mitarbeiter und die erste Freigabe:",
+      "",
+      `  SITZUNG=$(node .ara/tools/device.mjs ${wo} --admin-login --token)`,
+      '  curl -sS -H "Authorization: Bearer $SITZUNG" ...',
+      "",
+      "Weg und Rumpf für den nächsten Aufruf stehen in der API-Referenz des Artefakts, nicht im",
+      "Kit: node .ara/tools/mirror.mjs --docs. Das Verfahren steht in .ara/knowledge/device.md.",
+    ].join("\n")
+  );
+  process.exit(0);
+}
+
+if (arg["admin-login"]) await adminLogin();
+
+// --- Die Verbindung über SSH -------------------------------------------------
+// Ab hier geht es auf das Gerät selbst, und dafür braucht es einen Anmeldenamen.
+// Die Anmeldung an der Schnittstelle ist zu diesem Zeitpunkt schon durch, sie
+// kommt ohne diese Angaben aus.
+
 const isLocal = LOCAL_HOSTS.has(host);
 const user = str(arg.user) || existing.ssh_user || (isLocal ? userInfo().username : null);
 if (!user) fail("Ich brauche den Anmeldenamen auf dem Gerät: --user <name>.");
@@ -243,13 +412,6 @@ if (install.length) {
 }
 
 // --- Arasul installieren -----------------------------------------------------
-
-/**
- * Der Namensteil, unter dem die Geheimnisse dieses Geräts liegen. Die Akte
- * trägt nur diese Namen, nie die Werte.
- */
-const secretSlug = (customer ? `${customer}_${name}` : name).toUpperCase().replace(/[^A-Z0-9]/g, "_");
-const startRef = `ARASUL_START_${secretSlug}`;
 
 /**
  * Der Name, unter dem das Gerät im Netz des Kunden auftritt.
@@ -349,20 +511,27 @@ async function installArasul() {
   if (!shipped.ok) fail(`Das Artefakt kam nicht am Gerät an.\n${shipped.message}`);
 
   const secret = startPassword(startRef);
-  const call = installCommand(entry, { password: secret.password, netName: net });
+  const command = installCommand(entry, { password: secret.password, netName: net });
   console.log(
-    `\nInstaller läuft auf dem Gerät: ${call.shown}. Das dauert und will mitgelesen werden.\n` +
+    `\nInstaller läuft auf dem Gerät: ${command.shown}. Das dauert und will mitgelesen werden.\n` +
       `Netzname ${net}, Startpasswort ${secret.fresh ? "neu gewürfelt" : "aus der Ablage"} und hinterlegt unter ${startRef}. ` +
-      "Sein Klartext wird nicht angezeigt.\n"
+      "Sein Klartext wird nicht angezeigt.\n" +
+      "Die Ausgabe des Installers wird mitgelesen und dabei maskiert: er druckt Schlüssel und\n" +
+      "Passwort in seine Erstausgabe, und beides gehört nicht auf den Bildschirm.\n"
   );
-  const step = runRemote(sshArgs, run.transport, `cd ${target} && ${call.command}`, { interactive: true });
+  // Mitgelesen statt durchgereicht. Nur so kann das Kit hinterher sagen, was der
+  // Installer nicht konnte, und nur so bleibt der Klartext vom Bildschirm weg.
+  const step = await runInstaller(sshArgs, run.transport, `cd ${target} && ${command.command}`, {
+    secrets: [secret.password],
+  });
   return {
     ok: step.status === 0,
     status: step.status,
-    entry: call.shown,
+    entry: command.shown,
     target,
     netName: net,
     passwordRef: startRef,
+    troubles: step.troubles,
     version: state.version ?? null,
     source: state.source ?? null,
     fetched: state.fetched ?? null,
@@ -452,6 +621,12 @@ if (arasul?.ok) {
   changes.status = "installing";
   changes.net_name = arasul.netName;
   changes.start_password_ref = arasul.passwordRef;
+  // Ein frisch installiertes Gerät trägt ein Zertifikat aus seiner eigenen
+  // Geräte-CA. Ohne diesen Eintrag scheiterte am 28.08.2026 der erste Aufruf
+  // gegen die Schnittstelle an SELF_SIGNED_CERT_IN_CHAIN, direkt nach einer
+  // Installation, die das Kit selbst gemacht hatte. Das Kit weiß hier, welches
+  // Zertifikat dort liegt: es hat gerade zugesehen, wie es entstanden ist.
+  changes.tls = "selfsigned";
 }
 writeFrontmatter(file, changes);
 
@@ -469,7 +644,14 @@ const entry = [
           `Artefakt vom ${arasul.fetched || "unbekannt"}, Quelle ${arasul.source || "unbekannt"}, ` +
           `Fassung ${arasul.version || "unbekannt"}, ausgepackt nach ${arasul.target}. ` +
           `Aufruf am Gerät: ${arasul.entry}. Netzname ${arasul.netName}, ` +
-          `Startpasswort hinterlegt unter ${arasul.passwordRef}, hier steht es nicht.`,
+          `Startpasswort hinterlegt unter ${arasul.passwordRef}, hier steht es nicht.` +
+          (arasul.ok ? " Zertifikat: selbst ausgestellt, aus der Geräte-CA (tls: selfsigned)." : ""),
+        ...(arasul.troubles?.length
+          ? [
+              "Was der Installer nicht konnte, wörtlich aus seiner Ausgabe:",
+              ...arasul.troubles.map((line) => `- ${line}`),
+            ]
+          : []),
       ]
     : []),
   ...(deployKey
@@ -491,6 +673,7 @@ const ARASUL_SENTENCE =
   "Freigaben und Flows, dazu Sicherung und Wartung aus einer Hand.";
 
 const keyRef = deployKey?.ok ? deployKey.ref : existing.api_key_ref || "";
+const startPwRef = arasul?.ok ? arasul.passwordRef : existing.start_password_ref || "";
 const where = `${customer ? `--customer ${customer} ` : ""}--device ${name}`;
 
 function nextSteps() {
@@ -529,6 +712,17 @@ function nextSteps() {
         `Arasul läuft und der Kit-Schlüssel liegt unter ${keyRef}. Passt das Kit zu diesem Gerät? ` +
           `node .ara/tools/app.mjs ${where} --contract`
       );
+      // Der Kit-Schlüssel trägt app:deploy. Der erste Mitarbeiter und die erste
+      // Freigabe brauchen eine Sitzung, und die gibt es aus dem Startpasswort.
+      if (startPwRef) {
+        steps.push(
+          "Der erste Mitarbeiter und seine Freigabe gehören zur Abnahme. Ohne Browser braucht es dafür " +
+            `eine Sitzung als Administrator: node .ara/tools/device.mjs --name ${name}` +
+            `${customer ? ` --customer ${customer}` : ""} --admin-login. ` +
+            "Weg und Rumpf des nächsten Aufrufs stehen in der API-Referenz des Artefakts " +
+            "(node .ara/tools/mirror.mjs --docs), das Verfahren in .ara/knowledge/device.md."
+        );
+      }
       steps.push(`Laufender Betrieb: /maintain ${place}.`);
     }
   } else {
@@ -558,6 +752,30 @@ function nextSteps() {
 
 const steps = nextSteps();
 
+/**
+ * Was der Installer nicht konnte, noch einmal beisammen.
+ *
+ * Am 28.08.2026 liefen „SSH-Hardening fehlgeschlagen" und „Firewall-Setup
+ * fehlgeschlagen (nicht kritisch), must be run as root" durch das Kit hindurch:
+ * sie standen in mehreren hundert Zeilen Installerausgabe, und danach galt das
+ * Gerät als fertig. „Nicht kritisch" sagt der Installer über seinen eigenen
+ * Lauf, nicht über das Gerät beim Kunden: ein Gerät ohne Härtung und ohne
+ * Firewall geht so in ein fremdes Netz.
+ */
+function troubleSection() {
+  if (!arasul?.troubles?.length) return [];
+  return [
+    "",
+    "## Was der Installer nicht konnte",
+    "",
+    ...arasul.troubles.map((line) => `- ${line}`),
+    "",
+    "Das Kit hat nichts davon nachgeholt. Geh es durch, bevor das Gerät in ein Kundennetz geht:",
+    "Zugang härten nach .ara/knowledge/remote-access.md, alles andere am Gerät mit Root-Rechten.",
+    "Es steht auch in der Akte, unter Prüfungen.",
+  ];
+}
+
 // Ein Rückgabecode sagt, ob das gelungen ist, worum gebeten wurde. Eine
 // abgebrochene Installation und ein Schlüssel, den es nicht gibt, sind kein Erfolg.
 const code = run.transport === "none" || (arasul && !arasul.ok) || (deployKey && !deployKey.ok) ? 1 : 0;
@@ -584,6 +802,7 @@ if (arg.json) {
         api_key_ref: keyRef || null,
         start_password_ref: arasul?.ok ? arasul.passwordRef : existing.start_password_ref || null,
         net_name: arasul?.ok ? arasul.netName : existing.net_name || null,
+        tls: arasul?.ok ? "selfsigned" : existing.tls || null,
         arasul_install: arasul
           ? {
               ok: arasul.ok,
@@ -591,6 +810,8 @@ if (arg.json) {
               source: arasul.source,
               target: arasul.target,
               entry: arasul.entry,
+              // Was der Installer nicht konnte. Leer heißt: er hat nichts gemeldet.
+              troubles: arasul.troubles || [],
             }
           : null,
         deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
@@ -620,10 +841,12 @@ if (known) {
     `- Ollama: ${svc.ollama.text}`,
     `- Arasul: ${svc.arasul.text}`,
     `- Kit-Schlüssel: ${keyRef ? `hinterlegt unter ${keyRef}` : "keiner"}`,
+    ...(startPwRef ? [`- Startpasswort: hinterlegt unter ${startPwRef}, Anmeldung damit über --admin-login`] : []),
     "",
     `**Urteil: ${VERDICTS[found.verdict]}.** ${found.reason}.`
   );
 }
+lines.push(...troubleSection());
 lines.push("", "## Nächste Schritte", "", ...steps.map((s) => `- ${s}`));
 console.log(lines.join("\n"));
 process.exit(code);

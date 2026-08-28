@@ -129,6 +129,8 @@ und hol ein ausdrückliches Ja, bevor du es tippst.
 - **Zertifikat nicht überprüfbar.** Ein Gerät im Kundennetz trägt meist ein selbst
   ausgestelltes. Wenn du sicher bist, dass es dieses Gerät ist: `tls: selfsigned` in die
   Akte, oder einmalig `--insecure`. Nicht ungefragt und nicht dauerhaft aus Bequemlichkeit.
+  Hat das Kit selbst installiert, steht der Eintrag schon da: dann weiß es, welches
+  Zertifikat dort liegt, es hat zugesehen, wie es entstanden ist.
 - **401.** Der Schlüssel wurde am Gerät widerrufen oder gehört zu einem anderen Gerät.
   Am Gerät nachsehen, sonst einen neuen anlegen (`/device` mit `--deploy-key`).
 - **Der Endpunkt steht nicht im Kontrakt.** Dann ruft das Kit ihn auch nicht. Das ist kein
