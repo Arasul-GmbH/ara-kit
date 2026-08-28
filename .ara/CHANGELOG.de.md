@@ -15,6 +15,18 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.11.0 (2026-08-28)
+
+Kontrakt: bis 3
+
+- `/device` erkennt ein Gerät, ohne dass ihm etwas darüber gesagt wird. Es liest, was das Gerät über sich sagt, Hersteller aus `/sys/class/dmi/id/sys_vendor`, Modell, Architektur, laufendes System, Erreichbarkeit, und gibt jede Angabe mit der Stelle aus, die sie hergibt.
+- Welche Hardware das Kit kennt, steht jetzt unter `.ara/knowledge/devices/`, ein Blatt je Gerät, in beiden Sprachen, für Orin, Thor und DGX Spark. Jedes Blatt trägt seinen Stand und seine Quelle, und zur Laufzeit wird nichts recherchiert. Ein neues Gerät ist ein neues Blatt und keine neue Zeile mehr in `lib/device.mjs`.
+- Vor jedem Lauf, und vor jedem Eingriff ein zweites Mal, sagt `/device`, wie gut das Profil belegt ist: das Feld `verification` aus dem Plattformkatalog des Produkts, aus dem Spiegel gelesen. `live` heißt an echter Hardware verifiziert, `emulation` heißt nur unter Emulation geprüft, `follow-up` heißt nach Herstellerdoku gebaut. Ohne Spiegel sagt das Kit, dass es die Stufe nicht lesen kann, und rät keine.
+- Das Katalogprofil landet nur dann in `device.md`, wenn der Spiegel es wirklich führt und der Speicher zur Fassung passt. `orin-64` auf einem Orin mit 32 GB wäre eine Zusage über Speicher, die dieses Gerät nicht hält.
+- `--probe <datei>` ist der Trockenlauf: Befunde aus einer Datei statt von einem Gerät, dieselbe Erkennung, dasselbe Profil, derselbe Verifikationsstand, aber geschrieben wird nichts und verändert auch nichts. Er verweigert `--install`, `--deploy-key` und `--admin-login`. So führt der Selbsttest Thor und DGX Spark, und verifiziert ist damit keines von beiden.
+- Auf einem Rechner, der Arasul nicht trägt, endet der Lauf hilfreich: welche Geräte es heute tragen, nach den Blättern, dass Fragen zu Arasul kein Gerät brauchen, und ein ruhiger Satz zur Lizenz. Das Kit steht unter der Apache-Lizenz 2.0 und bleibt ohne Arasul brauchbar.
+- `.gitignore` verankert die Nutzerordner am Wurzelverzeichnis. Ohne den führenden Schrägstrich schloss `devices/` auch `.ara/knowledge/devices/` aus, und dann wären die Geräteprofile in einem Klon nicht angekommen.
+
 ## 0.10.0 (2026-08-28)
 
 Kontrakt: bis 3

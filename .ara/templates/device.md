@@ -5,7 +5,7 @@ model:                    # what the device is called, according to the delivery
 hardware:                 # what the device says about itself, entered by device.mjs
 os:                       # operating system, entered by device.mjs
 arch:                     # architecture, entered by device.mjs
-profile:                  # platform profile. ONLY when confirmed by the device
+profile:                  # platform profile from the catalogue. Entered by device.mjs, only when the mirror really carries it
 serial:
 status: planned           # planned | delivered | installing | live | retired
 verdict:                  # supported | soon | unsupported, entered by device.mjs

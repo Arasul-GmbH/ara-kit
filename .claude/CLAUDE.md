@@ -43,6 +43,7 @@ sentences. That holds for everything you write, customer documents and offers in
 | `apps/` | Own apps, independent of customers. Belongs to the user. Only `apps/urlaubsantrag/` belongs to the kit: the reference app to look at. |
 | `.ara/commands/` | Source of the commands: `all/` for every branch, `partner/` for partners only. `/init` puts them into `.claude/commands/`. |
 | `.ara/knowledge/` | **Procedures**: how to go about things. No product values. |
+| `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them |
 | `.ara/vorlagen/` | **The paperwork**: offer, annexes, handover record. The only place for it, see `.ara/vorlagen/README.md`. German. |
 | `.ara/nachweise/` | Evidence on AI classification and data processing. Annexes 4 and 5 to the offer. Mirrored from Arasul's control folder, do not edit here. German. |
 | `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. |
@@ -69,8 +70,15 @@ These values change in the product all the time. They stand in exactly three pla
 2. **The device itself** over SSH, the truth for exactly this one device.
 3. **The mirror** `.ara/mirror/`: the artifact that was installed with, together with its
    version and source. It comes into being at the installation,
-   `node .ara/tools/mirror.mjs --show` says which one it is.
+   `node .ara/tools/mirror.mjs --show` says which one it is. The platform catalogue lies
+   there too, `config/platforms/*.json`, and with it the field `verification`: whether a
+   profile was verified on the device or only built from manufacturer documentation.
 4. **Nowhere else.**
+
+**The device profiles under `.ara/knowledge/devices/` are not a fourth place.** They say
+which hardware the kit recognises and by what, with the date they are from and where their
+knowledge came from. Model, engine, memory budget and verification level are not in them
+and never will be: whoever needs those reads the mirror.
 
 If you need a value and none of these sources is available: say so. Do not guess, and write
 nothing unchecked into a customer file. Procedures are in the kit, values are not.

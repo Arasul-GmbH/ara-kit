@@ -2,9 +2,14 @@
  * Gerät erkennen und beurteilen. Reine Funktionen, ohne Netz und ohne Dateien,
  * damit der Selbsttest sie mit erfundenen Befunden prüfen kann.
  *
- * Was hier steht, ist die Unterstützungsregel des Kits, kein Produktwert: welche
- * Hardware Arasul heute trägt, welche angekündigt ist und was nicht. Werte für
- * ein Gerät (Modell, Engine, Speicherbudget) stehen weiter nur im Spiegel.
+ * **Welche Hardware das Kit kennt, steht nicht mehr hier.** Es steht als Profil
+ * je Gerät unter `.ara/knowledge/devices/`, mit Stand und Quelle, und `judge()`
+ * bekommt diese Profile hereingereicht. Das Urteil ist damit geräteunabhängig:
+ * ein neues Gerät ist ein neues Blatt und keine neue Zeile in diesem Modul.
+ *
+ * Was hier bleibt, ist die Regel für alles, wozu es kein Blatt gibt: ein Rechner
+ * mit NVIDIA-Grafik ist angekündigt, alles andere wird vorgemerkt. Werte für ein
+ * Gerät (Modell, Engine, Speicherbudget) stehen weiter nur im Spiegel.
  */
 
 /**
@@ -12,6 +17,7 @@
  * Befund eine Zeile `@schlüssel=wert` aus. Was ein Gerät nicht hat, fehlt einfach.
  */
 import { t } from "./i18n.mjs";
+import { matchProfile, vendorOf } from "./platform.mjs";
 
 export const PROBE = `
 # Eine SSH-Sitzung ohne Login-Shell kennt die Pfade von Homebrew, Docker Desktop
@@ -24,6 +30,7 @@ p hostname "$(hostname 2>/dev/null)"
 command -v sw_vers >/dev/null 2>&1 && p macos "$(sw_vers -productVersion 2>/dev/null)"
 [ -r /proc/device-tree/model ] && p dt_model "$(tr -d '\\0' < /proc/device-tree/model 2>/dev/null)"
 [ -r /sys/class/dmi/id/product_name ] && p dmi_model "$(cat /sys/class/dmi/id/product_name 2>/dev/null)"
+[ -r /sys/class/dmi/id/sys_vendor ] && p dmi_vendor "$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null)"
 command -v sysctl >/dev/null 2>&1 && p hw_model "$(sysctl -n hw.model 2>/dev/null)"
 [ -r /etc/nv_tegra_release ] && p tegra "$(head -1 /etc/nv_tegra_release 2>/dev/null)"
 command -v nvidia-smi >/dev/null 2>&1 && p gpu "$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1)"
@@ -80,38 +87,22 @@ export const VERDICTS = t(
 /**
  * Hardware und Betriebssystem aus den Befunden, dazu das Urteil.
  *
- * Die Regel: Jetson Orin und Jetson Thor tragen Arasul heute. DGX Spark und
- * andere Rechner mit NVIDIA-Grafik sind angekündigt. Alles andere trägt es nicht,
- * und das Gerät wird in der Akte vorgemerkt, damit die Nachfrage sichtbar bleibt.
+ * Die Erkennung läuft ohne Vorwissen: sie liest, was das Gerät über sich sagt,
+ * und hält es gegen die Profile, die hereingereicht werden. Greift eines, gilt
+ * dessen Feld `support`, und das Blatt steht als Begründung dabei. Greift keines,
+ * bleibt die Regel für den Rest: NVIDIA-Grafik ist angekündigt, alles andere wird
+ * vorgemerkt, damit die Nachfrage in der Akte sichtbar bleibt.
  */
-export function judge(facts) {
+export function judge(facts, profiles = []) {
   const model = facts.dt_model || facts.dmi_model || facts.hw_model || "";
   const gpu = facts.gpu || facts.pci_nvidia || "";
   const nvidia = Boolean(facts.tegra || gpu || /nvidia/i.test(model));
   const arch = (facts.uname || "").split(/\s+/).pop() || "";
+  const kernel = (facts.uname || "").split(/\s+/).slice(0, 2).join(" ");
 
   let os = facts.os_release || "";
   if (facts.macos) os = `macOS ${facts.macos}`;
   if (!os && facts.uname) os = facts.uname;
-
-  let verdict = "unsupported";
-  let reason = t("no NVIDIA hardware recognised", "keine NVIDIA-Hardware erkannt");
-  if (/\b(orin|thor)\b/i.test(model)) {
-    verdict = "supported";
-    reason = t(
-      `Jetson ${/thor/i.test(model) ? "Thor" : "Orin"} recognised`,
-      `Jetson ${/thor/i.test(model) ? "Thor" : "Orin"} erkannt`
-    );
-  } else if (/dgx\s*spark|\bspark\b/i.test(`${model} ${gpu}`)) {
-    verdict = "soon";
-    reason = t("DGX Spark recognised, announced", "DGX Spark erkannt, angekündigt");
-  } else if (nvidia) {
-    verdict = "soon";
-    reason = t(
-      `NVIDIA hardware recognised (${gpu || facts.tegra || model}), announced`,
-      `NVIDIA-Hardware erkannt (${gpu || facts.tegra || model}), angekündigt`
-    );
-  }
 
   const memoryGb = facts.mem_kb
     ? Math.round(Number(facts.mem_kb) / 1024 / 1024)
@@ -120,13 +111,38 @@ export function judge(facts) {
       : null;
   const diskFreeGb = facts.disk_free_kb ? Math.round(Number(facts.disk_free_kb) / 1024 / 1024) : null;
 
+  const profile = matchProfile(facts, profiles);
+  const vendor = vendorOf(facts, profile);
+
+  let verdict = "unsupported";
+  let reason = t("no NVIDIA hardware recognised", "keine NVIDIA-Hardware erkannt");
+  if (profile) {
+    verdict = profile.support;
+    reason = t(
+      `${profile.vendor} ${profile.family} recognised, according to ${profile.sheet}`,
+      `${profile.vendor} ${profile.family} erkannt, nach ${profile.sheet}`
+    );
+  } else if (nvidia) {
+    // Kein Blatt, aber NVIDIA-Grafik. Angekündigt heißt hier: das Kit hat für
+    // genau dieses Gerät nichts aufgeschrieben, und das ist eine Nachfrage wert.
+    verdict = "soon";
+    reason = t(
+      `NVIDIA hardware recognised (${gpu || facts.tegra || model}), no profile in the kit for it, announced`,
+      `NVIDIA-Hardware erkannt (${gpu || facts.tegra || model}), kein Profil im Kit dafür, angekündigt`
+    );
+  }
+
   return {
     hardware: model || (nvidia ? gpu : "") || t("unknown", "unbekannt"),
+    vendor: vendor.name,
+    vendorSource: vendor.source,
     os: os || t("unknown", "unbekannt"),
+    kernel,
     arch,
     gpu: gpu || (facts.tegra ? "Tegra" : ""),
     memoryGb,
     diskFreeGb,
+    profile,
     verdict,
     verdictText: VERDICTS[verdict],
     reason,

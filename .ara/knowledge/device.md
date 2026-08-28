@@ -20,9 +20,10 @@ For a customer device `--customer <customer>` comes along. The tool:
 2. checks the SSH connection with a key, without a password prompt,
 3. runs a reading script on the device: hardware, system, memory, Docker, Ollama as a program or
    as a container, traces of Arasul,
-4. delivers the verdict and writes finding and verdict into the file, under "Prüfungen",
-5. remembers the device in `.ara/state.json`,
-6. names the next step.
+4. recognises the device from that, without prior knowledge, and says how well backed that is,
+5. delivers the verdict and writes finding, profile and verdict into the file, under "Prüfungen",
+6. remembers the device in `.ara/state.json`,
+7. names the next step.
 
 It only reads. The interventions are `--install` and `--deploy-key`, both further down, both only
 on request and after confirmation.
@@ -43,26 +44,70 @@ own device, that falsifies every evaluation.
 change, the location stays. For devices without a customer the model is a good name (`orin`,
 `dgx-spark`), because the location does not tell them apart.
 
+## Recognition, and how well backed it is
+
+**The tool needs to be told nothing about the device.** It reads what the device says about
+itself and prints five things, each with the place that gives it: whether it is reachable, the
+vendor (`/sys/class/dmi/id/sys_vendor`), the model (`/proc/device-tree/model` or DMI), the
+architecture and the running system.
+
+Out of that comes the **device profile**, and the tool prints that as its own section:
+
+- **The kit profile.** One sheet per device under `.ara/knowledge/devices/`, and the sheet says
+  what date it is from and where its knowledge came from. That is a statement about hardware,
+  not about the product, and it is written down: nothing is researched at runtime. If no sheet
+  fits, the tool says so instead of putting up something similar.
+- **The catalogue profile.** The profile the product carries for this hardware. It only gets
+  named when the mirror really has it, and only when the memory fits the variant: `orin-64` on
+  an Orin with 32 GB would be a promise about memory this device does not keep.
+- **The verification level.** The field `verification` from the catalogue, read from the mirror.
+  `live` means verified on real hardware, `emulation` means only checked under emulation,
+  `follow-up` means built from manufacturer documentation and tried on no device.
+
+**This line stands before every intervention, not after it.** Whoever installs on a device
+should have read beforehand what the kit is going by and how far that carries. Without a mirror
+there is no level, and then the tool says that it cannot read it. It guesses none.
+
+A device that is not here can be talked about too:
+
+```
+node .ara/tools/device.mjs --name thor --probe <file with findings>
+```
+
+That is the dry run. Same recognition, same profile, same verification level, findings from a
+file instead of from a device. **It writes nothing and changes nothing**, and it refuses
+`--install`, `--deploy-key` and `--admin-login`. That is how a partner finds out what the kit
+would say about a device before they buy it.
+
 ## The verdict
 
 Three answers, and each has a consequence:
 
 | Verdict | Recognised by | What follows |
 | --- | --- | --- |
-| **supported** | Jetson Orin or Jetson Thor | Arasul can run on it. Continue below at "After the verdict" |
-| **soon** | DGX Spark, other computers with NVIDIA graphics | Announced. Noted in the file, continue as soon as the mirror carries a profile for it |
+| **supported** | a sheet under `.ara/knowledge/devices/` whose `support` says so | Arasul can run on it. Continue below at "After the verdict" |
+| **soon** | a sheet that says `soon`, or NVIDIA graphics without a sheet | Announced. Noted in the file, continue as soon as the mirror carries a profile for it |
 | **not supported, we note it down** | everything else, a Mac for instance or a computer without NVIDIA graphics | Noted in the file with a date. Without Arasul it ends here |
 
-The rule stands in `.ara/tools/lib/device.mjs`, and it is a rule of the kit, not a product value.
-What applies on a supported device (profile, model, engine, memory) still stands only in the
-mirror: `.ara/knowledge/identify-device.md`.
+Which hardware carries Arasul stands in the sheets and not in the code, and it is a statement of
+the kit, not a product value. A new device is a new sheet. What applies on a supported device
+(model, engine, memory) still stands only in the mirror:
+`.ara/knowledge/identify-device.md`.
 
 **Noting down** means: `verdict` and `noted_on` stand in the file. That keeps it visible which
 devices were asked about, and the human can pass that to the product team.
 
-**Without Arasul it ends here.** The tool says in one sentence what Arasul would bring: login,
-staging and going live for apps, permissions, flows, backup and maintenance. That is the whole
-announcement. No sales pitch afterwards, unless the human starts one.
+**Without Arasul it ends here, and it ends helpfully.** The tool closes with three things, and
+none of them is a sales pitch: what Arasul would bring in one sentence (login, staging and going
+live for apps, permissions, flows, backup and maintenance), which devices carry it today
+according to the sheets, and a calm sentence on the licence. The kit is under the Apache licence
+2.0 and stays usable without Arasul; what a licence for Arasul costs is governed by the contract,
+and the download token from the portal costs nothing.
+
+**Questions about Arasul need no device.** Somebody who tries the kit on their laptop and then
+asks what it actually is gets an answer, from `.ara/knowledge/sales.md` and
+`.ara/knowledge/extensions.md`, and an honest "I do not know that" where the answer would be a
+product value the kit cannot reach. Say nothing more than was asked, unless the human starts.
 
 ## When SSH does not stand
 
