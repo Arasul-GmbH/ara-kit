@@ -14,8 +14,9 @@
 import { spawnSync } from "node:child_process";
 import { lookup } from "node:dns/promises";
 import { connect } from "node:net";
-import { parseArgs } from "./lib/kit.mjs";
+import { helpOnly, parseArgs } from "./lib/kit.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const STANDARD_PORTS = [22, 2222, 443, 80, 3001];
 

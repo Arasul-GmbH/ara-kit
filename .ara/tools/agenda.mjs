@@ -20,12 +20,14 @@ import {
   customerPath,
   daysUntil,
   devicePath,
+  helpOnly,
   listCustomers,
   listDevices,
   parseArgs,
   readFrontmatter,
 } from "./lib/kit.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const horizon = arg.days !== undefined ? Number(arg.days) : 90;
 

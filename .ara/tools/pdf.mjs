@@ -39,8 +39,9 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, extname, join, resolve } from "node:path";
-import { BUSINESS, ROOT, parseArgs, readFrontmatter } from "./lib/kit.mjs";
+import { BUSINESS, ROOT, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 // parseArgs() kann nicht wissen, welche Schalter einen Wert nehmen. Steht die

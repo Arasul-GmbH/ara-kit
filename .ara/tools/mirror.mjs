@@ -9,17 +9,23 @@
  *
  *   node .ara/tools/mirror.mjs             holen, wenn er fehlt oder zu alt ist
  *   node .ara/tools/mirror.mjs --show      nur nachsehen, nichts holen
+ *   node .ara/tools/mirror.mjs --docs      welche Anleitungen liegen im Artefakt
  *   node .ara/tools/mirror.mjs --refresh   in jedem Fall neu holen
+ *
+ * `--docs` ist der Weg zu allem, was das Kit selbst nicht weiß: Admin-Handbuch,
+ * API-Referenz, Auslieferung. Das Kit schreibt daraus nichts ab, es sagt, wo es
+ * steht.
  *
  * Das Token kommt aus der gewählten Geheimnis-Ablage und wird niemals ausgegeben
  * oder als Argument an einen anderen Prozess übergeben.
  */
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { Readable } from "node:stream";
-import { ROOT, parseArgs } from "./lib/kit.mjs";
+import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
+import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 
 // ARA_MIRROR weicht vom Standardort ab. Wird vom Selbsttest genutzt, damit er
@@ -71,8 +77,13 @@ async function fetchMirror(base, token) {
   mkdirSync(MIRROR, { recursive: true });
 
   await new Promise((done, failed) => {
-    const tar = spawn("tar", ["-xzf", "-", "-C", MIRROR, "--strip-components=1"], {
+    // --exclude hält die ._-Beiwerkdateien von macOS aus dem Spiegel heraus.
+    // Was hier nicht ankommt, kann später auch nicht an ein Gerät weitergehen,
+    // und genau das ist am 28.08.2026 passiert: 1124 solcher Dateien gingen mit
+    // dem Artefakt an den Orin, und Traefik stieg an einer davon aus.
+    const tar = spawn("tar", ["-xzf", "-", "--exclude", APPLEDOUBLE, "-C", MIRROR, "--strip-components=1"], {
       stdio: ["pipe", "ignore", "pipe"],
+      env: packEnv(),
     });
     let message = "";
     tar.stderr.on("data", (chunk) => (message += chunk.toString()));
@@ -94,6 +105,7 @@ async function fetchMirror(base, token) {
   return state;
 }
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const token = getSecret("ARASUL_TOKEN");
 const base = getSecret("ARASUL_BASIS") || "https://arasul.de";
@@ -112,7 +124,52 @@ if (arg.show) {
     );
   }
   lines.push(`- Download-Token hinterlegt: ${token ? "ja" : "nein"}`);
+  if (state) lines.push("", "Welche Anleitungen mitkamen: node .ara/tools/mirror.mjs --docs");
   console.log(lines.join("\n"));
+  process.exit(0);
+}
+
+/**
+ * Die Anleitungen im Artefakt.
+ *
+ * Das Kit kennt weder ihre Namen noch ihren Inhalt, und es soll sie auch nicht
+ * kennen: was in ihnen steht, ändert sich mit dem Produkt. Es sagt nur, welche
+ * es gibt und wo sie liegen. Alles, wofür das Kit keinen Weg hat (den ersten
+ * Mitarbeiter anlegen, eine App freigeben), steht dort und nicht hier.
+ */
+function docs(dir, depth = 0) {
+  if (depth > 4 || !existsSync(dir)) return [];
+  const found = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) found.push(...docs(path, depth + 1));
+    else if (/\.(md|pdf|html?|txt|adoc|rst)$/i.test(entry.name)) found.push(path);
+  }
+  return found;
+}
+
+if (arg.docs) {
+  if (!state) {
+    console.log(
+      "Es gibt keinen Spiegel, also auch keine Anleitungen. Er entsteht bei der Installation:\n" +
+        "  node .ara/tools/device.mjs --name <gerät> --install arasul\n" +
+        "Nur zum Nachlesen reicht: node .ara/tools/mirror.mjs --refresh"
+    );
+    process.exit(1);
+  }
+  const found = docs(MIRROR).sort();
+  console.log(
+    [
+      `# Anleitungen im Artefakt (Fassung ${state.version ?? "unbekannt"}, geholt ${state.fetched})`,
+      "",
+      ...(found.length
+        ? found.map((path) => `- ${join(relative(ROOT, MIRROR), relative(MIRROR, path))}`)
+        : ["Keine gefunden. Das Artefakt bringt auf diesem Stand keine Anleitung mit."]),
+      "",
+      "Das Kit schreibt daraus nichts ab. Was ein Partner dort nachschlägt, gilt für diese Fassung.",
+    ].join("\n")
+  );
   process.exit(0);
 }
 

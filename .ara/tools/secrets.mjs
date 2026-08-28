@@ -7,7 +7,10 @@
  *   node .ara/tools/secrets.mjs --store keychain       Ablage wechseln
  *
  * Der Wert wird nie als Argument übergeben: sonst stünde er in der Prozessliste
- * und im Verlauf der Kommandozeile.
+ * und im Verlauf der Kommandozeile. Am Terminal wird er gefragt und dabei
+ * verdeckt; hängt keines dran, wird er von der Standardeingabe gelesen:
+ *
+ *   printf '%s' "$WERT" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN
  */
 
 import { existsSync } from "node:fs";
@@ -17,6 +20,7 @@ import {
   ROOT,
   devicePath,
   fail,
+  helpOnly,
   listCustomers,
   listDevices,
   parseArgs,
@@ -61,6 +65,7 @@ function deviceKeys() {
   return found;
 }
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const PROFILE = join(ROOT, "business", "profile.md");
 
@@ -95,28 +100,43 @@ if (typeof arg.set === "string") {
   const name = arg.set;
   if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) fail("Der Name darf nur Großbuchstaben und _ enthalten.");
 
-  const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-  const question = `Wert für ${name} (wird nicht angezeigt): `;
-
-  // Eingabe verdecken, solange ein Terminal vorhanden ist.
-  const hide = process.stdin.isTTY;
-  if (hide) {
-    rl._writeToOutput = function (text) {
-      if (text.includes(question)) rl.output.write(question);
-    };
-  }
-
-  rl.question(question, (value) => {
-    rl.close();
-    process.stdout.write("\n");
+  /** Ein Wert ist die erste Zeile. Was danach kommt, war Beiwerk der Eingabe. */
+  const store = (raw) => {
+    const value = String(raw).split(/\r?\n/)[0].trim();
+    if (!value) fail(`Für ${name} kam kein Wert an. Es ist nichts hinterlegt worden.`);
     try {
-      const used = setSecret(name, value.trim());
+      const used = setSecret(name, value);
       console.log(`${name} hinterlegt in: ${storeLabel(used)}.`);
     } catch (error) {
       console.error(`Konnte ${name} nicht speichern: ${error.message}`);
       process.exit(1);
     }
-  });
+  };
+
+  if (process.stdin.isTTY) {
+    // Am Terminal wird gefragt, und die Eingabe bleibt verdeckt.
+    const question = `Wert für ${name} (wird nicht angezeigt): `;
+    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+    rl._writeToOutput = function (text) {
+      if (text.includes(question)) rl.output.write(question);
+    };
+    rl.question(question, (value) => {
+      rl.close();
+      process.stdout.write("\n");
+      store(value);
+    });
+  } else {
+    // Ohne Terminal ist niemand da, den man fragen könnte. Der Fremdtest am
+    // 28.08.2026 lief so, und das Token blieb "fehlt": das Werkzeug fragte in
+    // eine Leitung hinein, an deren Ende kein Mensch saß. Dann gilt, was auf
+    // der Standardeingabe steht. Das ist kein Rückschritt bei der Sicherheit:
+    // ein Wert in einer Leitung steht nicht in der Prozessliste, ein Wert als
+    // Argument stünde dort.
+    let raw = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => (raw += chunk));
+    process.stdin.on("end", () => store(raw));
+  }
 } else if (typeof arg.get === "string") {
   // Für Skripte. Gibt den Wert aus, im Gespräch nicht verwenden.
   const value = getSecret(arg.get);
@@ -144,7 +164,9 @@ if (typeof arg.set === "string") {
   lines.push(
     "",
     "Werte werden nie angezeigt. Setzen mit:",
-    "  node .ara/tools/secrets.mjs --set ARASUL_TOKEN"
+    "  node .ara/tools/secrets.mjs --set ARASUL_TOKEN",
+    "Ohne Terminal kommt der Wert von der Standardeingabe:",
+    "  printf '%s' \"$WERT\" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN"
   );
   console.log(lines.join("\n"));
 }

@@ -21,8 +21,10 @@ ssh:                      # ok | refused | local, Ergebnis der letzten Prüfung
 tls:                      # selfsigned, wenn das Gerät ein selbst ausgestelltes Zertifikat trägt
 docker:                   # running | present | missing
 ollama:                   # present | container | missing, Programm oder Container
-arasul:                   # found | none, Hinweise auf dem Gerät, kein Produktstand
+arasul:                   # running | traces | none, was am Gerät gefunden wurde, kein Produktstand
+net_name:                 # Name, unter dem das Gerät im Kundennetz auftritt, vom Installer gesetzt
 api_key_ref:              # Kit-Schlüssel (app:deploy) für den Deploy: Name des Eintrags, kein Wert
+start_password_ref:       # Startpasswort aus der Installation: Name des Eintrags, kein Wert
 checked:                  # Zeitpunkt der letzten Prüfung durch device.mjs
 remote_access:            # none | direct | vpn
 secret_ref:               # Name des Eintrags in der Geheimnis-Ablage, kein Wert

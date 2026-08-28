@@ -31,6 +31,7 @@ import {
   devicePath,
   ensureDir,
   fail,
+  helpOnly,
   listCustomers,
   listDevices,
   parseArgs,
@@ -38,8 +39,10 @@ import {
   today,
   writeFrontmatter,
 } from "./lib/kit.mjs";
+import { arasulRunning } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 
@@ -291,7 +294,7 @@ function open(state) {
           : `Die Wartung für ${device.name} läuft in ${until} Tagen aus.`
       );
     }
-    if (device.arasul === "found" && !device.key_ref) {
+    if (arasulRunning(device.arasul) && !device.key_ref) {
       next.push(
         `Für ${device.name} ist kein Kit-Schlüssel hinterlegt, ohne ihn geht kein Deploy. ` +
           `Anlegen mit: node .ara/tools/device.mjs --customer ${state.customer} --name ${device.name} --deploy-key`
@@ -411,7 +414,11 @@ if (!devices.length) {
     if (reach.length) out.push(`  ${reach.join(", ")}`);
 
     const platform = [];
-    if (d.arasul) platform.push(`Arasul: ${d.arasul === "found" ? "Hinweise in der Akte" : "keine Hinweise"}`);
+    if (d.arasul) {
+      platform.push(
+        `Arasul: ${arasulRunning(d.arasul) ? "läuft laut Akte" : d.arasul === "traces" ? "Reste da, nichts läuft" : "keine Hinweise"}`
+      );
+    }
     if (d.key_ref) platform.push(`Kit-Schlüssel ${d.key_ref}${d.key_present ? "" : ", nicht in der Ablage"}`);
     else platform.push("kein Kit-Schlüssel hinterlegt");
     out.push(`  ${platform.join(", ")}`);

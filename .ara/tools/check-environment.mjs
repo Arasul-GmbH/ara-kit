@@ -13,7 +13,10 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir, platform, arch, release, totalmem } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { helpOnly } from "./lib/kit.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
+
+helpOnly(import.meta.url);
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 

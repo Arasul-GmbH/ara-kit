@@ -23,7 +23,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { judge, parseProbe, services } from "./lib/device.mjs";
+import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
 import {
   KIT_CONTRACT_VERSION,
   checkManifest,
@@ -41,7 +41,7 @@ import {
   planFor,
   undocumented,
 } from "./lib/docroutes.mjs";
-import { installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
+import { installCommand, installTarget, installerEntry, mirrorState, scrub, ship } from "./lib/install.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
   needsParameter,
@@ -62,8 +62,10 @@ import {
 } from "./lib/invoice.mjs";
 import { buildXml, validateXml } from "./lib/zugferd.mjs";
 import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
-import { ROOT, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
+
+helpOnly(import.meta.url);
 
 const results = [];
 let failures = 0;
@@ -305,7 +307,7 @@ check("Docker, Ollama und Arasul werden aus dem Befund erkannt", () => {
   const svc = services(facts);
   assert(svc.docker.state === "running" && /27\.1\.1/.test(svc.docker.text), "laufendes Docker nicht erkannt");
   assert(svc.ollama.state === "present", "Ollama nicht erkannt");
-  assert(svc.arasul.state === "found" && /arasul-flows-sandbox/.test(svc.arasul.text), "Arasul-Container nicht als Hinweis");
+  assert(svc.arasul.state === "running" && /arasul-flows-sandbox/.test(svc.arasul.text), "laufende Plattform nicht erkannt");
   assert(/\/opt\/arasul.*\/home\/x\/arasul/.test(svc.arasul.text), "mehrere Ordner nicht gesammelt");
   assert(svc.sudo === true, "sudo ohne Passwort nicht erkannt");
 
@@ -321,6 +323,40 @@ check("Docker, Ollama und Arasul werden aus dem Befund erkannt", () => {
   );
   assert(imContainer.ollama.state === "container", "das Modell im Container gilt als fehlend");
   assert(/llm-service/.test(imContainer.ollama.text), "der gefundene Container wird nicht genannt");
+});
+
+check("Die Spurensuche trennt eine laufende Plattform von liegengebliebenen Resten", () => {
+  // Der Fund vom 28.08.2026: das Kit schob sein Artefakt nach $HOME/arasul,
+  // fand beim nächsten Lauf genau diesen Ordner und hielt ihn für eine
+  // Installation. Danach ging auf einem frisch zurückgesetzten Gerät nichts
+  // mehr, obwohl dort nichts lief. Ein Ordner ist kein laufender Dienst.
+  const laeuft = services(
+    parseProbe("@docker_bin=/usr/bin/docker\n@docker_server=27.1.1\n@docker_names=dashboard-backend traefik")
+  );
+  assert(laeuft.arasul.state === "running", `eine laufende Plattform gilt als ${laeuft.arasul.state}`);
+  assert(/dashboard-backend/.test(laeuft.arasul.text), "der gefundene Container wird nicht genannt");
+
+  const reste = services(
+    parseProbe("@docker_bin=/usr/bin/docker\n@docker_server=27.1.1\n@docker_names=n8n\n@arasul_dir=/home/x/arasul-9.9.9")
+  );
+  assert(reste.arasul.state === "traces", `Reste ohne laufenden Container gelten als ${reste.arasul.state}`);
+  assert(/nichts läuft/.test(reste.arasul.text), `der Satz sagt nicht, dass nichts läuft: ${reste.arasul.text}`);
+
+  const dienst = services(parseProbe("@arasul_units=arasul.service"));
+  assert(dienst.arasul.state === "traces", "ein Dienst ohne laufenden Container gilt nicht als Rest");
+
+  const nichts = services(parseProbe("@docker_bin=/usr/bin/docker\n@docker_names=n8n traefik"));
+  assert(nichts.arasul.state === "none", "ein fremder Container gilt als Arasul");
+
+  // Eine Akte aus der Zeit vor dieser Trennung trägt "found". Sie darf nicht
+  // stillschweigend als leeres Gerät gelesen werden.
+  assert(arasulRunning("found") && arasulRunning("running"), "eine alte Akte wird nicht mehr gelesen");
+  assert(!arasulRunning("traces") && !arasulRunning("none"), "Reste gelten als laufende Plattform");
+
+  // Das Prüfskript muss den Ordner, in den das Kit selbst auspackt, überhaupt
+  // finden. Sonst bleibt der Rest unsichtbar, statt "Reste da" zu heißen.
+  assert(/arasul-\*/.test(PROBE), "das Prüfskript sieht im Ordner des Artefakts nicht nach");
+  return "läuft, Reste, nichts";
 });
 
 check("device.mjs legt die Akte an, urteilt und merkt sich das Gerät", () => {
@@ -516,6 +552,43 @@ check("Geheimnis-Werkzeug meldet Ablage und Stand", () => {
 check("Geheimnis-Werkzeug lehnt unsinnige Ablagen ab", () => {
   const run = tool("secrets.mjs", ["--store", "irgendwas"]);
   assert(run.status !== 0, "unbekannte Ablage wurde akzeptiert");
+});
+
+check("Ein Geheimnis lässt sich auch ohne Terminal hinterlegen", () => {
+  // Der Fremdtest am 28.08.2026 lief ohne Terminal. Das Werkzeug fragte in eine
+  // Leitung hinein, an deren Ende niemand saß, und das Token blieb "fehlt":
+  // damit war die Installation von vornherein nicht erreichbar.
+  //
+  // Geprüft wird an einem Wegwerf-Kit, damit die echte .env unberührt bleibt.
+  const work = mkdtempSync(join(tmpdir(), "ara-secret-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara", "tools"), join(fork, ".ara", "tools"), { recursive: true });
+  const forkTool = (args, input) =>
+    spawnSync("node", [join(fork, ".ara", "tools", "secrets.mjs"), ...args], { encoding: "utf8", input });
+  try {
+    const wert = "geheim-aus-der-leitung";
+    let run = forkTool(["--set", "ARA_SELFTEST_PROBE"], `${wert}\n`);
+    assert(run.status === 0, `Hinterlegen ohne Terminal fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(/hinterlegt in/.test(run.stdout), `es wird nicht gesagt, wo der Wert liegt: ${run.stdout}`);
+    assert(!new RegExp(wert).test(`${run.stdout}${run.stderr}`), "der Wert steht in der Ausgabe");
+
+    const env = readFileSync(join(fork, ".env"), "utf8");
+    assert(new RegExp(`^ARA_SELFTEST_PROBE=${wert}$`, "m").test(env), `der Wert kam nicht an: ${env}`);
+
+    // Und das Werkzeug findet ihn danach wieder, ohne ihn vorzulesen.
+    run = forkTool(["--show"], "");
+    assert(run.status === 0, `Anzeige fehlgeschlagen: ${run.stderr}`);
+    assert(!new RegExp(wert).test(run.stdout), "die Übersicht zeigt den Wert");
+
+    // Eine leere Leitung ist kein Wert, und das Werkzeug tut nicht so.
+    run = forkTool(["--set", "ARA_SELFTEST_LEER"], "\n");
+    assert(run.status !== 0, "ein leerer Wert wurde hinterlegt");
+    assert(/kein Wert/.test(run.stderr), `der leere Wert wird nicht benannt: ${run.stderr}`);
+    assert(!/ARA_SELFTEST_LEER/.test(readFileSync(join(fork, ".env"), "utf8")), "der leere Eintrag steht in der .env");
+    return "gesetzt, gefunden, leer abgewiesen";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 // --- Spiegel ----------------------------------------------------------------
@@ -1566,7 +1639,7 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
   }
 });
 
-await checkAsync("Das Artefakt geht als Ganzes an das Gerät, oder gar nicht", async () => {
+await checkAsync("Das Artefakt sagt selbst, wie es installiert wird, und geht sauber an das Gerät", async () => {
   const work = mkdtempSync(join(tmpdir(), "ara-artefakt-"));
   const mirror = join(work, "spiegel");
   const ziel = join(work, "geraet");
@@ -1574,28 +1647,110 @@ await checkAsync("Das Artefakt geht als Ganzes an das Gerät, oder gar nicht", a
   mkdirSync(join(mirror, "config", "platforms"), { recursive: true });
   process.env.ARA_MIRROR = mirror;
   try {
-    // Ein Artefakt, das nicht sagt, wie es sich installiert: das Kit rät nicht.
+    // 1. Ein Artefakt, das nicht sagt, wie es sich installiert: das Kit rät nicht.
     writeFileSync(join(mirror, "README.md"), "# Irgendetwas\n");
-    assert(installerEntry() === null, "ohne Einstiegspunkt behauptet das Kit einen Weg");
+    let entry = installerEntry();
+    assert(!entry.ok && /arasul-release\.json/.test(entry.reason), `ohne die Datei behauptet das Kit einen Weg: ${entry.reason}`);
 
-    // Eines, das es sagt.
-    writeFileSync(join(mirror, "arasul"), "#!/bin/sh\n");
+    // 2. Eine Datei, die eine Datei nennt, die es nicht gibt: auch dann nicht.
+    //    Genau hier lag der Fund vom 28.08.2026: das Kit rief einen Namen auf,
+    //    den es auswendig kannte, und den es im Artefakt nie gab.
+    writeFileSync(
+      join(mirror, "arasul-release.json"),
+      JSON.stringify({ fassung: "9.9.9", einstiegspunkt: "install.sh" })
+    );
+    entry = installerEntry();
+    assert(!entry.ok && /liegt aber nicht/.test(entry.reason), `ein Einstiegspunkt ohne Datei wird angenommen: ${entry.reason}`);
+
+    // 3. Mit Datei: der Name kommt aus der JSON und nicht aus dem Kit.
+    writeFileSync(join(mirror, "install.sh"), "#!/bin/sh\n");
     writeFileSync(join(mirror, "config", "platforms", "probe.json"), "{}\n");
     writeFileSync(join(mirror, "STATE.json"), JSON.stringify({ fetched: "2026-08-27T10:00:00.000Z", source: "https://probe", version: "9.9.9" }));
-    const entry = installerEntry();
-    assert(typeof entry === "string" && entry.length, "Einstiegspunkt nicht erkannt");
+    entry = installerEntry();
+    assert(entry.ok && entry.file === "install.sh", `Einstiegspunkt nicht aus der Datei gelesen: ${JSON.stringify(entry)}`);
     assert(mirrorState().version === "9.9.9", "Stand des Artefakts nicht gelesen");
     assert(mirrorState().source === "https://probe", "Quelle des Artefakts nicht gelesen");
 
-    // Schieben: was im Spiegel liegt, liegt danach am Ziel, samt Unterordnern.
+    // 4. Gerufen wird er mit Startpasswort und Netzname, denn nur dabei
+    //    entstehen Netzname, Fassung, Startpasswort und die Erstausgabe. Der
+    //    Aufruf wird angezeigt, das Passwort darin nicht.
+    const call = installCommand(entry, { password: "geheim-123", netName: "werk2" });
+    assert(/^\.\/install\.sh /.test(call.command), `der Aufruf beginnt nicht mit dem Einstiegspunkt: ${call.command}`);
+    assert(/--passwort 'geheim-123'/.test(call.command), `das Startpasswort fehlt im Aufruf: ${call.command}`);
+    assert(/--name 'werk2'/.test(call.command), `der Netzname fehlt im Aufruf: ${call.command}`);
+    assert(!/geheim-123/.test(call.shown), `das Startpasswort steht in der Anzeige: ${call.shown}`);
+    assert(!/geheim-123/.test(scrub(`cd x && ${call.command}`)), "scrub lässt das Startpasswort stehen");
+    assert(/werk2/.test(call.shown), "die Anzeige verschweigt auch den Netznamen");
+
+    // 5. Das Ziel am Gerät ist nicht der Ordner, den die Spurensuche als
+    //    laufende Plattform wertet. Sonst findet das Kit beim nächsten Lauf
+    //    sich selbst.
+    const target = installTarget("9.9.9");
+    assert(/arasul-9\.9\.9/.test(target), `das Ziel trägt die Fassung nicht: ${target}`);
+    assert(services(parseProbe("@arasul_dir=/home/x/arasul-9.9.9")).arasul.state === "traces", "das eigene Artefakt gilt als laufende Plattform");
+
+    // 6. Schieben: was im Spiegel liegt, liegt danach am Ziel, samt
+    //    Unterordnern. Die Beiwerkdateien von macOS bleiben draußen: am
+    //    28.08.2026 kamen 1124 davon am Orin an, und Traefik stieg an einer aus.
+    writeFileSync(join(mirror, "config", "._middlewares.yml"), "Beiwerk\n");
+    writeFileSync(join(mirror, "._install.sh"), "Beiwerk\n");
     const geschoben = await ship(null, "local", JSON.stringify(ziel));
     assert(geschoben.ok, `Schieben fehlgeschlagen: ${geschoben.message}`);
-    assert(existsSync(join(ziel, "arasul")), "der Einstiegspunkt kam nicht an");
+    assert(existsSync(join(ziel, "install.sh")), "der Einstiegspunkt kam nicht an");
     assert(existsSync(join(ziel, "config", "platforms", "probe.json")), "Unterordner kamen nicht an");
-    return `${entry}, Stand 9.9.9`;
+    assert(!existsSync(join(ziel, "._install.sh")), "eine ._-Datei aus der Wurzel kam am Gerät an");
+    assert(!existsSync(join(ziel, "config", "._middlewares.yml")), "eine ._-Datei aus einem Unterordner kam am Gerät an");
+    return `${entry.file}, Ziel ${target}, Stand 9.9.9`;
   } finally {
     if (gemerkt === undefined) delete process.env.ARA_MIRROR;
     else process.env.ARA_MIRROR = gemerkt;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {
+  // Der Fremdtest am 28.08.2026 stand nach der Installation still: die
+  // Plattform lief, aber der erste Mitarbeiter und seine Freigabe entstehen in
+  // der Oberfläche, und der Prüfer hatte keinen Browser. Das Wissen muss den
+  // zweiten Weg nennen, und das Kit muss zeigen, wo er beschrieben steht.
+  const wissen = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
+  for (const [muster, was] of [
+    [/Mitarbeiter/, "der Fall selbst"],
+    [/Freigabe/, "die Freigabe"],
+    [/Admin-Handbuch/, "das Admin-Handbuch im Artefakt"],
+    [/API-Referenz/, "die API-Referenz im Artefakt"],
+    [/Authorization: Bearer/, "die Form des Aufrufs"],
+    [/mirror\.mjs --docs/, "der Weg zu den Anleitungen"],
+    [/--despite-traces/, "der benannte Weg über liegengebliebene Reste"],
+  ]) {
+    assert(muster.test(wissen), `in .ara/knowledge/device.md fehlt ${was}`);
+  }
+  // Und das Werkzeug tut, was das Blatt verspricht.
+  const werkzeug = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+  assert(/--despite-traces/.test(werkzeug), "device.mjs kennt den Weg nicht, den das Blatt nennt");
+
+  const work = mkdtempSync(join(tmpdir(), "ara-docs-"));
+  const mirror = join(work, "spiegel");
+  try {
+    // Ohne Spiegel gibt es nichts zu zeigen, und das Werkzeug sagt es.
+    let run = await toolAsync("mirror.mjs", ["--docs"], { ARA_MIRROR: mirror });
+    assert(run.status !== 0, "ohne Spiegel meldet --docs Erfolg");
+    assert(/kein/i.test(run.stdout), `der fehlende Spiegel wird nicht benannt: ${run.stdout}`);
+
+    mkdirSync(join(mirror, "docs", "ops"), { recursive: true });
+    writeFileSync(join(mirror, "STATE.json"), JSON.stringify({ fetched: "2026-08-27T10:00:00.000Z", source: "https://probe", version: "9.9.9" }));
+    writeFileSync(join(mirror, "docs", "admin-handbuch.md"), "# Handbuch\n");
+    writeFileSync(join(mirror, "docs", "ops", "auslieferung.md"), "# Auslieferung\n");
+    writeFileSync(join(mirror, "install.sh"), "#!/bin/sh\n");
+
+    run = await toolAsync("mirror.mjs", ["--docs"], { ARA_MIRROR: mirror });
+    assert(run.status === 0, `--docs fehlgeschlagen: ${run.stderr || run.stdout}`);
+    assert(/admin-handbuch\.md/.test(run.stdout), `die Anleitung fehlt in der Liste: ${run.stdout}`);
+    assert(/ops\/auslieferung\.md/.test(run.stdout), "eine Anleitung aus einem Unterordner fehlt");
+    assert(!/install\.sh/.test(run.stdout), "ein Skript wird als Anleitung ausgegeben");
+    assert(/9\.9\.9/.test(run.stdout), "es wird nicht gesagt, zu welcher Fassung die Anleitungen gehören");
+    return "Blatt und Werkzeug";
+  } finally {
     rmSync(work, { recursive: true, force: true });
   }
 });
@@ -2709,6 +2864,42 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
   return `${files.length} Dateien`;
 });
 
+check("Jedes Werkzeug beantwortet --help und tut sonst nichts", () => {
+  // Am 28.08.2026 führte `device.mjs --help` eine Geräteprüfung aus und
+  // `mirror.mjs --help` lud den Spiegel. Wer fragt, was ein Werkzeug tut, hat
+  // sich gerade nicht dafür entschieden, dass es etwas tut.
+  //
+  // `guard.mjs` steht nicht in der Liste: es ist der Riegel, bekommt seine
+  // Eingabe von einem Hook auf der Standardeingabe und wird von keinem Menschen
+  // aufgerufen.
+  const dir = join(ROOT, ".ara", "tools");
+  const tools = readdirSync(dir)
+    .filter((name) => name.endsWith(".mjs") && name !== "guard.mjs")
+    .sort();
+  assert(tools.length >= 20, `nur ${tools.length} Werkzeuge gefunden, das kann nicht stimmen`);
+
+  // Nichts darf sich dabei ändern. Der Merker ist der Zeuge: er ist die Datei,
+  // die eine Geräteprüfung als Erstes anfasst.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const before = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+
+  for (const name of tools) {
+    const run = tool(name, ["--help"], "");
+    assert(run.status === 0, `${name} --help endet mit ${run.status}: ${run.stderr || run.stdout}`);
+    const expected = headerHelp(new URL(`./${name}`, import.meta.url).href).trim();
+    assert(expected.length > 40, `${name} hat keinen brauchbaren Kopf, aus dem eine Hilfe würde`);
+    assert(
+      run.stdout.trim() === expected,
+      `${name} --help antwortet nicht mit seiner Kopfhilfe:\n${run.stdout.slice(0, 200)}`
+    );
+    assert(!/error/i.test(run.stderr), `${name} --help meldet einen Fehler: ${run.stderr}`);
+  }
+
+  const after = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  assert(after === before, "ein --help hat den Merker angefasst, also hat ein Werkzeug gearbeitet");
+  return `${tools.length} Werkzeuge`;
+});
+
 check("Browser-Werkzeug ist eingerichtet", () => {
   const file = join(ROOT, ".mcp.json");
   assert(existsSync(file), ".mcp.json fehlt, der Browser steht dann nicht zur Verfügung");
@@ -2780,6 +2971,10 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   collect(join(ROOT, ".ara"));
   collect(join(ROOT, ".claude"));
   files.push(join(ROOT, "README.md"));
+  // .env.example ist kein Markdown und stand darum nie in dieser Pruefung. Sie
+  // nannte bis zum 28.08.2026 /start, den es seit E1 nicht mehr gibt, und sie
+  // ist genau die Datei, die ein Fremder als Erstes aufmacht.
+  files.push(join(ROOT, ".env.example"));
 
   // Ein Befehl steht am Wortanfang und hoert vor dem naechsten Schraegstrich
   // auf. Der Lookahead haelt Pfade wie /dev/disk0 und Verhaeltnisse wie
@@ -2824,6 +3019,20 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   assert(missing.length === 0, `Befehle ohne Datei:\n    ${missing.join("\n    ")}`);
   const abgeloest = [...found.keys()].filter((name) => RETIRED[name]).length;
   return `${found.size} Befehle genannt, alle vorhanden${abgeloest ? `, ${abgeloest} abgeloest und mit Nachfolger genannt` : ""}`;
+});
+
+check("Die Vorlage der .env nennt einen Befehl, den es gibt", () => {
+  // Sie ist die erste Datei, die ein Fremder aufmacht, und sie schickte ihn bis
+  // zum 28.08.2026 zu /start. Den Befehl gibt es seit E1 nicht mehr.
+  const text = readFileSync(join(ROOT, ".env.example"), "utf8");
+  for (const [alt, neu] of Object.entries(RETIRED)) {
+    assert(
+      !new RegExp(`/${alt}\\b`).test(text) || new RegExp(`/${neu}\\b`).test(text),
+      `.env.example nennt /${alt}, den Befehl gibt es nicht mehr, er heisst /${neu}`
+    );
+  }
+  assert(/\/init\b/.test(text), ".env.example sagt nicht, welcher Befehl daraus die echte .env macht");
+  assert(/secrets\.mjs --set/.test(text), ".env.example sagt nicht, wie man einen Wert einträgt, ohne sie zu öffnen");
 });
 
 check("Jeder Befehl nennt sein Wissen", () => {

@@ -34,7 +34,8 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
-import { ROOT, parseArgs } from "./lib/kit.mjs";
+import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
+import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
 import { standBlock } from "./lib/version.mjs";
 
 const SOURCE =
@@ -54,6 +55,7 @@ const MANAGED = [
 // Innerhalb von .ara entsteht das hier erst beim Nutzer und wird nicht mitgeliefert.
 const SKIP = [join(".ara", "mirror"), join(".ara", "state.json")];
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 function skipped(rel) {
@@ -129,8 +131,11 @@ async function download(target) {
   if (!response.body) throw new Error("Die Antwort war leer.");
 
   await new Promise((done, failed) => {
-    const tar = spawn("tar", ["-xzf", "-", "-C", target, "--strip-components=1"], {
+    // Die ._-Beiwerkdateien von macOS bleiben draußen, hier wie überall, wo das
+    // Kit packt oder auspackt.
+    const tar = spawn("tar", ["-xzf", "-", "--exclude", APPLEDOUBLE, "-C", target, "--strip-components=1"], {
       stdio: ["pipe", "ignore", "pipe"],
+      env: packEnv(),
     });
     let message = "";
     tar.stderr.on("data", (chunk) => (message += chunk.toString()));

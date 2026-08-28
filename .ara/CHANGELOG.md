@@ -14,6 +14,20 @@ Aufbau eines Eintrags: `## <nummer> (<datum>)`, darunter die Kontraktzeile und
 die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`.
 
+## 0.9.0 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Der Installer wird so gerufen, wie das Artefakt es sagt: der Einstiegspunkt kommt aus `arasul-release.json`, nicht aus dem Gedaechtnis des Kits, und er bekommt Startpasswort und Netzname mit. Nur dabei entstehen am Geraet Netzname, Fassung, Startpasswort und die Erstausgabe. Nennt das Artefakt keinen Einstiegspunkt, haelt das Kit an, statt zu raten.
+- Das Startpasswort wuerfelt das Kit und legt es in die Geheimnis-Ablage. Die Geraeteakte traegt nur den Namen des Eintrags, in `start_password_ref`, und den Netznamen in `net_name`.
+- Das Artefakt wird nach `$HOME/arasul-<fassung>` geschoben und nicht mehr nach `$HOME/arasul`. Das Kit fand sonst beim naechsten Lauf sein eigenes Paket und hielt es fuer eine Installation.
+- Die Spurensuche unterscheidet drei Lagen statt zwei: die Plattform laeuft, es liegen nur Reste da, oder da ist nichts. Ueber Reste hinweg wird nur mit `--despite-traces` installiert, und das gehoert vorher bestaetigt.
+- Ueberall, wo das Kit packt oder auspackt, bleiben die `._`-Beiwerkdateien von macOS draussen. 1124 davon gingen mit einem Artefakt an ein Geraet, und Traefik stieg an einer davon aus.
+- `secrets.mjs --set` nimmt den Wert von der Standardeingabe, wenn kein Terminal dranhaengt. Ohne das blieb ein Token in einer nicht-interaktiven Sitzung auf "fehlt".
+- Jedes Werkzeug beantwortet `--help` mit seiner Kopfhilfe und tut sonst nichts. Vorher fuehrte `device.mjs --help` eine Geraetepruefung aus und `mirror.mjs --help` lud den Spiegel.
+- Neu: `node .ara/tools/mirror.mjs --docs` zeigt, welche Anleitungen mit dem Artefakt kamen. Das Wissen zu `/device` und `/maintain` nennt darueber den Weg zum ersten Mitarbeiter und zur ersten Freigabe, auch ohne Browser.
+- `.env.example` schickt niemanden mehr zu `/start`. Den Befehl gibt es seit E1 nicht mehr.
+
 ## 0.8.0 (2026-08-27)
 
 Kontrakt: bis 3

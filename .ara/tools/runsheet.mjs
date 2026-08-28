@@ -25,6 +25,7 @@ import {
   devicePath,
   ensureDir,
   fail,
+  helpOnly,
   now,
   parseArgs,
   readFrontmatter,
@@ -51,6 +52,7 @@ const STATE_LABEL = {
   done: "fertig",
 };
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 if (arg.create) {

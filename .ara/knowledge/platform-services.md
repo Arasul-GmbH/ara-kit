@@ -37,6 +37,12 @@ Das Kit hat einen Schlüssel und keine Sitzung. Alles, was eine Sitzung braucht,
 also ein Mensch, im Browser am Gerät, und du siehst zu und schreibst mit. Ein Kit, das
 so einen Weg selbst ginge, bräuchte das Passwort eines Administrators.
 
+**Ohne Browser ist das kein Ende.** Die Plattform hat für ihre Verwaltung eine eigene
+Schnittstelle, und wie sie geht, steht im Artefakt: Admin-Handbuch und API-Referenz,
+beide im Spiegel, zu finden mit `node .ara/tools/mirror.mjs --docs`. Der erste
+Mitarbeiter und die erste Freigabe sind der Fall, der einen sonst hängen lässt, und er
+steht in `.ara/knowledge/device.md` unter "Der erste Mitarbeiter und die erste Freigabe".
+
 ## Anmeldung: eine App bekommt keine eigene
 
 Wer an Arasul angemeldet ist und die App freigegeben hat, ist in der App angemeldet. Wer

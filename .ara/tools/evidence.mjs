@@ -33,6 +33,7 @@ import {
   ROOT,
   ensureDir,
   fail,
+  helpOnly,
   now,
   parseArgs,
   readFrontmatter,
@@ -59,6 +60,7 @@ const STUFEN = {
 const MIN_BREITE = 800;
 const MIN_HOEHE = 500;
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 // --- Hilfen -----------------------------------------------------------------

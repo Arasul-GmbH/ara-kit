@@ -21,8 +21,9 @@
 
 import { existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { BUSINESS, ROOT, daysUntil, parseArgs, readFrontmatter } from "./lib/kit.mjs";
+import { BUSINESS, ROOT, daysUntil, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
+helpOnly(import.meta.url);
 const arg = parseArgs();
 
 // Die eigenen Sätze ändern sich höchstens einmal im Jahr, die Einkaufspreise sind

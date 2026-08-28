@@ -104,6 +104,25 @@ Ein Update ist ein Eingriff, kein Klick.
 Der Teil, mit dem der Partner zusätzlich Geld verdient. Verfahren:
 `.ara/knowledge/extensions.md`
 
+## Ein Mitarbeiter kommt dazu, einer geht
+
+Der häufigste kleine Auftrag nach der Abnahme, und der einzige, für den das Kit keinen
+Befehl hat: es hat einen Schlüssel mit `app:deploy` und keine Sitzung als Administrator.
+
+Der übliche Weg ist die Oberfläche, im Browser am Gerät. **Ohne Browser geht es über die
+Verwaltungsschnittstelle der Plattform**, mit einem Ausweis in der Kopfzeile
+(`Authorization: Bearer`). Weg, Rumpf und der Weg zum Token stehen im Artefakt, nicht im
+Kit: Admin-Handbuch und API-Referenz, beide im Spiegel.
+
+```
+node .ara/tools/mirror.mjs --docs
+```
+
+Der ganze Ablauf mit der Form des Aufrufs steht in `.ara/knowledge/device.md` unter
+"Der erste Mitarbeiter und die erste Freigabe". **Wer geht, verliert seine Freigaben
+sofort und nicht beim nächsten Besuch**, und das schreibst du in den Verlauf, mit Datum
+und mit dem Weg, auf dem du es gemacht hast.
+
 ## Wenn der Kunde anruft, weil etwas nicht geht
 
 Das Kit überwacht nichts (bewusst). Der übliche Weg ist: Der Kunde meldet sich.
