@@ -14,7 +14,7 @@ the app wants something from the platform (login, permission, flow, language mod
 `business/profile.md` beforehand: language, branch, detail level, security level, what
 the house works with.
 
-**The argument.** `urlaubsantrag` is the app under `apps/urlaubsantrag/`. Apps sit at the
+**The argument.** `<app>` is the app under `apps/<app>/`. Apps sit at the
 top, independent of customers: the same app may run at three customers, and where it runs
 the device says. No argument: first the marker `.ara/state.json`, then the existing files.
 If there is exactly one, take it, otherwise ask through the interview tool.

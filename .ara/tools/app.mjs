@@ -5,22 +5,22 @@
  * The tool has two sides, and you recognise them by the call. Without `--device`
  * it works here on the computer, on the file under `apps/<name>/`:
  *
- *   node .ara/tools/app.mjs --app urlaubsantrag                    situation and next step
- *   node .ara/tools/app.mjs --app urlaubsantrag --new              file from the scaffold
- *   node .ara/tools/app.mjs --app urlaubsantrag --plan "<title>"   new plan, open
- *   node .ara/tools/app.mjs --app urlaubsantrag --plan-aktiv <file>
- *   node .ara/tools/app.mjs --app urlaubsantrag --plan-erledigt <file>
- *   node .ara/tools/app.mjs --app urlaubsantrag --build            package into build/
+ *   node .ara/tools/app.mjs --app beispiel                    situation and next step
+ *   node .ara/tools/app.mjs --app beispiel --new              file from the scaffold
+ *   node .ara/tools/app.mjs --app beispiel --plan "<title>"   new plan, open
+ *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <file>
+ *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <file>
+ *   node .ara/tools/app.mjs --app beispiel --build            package into build/
  *
  * With `--device` it addresses a device, and then that device's contract applies:
  *
  *   node .ara/tools/app.mjs --device orin --contract               what this device promises
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --check
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --deploy
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --live
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --back
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --remove --confirm urlaubsantrag
- *   node .ara/tools/app.mjs --device rechner --app urlaubsantrag --compose   device without Arasul
+ *   node .ara/tools/app.mjs --device orin --app beispiel --check
+ *   node .ara/tools/app.mjs --device orin --app beispiel --deploy
+ *   node .ara/tools/app.mjs --device orin --app beispiel --live
+ *   node .ara/tools/app.mjs --device orin --app beispiel --back
+ *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
+ *   node .ara/tools/app.mjs --device rechner --app beispiel --compose   device without Arasul
  *
  * `--check` and `--deploy` also take a folder: `--deploy <folder>` deploys a
  * package that does not come out of `apps/`.
@@ -40,22 +40,22 @@
  * Das Werkzeug hat zwei Seiten, und man erkennt sie am Aufruf. Ohne `--device`
  * arbeitet es hier auf dem Rechner, an der Akte unter `apps/<name>/`:
  *
- *   node .ara/tools/app.mjs --app urlaubsantrag                    Lage und nächster Schritt
- *   node .ara/tools/app.mjs --app urlaubsantrag --new              Akte aus der Vorlage
- *   node .ara/tools/app.mjs --app urlaubsantrag --plan "<titel>"   neuer Plan, offen
- *   node .ara/tools/app.mjs --app urlaubsantrag --plan-aktiv <datei>
- *   node .ara/tools/app.mjs --app urlaubsantrag --plan-erledigt <datei>
- *   node .ara/tools/app.mjs --app urlaubsantrag --build            Paket nach build/
+ *   node .ara/tools/app.mjs --app beispiel                    Lage und nächster Schritt
+ *   node .ara/tools/app.mjs --app beispiel --new              Akte aus der Vorlage
+ *   node .ara/tools/app.mjs --app beispiel --plan "<titel>"   neuer Plan, offen
+ *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <datei>
+ *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <datei>
+ *   node .ara/tools/app.mjs --app beispiel --build            Paket nach build/
  *
  * Mit `--device` spricht es ein Gerät an, und dann gilt dessen Kontrakt:
  *
  *   node .ara/tools/app.mjs --device orin --contract               was dieses Gerät verspricht
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --check
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --deploy
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --live
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --back
- *   node .ara/tools/app.mjs --device orin --app urlaubsantrag --remove --confirm urlaubsantrag
- *   node .ara/tools/app.mjs --device rechner --app urlaubsantrag --compose   Gerät ohne Arasul
+ *   node .ara/tools/app.mjs --device orin --app beispiel --check
+ *   node .ara/tools/app.mjs --device orin --app beispiel --deploy
+ *   node .ara/tools/app.mjs --device orin --app beispiel --live
+ *   node .ara/tools/app.mjs --device orin --app beispiel --back
+ *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
+ *   node .ara/tools/app.mjs --device rechner --app beispiel --compose   Gerät ohne Arasul
  *
  * `--check` und `--deploy` nehmen auch einen Ordner: `--deploy <ordner>` spielt
  * ein Paket ein, das nicht aus `apps/` kommt.

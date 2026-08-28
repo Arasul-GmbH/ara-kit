@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.13.0 (2026-08-28)
+
+Contract: up to 3
+
+- The root of the repository holds one README, the one GitHub shows. Its German half lies under `.ara/README.de.md`, linked in the first line, and the self-test knows the place: the pair is still counted, only the second half's location stands in the list explicitly. The rules for the document check moved to `.ara/.markdownlint-cli2.jsonc`, the call carries the path: `npx --yes markdownlint-cli2@0.18.1 --config .ara/.markdownlint-cli2.jsonc "**/*.md"`.
+- The clone brings no app any more. The reference app under `apps/urlaubsantrag/` is gone, together with its exception in `.gitignore` and its plan; `apps/` belongs to the user entirely. What it showed now stands in the scaffold under `.ara/templates/app/`: an app made with `--new` files an item, starts the flow `freigabe`, stops at the approval, a human decides in Arasul, and afterwards the item stands as approved or rejected with the name of the one who decided and the sentence the flow wrote. Without Arasul the item stays without decision and the page says so. The self-test runs exactly that against the scaffold's backend, with a played device.
+- The scaffold's interface is built from six building blocks with the names of Arasul's design system, head, list, card, form, message, menu, in `frontend/src/bausteine.jsx`, with the rules in `stil.css` and the values in `design.css` from the mirror. The page in `app.jsx` is only assembled from them, so that whoever builds on takes a block and does not write a second card next to the first. The blocks from the product itself, `packages/marken` from phase D7, are not enclosed yet: that needs the mirror and is the open item after this version.
+
 ## 0.12.0 (2026-08-28)
 
 Contract: up to 3

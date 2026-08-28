@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.13.0 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Die Wurzel des Repositories trägt eine README, die, die GitHub zeigt. Ihre deutsche Hälfte liegt unter `.ara/README.de.md`, in der ersten Zeile verlinkt, und der Selbsttest kennt den Ort: das Paar wird weiter gezählt, nur der Ort der zweiten Hälfte steht ausdrücklich in der Liste. Die Regeln für die Dokumentprüfung sind nach `.ara/.markdownlint-cli2.jsonc` gewandert, der Aufruf bekommt den Pfad mit: `npx --yes markdownlint-cli2@0.18.1 --config .ara/.markdownlint-cli2.jsonc "**/*.md"`.
+- Der Klon bringt keine App mehr mit. Die Referenz-App unter `apps/urlaubsantrag/` ist weg, samt ihrer Ausnahme in der `.gitignore` und ihrem Plan; `apps/` gehört ganz dem Nutzer. Was sie zeigte, steht jetzt in der Vorlage unter `.ara/templates/app/`: eine mit `--new` angelegte App reicht einen Vorgang ein, startet den Flow `freigabe`, hält an der Freigabe an, ein Mensch entscheidet in Arasul, und danach steht der Vorgang auf genehmigt oder abgelehnt, mit dem Namen dessen, der entschieden hat, und dem Satz, den der Flow geschrieben hat. Ohne Arasul bleibt der Vorgang ohne Entscheidung, und die Seite sagt das. Der Selbsttest fährt genau das gegen das Backend der Vorlage, mit einem gespielten Gerät.
+- Die Oberfläche der Vorlage ist aus sechs Bausteinen gebaut, die die Namen des Arasul-Designsystems tragen, Kopf, Liste, Karte, Formular, Meldung, Menü, in `frontend/src/bausteine.jsx`, mit den Regeln in `stil.css` und den Werten in `design.css` aus dem Spiegel. Die Seite in `app.jsx` ist nur daraus zusammengesetzt, damit, wer dazubaut, einen Baustein nimmt und keine zweite Karte neben die erste schreibt. Die Bausteine aus dem Produkt selbst, `packages/marken` aus Phase D7, liegen noch nicht bei: dafür braucht es den Spiegel, und das ist der offene Punkt nach diesem Stand.
+
 ## 0.12.0 (2026-08-28)
 
 Kontrakt: bis 3

@@ -14,7 +14,7 @@ etwas von der Plattform will (Anmeldung, Freigabe, Flow, Sprachmodell),
 in `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, womit das
 Haus arbeitet.
 
-**Das Argument.** `urlaubsantrag` ist die App unter `apps/urlaubsantrag/`. Apps liegen
+**Das Argument.** `<app>` ist die App unter `apps/<app>/`. Apps liegen
 kundenunabhängig oben: dieselbe App läuft vielleicht bei drei Kunden, und wo sie läuft,
 sagt das Gerät. Fehlt das Argument: erst der Merker `.ara/state.json`, dann die
 vorhandenen Akten. Gibt es genau eine, nimm sie, sonst frag über das Interview-Werkzeug.

@@ -16,7 +16,8 @@ clone before `/init`, English applies. `/init` asks in the first round with ques
 - **Every document exists as a pair.** `x.md` is English, `x.de.md` is German. That holds
   for the README, `.ara/persona/`, `.ara/knowledge/`, `.ara/commands/` and the scaffolds
   directly under `.ara/templates/`. Read the one that matches the profile. The self-test
-  counts the pairs.
+  counts the pairs. One pair lies apart: the root holds a single `README.md`, the one
+  GitHub shows, and its German half is `.ara/README.de.md`.
 - **Tool output follows the profile.** Every tool reads `language` and prints in it. In the
   code the two languages stand next to each other as `t(en, de)`, at the place where the
   line comes into being.
@@ -47,6 +48,7 @@ sentences. That holds for everything you write, customer documents and offers in
 | `.ara/vorlagen/` | **The paperwork**: offer, annexes, handover record. The only place for it, see `.ara/vorlagen/README.md`. German. |
 | `.ara/nachweise/` | Evidence on AI classification and data processing. Annexes 4 and 5 to the offer. Mirrored from Arasul's control folder, do not edit here. German. |
 | `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. |
+| `.ara/README.de.md`, `.ara/.markdownlint-cli2.jsonc` | German half of the README, rules for the document check. Both here so the root stays small. |
 | `.ara/tools/` | Scripts (Node). You call them instead of rebuilding what they do. |
 | `.ara/mirror/` | The fetched installation artifact, comes into being at `/device --install arasul`. Do not edit. |
 | `.ara/VERSION`, `.ara/CHANGELOG.md` | The version of this kit and what changed per version. `/init` reads both out. |
@@ -54,8 +56,8 @@ sentences. That holds for everything you write, customer documents and offers in
 
 `business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`
 and the generated commands under `.claude/commands/` are excluded from version control, an
-update of the kit never touches them. The one exception is `apps/urlaubsantrag/`: the
-reference app comes with the clone. No update touches it either, it lies under `apps/`.
+update of the kit never touches them. The clone brings no app: what an app looks like
+stands in the scaffold under `.ara/templates/app/`, and `/app --new` makes one out of it.
 
 ## The most important rule: claim nothing about the product
 

@@ -370,13 +370,11 @@ export function movePlan(app, file, to) {
   if (versioned(source)) {
     throw new Error(
       t(
-        `${file} belongs to the kit: the file lies in its version control.\n` +
-          "That is the plan of the reference app, and that one is there to look at, not to edit.\n" +
+        `${file} lies in the version control of this repository.\n` +
           "Moving it would move a file that came with the clone: the working folder would be dirty\n" +
           "afterwards, and the next update would trip over it.\n" +
           "For an app of your own: node .ara/tools/app.mjs --app <name> --new",
-        `${file} gehört zum Kit: die Datei liegt in seiner Versionsverwaltung.\n` +
-          "Das ist der Plan der Referenz-App, und die ist zum Ansehen da, nicht zum Bearbeiten.\n" +
+        `${file} liegt in der Versionsverwaltung dieses Repositories.\n` +
           "Verschoben würde eine Datei, die mit dem Klon kam: der Arbeitsordner wäre danach\n" +
           "schmutzig, und das nächste Update stolperte darüber.\n" +
           "Für eine eigene App: node .ara/tools/app.mjs --app <name> --new"
@@ -394,14 +392,15 @@ export function movePlan(app, file, to) {
 /**
  * Liegt diese Datei in der Versionsverwaltung des Kits?
  *
- * Der Fremdtest am 28.08.2026 schob den Plan der Referenz-App auf „erledigt",
- * und danach meldete `git status` im frischen Klon eine verschobene Datei. Was
- * dem Nutzer gehört, verfolgt das Kit-Repo nicht; die Referenz-App ist die eine
- * Ausnahme, und genau darum darf an ihr nichts verschoben werden.
+ * Der Fremdtest am 28.08.2026 schob den Plan der damaligen Referenz-App auf
+ * „erledigt", und danach meldete `git status` im frischen Klon eine verschobene
+ * Datei. Die Referenz-App gibt es seit 0.13.0 nicht mehr, der Klon bringt keine
+ * App mit. Die Regel bleibt für jeden Fork, der eine App mit einträgt: was in
+ * der Versionsverwaltung liegt, verschiebt das Werkzeug nicht.
  *
  * Gefragt wird git selbst und keine Liste im Kit: eine Liste liefe auseinander,
- * sobald jemand die Referenz-App umbenennt. Ohne Repository ist nichts
- * versioniert, dann läuft alles wie bisher.
+ * sobald jemand eine App umbenennt. Ohne Repository ist nichts versioniert,
+ * dann läuft alles wie bisher.
  */
 export function versioned(path) {
   const run = spawnSync("git", ["ls-files", "--error-unmatch", "--", path], {
