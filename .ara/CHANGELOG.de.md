@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.3 (2026-08-28)
+
+Kontrakt: bis 3
+
+- "Was der Installer nicht konnte" ließ genau das weg, wofür es da ist. Gemessen an einem Jetson AGX Orin, erste echte Installation: die Liste hörte bei zwölf Zeilen auf, und die zwölf waren das Rauschen. `SSH-Hardening fehlgeschlagen`, `Firewall-Setup fehlgeschlagen` und `must be run as root` kamen später in der Ausgabe und fielen hinten heraus, und das Gerät ging als fertig durch, ohne Härtung und ohne Firewall. Dieselbe Warnung mit wechselndem Zeitstempel zählt jetzt als eine Zeile, Absagen kommen vor Warnungen, wenn die Liste abschneiden muss, Farbcodes fallen weg, und was abgeschnitten wurde, wird mit seiner Zahl gesagt.
+- Der Selbsttest maß das an sechs erfundenen Zeilen, wo nichts etwas verdrängen kann. Er misst es jetzt ein zweites Mal in der Menge, in der es wirklich vorkommt.
+- Drei Prüfungen maßen den Arbeitsordner statt das Kit und wurden auf jedem Rechner rot, der einmal installiert hat: der Spiegel ist das Artefakt des Produkts, geholt und nie vom Kit geschrieben, und er trägt Gedankenstriche, Verweise auf eigene Dateien und eigene Befehle. Gedankenstriche, Verweise und Befehle halten jetzt vor `.ara/mirror/` an.
+- `Spiegel holt und packt aus` reichte sein Token über die Prozessumgebung, und die kommt in `getSecret` zuletzt. Mit einem echten Token im Schlüsselbund trat der abgelehnte Fall nie ein. Die Prüfung läuft jetzt gegen eine umgelenkte `.env`, und dann zählt nur sie.
+
 ## 0.14.2 (2026-08-28)
 
 Kontrakt: bis 3

@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.3 (2026-08-28)
+
+Contract: up to 3
+
+- "What the installer could not do" left out exactly what it exists for. Measured on a Jetson AGX Orin, first real installation: the list stopped at twelve lines, and the twelve were the noise. `SSH-Hardening fehlgeschlagen`, `Firewall-Setup fehlgeschlagen` and `must be run as root` came later in the output and fell off the end, and the device went through as finished, without hardening and without a firewall. The same warning with a changing timestamp now counts as one line, refusals come before warnings when the list has to cut, colour codes are stripped, and what was cut off is said with its number.
+- The self-test measured that on six lines of made-up output, where nothing can crowd anything out. It now measures it a second time on the volume in which it really occurs.
+- Three checks measured the working directory instead of the kit, and they went red on any computer that had installed once: the mirror is the product's artifact, fetched and never written by the kit, and it carries dashes, links to its own files and commands of its own. Dashes, links and commands now stop at `.ara/mirror/`.
+- `Spiegel holt und packt aus` passed its token through the process environment, and that comes last in `getSecret`. With a real token in the keychain the refused case never happened. It now runs against a redirected `.env`, and then only that counts.
+
 ## 0.14.2 (2026-08-28)
 
 Contract: up to 3

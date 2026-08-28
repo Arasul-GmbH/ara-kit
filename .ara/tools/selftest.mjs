@@ -146,6 +146,21 @@ function assert(condition, message) {
 }
 
 /**
+ * Was beim Durchgehen der Dateien liegen bleibt.
+ *
+ * Der Spiegel ist fremdes Gut: das Artefakt des Produkts, geholt und nie vom
+ * Kit geschrieben. Am 28.08.2026 stand er nach der ersten echten Installation
+ * im Ordner, und drei Pruefungen wurden rot, weil ein anderes Haus in seinen
+ * Dokumenten Gedankenstriche setzt, auf eigene Dateien verweist und eigene
+ * Befehle nennt. Gemessen war der Arbeitsordner und nicht das Kit.
+ */
+const MIRROR_DIR = join(ROOT, ".ara", "mirror");
+
+function skipEntry(path, name) {
+  return name.startsWith(".git") || name === "node_modules" || path === MIRROR_DIR;
+}
+
+/**
  * Werkzeuge laufen hier auf Deutsch, wenn nichts anderes dabeisteht.
  *
  * Der Ueberordner greift in seinen Abnahmen deutsche Zeilen ("Eingespielt",
@@ -1489,9 +1504,21 @@ await checkAsync("Spiegel holt und packt aus", async () => {
   const base = `http://127.0.0.1:${server.address().port}`;
 
   try {
-    const env = { ARASUL_BASIS: base, ARA_MIRROR: targetMirror };
+    // Das Token kommt aus einer umgelenkten .env, und dann zaehlt nur sie: kein
+    // Schluesselbund, keine Prozessumgebung. Vorher stand es in der Umgebung,
+    // und die kommt in `getSecret` zuletzt: auf einem Rechner, der einmal
+    // wirklich installiert hat, lag im Schluesselbund ein echtes Token, das
+    // stach, und der Fall "abgelehnt" trat nie ein. Gemessen war dann der
+    // Rechner und nicht das Kit.
+    const envFile = join(work, "token.env");
+    const mitToken = (wert) => {
+      // Die Adresse des Portals ist selbst ein hinterlegter Wert, also gehoert
+      // sie in dieselbe Datei: sonst fragt das Werkzeug beim echten Portal.
+      writeFileSync(envFile, `ARASUL_TOKEN=${wert}\nARASUL_BASIS=${base}\n`);
+      return { ARA_MIRROR: targetMirror, ARA_ENV_FILE: envFile };
+    };
 
-    let run = await toolAsync("mirror.mjs", ["--refresh"], { ...env, ARASUL_TOKEN: "gueltig" });
+    let run = await toolAsync("mirror.mjs", ["--refresh"], mitToken("gueltig"));
     assert(run.status === 0, `Holen fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(existsSync(join(targetMirror, "VERSION")), "Wurzelordner nicht abgeschnitten");
     assert(
@@ -1502,11 +1529,11 @@ await checkAsync("Spiegel holt und packt aus", async () => {
     assert(state.version === "1.0.0", "Produktversion nicht übernommen");
 
     // Ein zweiter Lauf ohne --refresh darf nichts holen.
-    run = await toolAsync("mirror.mjs", [], { ...env, ARASUL_TOKEN: "gueltig" });
+    run = await toolAsync("mirror.mjs", [], mitToken("gueltig"));
     assert(/aktuell/.test(run.stdout), "frischer Spiegel wird unnötig neu geholt");
 
     // Die Begründung des Portals muss durchgereicht werden.
-    run = await toolAsync("mirror.mjs", ["--refresh"], { ...env, ARASUL_TOKEN: "abgelaufen" });
+    run = await toolAsync("mirror.mjs", ["--refresh"], mitToken("abgelaufen"));
     assert(run.status !== 0, "abgelehnter Token führt nicht zum Fehler");
     assert(/Wartungs-Abo/.test(run.stdout), "Begründung des Portals fehlt in der Meldung");
   } finally {
@@ -2907,6 +2934,54 @@ await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", asy
   assert(gefunden.some((zeile) => /Firewall/.test(zeile)), "die Firewall fehlt in der Liste");
   assert(!gefunden.some((zeile) => /Container gestartet/.test(zeile)), "eine gelungene Zeile steht in der Liste");
 
+  // Und dasselbe noch einmal in der Menge, in der es wirklich vorkommt. Am
+  // 28.08.2026 lief die Installation auf einem Orin durch, und die beiden
+  // Absagen standen wieder nicht in der Liste: davor lagen zwölf Warnungen,
+  // dieselbe achtmal mit wechselndem Zeitstempel, und die Grenze war erreicht,
+  // bevor die Absagen an der Reihe waren. Eine Liste, die abschneidet, muss die
+  // Absage vor der Warnung nehmen, sonst misst sie das Falsche.
+  const laut = [
+    "[0;34m[INFO][0m Docker gefunden.",
+    "[] Configuration has 2 warning(s)",
+    "⚠ 2 warning(s) found",
+    ...Array.from(
+      { length: 8 },
+      (_, i) => `time="2026-08-28T20:5${i}:33+02:00" level=warning msg="No services to build"`
+    ),
+    "[1;33m[WARNING][0m Der Browser warnt, bis das CA-Zertifikat verteilt ist",
+    "[0;34m[INFO][0m SSH-Hardening wird angewendet...",
+    "ERROR: This script must be run as root (sudo)",
+    "[1;33m[WARNING][0m SSH-Hardening fehlgeschlagen (nicht kritisch)",
+    "[0;34m[INFO][0m Firewall wird konfiguriert...",
+    "ERROR: This script must be run as root (sudo)",
+    "[1;33m[WARNING][0m Firewall-Setup fehlgeschlagen (nicht kritisch)",
+    "[0;32m[SUCCESS][0m Fertig.",
+  ].join("\n");
+  const ausDerMenge = troubles(laut);
+  assert(
+    ausDerMenge.some((zeile) => /SSH-Hardening fehlgeschlagen/.test(zeile)),
+    `die Härtung faellt aus der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    ausDerMenge.some((zeile) => /Firewall-Setup fehlgeschlagen/.test(zeile)),
+    `die Firewall faellt aus der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    ausDerMenge.some((zeile) => /must be run as root/.test(zeile)),
+    `der Grund faellt aus der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    ausDerMenge.filter((zeile) => /No services to build/.test(zeile)).length === 1,
+    `dieselbe Warnung steht mehrfach in der Liste: ${JSON.stringify(ausDerMenge)}`
+  );
+  assert(
+    !ausDerMenge.some((zeile) => /\x1B\[/.test(zeile)),
+    "Farbcodes stehen in der Liste"
+  );
+  // Abgeschnitten wird nicht verschwiegen.
+  const eng = troubles(laut, { limit: 3 });
+  assert(eng.length === 4 && /4 weitere Zeilen/.test(eng[3]), `das Abschneiden wird nicht gesagt: ${JSON.stringify(eng)}`);
+
   // Am laufenden Installer, nicht nur am Text.
   const original = process.stdout.write.bind(process.stdout);
   process.stdout.write = () => true;
@@ -2924,7 +2999,7 @@ await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", asy
   assert(/arasul\.troubles/.test(werkzeug), "device.mjs nimmt die gesammelten Zeilen nicht auf");
   const wissen = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
   assert(/Was der Installer nicht konnte/.test(wissen), "das Verfahren sagt nichts über die Absagen des Installers");
-  return `${gefunden.length} Absagen aus ${ausgabe.split("\n").length} Zeilen`;
+  return `${gefunden.length} Absagen aus ${ausgabe.split("\n").length} Zeilen, und aus ${laut.split("\n").length} lauten Zeilen die drei, auf die es ankommt`;
 });
 
 await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {
@@ -4038,8 +4113,8 @@ check("Keine Gedankenstriche im Kit", () => {
   const offenders = [];
   const scan = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);
+      if (skipEntry(path, entry.name)) continue;
       if (entry.isDirectory()) {
         scan(path);
         continue;
@@ -4384,8 +4459,8 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   const files = [];
   const collect = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);
+      if (skipEntry(path, entry.name)) continue;
       if (entry.isDirectory()) collect(path);
       else if (/\.(md|json)$/.test(entry.name)) files.push(path);
     }
@@ -4427,8 +4502,8 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   const collect = (dir) => {
     if (dir === template) return;
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith(".git") || entry.name === "node_modules") continue;
       const path = join(dir, entry.name);
+      if (skipEntry(path, entry.name)) continue;
       if (entry.isDirectory()) collect(path);
       else if (/\.(md|json)$/.test(entry.name)) files.push(path);
     }
