@@ -143,6 +143,13 @@ export async function call({
           status: res.statusCode,
           ok: res.statusCode >= 200 && res.statusCode < 300,
           data: parsed?.data ?? null,
+          // Die ganze gelesene Antwort, nicht nur der Umschlag. Nicht jede
+          // Route dieses Produkts packt ihre Auskunft in `data`: die Anmeldung
+          // legt den Ausweis daneben, und am 28.08.2026 sagte das Kit an einem
+          // Geraet mit 0.3.0 deshalb "kein Ausweis in der Antwort", waehrend er
+          // dort stand. Wer den Umschlag will, nimmt `data`, wer alles will,
+          // nimmt `body`.
+          body: parsed,
           error: parsed?.error ?? (parsed ? null : raw.trim() ? { message: raw.trim().slice(0, 400) } : null),
           raw,
         });

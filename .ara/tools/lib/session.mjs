@@ -31,8 +31,13 @@
 export const LOGIN_FALLBACK = Object.freeze({
   path: "/api/auth/login",
   user: "admin",
-  userField: "benutzer",
-  passwordField: "passwort",
+  // Am 28.08.2026 an einem Jetson AGX Orin mit Arasul 0.3.0 gemessen: das Geraet
+  // weist `benutzer` und `passwort` mit einem VALIDATION_ERROR ab und nimmt
+  // `username` und `password` an. Vorher standen hier die deutschen Namen, und
+  // die Anmeldung war damit an keinem echten Geraet moeglich. Sagt ein Artefakt
+  // etwas anderes, gilt das; sagt der Mensch im Aufruf etwas anderes, seines.
+  userField: "username",
+  passwordField: "password",
 });
 
 /** Wo im Artefakt die Anmeldung beschrieben sein kann. */

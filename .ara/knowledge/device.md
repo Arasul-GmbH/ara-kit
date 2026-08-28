@@ -408,7 +408,9 @@ node .ara/tools/check-docs.mjs --device <device>
 
 If the artifact in `arasul-release.json` names a different route or a different name for the
 administrator, that one applies. If neither is right, you pass it in the call: `--login-path
-<route>` and `--login-user <name>`. The tool writes down every time where it got its details from.
+<route>` and `--login-user <name>`, and what the two fields of the login are called there is
+`--login-user-field <name>` and `--login-password-field <name>`. The tool writes down every time
+where it got its details from, and its refusal names the fields it called with.
 
 If the device refuses the login, that usually has one of two reasons: the administrator is called
 something else there, or the start password has already been changed on the device. Then the entry

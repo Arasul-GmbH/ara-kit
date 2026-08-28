@@ -161,6 +161,38 @@ function skipEntry(path, name) {
 }
 
 /**
+ * Ein Trockenlauf laesst die Akten, wie sie waren. Das ist seine Zusage.
+ *
+ * Hier stand vorher ein `rmSync` auf `devices/<name>`, aufgeraeumt nach einem
+ * Lauf, der nichts anlegt. Die Namen waren `orin`, `mac`, `thor`,
+ * `dgx-spark`, und genau so heisst ein echtes Geraet: das Wissen des Kits
+ * empfiehlt, ein Geraet ohne Kunden nach seinem Modell zu benennen. Am
+ * 28.08.2026 loeschte ein Selbsttestlauf deshalb zweimal die Akte eines
+ * frisch installierten Orin samt Laufzettel. Ein Selbsttest fasst die Ordner
+ * des Nutzers nicht an, er prueft sie: der Stand vorher gegen den Stand
+ * danach. Ob dort schon eine Akte lag, entscheidet der Nutzer und nicht der
+ * Test.
+ */
+function akteStand(name) {
+  const akte = join(ROOT, "devices", name, "device.md");
+  return {
+    ordner: existsSync(join(ROOT, "devices", name)),
+    inhalt: existsSync(akte) ? readFileSync(akte, "utf8") : null,
+  };
+}
+
+function pruefeAkteUnveraendert(name, vorher) {
+  const nachher = akteStand(name);
+  assert(
+    nachher.ordner === vorher.ordner,
+    vorher.ordner
+      ? `der Trockenlauf hat die Akte devices/${name} entfernt`
+      : `der Trockenlauf hat eine Akte devices/${name} angelegt`
+  );
+  assert(nachher.inhalt === vorher.inhalt, `der Trockenlauf hat devices/${name}/device.md geaendert`);
+}
+
+/**
  * Werkzeuge laufen hier auf Deutsch, wenn nichts anderes dabeisteht.
  *
  * Der Ueberordner greift in seinen Abnahmen deutsche Zeilen ("Eingespielt",
@@ -653,6 +685,7 @@ check("Trockenlauf: Thor und DGX Spark laufen ohne Gerät durch", () => {
   // Verifiziert wird dabei nichts, und der Lauf sagt das auch.
   const spiegel = attrappenSpiegel({ "thor-128": "emulation", "dgx-spark": "follow-up" });
   const work = mkdtempSync(join(tmpdir(), "ara-trocken-"));
+  const vorher = { thor: akteStand("thor"), "dgx-spark": akteStand("dgx-spark") };
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   try {
@@ -715,7 +748,7 @@ check("Trockenlauf: Thor und DGX Spark laufen ohne Gerät durch", () => {
   } finally {
     rmSync(work, { recursive: true, force: true });
     rmSync(spiegel, { recursive: true, force: true });
-    for (const n of ["thor", "dgx-spark"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    for (const n of ["thor", "dgx-spark"]) pruefeAkteUnveraendert(n, vorher[n]);
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -727,6 +760,7 @@ check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
   // Geräte es heute tragen, dass Fragen auch ohne Gerät beantwortet werden, und
   // ein ruhiger Satz zur Lizenz.
   const work = mkdtempSync(join(tmpdir(), "ara-mac-"));
+  const vorher = { mac: akteStand("mac"), orin: akteStand("orin") };
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   try {
@@ -752,7 +786,7 @@ check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
     assert(!/Ohne passendes Gerät/.test(orin.stdout), "ein unterstütztes Gerät bekommt den Abschluss auch");
   } finally {
     rmSync(work, { recursive: true, force: true });
-    for (const n of ["mac", "orin"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    for (const n of ["mac", "orin"]) pruefeAkteUnveraendert(n, vorher[n]);
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -881,6 +915,7 @@ check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht m
   // der Kaufweg unter den nächsten Schritten: Link, Frage im Interview, und wie
   // der eingefügte Token hineinkommt. Liegt ein Token, steht dort der Aufruf.
   const work = mkdtempSync(join(tmpdir(), "ara-kauf-orin-"));
+  const vorher = { orin: akteStand("orin"), mac: akteStand("mac") };
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
   try {
@@ -916,7 +951,7 @@ check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht m
     return "ohne Token Kaufweg, mit Token keiner";
   } finally {
     rmSync(work, { recursive: true, force: true });
-    for (const n of ["orin", "mac"]) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
+    for (const n of ["orin", "mac"]) pruefeAkteUnveraendert(n, vorher[n]);
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
@@ -1390,11 +1425,15 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
       if (request.method !== "POST" || !["/api/auth/login", "/api/sitzung"].includes(request.url)) {
         return antwort(404, { error: { message: "Diesen Weg gibt es hier nicht" } });
       }
-      const nutzer = rumpf?.benutzer ?? rumpf?.konto;
-      if (rumpf?.passwort !== passwort || !["admin", "chef"].includes(nutzer)) {
+      const nutzer = rumpf?.username ?? rumpf?.benutzer ?? rumpf?.konto;
+      const wort = rumpf?.password ?? rumpf?.passwort;
+      if (wort !== passwort || !["admin", "chef"].includes(nutzer)) {
         return antwort(401, { error: { message: "Anmeldung abgelehnt" } });
       }
-      antwort(200, { data: { token: "ey.selbsttest.sitzung", gilt_bis: "2026-08-29T00:00:00Z" } });
+      // Ohne Umschlag, so wie das Geraet am 28.08.2026 wirklich antwortete. Die
+      // Attrappe legte den Ausweis vorher in ein `data`, und genau darum fiel
+      // nicht auf, dass das Kit alles wegwarf, was nicht in `data` steht.
+      antwort(200, { success: true, token: "ey.selbsttest.sitzung", expiresAt: "2026-08-29T00:00:00Z" });
     });
   });
   await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
@@ -1429,17 +1468,45 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
     assert(!new RegExp(passwort).test(`${run.stdout}${run.stderr}`), "das Startpasswort steht in der Ausgabe");
     const angemeldet = gesehen.find((eintrag) => eintrag.pfad === "/api/auth/login");
     assert(angemeldet, `es wurde nicht angemeldet: ${JSON.stringify(gesehen)}`);
-    assert(angemeldet.rumpf?.passwort === passwort, "das Passwort kam nicht am Gerät an");
+    assert(angemeldet.rumpf?.password === passwort, "das Passwort kam nicht am Gerät an");
+    assert(
+      angemeldet.rumpf?.username === "admin",
+      `der Benutzername kam unter dem falschen Feld an: ${JSON.stringify(Object.keys(angemeldet.rumpf || {}))}`
+    );
 
     // 3. Für ein Skript: nur der Ausweis, ohne Satz drumherum.
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login", "--token"], env);
     assert(run.stdout === "ey.selbsttest.sitzung", `--token gibt nicht nur den Ausweis: ${run.stdout}`);
 
+    // 3b. Heißen die Felder am Gerät anders, gibt der Mensch sie im Aufruf mit.
+    //     Ohne diesen Weg blieb ihm am 28.08.2026 nur, den Fehler zu lesen: die
+    //     Meldung nannte die Felder, mit denen gerufen wurde, und keinen Schalter,
+    //     mit dem er andere hätte mitgeben können.
+    run = await toolAsync(
+      "device.mjs",
+      ["--name", name, "--admin-login", "--login-user-field", "benutzer", "--login-password-field", "passwort"],
+      env
+    );
+    assert(run.status === 0, `Anmeldung mit eigenen Feldnamen fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    const mitFeldern = gesehen.at(-1);
+    assert(
+      mitFeldern.rumpf?.benutzer === "admin" && mitFeldern.rumpf?.passwort === passwort,
+      `die Feldnamen aus dem Aufruf kamen nicht an: ${JSON.stringify(Object.keys(mitFeldern.rumpf || {}))}`
+    );
+
+    // 3c. Und ein Gerät, das seine Auskunft doch in einen Umschlag legt, wird
+    //     weiter verstanden: der Ausweis wird in beidem gefunden.
+    assert(pickToken({ data: { token: "ey.im.umschlag" } }) === "ey.im.umschlag", "der Ausweis im Umschlag geht verloren");
+
     // 4. Sagt das Artefakt einen anderen Weg, gilt der und nicht der Rückfall.
     mkdirSync(mirror, { recursive: true });
     writeFileSync(
       join(mirror, "arasul-release.json"),
-      JSON.stringify({ fassung: "9.9.9", einstiegspunkt: "install.sh", anmeldung: { pfad: "/api/sitzung", benutzer: "chef" } })
+      JSON.stringify({
+        fassung: "9.9.9",
+        einstiegspunkt: "install.sh",
+        anmeldung: { pfad: "/api/sitzung", benutzer: "chef", benutzerfeld: "benutzer", passwortfeld: "passwort" },
+      })
     );
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], env);
     assert(run.status === 0, `Anmeldung über den Weg aus dem Artefakt fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -4323,6 +4390,24 @@ check("Jede Route steht in beiden Fassungen des Blattes", () => {
     if (nurDeutsch.length) abweichend.push(`${name} fehlt: ${nurDeutsch.join(", ")}`);
   }
   assert(abweichend.length === 0, `Routen nur in einer Sprache:\n    ${abweichend.join("\n    ")}`);
+});
+
+check("Der Selbsttest loescht keine Akte, die ihm nicht gehoert", () => {
+  // Am 28.08.2026 raeumte dieser Selbsttest nach einem Trockenlauf `devices/orin`
+  // und `devices/mac` weg, obwohl ein Trockenlauf nichts anlegt. Auf dem Rechner,
+  // auf dem ein Orin wirklich stand, loeschte jeder Lauf dessen Akte samt
+  // Laufzettel. Wer hier einen Namen loescht, der nicht dem Selbsttest gehoert,
+  // loescht die Arbeit eines Menschen.
+  const quelle = readFileSync(join(ROOT, ".ara", "tools", "selftest.mjs"), "utf8");
+  const treffer = [];
+  const muster = /rmSync\(\s*join\(\s*ROOT\s*,\s*"(devices|customers|apps)"\s*,\s*"([^"]+)"/g;
+  for (const fund of quelle.matchAll(muster)) {
+    const [, ordner, name] = fund;
+    if (/^_?selftest-/.test(name)) continue;
+    treffer.push(`${ordner}/${name}`);
+  }
+  assert(treffer.length === 0, `geloescht wird, was dem Nutzer gehoert: ${treffer.join(", ")}`);
+  return "devices, customers und apps bleiben dem Nutzer";
 });
 
 check("Ein frischer Klon spricht Englisch, das Profil stellt um", () => {

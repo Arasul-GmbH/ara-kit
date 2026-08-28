@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.4 (2026-08-28)
+
+Contract: up to 3
+
+- The self-test deleted device files that were not its own. After dry runs, which create nothing, it removed `devices/orin`, `devices/mac`, `devices/thor` and `devices/dgx-spark`, and those are exactly the names the kit's own knowledge recommends for a device without a customer. On 28.08.2026 every self-test run deleted the file and the runsheet of a freshly installed Jetson AGX Orin. It now compares the state before against the state after instead of cleaning up, and a check of its own forbids deleting anything under `devices/`, `customers/` or `apps/` that the self-test did not create itself.
+- `--admin-login` could not work against a real device. Every answer without a `data` envelope was thrown away in `call()`, and the login of product 0.3.0 answers without one: the kit said "no credential in the answer" while it stood there. The answer now carries `body` next to `data`.
+- The fields of the login were called `benutzer` and `passwort` in the kit's fallback. Measured on a Jetson AGX Orin with 0.3.0: the device refuses those with a validation error and takes `username` and `password`. The fallback now says what was measured. What the artifact says still beats it, and what stands in the call beats both.
+- `--login-user-field` and `--login-password-field` pass the two field names in the call, and the refusal names them. Before, the error said which fields it had called with and offered no way to pass different ones.
+- The fake device in the self-test answered the way the kit hoped, with the credential inside a `data` envelope. It now answers the way the real one does, and the envelope case is checked next to it.
+
 ## 0.14.3 (2026-08-28)
 
 Contract: up to 3

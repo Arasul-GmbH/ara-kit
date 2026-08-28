@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.14.4 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Der Selbsttest löschte Akten, die ihm nicht gehörten. Nach Trockenläufen, die nichts anlegen, räumte er `devices/orin`, `devices/mac`, `devices/thor` und `devices/dgx-spark` weg, und genau so heißt ein Gerät ohne Kunden nach dem eigenen Wissen des Kits. Am 28.08.2026 löschte jeder Selbsttestlauf die Akte und den Laufzettel eines frisch installierten Jetson AGX Orin. Er vergleicht jetzt den Stand vorher gegen den Stand danach, statt aufzuräumen, und eine eigene Prüfung verbietet, unter `devices/`, `customers/` oder `apps/` etwas zu löschen, das der Selbsttest nicht selbst angelegt hat.
+- `--admin-login` konnte an einem echten Gerät nicht funktionieren. Jede Antwort ohne `data`-Umschlag fiel in `call()` weg, und die Anmeldung von Produkt 0.3.0 antwortet ohne einen: das Kit sagte "kein Ausweis in der Antwort", während er dort stand. Die Antwort trägt jetzt `body` neben `data`.
+- Die Felder der Anmeldung hießen im Rückfall des Kits `benutzer` und `passwort`. An einem Jetson AGX Orin mit 0.3.0 gemessen: das Gerät weist die beiden mit einem Validierungsfehler ab und nimmt `username` und `password`. Der Rückfall sagt jetzt, was gemessen wurde. Was das Artefakt sagt, sticht ihn weiter, und was im Aufruf steht, sticht beides.
+- `--login-user-field` und `--login-password-field` geben die beiden Feldnamen im Aufruf mit, und die Absage nennt sie. Vorher sagte der Fehler, mit welchen Feldern gerufen wurde, und bot keinen Weg, andere mitzugeben.
+- Die Attrappe im Selbsttest antwortete, wie das Kit es sich wünschte, mit dem Ausweis in einem `data`-Umschlag. Sie antwortet jetzt wie das echte Gerät, und der Fall mit Umschlag wird daneben geprüft.
+
 ## 0.14.3 (2026-08-28)
 
 Kontrakt: bis 3
