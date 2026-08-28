@@ -25,6 +25,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "./kit.mjs";
+import { t } from "./i18n.mjs";
 
 /**
  * Wo der Spiegel liegt. Als Funktion und nicht als Konstante, damit ein Lauf
@@ -283,26 +284,40 @@ export function releaseVersion(dir = mirrorDir()) {
  */
 export function installerEntry() {
   if (!existsSync(join(mirrorDir(), RELEASE_FILE))) {
-    return { ok: false, reason: `Im Artefakt liegt kein ${RELEASE_FILE}.` };
+    return { ok: false, reason: t(`No ${RELEASE_FILE} lies in the artifact.`, `Im Artefakt liegt kein ${RELEASE_FILE}.`) };
   }
   const data = releaseData();
   if (!data) {
-    return { ok: false, reason: `${RELEASE_FILE} ist nicht lesbar.` };
+    return { ok: false, reason: t(`${RELEASE_FILE} is not readable.`, `${RELEASE_FILE} ist nicht lesbar.`) };
   }
   const named = pickField(data, ENTRY_FIELDS);
   if (!named) {
     return {
       ok: false,
-      reason:
-        `${RELEASE_FILE} nennt keinen Einstiegspunkt. Gesucht wurde unter: ${ENTRY_FIELDS.join(", ")}.`,
+      reason: t(
+        `${RELEASE_FILE} names no entry point. Searched under: ${ENTRY_FIELDS.join(", ")}.`,
+        `${RELEASE_FILE} nennt keinen Einstiegspunkt. Gesucht wurde unter: ${ENTRY_FIELDS.join(", ")}.`
+      ),
     };
   }
   const file = named.replace(/^\.\//, "");
   if (file.startsWith("/") || file.split("/").includes("..")) {
-    return { ok: false, reason: `${RELEASE_FILE} nennt "${named}", und das zeigt aus dem Artefakt heraus.` };
+    return {
+      ok: false,
+      reason: t(
+        `${RELEASE_FILE} names "${named}", and that points out of the artifact.`,
+        `${RELEASE_FILE} nennt "${named}", und das zeigt aus dem Artefakt heraus.`
+      ),
+    };
   }
   if (!existsSync(join(mirrorDir(), file))) {
-    return { ok: false, reason: `${RELEASE_FILE} nennt "${named}", diese Datei liegt aber nicht im Artefakt.` };
+    return {
+      ok: false,
+      reason: t(
+        `${RELEASE_FILE} names "${named}", but that file does not lie in the artifact.`,
+        `${RELEASE_FILE} nennt "${named}", diese Datei liegt aber nicht im Artefakt.`
+      ),
+    };
   }
   return { ok: true, file, release: data };
 }
@@ -466,20 +481,33 @@ export function createKey(sshArgs, transport, name) {
   if (!script) {
     return {
       ok: false,
-      message:
+      message: t(
+        `No ${KEY_SCRIPT} can be found on the device. It belongs to the platform: either no Arasul ` +
+          "runs there, or the version is older than the deploy over the interface.",
         `Am Gerät ist kein ${KEY_SCRIPT} zu finden. Es gehört zur Plattform: entweder läuft dort ` +
-        "kein Arasul, oder die Fassung ist älter als der Deploy über die Schnittstelle.",
+          "kein Arasul, oder die Fassung ist älter als der Deploy über die Schnittstelle."
+      ),
     };
   }
   const run = runRemote(sshArgs, transport, `bash ${JSON.stringify(script)} anlegen ${JSON.stringify(name)}`);
   if (run.status !== 0) {
-    return { ok: false, message: scrub(`${run.stdout}\n${run.stderr}`.trim()) || "Das Gerät hat keinen Schlüssel ausgestellt." };
+    return {
+      ok: false,
+      message:
+        scrub(`${run.stdout}\n${run.stderr}`.trim()) ||
+        t("The device issued no key.", "Das Gerät hat keinen Schlüssel ausgestellt."),
+    };
   }
   // Der Klartext steht auf der Zeile mit dem Wort Schlüssel, der Präfix auf der
   // darunter. Ohne die Beschriftung gilt der längere von beiden: ein Präfix ist
   // per Bauart kürzer als der Schlüssel, zu dem er gehört.
   const tokens = [...String(run.stdout).matchAll(/\baras_[A-Za-z0-9_-]{4,}/g)].map((m) => m[0]);
-  if (!tokens.length) return { ok: false, message: "Die Antwort des Geräts enthält keinen Schlüssel." };
+  if (!tokens.length) {
+    return {
+      ok: false,
+      message: t("The device's answer contains no key.", "Die Antwort des Geräts enthält keinen Schlüssel."),
+    };
+  }
   const labelled = String(run.stdout)
     .split("\n")
     .find((line) => /schl(ü|ue)ssel/i.test(line) && /\baras_/.test(line));
