@@ -2415,7 +2415,17 @@ check("Was live ist, wird nicht noch einmal vorgeschlagen", () => {
   assert(lastStand({}, null) === null, "ein leerer Merker liefert einen Stand");
   const beiKunde = nextSteps(app, { stand: lastStand(merker) });
   assert(/--customer kunde --device werk2/.test(wie(beiKunde)), `das Kundengerät fehlt im Aufruf: ${wie(beiKunde)}`);
-  return "ohne Merker, im Teststand, live, veraltet";
+
+  // Fund der Abnahme A3 am 28.08.2026: eine App lief über --compose auf dem
+  // Orin, und die Lage sagte, vom Kit sei noch nichts eingespielt worden.
+  // Compose ist der einzige Weg auf ein Gerät ohne Arasul, also zählt er mit.
+  const ohneArasul = {
+    orin: { compose: { version: "0.1.0", time: "2026-08-28 20:35", url: "http://10.0.0.5:8080/" } },
+  };
+  assert(lastStand(ohneArasul)?.place === "orin", "ein Compose-Stand gilt dem Merker als nichts");
+  assert(lastStand(ohneArasul, "orin")?.compose?.version === "0.1.0", "die Fassung des Compose-Standes fehlt");
+  assert(lastStand({ orin: {} }) === null, "ein entfernter Eintrag gilt weiter als Stand");
+  return "ohne Merker, im Teststand, live, veraltet, über Compose";
 });
 
 check("Ein versionierter Plan bleibt liegen, ein eigener nicht", () => {

@@ -134,6 +134,9 @@ try out, not a way for an operation with real data.
 That is a level 2 intervention: name intent, target and way back, have it confirmed, then call it.
 The way back stands at the end of the output.
 
+This way writes into the marker too, as `compose` and not as staging or live. Without that note
+the situation said an app had gone nowhere while it was answering on the device.
+
 ## The appearance
 
 The scaffold brings Arasul's look with it, so that an app does not stand next to the device's

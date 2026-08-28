@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.14.1 (2026-08-28)
+
+Contract: up to 3
+
+- `--compose`, the way onto a device without Arasul, writes into the marker like every other way to a device, as `compose` and not as staging or live. Found while measuring acceptance A3 on a Jetson AGX Orin: the app was answering at `http://<device>:8080/`, and `node .ara/tools/app.mjs --app <name>` said the kit had deployed nothing yet. `lastStand` counts a compose slot, the situation line names it with its version, its time, its address and the sentence that Arasul is not there. The steps stay as they were: `--check` and `--deploy` are still what comes when the device gets Arasul.
+
 ## 0.14.0 (2026-08-28)
 
 Contract: up to 3

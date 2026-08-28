@@ -155,13 +155,17 @@ export function readApp(name) {
  * ruft, meint das Gerät, an dem er zuletzt war.
  */
 export function lastStand(record, device = null) {
-  // Ein Eintrag ohne Teststand und ohne Live ist einer, der entfernt wurde.
-  const entries = Object.entries(record || {}).filter(([, stand]) => stand && (stand.deployed || stand.live));
+  // Ein Eintrag ohne Teststand, ohne Live und ohne Compose ist einer, der
+  // entfernt wurde. Compose zaehlt mit: es ist der einzige Weg auf ein Geraet
+  // ohne Arasul, und was dort steht, steht dort.
+  const entries = Object.entries(record || {}).filter(
+    ([, stand]) => stand && (stand.deployed || stand.live || stand.compose)
+  );
   const fitting = device
     ? entries.filter(([place]) => place === device || place.endsWith(`/${device}`))
     : entries;
   if (!fitting.length) return null;
-  const when = (stand) => String(stand.live?.time || stand.deployed?.time || "");
+  const when = (stand) => String(stand.live?.time || stand.deployed?.time || stand.compose?.time || "");
   const [place, stand] = fitting.sort((a, b) => when(b[1]).localeCompare(when(a[1])))[0];
   return { place, ...stand };
 }
