@@ -59,6 +59,18 @@ export function language() {
 }
 
 /**
+ * Legt die Sprache dieses Laufs fest, nachtraeglich.
+ *
+ * Das braucht genau eine Stelle: `/init` schreibt das Profil und weiss erst dabei,
+ * welche Sprache gilt. Alles, was es danach ausgibt, soll die neue sein und nicht
+ * die des frischen Klons. Was vorher schon ausgegeben wurde, bleibt, wie es war.
+ */
+export function setLanguage(lang) {
+  if (LANGUAGES.includes(lang)) cached = lang;
+  return cached;
+}
+
+/**
  * Waehlt zwischen englisch und deutsch.
  *
  * `lang` gibt die Sprache vor, statt sie zu ermitteln. Das braucht `/init`: es

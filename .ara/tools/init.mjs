@@ -52,7 +52,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { LANGUAGES, language, localized, t } from "./lib/i18n.mjs";
+import { LANGUAGES, language, localized, setLanguage, t } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
 import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
 
@@ -302,6 +302,9 @@ function apply(answers) {
     }
   }
 
+  // Ab hier spricht dieser Lauf die Sprache, die gerade ins Profil geschrieben
+  // wurde. Sonst berichtete /init auf Englisch ueber ein deutsches Profil.
+  setLanguage(values.language);
   const commands = run("commands.mjs", ["--apply", "--role", answers.role, "--language", values.language]);
   if (commands.status !== 0) {
     fail(
