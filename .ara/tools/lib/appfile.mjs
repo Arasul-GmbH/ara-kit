@@ -15,6 +15,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
+import { t } from "./i18n.mjs";
 
 export const APPS = join(ROOT, "apps");
 
@@ -98,18 +99,27 @@ export function readApp(name) {
   if (!app.exists) return app;
 
   if (!existsSync(manifestFile)) {
-    app.manifestProblem = "Es gibt keine app.json. Ohne Manifest ist der Ordner kein Paket.";
+    app.manifestProblem = t(
+      "There is no app.json. Without a manifest the folder is not a package.",
+      "Es gibt keine app.json. Ohne Manifest ist der Ordner kein Paket."
+    );
   } else {
     try {
       app.manifest = JSON.parse(readFileSync(manifestFile, "utf8"));
     } catch (error) {
-      app.manifestProblem = `app.json ist kein lesbares JSON: ${error.message}`;
+      app.manifestProblem = t(
+        `app.json is not readable JSON: ${error.message}`,
+        `app.json ist kein lesbares JSON: ${error.message}`
+      );
     }
   }
   if (app.manifest && app.manifest.id && app.manifest.id !== name) {
-    app.manifestProblem =
+    app.manifestProblem = t(
+      `app.json names the id "${app.manifest.id}", the folder is called "${name}". ` +
+        "Both have to say the same, otherwise the app lies on the device under a different name than here.",
       `app.json nennt die Kennung "${app.manifest.id}", der Ordner heißt "${name}". ` +
-      "Beide müssen dasselbe sagen, sonst liegt die App am Gerät unter einem anderen Namen als hier.";
+        "Beide müssen dasselbe sagen, sonst liegt die App am Gerät unter einem anderen Namen als hier."
+    );
   }
 
   const buildDir = join(dir, "build");
@@ -182,7 +192,10 @@ export function nextSteps(app, { device, stand = null } = {}) {
   const steps = [];
   if (!app.exists) {
     steps.push({
-      was: "Die App gibt es noch nicht. Zuerst das Interview, dann die Akte aus der Vorlage.",
+      was: t(
+        "The app does not exist yet. First the interview, then the file from the scaffold.",
+        "Die App gibt es noch nicht. Zuerst das Interview, dann die Akte aus der Vorlage."
+      ),
       wie: `node .ara/tools/app.mjs --app ${app.name} --new`,
     });
     return steps;
@@ -196,16 +209,28 @@ export function nextSteps(app, { device, stand = null } = {}) {
 
   if (!aktiv && !offen && !app.plans.erledigt.length) {
     steps.push({
-      was: "Es gibt keinen Plan. Führ das Interview und schreib auf, was gebaut werden soll.",
+      was: t(
+        "There is no plan. Run the interview and write down what should be built.",
+        "Es gibt keinen Plan. Führ das Interview und schreib auf, was gebaut werden soll."
+      ),
       wie: `node .ara/tools/app.mjs --app ${app.name} --plan "<titel>"`,
     });
   } else if (!aktiv && offen) {
     steps.push({
-      was: `Der Plan "${offen.titel}" liegt offen. Geh die Annahmen darin durch und setz ihn dann aktiv.`,
+      was: t(
+        `The plan "${offen.titel}" lies open. Go through the assumptions in it and then set it active.`,
+        `Der Plan "${offen.titel}" liegt offen. Geh die Annahmen darin durch und setz ihn dann aktiv.`
+      ),
       wie: `node .ara/tools/app.mjs --app ${app.name} --plan-aktiv ${offen.file}`,
     });
   } else if (aktiv) {
-    steps.push({ was: `Aktiv ist der Plan "${aktiv.titel}". Bau, was darin steht.`, wie: null });
+    steps.push({
+      was: t(
+        `The plan "${aktiv.titel}" is active. Build what stands in it.`,
+        `Aktiv ist der Plan "${aktiv.titel}". Bau, was darin steht.`
+      ),
+      wie: null,
+    });
   }
 
   const fertig = app.build.exists && !app.build.stale;
@@ -216,31 +241,52 @@ export function nextSteps(app, { device, stand = null } = {}) {
   const istLive = Boolean(gebaut && stand?.live?.version === gebaut);
 
   if (!app.build.exists) {
-    steps.push({ was: "Gebaut ist noch nichts. Der Bau legt das Paket unter build/ an.", wie: `node .ara/tools/app.mjs --app ${app.name} --build` });
+    steps.push({
+      was: t(
+        "Nothing is built yet. The build creates the package under build/.",
+        "Gebaut ist noch nichts. Der Bau legt das Paket unter build/ an."
+      ),
+      wie: `node .ara/tools/app.mjs --app ${app.name} --build`,
+    });
   } else if (app.build.stale) {
     steps.push({
-      was: `Der Bau von ${app.build.time} ist älter als der Quelltext. Noch einmal bauen, sonst geht der Stand von vorgestern an das Gerät.`,
+      was: t(
+        `The build of ${app.build.time} is older than the source. Build again, otherwise the version from the day before yesterday goes to the device.`,
+        `Der Bau von ${app.build.time} ist älter als der Quelltext. Noch einmal bauen, sonst geht der Stand von vorgestern an das Gerät.`
+      ),
       wie: `node .ara/tools/app.mjs --app ${app.name} --build`,
     });
   } else if (istLive) {
     steps.push({
-      was:
+      was: t(
+        `${app.build.id ?? app.name} ${gebaut} is live on ${stand.place}, since ${stand.live.time}. ` +
+          "Nothing is open on the device. Back to the previous version would work with --back.",
         `${app.build.id ?? app.name} ${gebaut} ist auf ${stand.place} live, seit ${stand.live.time}. ` +
-        "Am Gerät ist nichts offen. Zurück auf die vorige Fassung ginge mit --back.",
+          "Am Gerät ist nichts offen. Zurück auf die vorige Fassung ginge mit --back."
+      ),
       wie: null,
     });
   } else if (imTeststand) {
     steps.push({
-      was: `${gebaut} steht im Teststand von ${stand.place}, seit ${stand.deployed.time}. Live schaltet ein Mensch, wenn der Teststand überzeugt.`,
+      was: t(
+        `${gebaut} stands in the staging slot of ${stand.place}, since ${stand.deployed.time}. A human switches live when staging convinces.`,
+        `${gebaut} steht im Teststand von ${stand.place}, seit ${stand.deployed.time}. Live schaltet ein Mensch, wenn der Teststand überzeugt.`
+      ),
       wie: `node .ara/tools/app.mjs${ziel} --app ${app.name} --live`,
     });
   } else {
     steps.push({
-      was: `Gebaut ist ${app.build.id ?? app.name} ${gebaut ?? "?"}. Halt das Paket gegen den Kontrakt des Geräts, bevor es fliegt.`,
+      was: t(
+        `Built is ${app.build.id ?? app.name} ${gebaut ?? "?"}. Hold the package against the device's contract before it flies.`,
+        `Gebaut ist ${app.build.id ?? app.name} ${gebaut ?? "?"}. Halt das Paket gegen den Kontrakt des Geräts, bevor es fliegt.`
+      ),
       wie: `node .ara/tools/app.mjs${ziel} --app ${app.name} --check`,
     });
     steps.push({
-      was: "Einspielen rollt in den Teststand. Live schaltet danach ein Mensch.",
+      was: t(
+        "Deploying rolls into staging. A human switches live afterwards.",
+        "Einspielen rollt in den Teststand. Live schaltet danach ein Mensch."
+      ),
       wie: `node .ara/tools/app.mjs${ziel} --app ${app.name} --deploy`,
     });
   }
@@ -248,8 +294,14 @@ export function nextSteps(app, { device, stand = null } = {}) {
   if (aktiv && fertig) {
     steps.push({
       was: istLive
-        ? `${gebaut} ist live. Schließ den Plan "${aktiv.titel}" ab und schreib die README fort.`
-        : `Wenn die Fassung live ist: den Plan "${aktiv.titel}" abschließen und die README fortschreiben.`,
+        ? t(
+            `${gebaut} is live. Close the plan "${aktiv.titel}" and write on the README.`,
+            `${gebaut} ist live. Schließ den Plan "${aktiv.titel}" ab und schreib die README fort.`
+          )
+        : t(
+            `Once the version is live: close the plan "${aktiv.titel}" and write on the README.`,
+            `Wenn die Fassung live ist: den Plan "${aktiv.titel}" abschließen und die README fortschreiben.`
+          ),
       wie: `node .ara/tools/app.mjs --app ${app.name} --plan-erledigt ${aktiv.file}`,
     });
   }
@@ -257,7 +309,10 @@ export function nextSteps(app, { device, stand = null } = {}) {
   // mit erledigten Plänen und ohne offenen ist am Ende eines Kreises.
   if (!aktiv && !offen && istLive && app.plans.erledigt.length) {
     steps.push({
-      was: "Die Fassung ist live und kein Plan ist offen. Der nächste Kreis beginnt mit dem nächsten Plan.",
+      was: t(
+        "The version is live and no plan is open. The next circle begins with the next plan.",
+        "Die Fassung ist live und kein Plan ist offen. Der nächste Kreis beginnt mit dem nächsten Plan."
+      ),
       wie: `node .ara/tools/app.mjs --app ${app.name} --plan "<titel>"`,
     });
   }
@@ -290,24 +345,42 @@ export function planFileName(title, date = today()) {
  * sonst weiß niemand mehr, woran gerade gebaut wird.
  */
 export function movePlan(app, file, to) {
-  if (!PLAN_STATES.includes(to)) throw new Error(`Den Stand "${to}" gibt es nicht.`);
+  if (!PLAN_STATES.includes(to)) throw new Error(t(`There is no state "${to}".`, `Den Stand "${to}" gibt es nicht.`));
   const from = PLAN_STATES.find((state) => app.plans[state].some((plan) => plan.file === file));
-  if (!from) throw new Error(`Unter apps/${app.name}/plans/ gibt es keine Datei ${file}.`);
-  if (from === to) throw new Error(`${file} steht schon auf "${to}".`);
+  if (!from) {
+    throw new Error(
+      t(
+        `There is no file ${file} under apps/${app.name}/plans/.`,
+        `Unter apps/${app.name}/plans/ gibt es keine Datei ${file}.`
+      )
+    );
+  }
+  if (from === to) throw new Error(t(`${file} already stands at "${to}".`, `${file} steht schon auf "${to}".`));
   if (to === "aktiv" && app.plans.aktiv.length) {
     throw new Error(
-      `Aktiv ist schon "${app.plans.aktiv[0].titel}" (${app.plans.aktiv[0].file}). ` +
-        "Höchstens ein Plan ist aktiv: erst den abschließen, dann den nächsten."
+      t(
+        `"${app.plans.aktiv[0].titel}" (${app.plans.aktiv[0].file}) is already active. ` +
+          "At most one plan is active: close that one first, then the next.",
+        `Aktiv ist schon "${app.plans.aktiv[0].titel}" (${app.plans.aktiv[0].file}). ` +
+          "Höchstens ein Plan ist aktiv: erst den abschließen, dann den nächsten."
+      )
     );
   }
   const source = join(app.dir, "plans", from, file);
   if (versioned(source)) {
     throw new Error(
-      `${file} gehört zum Kit: die Datei liegt in seiner Versionsverwaltung.\n` +
-        "Das ist der Plan der Referenz-App, und die ist zum Ansehen da, nicht zum Bearbeiten.\n" +
-        "Verschoben würde eine Datei, die mit dem Klon kam: der Arbeitsordner wäre danach\n" +
-        "schmutzig, und das nächste Update stolperte darüber.\n" +
-        "Für eine eigene App: node .ara/tools/app.mjs --app <name> --new"
+      t(
+        `${file} belongs to the kit: the file lies in its version control.\n` +
+          "That is the plan of the reference app, and that one is there to look at, not to edit.\n" +
+          "Moving it would move a file that came with the clone: the working folder would be dirty\n" +
+          "afterwards, and the next update would trip over it.\n" +
+          "For an app of your own: node .ara/tools/app.mjs --app <name> --new",
+        `${file} gehört zum Kit: die Datei liegt in seiner Versionsverwaltung.\n` +
+          "Das ist der Plan der Referenz-App, und die ist zum Ansehen da, nicht zum Bearbeiten.\n" +
+          "Verschoben würde eine Datei, die mit dem Klon kam: der Arbeitsordner wäre danach\n" +
+          "schmutzig, und das nächste Update stolperte darüber.\n" +
+          "Für eine eigene App: node .ara/tools/app.mjs --app <name> --new"
+      )
     );
   }
   const target = join(app.dir, "plans", to);
