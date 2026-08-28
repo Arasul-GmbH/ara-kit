@@ -30,6 +30,12 @@ nicht auf, was alles ginge: eine Liste aller Möglichkeiten ist eine Bedienungsa
 und kein Vorschlag. Sag dem Menschen, was ansteht, in seinen Worten, und ruf dann das auf,
 was das Werkzeug genannt hat.
 
+**Dazu weiß es, was es selbst an ein Gerät geschickt hat**: welche Fassung im Teststand
+steht und welche live ist, je App und Gerät, aus dem Merker `.ara/state.json`. Ist die
+gebaute Fassung schon live, schlägt es nicht noch einmal `--check` und `--deploy` vor,
+sondern den Plan und die README. Der Merker ist die Notiz des Kits über sein eigenes Tun
+und keine Auskunft über das Gerät: die gibt `--status`, und die fragt dort nach.
+
 **Das Argument.** `/app urlaubsantrag` meint die App unter `apps/urlaubsantrag/`. Fehlt
 es: erst der Merker `.ara/state.json`, dann die vorhandenen Akten. Gibt es genau eine,
 nimm sie. Sonst frag über das Interview-Werkzeug.
@@ -148,6 +154,15 @@ Unter `apps/urlaubsantrag/` liegt eine fertige App zum Ansehen: sie stellt einen
 hält an einer Freigabe an und steht danach auf genehmigt oder abgelehnt. Wenn jemand
 fragt, wie so etwas aussieht, zeig sie, statt es zu beschreiben. Sie ist keine Vorlage,
 aus der `/app` etwas erzeugt, sondern ein Beispiel, das läuft.
+
+**Sie gehört dem Kit, also arbeitest du nicht an ihr.** Ihr Plan kam mit dem Klon, und ihn
+zu verschieben würde den Arbeitsordner schmutzig machen: das nächste Update stolperte
+darüber. `--plan-aktiv` und `--plan-erledigt` verweigern das darum bei jedem Plan, der in
+der Versionsverwaltung liegt. Wer üben will, legt eine eigene App an:
+
+```
+node .ara/tools/app.mjs --app <name> --new
+```
 
 ## Was du dabei nicht tust
 

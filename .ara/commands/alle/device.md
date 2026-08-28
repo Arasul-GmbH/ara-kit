@@ -49,6 +49,11 @@ Installers wird mitgelesen. Der Installer bekommt Startpasswort und Netzname mit
 nur dabei entstehen sie am Gerät; das Passwort würfelt das Kit und legt es in die
 Geheimnis-Ablage, den Netznamen setzt `--net-name <name>`, sonst gilt der Name der Akte.
 
+**Danach liest du zwei Dinge vor**, und beide stehen am Ende der Ausgabe: was der
+Installer nicht konnte, und dass die Akte jetzt `tls: selfsigned` trägt. Die Absagen des
+Installers sind kein Beiwerk: eine fehlgeschlagene Härtung ist für ihn eine Randnotiz und
+für ein Gerät im Kundennetz eine offene Tür.
+
 **Liegen Reste da, läuft aber nichts** (`arasul: traces`), sieh erst nach, was dort liegt,
 sag es dem Menschen und lass dir das Darüberhinweg bestätigen. Dann
 `--install arasul --despite-traces`. Läuft die Plattform dagegen wirklich, ist das kein
@@ -60,8 +65,11 @@ Danach ist der erste Nachweis der Kontrakt:
 `node .ara/tools/app.mjs --device <gerät> --contract`.
 
 **Der erste Mitarbeiter und die erste Freigabe** gehören noch zur Abnahme. Ohne Browser
-geht das über die Verwaltungsschnittstelle der Plattform; wo das beschrieben steht, sagt
-`node .ara/tools/mirror.mjs --docs`. Verfahren in `.ara/knowledge/device.md`.
+geht das über die Verwaltungsschnittstelle der Plattform. Die Sitzung dafür holt
+`--admin-login`: das Startpasswort aus der Installation geht aus der Geheimnis-Ablage
+direkt in die Anmeldung, zurück kommt ein Ausweis, und angezeigt wird das Passwort nie.
+Was du damit aufrufst, sagt `node .ara/tools/mirror.mjs --docs`. Verfahren in
+`.ara/knowledge/device.md`.
 
 **Ohne Arasul endet es hier.** Das Werkzeug sagt in einem Satz, was Arasul brächte. Mehr
 nicht, kein Verkaufsgespräch. Mit Arasul auf einem unterstützten Gerät geht es nach dem

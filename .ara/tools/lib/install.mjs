@@ -84,6 +84,16 @@ const ENTRY_FIELDS = [
   "datei",
   "file",
 ];
+
+/**
+ * Unter welchen Feldnamen das Artefakt seine eigene Fassung nennt.
+ *
+ * Bis zum 28.08.2026 las das Kit die Fassung nur aus einer Datei `VERSION`.
+ * Das Artefakt bringt keine mit, also stand danach überall „Fassung unbekannt":
+ * im Spiegel, in der Geräteakte und im Ordnernamen am Gerät. Die Zahl lag die
+ * ganze Zeit in `arasul-release.json`, direkt neben dem Einstiegspunkt.
+ */
+const VERSION_FIELDS = ["fassung", "version", "produktversion", "stand", "release"];
 const OPTION_PASSWORD = "--passwort";
 const OPTION_NAME = "--name";
 
@@ -106,11 +116,101 @@ export const packEnv = () => ({ ...process.env, COPYFILE_DISABLE: "1" });
  * Nichts, was wie ein Schlüssel oder ein Passwort aussieht, geht in eine
  * Ausgabe oder ein Protokoll. `--passwort` steht im Aufruf des Installers, und
  * der Aufruf wird angezeigt, damit der Mensch mitliest.
+ *
+ * `secrets` sind Werte, die dieser Lauf selbst kennt: das gewürfelte
+ * Startpasswort steht in keiner erkennbaren Form, es sieht aus wie beliebiger
+ * Text. Wer es hier hineingibt, bekommt es auch dann maskiert, wenn der
+ * Installer es allein auf eine Zeile schreibt.
  */
-export function scrub(text) {
-  return String(text || "")
+export function scrub(text, secrets = []) {
+  let out = String(text || "")
     .replace(/\baras_[A-Za-z0-9_-]{4,}/g, "aras_…")
     .replace(new RegExp(`(${OPTION_PASSWORD}\\s+)('[^']*'|"[^"]*"|\\S+)`, "g"), "$1…");
+  for (const secret of secrets) {
+    if (typeof secret !== "string" || secret.length < 4) continue;
+    out = out.split(secret).join("…");
+  }
+  return out;
+}
+
+/**
+ * Ein Strom, der mitgelesen und dabei maskiert wird.
+ *
+ * Der Fremdtest am 28.08.2026 sah den Kit-Schlüssel im Klartext auf dem
+ * Bildschirm: der Installer druckt ihn in seine Erstausgabe, und das Kit reichte
+ * diese Ausgabe unverändert durch. Danach schrieb es „Klartext wird nicht
+ * angezeigt", und das stimmte in dem Moment schon nicht mehr.
+ *
+ * Maskiert wird zeilenweise, denn ein Geheimnis kann über zwei Stücke des Stroms
+ * verteilt ankommen. Ein angefangenes Stück wird trotzdem sofort gezeigt, solange
+ * daraus kein Geheimnis mehr werden kann: sonst bliebe die Frage des Installers
+ * nach dem sudo-Passwort unsichtbar, bis jemand blind Enter drückt.
+ */
+export function createMasker(secrets = []) {
+  const known = secrets.filter((value) => typeof value === "string" && value.length >= 4);
+  let carry = "";
+
+  /** Kann aus diesem Rest noch ein Geheimnis werden? Dann wartet er auf mehr. */
+  const growing = (tail) => {
+    if (/(^|[^A-Za-z0-9_-])a(r(a(s(_[A-Za-z0-9_-]*)?)?)?)?$/.test(tail)) return true;
+    return known.some((secret) => {
+      for (let length = 1; length < secret.length; length++) {
+        if (tail.endsWith(secret.slice(0, length))) return true;
+      }
+      return false;
+    });
+  };
+
+  return {
+    /** Was von diesem Stück jetzt schon gezeigt werden darf, maskiert. */
+    push(chunk) {
+      carry += String(chunk);
+      let out = "";
+      const cut = carry.lastIndexOf("\n");
+      if (cut >= 0) {
+        out = scrub(carry.slice(0, cut + 1), known);
+        carry = carry.slice(cut + 1);
+      }
+      if (carry && !growing(carry)) {
+        out += scrub(carry, known);
+        carry = "";
+      }
+      return out;
+    },
+    /** Der Rest am Ende. Danach ist nichts mehr zurückgehalten. */
+    flush() {
+      const rest = carry ? scrub(carry, known) : "";
+      carry = "";
+      return rest;
+    },
+  };
+}
+
+/**
+ * Was der Installer nicht konnte.
+ *
+ * Am 28.08.2026 lief „SSH-Hardening fehlgeschlagen" und „Firewall-Setup
+ * fehlgeschlagen (nicht kritisch), must be run as root" durch das Kit, ohne dass
+ * es sie noch einmal genannt hätte. Sie standen irgendwo in mehreren hundert
+ * Zeilen Installerausgabe, und das Gerät ging danach als fertig durch.
+ *
+ * Gesucht wird nach den Worten, mit denen ein Installer eine Absage schreibt.
+ * Das Kit deutet sie nicht: es sammelt die Zeilen und legt sie am Ende noch
+ * einmal hin. Eine Zeile zu viel ist besser als eine verschwiegene.
+ */
+const TROUBLE =
+  /(fehlgeschlagen|schlug fehl|nicht kritisch|übersprungen|uebersprungen|konnte nicht|verweigert|warnung|warning|failed|failure|skipped|skipping|not critical|must be run as root|permission denied|no such file)/i;
+
+export function troubles(text, { limit = 12 } = {}) {
+  const found = [];
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const line = scrub(raw).replace(/\s+/g, " ").trim();
+    if (!line || !TROUBLE.test(line)) continue;
+    if (found.includes(line)) continue;
+    found.push(line);
+    if (found.length >= limit) break;
+  }
+  return found;
 }
 
 // --- Der Spiegel -------------------------------------------------------------
@@ -119,7 +219,10 @@ export function mirrorState() {
   const file = join(mirrorDir(), "STATE.json");
   if (!existsSync(file)) return null;
   try {
-    return JSON.parse(readFileSync(file, "utf8"));
+    const state = JSON.parse(readFileSync(file, "utf8"));
+    // Ein Spiegel, der vor dieser Fassung des Kits geholt wurde, trägt in seinem
+    // Stand keine Zahl. Im Artefakt steht sie trotzdem, und dann gilt sie.
+    return state.version ? state : { ...state, version: releaseVersion() };
   } catch {
     return null;
   }
@@ -139,19 +242,35 @@ export function fetchMirror() {
   return { ok: true, message: output, state: mirrorState() };
 }
 
-/** Der erste Wert unter einem der bekannten Feldnamen, egal wie tief er liegt. */
-function pickEntry(node, depth = 0) {
-  if (typeof node === "string") {
-    const value = node.trim();
+/** Der erste Wert unter einem der genannten Feldnamen, egal wie tief er liegt. */
+function pickField(node, fields, depth = 0) {
+  if (typeof node === "string" || typeof node === "number") {
+    const value = String(node).trim();
     return value && !value.includes("\n") ? value : null;
   }
   if (!node || typeof node !== "object" || depth > 2) return null;
-  for (const field of ENTRY_FIELDS) {
+  for (const field of fields) {
     if (!(field in node)) continue;
-    const found = pickEntry(node[field], depth + 1);
+    const found = pickField(node[field], fields, depth + 1);
     if (found) return found;
   }
   return null;
+}
+
+/** Was in `arasul-release.json` steht, oder null. Das Kit deutet es nicht, es liest. */
+export function releaseData(dir = mirrorDir()) {
+  const file = join(dir, RELEASE_FILE);
+  if (!existsSync(file)) return null;
+  try {
+    return JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+/** Die Fassung, die das Artefakt selbst nennt. Nicht geraten, gelesen. */
+export function releaseVersion(dir = mirrorDir()) {
+  return pickField(releaseData(dir), VERSION_FIELDS) || null;
 }
 
 /**
@@ -163,17 +282,14 @@ function pickEntry(node, depth = 0) {
  * Weg, wenn die dort genannte Datei im Artefakt nicht liegt.
  */
 export function installerEntry() {
-  const release = join(mirrorDir(), RELEASE_FILE);
-  if (!existsSync(release)) {
+  if (!existsSync(join(mirrorDir(), RELEASE_FILE))) {
     return { ok: false, reason: `Im Artefakt liegt kein ${RELEASE_FILE}.` };
   }
-  let data = null;
-  try {
-    data = JSON.parse(readFileSync(release, "utf8"));
-  } catch (error) {
-    return { ok: false, reason: `${RELEASE_FILE} ist nicht lesbar: ${error.message}` };
+  const data = releaseData();
+  if (!data) {
+    return { ok: false, reason: `${RELEASE_FILE} ist nicht lesbar.` };
   }
-  const named = pickEntry(data);
+  const named = pickField(data, ENTRY_FIELDS);
   if (!named) {
     return {
       ok: false,
@@ -228,6 +344,58 @@ export function runRemote(sshArgs, transport, command, { interactive = false } =
       ? spawnSync("ssh", [...(interactive ? ["-t"] : []), ...sshArgs, command], options)
       : spawnSync("sh", ["-c", command], options);
   return { status: run.status, stdout: run.stdout || "", stderr: run.stderr || "" };
+}
+
+/**
+ * Der Installer, mitgelesen statt durchgereicht.
+ *
+ * Er läuft minutenlang und will beobachtet werden, also geht seine Ausgabe
+ * weiter auf den Bildschirm und seine Eingabe kommt weiter vom Terminal: der
+ * Installer fragt nach dem sudo-Passwort, und dort sitzt ein Mensch. Anders als
+ * vorher sieht das Kit die Ausgabe dabei selbst. Daraus folgen zwei Dinge, die
+ * am 28.08.2026 beide gefehlt haben: der Kit-Schlüssel und das Startpasswort
+ * werden maskiert, bevor sie über den Bildschirm gehen, und was der Installer
+ * nicht konnte, steht danach noch einmal beisammen.
+ *
+ * Je Strom ein eigener Masker: stdout und stderr kommen unabhängig an, und ein
+ * gemeinsamer Zwischenspeicher würde ihre halben Zeilen ineinander schieben.
+ */
+export function runInstaller(sshArgs, transport, command, { secrets = [] } = {}) {
+  return new Promise((done) => {
+    const child =
+      transport === "ssh"
+        ? spawn("ssh", ["-t", ...sshArgs, command], { stdio: ["inherit", "pipe", "pipe"] })
+        : spawn("sh", ["-c", command], { stdio: ["inherit", "pipe", "pipe"] });
+
+    let output = "";
+    const attach = (stream) => {
+      const masker = createMasker(secrets);
+      stream.setEncoding("utf8");
+      stream.on("data", (chunk) => {
+        const text = masker.push(chunk);
+        if (!text) return;
+        output += text;
+        process.stdout.write(text);
+      });
+      return masker;
+    };
+    const maskers = [attach(child.stdout), attach(child.stderr)];
+
+    const finish = (status) => {
+      for (const masker of maskers) {
+        const rest = masker.flush();
+        if (!rest) continue;
+        output += rest;
+        process.stdout.write(rest);
+      }
+      done({ status, output, troubles: troubles(output) });
+    };
+    child.on("close", finish);
+    child.on("error", (error) => {
+      output += `\n${error.message}`;
+      finish(1);
+    });
+  });
 }
 
 /**

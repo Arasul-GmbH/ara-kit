@@ -14,6 +14,19 @@ Aufbau eines Eintrags: `## <nummer> (<datum>)`, darunter die Kontraktzeile und
 die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`.
 
+## 0.9.1 (2026-08-28)
+
+Kontrakt: bis 3
+
+- Das Startpasswort des Administrators kommt aus dem Kit wieder heraus, ohne sichtbar zu werden. `node .ara/tools/device.mjs --name <geraet> --admin-login` meldet sich am Geraet an und gibt die Sitzung aus, `--token` gibt nur den Ausweis. Weg und Benutzername kommen aus `arasul-release.json`, wenn das Artefakt sie nennt, sonst aus `--login-path` und `--login-user`, und das Werkzeug sagt jedes Mal, woher es sie hat. Der Weg geht an der Schnittstelle entlang und nicht ueber SSH, er kommt darum ohne Anmeldenamen und Schluessel aus und nimmt die Adresse aus `address` oder `api_base`.
+- `secrets.mjs --show` zaehlt jeden Namen auf, den das Kit vergibt, nicht nur die Kit-Schluessel. Das Startpasswort lag vorher unter `ARASUL_START_<geraet>` da, und dieses Blatt nannte den Namen nicht.
+- Die Ausgabe des Installers wird mitgelesen statt durchgereicht, und dabei maskiert: Kit-Schluessel und Startpasswort gehen nicht mehr im Klartext ueber den Bildschirm. Der Satz "Klartext wird nicht angezeigt" stimmt jetzt wieder.
+- Neu am Ende von `/device`: **Was der Installer nicht konnte.** Seine Absagen, etwa eine fehlgeschlagene SSH-Haertung oder ein Firewall-Setup ohne Root-Rechte, stehen danach beisammen und in der Akte, statt in mehreren hundert Zeilen unterzugehen.
+- Nach einer eigenen Installation traegt die Akte `tls: selfsigned`. Das Geraet stellt sein Zertifikat aus einer eigenen Geraete-CA aus, und der erste Aufruf gegen die Schnittstelle scheiterte sonst an `SELF_SIGNED_CERT_IN_CHAIN`.
+- Die Fassung des Artefakts liest das Kit aus `arasul-release.json`, wenn keine Datei `VERSION` dabei ist. Spiegel, Geraeteakte und der Ordnername am Geraet sagten sonst "unbekannt", obwohl die Zahl danebenlag.
+- `/app` weiss ohne `--device`, was es selbst an ein Geraet geschickt hat: welche Fassung im Teststand steht und welche live ist, je App und Geraet. Ist die gebaute Fassung live, wird nicht wieder `--check` und `--deploy` vorgeschlagen, sondern der Plan und die README.
+- Der Plan der Referenz-App laesst sich nicht mehr verschieben: `--plan-aktiv` und `--plan-erledigt` verweigern jeden Plan, der in der Versionsverwaltung liegt. Der Spiegel behaelt beim Auspacken seinen `.gitkeep`. Beides machte den frischen Klon schmutzig.
+
 ## 0.9.0 (2026-08-28)
 
 Kontrakt: bis 3

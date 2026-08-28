@@ -159,3 +159,14 @@ export function setSecret(name, value) {
 export function hasSecret(name) {
   return Boolean(getSecret(name));
 }
+
+/**
+ * Welche Namen in der `.env` stehen. Nur die Namen, nie die Werte.
+ *
+ * Der Schlüsselbund lässt sich nicht nach Namen durchsuchen, dort geht nur die
+ * gezielte Frage nach einem Eintrag. Was `--show` daraus macht, ist deshalb eine
+ * Ergänzung und keine vollständige Liste, und es sagt das auch.
+ */
+export function envNames() {
+  return Object.keys(readEnvFile()).sort();
+}

@@ -25,7 +25,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
-import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
+import { APPLEDOUBLE, packEnv, releaseVersion } from "./lib/install.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 
 // ARA_MIRROR weicht vom Standardort ab. Wird vom Selbsttest genutzt, damit er
@@ -96,9 +96,20 @@ async function fetchMirror(base, token) {
     Readable.fromWeb(response.body).pipe(tar.stdin);
   });
 
+  // .gitkeep hält den Ordner im Repository. Das Auspacken räumt ihn mit weg, und
+  // danach meldet `git status` im Klon eine gelöschte Datei, die niemand
+  // angefasst hat: am 28.08.2026 war der Klon nach der ersten Installation
+  // schmutzig. Er wird darum wieder gelegt.
+  writeFileSync(join(MIRROR, ".gitkeep"), "");
+
+  // Die Fassung sagt das Artefakt selbst. Eine Datei VERSION bringt es nicht
+  // mit, seine Angabe steht in arasul-release.json, und ohne diesen zweiten Weg
+  // stand überall „unbekannt": im Spiegel, in der Geräteakte und im Ordnernamen
+  // am Gerät.
   let version = null;
   const versionFile = join(MIRROR, "VERSION");
   if (existsSync(versionFile)) version = readFileSync(versionFile, "utf8").trim();
+  if (!version) version = releaseVersion(MIRROR);
 
   const state = { fetched: new Date().toISOString(), source: String(base), version };
   writeFileSync(STATE_FILE, JSON.stringify(state, null, 2) + "\n");
@@ -111,15 +122,30 @@ const token = getSecret("ARASUL_TOKEN");
 const base = getSecret("ARASUL_BASIS") || "https://arasul.de";
 const state = readState();
 
+/**
+ * Die Fassung des Spiegels, und woher sie kommt.
+ *
+ * Ein Spiegel, der vor dieser Fassung des Kits geholt wurde, trägt in seinem
+ * STATE.json keine Zahl. Sie steht deshalb nicht weniger im Artefakt: das Kit
+ * liest sie dann direkt aus `arasul-release.json`, statt „unbekannt" zu sagen,
+ * obwohl die Datei danebenliegt.
+ */
+function versionOf(entry) {
+  if (entry?.version) return { version: entry.version, source: "STATE.json" };
+  const named = releaseVersion(MIRROR);
+  return named ? { version: named, source: "arasul-release.json" } : { version: null, source: null };
+}
+
 if (arg.show) {
   const lines = ["# Spiegel"];
   if (!state) {
     lines.push("- Stand: nicht vorhanden");
   } else {
     const age = ageHours(state);
+    const fassung = versionOf(state);
     lines.push(
       `- Geholt: ${state.fetched} (vor ${age < 1 ? "weniger als einer Stunde" : `${Math.round(age)} Stunden`})`,
-      `- Produktversion: ${state.version ?? "unbekannt"}`,
+      `- Produktversion: ${fassung.version ?? "unbekannt"}${fassung.source ? `, laut ${fassung.source}` : ""}`,
       `- Frisch genug: ${age <= MAX_AGE_HOURS ? "ja" : "nein, neu holen"}`
     );
   }
@@ -161,7 +187,7 @@ if (arg.docs) {
   const found = docs(MIRROR).sort();
   console.log(
     [
-      `# Anleitungen im Artefakt (Fassung ${state.version ?? "unbekannt"}, geholt ${state.fetched})`,
+      `# Anleitungen im Artefakt (Fassung ${versionOf(state).version ?? "unbekannt"}, geholt ${state.fetched})`,
       "",
       ...(found.length
         ? found.map((path) => `- ${join(relative(ROOT, MIRROR), relative(MIRROR, path))}`)
@@ -188,7 +214,7 @@ const needsFetch = arg.refresh || !state || ageHours(state) > MAX_AGE_HOURS;
 
 if (!needsFetch) {
   console.log(
-    `Spiegel ist aktuell (geholt ${state.fetched}, Produktversion ${state.version ?? "unbekannt"}).`
+    `Spiegel ist aktuell (geholt ${state.fetched}, Produktversion ${versionOf(state).version ?? "unbekannt"}).`
   );
   process.exit(0);
 }

@@ -11,6 +11,7 @@
  * anlegt: Plan, Beschreibung und Bau liegen neben dem Paket, nicht darin.
  */
 
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
@@ -134,15 +135,50 @@ export function readApp(name) {
 }
 
 /**
+ * Was zuletzt an ein Gerät ging, aus dem Merker.
+ *
+ * Der Merker hält je App und Gerät fest, welche Fassung eingespielt und welche
+ * live geschaltet wurde. Er liegt in `.ara/state.json` und nicht im Ordner der
+ * App: dieser Ordner ist das Paket, und der Stand am Gerät gehört nicht hinein.
+ *
+ * Ohne Gerät im Aufruf gilt der jüngste Eintrag. Wer `--app x` ohne `--device`
+ * ruft, meint das Gerät, an dem er zuletzt war.
+ */
+export function lastStand(record, device = null) {
+  // Ein Eintrag ohne Teststand und ohne Live ist einer, der entfernt wurde.
+  const entries = Object.entries(record || {}).filter(([, stand]) => stand && (stand.deployed || stand.live));
+  const fitting = device
+    ? entries.filter(([place]) => place === device || place.endsWith(`/${device}`))
+    : entries;
+  if (!fitting.length) return null;
+  const when = (stand) => String(stand.live?.time || stand.deployed?.time || "");
+  const [place, stand] = fitting.sort((a, b) => when(b[1]).localeCompare(when(a[1])))[0];
+  return { place, ...stand };
+}
+
+/** Die Schalter, mit denen genau dieses Gerät gemeint ist. */
+function deviceFlags(device, stand) {
+  const place = device || stand?.place || null;
+  if (!place) return " --device <gerät>";
+  const [first, second] = place.split("/");
+  return second ? ` --customer ${first} --device ${second}` : ` --device ${first}`;
+}
+
+/**
  * Was als Nächstes dran ist, und nur das.
  *
  * Der Lebenslauf einer App ist ein Kreis: planen, bauen, in den Teststand,
  * live, wieder planen. An jeder Stelle gibt es wenige sinnvolle Schritte, und
  * die stehen hier. Ein Schritt, der jetzt nichts bringt, wird nicht angeboten:
  * eine Liste aller Möglichkeiten wäre eine Bedienungsanleitung, kein Vorschlag.
+ *
+ * `stand` ist der Merker zu dieser App: was zuletzt eingespielt und was live
+ * geschaltet wurde. Ohne ihn kannte das Werkzeug nur die Platte und schlug am
+ * 28.08.2026 noch `--check` und `--deploy` vor, nachdem die Fassung längst live
+ * war. Ein Vorschlag, der einen erledigten Schritt wiederholt, ist keiner.
  */
-export function nextSteps(app, { device } = {}) {
-  const ziel = device ? ` --device ${device}` : " --device <gerät>";
+export function nextSteps(app, { device, stand = null } = {}) {
+  const ziel = deviceFlags(device, stand);
   const steps = [];
   if (!app.exists) {
     steps.push({
@@ -172,6 +208,13 @@ export function nextSteps(app, { device } = {}) {
     steps.push({ was: `Aktiv ist der Plan "${aktiv.titel}". Bau, was darin steht.`, wie: null });
   }
 
+  const fertig = app.build.exists && !app.build.stale;
+  const gebaut = fertig ? app.build.version ?? null : null;
+  // Nur was zu dieser gebauten Fassung passt, zählt. Eine ältere Fassung am
+  // Gerät sagt über die neue nichts.
+  const imTeststand = Boolean(gebaut && stand?.deployed?.version === gebaut);
+  const istLive = Boolean(gebaut && stand?.live?.version === gebaut);
+
   if (!app.build.exists) {
     steps.push({ was: "Gebaut ist noch nichts. Der Bau legt das Paket unter build/ an.", wie: `node .ara/tools/app.mjs --app ${app.name} --build` });
   } else if (app.build.stale) {
@@ -179,9 +222,21 @@ export function nextSteps(app, { device } = {}) {
       was: `Der Bau von ${app.build.time} ist älter als der Quelltext. Noch einmal bauen, sonst geht der Stand von vorgestern an das Gerät.`,
       wie: `node .ara/tools/app.mjs --app ${app.name} --build`,
     });
+  } else if (istLive) {
+    steps.push({
+      was:
+        `${app.build.id ?? app.name} ${gebaut} ist auf ${stand.place} live, seit ${stand.live.time}. ` +
+        "Am Gerät ist nichts offen. Zurück auf die vorige Fassung ginge mit --back.",
+      wie: null,
+    });
+  } else if (imTeststand) {
+    steps.push({
+      was: `${gebaut} steht im Teststand von ${stand.place}, seit ${stand.deployed.time}. Live schaltet ein Mensch, wenn der Teststand überzeugt.`,
+      wie: `node .ara/tools/app.mjs${ziel} --app ${app.name} --live`,
+    });
   } else {
     steps.push({
-      was: `Gebaut ist ${app.build.id ?? app.name} ${app.build.version ?? "?"}. Halt das Paket gegen den Kontrakt des Geräts, bevor es fliegt.`,
+      was: `Gebaut ist ${app.build.id ?? app.name} ${gebaut ?? "?"}. Halt das Paket gegen den Kontrakt des Geräts, bevor es fliegt.`,
       wie: `node .ara/tools/app.mjs${ziel} --app ${app.name} --check`,
     });
     steps.push({
@@ -190,10 +245,20 @@ export function nextSteps(app, { device } = {}) {
     });
   }
 
-  if (aktiv && app.build.exists && !app.build.stale) {
+  if (aktiv && fertig) {
     steps.push({
-      was: `Wenn die Fassung live ist: den Plan "${aktiv.titel}" abschließen und die README fortschreiben.`,
+      was: istLive
+        ? `${gebaut} ist live. Schließ den Plan "${aktiv.titel}" ab und schreib die README fort.`
+        : `Wenn die Fassung live ist: den Plan "${aktiv.titel}" abschließen und die README fortschreiben.`,
       wie: `node .ara/tools/app.mjs --app ${app.name} --plan-erledigt ${aktiv.file}`,
+    });
+  }
+  // Nur, wenn oben nicht schon nach einem ersten Plan gefragt wurde: eine App
+  // mit erledigten Plänen und ohne offenen ist am Ende eines Kreises.
+  if (!aktiv && !offen && istLive && app.plans.erledigt.length) {
+    steps.push({
+      was: "Die Fassung ist live und kein Plan ist offen. Der nächste Kreis beginnt mit dem nächsten Plan.",
+      wie: `node .ara/tools/app.mjs --app ${app.name} --plan "<titel>"`,
     });
   }
   return steps;
@@ -235,10 +300,40 @@ export function movePlan(app, file, to) {
         "Höchstens ein Plan ist aktiv: erst den abschließen, dann den nächsten."
     );
   }
+  const source = join(app.dir, "plans", from, file);
+  if (versioned(source)) {
+    throw new Error(
+      `${file} gehört zum Kit: die Datei liegt in seiner Versionsverwaltung.\n` +
+        "Das ist der Plan der Referenz-App, und die ist zum Ansehen da, nicht zum Bearbeiten.\n" +
+        "Verschoben würde eine Datei, die mit dem Klon kam: der Arbeitsordner wäre danach\n" +
+        "schmutzig, und das nächste Update stolperte darüber.\n" +
+        "Für eine eigene App: node .ara/tools/app.mjs --app <name> --new"
+    );
+  }
   const target = join(app.dir, "plans", to);
   mkdirSync(target, { recursive: true });
   const path = join(target, file);
-  renameSync(join(app.dir, "plans", from, file), path);
+  renameSync(source, path);
   writeFrontmatter(path, { stand: to, ...(to === "erledigt" ? { erledigt: today() } : {}) });
   return { from, to, path };
+}
+
+/**
+ * Liegt diese Datei in der Versionsverwaltung des Kits?
+ *
+ * Der Fremdtest am 28.08.2026 schob den Plan der Referenz-App auf „erledigt",
+ * und danach meldete `git status` im frischen Klon eine verschobene Datei. Was
+ * dem Nutzer gehört, verfolgt das Kit-Repo nicht; die Referenz-App ist die eine
+ * Ausnahme, und genau darum darf an ihr nichts verschoben werden.
+ *
+ * Gefragt wird git selbst und keine Liste im Kit: eine Liste liefe auseinander,
+ * sobald jemand die Referenz-App umbenennt. Ohne Repository ist nichts
+ * versioniert, dann läuft alles wie bisher.
+ */
+export function versioned(path) {
+  const run = spawnSync("git", ["ls-files", "--error-unmatch", "--", path], {
+    cwd: ROOT,
+    stdio: ["ignore", "ignore", "ignore"],
+  });
+  return run.status === 0;
 }
