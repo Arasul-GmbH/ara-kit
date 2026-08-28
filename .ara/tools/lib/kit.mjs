@@ -1,12 +1,14 @@
 /**
  * Gemeinsame Grundlagen der Kit-Werkzeuge.
- * Bezeichner englisch, Ausgaben deutsch. Keine Abhängigkeiten außer Node.
+ * Bezeichner englisch, Ausgaben in der Sprache des Profils. Keine Abhängigkeiten
+ * außer Node.
  */
 
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { language, t } from "./i18n.mjs";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 export const CUSTOMERS = join(ROOT, "customers");
@@ -67,7 +69,7 @@ function field(key, value) {
 export function writeFrontmatter(path, changes) {
   const content = readFileSync(path, "utf8");
   const match = content.match(/^(---\r?\n)([\s\S]*?)(\r?\n---\r?\n?)([\s\S]*)$/);
-  if (!match) throw new Error(`${path} hat keinen Frontmatter-Block.`);
+  if (!match) throw new Error(t(`${path} has no frontmatter block.`, `${path} hat keinen Frontmatter-Block.`));
 
   const pending = new Set(Object.keys(changes));
   const lines = match[2].split(/\r?\n/).map((line) => {
@@ -125,13 +127,17 @@ export function listDevices(customer) {
  */
 export function resolveDevice(customer, device) {
   customer = customer || null;
-  const where = customer ? `Bei "${customer}"` : "Unter devices/";
+  const where = customer
+    ? t(`Under "${customer}"`, `Bei "${customer}"`)
+    : t("Under devices/", "Unter devices/");
 
   if (customer && !existsSync(customerPath(customer))) {
     const known = listCustomers();
     throw new Error(
-      `Den Kunden "${customer}" gibt es nicht.` +
-        (known.length ? ` Vorhanden: ${known.join(", ")}` : " Es ist noch kein Kunde angelegt.")
+      t(`There is no customer "${customer}".`, `Den Kunden "${customer}" gibt es nicht.`) +
+        (known.length
+          ? t(` Known: ${known.join(", ")}`, ` Vorhanden: ${known.join(", ")}`)
+          : t(" No customer has been created yet.", " Es ist noch kein Kunde angelegt."))
     );
   }
 
@@ -139,8 +145,10 @@ export function resolveDevice(customer, device) {
   if (device) {
     if (!devices.includes(device)) {
       throw new Error(
-        `${where} gibt es kein Gerät "${device}".` +
-          (devices.length ? ` Vorhanden: ${devices.join(", ")}` : " Es ist noch kein Gerät angelegt.")
+        t(`${where} there is no device "${device}".`, `${where} gibt es kein Gerät "${device}".`) +
+          (devices.length
+            ? t(` Known: ${devices.join(", ")}`, ` Vorhanden: ${devices.join(", ")}`)
+            : t(" No device has been created yet.", " Es ist noch kein Gerät angelegt."))
       );
     }
     return { customer, device, path: devicePath(customer, device) };
@@ -149,13 +157,19 @@ export function resolveDevice(customer, device) {
   if (devices.length === 0) {
     throw new Error(
       customer
-        ? `Bei "${customer}" ist noch kein Gerät angelegt.`
-        : "Unter devices/ ist noch kein Gerät angelegt. Anlegen mit /device <name>."
+        ? t(`"${customer}" has no device yet.`, `Bei "${customer}" ist noch kein Gerät angelegt.`)
+        : t(
+            "There is no device under devices/ yet. Create one with /device <name>.",
+            "Unter devices/ ist noch kein Gerät angelegt. Anlegen mit /device <name>."
+          )
     );
   }
   if (devices.length > 1) {
     throw new Error(
-      `${customer ? `"${customer}" hat` : "Es gibt"} mehrere Geräte (${devices.join(", ")}). Sag, um welches es geht.`
+      t(
+        `${customer ? `"${customer}" has` : "There are"} several devices (${devices.join(", ")}). Say which one you mean.`,
+        `${customer ? `"${customer}" hat` : "Es gibt"} mehrere Geräte (${devices.join(", ")}). Sag, um welches es geht.`
+      )
     );
   }
   return { customer, device: devices[0], path: devicePath(customer, devices[0]) };
@@ -181,7 +195,7 @@ export function readDevice(customer, device) {
  */
 export function sshArgs(fields, { batch = false } = {}) {
   const host = fields.address || fields.hostname;
-  if (!host) throw new Error("In der Geräteakte steht keine Adresse.");
+  if (!host) throw new Error(t("The device file names no address.", "In der Geräteakte steht keine Adresse."));
   const user = fields.ssh_user || "arasul";
   const port = fields.ssh_port || "22";
   const args = [
@@ -199,8 +213,12 @@ export function sshArgs(fields, { batch = false } = {}) {
       : join(homedir(), ".ssh", fields.ssh_key);
     if (!existsSync(path)) {
       throw new Error(
-        `Der Schlüssel ${fields.ssh_key} liegt nicht unter ${path}.\n` +
-          "Prüf den Namen in der Geräteakte, im Kit steht nur der Name, der Schlüssel selbst bleibt in ~/.ssh."
+        t(
+          `The key ${fields.ssh_key} is not at ${path}.\n` +
+            "Check the name in the device file: the kit only stores the name, the key itself stays in ~/.ssh.",
+          `Der Schlüssel ${fields.ssh_key} liegt nicht unter ${path}.\n` +
+            "Prüf den Namen in der Geräteakte, im Kit steht nur der Name, der Schlüssel selbst bleibt in ~/.ssh."
+        )
       );
     }
     args.push("-i", path);
@@ -231,21 +249,38 @@ export function parseArgs(argv = process.argv.slice(2)) {
 }
 
 /**
+ * Die Trennlinie im Kopf eines Werkzeugs. Darüber steht die englische Hilfe,
+ * darunter dieselbe auf Deutsch.
+ */
+export const HELP_SPLIT = "=== deutsch ===";
+
+/**
  * Die Kopfhilfe eines Werkzeugs: der Kommentarblock am Anfang seiner Datei.
  *
  * Gelesen wird die Datei selbst und keine zweite Fassung daneben. Damit können
  * Hilfe und Erklärung nicht auseinanderlaufen: wer den Kopf ändert, ändert die
- * Hilfe.
+ * Hilfe. Aus demselben Grund stehen beide Sprachen in demselben Kopf, getrennt
+ * durch `=== deutsch ===`, und nicht in zwei Dateien nebeneinander.
+ *
+ * Fehlt der deutsche Teil, gibt es den englischen. Ein Werkzeug ohne Hilfe wäre
+ * schlimmer als eines mit Hilfe in der falschen Sprache. Dass keiner fehlt,
+ * prüft der Selbsttest.
  */
-export function headerHelp(url) {
+export function headerHelp(url, lang = language()) {
   const path = fileURLToPath(url);
   const block = readFileSync(path, "utf8").match(/^(?:#![^\n]*\r?\n)?\s*\/\*\*([\s\S]*?)\*\//);
-  if (!block) return `${basename(path)} hat keinen Kopf, aus dem eine Hilfe entstehen könnte.`;
-  return block[1]
+  if (!block) {
+    return t(
+      `${basename(path)} has no header that could become a help text.`,
+      `${basename(path)} hat keinen Kopf, aus dem eine Hilfe entstehen könnte.`
+    );
+  }
+  const text = block[1]
     .split(/\r?\n/)
     .map((line) => line.replace(/^\s*\* ?/, ""))
-    .join("\n")
-    .trim();
+    .join("\n");
+  const parts = text.split(new RegExp(`^${HELP_SPLIT}$`, "m"));
+  return (lang === "de" ? parts[1] ?? parts[0] : parts[0]).trim();
 }
 
 /**
