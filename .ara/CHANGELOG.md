@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.19.0 (2026-08-29)
+
+Contract: up to 5
+
+- After a deploy the kit says who is allowed to see the staging slot. A stranger reached staging in three and a half minutes on 29.08.2026 and got a 403 there, because the app was released for nobody, and the kit said nothing about it. It now names the release at the end of the deploy, plus the two ways to an administrator: a session out of the start password if one lies in the store, otherwise a human in the device's interface. Which route or which page that is stands in the artifact and not in the kit: its key carries `app:deploy`, and the contract of the device names no way for a release.
+- `--admin-login` leads to a way instead of to an end. On a device that somebody else installed there is no start password, and the kit cannot fetch one. Until 0.18.0 the tool said so and stopped, with a sentence that only held for its own installations ("it stands in the first output on the device"). It now names three ways, and none of them needs the kit: somebody hands the password over once, or it was changed and the one that holds today goes in, or the administrator does in the interface what the session would have done. Employees, permissions and their own password live there anyway.
+- The kit can revoke its own key. `--keys` lists what lies on the device, line for line as the device writes it, and marks the one this kit uses; recognised is it by its prefix, because names repeat and prefixes do not. `--revoke-key` revokes exactly that one, takes the entry out of the secret store and empties `api_key_ref` in the file: a value that no longer holds on the device is not a secret but a dead access. A foreign key the kit never touches. On 29.08.2026 eight kit keys lay on one Orin, three of them with the same name, and there was no way in the kit to take one back.
+- `forgetSecret` in the secret store: it takes an entry out of both stores, the chosen one and the other. Up to now the kit could only write, and a revoked key would have stayed as a valid-looking access.
+- The answer files for `/init` explain `ssh_key`. It is the name of the private key in `~/.ssh` on this computer, without a path; the kit holds the name, the key stays where it lies, and the device has to know the matching public one.
+
 ## 0.18.0 (2026-08-29)
 
 Contract: up to 5

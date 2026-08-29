@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.19.0 (2026-08-29)
+
+Kontrakt: bis 5
+
+- Nach einem Deploy sagt das Kit, wer den Teststand sehen darf. Ein Fremder war am 29.08.2026 in dreieinhalb Minuten im Teststand und bekam dort eine 403, weil die App für niemanden freigegeben war, und das Kit sagte nichts dazu. Es nennt die Freigabe jetzt am Ende des Einspielens, dazu die zwei Wege zu einem Administrator: eine Sitzung aus dem Startpasswort, wenn eines in der Ablage liegt, sonst ein Mensch in der Oberfläche des Geräts. Welcher Weg oder welche Seite das ist, steht im Artefakt und nicht im Kit: sein Schlüssel trägt `app:deploy`, und der Kontrakt des Geräts nennt für eine Freigabe keinen Weg.
+- `--admin-login` führt zu einem Weg statt zu einem Ende. Auf einem Gerät, das jemand anders installiert hat, gibt es kein Startpasswort, und das Kit kann keines herbeiholen. Bis 0.18.0 sagte das Werkzeug das und hörte auf, mit einem Satz, der nur für seine eigenen Installationen stimmte („steht in der Erstausgabe am Gerät"). Es nennt jetzt drei Wege, und keiner davon braucht das Kit: jemand gibt das Passwort einmal herein, oder es wurde geändert und das heute gültige geht hinein, oder der Administrator tut in der Oberfläche, was die Sitzung getan hätte. Mitarbeiter, Freigaben und sein eigenes Passwort liegen ohnehin dort.
+- Das Kit kann seinen eigenen Schlüssel widerrufen. `--keys` listet, was am Gerät liegt, Zeile für Zeile so, wie das Gerät sie schreibt, und markiert den, mit dem dieses Kit arbeitet; erkannt wird er an seinem Präfix, denn Namen wiederholen sich und Präfixe nicht. `--revoke-key` widerruft genau diesen, nimmt den Eintrag aus der Geheimnis-Ablage und leert `api_key_ref` in der Akte: ein Wert, der am Gerät nicht mehr gilt, ist kein Geheimnis, sondern ein toter Zugang. Einen fremden Schlüssel fasst das Kit nie an. Am 29.08.2026 lagen acht Kit-Schlüssel auf einem Orin, drei davon mit demselben Namen, und im Kit gab es keinen Weg, einen zurückzunehmen.
+- `forgetSecret` in der Geheimnis-Ablage: es nimmt einen Eintrag aus beiden Ablagen heraus, aus der gewählten und aus der anderen. Bisher konnte das Kit nur schreiben, und ein widerrufener Schlüssel wäre als gültig aussehender Zugang liegen geblieben.
+- Die Antwortdateien für `/init` erklären `ssh_key`. Es ist der Name des privaten Schlüssels in `~/.ssh` auf diesem Rechner, ohne Pfad; das Kit hält den Namen, der Schlüssel bleibt liegen, wo er liegt, und das Gerät muss den passenden öffentlichen kennen.
+
 ## 0.18.0 (2026-08-29)
 
 Kontrakt: bis 5

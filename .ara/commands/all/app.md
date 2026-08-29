@@ -44,6 +44,13 @@ is a level 2 intervention: ask beforehand, even if you deployed it yourself a mi
 from that moment on people work with it. After that: plan into `erledigt/`, write on the
 app's README, one line into the runsheet or into the customer's history.
 
+**Deployed is not visible, and you say so before the deploy.** An app is visible to a person
+on the device only once it has been released for them; without a release the staging address
+answers with a 403. The kit cannot release it, its key carries `app:deploy`. `--deploy` names
+the two ways to an administrator at the end of its output: a session out of the start
+password, or a human in the device's interface. Read out what stands there and name no page
+and no route of your own: they stand in the artifact, `node .ara/tools/mirror.mjs --docs`.
+
 **On a device without Arasul** `--compose` goes over SSH. Say beforehand what is missing
 there, in the same words the tool prints afterwards: no login, no flow, no permission.
 That is a way to demonstrate something, not one for real data.

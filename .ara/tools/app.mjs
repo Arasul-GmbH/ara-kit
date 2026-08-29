@@ -88,7 +88,7 @@ import { localized, t } from "./lib/i18n.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
-import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines } from "./lib/appways.mjs";
+import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
 import {
   NOT_IN_PACKAGE,
   appPath,
@@ -103,6 +103,8 @@ import {
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
+import { startRefName } from "./lib/device.mjs";
+import { hasSecret } from "./lib/secrets.mjs";
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -696,6 +698,16 @@ const place = device.customer ? `${device.customer}/${device.device}` : device.d
 const fields = device.fields;
 
 /**
+ * Unter welchem Namen das Startpasswort dieses Geraets laege.
+ *
+ * Steht es in der Akte, gilt das; sonst der Name, den `device.mjs` vergaebe.
+ * Eine Akte, die das Kit nicht selbst angelegt hat, traegt das Feld naemlich
+ * nicht, und der Satz nach dem Einspielen soll den Eintrag trotzdem benennen
+ * koennen.
+ */
+const startRef = fields.start_password_ref || startRefName(device.customer, device.device);
+
+/**
  * Was an dieses Gerät ging, in den Merker.
  *
  * Ohne diese Notiz kennt die Seite ohne `--device` nur die Platte: sie sah am
@@ -1283,6 +1295,16 @@ if (arg.deploy !== undefined) {
             `Look at it: ${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`,
             `Ansehen: ${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`
           ),
+          "",
+          "",
+          ...releaseLines({
+            place,
+            base,
+            testUrl: `${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`,
+            deviceCall: `node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device}`,
+            startRef,
+            startPassword: hasSecret(startRef),
+          }),
           "",
           t("A human switches live. When staging convinces:", "Live schaltet ein Mensch. Wenn der Teststand überzeugt:"),
           `  node .ara/tools/app.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device} --app ${stand.app_id ?? manifest.id} --live`,

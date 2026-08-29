@@ -377,6 +377,32 @@ keiner Datei des Kits, in keinem Protokoll und **nie im Portal**: das Portal gib
 Download-Token aus, keine Geräteschlüssel. Ist er verloren, legst du einen neuen an und
 lässt den alten am Gerät widerrufen, nachschlagen geht nicht.
 
+**Wer einen anlegt, lässt einen liegen.** Ein Gerät sammelt Kit-Schlüssel: jeder Lauf mit
+`--deploy-key` legt einen dazu, und am 29.08.2026 lagen acht davon auf einem Orin, drei mit
+demselben Namen. Was dort liegt und welcher davon deiner ist:
+
+```
+node .ara/tools/device.mjs --name <gerät> --keys
+```
+
+Die Liste kommt vom Gerät, Zeile für Zeile so, wie es sie schreibt. Das Kit setzt eine
+Marke dazu: der Schlüssel, dessen Präfix zu dem Wert in deiner Ablage passt, ist deiner.
+Namen wiederholen sich, Präfixe nicht.
+
+**Widerrufen gilt dem eigenen Schlüssel und nur ihm:**
+
+```
+node .ara/tools/device.mjs --name <gerät> --revoke-key
+```
+
+Das ist ein Eingriff der Stufe 2, vorher fragen. Widerrufen wird genau der eine Schlüssel,
+mit dem das Kit gearbeitet hat, der Eintrag kommt aus der Ablage heraus und `api_key_ref`
+in der Akte wird leer: ein Wert, der am Gerät nicht mehr gilt, ist kein Geheimnis, sondern
+ein toter Zugang, und der nächste Aufruf damit wäre eine 401, deren Grund niemand sieht.
+Danach rollt das Kit nichts mehr auf dieses Gerät, bis `--deploy-key` einen neuen anlegt.
+Einen fremden Schlüssel fasst das Kit nie an; wer das will, tut es am Gerät, als der
+Administrator, dem er gehört.
+
 ### Der Nachweis
 
 Installiert ist nicht abgenommen. Der erste Nachweis ist der Kontrakt:
@@ -441,6 +467,23 @@ denen es gerufen hat.
 Weist das Gerät die Anmeldung ab, hat das meist einen von zwei Gründen: der Administrator
 heißt dort anders, oder das Startpasswort wurde am Gerät schon geändert. Dann ist der
 Eintrag in der Ablage veraltet, und der Mensch, der es geändert hat, kennt das neue.
+
+**Auf einem Gerät, das das Kit nicht installiert hat, gibt es kein Startpasswort**, und das
+Kit kann keines herbeiholen: es entsteht bei der Installation. Das Werkzeug nennt dann drei
+Wege, statt aufzuhören, und alle drei führen weiter:
+
+1. **Jemand kennt es**, der Administrator des Geräts oder die Erstausgabe der Installation.
+   Dann geht es einmal in die Ablage, und derselbe Aufruf läuft danach durch:
+   `printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set <eintrag>`.
+2. **Es wurde am Gerät geändert.** Derselbe Weg, mit dem, das heute gilt.
+3. **Niemand kennt es.** Dann tut der Administrator in der Oberfläche, was die Sitzung getan
+   hätte: Mitarbeiter, Freigaben und sein eigenes Passwort liegen dort, und für keines davon
+   braucht es das Kit. Welche Seite was trägt, steht im Admin-Handbuch des Artefakts,
+   `node .ara/tools/mirror.mjs --docs`.
+
+**Sag den dritten Weg laut**, statt nach einem Passwort zu fragen, das niemand hat. Das
+Ausrollen von Apps hängt nicht daran: dafür ist der Kit-Schlüssel da, und der kommt über SSH
+vom Gerät.
 
 **Welche Namen die Ablage führt**, sagt `node .ara/tools/secrets.mjs --show`. Dort steht
 auch der Eintrag mit dem Startpasswort, mit dem Gerät daneben. Werte stehen dort nie.

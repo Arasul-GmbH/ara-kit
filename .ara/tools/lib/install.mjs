@@ -500,13 +500,14 @@ export async function ship(sshArgs, transport, target = installTarget(mirrorStat
 }
 
 /**
- * Legt am Gerät einen Kit-Schlüssel an und gibt ihn genau einmal zurück.
+ * Wo das Skript am Gerät liegt, das die Kit-Schlüssel führt.
  *
- * Gesucht wird die Datei, nicht ihr Pfad: wo das Jet-Repo am Gerät liegt,
- * hängt davon ab, wie installiert wurde. Die Ausgabe wird nicht ausgegeben und
- * nicht protokolliert, sie enthält den Schlüssel im Klartext.
+ * Gesucht wird die Datei, nicht ihr Pfad: wo das Repo der Plattform am Gerät
+ * liegt, hängt davon ab, wie installiert wurde. Alle drei Handgriffe des Kits
+ * (anlegen, auflisten, widerrufen) gehen durch dieselbe Datei, damit es keine
+ * zweite Art gibt, an denselben Schlüsseln zu drehen.
  */
-export function createKey(sshArgs, transport, name) {
+export function findKeyScript(sshArgs, transport) {
   const find = runRemote(
     sshArgs,
     transport,
@@ -518,17 +519,93 @@ export function createKey(sshArgs, transport, name) {
       `done | head -1`
   );
   const script = (find.stdout || "").trim().split("\n")[0];
-  if (!script) {
+  if (script) return { ok: true, script };
+  return {
+    ok: false,
+    message: t(
+      `No ${KEY_SCRIPT} can be found on the device. It belongs to the platform: either no Arasul ` +
+        "runs there, or the version is older than the deploy over the interface.",
+      `Am Gerät ist kein ${KEY_SCRIPT} zu finden. Es gehört zur Plattform: entweder läuft dort ` +
+        "kein Arasul, oder die Fassung ist älter als der Deploy über die Schnittstelle."
+    ),
+  };
+}
+
+/**
+ * Eine Zeile der Liste, die das Gerät ausgibt.
+ *
+ * Gelesen wird so wenig wie möglich: der Präfix, weil daran der eigene
+ * Schlüssel erkannt wird, und sonst nichts. **Die Zeile selbst bleibt, wie das
+ * Gerät sie geschrieben hat.** Was in ihr steht, gehört dem Produkt, und ein
+ * Kit, das sie neu setzt, zeigt beim nächsten Feld, das dazukommt, eine
+ * veraltete Zeile mit dem Anschein von Genauigkeit.
+ */
+function keyLine(line, key) {
+  const prefix = (line.match(/\baras_[A-Za-z0-9_-]+/) || [null])[0];
+  if (!prefix) return null;
+  return { prefix, line: line.replace(/\s+$/, ""), mine: Boolean(key) && key.startsWith(prefix) };
+}
+
+/**
+ * Welche Kit-Schlüssel am Gerät liegen, und welcher davon dieser ist.
+ *
+ * Erkannt wird der eigene über den Präfix: er ist der Anfang des Schlüssels,
+ * und der liegt in der Ablage. Über die Länge des Präfixes wird dabei nichts
+ * angenommen, verglichen wird, was das Gerät nennt, mit dem Anfang dessen, was
+ * hinterlegt ist. Zwei Schlüssel mit demselben Namen sind so trotzdem zu
+ * unterscheiden, und ein fremder wird nie für den eigenen gehalten.
+ */
+export function listKeys(sshArgs, transport, key = null) {
+  const found = findKeyScript(sshArgs, transport);
+  if (!found.ok) return found;
+  const run = runRemote(sshArgs, transport, `bash ${JSON.stringify(found.script)} liste`);
+  if (run.status !== 0) {
     return {
       ok: false,
-      message: t(
-        `No ${KEY_SCRIPT} can be found on the device. It belongs to the platform: either no Arasul ` +
-          "runs there, or the version is older than the deploy over the interface.",
-        `Am Gerät ist kein ${KEY_SCRIPT} zu finden. Es gehört zur Plattform: entweder läuft dort ` +
-          "kein Arasul, oder die Fassung ist älter als der Deploy über die Schnittstelle."
-      ),
+      message:
+        scrub(`${run.stdout}\n${run.stderr}`.trim()) ||
+        t("The device gave no list.", "Das Gerät hat keine Liste geliefert."),
     };
   }
+  const keys = String(run.stdout)
+    .split("\n")
+    .map((line) => keyLine(line, key))
+    .filter(Boolean);
+  return { ok: true, script: found.script, keys, mine: keys.find((entry) => entry.mine) || null };
+}
+
+/**
+ * Widerruft genau einen Schlüssel, benannt über seinen Präfix.
+ *
+ * Widerrufen heißt entwerten, nicht löschen: der Eintrag bleibt am Gerät stehen
+ * und ist danach ungültig. Das ist der Weg zurück, den es nicht gibt, und
+ * deshalb sagt das Werkzeug vorher, welchen es nimmt.
+ */
+export function revokeKey(sshArgs, transport, prefix) {
+  const found = findKeyScript(sshArgs, transport);
+  if (!found.ok) return found;
+  const run = runRemote(
+    sshArgs,
+    transport,
+    `bash ${JSON.stringify(found.script)} widerrufen ${JSON.stringify(prefix)}`
+  );
+  const output = scrub(`${run.stdout}\n${run.stderr}`.trim());
+  if (run.status !== 0) {
+    return { ok: false, message: output || t("The device refused.", "Das Gerät hat abgelehnt.") };
+  }
+  return { ok: true, script: found.script, output };
+}
+
+/**
+ * Legt am Gerät einen Kit-Schlüssel an und gibt ihn genau einmal zurück.
+ *
+ * Die Ausgabe wird nicht ausgegeben und nicht protokolliert, sie enthält den
+ * Schlüssel im Klartext.
+ */
+export function createKey(sshArgs, transport, name) {
+  const found = findKeyScript(sshArgs, transport);
+  if (!found.ok) return found;
+  const script = found.script;
   const run = runRemote(sshArgs, transport, `bash ${JSON.stringify(script)} anlegen ${JSON.stringify(name)}`);
   if (run.status !== 0) {
     return {

@@ -38,6 +38,10 @@
       "none"
     ]
   },
+  "_fields": {
+    "_": "What the name alone does not say. The other fields are named like in business/profile.md and carry your own words.",
+    "ssh_key": "The name of your private SSH key in ~/.ssh on THIS computer, without a path, for example id_ed25519. The kit only holds the name, the key itself stays where it is and is never copied. With it the kit reaches devices later, so the device has to know the matching public key (its .ssh/authorized_keys). If there is no key here yet: ssh-keygen -t ed25519 makes one. Empty is allowed, then remote.mjs only gets in where ssh gets in without a named key."
+  },
   "role": "company",
   "language": "en",
   "name": "Murat Example",

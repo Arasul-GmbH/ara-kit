@@ -262,6 +262,23 @@ export function deployKeyName(company = {}, profile = {}) {
 }
 
 /**
+ * Der Namensteil, unter dem die Geheimnisse eines Geraets in der Ablage liegen.
+ *
+ * Eine Stelle fuer die Regel, weil zwei Werkzeuge sie brauchen: `device.mjs`
+ * legt die Eintraege an, und `app.mjs` muss beim Einspielen sagen koennen, wo
+ * das Startpasswort dieses Geraets laege. Zwei Nachbauten waeren zwei Namen,
+ * und der zweite zeigte auf nichts.
+ */
+export function secretSlug(customer, device) {
+  return (customer ? `${customer}_${device}` : device).toUpperCase().replace(/[^A-Z0-9]/g, "_");
+}
+
+/** Unter welchem Namen das Startpasswort eines Geraets laege. */
+export function startRefName(customer, device) {
+  return `ARASUL_START_${secretSlug(customer, device)}`;
+}
+
+/**
  * Welchen Namen die Akte fuer das Startpasswort bekommt.
  *
  * `installed` ist der Name aus einer Installation, die dieser Lauf gemacht hat.

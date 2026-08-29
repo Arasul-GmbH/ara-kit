@@ -43,6 +43,14 @@ Das rollt in den **Teststand**, und dort bleibt es, bis ein Mensch es sehen woll
 hast, ab dem Moment arbeiten die Leute damit. Danach: Plan nach `erledigt/`, README der
 App fortschreiben, ein Satz in den Laufzettel oder in den Verlauf des Kunden.
 
+**Eingespielt ist nicht sichtbar, und das sagst du vor dem Einspielen.** Eine App sieht ein
+Mensch am Gerät erst, wenn sie für ihn freigegeben ist; ohne Freigabe antwortet die Adresse
+des Teststands mit einer 403. Freigeben kann das Kit sie nicht, sein Schlüssel trägt
+`app:deploy`. `--deploy` nennt am Ende seiner Ausgabe die zwei Wege zu einem Administrator:
+eine Sitzung aus dem Startpasswort, oder ein Mensch in der Oberfläche des Geräts. Lies vor,
+was dort steht, und nenn keine eigene Seite und keinen eigenen Weg: die stehen im Artefakt,
+`node .ara/tools/mirror.mjs --docs`.
+
 **Auf einem Gerät ohne Arasul** geht `--compose` über SSH. Sag vorher, was dabei fehlt,
 mit denselben Worten, die das Werkzeug hinterher ausgibt: keine Anmeldung, kein Flow,
 keine Freigabe. Das ist ein Weg zum Vorführen, keiner für echte Daten.

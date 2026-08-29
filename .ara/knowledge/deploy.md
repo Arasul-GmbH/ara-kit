@@ -94,6 +94,13 @@ from the build file in the package, and that takes a while. Waiting is not a fau
 If the device rejects it, it gives its reason in plain words and the tool passes the reason
 through. Read it instead of repeating the call.
 
+**Deployed is not released.** The device delivers the staging slot only to somebody it was
+released for; without a release the address answers with a 403. The kit cannot give it: its key
+carries `app:deploy`. An administrator does, in the interface or over a session out of the start
+password (`node .ara/tools/device.mjs --name <device> --admin-login`). Which route or which page
+that is stands in the artifact's API reference and admin handbook, `node .ara/tools/mirror.mjs
+--docs`. `--deploy` names both ways at the end of its output.
+
 ## Going live and back
 
 ```
@@ -131,8 +138,9 @@ before you type it.
   `--insecure`. Not unasked and not permanently out of convenience. If the kit installed it
   itself, the entry is already there: then it knows which certificate lies there, it watched it
   come into being.
-- **401.** The key was revoked on the device or belongs to another device. Look on the device,
-  otherwise create a new one (`/device` with `--deploy-key`).
+- **401.** The key was revoked on the device or belongs to another device. Look with
+  `node .ara/tools/device.mjs --name <device> --keys`: it lists what lies there and marks the one
+  this kit uses. Otherwise create a new one (`--deploy-key`).
 - **The endpoint does not stand in the contract.** Then the kit does not call it either. That is
   not a fault of the tool, it is the statement that kit and device do not fit together.
 - **The interface sits elsewhere than the SSH access.** A device that is only reachable through a

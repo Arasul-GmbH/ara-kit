@@ -261,3 +261,107 @@ export function arrangementLines(arrangement) {
   }
   return lines;
 }
+
+/**
+ * Wer den frisch eingespielten Stand sehen darf, und wie er freigegeben wird.
+ *
+ * Der zweite Fremdtest am 29.08.2026 kam bis hierher: Klon, Bau und Deploy in
+ * dreieinhalb Minuten, und dann eine 403 an der Adresse des Teststands. Die App
+ * lag am Geraet, sie war nur fuer niemanden freigegeben. Das Kit sagte dazu
+ * nichts, und ein Werkzeug, das nach dem letzten Schritt schweigt, sieht in
+ * diesem Moment kaputt aus.
+ *
+ * **Das Kit kann die Freigabe nicht erteilen, und es soll das sagen.** Sein
+ * Schluessel traegt `app:deploy`, das ist der Bereich fuer Pakete und Staende.
+ * Wer sie erteilt, ist ein Administrator, und dafuer gibt es zwei Wege: eine
+ * Sitzung aus dem Startpasswort, wenn eines in der Ablage liegt, sonst ein
+ * Mensch in der Oberflaeche des Geraets.
+ *
+ * **Kein Weg und keine Seite wird hier benannt.** Wie die Freigabe im Produkt
+ * heisst, steht im Admin-Handbuch und in der API-Referenz des Artefakts, und
+ * die liegen im Spiegel. Ein Pfad aus dem Gedaechtnis waere genau die Sorte
+ * Zusage, die dieses Kit nicht macht.
+ */
+export function releaseLines({
+  place,
+  base,
+  testUrl = null,
+  deviceCall,
+  startRef,
+  startPassword = false,
+} = {}) {
+  const lines = [
+    t(
+      "Nobody sees it yet. An app on this device is visible to a person only once it has been " +
+        "released for them, and the kit cannot release it: its key carries app:deploy and nothing " +
+        "else. An administrator does that.",
+      "Gesehen hat es noch niemand. Eine App an diesem Gerät sieht ein Mensch erst, wenn sie für " +
+        "ihn freigegeben ist, und freigeben kann das Kit sie nicht: sein Schlüssel trägt app:deploy " +
+        "und sonst nichts. Das tut ein Administrator."
+    ),
+    "",
+  ];
+  if (testUrl) {
+    lines.push(
+      t(
+        `Until then ${testUrl} answers with a 403, and that is the permission missing, not the app.`,
+        `Bis dahin antwortet ${testUrl} mit einer 403, und das ist die fehlende Freigabe und nicht die App.`
+      ),
+      ""
+    );
+  }
+  lines.push(t("Two ways to an administrator:", "Zwei Wege zu einem Administrator:"), "");
+  lines.push(
+    ...(startPassword
+      ? t(
+          [
+            `- The start password lies under ${startRef}. A session comes out of it, and the password`,
+            "  stays unseen while it does:",
+            `      ${deviceCall} --admin-login`,
+            "  Which route the release goes stands in the API reference of the artifact, not in the kit:",
+            "      node .ara/tools/mirror.mjs --docs",
+          ],
+          [
+            `- Das Startpasswort liegt unter ${startRef}. Daraus wird eine Sitzung, und das Passwort`,
+            "  bleibt dabei ungesehen:",
+            `      ${deviceCall} --admin-login`,
+            "  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, nicht im Kit:",
+            "      node .ara/tools/mirror.mjs --docs",
+          ]
+        )
+      : t(
+          [
+            `- No start password lies under ${startRef}, so the kit gets no session. Whoever knows it,`,
+            "  the administrator of this device, hands it over once:",
+            `      printf '%s' "<password>" | node .ara/tools/secrets.mjs --set ${startRef}`,
+          ],
+          [
+            `- Unter ${startRef} liegt kein Startpasswort, also bekommt das Kit keine Sitzung. Wer es`,
+            "  kennt, der Administrator dieses Geräts, gibt es einmal herein:",
+            `      printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${startRef}`,
+          ]
+        ))
+  );
+  lines.push(
+    ...t(
+      [
+        `- Or a human does it in the interface: ${base}, logged in as administrator. Which page carries`,
+        "  the release stands in the admin handbook of the artifact. For that the kit is not needed.",
+      ],
+      [
+        `- Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Welche Seite`,
+        "  die Freigabe trägt, steht im Admin-Handbuch des Artefakts. Dafür braucht es das Kit nicht.",
+      ]
+    )
+  );
+  lines.push(
+    "",
+    t(
+      `Until somebody is released, ${place} shows the app to nobody, not even to the administrator: ` +
+        "the role says who manages, not who works with it.",
+      `Solange niemand freigegeben ist, zeigt ${place} die App niemandem, auch dem Administrator nicht: ` +
+        "die Rolle sagt, wer verwaltet, nicht wer damit arbeitet."
+    )
+  );
+  return lines;
+}

@@ -131,6 +131,17 @@ own source.** One that does finds nothing on a device that names them differentl
 "no Arasul here" and collects items nobody decides on. That is what happened to the scaffold up to
 29.08.2026: the approval step was not refused, it was skipped.
 
+**Deployed is not visible.** An app on a device is visible to a person only once it has been
+released for them, and the kit cannot release it: its key carries `app:deploy` and nothing else.
+Whoever calls up the staging slot without a release gets a 403, and that is the permission missing
+and not the app. `--deploy` says so at the end and names the two ways to an administrator: a
+session out of the start password, if one lies in the store (`--admin-login`), otherwise a human in
+the device's interface. Which route or which page the release goes stands in the artifact's API
+reference and admin handbook, `node .ara/tools/mirror.mjs --docs`, and never in the kit.
+
+**Say that before the deploy, not after it.** Somebody who is shown a screen with a 403 on it takes
+the kit for broken. Somebody who knows beforehand that a release is still to come waits for it.
+
 After the switch: one line into the customer's history or into the device's runsheet, and write on
 the app's README. It is the state as it is, in the words of whoever uses the app: what it can do
 today, what it cannot do, what you have to know.

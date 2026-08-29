@@ -354,6 +354,30 @@ name of the entry into the file, under `api_key_ref`. It stands in no file of th
 **never in the portal**: the portal issues download tokens, not device keys. If it is lost, you
 create a new one and have the old one revoked on the device, looking it up is not possible.
 
+**Whoever creates one leaves one lying.** A device collects kit keys: every run with
+`--deploy-key` adds one, and on 29.08.2026 eight of them lay on one Orin, three with the
+same name. What lies there and which one is yours:
+
+```
+node .ara/tools/device.mjs --name <device> --keys
+```
+
+The list comes from the device, line for line as it writes it. The kit adds one mark: the
+key whose prefix fits the value in your store is yours. Names repeat, prefixes do not.
+
+**Revoking is for your own key and only for it:**
+
+```
+node .ara/tools/device.mjs --name <device> --revoke-key
+```
+
+That is a level 2 intervention, ask beforehand. It revokes exactly the one key the kit was
+working with, takes the entry out of the store and empties `api_key_ref` in the file: a
+value that no longer holds on the device is not a secret but a dead access, and the next
+call with it would be a 401 whose reason nobody sees. After that the kit rolls nothing onto
+this device until `--deploy-key` creates a new one. A foreign key the kit never touches;
+whoever wants that does it on the device, as the administrator it belongs to.
+
 ### The evidence
 
 Installed is not handed over. The first piece of evidence is the contract:
@@ -415,6 +439,22 @@ where it got its details from, and its refusal names the fields it called with.
 If the device refuses the login, that usually has one of two reasons: the administrator is called
 something else there, or the start password has already been changed on the device. Then the entry
 in the store is stale, and the human who changed it knows the new one.
+
+**On a device the kit did not install there is no start password**, and the kit cannot fetch one:
+it comes into being during the installation. The tool then names three ways instead of stopping,
+and all three lead on:
+
+1. **Somebody knows it**, the administrator of the device or the first output of the installation.
+   Then it goes into the store once, and the same call works afterwards:
+   `printf '%s' "<password>" | node .ara/tools/secrets.mjs --set <entry>`.
+2. **It was changed on the device.** Same way, with the one that holds today.
+3. **Nobody knows it.** Then the administrator does in the interface what the session would have
+   done: employees, permissions and their own password live there, and the kit is needed for none
+   of them. Which page carries what stands in the admin handbook of the artifact,
+   `node .ara/tools/mirror.mjs --docs`.
+
+**Say the third way out loud** instead of asking for a password nobody has. Rolling out apps does
+not hang on it: that is what the kit key is for, and it comes from the device over SSH.
 
 **Which names the store holds**, `node .ara/tools/secrets.mjs --show` says. There stands the entry
 with the start password too, with the device next to it. Values never stand there.

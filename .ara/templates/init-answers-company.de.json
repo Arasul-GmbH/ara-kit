@@ -38,6 +38,10 @@
       "none"
     ]
   },
+  "_felder": {
+    "_": "Was der Name allein nicht sagt. Die uebrigen Felder heissen wie in business/profile.md und tragen deine eigenen Worte.",
+    "ssh_key": "Der Name deines privaten SSH-Schluessels in ~/.ssh auf DIESEM Rechner, ohne Pfad, zum Beispiel id_ed25519. Das Kit haelt nur den Namen, der Schluessel selbst bleibt liegen, wo er liegt, und wird nie kopiert. Damit erreicht das Kit spaeter Geraete, das Geraet muss den passenden oeffentlichen Schluessel also kennen (seine .ssh/authorized_keys). Gibt es hier noch keinen: ssh-keygen -t ed25519 legt einen an. Leer ist erlaubt, dann kommt remote.mjs nur dorthin, wohin ssh auch ohne benannten Schluessel kommt."
+  },
   "role": "company",
   "language": "de",
   "name": "Murat Beispiel",

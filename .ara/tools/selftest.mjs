@@ -93,7 +93,7 @@ import {
   troubles,
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
-import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile } from "./lib/appways.mjs";
+import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, releaseLines } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -2194,6 +2194,19 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.paket, "am Gerät kam kein gepacktes Paket im Feld paket an");
     assert(/Teststand/.test(run.stdout), "der Teststand wird nicht genannt");
+    // Fund 1 des zweiten Fremdtests: eingespielt ist nicht sichtbar. Ohne
+    // Startpasswort in der Ablage ist der Weg die Oberflaeche, nicht die Sitzung.
+    assert(/freigegeben/.test(run.stdout), `die fehlende Freigabe wird nicht genannt: ${run.stdout}`);
+    assert(/ARASUL_START_SELFTEST_ARASUL/.test(run.stdout), "der Eintrag fuer das Startpasswort wird nicht benannt");
+    assert(/Oberfläche/.test(run.stdout), "der Weg ueber die Oberflaeche fehlt");
+
+    // Und mit Startpasswort in der Ablage nennt derselbe Lauf die Sitzung.
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], {
+      ...env,
+      ARASUL_START_SELFTEST_ARASUL: "probe-passwort",
+    });
+    assert(run.status === 0, `Einspielen mit Startpasswort fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/--admin-login/.test(run.stdout), `mit Startpasswort fehlt die Sitzung: ${run.stdout}`);
 
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--live"], env);
     assert(run.status === 0, `Live schalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -3892,6 +3905,181 @@ check("Auf einem Gerät ohne Urteil wird nichts installiert", () => {
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
   }
+});
+
+// --- Freigabe und Schluessel -------------------------------------------------
+//
+// Die fuenf Funde des zweiten Fremdtests vom 29.08.2026, je Fund eine Pruefung.
+
+check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", () => {
+  const ohne = releaseLines({
+    place: "orin",
+    base: "https://192.0.2.10",
+    testUrl: "https://192.0.2.10/apps/probe/test/",
+    deviceCall: "node .ara/tools/device.mjs --name orin",
+    startRef: "ARASUL_START_ORIN",
+    startPassword: false,
+  }).join("\n");
+  assert(/freigegeben/.test(ohne), `die Freigabe wird nicht genannt: ${ohne}`);
+  assert(/app:deploy/.test(ohne), "es steht nicht da, warum das Kit sie nicht erteilen kann");
+  assert(/403/.test(ohne), "die 403 am Teststand wird nicht erklaert");
+  assert(/secrets\.mjs --set ARASUL_START_ORIN/.test(ohne), `ohne Startpasswort fehlt der Weg dorthin: ${ohne}`);
+  assert(!/--admin-login/.test(ohne), "ohne Startpasswort wird eine Sitzung angeboten, die es nicht gibt");
+  assert(/https:\/\/192\.0\.2\.10/.test(ohne), "die Oberflaeche wird nicht genannt");
+
+  const mit = releaseLines({
+    place: "orin",
+    base: "https://192.0.2.10",
+    deviceCall: "node .ara/tools/device.mjs --name orin",
+    startRef: "ARASUL_START_ORIN",
+    startPassword: true,
+  }).join("\n");
+  assert(/--admin-login/.test(mit), `mit Startpasswort fehlt die Sitzung: ${mit}`);
+  assert(/mirror\.mjs --docs/.test(mit), "der Weg zur API-Referenz fehlt");
+  assert(!/secrets\.mjs --set/.test(mit), "es wird nach einem Passwort gefragt, das schon liegt");
+
+  // Kein Produktwert: die Seite und der Weg der Freigabe stehen im Artefakt.
+  for (const text of [ohne, mit]) {
+    assert(!/\/api\/(freigaben|permissions)/.test(text), "das Kit nennt einen Weg, den es nicht wissen kann");
+    assert(/Admin-Handbuch|admin handbook/.test(text), "das Artefakt wird nicht als Quelle genannt");
+  }
+  return "mit und ohne Startpasswort";
+});
+
+checkAsync("Ohne Startpasswort fuehrt --admin-login zu einem Weg", async () => {
+  const name = "selftest-anmeldung";
+  const dir = join(ROOT, "devices", name);
+  const work = mkdtempSync(join(tmpdir(), "ara-anmeldung-"));
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(dir, "device.md"));
+  // TEST-NET-1: eine Adresse, die es gibt und die niemandem gehoert.
+  writeFrontmatter(join(dir, "device.md"), { name, address: "192.0.2.10", arasul: "found", verdict: "supported" });
+  try {
+    const run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], {
+      ARA_ENV_FILE: join(work, ".env"),
+    });
+    const text = `${run.stdout}${run.stderr}`;
+    assert(run.status !== 0, "ohne Startpasswort meldet die Anmeldung Erfolg");
+    assert(/ARASUL_START_SELFTEST_ANMELDUNG/.test(text), `der Eintrag wird nicht benannt: ${text}`);
+    // Drei Wege, und der dritte kommt ohne das Kit aus.
+    assert(/secrets\.mjs --set/.test(text), "der Weg ueber die Ablage fehlt");
+    assert(/geändert/.test(text), "der Fall 'am Geraet geaendert' fehlt");
+    assert(/https:\/\/192\.0\.2\.10/.test(text), "die Oberflaeche des Geraets wird nicht genannt");
+    assert(/Mitarbeiter/.test(text) && /Freigaben/.test(text), "es steht nicht da, was der Admin dort tut");
+    assert(/mirror\.mjs --docs/.test(text), "das Admin-Handbuch wird nicht genannt");
+    assert(/--deploy-key/.test(text), "es fehlt der Satz, dass das Ausrollen nicht daran haengt");
+    // Und der alte Satz, der nur fuer eigene Installationen stimmte, ist weg.
+    assert(!/Erstausgabe am Gerät/.test(text), `die Behauptung ueber die Erstausgabe steht noch da: ${text}`);
+    return "drei Wege";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft nur ihn", async () => {
+  const name = "selftest-schluessel";
+  const dir = join(ROOT, "devices", name);
+  const work = mkdtempSync(join(tmpdir(), "ara-schluessel-"));
+  const home = join(work, "home");
+  const skriptOrdner = join(home, "arasul", "arasul-jet", "scripts", "util");
+  const liste = join(work, "liste.txt");
+  const widerrufen = join(work, "widerrufen.txt");
+  const envDatei = join(work, ".env");
+  const eigen = "aras_abc1234deadbeef";
+  mkdirSync(skriptOrdner, { recursive: true });
+  // Die Attrappe des Geraets: dieselben drei Befehle, dieselbe Form der Liste.
+  // Der eigene Schluessel steht darin nicht als solcher, er ist nur an seinem
+  // Praefix zu erkennen, und zwei Zeilen tragen denselben Namen.
+  writeFileSync(
+    join(skriptOrdner, "kit-schluessel.sh"),
+    `#!/bin/sh\ncase "$1" in\n  liste) cat ${JSON.stringify(liste)} ;;\n` +
+      `  widerrufen) echo "widerrufen  $2" ; echo "$2" >> ${JSON.stringify(widerrufen)} ;;\n` +
+      `  *) exit 2 ;;\nesac\n`,
+    { mode: 0o755 }
+  );
+  writeFileSync(
+    liste,
+    "gueltig      40  aras_abc1234  Ara-Kit Probe                 angelegt 2026-08-29 14:02  nie benutzt\n" +
+      "gueltig      39  aras_zzz9999  Ara-Kit Probe                 angelegt 2026-08-29 09:10  zuletzt 2026-08-29 10:00\n"
+  );
+  writeFileSync(envDatei, `ARASUL_KEY_SELFTEST_SCHLUESSEL=${eigen}\n`);
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(dir, "device.md"));
+  writeFrontmatter(join(dir, "device.md"), {
+    name,
+    address: "localhost",
+    ssh_port: "1",
+    ssh_user: "probe",
+    arasul: "found",
+    verdict: "supported",
+    api_key_ref: "ARASUL_KEY_SELFTEST_SCHLUESSEL",
+  });
+  const env = { HOME: home, ARA_ENV_FILE: envDatei };
+  try {
+    let run = await toolAsync("device.mjs", ["--name", name, "--keys"], env);
+    assert(run.status === 0, `--keys fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(/aras_abc1234.*dieses Kit/.test(run.stdout), `der eigene Schluessel ist nicht markiert: ${run.stdout}`);
+    assert(!/aras_zzz9999.*dieses Kit/.test(run.stdout), "ein fremder Schluessel gilt als eigener");
+    assert(/14:02/.test(run.stdout), "die Zeile des Geraets wird umgeschrieben statt durchgereicht");
+
+    run = await toolAsync("device.mjs", ["--name", name, "--revoke-key"], env);
+    assert(run.status === 0, `--revoke-key fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(readFileSync(widerrufen, "utf8").trim() === "aras_abc1234", "widerrufen wurde nicht genau der eigene");
+    assert(!readFileSync(envDatei, "utf8").includes(eigen), "der widerrufene Schluessel liegt noch in der Ablage");
+    const akte = readFileSync(join(dir, "device.md"), "utf8");
+    assert(/^api_key_ref:\s*$/m.test(akte), `api_key_ref steht noch in der Akte: ${readFrontmatter(join(dir, "device.md")).fields.api_key_ref}`);
+    assert(/widerrufen/.test(akte), "der Widerruf steht nicht im Protokoll der Akte");
+
+    // Ein zweiter Lauf hat nichts mehr zu widerrufen und sagt das, statt zu raten.
+    run = await toolAsync("device.mjs", ["--name", name, "--revoke-key"], env);
+    assert(run.status !== 0 && /--keys/.test(run.stderr), `ohne Eintrag fehlt der Weg: ${run.stderr}`);
+    return "eigener markiert, fremder unberuehrt";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+check("Die Antwortdatei erklaert ssh_key", () => {
+  for (const [datei, feld] of [
+    ["init-answers-partner.json", "_fields"],
+    ["init-answers-company.json", "_fields"],
+    ["init-answers-partner.de.json", "_felder"],
+    ["init-answers-company.de.json", "_felder"],
+  ]) {
+    const antworten = JSON.parse(readFileSync(join(ROOT, ".ara", "templates", datei), "utf8"));
+    const text = antworten[feld]?.ssh_key;
+    assert(text, `${datei}: ${feld}.ssh_key fehlt`);
+    assert(/~\/\.ssh/.test(text), `${datei}: es steht nicht da, wo der Schluessel liegt`);
+    assert(/id_ed25519/.test(text), `${datei}: kein Beispiel fuer den Namen`);
+    assert("ssh_key" in antworten, `${datei}: das Feld selbst fehlt`);
+  }
+  return "vier Dateien";
+});
+
+check("README und Wissen tragen die Saetze zur Freigabe", () => {
+  const stellen = [
+    ["README.md", /released/],
+    [".ara/README.de.md", /freigegeben|Freigabe/],
+    [".ara/knowledge/app.md", /released/],
+    [".ara/knowledge/app.de.md", /freigegeben/],
+    [".ara/knowledge/deploy.md", /released/],
+    [".ara/knowledge/deploy.de.md", /freigegeben/],
+  ];
+  for (const [datei, muster] of stellen) {
+    const text = readFileSync(join(ROOT, datei), "utf8");
+    assert(muster.test(text), `${datei} sagt nicht, dass eine Freigabe fehlt`);
+  }
+  // Und der Widerruf steht in beiden Fassungen des Geraeteblattes und der README.
+  for (const datei of [".ara/knowledge/device.md", ".ara/knowledge/device.de.md", "README.md", ".ara/README.de.md"]) {
+    const text = readFileSync(join(ROOT, datei), "utf8");
+    assert(/--revoke-key/.test(text), `${datei} nennt den Widerruf nicht`);
+    assert(/--keys/.test(text), `${datei} nennt die Liste nicht`);
+  }
+  return "sechs Blaetter";
 });
 
 // --- Kundenakte --------------------------------------------------------------
