@@ -133,6 +133,24 @@ das sie anders nennt, nichts, hält das für „hier läuft kein Arasul" und sam
 niemand entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert: der Freigabe-Schritt
 wurde nicht abgelehnt, er wurde übersprungen.
 
+**Eingespielt ist nicht sichtbar.** Eine App an einem Gerät sieht ein Mensch erst, wenn sie für
+ihn freigegeben ist, und freigeben kann das Kit sie nicht: sein Schlüssel trägt `app:deploy` und
+sonst nichts. Wer den Teststand ohne Freigabe aufruft, bekommt eine 403, und das ist die fehlende
+Freigabe und nicht die App. `--deploy` sagt das am Ende und nennt die zwei Wege zu einem
+Administrator: eine Sitzung aus dem Startpasswort, wenn eines in der Ablage liegt
+(`--admin-login`), sonst ein Mensch in der Oberfläche des Geräts. Welchen Weg oder welche Seite
+die Freigabe geht, steht in der API-Referenz und im Admin-Handbuch des Artefakts,
+`node .ara/tools/mirror.mjs --docs`, und nie im Kit.
+
+**Sag das vor dem Einspielen, nicht danach.** Wer eine 403 vorgesetzt bekommt, hält das Kit für
+kaputt. Wer vorher weiß, dass die Freigabe noch kommt, wartet auf sie.
+
+**Und eine Freigabe gilt einem Stand.** Das Gerät führt je App zwei, und ein gerade eingespieltes
+Paket liegt nur im Teststand. Wer allein für den Livestand freigegeben ist, sieht ihn nicht: die
+Freigabe steht, die Übersicht bleibt leer, und das ist der verwirrendste aller Zustände. Die
+Freigabe muss also den Teststand meinen. Wie das dort heißt, steht im Admin-Handbuch und nicht
+hier. Ein Fremdtest am 29.08.2026 ist genau daran hängen geblieben, mit gesetztem Häkchen.
+
 Nach dem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des Geräts,
 und die README der App fortschreiben. Sie ist der Ist-Stand in den Worten dessen, der die
 App benutzt: was sie heute kann, was sie nicht kann, was man wissen muss.

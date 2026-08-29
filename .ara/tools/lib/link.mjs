@@ -22,6 +22,14 @@ import { ROOT } from "./kit.mjs";
 import { getSecret } from "./secrets.mjs";
 import { t } from "./i18n.mjs";
 
+/** Der Aufruf, mit dem die Schlüssel dieses Geräts aufgelistet werden. */
+function keysCommand(device) {
+  return (
+    `node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} ` +
+    `--name ${device.device} --keys`
+  );
+}
+
 /** Der Aufruf, mit dem ein Kit-Schlüssel für dieses Gerät entsteht. */
 function keyCommand(device) {
   return (
@@ -106,9 +114,9 @@ export async function withContract(link, device) {
       throw new Error(
         t(
           `${link.place} refuses the kit key (401). Was it revoked on the device?\n` +
-            "Look on the device with kit-schluessel.sh liste, otherwise create a new one:\n  ",
+            `Look with: ${keysCommand(device)}\nOtherwise create a new one:\n  `,
           `${link.place} weist den Kit-Schlüssel ab (401). Wurde er am Gerät widerrufen?\n` +
-            "Am Gerät nachsehen mit kit-schluessel.sh liste, sonst einen neuen anlegen:\n  "
+            `Nachsehen mit: ${keysCommand(device)}\nSonst einen neuen anlegen:\n  `
         ) + keyCommand(device)
       );
     }

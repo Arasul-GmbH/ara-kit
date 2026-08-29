@@ -167,6 +167,21 @@ function keychainSet(name, value) {
   }
 }
 
+/**
+ * Nimmt einen Eintrag aus dem Schlüsselbund. Ein Eintrag, den es nicht gibt,
+ * ist kein Fehler: das Ziel ist, dass danach keiner mehr da ist.
+ */
+function keychainForget(name) {
+  const system = platform();
+  if (system === "darwin") {
+    spawnSync("security", ["delete-generic-password", "-a", name, "-s", SERVICE], { encoding: "utf8" });
+    return;
+  }
+  if (system === "linux") {
+    spawnSync("secret-tool", ["clear", "service", SERVICE, "account", name], { encoding: "utf8" });
+  }
+}
+
 // --- Schnittstelle ------------------------------------------------------
 
 /** Was in einer der beiden Ablagen unter diesem Namen steht. */
@@ -214,6 +229,38 @@ export function setSecret(name, value) {
     return "keychain";
   }
   writeEnvValue(name, value);
+  return "env";
+}
+
+/**
+ * Nimmt ein Geheimnis wieder heraus. **Nur aus der gewählten Ablage.**
+ *
+ * Ein Wert, der am Gerät nicht mehr gilt, ist kein Geheimnis mehr, sondern eine
+ * Falle: er sieht aus wie ein Zugang, und der nächste Aufruf damit endet in
+ * einer 401, deren Grund niemand sieht. Ein widerrufener Kit-Schlüssel wird
+ * deshalb vergessen und nicht überschrieben.
+ *
+ * **Aus der anderen Ablage nicht.** Derselbe Name liegt dort, weil ein anderer
+ * Klon auf diesem Rechner ihn abgelegt hat, und der gehört einem anderen. Genau
+ * dieselbe Regel gilt seit 0.18.0 beim Lesen (`getSecret`), und beim Löschen
+ * wiegt sie schwerer: ein fremdes Geheimnis, das dieses Kit entfernt, ist weg.
+ * Was sonst noch wo liegt, sagt `otherStore`, und der Aufrufer schreibt es hin.
+ *
+ * Zurück kommt die Ablage, aus der etwas herausgenommen wurde, sonst `null`.
+ */
+export function forgetSecret(name) {
+  if (!ENV_ONLY && activeStore() === "keychain") {
+    if (!keychainGet(name)) return null;
+    keychainForget(name);
+    return "keychain";
+  }
+  if (readEnvFile()[name] === undefined) return null;
+  const lines = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8").split(/\r?\n/) : [];
+  const next = lines.filter((line) => {
+    const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=/);
+    return !match || match[1] !== name;
+  });
+  writeFileSync(ENV_FILE, next.join("\n").replace(/\n+$/, "") + "\n");
   return "env";
 }
 

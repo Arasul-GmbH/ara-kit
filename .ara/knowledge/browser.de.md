@@ -18,6 +18,14 @@ Was auf einem Kundengerät etwas **verändert**, ist eine Änderung, egal ob du 
 Kommandozeile oder über eine Schaltfläche auslöst. Ein Neustart über das Dashboard bleibt
 ein Neustart. Erst fragen, dann klicken.
 
+**Ein Gerät mit `tls: selfsigned` bringt eine Warnseite.** Das Zertifikat kommt aus der
+Geräte-CA, der Browser kennt ihren Aussteller nicht und lehnt den ersten Aufruf mit
+`ERR_CERT_AUTHORITY_INVALID` ab. Das ist erwartet und kein Fehler: klick dich hindurch (in
+Chromium "Erweitert", dann der Link darunter), danach steht die Oberfläche. Die eigenen Aufrufe
+des Kits gehen denselben Weg mit Absicht, über `tls: selfsigned` in der Akte. **Klick dich nur
+auf einem Gerät hindurch, bei dem du sicher bist.** Auf einer fremden Adresse ist so eine
+Warnung eine Warnung.
+
 ## Wofür du ihn benutzt
 
 **Die Oberfläche eines Kundengeräts prüfen und bedienen.** Nach der Installation

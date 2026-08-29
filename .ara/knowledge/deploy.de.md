@@ -97,6 +97,14 @@ kein Fehler.
 Weist das Gerät ab, begründet es das im Klartext und das Werkzeug reicht die Begründung
 durch. Lies sie, statt den Aufruf zu wiederholen.
 
+**Eingespielt ist nicht freigegeben.** Das Gerät liefert den Teststand nur dem aus, für den er
+freigegeben wurde; ohne Freigabe antwortet die Adresse mit einer 403. Das Kit kann sie nicht
+erteilen: sein Schlüssel trägt `app:deploy`. Das tut ein Administrator, in der Oberfläche oder
+über eine Sitzung aus dem Startpasswort (`node .ara/tools/device.mjs --name <gerät>
+--admin-login`). Welcher Weg oder welche Seite das ist, steht in der API-Referenz und im
+Admin-Handbuch des Artefakts, `node .ara/tools/mirror.mjs --docs`. `--deploy` nennt beide Wege am
+Ende seiner Ausgabe.
+
 ## Live schalten und zurück
 
 ```
@@ -135,7 +143,8 @@ und hol ein ausdrückliches Ja, bevor du es tippst.
   Hat das Kit selbst installiert, steht der Eintrag schon da: dann weiß es, welches
   Zertifikat dort liegt, es hat zugesehen, wie es entstanden ist.
 - **401.** Der Schlüssel wurde am Gerät widerrufen oder gehört zu einem anderen Gerät.
-  Am Gerät nachsehen, sonst einen neuen anlegen (`/device` mit `--deploy-key`).
+  Nachsehen mit `node .ara/tools/device.mjs --name <gerät> --keys`: es listet, was dort liegt, und
+  markiert den, mit dem dieses Kit arbeitet. Sonst einen neuen anlegen (`--deploy-key`).
 - **Der Endpunkt steht nicht im Kontrakt.** Dann ruft das Kit ihn auch nicht. Das ist kein
   Fehler des Werkzeugs, sondern die Aussage, dass Kit und Gerät nicht zusammenpassen.
 - **Die Schnittstelle liegt woanders als der SSH-Zugang.** Ein Gerät, das nur über einen

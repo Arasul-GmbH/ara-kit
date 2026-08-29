@@ -94,6 +94,15 @@ ihn am Gerät an und hinterlegt ihn. In der Akte steht nur sein Name, nie sein W
 Danach ist der erste Nachweis der Kontrakt:
 `node .ara/tools/app.mjs --device <gerät> --contract`.
 
+**Am Gerät sammeln sich die Schlüssel.** Jeder Lauf mit `--deploy-key` lässt einen liegen,
+und nach ein paar Proben stehen mehrere mit demselben Namen da. `--keys` listet, was dort
+liegt, Zeile für Zeile so, wie das Gerät sie schreibt, und markiert den, mit dem dieses Kit
+arbeitet; erkannt wird er an seinem Präfix, nicht an seinem Namen. `--revoke-key` widerruft
+genau diesen, nimmt den Eintrag aus der Ablage und leert `api_key_ref`. Das ist ein Eingriff
+der Stufe 2, lass ihn bestätigen: danach rollt das Kit nichts mehr auf dieses Gerät, bis
+`--deploy-key` einen neuen anlegt. **Einen fremden Schlüssel widerrufst du nie über das
+Kit.**
+
 **Der erste Mitarbeiter und die erste Freigabe** gehören noch zur Abnahme. Ohne Browser
 geht das über die Verwaltungsschnittstelle der Plattform. Die Sitzung dafür holt
 `--admin-login`: das Startpasswort aus der Installation geht aus der Geheimnis-Ablage
@@ -101,6 +110,13 @@ direkt in die Anmeldung, zurück kommt ein Ausweis, und angezeigt wird das Passw
 Was du damit aufrufst, sagt `node .ara/tools/mirror.mjs --docs`. Das Gerät zählt die
 Anmeldungen: ein 429 ist keine Fehlbedienung, sondern die Grenze, und dann wird gewartet.
 Verfahren in `.ara/knowledge/device.de.md`.
+
+**Auf einem Gerät, das das Kit nicht installiert hat, gibt es kein Startpasswort**, und dann
+nennt `--admin-login` drei Wege, statt aufzuhören: jemand gibt das Passwort einmal herein,
+oder es wurde geändert und das neue geht hinein, oder der Administrator tut es in der
+Oberfläche, wo Mitarbeiter und Freigaben ohnehin liegen. Lies den dritten Weg vor, statt
+nach einem Passwort zu fragen, das niemand hat. Das Ausrollen von Apps hängt nicht daran,
+dafür ist der Kit-Schlüssel da.
 
 **Ohne Arasul endet es hier, und zwar hilfreich.** Das Werkzeug schließt von selbst mit
 dem, was Arasul brächte, mit den Geräten, die es tragen, und mit einem ruhigen Satz zur

@@ -132,7 +132,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 |---|---|
 | `mirror.mjs` | Fetch and look at the installation artifact (`--show`, `--refresh`). `/device` calls it itself |
 | `check-environment.mjs` | What this computer can do (`--json` for the evaluation) |
-| `device.mjs` | Create a device file, check SSH, recognise hardware and system, deliver a verdict, install Arasul, fetch the kit key, get a session as administrator with the start password without showing it (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--admin-login`, `--json`) |
+| `device.mjs` | Create a device file, check SSH, recognise hardware and system, deliver a verdict, install Arasul, fetch the kit key, list the kit keys on the device and revoke its own, get a session as administrator with the start password without showing it (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--keys`, `--revoke-key`, `--admin-login`, `--json`) |
 | `app.mjs` | Two sides. Without `--device`: create an app from the scaffold, move plans, build, read the situation. With `--device`: read the contract, check `app.json` against it, package into staging, switch live, back, remove, and with `--compose` onto a device without Arasul |
 | `customer.mjs` | Create a customer file (`--new`) and read the picture: status, devices with their state, paperwork, history, what is due |
 | `maintain.mjs` | Read the state of a device: status line and maintenance report, over SSH and over the interface. Reads only, and says what could not be measured (`--line`, `--report`, `--json`) |

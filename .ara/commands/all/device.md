@@ -93,6 +93,14 @@ creates it on the device and stores it. The file only carries its name, never it
 After that the first piece of evidence is the contract:
 `node .ara/tools/app.mjs --device <device> --contract`.
 
+**The keys pile up on the device.** Every run with `--deploy-key` leaves one lying, and
+after a few tests several stand there with the same name. `--keys` lists what lies there,
+line for line as the device writes it, and marks the one this kit works with; recognised is
+it by its prefix, not by its name. `--revoke-key` revokes exactly that one, takes the entry
+out of the store and empties `api_key_ref`. That is a level 2 intervention, have it
+confirmed: afterwards the kit rolls nothing onto this device until `--deploy-key` creates a
+new one. **A foreign key you never revoke through the kit.**
+
 **The first employee and the first permission** still belong to the handover. Without a
 browser this goes through the platform's admin interface. The session for it is fetched by
 `--admin-login`: the start password from the installation goes from the secret store
@@ -100,6 +108,13 @@ straight into the login, back comes a credential, and the password is never disp
 you call with it, `node .ara/tools/mirror.mjs --docs` says. The device counts the logins: a
 429 is not a mishandling, it is the limit, and then you wait. Procedure in
 `.ara/knowledge/device.md`.
+
+**On a device the kit did not install there is no start password**, and then `--admin-login`
+names three ways instead of stopping: somebody hands the password over once, or it was
+changed and the new one goes in, or the administrator does it in the interface, where
+employees and permissions live anyway. Read the third way out instead of asking for a
+password nobody has. Rolling out apps does not hang on it, that is what the kit key is
+for.
 
 **Without Arasul it ends here, and helpfully.** The tool closes by itself with what Arasul
 would bring, which devices carry it and a calm sentence on the licence. Pass that on and add

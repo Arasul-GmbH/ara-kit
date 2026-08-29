@@ -261,3 +261,135 @@ export function arrangementLines(arrangement) {
   }
   return lines;
 }
+
+/**
+ * Wer den frisch eingespielten Stand sehen darf, und wie er freigegeben wird.
+ *
+ * Der zweite Fremdtest am 29.08.2026 kam bis hierher: Klon, Bau und Deploy in
+ * dreieinhalb Minuten, und dann eine 403 an der Adresse des Teststands. Die App
+ * lag am Geraet, sie war nur fuer niemanden freigegeben. Das Kit sagte dazu
+ * nichts, und ein Werkzeug, das nach dem letzten Schritt schweigt, sieht in
+ * diesem Moment kaputt aus.
+ *
+ * **Das Kit kann die Freigabe nicht erteilen, und es soll das sagen.** Sein
+ * Schluessel traegt `app:deploy`, das ist der Bereich fuer Pakete und Staende.
+ * Wer sie erteilt, ist ein Administrator, und dafuer gibt es zwei Wege: eine
+ * Sitzung aus dem Startpasswort, wenn eines in der Ablage liegt, sonst ein
+ * Mensch in der Oberflaeche des Geraets.
+ *
+ * **Kein Weg und keine Seite wird hier benannt.** Wie die Freigabe im Produkt
+ * heisst, steht im Admin-Handbuch und in der API-Referenz des Artefakts, und
+ * die liegen im Spiegel. Ein Pfad aus dem Gedaechtnis waere genau die Sorte
+ * Zusage, die dieses Kit nicht macht. Liegt kein Spiegel da, sagt der Text das,
+ * statt auf eine Anleitung zu zeigen, die es hier nicht gibt: der Fremdtest am
+ * 29.08.2026 lief von der Ausgabe ueber `mirror.mjs --docs` bis zu
+ * `--refresh` und stand dann vor der Tokenfrage, drei Spruenge fuer eine
+ * Auskunft, die es nicht gab.
+ *
+ * **Eine Freigabe gilt einem Stand.** Das Geraet fuehrt je App zwei, und ein
+ * frisch eingespieltes Paket liegt nur im Teststand. Wer allein fuer den
+ * Livestand freigegeben ist, sieht davon nichts: die Freigabe steht, die
+ * Uebersicht bleibt leer, und das ist der verwirrendste aller Zustaende. Der
+ * Fremdtest ist genau dort haengen geblieben. Welchen Stand eine Freigabe
+ * meint, entscheidet der Administrator, und wie das im Produkt heisst, steht
+ * wieder im Handbuch.
+ */
+export function releaseLines({
+  place,
+  base,
+  testUrl = null,
+  deviceCall,
+  startRef,
+  startPassword = false,
+  docs = false,
+} = {}) {
+  const lines = [
+    t(
+      "Nobody sees it yet. An app on this device is visible to a person only once it has been " +
+        "released for them, and the kit cannot release it: its key carries app:deploy and nothing " +
+        "else. An administrator does that.",
+      "Gesehen hat es noch niemand. Eine App an diesem Gerät sieht ein Mensch erst, wenn sie für " +
+        "ihn freigegeben ist, und freigeben kann das Kit sie nicht: sein Schlüssel trägt app:deploy " +
+        "und sonst nichts. Das tut ein Administrator."
+    ),
+    "",
+  ];
+  if (testUrl) {
+    lines.push(
+      t(
+        `Until then ${testUrl} answers with a 403, and that is the permission missing, not the app.`,
+        `Bis dahin antwortet ${testUrl} mit einer 403, und das ist die fehlende Freigabe und nicht die App.`
+      ),
+      ""
+    );
+  }
+  lines.push(t("Two ways to an administrator:", "Zwei Wege zu einem Administrator:"), "");
+  lines.push(
+    ...(startPassword
+      ? t(
+          [
+            `- The start password lies under ${startRef}. A session comes out of it, and the password`,
+            "  stays unseen while it does:",
+            `      ${deviceCall} --admin-login`,
+            `  Which route the release goes stands in the API reference of the artifact, ${docs ? "not in the kit:" : "which is not here:"}`,
+            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : "node .ara/tools/mirror.mjs --refresh   (needs a token)"}`,
+          ],
+          [
+            `- Das Startpasswort liegt unter ${startRef}. Daraus wird eine Sitzung, und das Passwort`,
+            "  bleibt dabei ungesehen:",
+            `      ${deviceCall} --admin-login`,
+            `  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, ${docs ? "nicht im Kit:" : "und die liegt hier nicht:"}`,
+            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : "node .ara/tools/mirror.mjs --refresh   (braucht einen Token)"}`,
+          ]
+        )
+      : t(
+          [
+            `- No start password lies under ${startRef}, so the kit gets no session. Whoever knows it,`,
+            "  the administrator of this device, hands it over once:",
+            `      printf '%s' "<password>" | node .ara/tools/secrets.mjs --set ${startRef}`,
+          ],
+          [
+            `- Unter ${startRef} liegt kein Startpasswort, also bekommt das Kit keine Sitzung. Wer es`,
+            "  kennt, der Administrator dieses Geräts, gibt es einmal herein:",
+            `      printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${startRef}`,
+          ]
+        ))
+  );
+  lines.push(
+    ...t(
+      [
+        `- Or a human does it in the interface: ${base}, logged in as administrator. For that the kit`,
+        "  is not needed. Which page carries the release stands in the admin handbook of the",
+        docs
+          ? "  artifact:\n      node .ara/tools/mirror.mjs --docs"
+          : "  artifact, and there is no mirror here that would hold it.",
+      ],
+      [
+        `- Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Dafür`,
+        "  braucht es das Kit nicht. Welche Seite die Freigabe trägt, steht im Admin-Handbuch des",
+        docs
+          ? "  Artefakts:\n      node .ara/tools/mirror.mjs --docs"
+          : "  Artefakts, und einen Spiegel, der es führt, gibt es hier nicht.",
+      ]
+    )
+  );
+  lines.push(
+    "",
+    t(
+      `Until somebody is released, ${place} shows the app to nobody, not even to the administrator: ` +
+        "the role says who manages, not who works with it.",
+      `Solange niemand freigegeben ist, zeigt ${place} die App niemandem, auch dem Administrator nicht: ` +
+        "die Rolle sagt, wer verwaltet, nicht wer damit arbeitet."
+    ),
+    "",
+    t(
+      "**And a release means a slot.** What was deployed just now lies in staging, and whoever is " +
+        "released for the live version only does not see it: the release stands, the overview stays " +
+        "empty. So the release has to mean staging. What that is called there stands in the handbook.",
+      "**Und eine Freigabe gilt einem Stand.** Was gerade eingespielt wurde, liegt im Teststand, und wer " +
+        "nur für den Livestand freigegeben ist, sieht ihn nicht: die Freigabe steht, die Übersicht bleibt " +
+        "leer. Die Freigabe muss also den Teststand meinen. Wie das dort heißt, steht im Handbuch."
+    )
+  );
+  return lines;
+}

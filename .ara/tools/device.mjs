@@ -10,6 +10,8 @@
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
  *   node .ara/tools/device.mjs --name orin --deploy-key           create the kit key on the device
+ *   node .ara/tools/device.mjs --name orin --keys                 which kit keys lie on the device
+ *   node .ara/tools/device.mjs --name orin --revoke-key           revoke this kit's own key
  *   node .ara/tools/device.mjs --name orin --admin-login          get a session as administrator
  *   node .ara/tools/device.mjs --name orin --admin-login --token  only the credential, for a script
  *   node .ara/tools/device.mjs --name thor --probe findings.txt   dry run, findings from a file
@@ -22,8 +24,9 @@
  * The file lies under devices/<name>/, in both branches. A customer device lies
  * under customers/<customer>/devices/<name>/, and then --customer comes along.
  *
- * The tool only reads on the device. It changes something only with --install or
- * --deploy-key, and that is an intervention that belongs confirmed beforehand.
+ * The tool only reads on the device. It changes something only with --install,
+ * --deploy-key or --revoke-key, and that is an intervention that belongs confirmed
+ * beforehand.
  *
  * Recognition runs without prior knowledge: the tool reads what the device says about
  * itself (vendor, model, architecture, running system) and holds that against the
@@ -42,8 +45,12 @@
  * platform already runs only needs the kit key (--deploy-key); one without gets it
  * with --install arasul. How that runs stands in lib/install.mjs.
  *
- * The kit key carries app:deploy and nothing else. For everything an administrator
- * does, --admin-login gives a session: the start password from the installation goes
+ * The kit key carries app:deploy and nothing else. A device collects them: every run
+ * with --deploy-key leaves one behind. --keys shows what lies there, as the device
+ * lists it, and marks the one this kit uses; --revoke-key revokes exactly that one and
+ * forgets it. A foreign key it never touches, and the file names none afterwards.
+ *
+ * For everything an administrator does, --admin-login gives a session: the start password from the installation goes
  * from the secret store straight into the login, back comes a credential, and the
  * password is never displayed. Route and user name come from the artifact when it
  * names them, otherwise from --login-path and --login-user. What the two fields of the
@@ -72,6 +79,8 @@
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
  *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
+ *   node .ara/tools/device.mjs --name orin --keys                 welche Kit-Schlüssel am Gerät liegen
+ *   node .ara/tools/device.mjs --name orin --revoke-key           den eigenen Kit-Schlüssel widerrufen
  *   node .ara/tools/device.mjs --name orin --admin-login          Sitzung als Administrator holen
  *   node .ara/tools/device.mjs --name orin --admin-login --token  nur den Ausweis, für ein Skript
  *   node .ara/tools/device.mjs --name thor --probe befunde.txt    Trockenlauf, Befunde aus einer Datei
@@ -82,8 +91,9 @@
  * Die Akte liegt unter devices/<name>/, in beiden Zweigen. Ein Kundengerät liegt
  * unter customers/<kunde>/devices/<name>/, dann kommt --customer dazu.
  *
- * Das Werkzeug liest auf dem Gerät nur. Es ändert erst mit --install oder
- * --deploy-key etwas, und das ist ein Eingriff, der vorher bestätigt gehört.
+ * Das Werkzeug liest auf dem Gerät nur. Es ändert erst mit --install,
+ * --deploy-key oder --revoke-key etwas, und das ist ein Eingriff, der vorher
+ * bestätigt gehört.
  *
  * Die Erkennung läuft ohne Vorwissen: das Werkzeug liest, was das Gerät über sich
  * sagt (Hersteller, Modell, Architektur, laufendes System), und hält das gegen die
@@ -103,8 +113,13 @@
  * (--deploy-key); eines ohne bekommt sie mit --install arasul. Wie das abläuft,
  * steht in lib/install.mjs.
  *
- * Der Kit-Schlüssel trägt app:deploy und sonst nichts. Für alles, was ein
- * Administrator tut, gibt --admin-login eine Sitzung: das Startpasswort aus der
+ * Der Kit-Schlüssel trägt app:deploy und sonst nichts. Ein Gerät sammelt sie: jeder
+ * Lauf mit --deploy-key lässt einen liegen. --keys zeigt, was dort liegt, so wie das
+ * Gerät es auflistet, und markiert den, mit dem dieses Kit arbeitet; --revoke-key
+ * widerruft genau diesen und vergisst ihn. Einen fremden fasst es nie an, und die Akte
+ * nennt danach keinen mehr.
+ *
+ * Für alles, was ein Administrator tut, gibt --admin-login eine Sitzung: das Startpasswort aus der
  * Installation geht dabei aus der Geheimnis-Ablage direkt in die Anmeldung,
  * zurück kommt ein Ausweis, und angezeigt wird das Passwort nie. Weg und
  * Benutzername kommen aus dem Artefakt, wenn es sie nennt, sonst aus --login-path
@@ -133,7 +148,9 @@ import {
   judge,
   parseProbe,
   services,
+  secretSlug as slugFor,
   startPasswordRef,
+  startRefName,
 } from "./lib/device.mjs";
 import { platformOf, readProfiles, supportedDevices, verificationLine, verificationOf } from "./lib/platform.mjs";
 import {
@@ -151,7 +168,7 @@ import {
   writeFrontmatter,
 } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
-import { getSecret, hasSecret, setSecret } from "./lib/secrets.mjs";
+import { forgetSecret, getSecret, hasSecret, otherStore, setSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, certificateKind, reason } from "./lib/arasul.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
 import { BUY_URL, STORE_CALL, buyLines, checkToken, cleanToken, installTargets, knownDevices, tokenShape } from "./lib/licence.mjs";
@@ -161,7 +178,9 @@ import {
   installCommand,
   installTarget,
   installerEntry,
+  listKeys,
   releaseData,
+  revokeKey,
   runInstaller,
   scrub,
   ship,
@@ -210,7 +229,7 @@ const customer = str(arg.customer);
  */
 const dryRun = str(arg.probe);
 if (dryRun) {
-  for (const forbidden of ["install", "deploy-key", "admin-login"]) {
+  for (const forbidden of ["install", "deploy-key", "admin-login", "keys", "revoke-key"]) {
     if (arg[forbidden]) {
       fail(
         t(
@@ -458,8 +477,8 @@ if (!host && !dryRun) {
  * Der Namensteil, unter dem die Geheimnisse dieses Geräts liegen. Die Akte
  * trägt nur diese Namen, nie die Werte.
  */
-const secretSlug = (customer ? `${customer}_${name}` : name).toUpperCase().replace(/[^A-Z0-9]/g, "_");
-const startRef = `ARASUL_START_${secretSlug}`;
+const secretSlug = slugFor(customer, name);
+const startRef = startRefName(customer, name);
 
 // --- Die erste Anmeldung als Administrator -----------------------------------
 
@@ -488,17 +507,70 @@ async function adminLogin() {
     );
   }
   const ref = existing.start_password_ref || startRef;
+  let base;
+  try {
+    base = baseUrl(existing.api_base || host);
+  } catch (error) {
+    fail(`${error.message}\nNachsehen in ${relative(ROOT, file)}.`);
+  }
+  const deviceCall = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
+
+  /**
+   * Ohne Startpasswort ist die Sitzung zu Ende, der Weg aber nicht.
+   *
+   * Der zweite Fremdtest am 29.08.2026 stand hier. Sein Gerät lief seit Wochen,
+   * installiert hatte es jemand anders, und das Kit sagte einen Satz, der nur
+   * fuer seine eigenen Installationen stimmte: „steht in der Erstausgabe am
+   * Geraet". Auf einem fremden Geraet ist die Erstausgabe fort und das Passwort
+   * laengst geaendert. Ein Werkzeug, das an dieser Stelle nur sagt, was fehlt,
+   * laesst den Menschen stehen, obwohl es drei Wege gibt und keiner davon das
+   * Kit braucht.
+   */
   const password = getSecret(ref);
   if (!password) {
     fail(
       t(
-        `No start password lies under ${ref}.\n` +
-          "It comes into being when the kit installs itself (--install arasul). If the device was set\n" +
-          "up by hand, the password stands in the first output on the device. Store it from there:\n",
-        `Unter ${ref} liegt kein Startpasswort.\n` +
-          "Es entsteht, wenn das Kit selbst installiert (--install arasul). Wurde das Gerät von Hand\n" +
-          "aufgesetzt, steht das Passwort in der Erstausgabe am Gerät. Von dort hinterlegen:\n"
-      ) + `  printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${ref}`
+        [
+          `No start password lies under ${ref}, and the kit cannot fetch one: it comes into being`,
+          "during the installation, and this device the kit did not install.",
+          "",
+          "Three ways, and all three lead on:",
+          "",
+          "1. Somebody knows it: the administrator of the device, or the first output of the",
+          "   installation. Then it goes in once, and the same call works afterwards:",
+          `     printf '%s' "<password>" | node .ara/tools/secrets.mjs --set ${ref}`,
+          "2. It was changed on the device. Then the same way, with the one that holds today.",
+          "3. Nobody knows it. Then the administrator does in the interface what the session would",
+          `   have done: ${base} in the browser, logged in as administrator. Employees,`,
+          "   permissions and their own password live there, and the kit is needed for none of them.",
+          "   Which page carries what stands in the admin handbook of the artifact:",
+          "     node .ara/tools/mirror.mjs --docs",
+          "   Without a mirror: node .ara/tools/mirror.mjs --refresh fetches the artifact, also",
+          "   without an installation.",
+          "",
+          `For rolling out apps no session is needed, the kit key carries that: ${deviceCall} --deploy-key`,
+        ],
+        [
+          `Unter ${ref} liegt kein Startpasswort, und das Kit kann keines herbeiholen: es entsteht`,
+          "bei der Installation, und dieses Gerät hat das Kit nicht installiert.",
+          "",
+          "Drei Wege, und alle drei führen weiter:",
+          "",
+          "1. Jemand kennt es: der Administrator des Geräts, oder die Erstausgabe der Installation.",
+          "   Dann geht es einmal hinein, und derselbe Aufruf läuft danach durch:",
+          `     printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${ref}`,
+          "2. Es wurde am Gerät geändert. Dann derselbe Weg, mit dem, das heute gilt.",
+          "3. Niemand kennt es. Dann tut der Administrator in der Oberfläche, was die Sitzung getan",
+          `   hätte: ${base} im Browser, angemeldet als Administrator. Mitarbeiter,`,
+          "   Freigaben und sein eigenes Passwort liegen dort, für keines davon braucht es das Kit.",
+          "   Welche Seite was trägt, steht im Admin-Handbuch des Artefakts:",
+          "     node .ara/tools/mirror.mjs --docs",
+          "   Ohne Spiegel: node .ara/tools/mirror.mjs --refresh holt das Artefakt, auch ohne",
+          "   Installation.",
+          "",
+          `Zum Ausrollen von Apps braucht es keine Sitzung, das trägt der Kit-Schlüssel: ${deviceCall} --deploy-key`,
+        ]
+      ).join("\n")
     );
   }
 
@@ -508,12 +580,6 @@ async function adminLogin() {
     userField: str(arg["login-user-field"]),
     passwordField: str(arg["login-password-field"]),
   });
-  let base;
-  try {
-    base = baseUrl(existing.api_base || host);
-  } catch (error) {
-    fail(`${error.message}\nNachsehen in ${relative(ROOT, file)}.`);
-  }
   const insecure = Boolean(arg.insecure) || (existing.tls || "").toLowerCase() === "selfsigned";
 
   let answer;
@@ -819,6 +885,221 @@ function profileLines() {
   );
   return lines;
 }
+
+// --- Die Kit-Schlüssel am Gerät ----------------------------------------------
+
+/**
+ * Welche Schlüssel am Gerät liegen, und welcher davon dieser hier ist.
+ *
+ * Ein Gerät sammelt sie. Jeder Lauf mit `--deploy-key` legt einen an, jeder
+ * Fremdtest bringt einen mit, und am 29.08.2026 lagen acht davon auf einem Orin,
+ * drei davon mit demselben Namen. Wer dann aufräumen will, muss wissen, welcher
+ * seiner ist, und diese Frage beantwortet nur die Ablage: der Präfix, den das
+ * Gerät nennt, ist der Anfang des Schlüssels, der hier hinterlegt ist.
+ *
+ * **Die Liste kommt vom Gerät und wird nicht umgeschrieben.** Was in ihr steht,
+ * gehört dem Produkt. Das Kit setzt eine Marke an die eigene Zeile und sonst
+ * nichts hinzu.
+ */
+function keyList() {
+  // Ohne Verbindung gibt es nichts zu lesen. Der Zweig ist wichtig: `runRemote`
+  // faellt ohne SSH auf die lokale Shell zurueck, und ein `find` nach dem Skript
+  // liefe dann auf diesem Rechner statt auf dem Geraet.
+  if (run.transport === "none") {
+    fail(
+      t(
+        `No connection to ${label}, so nothing can be read about the keys on ${place}.`,
+        `Keine Verbindung zu ${label}, also ist über die Schlüssel auf ${place} nichts zu lesen.`
+      )
+    );
+  }
+  const stored = existing.api_key_ref ? getSecret(existing.api_key_ref) : null;
+  const found = listKeys(sshArgs, run.transport, stored);
+  return { stored, ...found };
+}
+
+/** Die Liste, gezeigt. Ohne Eingriff. */
+function showKeys() {
+  const list = keyList();
+  if (!list.ok) fail(scrub(list.message));
+  if (arg.json) {
+    console.log(
+      JSON.stringify(
+        {
+          device: place,
+          key_ref: existing.api_key_ref || null,
+          mine: list.mine?.prefix || null,
+          keys: list.keys.map(({ prefix, mine, line }) => ({ prefix, mine, line })),
+        },
+        null,
+        2
+      )
+    );
+    process.exit(0);
+  }
+  const deviceCall = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
+  console.log(
+    [
+      t(`# Kit keys on ${place}`, `# Kit-Schlüssel auf ${place}`),
+      "",
+      list.keys.length
+        ? t(
+            `${list.keys.length} of them, as the device lists them:`,
+            `${list.keys.length} Stück, so wie das Gerät sie auflistet:`
+          )
+        : t("The device lists none.", "Das Gerät führt keinen."),
+      "",
+      ...list.keys.map((entry) => `  ${entry.line}${entry.mine ? t("   <- this kit", "   <- dieses Kit") : ""}`),
+      "",
+      list.mine
+        ? t(
+            `This kit's key is ${list.mine.prefix}, stored under ${existing.api_key_ref}.\n` +
+              `Revoke it: ${deviceCall} --revoke-key`,
+            `Der Schlüssel dieses Kits ist ${list.mine.prefix}, hinterlegt unter ${existing.api_key_ref}.\n` +
+              `Widerrufen: ${deviceCall} --revoke-key`
+          )
+        : existing.api_key_ref
+          ? t(
+              `None of them is this kit's. The file names the entry ${existing.api_key_ref}; either ` +
+                `nothing lies under it, or it belongs to another device.\n` +
+                `A new key for this one: ${deviceCall} --deploy-key`,
+              `Keiner davon gehört diesem Kit. Die Akte nennt den Eintrag ${existing.api_key_ref}; entweder ` +
+                `liegt darunter nichts, oder er gehört zu einem anderen Gerät.\n` +
+                `Ein neuer für dieses: ${deviceCall} --deploy-key`
+            )
+          : t(
+              `No key is stored for ${place}: ${deviceCall} --deploy-key`,
+              `Für ${place} ist kein Schlüssel hinterlegt: ${deviceCall} --deploy-key`
+            ),
+    ].join("\n")
+  );
+  process.exit(0);
+}
+
+/**
+ * Was ein Widerruf in die Akte schreibt.
+ *
+ * Das Protokoll der Akte ist deutsch, wie jeder andere Eintrag darin auch. Es
+ * steht hier und nicht unten im Ablauf, damit es beim Lesen ein Absatz bleibt
+ * und nicht zwischen zwei Handgriffen steht.
+ */
+function revokeNote({ prefix, script, ref, forgotten, elsewhere }) {
+  const wo = run.transport === "ssh" ? `SSH ${label}` : `lokal, SSH ${label} abgelehnt`;
+  return (
+    `\n### ${now()} · ${wo}\n` +
+    `Kit-Schlüssel ${prefix} am Gerät widerrufen (${script}). ` +
+    `Eintrag ${ref} ${forgotten ? `aus der Ablage ${forgotten} genommen` : "lag in der gewählten Ablage nicht"}, ` +
+    "api_key_ref in der Akte geleert. Ein neuer entsteht mit --deploy-key." +
+    (elsewhere ? ` Derselbe Name liegt in der Ablage ${elsewhere}; der gehört einem anderen Klon und bleibt liegen.` : "") +
+    "\n"
+  );
+}
+
+/**
+ * Den eigenen Schlüssel widerrufen. Nur den eigenen.
+ *
+ * Widerrufen wird, was am Gerät zu dem Wert in der Ablage passt, und nichts
+ * sonst. Ein Schlüssel, den ein anderer angelegt hat, gehört diesem Kit nicht,
+ * auch wenn er denselben Namen trägt: Namen wiederholen sich, Präfixe nicht.
+ *
+ * Danach ist der Wert in der Ablage kein Geheimnis mehr, sondern ein toter
+ * Zugang, der beim nächsten Aufruf eine 401 ergäbe. Er wird deshalb vergessen,
+ * und die Akte trägt keinen Verweis mehr auf ihn. Der Weg zurück ist kein
+ * Widerruf des Widerrufs, sondern ein neuer Schlüssel.
+ */
+function revokeOwnKey() {
+  const deviceCall = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
+  if (!existing.api_key_ref) {
+    fail(
+      t(
+        `The file for ${place} names no kit key, so there is nothing to revoke.\n` +
+          `What lies on the device: ${deviceCall} --keys`,
+        `Die Akte von ${place} nennt keinen Kit-Schlüssel, also gibt es nichts zu widerrufen.\n` +
+          `Was am Gerät liegt: ${deviceCall} --keys`
+      )
+    );
+  }
+  const list = keyList();
+  if (!list.ok) fail(scrub(list.message));
+  if (!list.stored) {
+    fail(
+      t(
+        `Under ${existing.api_key_ref} nothing is stored, so the kit cannot tell which of the ` +
+          `${list.keys.length} keys on the device is its own. It revokes none of them.\n` +
+          `Whoever knows it revokes it on the device itself, with the prefix from: ${deviceCall} --keys`,
+        `Unter ${existing.api_key_ref} liegt nichts, also kann das Kit nicht sagen, welcher der ` +
+          `${list.keys.length} Schlüssel am Gerät seiner ist. Es widerruft keinen.\n` +
+          `Wer ihn kennt, widerruft ihn am Gerät selbst, mit dem Präfix aus: ${deviceCall} --keys`
+      )
+    );
+  }
+  if (!list.mine) {
+    fail(
+      t(
+        `The device lists no key that fits the entry ${existing.api_key_ref}. It was already revoked ` +
+          "and removed, or it belongs to another device. Nothing revoked.\n" +
+          `What lies there: ${deviceCall} --keys`,
+        `Das Gerät führt keinen Schlüssel, der zum Eintrag ${existing.api_key_ref} passt. Er wurde ` +
+          "schon widerrufen und entfernt, oder er gehört zu einem anderen Gerät. Widerrufen wurde nichts.\n" +
+          `Was dort liegt: ${deviceCall} --keys`
+      )
+    );
+  }
+
+  const done = revokeKey(sshArgs, run.transport, list.mine.prefix);
+  if (!done.ok) fail(scrub(done.message));
+
+  const forgotten = forgetSecret(existing.api_key_ref);
+  // Was in der ANDEREN Ablage liegt, gehört einem anderen Klon auf diesem
+  // Rechner. Es wird genannt und nicht angefasst.
+  const elsewhere = otherStore(existing.api_key_ref);
+  writeFrontmatter(file, { api_key_ref: "", checked: now() });
+  appendFileSync(
+    file,
+    revokeNote({ prefix: list.mine.prefix, script: done.script, ref: existing.api_key_ref, forgotten, elsewhere })
+  );
+
+  console.log(
+    [
+      t(`# Kit key revoked on ${place}`, `# Kit-Schlüssel auf ${place} widerrufen`),
+      "",
+      t(
+        `- Revoked: ${list.mine.prefix}, the key this kit was using. The device says:`,
+        `- Widerrufen: ${list.mine.prefix}, der Schlüssel, mit dem dieses Kit gearbeitet hat. Das Gerät sagt:`
+      ),
+      ...(done.output ? done.output.split("\n").map((line) => `    ${line}`) : []),
+      t(
+        `- The entry ${existing.api_key_ref} is out of the store${forgotten ? ` (${forgotten})` : ""}, ` +
+          "api_key_ref in the file is empty.",
+        `- Der Eintrag ${existing.api_key_ref} ist aus der Ablage heraus${forgotten ? ` (${forgotten})` : ""}, ` +
+          "api_key_ref in der Akte ist leer."
+      ),
+      ...(elsewhere
+        ? [
+            t(
+              `- The same name lies in the other store (${elsewhere}). It belongs to another clone on this ` +
+                "computer and stayed where it was.",
+              `- Derselbe Name liegt in der anderen Ablage (${elsewhere}). Der gehört einem anderen Klon auf ` +
+                "diesem Rechner und ist liegen geblieben."
+            ),
+          ]
+        : []),
+      t(
+        "- Every other key on the device stayed as it was.",
+        "- Jeder andere Schlüssel am Gerät ist geblieben, wie er war."
+      ),
+      "",
+      t(
+        `From now on the kit rolls nothing onto this device. A new key: ${deviceCall} --deploy-key`,
+        `Ab jetzt rollt das Kit nichts mehr auf dieses Gerät. Ein neuer Schlüssel: ${deviceCall} --deploy-key`
+      ),
+    ].join("\n")
+  );
+  process.exit(0);
+}
+
+if (arg.keys) showKeys();
+if (arg["revoke-key"]) revokeOwnKey();
 
 // --- Optional: Docker und Ollama aufsetzen -----------------------------------
 
@@ -1394,6 +1675,17 @@ function nextSteps() {
           )
         );
       }
+      // Fund 4 des Fremdtests am 29.08.2026: dass ein Geraet Kit-Schluessel
+      // sammelt und man seinen eigenen wiederfinden koennen muss, stand nur im
+      // Blatt. Wer nur die naechsten Schritte liest, erfuhr es nicht.
+      steps.push(
+        t(
+          `Which kit keys lie on the device, and which of them is this kit's: node .ara/tools/device.mjs ` +
+            `--name ${name}${customer ? ` --customer ${customer}` : ""} --keys`,
+          `Welche Kit-Schlüssel am Gerät liegen und welcher davon dieser ist: node .ara/tools/device.mjs ` +
+            `--name ${name}${customer ? ` --customer ${customer}` : ""} --keys`
+        )
+      );
       steps.push(t(`Running operation: /maintain ${place}.`, `Laufender Betrieb: /maintain ${place}.`));
     }
   } else if (!hasSecret("ARASUL_TOKEN")) {
