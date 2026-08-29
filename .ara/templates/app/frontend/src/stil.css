@@ -43,6 +43,41 @@
    `rahmen/thema.ts` dieselben zwei Dinge. */
 @custom-variant dark (&:is(.dark *));
 
+/* --- Ein Fehler der Bibliothek, hier aufgefangen ----------------------------
+
+   Fassung 3.1.0 des Designsystems schreibt Breiten aus einer Variablen in der
+   Schreibweise von Tailwind 3: `w-[--sidebar-breite]`. Tailwind 4 packt das
+   nicht mehr in ein `var()`, es setzt `width: --sidebar-breite` -- ungueltiges
+   CSS, und der Browser laesst die Regel fallen. Die Folge sieht man erst im
+   Bild: die Seitenleiste liegt UEBER dem Inhalt statt neben ihm, weil der
+   Platzhalter, der ihre Spalte freihaelt, null breit ist. Richtig waere in
+   Tailwind 4 `w-(--sidebar-breite)`.
+
+   **Das gehoert ins Produkt und nicht hierher.** Der Spiegel wird nicht
+   angefasst: eine Zeile, die man dort aendert, ist beim naechsten Nachziehen
+   weg, und bis dahin meldet der Waechter sie. Diese Regeln stehen deshalb an
+   der einzigen Stelle, an der die App etwas Eigenes sagen darf, und sie
+   verschwinden wieder, sobald die Bibliothek die Schreibweise umstellt.
+   Gefunden am 29.08.2026 am Orin, Kontrakt 5, Bibliothek 3.1.0. */
+
+[data-slot="sidebar-gap"],
+[data-slot="sidebar-container"] {
+  width: var(--sidebar-breite);
+}
+
+[data-slot="sidebar"][data-einklappen="symbole"] [data-slot="sidebar-gap"],
+[data-slot="sidebar"][data-einklappen="symbole"] [data-slot="sidebar-container"] {
+  width: var(--sidebar-breite-symbole);
+}
+
+[data-slot="sidebar"][data-einklappen="nichts"] [data-slot="sidebar-gap"] {
+  width: 0;
+}
+
+[data-slot="sidebar"][data-schmal="true"] {
+  width: var(--sidebar-breite-blatt);
+}
+
 /* --- Eigene Regeln ---------------------------------------------------------
 
    Was hier steht, ist wenig, und das ist die Absicht. Kein Farbwert, keine
