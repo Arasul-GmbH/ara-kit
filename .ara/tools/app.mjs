@@ -88,6 +88,7 @@ import { localized, t } from "./lib/i18n.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
+import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines } from "./lib/appways.mjs";
 import {
   NOT_IN_PACKAGE,
   appPath,
@@ -967,6 +968,57 @@ function checkDelivery(dir, manifest) {
   return problems;
 }
 
+/**
+ * Wo die Vereinbarung mit dem Gerät im Paket liegt, wenn die App eine will.
+ *
+ * Sie liegt im Bauordner des Backends, denn nur was dort liegt, kommt in das
+ * Image, das das Gerät baut. Das Kit legt sie **nicht** neu an: eine App, die
+ * `arasul.json` nicht mitbringt, will keine, und in ihren Bauordner schreibt
+ * das Kit nichts hinein.
+ */
+function arrangementPath(dir, manifest) {
+  const folder = manifest?.backend?.bauen?.verzeichnis;
+  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return null;
+  const file = join(dir, folder, ARRANGEMENT_FILE);
+  return existsSync(file) ? file : null;
+}
+
+/**
+ * Was diese App von diesem Gerät bekommt, in Sätzen.
+ *
+ * Der Abschnitt steht bei `--check` und beim Einspielen, und er nennt zuerst
+ * das, was fehlt. Eine App, der ein Weg fehlt, wird trotzdem eingespielt: sie
+ * läuft, sie sammelt Vorgänge, und niemand entscheidet über sie. Das darf
+ * niemand erst am Kunden merken.
+ */
+function arrangementSection(dir, manifest) {
+  if (!arrangementPath(dir, manifest)) return [];
+  const arrangement = appArrangement(contract, { device: place, date: today() });
+  const lines = [
+    "",
+    t(`## What the app gets from ${place}`, `## Was die App von ${place} bekommt`),
+    "",
+    t(
+      `It goes into the package as \`${ARRANGEMENT_FILE}\`, out of this device's contract. The app guesses none of it.`,
+      `Sie geht als \`${ARRANGEMENT_FILE}\` ins Paket, aus dem Kontrakt dieses Geräts. Die App rät davon nichts.`
+    ),
+    "",
+    ...arrangementLines(arrangement),
+  ];
+  if (arrangement.missing.length) {
+    lines.push(
+      "",
+      t(
+        "**This device does not promise all of it.** What is missing here, the app cannot do, and it says so at every item:",
+        "**Dieses Gerät verspricht nicht alles davon.** Was hier fehlt, kann die App nicht, und sie sagt es an jedem Vorgang:"
+      ),
+      "",
+      ...arrangement.missing.map((sentence) => `- ${sentence}`)
+    );
+  }
+  return lines;
+}
+
 function reportManifest(where, result, delivery) {
   const lines = [
     t(`# app.json from ${where} against the contract of ${place}`, `# app.json aus ${where} gegen den Kontrakt von ${place}`),
@@ -1035,9 +1087,12 @@ if (arg.check !== undefined) {
   const result = { ...checkManifest(contract, manifest), manifest };
   const delivery = checkDelivery(dir, manifest);
   if (arg.json) {
-    console.log(JSON.stringify({ device: place, folder: dir, version, delivery, ...result }, null, 2));
+    const arrangement = arrangementPath(dir, manifest)
+      ? appArrangement(contract, { device: place, date: today() })
+      : null;
+    console.log(JSON.stringify({ device: place, folder: dir, version, delivery, arrangement, ...result }, null, 2));
   } else {
-    console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
+    console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery) + arrangementSection(dir, manifest).join("\n"));
   }
   process.exit(result.ok && !delivery.length && version.ok ? 0 : 1);
 }
@@ -1053,6 +1108,18 @@ if (arg.deploy !== undefined) {
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
   }
   if (!version.ok) fail(`${version.text}\n` + t("Nothing deployed.", "Nichts eingespielt."));
+
+  // Bevor gepackt wird, bekommt die App die Vereinbarung dieses Geräts: unter
+  // welchen Namen es ihr Adresse und Schlüssel in den Container legt, in
+  // welcher Kopfzeile der Schlüssel mitgeht, welche Wege es dafür führt. Ohne
+  // das müsste die App raten, und eine App, die rät, findet auf einem Gerät mit
+  // anderen Namen nichts und hält das für „hier läuft kein Arasul".
+  const arrangementTarget = arrangementPath(dir, manifest);
+  if (arrangementTarget) {
+    const arrangement = appArrangement(contract, { device: place, date: today() });
+    writeFileSync(arrangementTarget, arrangementFile(arrangement));
+    console.log(arrangementSection(dir, manifest).join("\n").replace(/^\n/, ""));
+  }
 
   // Gepackt wird, was der Kontrakt sagt: der Inhalt des Ordners, nicht der
   // Ordner. Die ._-Beiwerkdateien von macOS bleiben doppelt draußen:

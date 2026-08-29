@@ -15,6 +15,17 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.15.0 (2026-08-29)
+
+Kontrakt: bis 3
+
+- Eine App aus der Vorlage startete keinen Lauf. Gemessen am 29.08.2026 gegen ein gespieltes Gerät, das seine Werte in seinem Kontrakt nennt: der POST auf die Vorgangsroute der App antwortete 201, `vorgang.lauf` stand auf `null`, der Vorgang auf "ohne entscheidung" mit dem Satz "Dieses Gerät hat der App keine Schnittstelle gegeben", und das Gerät hatte in der ganzen Zeit keinen einzigen Aufruf gehört. Der Freigabe-Schritt wurde nicht abgelehnt, er wurde übersprungen, und weil der Vorgang dabei aussah wie einer ohne Arasul, hat drei Erklärungen lang niemand an der richtigen Stelle gesucht.
+- Die Ursache stand im Backend der Vorlage: sechs Werte, die zwischen Kit und Produkt vereinbart sind, standen dort aus dem Kopf. `ARASUL_API_URL` und `ARASUL_API_SCHLUESSEL` als Namen der beiden Werte, die das Gerät in den Container legt, `x-api-key` als Kopfzeile des Schlüssels, drei Pfade ohne den Vorsatz der äußeren Schnittstelle. Keiner davon steht im Kontrakt, keiner im Spiegel. Findet die App die beiden Namen nicht, bleiben Adresse und Schlüssel leer, sie ruft gar nicht erst an und hält das Ergebnis für ein Gerät ohne Arasul.
+- Die Vorlage kennt jetzt keinen dieser Werte mehr. Das Kit liest sie beim Einspielen aus dem Kontrakt des einen Geräts und legt sie als `backend/arasul.json` ins Paket: die Namen der beiden Umgebungswerte, die Kopfzeile des Schlüssels und die drei Wege, jeder erst, nachdem das Gerät ihn in seinen Endpunkten selbst nennt. `--check` gibt das vorher aus und zählt auf, was dieses Gerät nicht verspricht. Im Klon liegt die Datei leer, und sie geht mit ins Image, sonst sähe der Container sie nicht.
+- Kein stilles `null` mehr. Bleibt ein Vorgang ohne Lauf, steht der Grund an ihm, und "ohne Arasul" steht nur da, wenn das Gerät der App wirklich nichts gegeben hat. Ein leerer Umgebungswert, ein Weg, den der Kontrakt nicht führt, ein Status, den das Gerät zurückgibt, eine Antwort ohne Nummer: jeder Fall bekommt seinen eigenen Satz, am Vorgang, in der Lage-Auskunft der App und einmal im Protokoll des Containers beim Start.
+- Die Vorlage legt sich auch nicht mehr auf eine Antwortform fest. Angenommen wird jede Antwort der 2xx-Klasse statt genau 202, die Nummer des Laufs wird gelesen, ob sie nackt oder in einem Umschlag steht, und die Freigabe zu einem Lauf sucht die App in der Liste ihrer eigenen Freigaben statt über einen Frageparameter, den kein Kontrakt nennt.
+- Der Selbsttest hat den Fehler mitgetragen. Das gespielte Gerät antwortete genau das, was die Vorlage riet: dieselben Namen, dieselbe Kopfzeile, dieselben Pfade, 202 und die Nummer ohne Umschlag. Bewiesen war damit, dass die Vorlage mit sich selbst einig ist. Es vergibt jetzt eigene Namen, eine eigene Kopfzeile, legt seine Wege unter den Vorsatz der äußeren Schnittstelle und antwortet 200 mit Umschlag; dazu kommen drei Prüfungen: dass im Quelltext der Vorlage keiner dieser Werte mehr steht, dass die Vereinbarung im Paket ankommt, und dass ein stehender Rahmen ohne Lauf nicht als "ohne Arasul" durchgeht.
+
 ## 0.14.6 (2026-08-29)
 
 Kontrakt: bis 3

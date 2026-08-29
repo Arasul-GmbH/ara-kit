@@ -176,6 +176,12 @@ einer App legt das Gerät beim Einspielen selbst in den Container, zusammen mit 
 Adresse der Schnittstelle. Welche Namen die beiden Werte tragen, sagt der Kontrakt unter
 `umgebung`.
 
+**Die App erfährt diese Namen vom Kit und nicht aus ihrem eigenen Quelltext.** Beim
+Einspielen liest `app.mjs` sie aus dem Kontrakt des Geräts und legt sie zusammen mit der
+Kopfzeile und den Wegen als `backend/arasul.json` ins Paket. Eine App, die stattdessen
+einen Namen errät, findet auf einem Gerät, das ihn anders nennt, nichts und hält das für
+ein Gerät ohne Arasul.
+
 **Der Chat ist zustandslos.** Jeder Aufruf ist ein eigener Auftrag mit genau der
 Vorgeschichte, die mitgeschickt wird. Wer einen Verlauf will, führt ihn selbst und schickt
 ihn mit. Eine App, die auf ein Gedächtnis am Gerät baut, baut auf etwas, das es nicht

@@ -23,6 +23,23 @@ Plan erledigt ist:
 
 Der erste Plan steht unter `plans/offen/`. Was die App danach kann, gehört hierher.
 
+## Woher sie weiß, wie sie das Gerät erreicht
+
+**Nicht aus ihrem eigenen Quelltext.** Unter welchem Namen das Gerät ihr die Adresse der
+Schnittstelle und den Schlüssel in den Container legt, wie die Kopfzeile für den Schlüssel
+heißt und welche Wege es dafür gibt, ist zwischen Kit und Produkt vereinbart und steht im
+Kontrakt des einen Geräts. Das Kit liest das beim Einspielen dort aus und legt es als
+`backend/arasul.json` ins Paket.
+
+Steht in dieser Datei nichts, hat die App keinen Rahmen. Dann nimmt sie den Vorgang an, legt
+ihn ohne Lauf ab und schreibt an ihn, woran es liegt. `GET /lage` sagt dasselbe, und beim
+Start steht es einmal im Protokoll des Containers.
+
+Was daraus folgt, wenn du das Backend weiterbaust: **schreib keinen dieser Werte hinein.**
+Eine App, die den Namen eines Umgebungswerts errät, findet auf einem Gerät, das ihn anders
+nennt, nichts, hält das für „hier läuft kein Arasul" und sammelt Vorgänge, über die niemand
+entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert.
+
 ## Wo entschieden wird
 
 **Nicht in dieser App.** Sie liest ihre Freigaben und erteilt keine. Entschieden wird in
@@ -52,6 +69,7 @@ Lauf ohne Entscheidung, und der Vorgang steht auf abgelaufen. Das ist kein Fehle
 | `frontend/` | Die Oberfläche als React-Quelltext. `npm run build` legt sie nach `dist/`, und von dort geht sie ins Paket |
 | `frontend/src/bausteine.jsx` | Die sechs Bausteine der Oberfläche: Kopf, Liste, Karte, Formular, Meldung, Menü. Die Seite in `app.jsx` ist nur aus ihnen gebaut |
 | `backend/` | Node und ein Dockerfile. Gebaut wird am Gerät, nicht hier |
+| `backend/arasul.json` | Die Vereinbarung mit dem Gerät. Im Quelltext leer, gefüllt wird sie beim Einspielen aus dem Kontrakt |
 | `flows/freigabe.md` | Der Flow mit dem Freigabe-Schritt. Der Dateiname ist der Name des Flows |
 | `plans/` | `offen/`, `aktiv/` und `erledigt/`. Aktiv ist höchstens einer |
 | `build/` | Das fertige Paket. Es entsteht beim Bauen und wird nicht von Hand bearbeitet |

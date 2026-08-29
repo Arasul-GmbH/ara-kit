@@ -84,6 +84,7 @@ import {
   troubles,
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps, versioned } from "./lib/appfile.mjs";
+import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -1778,6 +1779,22 @@ const KONTRAKT = {
           required: ["verzeichnis"],
           additionalProperties: false,
         },
+        backend: {
+          type: "object",
+          properties: {
+            image: { type: "string", minLength: 1 },
+            gesundheit: { type: "string", minLength: 1 },
+            umgebung: { type: "object" },
+            bauen: {
+              type: "object",
+              properties: { verzeichnis: { type: "string", minLength: 1 }, dockerfile: { type: "string" } },
+              required: ["verzeichnis"],
+              additionalProperties: false,
+            },
+          },
+          required: ["image"],
+          additionalProperties: false,
+        },
       },
       required: ["schema", "id", "name", "version"],
       additionalProperties: false,
@@ -1791,12 +1808,17 @@ const KONTRAKT = {
   },
   koepfe: { benutzer: "X-Arasul-User", rolle: "X-Arasul-Role", rollen: ["admin", "mitarbeiter"] },
   schluessel: { kopf: "X-API-Key", praefix: "aras_", bereiche: ["app:deploy"] },
+  // Unter diesen Namen legt das gespielte Geraet einer App Adresse und
+  // Schluessel in den Container. Sie sind bewusst NICHT die, die bis zum
+  // 29.08.2026 in der Vorlage standen: eine Vorlage, die die Namen raet, muss
+  // hier auffallen und nicht beim Kunden.
+  umgebung: { basis: "ARASUL_BASIS_URL", schluessel: "ARASUL_APP_KEY" },
   paket: {
     format: "tar.gz",
     packen: "tar czf paket.tgz -C <ordner> .",
     // Die Wurzel nennt die Ordner als Platzhalter. Daran und an nichts anderem
     // erkennt das Kit, welche Felder des Manifests einen Ordner versprechen.
-    wurzel: ["app.json", "<frontend.verzeichnis>/", "<flows.verzeichnis>/"],
+    wurzel: ["app.json", "<frontend.verzeichnis>/", "<flows.verzeichnis>/", "<backend.bauen.verzeichnis>/"],
     max_archiv_bytes: 200 * 1024 * 1024,
   },
   apps: { basis: "/apps/<id>/", teststand: "/apps/<id>/test/" },
@@ -1806,6 +1828,9 @@ const KONTRAKT = {
     { verb: "GET", pfad: "/api/v1/external/apps/:id", bereich: "app:deploy", was: "Was das Gerät weiß" },
     { verb: "POST", pfad: "/api/v1/external/apps/:id/schalten", bereich: "app:deploy", was: "Live schalten" },
     { verb: "DELETE", pfad: "/api/v1/external/apps/:id?bestaetigung=<id>", bereich: "app:deploy", was: "App weg" },
+    { verb: "POST", pfad: "/api/v1/external/flows/:name/run", bereich: "flow:run", was: "Einen Flow starten" },
+    { verb: "GET", pfad: "/api/v1/external/flows/runs/:id", bereich: "flow:run", was: "Einen Lauf lesen" },
+    { verb: "GET", pfad: "/api/v1/external/freigaben", bereich: "flow:run", was: "Freigaben dieser App" },
   ],
 };
 
@@ -2072,7 +2097,59 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       !gesehen.inhalt.some((eintrag) => /plans|README/.test(eintrag)),
       `die Arbeit an der App ging mit ins Paket: ${gesehen.inhalt.join(", ")}`
     );
-    return "Kontrakt, Prüfung, Flows im Paket, Bau einer App, Teststand, live, zurück, entfernen";
+
+    // Eine App mit Backend bekommt die Vereinbarung dieses Geraets ins Paket:
+    // unter welchen Namen es ihr Adresse und Schluessel in den Container legt,
+    // in welcher Kopfzeile der Schluessel mitgeht, welche Wege es dafuer fuehrt.
+    // Ohne sie muesste die App raten, und geraten hat sie bis zum 29.08.2026.
+    mkdirSync(join(appDir, "backend"), { recursive: true });
+    writeFileSync(join(appDir, "backend", "server.mjs"), "// Probe\n");
+    cpSync(
+      join(ROOT, ".ara", "templates", "app", "backend", "arasul.json"),
+      join(appDir, "backend", "arasul.json")
+    );
+    writeFileSync(
+      join(appDir, "app.json"),
+      JSON.stringify(
+        {
+          ...MANIFEST,
+          frontend: { verzeichnis: "frontend" },
+          backend: { image: "arasul-probeapp:1.0.0", bauen: { verzeichnis: "backend" } },
+        },
+        null,
+        2
+      )
+    );
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build"], env)).status === 0, "Bau mit Backend fehlgeschlagen");
+
+    // --check sagt es vorher, ohne irgendetwas zu schreiben.
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--check", "--base", base], env);
+    assert(run.status === 0, `Pruefung mit Backend fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/ARASUL_BASIS_URL/.test(run.stdout), `--check nennt die Umgebungsnamen des Geraets nicht: ${run.stdout}`);
+    const vorDemEinspielen = JSON.parse(readFileSync(join(appDir, "build", "backend", "arasul.json"), "utf8"));
+    assert(vorDemEinspielen.kopf === null, "--check hat die Vereinbarung schon geschrieben");
+
+    gesehen.paket = false;
+    gesehen.inhalt = [];
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base], env);
+    assert(run.status === 0 && gesehen.paket, `Einspielen mit Backend fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(
+      gesehen.inhalt.includes("./backend/arasul.json"),
+      `die Vereinbarung fehlt im Paket: ${gesehen.inhalt.join(", ")}`
+    );
+    const vereinbarung = JSON.parse(readFileSync(join(appDir, "build", "backend", "arasul.json"), "utf8"));
+    assert(
+      vereinbarung.umgebung.basis === "ARASUL_BASIS_URL" && vereinbarung.umgebung.schluessel === "ARASUL_APP_KEY",
+      `die Umgebungsnamen kommen nicht aus dem Kontrakt: ${JSON.stringify(vereinbarung.umgebung)}`
+    );
+    assert(vereinbarung.kopf === "X-API-Key", `der Schluesselkopf kommt nicht aus dem Kontrakt: ${vereinbarung.kopf}`);
+    assert(
+      vereinbarung.wege.flow_starten?.pfad === "/api/v1/external/flows/{flow}/run",
+      `der Weg zum Flow fehlt in der Vereinbarung: ${JSON.stringify(vereinbarung.wege)}`
+    );
+    assert(!JSON.stringify(vereinbarung).includes("aras_"), "in der Vereinbarung steht ein Schluessel");
+
+    return "Kontrakt, Prüfung, Flows im Paket, Bau einer App, Vereinbarung im Paket, Teststand, live, zurück, entfernen";
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
@@ -2683,74 +2760,59 @@ check("Ein Gerät ohne Arasul bekommt zwei Container und den Satz, was fehlt", (
   assert(!/location \/api\//.test(nginxConf({ ...manifest, backend: undefined })), "ohne Backend wird weitergereicht");
 });
 
-await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er ist genehmigt", async () => {
-  // Das Backend der Vorlage, gegen ein Gerät, das gespielt wird. Geprüft wird
-  // der Weg, um den es in jeder App aus der Vorlage geht: sie startet einen
-  // Flow, der Lauf hält an, ein MENSCH entscheidet, und erst danach steht der
-  // Vorgang auf genehmigt. Die App entscheidet dabei nichts: sie liest nur.
-  //
-  // Gefahren wird die Vorlage selbst, nicht eine Kopie: der Platzhalter
-  // {{name}} steht nur in einer Zeichenkette und stört den Start nicht, und
-  // der Name kommt hier ohnehin aus der Umgebung.
-  const backend = join(ROOT, ".ara", "templates", "app", "backend", "server.mjs");
-
-  const freigabe = {
-    id: 7,
-    run_id: 7,
-    flow_name: "freigabe",
-    titel: "Urlaub",
-    status: "offen",
-    begruendung: null,
-    entschieden_von: null,
-  };
-  const gesehen = { start: null, key: null };
+/**
+ * Die Vorlage gegen ein gespieltes Gerät.
+ *
+ * Gefahren wird die Vorlage selbst, nicht eine Kopie ihres Quelltextes: der
+ * Platzhalter {{name}} steht nur in einer Zeichenkette und stört den Start
+ * nicht, und der Name kommt hier ohnehin aus der Umgebung. Was daneben liegt,
+ * ist die Vereinbarung, und die entsteht wie beim Einspielen aus dem Kontrakt.
+ *
+ * **Das gespielte Gerät antwortet nicht so, wie die Vorlage es gern hätte.** Es
+ * nennt seine Umgebungswerte anders, seine Schlüsselkopfzeile anders, es legt
+ * seine Wege unter den Vorsatz der äußeren Schnittstelle, es antwortet 200 statt
+ * 202 und legt die Nummer des Laufs in einen Umschlag. Bis zum 29.08.2026 spielte
+ * der Selbsttest hier ein Gerät, das genau das antwortete, was die Vorlage riet,
+ * und bewies damit nur, dass die Vorlage mit sich selbst einig ist.
+ */
+async function mitVorlage(kontrakt, geraetAntwort, arbeit) {
+  const template = join(ROOT, ".ara", "templates", "app", "backend");
   const geraet = createServer((anfrage, antwort) => {
-    const url = new URL(anfrage.url, "http://x");
     const teile = [];
     anfrage.on("data", (s) => teile.push(s));
     anfrage.on("end", () => {
-      const json = (code, daten) => {
+      const url = new URL(anfrage.url, "http://x");
+      geraetAntwort(anfrage, url, teile.length ? JSON.parse(Buffer.concat(teile).toString("utf8")) : null, (code, daten) => {
         antwort.writeHead(code, { "content-type": "application/json" });
         antwort.end(JSON.stringify(daten));
-      };
-      gesehen.key = anfrage.headers["x-api-key"] || null;
-      if (gesehen.key !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
-      if (url.pathname === "/flows/freigabe/run") {
-        gesehen.start = JSON.parse(Buffer.concat(teile).toString("utf8")).args;
-        return json(202, { success: true, run_id: 7 });
-      }
-      if (url.pathname === "/freigaben") {
-        return json(200, { success: true, freigaben: url.searchParams.get("lauf") === "7" ? [freigabe] : [] });
-      }
-      if (url.pathname === "/flows/runs/7") {
-        return json(200, {
-          success: true,
-          status: freigabe.status === "bestaetigt" ? "fertig" : "wartend",
-          result: freigabe.status === "bestaetigt" ? "Anna hat den Vorgang genehmigt." : null,
-        });
-      }
-      json(404, { error: { message: url.pathname } });
+      });
     });
   });
   await new Promise((ready) => geraet.listen(0, "127.0.0.1", ready));
-  const api = `http://127.0.0.1:${geraet.address().port}`;
+  const basis = `http://127.0.0.1:${geraet.address().port}`;
 
-  const app = spawn("node", [backend], {
-    env: {
-      ...process.env,
-      PORT: "0",
-      ARASUL_API_URL: api,
-      ARASUL_API_SCHLUESSEL: "aras_selbsttest",
-      ARASUL_APP_NAME: "Probe",
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  // So, wie --deploy es tut: die Vereinbarung aus dem Kontrakt ins Paket.
+  const paket = mkdtempSync(join(tmpdir(), "ara-vorlage-"));
+  cpSync(template, paket, { recursive: true });
+  if (kontrakt) {
+    writeFileSync(
+      join(paket, ARRANGEMENT_FILE),
+      arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() }))
+    );
+  }
+
+  const umgebung = { ...process.env, PORT: "0", ARASUL_APP_NAME: "Probe" };
+  if (kontrakt?.umgebung?.basis) umgebung[kontrakt.umgebung.basis] = basis;
+  if (kontrakt?.umgebung?.schluessel) umgebung[kontrakt.umgebung.schluessel] = "aras_selbsttest";
+  const app = spawn("node", [join(paket, "server.mjs")], { env: umgebung, stdio: ["ignore", "pipe", "pipe"] });
   // Der Port kommt vom Betriebssystem, damit zwei Läufe sich nicht ins Gehege
   // kommen. Die App sagt ihn beim Start, also wird zugehört statt geraten.
+  let ausgabe = "";
   const appUrl = await new Promise((done, failed) => {
     const zeit = setTimeout(() => failed(new Error("die App hat nicht gestartet")), 10_000);
     app.stdout.on("data", (chunk) => {
-      const treffer = String(chunk).match(/auf (\d+)/);
+      ausgabe += String(chunk);
+      const treffer = ausgabe.match(/auf (\d+)/);
       if (treffer) {
         clearTimeout(zeit);
         done(`http://127.0.0.1:${treffer[1]}`);
@@ -2773,82 +2835,225 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
     });
     return { code: antwort.status, daten: await antwort.json() };
   };
+  const einreichen = (titel, text) =>
+    ruf("/vorgaenge", { method: "POST", body: JSON.stringify({ titel, ...(text ? { text } : {}) }) });
 
   try {
-    const lage = await ruf("/lage");
-    assert(lage.daten.nutzer === "Jürgen", `die App liest den Angemeldeten nicht: ${JSON.stringify(lage.daten)}`);
-    assert(lage.daten.arasul === true, "die App sieht die Schnittstelle des Geräts nicht");
-
-    const gestellt = await ruf("/vorgaenge", {
-      method: "POST",
-      body: JSON.stringify({ titel: "Neuer Monitor", text: "Der alte flackert." }),
-    });
-    assert(gestellt.code === 201, `Vorgang abgewiesen: ${JSON.stringify(gestellt.daten)}`);
-    assert(gestellt.daten.vorgang.von === "Jürgen", "der Einreicher kommt nicht aus der Anmeldung");
-    assert(gestellt.daten.vorgang.status === "wartet", `der Vorgang wartet nicht: ${gestellt.daten.vorgang.status}`);
-    assert(gestellt.daten.vorgang.lauf === 7, "der Flow wurde nicht gestartet");
-    assert(
-      gesehen.start?.von === "Jürgen" && gesehen.start?.sache === "Neuer Monitor",
-      `der Flow bekam falsche Angaben: ${JSON.stringify(gesehen.start)}`
-    );
-
-    // Ohne Titel gibt es keinen Vorgang, und die App sagt es.
-    const leer = await ruf("/vorgaenge", { method: "POST", body: JSON.stringify({ text: "nur Text" }) });
-    assert(leer.code === 400, "ein Vorgang ohne Titel wurde angenommen");
-
-    // Solange niemand entschieden hat, ändert sich nichts. Die App wartet, sie
-    // hilft nicht nach.
-    let liste = await ruf("/vorgaenge");
-    assert(liste.daten.vorgaenge[0].status === "wartet", "der Vorgang entscheidet sich selbst");
-
-    // Jetzt der Mensch, in der Oberfläche von Arasul.
-    freigabe.status = "bestaetigt";
-    freigabe.entschieden_von = "Anna";
-    liste = await ruf("/vorgaenge");
-    const vorgang = liste.daten.vorgaenge.find((v) => v.id === 1);
-    assert(vorgang.status === "genehmigt", `nach der Bestätigung: ${vorgang.status}`);
-    assert(vorgang.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Vorgang");
-    assert(/genehmigt/.test(vorgang.bemerkung || ""), `der Satz des Laufs fehlt: ${vorgang.bemerkung}`);
-    return "eingereicht, gewartet, bestätigt, genehmigt";
+    return await arbeit({ ruf, einreichen, protokoll: () => ausgabe });
   } finally {
     app.kill();
     geraet.close();
+    rmSync(paket, { recursive: true, force: true });
   }
+}
+
+/**
+ * Ein Gerät, das seine Werte selbst vergibt.
+ *
+ * Kein Wert daraus steht in der Vorlage, und keiner davon ist der, den sie
+ * früher geraten hat. Ändert jemand die Vorlage zurück auf einen festen Namen,
+ * geht diese Prüfung rot.
+ */
+const VORLAGE_KONTRAKT = {
+  kontrakt: KIT_CONTRACT_VERSION,
+  arasul: "0.0.0-selbsttest",
+  schluessel: { kopf: "x-arasul-app-key", praefix: "aras_" },
+  umgebung: { basis: "ARASUL_BASIS_URL", schluessel: "ARASUL_APP_KEY" },
+  endpunkte: [
+    { verb: "GET", pfad: "/api/v1/external/contract", was: "Dieser Kontrakt" },
+    { verb: "POST", pfad: "/api/v1/external/flows/:name/run", was: "Einen Flow starten" },
+    { verb: "GET", pfad: "/api/v1/external/flows/runs/:id", was: "Einen Lauf lesen" },
+    { verb: "GET", pfad: "/api/v1/external/freigaben", was: "Freigaben dieser App" },
+  ],
+};
+
+await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er ist genehmigt", async () => {
+  // Geprüft wird der Weg, um den es in jeder App aus der Vorlage geht: sie
+  // startet einen Flow, der Lauf hält an, ein MENSCH entscheidet, und erst
+  // danach steht der Vorgang auf genehmigt. Die App entscheidet dabei nichts:
+  // sie liest nur.
+  const freigabe = { run_id: 7, status: "offen", begruendung: null, entschieden_von: null };
+  const gesehen = { start: null, key: null, wege: [] };
+  return await mitVorlage(
+    VORLAGE_KONTRAKT,
+    (anfrage, url, rumpf, json) => {
+      gesehen.key = anfrage.headers["x-arasul-app-key"] || null;
+      gesehen.wege.push(`${anfrage.method} ${url.pathname}`);
+      if (gesehen.key !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
+      if (url.pathname === "/api/v1/external/flows/freigabe/run") {
+        gesehen.start = rumpf.args;
+        // 200 und die Nummer im Umschlag: die Vorlage darf sich weder auf 202
+        // noch auf eine nackte Antwort festlegen.
+        return json(200, { success: true, data: { run_id: 7 } });
+      }
+      if (url.pathname === "/api/v1/external/freigaben") {
+        return json(200, { data: { freigaben: [freigabe] } });
+      }
+      if (url.pathname === "/api/v1/external/flows/runs/7") {
+        return json(200, {
+          data: {
+            status: freigabe.status === "bestaetigt" ? "fertig" : "wartend",
+            result: freigabe.status === "bestaetigt" ? "Anna hat den Vorgang genehmigt." : null,
+          },
+        });
+      }
+      json(404, { error: { message: url.pathname } });
+    },
+    async ({ ruf, einreichen, protokoll }) => {
+      const lage = await ruf("/lage");
+      assert(lage.daten.nutzer === "Jürgen", `die App liest den Angemeldeten nicht: ${JSON.stringify(lage.daten)}`);
+      assert(lage.daten.arasul === true, `die App sieht die Schnittstelle des Geräts nicht: ${lage.daten.hinweis}`);
+      assert(/ARASUL_BASIS_URL/.test(protokoll()), `die App sagt beim Start nicht, woran sie hängt: ${protokoll()}`);
+
+      const gestellt = await einreichen("Neuer Monitor", "Der alte flackert.");
+      assert(gestellt.code === 201, `Vorgang abgewiesen: ${JSON.stringify(gestellt.daten)}`);
+      assert(gestellt.daten.vorgang.von === "Jürgen", "der Einreicher kommt nicht aus der Anmeldung");
+      assert(
+        gestellt.daten.vorgang.lauf === 7,
+        `der Flow wurde nicht gestartet: ${JSON.stringify(gestellt.daten.vorgang)}`
+      );
+      assert(gestellt.daten.vorgang.status === "wartet", `der Vorgang wartet nicht: ${gestellt.daten.vorgang.status}`);
+      assert(
+        gesehen.start?.von === "Jürgen" && gesehen.start?.sache === "Neuer Monitor",
+        `der Flow bekam falsche Angaben: ${JSON.stringify(gesehen.start)}`
+      );
+
+      // Ohne Titel gibt es keinen Vorgang, und die App sagt es.
+      const leer = await ruf("/vorgaenge", { method: "POST", body: JSON.stringify({ text: "nur Text" }) });
+      assert(leer.code === 400, "ein Vorgang ohne Titel wurde angenommen");
+
+      // Solange niemand entschieden hat, ändert sich nichts. Die App wartet, sie
+      // hilft nicht nach.
+      let liste = await ruf("/vorgaenge");
+      assert(liste.daten.vorgaenge[0].status === "wartet", "der Vorgang entscheidet sich selbst");
+
+      // Jetzt der Mensch, in der Oberfläche von Arasul.
+      freigabe.status = "bestaetigt";
+      freigabe.entschieden_von = "Anna";
+      liste = await ruf("/vorgaenge");
+      const vorgang = liste.daten.vorgaenge.find((v) => v.id === 1);
+      assert(vorgang.status === "genehmigt", `nach der Bestätigung: ${vorgang.status}`);
+      assert(vorgang.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Vorgang");
+      assert(/genehmigt/.test(vorgang.bemerkung || ""), `der Satz des Laufs fehlt: ${vorgang.bemerkung}`);
+      assert(
+        gesehen.wege.every((weg) => weg.includes("/api/v1/external/")),
+        `die App ruft Wege, die nicht aus dem Kontrakt kommen: ${gesehen.wege.join(", ")}`
+      );
+      return "eingereicht, gewartet, bestätigt, genehmigt, jeder Wert aus dem Kontrakt";
+    }
+  );
+});
+
+await checkAsync("Steht der Rahmen und der Lauf kommt trotzdem nicht, sagt die App genau das", async () => {
+  // Der teuerste Fall: das Gerät ist da, die App erreicht es, und der Lauf
+  // kommt trotzdem nicht zustande. Bis zum 29.08.2026 stand am Vorgang dann
+  // „ohne Arasul", und danach hat drei Erklärungen lang niemand mehr am
+  // richtigen Ort gesucht.
+  let antwortet = "leer";
+  return await mitVorlage(
+    VORLAGE_KONTRAKT,
+    (anfrage, url, rumpf, json) => {
+      if (url.pathname !== "/api/v1/external/flows/freigabe/run") return json(404, { error: { message: url.pathname } });
+      if (antwortet === "leer") return json(200, { success: true, data: {} });
+      return json(500, { error: { message: "der Flow-Dienst antwortet nicht" } });
+    },
+    async ({ ruf, einreichen }) => {
+      const lage = await ruf("/lage");
+      assert(lage.daten.arasul === true, "die App sieht den Rahmen nicht, obwohl er steht");
+
+      let vorgang = (await einreichen("Ohne Nummer")).daten.vorgang;
+      assert(vorgang.lauf === null && vorgang.status === "ohne lauf", `falscher Stand: ${JSON.stringify(vorgang)}`);
+      assert(/Nummer des Laufs/.test(vorgang.hinweis || ""), `die App sagt nicht, was fehlte: ${vorgang.hinweis}`);
+      assert(!/ohne Arasul/i.test(vorgang.hinweis || ""), `die App schiebt es auf Arasul: ${vorgang.hinweis}`);
+
+      antwortet = "fehler";
+      vorgang = (await einreichen("Mit Fehler")).daten.vorgang;
+      assert(vorgang.status === "ohne lauf", `falscher Stand: ${JSON.stringify(vorgang)}`);
+      assert(/500/.test(vorgang.hinweis || ""), `der Status des Geräts fehlt am Vorgang: ${vorgang.hinweis}`);
+      return "keine Nummer und ein Fehler, beide benannt, keiner als „ohne Arasul“";
+    }
+  );
 });
 
 await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async () => {
-  const backend = join(ROOT, ".ara", "templates", "app", "backend", "server.mjs");
-  const app = spawn("node", [backend], {
-    env: { ...process.env, PORT: "0", ARASUL_API_URL: "", ARASUL_API_SCHLUESSEL: "", ARASUL_APP_NAME: "Probe" },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  const appUrl = await new Promise((done, failed) => {
-    const zeit = setTimeout(() => failed(new Error("die App hat nicht gestartet")), 10_000);
-    app.stdout.on("data", (chunk) => {
-      const treffer = String(chunk).match(/auf (\d+)/);
-      if (treffer) {
-        clearTimeout(zeit);
-        done(`http://127.0.0.1:${treffer[1]}`);
-      }
-    });
-  });
-  try {
-    const lage = await (await fetch(`${appUrl}/lage`)).json();
-    assert(lage.arasul === false, "die App behauptet eine Schnittstelle, die sie nicht hat");
-    const gestellt = await fetch(`${appUrl}/vorgaenge`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ titel: "Neuer Monitor" }),
-    });
-    const daten = await gestellt.json();
-    assert(daten.vorgang.status !== "genehmigt", "ohne Freigabe gilt der Vorgang als genehmigt");
-    assert(/Arasul|Flow/.test(daten.vorgang.hinweis || ""), `der Vorgang sagt nicht, warum niemand entscheidet: ${daten.vorgang.hinweis}`);
-    return "Vorgang angenommen, ohne Entscheidung, mit Begründung";
-  } finally {
-    app.kill();
-  }
+  // Ohne Vereinbarung neben dem Backend: so kommt die Vorlage aus dem Klon, und
+  // so läuft sie auf einem Gerät ohne Arasul über Compose.
+  return await mitVorlage(
+    null,
+    (anfrage, url, rumpf, json) => json(500, { error: { message: "hier ist niemand" } }),
+    async ({ ruf, einreichen }) => {
+      const lage = await ruf("/lage");
+      assert(lage.daten.arasul === false, "die App behauptet eine Schnittstelle, die sie nicht hat");
+      const vorgang = (await einreichen("Neuer Monitor")).daten.vorgang;
+      assert(vorgang.status === "ohne entscheidung", `ohne Freigabe: ${vorgang.status}`);
+      assert(vorgang.status !== "genehmigt", "ohne Freigabe gilt der Vorgang als genehmigt");
+      assert(
+        /Arasul/.test(vorgang.hinweis || ""),
+        `der Vorgang sagt nicht, warum niemand entscheidet: ${vorgang.hinweis}`
+      );
+      return "Vorgang angenommen, ohne Entscheidung, mit Begründung";
+    }
+  );
 });
 
+check("Die Vorlage rät keinen Wert, den das Gerät vergibt", () => {
+  // Der eigentliche Fund vom 29.08.2026. Im Backend der Vorlage standen sechs
+  // Werte, die zwischen Kit und Produkt vereinbart sind: zwei Namen von
+  // Umgebungswerten, eine Kopfzeile, drei Pfade. Keiner davon stand im
+  // Kontrakt, keiner im Spiegel, und der Selbsttest spielte ein Gerät, das
+  // genau sie beantwortete. Trifft eine so gebaute App auf ein Gerät, das seine
+  // Werte anders nennt, findet sie nichts, hält das für „hier läuft kein
+  // Arasul" und legt jeden Vorgang ohne Lauf ab.
+  const backend = join(ROOT, ".ara", "templates", "app", "backend");
+  const quelle = readFileSync(join(backend, "server.mjs"), "utf8");
+  const verboten = [
+    [/ARASUL_API_URL|ARASUL_API_SCHLUESSEL/, "der Name eines Umgebungswerts, den das Gerät vergibt"],
+    [/["'`]x-api-key["'`]/i, "die Kopfzeile des Schlüssels"],
+    [/["'`\/]api\/v\d/, "ein Pfad der Schnittstelle"],
+    [/["'`]\/(flows|freigaben)/, "ein Pfad der Schnittstelle"],
+    [/code === 20\d/, "ein Statuscode des Geräts"],
+  ];
+  for (const [muster, was] of verboten) {
+    const treffer = quelle.match(muster);
+    assert(!treffer, `im Backend der Vorlage steht ${was}: ${treffer?.[0]}`);
+  }
+
+  // Leer kommt sie aus dem Klon: gefüllt wird sie beim Einspielen, aus dem
+  // Kontrakt des einen Geräts, auf das die App geht.
+  const leer = JSON.parse(readFileSync(join(backend, ARRANGEMENT_FILE), "utf8"));
+  assert(leer.kopf === null && leer.umgebung.basis === null, "die Vereinbarung im Klon ist nicht leer");
+  for (const weg of Object.values(leer.wege)) assert(weg === null, "im Klon steht schon ein Weg");
+
+  // Und sie kommt ins Image: was nur im Paket liegt, sieht der Container nicht.
+  const dockerfile = readFileSync(join(backend, "Dockerfile"), "utf8");
+  assert(new RegExp(`COPY[^\\n]*${ARRANGEMENT_FILE}`).test(dockerfile), "die Vereinbarung geht nicht ins Image");
+  return "sechs geratene Werte, keiner mehr in der Vorlage";
+});
+
+check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wird gesagt", () => {
+  const voll = appArrangement(KONTRAKT, { device: "probe", date: "2026-08-29" });
+  assert(voll.missing.length === 0, `am vollständigen Kontrakt fehlt etwas: ${voll.missing.join(" | ")}`);
+  assert(voll.umgebung.basis === "ARASUL_BASIS_URL", "der Name der Adresse kommt nicht aus dem Kontrakt");
+  assert(voll.kopf === KONTRAKT.schluessel.kopf, "der Schlüsselkopf kommt nicht aus dem Kontrakt");
+  for (const weg of APP_WAYS) assert(voll.wege[weg.key], `der Weg ${weg.key} wurde nicht gefunden`);
+
+  // Ein Gerät, das nichts davon verspricht: das Kit erfindet nichts, es zählt
+  // auf, was fehlt, und jeder Weg steht als null in der Datei.
+  const leer = appArrangement({ kontrakt: 1, endpunkte: [] }, {});
+  assert(leer.missing.length === 5, `unvollständige Mängelliste: ${leer.missing.join(" | ")}`);
+  for (const weg of APP_WAYS) assert(leer.wege[weg.key] === null, `${weg.key} wurde erfunden`);
+  assert(JSON.parse(arrangementFile(leer)).missing === undefined, "die Mängelliste geht mit ins Paket");
+
+  // Ein Kontrakt, der die Namen als Einträge führt statt als Zeichenketten.
+  const alsEintrag = appArrangement(
+    { ...KONTRAKT, umgebung: { basis: { name: "A" }, schluessel: { was: "kein Name" } } },
+    {}
+  );
+  assert(alsEintrag.umgebung.basis === "A", "ein Name unter `name` wird nicht gelesen");
+  assert(alsEintrag.umgebung.schluessel === null, "ein Eintrag ohne Namen wird für einen gehalten");
+  assert(alsEintrag.missing.some((satz) => /schluessel/.test(satz)), "der fehlende Name wird nicht genannt");
+  return "voller Kontrakt, leerer Kontrakt, Namen als Einträge";
+});
 await checkAsync("Das Artefakt sagt selbst, wie es installiert wird, und geht sauber an das Gerät", async () => {
   const work = mkdtempSync(join(tmpdir(), "ara-artefakt-"));
   const mirror = join(work, "spiegel");
@@ -3510,6 +3715,10 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     // Klon bringt keine App mehr mit, apps/ gehoert ganz dem Nutzer.
     ".ara/templates/app/app.json",
     ".ara/templates/app/backend/server.mjs",
+    // Ohne die leere Vereinbarung neben dem Backend startet eine App aus der
+    // Vorlage keinen Flow: sie ist die Stelle, an der das Kit beim Einspielen
+    // hineinschreibt, was das Geraet vergibt.
+    ".ara/templates/app/backend/arasul.json",
     // Die deutsche README und die Lint-Regeln liegen unter .ara/, damit die
     // Wurzel klein bleibt. Beide muessen trotzdem mitkommen.
     ".ara/README.de.md",

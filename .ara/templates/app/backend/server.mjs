@@ -22,10 +22,21 @@
  * hängt, schneidet es ab. Deshalb weiß diese Datei nicht, unter welchem Namen
  * die App läuft, und muss es auch nicht.
  *
- * Zwei Werte setzt das Gerät selbst in den Container, und nur mit ihnen ist
- * Arasul erreichbar: die Adresse der Schnittstelle und der Schlüssel dieser App
- * und dieses Standes. **Der Schlüssel verlässt diesen Prozess nicht.** Er geht
- * in eine Kopfzeile und in keine Antwort, in kein Protokoll und in keine Datei.
+ * **Diese Datei kennt keinen einzigen Wert, den das Gerät vergibt.** Nicht die
+ * Namen der Umgebungswerte, in denen Adresse und Schlüssel ankommen, nicht die
+ * Kopfzeile des Schlüssels, nicht die Wege der Schnittstelle. Alles das ist
+ * zwischen Kit und Produkt vereinbart, steht im Kontrakt des Geräts, und das
+ * Kit legt es beim Einspielen als `arasul.json` daneben. Eine Vorlage, die
+ * diese Werte errät, findet auf einem Gerät, das sie anders nennt, nichts, hält
+ * das für „hier läuft kein Arasul" und legt jeden Vorgang ohne Lauf ab. Der
+ * Freigabe-Schritt wird dann nicht abgelehnt, er wird übersprungen.
+ *
+ * **Der Schlüssel verlässt diesen Prozess nicht.** Er geht in eine Kopfzeile
+ * und in keine Antwort, in kein Protokoll und in keine Datei.
+ *
+ * **Kein stilles null.** Jeder Vorgang, der ohne Lauf bleibt, trägt den Satz,
+ * warum. „Ohne Arasul" steht nur dann da, wenn das Gerät der App wirklich
+ * nichts gegeben hat; alles andere wird benannt, mit Status und Antwort.
  *
  * Die Vorgänge liegen im Speicher. Ein Neustart des Containers vergisst sie,
  * und das steht auch so in der README: eine App bekommt am Gerät heute keinen
@@ -35,12 +46,57 @@
  */
 
 import { createServer } from "node:http";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const PORT = Number(process.env.PORT || 8080);
 const NAME = process.env.ARASUL_APP_NAME || "{{name}}";
-const API_URL = process.env.ARASUL_API_URL || "";
-const API_SCHLUESSEL = process.env.ARASUL_API_SCHLUESSEL || "";
 const FLOW = "freigabe";
+
+/**
+ * Die Vereinbarung mit dem Gerät, so wie das Kit sie beim Einspielen aus dem
+ * Kontrakt geschrieben hat. Fehlt die Datei oder steht darin nichts, gibt es
+ * keinen Rahmen, und das ist kein Fehler, sondern der Weg ohne Arasul.
+ */
+function vereinbarungLesen() {
+  const datei = join(dirname(fileURLToPath(import.meta.url)), "arasul.json");
+  try {
+    const gelesen = JSON.parse(readFileSync(datei, "utf8"));
+    return gelesen && typeof gelesen === "object" ? gelesen : {};
+  } catch {
+    return {};
+  }
+}
+
+const VEREINBARUNG = vereinbarungLesen();
+const KOPF = VEREINBARUNG.kopf || null;
+const WEGE = VEREINBARUNG.wege || {};
+const BASIS_NAME = VEREINBARUNG.umgebung?.basis || null;
+const KEY_NAME = VEREINBARUNG.umgebung?.schluessel || null;
+const BASIS = BASIS_NAME ? String(process.env[BASIS_NAME] || "").replace(/\/+$/, "") : "";
+const SCHLUESSEL = KEY_NAME ? String(process.env[KEY_NAME] || "") : "";
+
+/**
+ * Warum diese App keinen Flow starten kann, in einem Satz, oder `null`, wenn
+ * sie es kann. Der Satz nennt die Stelle und nicht das Ergebnis: „ohne Arasul"
+ * ist eine Aussage über das Gerät, „der Wert ist leer" eine über den Container,
+ * und die beiden zu verwechseln hat den Freigabe-Schritt Tage gekostet.
+ */
+function warumKeinRahmen() {
+  if (!BASIS_NAME || !KEY_NAME || !KOPF) {
+    return (
+      "Dieses Gerät hat der App keine Schnittstelle gegeben: neben dem Backend liegt keine " +
+      "ausgefüllte arasul.json. Ohne Arasul hält kein Flow an und niemand entscheidet."
+    );
+  }
+  if (!BASIS) return `Das Gerät hat ${BASIS_NAME} nicht in den Container gelegt, die App kennt ihre Schnittstelle nicht.`;
+  if (!SCHLUESSEL) return `Das Gerät hat ${KEY_NAME} nicht in den Container gelegt, die App hat keinen Schlüssel.`;
+  if (!WEGE.flow_starten) {
+    return `Dieses Gerät nennt in seinem Kontrakt keinen Weg, einen Flow zu starten. ${NAME} kann ${FLOW} dort nicht anfordern.`;
+  }
+  return null;
+}
 
 /**
  * Ein Kopfzeilenwert, wie die Plattform ihn meint.
@@ -53,14 +109,33 @@ function ausUtf8(wert) {
   return wert ? Buffer.from(wert, "latin1").toString("utf8") : null;
 }
 
-/** Ein Aufruf an die Schnittstelle des Geräts. Zurück geht nur, was sie antwortet. */
-async function arasul(verb, pfad, rumpf) {
-  if (!API_URL || !API_SCHLUESSEL) return { code: null, daten: null };
+/** Ein Weg aus der Vereinbarung, mit Werten statt Platzhaltern. */
+function weg(name, werte = {}) {
+  const eintrag = WEGE[name];
+  if (!eintrag?.pfad) return null;
+  return {
+    verb: eintrag.verb || "GET",
+    pfad: eintrag.pfad.replace(/\{([a-z_]+)\}/g, (ganz, schluessel) =>
+      schluessel in werte ? encodeURIComponent(String(werte[schluessel])) : ganz
+    ),
+  };
+}
+
+/**
+ * Ein Aufruf an die Schnittstelle des Geräts.
+ *
+ * Zurück geht, was sie antwortet, und im Fehlerfall ein Satz darüber, was
+ * schiefging. Ein Aufruf, der still nichts zurückgibt, wäre hier der teuerste
+ * Fehler: die App sähe aus wie eine, auf der niemand entscheidet.
+ */
+async function arasul(name, werte, rumpf) {
+  const ziel = weg(name, werte);
+  if (!ziel) return { code: null, daten: null, fehler: `Der Kontrakt dieses Geräts nennt den Weg ${name} nicht.` };
   try {
-    const antwort = await fetch(`${API_URL}${pfad}`, {
-      method: verb,
+    const antwort = await fetch(`${BASIS}${ziel.pfad}`, {
+      method: ziel.verb,
       headers: {
-        "x-api-key": API_SCHLUESSEL,
+        [KOPF]: SCHLUESSEL,
         ...(rumpf ? { "content-type": "application/json" } : {}),
       },
       body: rumpf ? JSON.stringify(rumpf) : undefined,
@@ -73,10 +148,65 @@ async function arasul(verb, pfad, rumpf) {
     } catch {
       daten = null;
     }
-    return { code: antwort.status, daten };
-  } catch {
-    return { code: 0, daten: null };
+    return {
+      code: antwort.status,
+      daten,
+      fehler: antwort.ok
+        ? null
+        : `${ziel.verb} ${ziel.pfad} wurde mit Status ${antwort.status} beantwortet${
+            daten?.error?.message ? `: ${daten.error.message}` : ""
+          }.`,
+    };
+  } catch (fehler) {
+    return { code: 0, daten: null, fehler: `${ziel.verb} ${ziel.pfad} war nicht erreichbar: ${fehler.message}` };
   }
+}
+
+/**
+ * Der Inhalt einer Antwort, egal ob sie einen Umschlag trägt.
+ *
+ * Das Produkt antwortet an manchen Wegen mit `data` darum herum und an anderen
+ * ohne. Wer sich auf eine der beiden Formen festlegt, wirft die andere weg, und
+ * das sieht danach aus wie eine leere Antwort.
+ */
+function inhalt(daten) {
+  if (!daten || typeof daten !== "object") return {};
+  for (const umschlag of ["data", "body", "ergebnis"]) {
+    const innen = daten[umschlag];
+    if (innen && typeof innen === "object") return innen;
+  }
+  return daten;
+}
+
+/**
+ * Hat das Gerät zugestimmt?
+ *
+ * Gefragt wird nach der Klasse der Antwort und nicht nach einer Zahl. Welche
+ * genau ein Weg zurückgibt, ist ein Wert des Produkts: die Vorlage hat sich
+ * darauf festgelegt, und beim ersten Weg, der 200 statt 202 antwortete, fiel
+ * die Nummer des Laufs still unter den Tisch.
+ */
+function gelungen(code) {
+  return typeof code === "number" && code >= 200 && code < 300;
+}
+
+/** Die Nummer eines Laufs aus einer Antwort, unter welchem der üblichen Namen sie auch steht. */
+function laufnummer(daten) {
+  const feld = inhalt(daten);
+  for (const name of ["run_id", "lauf", "lauf_id", "id"]) {
+    const wert = feld[name];
+    if (typeof wert === "number" || (typeof wert === "string" && wert.trim())) return wert;
+  }
+  return null;
+}
+
+/** Eine Liste aus einer Antwort, unter ihrem Namen oder als Antwort selbst. */
+function liste(daten, name) {
+  const feld = inhalt(daten);
+  if (Array.isArray(feld[name])) return feld[name];
+  if (Array.isArray(feld)) return feld;
+  if (Array.isArray(daten)) return daten;
+  return [];
 }
 
 const vorgaenge = [];
@@ -85,7 +215,9 @@ let naechsteNummer = 1;
 /** Wie die Freigabe steht, so steht der Vorgang. Die Namen links kommen vom Gerät. */
 const STATUS = {
   offen: "wartet",
+  wartet: "wartet",
   bestaetigt: "genehmigt",
+  genehmigt: "genehmigt",
   abgelehnt: "abgelehnt",
   abgelaufen: "abgelaufen",
   verfallen: "abgelaufen",
@@ -94,17 +226,27 @@ const STATUS = {
 /**
  * Den Stand eines Vorgangs nachziehen.
  *
- * Gefragt wird das Gerät, und zwar nach der Freigabe zu genau diesem Lauf. Die
- * App fragt nicht nach fremden Läufen und könnte es nicht: der Namensraum
- * steckt im Schlüssel, nicht in der Anfrage.
+ * Gefragt wird das Gerät nach den Freigaben, die dieser App gehören, und
+ * gesucht wird die zu genau diesem Lauf. Die App fragt nicht nach fremden
+ * Läufen und könnte es nicht: der Namensraum steckt im Schlüssel, nicht in der
+ * Anfrage.
  */
 async function nachziehen(vorgang) {
   if (!vorgang.lauf || vorgang.status !== "wartet") return;
-  const { code, daten } = await arasul("GET", `/freigaben?lauf=${vorgang.lauf}`);
-  if (code !== 200) return;
-  const freigabe = (daten?.freigaben || [])[0];
+  const { code, daten, fehler } = await arasul("freigaben_lesen");
+  if (!gelungen(code)) {
+    vorgang.hinweis = fehler;
+    return;
+  }
+  const freigabe = liste(daten, "freigaben").find((eintrag) => String(laufnummer(eintrag)) === String(vorgang.lauf));
   if (!freigabe) return;
-  vorgang.status = STATUS[freigabe.status] || vorgang.status;
+  const stand = STATUS[freigabe.status];
+  if (!stand) {
+    vorgang.hinweis = `Das Gerät nennt die Freigabe "${freigabe.status}", und diesen Stand kennt ${NAME} nicht.`;
+    return;
+  }
+  vorgang.status = stand;
+  vorgang.hinweis = null;
   vorgang.entschieden_von = freigabe.entschieden_von || null;
   vorgang.begruendung = freigabe.begruendung || null;
   vorgang.frist = freigabe.frist || null;
@@ -112,9 +254,10 @@ async function nachziehen(vorgang) {
   // Nach der Bestätigung läuft der Flow ab dem angehaltenen Schritt weiter und
   // schreibt einen Satz. Der gehört an den Vorgang, sobald er da ist.
   if (vorgang.status === "genehmigt" && !vorgang.bemerkung) {
-    const lauf = await arasul("GET", `/flows/runs/${vorgang.lauf}`);
-    if (lauf.code === 200 && lauf.daten?.status === "fertig") {
-      vorgang.bemerkung = lauf.daten.result || null;
+    const lauf = await arasul("lauf_lesen", { lauf: vorgang.lauf });
+    if (gelungen(lauf.code)) {
+      const laufstand = inhalt(lauf.daten);
+      if (laufstand.status === "fertig") vorgang.bemerkung = laufstand.result || laufstand.ergebnis || null;
     }
   }
 }
@@ -146,13 +289,17 @@ const server = createServer(async (anfrage, antwort) => {
   if (pfad === "/gesund") return json(antwort, 200, { status: "ok" });
 
   if (pfad === "/lage") {
+    const fehlt = warumKeinRahmen();
     return json(antwort, 200, {
       app: NAME,
       nutzer,
       rolle,
       // Ob die Plattform da ist, behauptet diese App nicht: sie sagt, ob das
-      // Gerät ihr eine Schnittstelle und einen Schlüssel gegeben hat.
-      arasul: Boolean(API_URL && API_SCHLUESSEL),
+      // Gerät ihr eine Schnittstelle und einen Schlüssel gegeben hat, und wenn
+      // nicht, woran es liegt.
+      arasul: !fehlt,
+      hinweis: fehlt,
+      geraet: VEREINBARUNG.geraet || null,
     });
   }
 
@@ -186,20 +333,30 @@ const server = createServer(async (anfrage, antwort) => {
       hinweis: null,
     };
 
-    const { code, daten } = await arasul("POST", `/flows/${FLOW}/run`, {
-      args: { sache: vorgang.titel, von: vorgang.von, text: vorgang.text },
-      wait_for_result: false,
-    });
-    if (code === 202 && daten?.run_id) {
-      vorgang.lauf = daten.run_id;
-    } else {
-      // Ohne Arasul gibt es keinen Lauf und damit keine Freigabe. Der Vorgang
+    const fehlt = warumKeinRahmen();
+    if (fehlt) {
+      // Ohne Rahmen gibt es keinen Lauf und damit keine Freigabe. Der Vorgang
       // bleibt liegen, und es steht dran, warum: erfinden wäre schlimmer.
       vorgang.status = "ohne entscheidung";
-      vorgang.hinweis =
-        code === null
-          ? "Dieses Gerät hat der App keine Schnittstelle gegeben. Ohne Arasul hält kein Flow an und niemand entscheidet."
-          : `Der Flow ${FLOW} ließ sich nicht starten (Antwort ${code}).`;
+      vorgang.hinweis = fehlt;
+    } else {
+      const { code, daten, fehler } = await arasul(
+        "flow_starten",
+        { flow: FLOW },
+        { args: { sache: vorgang.titel, von: vorgang.von, text: vorgang.text }, wait_for_result: false }
+      );
+      const lauf = gelungen(code) ? laufnummer(daten) : null;
+      if (lauf !== null) {
+        vorgang.lauf = lauf;
+      } else {
+        // Der Rahmen steht, der Lauf kam trotzdem nicht zustande. Das ist etwas
+        // anderes als „ohne Arasul", und es wird auch anders benannt: sonst
+        // sucht der Nächste den Fehler dort, wo keiner ist.
+        vorgang.status = "ohne lauf";
+        vorgang.hinweis =
+          fehler ||
+          `Der Flow ${FLOW} wurde mit Status ${code} angenommen, in der Antwort stand aber keine Nummer des Laufs.`;
+      }
     }
 
     vorgaenge.unshift(vorgang);
@@ -214,6 +371,14 @@ server.listen(PORT, "0.0.0.0", () => {
   // das Betriebssystem eine freie, und dann ist die Zeile hier die einzige
   // Stelle, an der sie überhaupt steht.
   process.stdout.write(`${NAME} hört auf ${server.address().port}\n`);
+  // Beim Start einmal sagen, woran diese App hängt. Wer im Protokoll des
+  // Containers nachsieht, soll die Antwort dort finden und nicht raten.
+  const fehlt = warumKeinRahmen();
+  process.stdout.write(
+    fehlt
+      ? `${NAME} startet keinen Flow: ${fehlt}\n`
+      : `${NAME} spricht mit ${VEREINBARUNG.geraet || "dem Gerät"} über ${BASIS_NAME}, Schlüssel aus ${KEY_NAME}.\n`
+  );
 });
 
 // Docker schickt SIGTERM. Ohne diese Zeilen wartet es zehn Sekunden und

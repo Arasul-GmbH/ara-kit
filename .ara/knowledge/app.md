@@ -113,6 +113,15 @@ anything flies. **A deploy always rolls into staging**, a human switches live, a
 asking, even if you deployed it yourself a minute ago. The procedure with everything that belongs
 to it stands in `.ara/knowledge/deploy.md`.
 
+**What the app gets from the device the kit hands over at deploy.** Under which names the device
+puts the address of the interface and the key into the container, in which header the key travels,
+which ways it carries for a flow: all of that is agreed between kit and product, stands in this one
+device's contract, and goes into the package as `backend/arasul.json`. `--check` prints it
+beforehand and names what this device does not promise. **An app never writes those values into its
+own source.** One that does finds nothing on a device that names them differently, takes that for
+"no Arasul here" and collects items nobody decides on. That is what happened to the scaffold up to
+29.08.2026: the approval step was not refused, it was skipped.
+
 After the switch: one line into the customer's history or into the device's runsheet, and write on
 the app's README. It is the state as it is, in the words of whoever uses the app: what it can do
 today, what it cannot do, what you have to know.
@@ -171,7 +180,9 @@ node .ara/tools/app.mjs --app <name> --new
 ## What you do not do while doing this
 
 - **No product values from your head.** Models, paths, endpoints and limits stand in the device's
-  contract. That holds for an app too: ask `--contract`, do not guess.
+  contract. That holds for an app too: ask `--contract`, do not guess. In the source of an app that
+  holds twice over: what it needs of them it gets in `backend/arasul.json`, and what is not in there
+  it does not have. A value it guesses turns into a silent nothing at runtime.
 - **Do not invent a second store.** A data folder of its own per app is not provided for on the
   device yet. What an app holds in memory is gone after a restart, and that belongs in the README
   and in the conversation, before somebody notices it.

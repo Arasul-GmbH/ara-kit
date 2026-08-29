@@ -28,6 +28,9 @@ const MARKE = {
   abgelehnt: { ton: "nein", text: "abgelehnt" },
   abgelaufen: { ton: "nein", text: "ohne Entscheidung abgelaufen" },
   "ohne entscheidung": { ton: "", text: "niemand entscheidet" },
+  // Der Rahmen steht, der Lauf kam trotzdem nicht zustande. Das ist etwas
+  // anderes als „kein Arasul da", und der Vorgang sagt daneben, was passiert ist.
+  "ohne lauf": { ton: "nein", text: "kein Lauf gestartet" },
 };
 
 const ANSICHTEN = [
@@ -113,8 +116,11 @@ export function App() {
 
       {lage && !lage.arasul && (
         <Meldung>
-          Diese App läuft auf einem Gerät ohne Arasul. Es gibt keine Anmeldung, keinen Flow und
-          keine Freigabe: ein Vorgang wird angenommen, aber niemand entscheidet darüber.
+          {/* Warum kein Flow anhält, sagt die App selbst und nicht diese Seite:
+              „ohne Arasul" und „das Gerät hat den Wert nicht gesetzt" sehen
+              gleich aus und sind es nicht. */}
+          {lage.hinweis || "Diese App erreicht kein Arasul."} Ein Vorgang wird angenommen, aber
+          niemand entscheidet darüber.
         </Meldung>
       )}
 

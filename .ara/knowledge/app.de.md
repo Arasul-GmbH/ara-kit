@@ -114,6 +114,16 @@ etwas fliegt. **Ein Deploy rollt immer in den Teststand**, live schaltet ein Men
 zwar nach einer Rückfrage, auch wenn du gerade selbst eingespielt hast. Das Verfahren mit
 allem, was dazugehört, steht in `.ara/knowledge/deploy.de.md`.
 
+**Was die App vom Gerät bekommt, reicht das Kit beim Einspielen durch.** Unter welchen Namen das
+Gerät ihr die Adresse der Schnittstelle und den Schlüssel in den Container legt, in welcher
+Kopfzeile der Schlüssel mitgeht, welche Wege es für einen Flow führt: alles das ist zwischen Kit
+und Produkt vereinbart, steht im Kontrakt dieses einen Geräts und geht als `backend/arasul.json`
+ins Paket. `--check` gibt es vorher aus und nennt, was dieses Gerät nicht verspricht. **Eine App
+schreibt diese Werte nie in ihren eigenen Quelltext.** Eine, die es tut, findet auf einem Gerät,
+das sie anders nennt, nichts, hält das für „hier läuft kein Arasul" und sammelt Vorgänge, über die
+niemand entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert: der Freigabe-Schritt
+wurde nicht abgelehnt, er wurde übersprungen.
+
 Nach dem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des Geräts,
 und die README der App fortschreiben. Sie ist der Ist-Stand in den Worten dessen, der die
 App benutzt: was sie heute kann, was sie nicht kann, was man wissen muss.
@@ -175,7 +185,10 @@ node .ara/tools/app.mjs --app <name> --new
 ## Was du dabei nicht tust
 
 - **Keine Produktwerte aus dem Kopf.** Modelle, Pfade, Endpunkte und Grenzen stehen im
-  Kontrakt des Geräts. Auch für eine App gilt das: `--contract` fragen, nicht raten.
+  Kontrakt des Geräts. Auch für eine App gilt das: `--contract` fragen, nicht raten. Im
+  Quelltext einer App gilt es doppelt: was sie davon braucht, bekommt sie in
+  `backend/arasul.json`, und was dort nicht steht, hat sie nicht. Ein geratener Wert wird
+  zur Laufzeit ein stilles Nichts.
 - **Keine zweite Ablage erfinden.** Ein eigener Datenordner je App ist am Gerät noch
   nicht vorgesehen. Was eine App im Speicher hält, ist nach einem Neustart weg, und das
   gehört in die README und ins Gespräch, bevor es jemand merkt.
