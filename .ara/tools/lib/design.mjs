@@ -6,10 +6,13 @@
  * Schriften. Das sind Werte des Produkts, also gilt dieselbe Regel wie
  * ueberall: **die Quelle ist der Spiegel**, nicht das Gedaechtnis.
  * `.ara/mirror/` traegt das Artefakt, mit dem installiert wurde, und darin
- * liegen zwei Dateien:
+ * liegt eine Datei, die diese Werte fuehrt:
  *
- *   `apps/*\/src/index.css`            die Werte, je Thema
- *   `packages/marken/src/marken.css`   die Marken und die sechs Bausteine
+ *   `apps/*\/src/index.css`   die Werte, je Thema
+ *
+ * Die Bausteine, die diese Werte benutzen, liegen daneben unter
+ * `packages/marken/src/`; um sie kuemmert sich `lib/marken.mjs`. Hier stehen
+ * nur die Werte.
  *
  * Findet das Kit dort nichts, erfindet es keine Marke. Dann nimmt es die
  * Vorgabe, die mit dieser Fassung des Kits ausgeliefert wurde, und schreibt in
@@ -25,7 +28,7 @@
  * niemand etwas, und die Einstellung des Betriebssystems ist die beste
  * Auskunft, die es gibt.
  *
- * Reine Funktionen bis auf `readDesign` und `readMarken`, die eine Datei lesen.
+ * Reine Funktionen bis auf `readDesign`, das eine Datei liest.
  */
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
@@ -174,25 +177,6 @@ function findCss(mirror) {
 }
 
 /**
- * Das Stylesheet der Bausteine im Spiegel, wenn das Artefakt es mitbringt.
- *
- * Es ist die zweite Haelfte des Aussehens: `design.css` traegt die Werte,
- * `marken.css` die Regeln, die sie benutzen. Die Vorlage bringt eine Kopie
- * mit; liegt im Spiegel eine juengere, gilt die.
- */
-export function findMarken(mirror) {
-  if (!mirror) return null;
-  const file = join(mirror, "packages", "marken", "src", "marken.css");
-  return existsSync(file) && statSync(file).isFile() ? file : null;
-}
-
-/** Der Inhalt des gespiegelten Stylesheets, oder `null`. */
-export function readMarken(mirror) {
-  const file = findMarken(mirror);
-  return file ? { file, css: readFileSync(file, "utf8") } : null;
-}
-
-/**
  * Das Design fuer eine neue App: was gilt, und woher es kommt.
  *
  * `source` ist die Antwort auf die Frage, die der Partner spaeter stellt:
@@ -247,8 +231,9 @@ export function designCss(design, { date, version }) {
         ]
       : [
           ` * Vorgabe des Kits, Stand ${date}. Es lag kein Spiegel vor.`,
-          " * Sobald ein Geraet eingerichtet ist, steht das Aussehen in `.ara/mirror/`;",
-          " * eine neue App uebernimmt es dann von dort.",
+          " * Der Spiegel steht in `.ara/mirror/`, und dorthin holt ihn",
+          " * `node .ara/tools/mirror.mjs --refresh`, auch ohne Installation.",
+          " * Eine neue App uebernimmt das Aussehen dann von dort.",
         ];
   return [
     "/**",

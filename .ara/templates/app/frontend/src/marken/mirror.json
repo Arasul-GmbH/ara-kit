@@ -1,0 +1,17 @@
+{
+  "fassung": "1.1.0",
+  "quelle": "packages/marken/src",
+  "gespiegelt": "2026-08-29",
+  "produktversion": null,
+  "dateien": {
+    "Formular.tsx": "69f4d62c711c8d90f76632db27f6792e73af1d777551f81bdaceb4cd6e474cee",
+    "Karte.tsx": "58f3d2d27c2f9d9cd13ace8139f1759ee7e5aab44992281625429648d36c37a6",
+    "Kopf.tsx": "ce5ca4862b9d570de1f6129a9c6427a9c9840682555d02719a4f66f4bca89bfc",
+    "Liste.tsx": "a45316ac58052c57c71088b07954cdff7709d7d33798791ae6eaeaf2ff0f72a9",
+    "Meldung.tsx": "427458e43acc039870a472485dd036a6ea45aedf34025b8988eea851b742df70",
+    "Menue.tsx": "d48a1bde655a74f974a37ed9159233712ea9d65e987730621242f7abdef1f9b7",
+    "fassung.ts": "bef344ee8d040c8872666b38bbf66990f324d5f47b519ea196dd5e24161188be",
+    "index.ts": "051e8adc8b7c7618f6a8905a25b746915ec2ace6c8a92eed1c75f0520d94dda9",
+    "marken.css": "adb3d4ed0a8edd0533d843b235d27418ab39118cae0dd404e2d9968fe79f4ddf"
+  }
+}

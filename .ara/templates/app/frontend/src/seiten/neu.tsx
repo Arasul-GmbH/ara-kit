@@ -1,5 +1,11 @@
 /**
- * Einen Vorgang einreichen.
+ * Die Formularseite: einen Vorgang einreichen.
+ *
+ * Sie ist aus `Formular`, `Feld` und `Knopf` gebaut, und das ist mehr als eine
+ * Ansammlung von Eingaben: es ist ein `form`, also sendet die Eingabetaste im
+ * letzten Feld ab, und der Browser bietet seine Hilfen an. Die Beschriftung
+ * gehoert zum Feld, weil `Feld` eine Kennung verlangt; ohne sie laese ein
+ * Screenreader ein Feld ohne Namen vor.
  *
  * **Wer ihn einreicht, steht in keinem Feld.** Das sagt die Plattform, und die
  * App liest es aus `api/me`. Ein Namensfeld waere eines, in das jeder einen
@@ -8,7 +14,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Feld, Formular, Karte, Knopf, Kopf, Meldung } from "../bausteine";
+import { Feld, Formular, Karte, Knopf, Kopf, Meldung } from "@marken";
 import { useAnmeldung } from "../rahmen/anmeldung";
 import { useEinreichen } from "../vorgaenge";
 
@@ -33,7 +39,7 @@ export function Neu() {
             ? `Eingereicht als ${anmeldung.nutzer}.`
             : "Das Gerät nennt keinen Namen für diese Sitzung."
         }
-        aktionen={<Knopf onKlick={() => weiter("/")}>Zurück</Knopf>}
+        aktionen={<Knopf onKlick={() => weiter("/")} kennzeichen="zurueck">Zurück</Knopf>}
       />
 
       {einreichen.isError && (
@@ -46,7 +52,12 @@ export function Neu() {
         <Formular
           onAbsenden={absenden}
           aktionen={
-            <Knopf typ="absenden" art="haupt" gesperrt={!titel.trim() || einreichen.isPending}>
+            <Knopf
+              typ="absenden"
+              art="haupt"
+              kennzeichen="einreichen"
+              gesperrt={!titel.trim() || einreichen.isPending}
+            >
               {einreichen.isPending ? "Wird eingereicht …" : "Einreichen"}
             </Knopf>
           }

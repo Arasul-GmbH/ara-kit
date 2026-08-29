@@ -87,7 +87,17 @@ import { lastStand, movePlan, nextSteps, versioned } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
-import { DEFAULT_DARK, designCss, findMarken, readDesign, readMarken } from "./lib/design.mjs";
+import { DEFAULT_DARK, designCss, readDesign } from "./lib/design.mjs";
+import {
+  blocks,
+  classesWithoutRule,
+  exportsOf,
+  hashOf,
+  libraryInMirror,
+  readLibrary,
+  stampOf,
+  writeLibrary,
+} from "./lib/marken.mjs";
 import {
   needsParameter,
   parseHealth,
@@ -2560,11 +2570,31 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
       "frontend/src/app.tsx",
       // Erzeugt beim Anlegen, nicht kopiert: die Werte des Aussehens.
       "frontend/src/design.css",
-      // Gespiegelt: die Regeln, die diese Werte benutzen.
-      "frontend/src/marken.css",
+      // Gespiegelt: die Bausteine, die diese Werte benutzen, und ihr Stempel.
+      "frontend/src/marken/index.ts",
+      "frontend/src/marken/marken.css",
+      "frontend/src/marken/mirror.json",
     ]) {
       assert(existsSync(join(dir, datei)), `aus der Vorlage fehlt: ${datei}`);
     }
+
+    // Die Bibliothek kommt vollstaendig mit, und der Waechter erkennt sie
+    // wieder. Eine App, die nur die Haelfte der Bausteine traegt, faellt sonst
+    // erst beim Bau auf, und der laeuft nicht in jedem Klon.
+    const bibliothek = readLibrary(join(dir, "frontend", "src", "marken"));
+    assert(bibliothek?.fassung, "die Kopie der Bibliothek nennt keine Fassung");
+    assert(blocks(bibliothek).length >= 6, `nur ${blocks(bibliothek).length} Bausteine in der Kopie`);
+    assert(classesWithoutRule(bibliothek).length === 0, "ein Baustein benutzt eine Klasse ohne Regel");
+    for (const baustein of blocks(bibliothek)) {
+      const wort = baustein.replace(/\.tsx$/, "");
+      assert(exportsOf(bibliothek).includes(wort), `${wort} wird nicht ausgegeben`);
+    }
+    const stempel = stampOf(join(dir, "frontend", "src", "marken"));
+    assert(stempel?.fassung === bibliothek.fassung, "der Stempel nennt eine andere Fassung als die Bibliothek");
+    for (const [datei, text] of bibliothek.files) {
+      assert(stempel.dateien[datei] === hashOf(text), `der Stempel passt nicht zu ${datei}`);
+    }
+    assert(tool("marken.mjs", []).status === 0, "der Waechter faellt ueber die frisch angelegte App");
     const manifest = JSON.parse(readFileSync(join(dir, "app.json"), "utf8"));
     assert(manifest.id === name && manifest.name === "Probe", "die Platzhalter der Vorlage wurden nicht ersetzt");
     assert(
@@ -3210,6 +3240,53 @@ await checkAsync("Die Ablage der Vorlage wandert mit ihren Migrationen", async (
   }
 });
 
+check("Der Waechter meldet einen verstellten Spiegel", () => {
+  // Der Spiegel des Designsystems ist eine Kopie, und eine Kopie veraltet
+  // lautlos: wer einen Baustein aendert und die Fassung nicht hebt, sieht in
+  // der Oberflaeche des Geraets das Neue und in jeder App das Alte. Genau die
+  // zwei Erscheinungsbilder, gegen die die Bibliothek gebaut wurde. Nichts an
+  // einer laufenden App wuerde davon rot.
+  const dir = join(ROOT, ".ara", "templates", "app", "frontend", "src", "marken");
+  const bibliothek = readLibrary(dir);
+  assert(bibliothek?.fassung, "die Vorlage traegt keine Bibliothek");
+  assert(blocks(bibliothek).length >= 6, `nur ${blocks(bibliothek).length} Bausteine in der Vorlage`);
+  assert(tool("marken.mjs", []).status === 0, "der Waechter faellt ueber den unveraenderten Spiegel");
+
+  const opfer = join(dir, "Karte.tsx");
+  const heil = readFileSync(opfer, "utf8");
+  try {
+    // Von Hand verstellt: dieselbe Fassung, anderer Inhalt.
+    writeFileSync(opfer, `${heil}\n// eine Zeile, die niemand nachgezogen hat\n`);
+    const verstellt = tool("marken.mjs", []);
+    assert(verstellt.status === 1, "eine verstellte Datei kam durch");
+    assert(/Karte\.tsx/.test(verstellt.stdout), `der Befund nennt die Datei nicht: ${verstellt.stdout}`);
+    assert(/von Hand verstellt/.test(verstellt.stdout), `der Befund sagt nicht, was ist: ${verstellt.stdout}`);
+
+    // Weg ist auch ein Befund: eine Datei, die im Stempel steht und im Ordner fehlt.
+    rmSync(opfer);
+    const fehlt = tool("marken.mjs", []);
+    assert(fehlt.status === 1, "eine fehlende Datei kam durch");
+    assert(/fehlt im Spiegel/.test(fehlt.stdout), `der Befund zur fehlenden Datei fehlt: ${fehlt.stdout}`);
+  } finally {
+    writeFileSync(opfer, heil);
+  }
+  assert(tool("marken.mjs", []).status === 0, "der Spiegel wurde nicht wiederhergestellt");
+
+  // Eine Quelle, die weiter ist als der Spiegel: dann ist er veraltet und
+  // nicht verstellt, und der Waechter sagt beides verschieden.
+  const quelle = mkdtempSync(join(tmpdir(), "ara-marken-"));
+  try {
+    for (const [name, text] of bibliothek.files) writeFileSync(join(quelle, name), text);
+    writeFileSync(join(quelle, "fassung.ts"), "export const FASSUNG = '99.0.0';\n");
+    const alt = tool("marken.mjs", ["--source", quelle]);
+    assert(alt.status === 1, "ein veralteter Spiegel kam durch");
+    assert(/99\.0\.0/.test(alt.stdout), `die Fassung der Quelle wird nicht genannt: ${alt.stdout}`);
+  } finally {
+    rmSync(quelle, { recursive: true, force: true });
+  }
+  return `${blocks(bibliothek).length} Bausteine, Fassung ${bibliothek.fassung}, verstellt, fehlend und veraltet erkannt`;
+});
+
 check("Das Aussehen einer App trägt ein Thema je Block", () => {
   // Die App liest `data-theme` am Elternfenster und setzt es an ihrem eigenen
   // `<html>`. Dafür braucht `design.css` je Thema einen Block. Die
@@ -3261,13 +3338,16 @@ check("Das Aussehen einer App trägt ein Thema je Block", () => {
     assert(/Uebernommen aus dem Spiegel am 2026-08-29, Produktversion 1.2.3/.test(ausSpiegel), "die Herkunft fehlt");
     assert(/aus der Vorgabe des Kits ergaenzt/.test(ausSpiegel), "die Lücke wird verschwiegen");
 
-    // Das Stylesheet der Bausteine liegt an einer anderen Stelle im Artefakt.
-    assert(findMarken(spiegel) === null, "ein Stylesheet wurde gefunden, das es nicht gibt");
-    const marken = join(spiegel, "packages", "marken", "src");
-    mkdirSync(marken, { recursive: true });
-    writeFileSync(join(marken, "marken.css"), ".ara-karte { color: red; }\n");
-    assert(readMarken(spiegel)?.css.includes("ara-karte"), "das gespiegelte Stylesheet wurde nicht gelesen");
-    return "drei Themen, Herkunft benannt, Lücke benannt";
+    // Ohne Spiegel sagt die Datei, wie man an einen kommt. Fund 2 der Werkstatt
+    // am 29.08.2026: sie sagte, das Aussehen stehe in .ara/mirror/, und nicht,
+    // mit welchem Befehl es dorthin kommt.
+    const ohne = designCss(readDesign(null), { date: "2026-08-29", version: null });
+    assert(/mirror\.mjs --refresh/.test(ohne), "die Vorgabe des Kits nennt den Befehl nicht, der einen Spiegel holt");
+
+    // Die Bausteine liegen an einer anderen Stelle im Artefakt, und darum
+    // kuemmert sich lib/marken.mjs.
+    assert(libraryInMirror(spiegel) === null, "eine Bibliothek wurde gefunden, die es nicht gibt");
+    return "drei Themen, Herkunft benannt, Lücke benannt, Weg zum Spiegel genannt";
   } finally {
     rmSync(spiegel, { recursive: true, force: true });
   }
@@ -4682,9 +4762,14 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
     ".gitkeep",
     "Dockerfile",
   ]);
-  // Die Bausteine werden aus Arasuls Steuerungsordner gespiegelt und tragen
-  // dessen Nummern (W1 bis W5). Sie heissen hier so, wie sie dort heissen.
-  const mirrored = /^\.ara\/vorlagen\/bausteine\//;
+  // Zwei Ordner sind gespiegelt und tragen die Namen ihrer Quelle. Die
+  // Textbausteine kommen aus Arasuls Steuerungsordner und tragen dessen
+  // Nummern (W1 bis W5); die Bibliothek des Designsystems kommt aus
+  // `packages/marken` des Produkts, und ihre Dateien heissen wie die
+  // Bausteine, die darin stehen. Umbenennen hiesse hier: den Spiegel
+  // verstellen, und danach kann kein Vergleich mit der Quelle mehr sagen, ob
+  // eine Datei nachgezogen wurde oder von Hand geaendert.
+  const mirrored = /^\.ara\/(vorlagen\/bausteine|templates\/app\/frontend\/src\/marken)\//;
 
   const offenders = files.filter((path) => {
     const parts = path.split("/");

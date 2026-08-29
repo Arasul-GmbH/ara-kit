@@ -101,7 +101,8 @@ import {
   validName,
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
-import { designCss, readDesign, readMarken } from "./lib/design.mjs";
+import { designCss, readDesign } from "./lib/design.mjs";
+import { libraryInMirror, readLibrary, writeLibrary } from "./lib/marken.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 
 helpOnly(import.meta.url);
@@ -296,21 +297,28 @@ function createApp(name) {
 
   // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Sonst steht die
   // Vorgabe des Kits in der Datei, und sie sagt selbst, dass sie es ist. Es
-  // sind zwei Dateien: `design.css` traegt die Werte je Thema, `marken.css` die
-  // Regeln, die sie benutzen.
+  // sind zwei Stuecke: `design.css` traegt die Werte je Thema, der Ordner
+  // `marken/` die Bausteine und ihre Regeln.
   const mirror = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
   const design = readDesign(existsSync(mirror) ? mirror : null);
-  const marken = existsSync(mirror) ? readMarken(mirror) : null;
+  const source = readLibrary(libraryInMirror(existsSync(mirror) ? mirror : null));
   const srcDir = join(dir, "frontend", "src");
   if (existsSync(srcDir)) {
     writeFileSync(
       join(srcDir, "design.css"),
       designCss(design, { date: today(), version: mirrorState()?.version || null })
     );
-    // Die Vorlage bringt eine Kopie mit. Liegt im Spiegel eine, gilt die: sie
-    // ist die des Geraets, mit dem hier gearbeitet wird.
-    if (marken) writeFileSync(join(srcDir, "marken.css"), marken.css);
+    // Die Vorlage bringt eine Kopie der Bibliothek mit. Liegt im Spiegel eine,
+    // gilt die: sie ist die des Geraets, mit dem hier gearbeitet wird. Danach
+    // haelt `marken.mjs` beide aneinander.
+    if (source) {
+      writeLibrary(join(srcDir, "marken"), source, {
+        date: today(),
+        version: mirrorState()?.version || null,
+      });
+    }
   }
+  const library = readLibrary(join(srcDir, "marken"));
 
   writeState({ app: name });
   console.log(
@@ -322,8 +330,8 @@ function createApp(name) {
         "- Oberfläche, Backend und ein Flow mit Freigabe liegen als Vorlage darin"
       ),
       t(
-        `- Appearance: ${design.source === "mirror" ? `out of the mirror (${relative(ROOT, design.file)})` : "the kit's default, no mirror was there"}${marken ? ", building blocks too" : ""}`,
-        `- Aussehen: ${design.source === "mirror" ? `aus dem Spiegel (${relative(ROOT, design.file)})` : "Vorgabe des Kits, es lag kein Spiegel vor"}${marken ? ", die Bausteine auch" : ""}`
+        `- Appearance: ${design.source === "mirror" ? `out of the mirror (${relative(ROOT, design.file)})` : "the kit's default, no mirror was there.\n  node .ara/tools/mirror.mjs --refresh fetches one"}${library ? `\n- Blocks: version ${library.fassung}, ${source ? "out of the mirror" : "the copy of the scaffold"}` : ""}`,
+        `- Aussehen: ${design.source === "mirror" ? `aus dem Spiegel (${relative(ROOT, design.file)})` : "Vorgabe des Kits, es lag kein Spiegel vor.\n  node .ara/tools/mirror.mjs --refresh holt einen"}${library ? `\n- Bausteine: Fassung ${library.fassung}, ${source ? "aus dem Spiegel" : "die Kopie der Vorlage"}` : ""}`
       ),
       "",
       t(
