@@ -13,6 +13,22 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.18.0 (2026-08-29)
+
+Contract: up to 5
+
+- The kit understands contract versions 4 and 5. Up to 0.17.0 it understood up to 3, and the Orin has carried 5 since 29.08.2026: `--check` still took a manifest, `--deploy` refused, and a stranger got no further. Version 4 brings `marken` in the manifest, version 5 the three environment values in their role (`umgebung.basis`, `umgebung.schluessel`, `umgebung.datenbank`) and, per endpoint, its path relative to the address.
+- An app out of the scaffold now calls its ways relative to the address the device puts into its container. `ARASUL_API_URL` ends on the prefix of the external interface, and the endpoints' paths begin with it: whoever joins the two calls it twice and gets a 404. Which of the two applies is not the scaffold's decision but the contract's: the kit writes both into the `arasul.json` next to the backend.
+- The mirror of the design system comes out of the product's package. `marken.json` names the version, fourteen dependencies and seventy-one files with their sha256; seventy of them go into the scaffold, all three sets including `primitive/` and `muster/`. Up to 0.17.0 the kit read a flat folder and took what lay on top: six blocks, and the `index.ts` in it pointed at two folders the mirror did not have.
+- The guard asks a fourth question: does the app have what the library needs. The library is compiled with the app, so its `package.json` has to carry the fourteen packages; without this question the build only falls at the import that points into nothing, and the message then names a primitive instead of the missing package. The completeness question has moved along: instead of "does `index.ts` give out every block" it now reads "does a path lead from `index.ts` to every file", because the library has three levels.
+- The scaffold builds from the full set. The list of cases is the pattern `Datenliste` (sorting, searching, an empty state, and below 900 pixels a card list instead of a table), the form is `Formularseite` with `Feldgruppe`, and the navigation is the pattern `Seitenleiste`. Around two hundred lines of rebuild fell away with it, plus `rahmen/fenster.ts`: the product's one threshold stands in the library.
+- `design.css` is gone. The device's values have stood in the library itself since H3 (`theme.css`), and two files that set the same marks are the second truth: one said light is the default, the other black. An app's `stil.css` now loads the four parts in the order the package names, with the two layer statements that are conditions.
+- The scaffold knows two themes instead of three, and light sets nothing. That is the device's contract since H1; the scaffold held a different one and wrote its fallback `black` at its own `<html>`: in a light interface that put a black frame on the screen. It now reads at its own document, which the shell writes into, plus the message `arasul:theme`, which names the value explicitly.
+- An app says in its manifest which version of the design system it stands on (`marken`, contract 4). It is written when the app is created and when the mirror is pulled up, so exactly when it changes.
+- `secrets.mjs` looked in the keychain anyway with `secrets_store: env` when the `.env` did not know the name. On a computer where another clone has worked before, `--list` showed foreign values as stored. Now the store named in the profile applies.
+- A device on which Arasul was already running needed `tls: selfsigned` by hand in its file, otherwise every call over the interface broke off at the self-issued certificate. `/device` now enters it itself when that is exactly what it fails at.
+- The answer files for `/init` name the value range of the fields that only know certain values. `first_device_state` was the finding; all seven are named.
+
 ## 0.17.0 (2026-08-29)
 
 Contract: up to 3

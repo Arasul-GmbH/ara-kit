@@ -7,25 +7,37 @@
  *   `QueryClientProvider`   ein Zwischenspeicher fuer alle Abfragen
  *   `useThema`              das Thema des Geraets, gelesen und mitgefuehrt
  *   `BrowserRouter`         die Wege, unter dem Pfad, an dem die App haengt
- *   `Seitenleiste`          die Bereiche, als Spalte oder als Menue
+ *   `SidebarProvider`       auf und zu, und unter 900 px ein Blatt
+ *   `AppSeitenleiste`       die Bereiche, aus dem Muster der Bibliothek
  *   `AnmeldungRahmen`       wer da ist, aus `api/me`, bevor etwas gezeichnet wird
  *
  * Die Reihenfolge ist eine Entscheidung: die Anmeldung steht INNEN, weil sie
  * eine Abfrage ist und dafuer den Zwischenspeicher braucht; die Fehlerwand
  * steht AUSSEN, weil sie sonst genau die Fehler nicht faengt, die in den
- * Rahmen darunter entstehen.
+ * Rahmen darunter entstehen. Die Seitenleiste steht innerhalb des Routers,
+ * weil sie die Adresse liest, und ausserhalb der Anmeldung, weil sie auch
+ * dastehen soll, solange das Geraet noch nicht gesagt hat, wer da ist.
+ *
+ * **Die Anordnung kommt aus der Bibliothek und nicht aus einem eigenen
+ * Raster.** `SidebarProvider` haelt die Spalte frei, `SidebarInset` traegt
+ * den Inhalt, `SidebarTrigger` klappt auf und zu. Was hier ein `grid` waere,
+ * liefe beim naechsten Stand des Geraets von der Oberflaeche weg, in der es
+ * haengt.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Meldung, SidebarInset, SidebarProvider, SidebarTrigger } from "@marken";
 import { basisPfad } from "./rahmen/basis";
 import { useThema } from "./rahmen/thema";
 import { AnmeldungRahmen } from "./rahmen/anmeldung";
 import { Fehlerwand } from "./rahmen/async-boundary";
-import { Meldung } from "@marken";
-import { Seitenleiste } from "./rahmen/seitenleiste";
+import { AppSeitenleiste } from "./rahmen/seitenleiste";
 import { Vorgaenge } from "./seiten/liste";
 import { Neu } from "./seiten/neu";
+
+/** Wie diese App heisst. Das Geraet setzt den Namen im Backend, hier steht er fuer die Leiste. */
+const NAME = "{{name}}";
 
 /**
  * Ein Zwischenspeicher fuer die ganze App.
@@ -68,17 +80,19 @@ export function App() {
     <Fehlerwand>
       <QueryClientProvider client={speicher}>
         <BrowserRouter basename={basisPfad()}>
-          {/* Die Seitenleiste steht INNERHALB des Routers und ausserhalb der
-              Anmeldung: sie liest die Adresse, und sie soll auch dastehen,
-              solange das Geraet noch nicht gesagt hat, wer da ist. */}
-          <div className="rahmen">
-            <Seitenleiste />
-            <main className="ara-strom">
-              <AnmeldungRahmen>
-                <Wege />
-              </AnmeldungRahmen>
-            </main>
-          </div>
+          <SidebarProvider>
+            <AppSeitenleiste name={NAME} />
+            <SidebarInset>
+              <header className="flex h-ui-header items-center gap-2 border-b border-border px-3">
+                <SidebarTrigger />
+              </header>
+              <div className="ara-strom">
+                <AnmeldungRahmen>
+                  <Wege />
+                </AnmeldungRahmen>
+              </div>
+            </SidebarInset>
+          </SidebarProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </Fehlerwand>

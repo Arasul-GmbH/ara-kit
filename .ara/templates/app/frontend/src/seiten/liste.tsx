@@ -1,24 +1,26 @@
 /**
- * Die Datenliste: die Vorgaenge, die es gibt, und der eine, den man gerade
- * ansieht.
+ * Die Liste: die Vorgaenge, die es gibt, und der eine, den man gerade ansieht.
  *
- * Zwei Bausteine tragen sie. `Liste` und `ListenEintrag` sind die Reihe: ein
- * Eintrag ist ein Knopf, sobald er etwas tut, und damit nimmt er Tastatur und
- * Screenreader mit. `Karte` ist der eine ausgewaehlte Vorgang darunter, mit
- * allem, was an ihm haengt.
+ * Sie ist das Muster `Datenliste` der Bibliothek. Das ist mehr als eine
+ * Tabelle: sortieren, suchen, ein Leerzustand, und unter 900 Pixeln wird aus
+ * der Tabelle eine Kartenliste. Vier Dinge, und jede Seite, die sie einzeln
+ * loest, loest sie anders. Bis zum 29.08.2026 hatte die Vorlage sie als Reihe
+ * aus `Liste` und `ListenEintrag`, weil der Spiegel nur die sechs Bausteine
+ * kannte.
+ *
+ * **Die Spalten sind Daten und kein Markup.** `zelle` sagt, was dasteht,
+ * `wert` sagt, wonach sortiert und worin gesucht wird. Beides getrennt, weil
+ * das, was man sieht, selten das ist, wonach man sortiert: „vor 3 Tagen"
+ * sortiert nach einem Zeitstempel.
  *
  * **Welcher ausgewaehlt ist, steht in der Adresse** (`?nr=17`) und nicht im
  * Zustand dieser Seite. Zwei Gruende: ein Verweis auf einen Vorgang bleibt
  * einer, und die Wege der App bleiben eine Ebene tief, wie es `basis.ts`
  * verlangt.
- *
- * Was hier steht, ist der Ablauf und keine Gestaltung. Kein `<div>` mit
- * eigener Klasse, wo ein Baustein dasselbe tut: die zweite Karte neben der
- * ersten ist der Anfang des zweiten Erscheinungsbilds.
  */
 
 import { useSearchParams } from "react-router-dom";
-import { Karte, Kopf, Liste as Reihe, ListenEintrag, Meldung } from "@marken";
+import { Datenliste, Karte, Kopf, Meldung, type Spalte } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
 import { ANSICHTEN, ansichtAus, type Ansicht } from "../rahmen/seitenleiste";
 import { STAND, useLage, useVorgaenge, zeitpunkt, type Vorgang } from "../vorgaenge";
@@ -45,6 +47,35 @@ function Stand({ vorgang }: { vorgang: Vorgang }) {
     </span>
   );
 }
+
+const SPALTEN: ReadonlyArray<Spalte<Vorgang>> = [
+  {
+    schluessel: "titel",
+    titel: "Worum es geht",
+    zelle: (vorgang) => vorgang.titel,
+    wert: (vorgang) => vorgang.titel,
+  },
+  {
+    schluessel: "von",
+    titel: "Eingereicht von",
+    zelle: (vorgang) => vorgang.von,
+    wert: (vorgang) => vorgang.von,
+  },
+  {
+    schluessel: "gestellt",
+    titel: "Wann",
+    zelle: (vorgang) => zeitpunkt(vorgang.gestellt),
+    // Sortiert wird nach dem Zeitstempel und nicht nach dem, was dasteht:
+    // „29.08.2026, 09:12" als Zeichenkette sortiert nach dem Tag im Monat.
+    wert: (vorgang) => vorgang.gestellt,
+  },
+  {
+    schluessel: "status",
+    titel: "Stand",
+    zelle: (vorgang) => <Stand vorgang={vorgang} />,
+    wert: (vorgang) => STAND[vorgang.status]?.wort ?? vorgang.status,
+  },
+];
 
 function Einzelheiten({ vorgang }: { vorgang: Vorgang }) {
   return (
@@ -101,28 +132,21 @@ export function Vorgaenge() {
       <AsyncBoundary abfrage={vorgaenge} laedt="Vorgänge werden geholt">
         {(alle) => {
           const sichtbar = alle.filter((vorgang) => passt(vorgang, ansicht));
-          if (!sichtbar.length) {
-            return (
-              <Meldung>
-                {alle.length ? "In dieser Ansicht liegt nichts." : "Noch kein Vorgang eingereicht."}
-              </Meldung>
-            );
-          }
           const offen = sichtbar.find((vorgang) => vorgang.id === gewaehlt);
           return (
             <>
-              <Reihe beschriftung={`${wortFuer(ansicht)}: ${sichtbar.length} von ${alle.length}`}>
-                {sichtbar.map((vorgang) => (
-                  <ListenEintrag
-                    key={vorgang.id}
-                    titel={vorgang.titel}
-                    hinweis={<Stand vorgang={vorgang} />}
-                    aktiv={vorgang.id === gewaehlt}
-                    kennzeichen={`vorgang-${vorgang.id}`}
-                    onKlick={() => waehlen(vorgang.id)}
-                  />
-                ))}
-              </Reihe>
+              <Datenliste
+                daten={sichtbar}
+                spalten={SPALTEN}
+                kennung={(vorgang) => String(vorgang.id)}
+                beschriftung={`${wortFuer(ansicht)}: ${sichtbar.length} von ${alle.length}`}
+                filter
+                filterPlatzhalter="In den Vorgängen suchen …"
+                leer={{
+                  titel: alle.length ? "In dieser Ansicht liegt nichts." : "Noch kein Vorgang eingereicht.",
+                }}
+                aufZeile={(vorgang) => waehlen(vorgang.id)}
+              />
               {offen && <Einzelheiten vorgang={offen} />}
             </>
           );

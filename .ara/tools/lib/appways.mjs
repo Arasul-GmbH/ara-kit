@@ -2,7 +2,7 @@
  * Was eine App vom Gerät bekommt, und wie sie es erfährt.
  *
  * Eine App im Container weiß von sich aus nichts über das Gerät, auf dem sie
- * läuft. Sie braucht vier Dinge, und alle vier sind zwischen Kit und Produkt
+ * läuft. Sie braucht fünf Dinge, und alle fünf sind zwischen Kit und Produkt
  * vereinbart, stehen also im Kontrakt und nirgends sonst:
  *
  *   1. Unter welchem Namen das Gerät ihr die **Adresse** der Schnittstelle in
@@ -11,6 +11,12 @@
  *   3. Wie die **Kopfzeile** heißt, in der dieser Schlüssel mitgeht.
  *   4. Welche **Wege** es dafür gibt: einen Flow starten, einen Lauf lesen,
  *      Freigaben lesen.
+ *   5. Was von diesen Wegen an die Adresse **angehängt** wird. Die Adresse
+ *      endet auf dem Vorsatz der äußeren Schnittstelle, und die Pfade der
+ *      Endpunkte fangen damit an: wer beides aneinanderhängt, ruft den Vorsatz
+ *      zweimal und bekommt einen 404. Seit Kontrakt 5 sagt das Gerät den
+ *      relativen Weg je Endpunkt selbst (`endpunkte[].relativ`), und das Kit
+ *      schreibt ihn der App daneben, statt ihn auszurechnen.
  *
  * Bis zum 29.08.2026 stand nichts davon im Kontrakt, sondern in der Vorlage:
  * `ARASUL_API_URL`, `ARASUL_API_SCHLUESSEL`, `x-api-key` und drei Pfade ohne
@@ -90,6 +96,37 @@ function envName(entry) {
 }
 
 /**
+ * Was von einem Weg an die Adresse gehängt wird, die die App bekommen hat.
+ *
+ * Drei Quellen, in dieser Reihenfolge, und keine davon ist geraten:
+ *
+ *   1. Der Endpunkt trägt seinen Weg **auch relativ** (`relativ`, ab Kontrakt
+ *      5). Abgeschrieben wird er nicht: der Kontrakt schreibt dort seinen
+ *      eigenen Platzhalter (`:name`), das Kit seinen (`{flow}`). Genommen wird
+ *      nur das Stück, das der Endpunkt weglässt, und das wird von diesem Weg
+ *      abgeschnitten.
+ *   2. `umgebung.praefix` samt `basis_enthaelt_praefix`: dann sagt das Gerät
+ *      zwar nichts über den einzelnen Weg, aber welches Stück doppelt wäre.
+ *   3. Gar nichts. Ein Gerät vor Kontrakt 5 sagt dazu nichts, und dann steht
+ *      hier auch nichts. Die App hängt dann den ganzen Pfad an die Adresse, so
+ *      wie das Kit es bis zum 29.08.2026 überall getan hat.
+ */
+function relativeWay(contract, entry, pfad) {
+  const praefixe = [];
+  if (typeof entry?.relativ === "string" && String(entry.pfad).endsWith(entry.relativ)) {
+    praefixe.push(String(entry.pfad).slice(0, -entry.relativ.length));
+  }
+  const umgebung = contract?.umgebung;
+  if (typeof umgebung?.praefix === "string" && umgebung.basis_enthaelt_praefix === true) {
+    praefixe.push(umgebung.praefix);
+  }
+  for (const praefix of praefixe) {
+    if (praefix && pfad.startsWith(`${praefix}/`)) return pfad.slice(praefix.length);
+  }
+  return null;
+}
+
+/**
  * Die Vereinbarung zwischen diesem Gerät und einer App darauf.
  *
  * Zurück kommt beides: was gilt, und was das Gerät nicht verspricht. Der zweite
@@ -102,6 +139,10 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
   const umgebung = contract?.umgebung ?? null;
   const basis = envName(umgebung?.basis);
   const schluessel = envName(umgebung?.schluessel);
+  // Die Datenbank kommt erst mit Kontrakt 5 und nur für eine App mit Backend.
+  // Sie fehlt deshalb nicht, wenn sie fehlt: hier steht dann `null`, und die
+  // App hat ihren Speicher bei sich.
+  const datenbank = envName(umgebung?.datenbank);
 
   if (!umgebung || typeof umgebung !== "object") {
     missing.push(
@@ -154,7 +195,7 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
       );
       continue;
     }
-    wege[way.key] = { verb: way.verb, pfad: way.pfad };
+    wege[way.key] = { verb: way.verb, pfad: way.pfad, relativ: relativeWay(contract, entry, way.pfad) };
   }
 
   return {
@@ -164,7 +205,14 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     geraet: device,
     erzeugt: date,
     kontrakt: typeof contract?.kontrakt === "number" ? contract.kontrakt : null,
-    umgebung: { basis, schluessel, laut_kontrakt: umgebung ?? null },
+    umgebung: {
+      basis,
+      schluessel,
+      datenbank,
+      praefix: typeof umgebung?.praefix === "string" ? umgebung.praefix : null,
+      basis_enthaelt_praefix: umgebung?.basis_enthaelt_praefix === true,
+      laut_kontrakt: umgebung ?? null,
+    },
     kopf,
     wege,
     missing,
@@ -192,11 +240,22 @@ export function arrangementLines(arrangement) {
         `den Schlüssel als \`${arrangement.umgebung.schluessel ?? "?"}\`, und der Schlüssel geht in \`${arrangement.kopf ?? "?"}\` mit.`
     ),
   ];
+  if (arrangement.umgebung.datenbank) {
+    lines.push(
+      t(
+        `- A database of its own comes along, its address as \`${arrangement.umgebung.datenbank}\`.`,
+        `- Eine eigene Datenbank kommt mit, ihre Adresse als \`${arrangement.umgebung.datenbank}\`.`
+      )
+    );
+  }
   for (const way of APP_WAYS) {
     const found = arrangement.wege[way.key];
     lines.push(
       found
-        ? `- ${found.verb} ${found.pfad}: ${way.was}`
+        ? `- ${found.verb} ${found.relativ ?? found.pfad}: ${way.was}` +
+            (found.relativ
+              ? t(" (relative to the address)", " (relativ zur Adresse)")
+              : t(" (the whole path, this device names no relative one)", " (der ganze Pfad, dieses Gerät nennt keinen relativen)"))
         : t(`- missing: the way to ${way.was}`, `- fehlt: der Weg, um ${way.was}`)
     );
   }

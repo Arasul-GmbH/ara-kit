@@ -2,17 +2,19 @@
 /**
  * The guard over the design system: source and mirror stay together.
  *
- * The blocks an app is built from belong to the product. They live there as
- * `packages/marken` and they lie here twice over: once in the app scaffold,
- * so that a fresh clone can build an app that looks like the device, and once
- * in every app that was created from it. Two copies of a thing that keeps
- * moving age silently, and nothing about a running app would go red.
+ * The blocks an app is built from belong to the product. It ships them as a
+ * package: `marken.json` says the version, the dependencies and every file
+ * with its sha256. Here they lie twice over: once in the app scaffold, so that
+ * a fresh clone can build an app that looks like the device, and once in every
+ * app that was created from it. Two copies of a thing that keeps moving age
+ * silently, and nothing about a running app would go red.
  *
- * That is what this guard is for. It knows three questions:
+ * That is what this guard is for. It knows four questions:
  *
  *   was a mirror edited by hand   every file against the hash in `mirror.json`
  *   is a mirror behind            its version against the source's version
- *   is a mirror complete          a block without a rule, a rule without a block
+ *   is a mirror complete          a file no path leads to, a class without a rule
+ *   can it be built at all        every dependency of the library in the app's package.json
  *
  *   node .ara/tools/marken.mjs                 the picture, and 1 on a finding
  *   node .ara/tools/marken.mjs --check         the same, said out loud
@@ -21,8 +23,8 @@
  *   node .ara/tools/marken.mjs --source <folder>   where the source lies
  *   node .ara/tools/marken.mjs --json          for evaluation
  *
- * The source is the mirror of the product, `.ara/mirror/packages/marken/src/`;
- * without one, the kit's scaffold takes its place, because that is what `--new`
+ * The source is the package in the mirror of the product,
+ * `.ara/mirror/packages/marken/`; without one, the kit's scaffold takes its place, because that is what `--new`
  * would have laid down. The scaffold is never its own source: a mirror that
  * measures itself always says yes. `--source` names a folder instead, which is
  * what kit work needs: the library moves in the product before it is in any
@@ -38,18 +40,20 @@
  *
  * Der Waechter ueber das Designsystem: Quelle und Spiegel bleiben aneinander.
  *
- * Die Bausteine, aus denen eine App gebaut wird, gehoeren dem Produkt. Dort
- * heissen sie `packages/marken`, und hier liegen sie doppelt: einmal in der
- * App-Vorlage, damit ein frischer Klon eine App bauen kann, die aussieht wie
- * das Geraet, und einmal in jeder App, die daraus entstanden ist. Zwei Kopien
- * von etwas, das weiterlaeuft, veralten lautlos, und nichts an einer laufenden
- * App wuerde davon rot.
+ * Die Bausteine, aus denen eine App gebaut wird, gehoeren dem Produkt. Es
+ * liefert sie als Paket aus: `marken.json` nennt die Fassung, die
+ * Abhaengigkeiten und jede Datei mit ihrem sha256. Hier liegen sie doppelt:
+ * einmal in der App-Vorlage, damit ein frischer Klon eine App bauen kann, die
+ * aussieht wie das Geraet, und einmal in jeder App, die daraus entstanden ist.
+ * Zwei Kopien von etwas, das weiterlaeuft, veralten lautlos, und nichts an
+ * einer laufenden App wuerde davon rot.
  *
- * Dafuer gibt es diesen Waechter. Er kennt drei Fragen:
+ * Dafuer gibt es diesen Waechter. Er kennt vier Fragen:
  *
  *   von Hand verstellt   jede Datei gegen ihren Hash in `mirror.json`
  *   veraltet             die Fassung des Spiegels gegen die der Quelle
- *   vollstaendig         ein Baustein ohne Regel, eine Ausgabe ohne Baustein
+ *   vollstaendig         eine Datei, zu der kein Weg fuehrt, eine Klasse ohne Regel
+ *   baubar               jede Abhaengigkeit der Bibliothek in der package.json der App
  *
  *   node .ara/tools/marken.mjs                 die Lage, und 1 bei einem Befund
  *   node .ara/tools/marken.mjs --check         dasselbe, ausgesprochen
@@ -58,8 +62,8 @@
  *   node .ara/tools/marken.mjs --source <ordner>   wo die Quelle liegt
  *   node .ara/tools/marken.mjs --json          zur Auswertung
  *
- * Die Quelle ist der Spiegel des Produkts, `.ara/mirror/packages/marken/src/`;
- * ohne ihn tritt die Vorlage des Kits an seine Stelle, denn sie ist das, was
+ * Die Quelle ist das Paket im Spiegel des Produkts,
+ * `.ara/mirror/packages/marken/`; ohne es tritt die Vorlage des Kits an seine Stelle, denn sie ist das, was
  * `--new` hingelegt haette. Ihre eigene Quelle ist die Vorlage nie: ein Spiegel,
  * der sich an sich selbst misst, sagt immer ja. `--source` nennt stattdessen
  * einen Ordner, und genau das braucht die Arbeit am Kit: die Bibliothek bewegt
@@ -73,19 +77,23 @@
  * arbeitet, und sagt das auch.
  */
 
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { ROOT, fail, helpOnly, parseArgs, today } from "./lib/kit.mjs";
 import { t } from "./lib/i18n.mjs";
 import { mirrorState } from "./lib/install.mjs";
 import {
-  blocks,
+  PACKAGE_STAMP,
   classesWithoutRule,
-  exportsOf,
+  dependencyFindings,
   hashOf,
   libraryInMirror,
+  noteVersion,
   readLibrary,
+  readSource,
+  sets,
   stampOf,
+  unreachable,
   writeLibrary,
 } from "./lib/marken.mjs";
 
@@ -100,6 +108,11 @@ const short = (path) => relative(ROOT, path) || ".";
  * Wo die Quelle liegt: der genannte Ordner, sonst der Spiegel des Produkts,
  * sonst die Vorlage des Kits.
  *
+ * Genannt wird das **Paket**, so wie `marken-paket.py --ausgabe` es hinlegt:
+ * ein Ordner mit `marken.json` und `src/` darin. Ein blosser Quellordner tut
+ * es auch, und er sagt weniger: ohne Stempel weiss niemand, welche
+ * Abhaengigkeiten diese Fassung braucht.
+ *
  * Die Vorlage ist die schwaechste der drei, und sie steht trotzdem da. Sie ist
  * selbst ein Spiegel, also kann sie ueber ihren eigenen Stand nichts sagen; ein
  * Spiegel, der sich an sich selbst misst, sagt immer ja. Fuer eine App ist sie
@@ -112,11 +125,11 @@ function findSource() {
   const named = typeof arg.source === "string" ? arg.source : null;
   if (named) {
     const path = named.startsWith("/") ? named : join(process.cwd(), named);
-    if (!existsSync(join(path, "fassung.ts"))) {
+    if (!existsSync(join(path, PACKAGE_STAMP)) && !existsSync(join(path, "fassung.ts"))) {
       fail(
         t(
-          `${named} is not a library: there is no fassung.ts in it.`,
-          `${named} ist keine Bibliothek: darin liegt keine fassung.ts.`
+          `${named} is neither a package nor a library: there is no ${PACKAGE_STAMP} in it and no fassung.ts.`,
+          `${named} ist weder ein Paket noch eine Bibliothek: darin liegt keine ${PACKAGE_STAMP} und keine fassung.ts.`
         )
       );
     }
@@ -125,6 +138,17 @@ function findSource() {
   const inMirror = libraryInMirror(MIRROR);
   if (inMirror) return { dir: inMirror, origin: "mirror" };
   return existsSync(join(SCAFFOLD, "fassung.ts")) ? { dir: SCAFFOLD, origin: "scaffold" } : null;
+}
+
+/** Die `package.json` des Frontends, in dem dieser Spiegel liegt. */
+function frontendPackage(dir) {
+  const path = join(dir, "..", "..", "package.json");
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 /** Jede App, die eine Kopie der Bibliothek traegt. */
@@ -194,14 +218,18 @@ function findings(target, source) {
     out.push(t(`${line} has no rule in marken.css`, `${line} hat keine Regel in marken.css`));
   }
 
-  // Ein Baustein, den index.ts nicht ausgibt, ist einer, den keine App findet.
-  const given = exportsOf(library);
-  for (const name of blocks(library)) {
-    const block = name.replace(/\.tsx$/, "");
-    if (!given.includes(block)) {
-      out.push(t(`index.ts does not give out ${block}`, `die index.ts gibt ${block} nicht aus`));
-    }
+  // Eine Datei, zu der von index.ts aus kein Weg fuehrt, findet keine App, und
+  // der Bau uebersetzt sie trotzdem mit.
+  for (const name of unreachable(library)) {
+    out.push(
+      t(`no path leads from index.ts to ${name}`, `von der index.ts fuehrt kein Weg zu ${name}`)
+    );
   }
+
+  // Die Bibliothek wird mit der App uebersetzt, also muss die App holen, was
+  // sie braucht. Ohne diese Frage faellt der Bau erst an dem Import, der ins
+  // Leere zeigt, und die Meldung nennt dann ein Primitiv statt des Pakets.
+  for (const line of dependencyFindings(library, frontendPackage(target.dir))) out.push(line);
 
   if (source && source.dir !== target.dir) {
     if (source.fassung !== library.fassung) {
@@ -231,9 +259,18 @@ function findings(target, source) {
 }
 
 const source = findSource();
-const library = source ? { ...source, ...readLibrary(source.dir) } : null;
+const read = source ? readSource(source.dir) : null;
+if (source && !read) {
+  fail(t(`${short(source.dir)} holds no library.`, `Unter ${short(source.dir)} liegt keine Bibliothek.`));
+}
+const library = source ? { ...source, ...read } : null;
 if (source && !library.fassung) {
   fail(t(`${short(source.dir)} names no version.`, `${short(source.dir)} nennt keine Fassung.`));
+}
+// Ein Paket, das seinen eigenen Stempel nicht einhaelt, ist keine Quelle: was
+// daraus in eine App ginge, waere nicht das, was ausgeliefert wurde.
+for (const befund of library?.befunde || []) {
+  fail(t(`${short(source.dir)}: ${befund}`, `${short(source.dir)}: ${befund}`));
 }
 
 const targets = [
@@ -273,6 +310,11 @@ if (arg.sync) {
     if (target.dir === library.dir) continue;
     if (!findings(target, library).length) continue;
     writeLibrary(target.dir, library, { date: today(), version });
+    // Das Manifest sagt, auf welcher Fassung die App steht (Kontrakt 4). Wer
+    // den Spiegel nachzieht und die Zahl stehen laesst, hinterlaesst eine
+    // Auskunft, die nicht mehr stimmt -- und zwar genau die, an der das Geraet
+    // eine veraltete Kopie erkennen soll.
+    if (target.app) noteVersion(join(ROOT, "apps", target.app), library.fassung);
     written.push(target.label);
   }
   console.log(
@@ -322,8 +364,12 @@ const lines = [t("Design system: source and mirrors", "Designsystem: Quelle und 
 lines.push(
   source
     ? t(
-        `Source: ${short(source.dir)}, version ${library.fassung}, ${blocks(library).length} blocks`,
-        `Quelle: ${short(source.dir)}, Fassung ${library.fassung}, ${blocks(library).length} Bausteine`
+        `Source: ${short(source.dir)}, version ${library.fassung}, ${library.files.size} files ` +
+          `(${sets(library).primitive} primitives, ${sets(library).muster} patterns, ${sets(library).bausteine} blocks)` +
+          `${library.abhaengigkeiten ? `, ${Object.keys(library.abhaengigkeiten).length} dependencies` : ", no stamp, so no dependencies"}`,
+        `Quelle: ${short(source.dir)}, Fassung ${library.fassung}, ${library.files.size} Dateien ` +
+          `(${sets(library).primitive} Primitive, ${sets(library).muster} Muster, ${sets(library).bausteine} Bausteine)` +
+          `${library.abhaengigkeiten ? `, ${Object.keys(library.abhaengigkeiten).length} Abhaengigkeiten` : ", ohne Stempel, also ohne Abhaengigkeiten"}`
       )
     : t("Source: none, and no scaffold either.", "Quelle: keine, und auch keine Vorlage.")
 );

@@ -1,30 +1,25 @@
 /**
  * Die Seitenleiste: die Wege dieser App und die Ansichten der Liste.
  *
- * Sie ist aus `Liste` und `ListenEintrag` gebaut und aus sonst nichts. Das ist
- * kein Sparen an der Stelle, sondern die Regel: was in einer App wie ein
- * Baustein aussieht, IST einer, sonst laeuft es beim naechsten Stand des
- * Geraets von der Oberflaeche weg, in der es haengt.
+ * Sie ist das Muster `Seitenleiste` der Bibliothek und sonst nichts. Bis zum
+ * 29.08.2026 baute die Vorlage sie sich aus `Liste`, `ListenEintrag` und
+ * `Menue` selbst zusammen, weil der Spiegel nur die sechs Bausteine kannte.
+ * Das waren rund hundert Zeilen fuer etwas, das die Bibliothek fertig
+ * mitbringt -- samt dem, was man an einer Navigation sonst vergisst: unter
+ * 900 Pixeln wird sie ein Blatt ueber der Seite, sie klappt auf Symbolbreite
+ * zu, `aria-current="page"` steht am aktiven Eintrag, und Escape schliesst.
  *
- * **Zwei Gestalten, ein Inhalt.** Ueber 900 Pixeln steht sie als Spalte neben
- * dem Inhalt, darunter liegt derselbe Inhalt im `Menue` ueber der Seite. Der
- * Baustein bringt dafuer mit, was man an einer Flaeche, die etwas verdeckt,
- * sonst vergisst: Escape schliesst, der Fokus springt hinein und danach
- * zurueck, und mit Tab kommt niemand hinter das offene Menue. Wer das
- * nachbaut, baut die Haelfte davon nach.
- *
- * **Jeder Klick schliesst.** Ein Menue, das nach der Auswahl offen bleibt,
- * verdeckt genau das, wofuer man es geoeffnet hat.
+ * **Hier stehen nur die Eintraege.** Welcher aktiv ist, sagt diese App, denn
+ * sie kennt ihren Router; das Muster kennt keinen.
  *
  * Die Ansichten stehen in der Suchanfrage und nicht im Zustand dieser
  * Komponente: ein Verweis auf "die offenen" bleibt damit einer, und die Wege
  * der App bleiben eine Ebene tief (siehe `basis.ts`).
  */
 
-import { useState } from "react";
+import { FilePlusIcon, InboxIcon } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Knopf, Liste, ListenEintrag, Menue } from "@marken";
-import { useSchmalesFenster } from "./fenster";
+import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from "@marken";
 
 /** Die Ansichten der Vorgangsliste. `alle` steht ohne Suchanfrage da. */
 export const ANSICHTEN = [
@@ -41,68 +36,51 @@ export function ansichtAus(suche: URLSearchParams): Ansicht {
   return ANSICHTEN.some((eintrag) => eintrag.id === wert) ? (wert as Ansicht) : "alle";
 }
 
-interface WegeProps {
-  onGewaehlt: () => void;
-}
-
-function Wege({ onGewaehlt }: WegeProps) {
+export function AppSeitenleiste({ name }: { name: string }) {
   const [suche] = useSearchParams();
   const ort = useLocation();
   const weiter = useNavigate();
+  const { schmal, setzeBlattOffen } = useSidebar();
   const ansicht = ansichtAus(suche);
   const aufListe = ort.pathname === "/";
 
+  // Auf einem schmalen Bildschirm liegt die Leiste ueber der Seite. Eine, die
+  // nach der Auswahl offen bleibt, verdeckt genau das, wofuer man sie
+  // geoeffnet hat.
   const gehe = (ziel: string) => {
     weiter(ziel);
-    onGewaehlt();
+    if (schmal) setzeBlattOffen(false);
   };
 
-  return (
-    <>
-      <Liste beschriftung="Vorgänge">
-        {ANSICHTEN.map((eintrag) => (
-          <ListenEintrag
-            key={eintrag.id}
-            titel={eintrag.wort}
-            aktiv={aufListe && eintrag.id === ansicht}
-            kennzeichen={`ansicht-${eintrag.id}`}
-            onKlick={() => gehe(eintrag.id === "alle" ? "/" : `/?ansicht=${eintrag.id}`)}
-          />
-        ))}
-      </Liste>
-
-      <Liste beschriftung="Einreichen">
-        <ListenEintrag
-          titel="Neuer Vorgang"
-          aktiv={ort.pathname === "/neu"}
-          kennzeichen="weg-neu"
-          onKlick={() => gehe("/neu")}
-        />
-      </Liste>
-    </>
-  );
-}
-
-export function Seitenleiste() {
-  const schmal = useSchmalesFenster();
-  const [offen, setOffen] = useState(false);
-
-  if (!schmal) {
-    return (
-      <aside className="seitenleiste" aria-label="Bereiche">
-        <Wege onGewaehlt={() => undefined} />
-      </aside>
-    );
-  }
+  const gruppen: SeitenleistenGruppe[] = [
+    {
+      titel: "Vorgänge",
+      eintraege: ANSICHTEN.map((eintrag) => ({
+        kennung: `ansicht-${eintrag.id}`,
+        name: eintrag.wort,
+        symbol: <InboxIcon />,
+        aktiv: aufListe && eintrag.id === ansicht,
+        aufKlick: () => gehe(eintrag.id === "alle" ? "/" : `/?ansicht=${eintrag.id}`),
+      })),
+    },
+    {
+      titel: "Einreichen",
+      eintraege: [
+        {
+          kennung: "weg-neu",
+          name: "Neuer Vorgang",
+          symbol: <FilePlusIcon />,
+          aktiv: ort.pathname === "/neu",
+          aufKlick: () => gehe("/neu"),
+        },
+      ],
+    },
+  ];
 
   return (
-    <div className="seitenleiste-schmal">
-      <Knopf onKlick={() => setOffen(true)} kennzeichen="menue-auf">
-        Bereiche
-      </Knopf>
-      <Menue offen={offen} onSchliessen={() => setOffen(false)} titel="Bereiche" kennzeichen="menue">
-        <Wege onGewaehlt={() => setOffen(false)} />
-      </Menue>
-    </div>
+    <Leiste
+      marke={<span className="px-2 text-ui-sm font-semibold text-foreground">{name}</span>}
+      gruppen={gruppen}
+    />
   );
 }

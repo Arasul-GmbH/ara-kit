@@ -96,15 +96,17 @@ import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
-import { DEFAULT_DARK, designCss, readDesign } from "./lib/design.mjs";
 import {
-  blocks,
   classesWithoutRule,
-  exportsOf,
+  dependencyFindings,
   hashOf,
   libraryInMirror,
   readLibrary,
+  readPackage,
+  readSource,
+  sets,
   stampOf,
+  unreachable,
   writeLibrary,
 } from "./lib/marken.mjs";
 import {
@@ -2642,11 +2644,13 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
       "frontend/package.json",
       "frontend/tsconfig.json",
       "frontend/src/app.tsx",
-      // Erzeugt beim Anlegen, nicht kopiert: die Werte des Aussehens.
-      "frontend/src/design.css",
-      // Gespiegelt: die Bausteine, die diese Werte benutzen, und ihr Stempel.
+      // Gespiegelt: die Bibliothek, ihre Werte und ihr Stempel. Alle drei
+      // Saetze, und nicht nur die oberste Ebene.
       "frontend/src/marken/index.ts",
       "frontend/src/marken/marken.css",
+      "frontend/src/marken/theme.css",
+      "frontend/src/marken/primitive/button.tsx",
+      "frontend/src/marken/muster/Datenliste.tsx",
       "frontend/src/marken/mirror.json",
     ]) {
       assert(existsSync(join(dir, datei)), `aus der Vorlage fehlt: ${datei}`);
@@ -2657,20 +2661,32 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
     // erst beim Bau auf, und der laeuft nicht in jedem Klon.
     const bibliothek = readLibrary(join(dir, "frontend", "src", "marken"));
     assert(bibliothek?.fassung, "die Kopie der Bibliothek nennt keine Fassung");
-    assert(blocks(bibliothek).length >= 6, `nur ${blocks(bibliothek).length} Bausteine in der Kopie`);
+    const satz = sets(bibliothek);
+    assert(satz.bausteine >= 6, `nur ${satz.bausteine} Bausteine in der Kopie`);
+    assert(satz.primitive >= 40, `nur ${satz.primitive} Primitive in der Kopie`);
+    assert(satz.muster >= 9, `nur ${satz.muster} Muster in der Kopie`);
     assert(classesWithoutRule(bibliothek).length === 0, "ein Baustein benutzt eine Klasse ohne Regel");
-    for (const baustein of blocks(bibliothek)) {
-      const wort = baustein.replace(/\.tsx$/, "");
-      assert(exportsOf(bibliothek).includes(wort), `${wort} wird nicht ausgegeben`);
-    }
+    assert(unreachable(bibliothek).length === 0, `von index.ts fuehrt kein Weg zu ${unreachable(bibliothek).join(", ")}`);
     const stempel = stampOf(join(dir, "frontend", "src", "marken"));
     assert(stempel?.fassung === bibliothek.fassung, "der Stempel nennt eine andere Fassung als die Bibliothek");
     for (const [datei, text] of bibliothek.files) {
       assert(stempel.dateien[datei] === hashOf(text), `der Stempel passt nicht zu ${datei}`);
     }
+    // Die Bibliothek wird mit der App uebersetzt, also muss die App holen, was
+    // sie braucht. Sonst faellt der Bau erst an dem Import, der ins Leere zeigt.
+    const paket = JSON.parse(readFileSync(join(dir, "frontend", "package.json"), "utf8"));
+    assert(
+      dependencyFindings(bibliothek, paket).length === 0,
+      `die package.json der App kennt nicht alles: ${dependencyFindings(bibliothek, paket).join(" | ")}`
+    );
     assert(tool("marken.mjs", []).status === 0, "der Waechter faellt ueber die frisch angelegte App");
     const manifest = JSON.parse(readFileSync(join(dir, "app.json"), "utf8"));
     assert(manifest.id === name && manifest.name === "Probe", "die Platzhalter der Vorlage wurden nicht ersetzt");
+    // Auf welcher Fassung die App steht, sagt sie im Manifest (Kontrakt 4).
+    assert(
+      manifest.marken === bibliothek.fassung,
+      `app.json nennt marken ${manifest.marken}, die Bibliothek steht auf ${bibliothek.fassung}`
+    );
     assert(
       !/\{\{[a-z]+\}\}/.test(readFileSync(join(dir, "README.md"), "utf8")),
       "in der README steht noch ein Platzhalter"
@@ -3351,17 +3367,23 @@ check("Der Waechter meldet einen verstellten Spiegel", () => {
   const dir = join(ROOT, ".ara", "templates", "app", "frontend", "src", "marken");
   const bibliothek = readLibrary(dir);
   assert(bibliothek?.fassung, "die Vorlage traegt keine Bibliothek");
-  assert(blocks(bibliothek).length >= 6, `nur ${blocks(bibliothek).length} Bausteine in der Vorlage`);
+  const satz = sets(bibliothek);
+  assert(satz.bausteine >= 6, `nur ${satz.bausteine} Bausteine in der Vorlage`);
+  assert(satz.primitive >= 40, `nur ${satz.primitive} Primitive in der Vorlage`);
+  assert(satz.muster >= 9, `nur ${satz.muster} Muster in der Vorlage`);
   assert(tool("marken.mjs", []).status === 0, "der Waechter faellt ueber den unveraenderten Spiegel");
 
-  const opfer = join(dir, "Karte.tsx");
+  // Der Eingriff sitzt in einem Unterordner. Ein Waechter, der nur die oberste
+  // Ebene liest, kam bis zum 29.08.2026 hier durch -- und genau dort liegen
+  // fuenfundfuenfzig der einundsiebzig Dateien.
+  const opfer = join(dir, "primitive", "button.tsx");
   const heil = readFileSync(opfer, "utf8");
   try {
     // Von Hand verstellt: dieselbe Fassung, anderer Inhalt.
     writeFileSync(opfer, `${heil}\n// eine Zeile, die niemand nachgezogen hat\n`);
     const verstellt = tool("marken.mjs", []);
     assert(verstellt.status === 1, "eine verstellte Datei kam durch");
-    assert(/Karte\.tsx/.test(verstellt.stdout), `der Befund nennt die Datei nicht: ${verstellt.stdout}`);
+    assert(/primitive\/button\.tsx/.test(verstellt.stdout), `der Befund nennt die Datei nicht: ${verstellt.stdout}`);
     assert(/von Hand verstellt/.test(verstellt.stdout), `der Befund sagt nicht, was ist: ${verstellt.stdout}`);
 
     // Weg ist auch ein Befund: eine Datei, die im Stempel steht und im Ordner fehlt.
@@ -3387,84 +3409,83 @@ check("Der Waechter meldet einen verstellten Spiegel", () => {
   );
 
   // Eine Quelle, die weiter ist als der Spiegel: dann ist er veraltet und
-  // nicht verstellt, und der Waechter sagt beides verschieden.
+  // nicht verstellt, und der Waechter sagt beides verschieden. Sie tritt als
+  // PAKET an, so wie das Produkt sie ausliefert: Stempel und `src/`.
   const quelle = mkdtempSync(join(tmpdir(), "ara-marken-"));
   try {
-    for (const [name, text] of bibliothek.files) writeFileSync(join(quelle, name), text);
-    writeFileSync(join(quelle, "fassung.ts"), "export const FASSUNG = '99.0.0';\n");
+    const dateien = {};
+    for (const [name, text] of bibliothek.files) {
+      const ziel = join(quelle, "src", name);
+      mkdirSync(dirname(ziel), { recursive: true });
+      writeFileSync(ziel, name === "fassung.ts" ? "export const FASSUNG = '99.0.0';\n" : text);
+      dateien[`src/${name}`] = hashOf(readFileSync(ziel, "utf8"));
+    }
+    writeFileSync(
+      join(quelle, "marken.json"),
+      JSON.stringify({ fassung: "99.0.0", abhaengigkeiten: bibliothek.abhaengigkeiten, dateien }, null, 2)
+    );
     const alt = tool("marken.mjs", ["--source", quelle]);
     assert(alt.status === 1, "ein veralteter Spiegel kam durch");
     assert(/99\.0\.0/.test(alt.stdout), `die Fassung der Quelle wird nicht genannt: ${alt.stdout}`);
+
+    // Das Paket wird an seinem eigenen Stempel gemessen. Eine Datei, die nicht
+    // zu ihrem Hash passt, ist keine Quelle: was daraus in eine App ginge,
+    // waere nicht das, was ausgeliefert wurde.
+    const geleseneQuelle = readPackage(quelle);
+    assert(geleseneQuelle?.befunde.length === 0, `das erfundene Paket ist schon schief: ${geleseneQuelle?.befunde}`);
+    writeFileSync(join(quelle, "src", "cn.ts"), "// verstellt\n");
+    assert(readPackage(quelle).befunde.length === 1, "ein verstelltes Paket kam durch");
+    const verstelltesPaket = tool("marken.mjs", ["--source", quelle]);
+    assert(verstelltesPaket.status !== 0, "der Waechter nahm ein verstelltes Paket als Quelle");
+    assert(
+      /cn\.ts/.test(verstelltesPaket.stderr + verstelltesPaket.stdout),
+      `der Befund nennt die Datei nicht: ${verstelltesPaket.stderr}${verstelltesPaket.stdout}`
+    );
   } finally {
     rmSync(quelle, { recursive: true, force: true });
   }
-  return `${blocks(bibliothek).length} Bausteine, Fassung ${bibliothek.fassung}, verstellt, fehlend, veraltet und die Vorlage als eigene Quelle`;
+  return `${bibliothek.files.size} Dateien (${satz.primitive} Primitive, ${satz.muster} Muster, ${satz.bausteine} Bausteine), Fassung ${bibliothek.fassung}, verstellt, fehlend, veraltet, Paket am eigenen Stempel und die Vorlage als eigene Quelle`;
 });
 
-check("Das Aussehen einer App trägt ein Thema je Block", () => {
-  // Die App liest `data-theme` am Elternfenster und setzt es an ihrem eigenen
-  // `<html>`. Dafür braucht `design.css` je Thema einen Block. Die
-  // Medienabfrage bleibt für den Fall ohne Rahmen, und sie darf nur dann
-  // greifen: sonst überschriebe sie das Thema, das das Gerät gerade nennt.
-  const vorgabe = designCss(readDesign(null), { date: "2026-08-29", version: null });
-  for (const waehler of [":root {", '[data-theme="dark"] {', '[data-theme="light"] {', ":root:not([data-theme])"]) {
-    assert(vorgabe.includes(waehler), `in design.css fehlt der Block ${waehler}`);
+check("Das Aussehen einer App kommt aus der Bibliothek und aus sonst nichts", () => {
+  // Bis zum 29.08.2026 schrieb das Kit die Werte beim Anlegen als `design.css`
+  // daneben, aus der `index.css` der Shell abgelesen. Seit die Bibliothek als
+  // Paket kommt, traegt sie ihre Tokens selbst -- und zwei Dateien, die
+  // dieselben Marken setzen, sind die zweite Wahrheit: die eine sagte, Hell
+  // sei die Vorgabe, die andere Schwarz. Also gibt es nur noch eine.
+  const dir = join(ROOT, ".ara", "templates", "app", "frontend", "src", "marken");
+  const bibliothek = readLibrary(dir);
+  assert(bibliothek, "die Vorlage traegt keine Bibliothek");
+  for (const datei of ["theme.css", "marken.css"]) {
+    assert(bibliothek.files.has(datei), `im Spiegel fehlt ${datei}`);
   }
-  for (const marke of Object.keys(DEFAULT_DARK)) {
-    assert(vorgabe.includes(`--${marke}:`), `die Marke ${marke} steht nicht in design.css`);
+
+  // Die Reihenfolge und die Schichten stehen so in der EINBAU.md des Pakets,
+  // und beide Angaben sind Bedingungen: `@theme` in einer Schicht ist keins
+  // mehr, und ungeschichtetes CSS gewinnt gegen jede Utility.
+  const stil = readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "src", "stil.css"), "utf8");
+  const reihe = ['@import "tailwindcss"', '@import "tw-animate-css"', './marken/theme.css";', './marken/marken.css" layer(components);'];
+  let zuletzt = -1;
+  for (const stueck of reihe) {
+    const stelle = stil.indexOf(stueck);
+    assert(stelle > zuletzt, `in stil.css steht ${stueck} nicht nach dem davor`);
+    zuletzt = stelle;
   }
-  assert(/Vorgabe des Kits/.test(vorgabe), "die Datei sagt nicht, dass sie die Vorgabe des Kits ist");
+  assert(!stil.includes("design.css\""), "stil.css laedt noch eine design.css");
+  assert(!existsSync(join(ROOT, ".ara", "tools", "lib", "design.mjs")), "lib/design.mjs liegt noch da");
 
-  // Mit einem Spiegel gilt der Spiegel, und die Datei sagt es. Der erfundene
-  // Spiegel nennt zwei Werte anders und einen gar nicht: der genannte gilt, der
-  // fehlende wird benannt statt stillschweigend ersetzt.
-  const spiegel = mkdtempSync(join(tmpdir(), "ara-spiegel-"));
-  try {
-    const css = join(spiegel, "apps", "shell", "src");
-    mkdirSync(css, { recursive: true });
-    writeFileSync(
-      join(css, "index.css"),
-      [
-        ":root {",
-        "  --background: #010203;",
-        "  --foreground: #fefefe;",
-        "  --radius-lg: 20px;",
-        "}",
-        "",
-        "[data-theme='dark'] {",
-        "  --background: #111213;",
-        "}",
-        "",
-        ".light {",
-        "  --background: #fafbfc;",
-        "}",
-        "",
-      ].join("\n")
-    );
-    const design = readDesign(spiegel);
-    assert(design.source === "mirror", "der Spiegel wurde nicht gelesen");
-    assert(design.dark.background === "#010203", `Schwarz kommt nicht aus dem Spiegel: ${design.dark.background}`);
-    assert(design.dim.background === "#111213", `Dunkel kommt nicht aus dem Spiegel: ${design.dim.background}`);
-    assert(design.light.background === "#fafbfc", `Hell kommt nicht aus dem Spiegel: ${design.light.background}`);
-    assert(design.shape["radius-lg"] === "20px", "die Rundungen kommen nicht aus dem Spiegel");
-    assert(design.missing.includes("card"), `der fehlende Wert wird nicht benannt: ${design.missing.join(", ")}`);
-    const ausSpiegel = designCss(design, { date: "2026-08-29", version: "1.2.3" });
-    assert(/Uebernommen aus dem Spiegel am 2026-08-29, Produktversion 1.2.3/.test(ausSpiegel), "die Herkunft fehlt");
-    assert(/aus der Vorgabe des Kits ergaenzt/.test(ausSpiegel), "die Lücke wird verschwiegen");
+  // Zwei Themen, und Hell setzt nichts. Das ist der Vertrag des Geraets, und
+  // die Vorlage hielt bis zum 29.08.2026 einen anderen: sie kannte drei Werte
+  // und schrieb ihren Rueckfall `black` an ihr eigenes `<html>` -- in einer
+  // hellen Oberflaeche stand damit ein schwarzer Rahmen.
+  const thema = readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "src", "rahmen", "thema.ts"), "utf8");
+  assert(/THEMEN = \["light", "dark"\]/.test(thema), "die Vorlage kennt nicht genau die zwei Themen des Geraets");
+  assert(!/"black"/.test(thema), "die Vorlage kennt noch das Thema black");
+  const theme = bibliothek.files.get("theme.css");
+  assert(theme.includes(":root {"), "theme.css traegt keinen :root-Block");
+  assert(/\[data-theme=['"]dark['"]\]/.test(theme), "theme.css traegt keinen Block fuer Dunkel");
 
-    // Ohne Spiegel sagt die Datei, wie man an einen kommt. Fund 2 der Werkstatt
-    // am 29.08.2026: sie sagte, das Aussehen stehe in .ara/mirror/, und nicht,
-    // mit welchem Befehl es dorthin kommt.
-    const ohne = designCss(readDesign(null), { date: "2026-08-29", version: null });
-    assert(/mirror\.mjs --refresh/.test(ohne), "die Vorgabe des Kits nennt den Befehl nicht, der einen Spiegel holt");
-
-    // Die Bausteine liegen an einer anderen Stelle im Artefakt, und darum
-    // kuemmert sich lib/marken.mjs.
-    assert(libraryInMirror(spiegel) === null, "eine Bibliothek wurde gefunden, die es nicht gibt");
-    return "drei Themen, Herkunft benannt, Lücke benannt, Weg zum Spiegel genannt";
-  } finally {
-    rmSync(spiegel, { recursive: true, force: true });
-  }
+  return `theme.css und marken.css im Spiegel, stil.css in der Reihenfolge der EINBAU.md, zwei Themen`;
 });
 
 check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wird gesagt", () => {
@@ -4171,10 +4192,13 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".ara/templates/app/backend/ablage/migrationen/001-vorgaenge.sql",
     ".ara/templates/app/frontend/package.json",
     ".ara/templates/app/frontend/src/app.tsx",
-    // Der Spiegel des Designsystems. Ohne ihn hat eine neue App keine
-    // Bausteine, und `--new` legt eine an, die nicht baut.
+    // Der Spiegel des Designsystems, alle drei Saetze. Ohne ihn hat eine neue
+    // App keine Bausteine, und `--new` legt eine an, die nicht baut.
     ".ara/templates/app/frontend/src/marken/index.ts",
     ".ara/templates/app/frontend/src/marken/marken.css",
+    ".ara/templates/app/frontend/src/marken/theme.css",
+    ".ara/templates/app/frontend/src/marken/primitive/button.tsx",
+    ".ara/templates/app/frontend/src/marken/muster/Datenliste.tsx",
     ".ara/templates/app/frontend/src/marken/mirror.json",
     // Die deutsche README und die Lint-Regeln liegen unter .ara/, damit die
     // Wurzel klein bleibt. Beide muessen trotzdem mitkommen.

@@ -6,6 +6,9 @@
   "umgebung": {
     "basis": null,
     "schluessel": null,
+    "datenbank": null,
+    "praefix": null,
+    "basis_enthaelt_praefix": false,
     "laut_kontrakt": null
   },
   "kopf": null,

@@ -15,6 +15,22 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.18.0 (2026-08-29)
+
+Kontrakt: bis 5
+
+- Das Kit versteht die Kontraktfassungen 4 und 5. Bis 0.17.0 verstand es bis 3, und der Orin führt seit dem 29.08.2026 die 5: `--check` nahm ein Manifest noch an, `--deploy` verweigerte, und ein Fremder kam nicht weiter. Fassung 4 bringt `marken` im Manifest, Fassung 5 die drei Umgebungswerte in ihrer Rolle (`umgebung.basis`, `umgebung.schluessel`, `umgebung.datenbank`) und je Endpunkt seinen Weg relativ zur Adresse.
+- Eine App aus der Vorlage ruft ihre Wege jetzt relativ zu der Adresse auf, die das Gerät ihr in den Container legt. `ARASUL_API_URL` endet auf dem Vorsatz der äußeren Schnittstelle, und die Pfade der Endpunkte fangen damit an: wer beides aneinanderhängt, ruft ihn zweimal und bekommt einen 404. Welcher der beiden Wege gilt, entscheidet nicht die Vorlage, sondern der Kontrakt: das Kit schreibt beides in die `arasul.json` neben dem Backend.
+- Der Spiegel des Designsystems entsteht aus dem Paket des Produkts. `marken.json` nennt Fassung, vierzehn Abhängigkeiten und einundsiebzig Dateien mit ihrem sha256; in die Vorlage gehen davon siebzig, alle drei Sätze samt `primitive/` und `muster/`. Bis 0.17.0 las das Kit einen flachen Ordner und nahm mit, was oben lag: sechs Bausteine, und die `index.ts` darin zeigte auf zwei Ordner, die es im Spiegel nicht gab.
+- Der Wächter stellt eine vierte Frage: hat die App, was die Bibliothek braucht. Die Bibliothek wird mit der App übersetzt, also muss deren `package.json` die vierzehn Pakete führen; ohne diese Frage fällt der Bau erst an dem Import, der ins Leere zeigt, und die Meldung nennt dann ein Primitiv und nicht das fehlende Paket. Die Frage nach der Vollständigkeit ist mitgewandert: statt „gibt `index.ts` jeden Baustein aus" heißt sie jetzt „führt von `index.ts` ein Weg zu jeder Datei", denn die Bibliothek hat drei Ebenen.
+- Die Vorlage baut aus dem vollen Satz. Die Vorgangsliste ist das Muster `Datenliste` (sortieren, suchen, Leerzustand, und unter 900 Pixeln eine Kartenliste statt einer Tabelle), das Formular ist `Formularseite` mit `Feldgruppe`, und die Navigation ist das Muster `Seitenleiste`. Rund zweihundert Zeilen eigener Nachbau sind dafür weggefallen, dazu `rahmen/fenster.ts`: die eine Schwelle des Produkts steht in der Bibliothek.
+- `design.css` gibt es nicht mehr. Die Werte des Geräts stehen seit H3 in der Bibliothek selbst (`theme.css`), und zwei Dateien, die dieselben Marken setzen, sind die zweite Wahrheit: die eine sagte, Hell sei die Vorgabe, die andere Schwarz. Die `stil.css` einer App lädt jetzt die vier Teile in der Reihenfolge, die das Paket nennt, mit den zwei Schichtangaben, die Bedingungen sind.
+- Die Vorlage kennt zwei Themen statt drei, und Hell setzt nichts. Das ist der Vertrag des Geräts seit H1; die Vorlage hielt einen anderen und schrieb ihren Rückfall `black` an ihr eigenes `<html>`: in einer hellen Oberfläche stand damit ein schwarzer Rahmen. Gelesen wird jetzt am eigenen Dokument, in das die Shell hineinschreibt, dazu die Nachricht `arasul:theme`, die den Wert ausdrücklich nennt.
+- Eine App sagt im Manifest, auf welcher Fassung des Designsystems sie steht (`marken`, Kontrakt 4). Geschrieben wird sie beim Anlegen und beim Nachziehen des Spiegels, also genau dann, wenn sie sich ändert.
+- `secrets.mjs` sah bei `secrets_store: env` trotzdem im Schlüsselbund nach, wenn die `.env` den Namen nicht kannte. Auf einem Rechner, auf dem schon einmal ein anderer Klon gearbeitet hat, zeigte `--list` damit fremde Werte als hinterlegt an. Jetzt gilt der Speicher, der im Profil steht.
+- Ein Gerät, auf dem Arasul schon lief, brauchte `tls: selfsigned` von Hand in der Akte, sonst brach jeder Aufruf über die Oberfläche am selbst ausgestellten Zertifikat ab. `/device` trägt es jetzt selbst ein, wenn es genau daran scheitert.
+- Die Antwortdateien für `/init` nennen den Wertevorrat der Felder, die nur bestimmte Werte kennen. `first_device_state` war der Fund; genannt werden alle sieben.
+
 ## 0.17.0 (2026-08-29)
 
 Kontrakt: bis 3

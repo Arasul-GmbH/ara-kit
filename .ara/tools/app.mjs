@@ -101,8 +101,7 @@ import {
   validName,
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
-import { designCss, readDesign } from "./lib/design.mjs";
-import { libraryInMirror, readLibrary, writeLibrary } from "./lib/marken.mjs";
+import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 
 helpOnly(import.meta.url);
@@ -292,33 +291,44 @@ function createApp(name) {
   const titel = str(arg.titel) || name;
   const beschreibung =
     str(arg.beschreibung) || t(`${titel}, built with the Ara-Kit.`, `${titel}, gebaut mit dem Ara-Kit.`);
-  copyTemplate(TEMPLATE, dir, { id: name, name: titel, beschreibung, datum: today() });
+  // `marken` nennt die Fassung des Designsystems, auf der die App steht
+  // (Kontrakt 4, freiwillig). Hier steht die der Vorlage; liegt ein Spiegel
+  // vor, wird sie gleich darauf berichtigt.
+  const scaffoldLibrary = readLibrary(join(TEMPLATE, "frontend", "src", "marken"));
+  copyTemplate(TEMPLATE, dir, {
+    id: name,
+    name: titel,
+    beschreibung,
+    datum: today(),
+    marken: scaffoldLibrary?.fassung || "",
+  });
   for (const state of ["offen", "aktiv", "erledigt"]) ensureDir(join(dir, "plans", state));
 
-  // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Sonst steht die
-  // Vorgabe des Kits in der Datei, und sie sagt selbst, dass sie es ist. Es
-  // sind zwei Stuecke: `design.css` traegt die Werte je Thema, der Ordner
-  // `marken/` die Bausteine und ihre Regeln.
+  // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Es ist EIN Stueck:
+  // der Ordner `marken/`, das Paket der Bibliothek. Er traegt die Bausteine,
+  // ihre Regeln und seit dem 29.08.2026 auch die Werte (`theme.css`).
+  //
+  // Bis dahin schrieb das Kit die Werte daneben als `design.css`, aus der
+  // `index.css` der Shell abgelesen. Seit die Bibliothek als Paket kommt,
+  // waeren das zwei Dateien, die dieselben Marken setzen: die eine sagte,
+  // Hell sei die Vorgabe, die andere Schwarz.
   const mirror = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
-  const design = readDesign(existsSync(mirror) ? mirror : null);
-  const source = readLibrary(libraryInMirror(existsSync(mirror) ? mirror : null));
+  const source = readSource(libraryInMirror(existsSync(mirror) ? mirror : null));
   const srcDir = join(dir, "frontend", "src");
-  if (existsSync(srcDir)) {
-    writeFileSync(
-      join(srcDir, "design.css"),
-      designCss(design, { date: today(), version: mirrorState()?.version || null })
-    );
-    // Die Vorlage bringt eine Kopie der Bibliothek mit. Liegt im Spiegel eine,
-    // gilt die: sie ist die des Geraets, mit dem hier gearbeitet wird. Danach
-    // haelt `marken.mjs` beide aneinander.
-    if (source) {
-      writeLibrary(join(srcDir, "marken"), source, {
-        date: today(),
-        version: mirrorState()?.version || null,
-      });
-    }
+  // Die Vorlage bringt eine Kopie der Bibliothek mit. Liegt im Spiegel eine,
+  // gilt die: sie ist die des Geraets, mit dem hier gearbeitet wird. Danach
+  // haelt `marken.mjs` beide aneinander.
+  if (existsSync(srcDir) && source) {
+    writeLibrary(join(srcDir, "marken"), source, {
+      date: today(),
+      version: mirrorState()?.version || null,
+    });
   }
   const library = readLibrary(join(srcDir, "marken"));
+  // Auf welcher Fassung des Designsystems diese App steht, sagt sie im
+  // Manifest (Kontrakt 4, freiwillig). Nicht in der Vorlage als Platzhalter:
+  // welche Fassung hier landet, entscheidet sich erst eine Zeile darueber.
+  noteVersion(dir, library?.fassung || null);
 
   writeState({ app: name });
   console.log(
@@ -329,10 +339,14 @@ function createApp(name) {
         "- frontend, backend and one flow with an approval lie in it as a scaffold",
         "- Oberfläche, Backend und ein Flow mit Freigabe liegen als Vorlage darin"
       ),
-      t(
-        `- Appearance: ${design.source === "mirror" ? `out of the mirror (${relative(ROOT, design.file)})` : "the kit's default, no mirror was there.\n  node .ara/tools/mirror.mjs --refresh fetches one"}${library ? `\n- Blocks: version ${library.fassung}, ${source ? "out of the mirror" : "the copy of the scaffold"}` : ""}`,
-        `- Aussehen: ${design.source === "mirror" ? `aus dem Spiegel (${relative(ROOT, design.file)})` : "Vorgabe des Kits, es lag kein Spiegel vor.\n  node .ara/tools/mirror.mjs --refresh holt einen"}${library ? `\n- Bausteine: Fassung ${library.fassung}, ${source ? "aus dem Spiegel" : "die Kopie der Vorlage"}` : ""}`
-      ),
+      library
+        ? t(
+            `- Design system: version ${library.fassung}, ${library.files.size} files, ` +
+              `${source ? "out of the mirror" : "the copy of the scaffold.\n  node .ara/tools/mirror.mjs --refresh fetches the artifact"}`,
+            `- Designsystem: Fassung ${library.fassung}, ${library.files.size} Dateien, ` +
+              `${source ? "aus dem Spiegel" : "die Kopie der Vorlage.\n  node .ara/tools/mirror.mjs --refresh holt das Artefakt"}`
+          )
+        : t("- Design system: none, the scaffold carries no library", "- Designsystem: keines, die Vorlage traegt keine Bibliothek"),
       "",
       t(
         "Next: write the plan that says what this app should do.",
