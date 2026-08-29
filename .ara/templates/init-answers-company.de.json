@@ -1,5 +1,43 @@
 {
   "_hinweis": "Antwortdatei fuer /init ohne Interview: node .ara/tools/init.mjs --answers <diese Datei>. Die Felder heissen wie in business/profile.md. Die Prosa-Felder sind in Du-Form an dich gerichtet, so schreibt Ara sie ins Profil. Diese Datei ist ein Beispiel mit erfundenen Werten, keine Vorgabe.",
+  "_werte": {
+    "_": "Die Felder darunter kennen nur diese Werte. Alles andere weist --answers ab, samt Liste in der Meldung.",
+    "role": [
+      "partner",
+      "company"
+    ],
+    "language": [
+      "en",
+      "de"
+    ],
+    "detail_level": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "security_level": [
+      "standard",
+      "relaxed"
+    ],
+    "secrets_store": [
+      "env",
+      "keychain"
+    ],
+    "browser": [
+      "yes",
+      "no"
+    ],
+    "invoice": [
+      "yes",
+      "no",
+      "later"
+    ],
+    "first_device_state": [
+      "present",
+      "ordered",
+      "none"
+    ]
+  },
   "role": "company",
   "language": "de",
   "name": "Murat Beispiel",

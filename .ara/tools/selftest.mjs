@@ -109,6 +109,7 @@ import {
   unreachable,
   writeLibrary,
 } from "./lib/marken.mjs";
+import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
   needsParameter,
   parseHealth,
@@ -1371,6 +1372,91 @@ check("Geheimnis-Werkzeug meldet Ablage und Stand", () => {
   assert(/ARASUL_TOKEN/.test(run.stdout), "bekannte Geheimnisse fehlen");
   // Kein Wert darf je in der Ausgabe stehen.
   assert(!/=[A-Za-z0-9_\-]{8,}/.test(run.stdout), "Ausgabe enthält etwas, das wie ein Wert aussieht");
+});
+
+check("Die Antwortdateien nennen den Wertevorrat, und zwar denselben", () => {
+  // Fund des Fremdtests am 29.08.2026: die Beispieldatei nannte
+  // `first_device_state: ordered`, und was sonst noch erlaubt ist, stand
+  // nirgends, wo jemand es beim Ausfuellen sieht. Abgewiesen wurde er
+  // trotzdem, also erst beim dritten Versuch.
+  //
+  // Zwei Listen an zwei Stellen laufen auseinander, deshalb wird hier gefragt,
+  // ob sie noch dieselben sind: die Pruefung in `lib/profile.mjs` und das, was
+  // in den vier Beispieldateien steht.
+  const dateien = [
+    ["init-answers-partner.json", "_values"],
+    ["init-answers-company.json", "_values"],
+    ["init-answers-partner.de.json", "_werte"],
+    ["init-answers-company.de.json", "_werte"],
+  ];
+  for (const [name, schluessel] of dateien) {
+    const inhalt = JSON.parse(readFileSync(join(ROOT, ".ara", "templates", name), "utf8"));
+    const genannt = inhalt[schluessel];
+    assert(genannt, `${name} nennt den Wertevorrat nicht unter ${schluessel}`);
+    assert(typeof genannt._ === "string" && genannt._.length > 20, `${name}: ${schluessel} sagt nicht, wozu es da ist`);
+    for (const [feld, werte] of Object.entries(CLOSED_FIELDS)) {
+      assert(
+        JSON.stringify(genannt[feld]) === JSON.stringify([...werte]),
+        `${name} nennt fuer ${feld} ${JSON.stringify(genannt[feld])}, erlaubt ist ${JSON.stringify([...werte])}`
+      );
+      // Und der Beispielwert selbst muss einer davon sein, sonst faellt die
+      // Datei ueber ihre eigene Pruefung.
+      if (inhalt[feld]) {
+        assert(werte.includes(inhalt[feld]), `${name} setzt ${feld} auf ${inhalt[feld]}, das steht nicht im Vorrat`);
+      }
+    }
+    for (const feld of Object.keys(genannt)) {
+      assert(feld === "_" || feld in CLOSED_FIELDS, `${name} nennt ${feld}, das ist kein Feld mit festem Vorrat`);
+    }
+  }
+  return `${Object.keys(CLOSED_FIELDS).length} Felder, in 4 Antwortdateien gleich`;
+});
+
+check("Bei env gilt env, und der Schluesselbund gilt nicht", () => {
+  // Fund des Fremdtests am 29.08.2026: `getSecret` sah bei `secrets_store: env`
+  // trotzdem im Schluesselbund nach, wenn die .env den Namen nicht kannte. Auf
+  // einem Rechner, auf dem schon einmal ein anderer Klon gearbeitet hat, stand
+  // damit ein fremder Eintrag als "hinterlegt" da -- und ein Kit, das ein
+  // Geheimnis findet, das ihm nicht gehoert, arbeitet mit dem Zugang eines
+  // anderen, ohne dass es jemand sieht.
+  //
+  // Geprueft wird an einem Wegwerf-Kit mit einem eigenen Profil. Angefasst wird
+  // dabei kein Schluesselbund: der andere Speicher ist hier die .env, und die
+  // gewaehlte Ablage ist der Schluesselbund.
+  const work = mkdtempSync(join(tmpdir(), "ara-store-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara", "tools"), join(fork, ".ara", "tools"), { recursive: true });
+  mkdirSync(join(fork, "business"), { recursive: true });
+  const profil = (store) =>
+    writeFileSync(join(fork, "business", "profile.md"), `---\nsecrets_store: ${store}\n---\n`);
+  const forkTool = (args) =>
+    spawnSync("node", [join(fork, ".ara", "tools", "secrets.mjs"), ...args], { encoding: "utf8" });
+  try {
+    writeFileSync(join(fork, ".env"), "ARA_SELFTEST_FREMD=aus-der-env\n");
+
+    // Gewaehlt ist env: der Wert gilt.
+    profil("env");
+    let run = forkTool(["--get", "ARA_SELFTEST_FREMD"]);
+    assert(run.status === 0 && run.stdout === "aus-der-env", `die eigene Ablage wird nicht gelesen: ${run.stdout}`);
+
+    // Gewaehlt ist der Schluesselbund: derselbe Wert liegt in der .env und
+    // gilt nicht mehr. Frueher kam er hier zurueck.
+    profil("keychain");
+    run = forkTool(["--get", "ARA_SELFTEST_FREMD"]);
+    assert(run.status !== 0, `die andere Ablage wurde gelesen: ${run.stdout}`);
+
+    // Verschwiegen wird er trotzdem nicht: wer gerade umgestellt hat, soll
+    // wissen, wo sein Wert liegt.
+    run = spawnSync(
+      "node",
+      [join(fork, ".ara", "tools", "secrets.mjs"), "--show"],
+      { encoding: "utf8", env: { ...process.env, ARA_SELFTEST_FREMD: "" } }
+    );
+    assert(run.status === 0, `--show fiel um: ${run.stderr}`);
+    return "eigene Ablage gilt, die andere nicht, und sie wird trotzdem genannt";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 check("Geheimnis-Werkzeug lehnt unsinnige Ablagen ab", () => {

@@ -162,35 +162,33 @@ sie dort antwortete.
 ## Das Aussehen
 
 Die Vorlage bringt das Erscheinungsbild von Arasul mit, damit eine App im Rahmen der
-Oberfläche nicht wie ein Fremdkörper steht. Es sind zwei Stücke, und sie gehören beide dem
-Produkt:
+Oberfläche nicht wie ein Fremdkörper steht. Es ist **ein** Stück, und es gehört dem Produkt:
+`frontend/src/marken/`, der Spiegel der Bibliothek. Er trägt alle drei Sätze, die Werte
+beider Themen (`theme.css`) und die Regeln der sechs Bausteine (`marken.css`). Der Ordner
+wird **ersetzt, nicht fortgeschrieben.** Der Wächter `node .ara/tools/marken.mjs` hält ihn
+an seiner Quelle.
 
-- `frontend/src/design.css` trägt die **Werte**, ein Block je Thema. Sie kommen **aus dem
-  Spiegel**: `.ara/mirror/` ist das Artefakt, mit dem installiert wurde, und darin steht,
-  was heute gilt. Liegt kein Spiegel vor, schreibt das Kit seine eigene Vorgabe hinein, und
-  die Datei sagt das in ihrem Kopf. Einen Spiegel holt
-  `node .ara/tools/mirror.mjs --refresh`, auch ohne Installation.
-- `frontend/src/marken/` trägt die **Bausteine**, aus denen jede Oberfläche gebaut wird,
-  und das Stylesheet mit ihren Regeln. Der Ordner ist ein Spiegel von `packages/marken` im
-  Produkt und wird **ersetzt, nicht fortgeschrieben.** Der Wächter
-  `node .ara/tools/marken.mjs` hält ihn an seiner Quelle.
+Bis 0.17.0 gab es ein zweites Stück, `frontend/src/design.css`, mit den aus der Shell
+abgelesenen Werten. Seit die Bibliothek ihre Marken selbst trägt, wären das zwei Dateien,
+die dieselben Marken setzen, und die beiden waren sich nicht einig, welches Thema die
+Vorgabe ist. Es gibt jetzt nur noch eines.
 
-Welche Bausteine es gibt, wie eine Seite aus ihnen entsteht und was dabei verboten ist,
-steht in `.ara/knowledge/design-system.md`. Lies das, bevor du an einer Oberfläche baust.
+Welche Sätze es gibt, wie eine Seite aus ihnen entsteht und was dabei verboten ist,
+steht in `.ara/knowledge/design-system.de.md`. Lies das, bevor du an einer Oberfläche baust.
 
 Eigene Regeln gehören ans Ende von `stil.css`, und sie benutzen nur die Namen der Marken,
 keinen einzigen Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer
 Regel steht, bleibt beim nächsten Stand zurück.
 
-**Das Thema kommt vom Gerät und nicht aus der App.** Sie läuft in einem Rahmen mitten in der
-Oberfläche von Arasul, liest dessen `data-theme` am Elternfenster und hört auf Änderungen:
-wer in Arasul umschaltet, sieht die App mitgehen. Ohne Rahmen, also direkt in einem Tab,
-gilt die Einstellung des Betriebssystems. Beides steht in `frontend/src/rahmen/thema.ts`,
-und beides gehört dorthin und an keine zweite Stelle.
+**Das Thema kommt vom Gerät und nicht aus der App.** Die Shell schreibt es in das Dokument
+der App selbst, bei jedem Wechsel und bei jedem Laden, und schickt denselben Wert zusätzlich
+als Nachricht; Hell setzt nichts, denn `:root` ist hell. `frontend/src/rahmen/thema.ts`
+liest deshalb und rät nicht. Ohne Rahmen, also direkt in einem Tab, gilt die Einstellung des
+Betriebssystems, und erst dann schreibt die App das Attribut selbst.
 
 Wenn du das prüfst, prüf es in beiden Themen und in beiden Breiten: 390 für das Telefon,
-1440 für den Schreibtisch. Unter 900 Pixeln rutschen die Aktionen unter den Titel, und eine
-Seite, die dort waagerecht rollt, ist kaputt.
+1440 für den Schreibtisch. Unter 900 Pixeln wird die Seitenleiste ein Blatt über der Seite
+und eine Datenliste eine Kartenliste, und eine Seite, die dort waagerecht rollt, ist kaputt.
 
 ## Was die Vorlage schon ist
 
@@ -218,7 +216,7 @@ darüber hinaus zu wissen ist, sind fünf Stellen, und jede gibt es genau einmal
 | Stelle | Was dort steht |
 | --- | --- |
 | `rahmen/basis.ts` | Unter welchem Pfad die App hängt. Sie rät ihn nicht, sie liest ihn aus der Adresse des Dokuments: live `/apps/<kennung>/`, im Teststand `/apps/<kennung>/test/`. Daraus folgt: **die Wege bleiben eine Ebene tief**, was tiefer will, gehört in die Suchanfrage |
-| `rahmen/thema.ts` | Das Thema, gelesen am Elternfenster |
+| `rahmen/thema.ts` | Das Thema, gelesen am eigenen Dokument, in das die Shell hineinschreibt |
 | `rahmen/schnittstelle.ts` | Das einzige `fetch` der App. Pfad, Anmeldung und der Umschlag um die Antwort stehen dort und sonst nirgends |
 | `rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, als Kontext mit Rolle |
 | `rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage: lädt, ging schief, ist da. Jede Abfrage geht hindurch, und die Seiten bekommen ihre Daten fertig |

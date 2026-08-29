@@ -152,7 +152,7 @@ import {
 } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
 import { getSecret, hasSecret, setSecret } from "./lib/secrets.mjs";
-import { baseUrl, call, reason } from "./lib/arasul.mjs";
+import { baseUrl, call, certificateKind, reason } from "./lib/arasul.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
 import { BUY_URL, STORE_CALL, buyLines, checkToken, cleanToken, installTargets, knownDevices, tokenShape } from "./lib/licence.mjs";
 import {
@@ -1187,6 +1187,28 @@ if (arasul?.ok) {
   // Installation, die das Kit selbst gemacht hatte. Das Kit weiß hier, welches
   // Zertifikat dort liegt: es hat gerade zugesehen, wie es entstanden ist.
   changes.tls = "selfsigned";
+}
+
+/**
+ * Und auf einem Gerät, auf dem Arasul schon lief, wird nachgesehen.
+ *
+ * Das war der Fund des Fremdtests am 29.08.2026: der Eintrag entstand nur nach
+ * einer Installation, die das Kit selbst gemacht hatte. Wer ein laufendes Gerät
+ * in die Hand bekam, schrieb `tls: selfsigned` von Hand hin, nachdem der erste
+ * Aufruf abgebrochen war.
+ *
+ * Geraten wird nichts: `certificateKind` ruft zweimal, einmal mit Prüfung und
+ * einmal ohne, und trägt nur ein, was dabei herauskam. Was nicht zu messen war,
+ * bleibt leer, und dann sagt der Abbruch weiter, was zu tun ist.
+ */
+if (!changes.tls && !existing.tls && arasulRunning(svc.arasul.state) && (existing.api_base || host)) {
+  try {
+    const art = await certificateKind(baseUrl(existing.api_base || host));
+    if (art === "selfsigned") changes.tls = "selfsigned";
+  } catch {
+    // Die Schnittstelle war nicht zu erreichen. Das ist keine Aussage über ihr
+    // Zertifikat, und ein Eintrag daraus wäre eine erfundene.
+  }
 }
 if (!dryRun) writeFrontmatter(file, changes);
 

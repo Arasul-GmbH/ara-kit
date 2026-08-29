@@ -169,20 +169,41 @@ function keychainSet(name, value) {
 
 // --- Schnittstelle ------------------------------------------------------
 
+/** Was in einer der beiden Ablagen unter diesem Namen steht. */
+function fromStore(store, name) {
+  return (store === "env" ? readEnvFile()[name] : keychainGet(name)) || null;
+}
+
 /**
- * Liest ein Geheimnis. Reihenfolge: gewählte Ablage, dann die jeweils andere,
- * dann die Prozessumgebung. So funktioniert ein Kit auch direkt nach einem
- * Wechsel der Ablage und in automatisierten Läufen.
+ * Liest ein Geheimnis. **Nur aus der gewählten Ablage**, dann aus der
+ * Prozessumgebung.
+ *
+ * Bis zum 29.08.2026 sah es danach noch in der jeweils anderen nach, damit ein
+ * Kit direkt nach einem Wechsel der Ablage weiterläuft. Der Fremdtest hat
+ * gezeigt, was das kostet: auf einem Rechner, auf dem schon einmal ein anderer
+ * Klon gearbeitet hat, stand bei `secrets_store: env` ein fremder Eintrag aus
+ * dem Schlüsselbund als „hinterlegt" da. Ein Kit, das ein Geheimnis findet, das
+ * ihm nicht gehört, arbeitet mit dem Zugang eines anderen, und niemand sieht
+ * es. Der Fall „gerade umgestellt" bleibt beantwortbar: `otherStore` sagt, wo
+ * der Name sonst noch liegt, und `secrets.mjs --show` schreibt es hin.
+ *
+ * Die Prozessumgebung bleibt am Ende stehen: sie gehört diesem einen Lauf und
+ * steht nicht auf der Platte.
  */
 export function getSecret(name) {
   if (ENV_ONLY) return readEnvFile()[name] || null;
-  const store = activeStore();
-  const order = store === "keychain" ? ["keychain", "env"] : ["env", "keychain"];
-  for (const source of order) {
-    const value = source === "env" ? readEnvFile()[name] : keychainGet(name);
-    if (value) return value;
-  }
-  return process.env[name] || null;
+  return fromStore(activeStore(), name) || process.env[name] || null;
+}
+
+/**
+ * Liegt der Name in der ANDEREN Ablage? Dann gilt er nicht, und das ist eine
+ * Auskunft und kein Fehler: nach einem Wechsel liegt dort alles, was vorher
+ * hinterlegt war, und `--set` holt es herüber.
+ */
+export function otherStore(name) {
+  if (ENV_ONLY) return null;
+  const other = activeStore() === "keychain" ? "env" : "keychain";
+  return fromStore(other, name) ? other : null;
 }
 
 /** Legt ein Geheimnis in der gewählten Ablage ab. */

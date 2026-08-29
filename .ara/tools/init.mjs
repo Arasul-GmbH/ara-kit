@@ -55,13 +55,13 @@ import { join, resolve } from "node:path";
 import { LANGUAGES, language, localized, setLanguage, t } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
 import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
+import { CLOSED_FIELDS, ROLES } from "./lib/profile.mjs";
 
 const TEMPLATES = join(ROOT, ".ara", "templates");
 const VERSION_FILE = join(ROOT, ".ara", "VERSION");
 const CHANGELOG = localized(join(ROOT, ".ara", "CHANGELOG.md"));
 const PROFILE = join(BUSINESS, "profile.md");
 const COMPANY = join(BUSINESS, "company.md");
-const ROLES = ["partner", "company"];
 
 /**
  * Prosa-Abschnitte des Profils: Ueberschrift zu Feld in der Antwortdatei.
@@ -223,15 +223,8 @@ function readAnswers(path) {
     );
   }
   if (!answers.name) fail(t('"name" is missing from the answer file.', '"name" fehlt in der Antwortdatei.'));
-  for (const [key, allowed] of [
-    ["language", LANGUAGES],
-    ["detail_level", ["low", "medium", "high"]],
-    ["security_level", ["standard", "relaxed"]],
-    ["secrets_store", ["env", "keychain"]],
-    ["browser", ["yes", "no"]],
-    ["invoice", ["yes", "no", "later"]],
-    ["first_device_state", ["present", "ordered", "none"]],
-  ]) {
+  for (const [key, allowed] of Object.entries(CLOSED_FIELDS)) {
+    if (key === "role") continue;
     if (answers[key] && !allowed.includes(answers[key])) {
       fail(
         t(
