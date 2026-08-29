@@ -280,7 +280,19 @@ export function arrangementLines(arrangement) {
  * **Kein Weg und keine Seite wird hier benannt.** Wie die Freigabe im Produkt
  * heisst, steht im Admin-Handbuch und in der API-Referenz des Artefakts, und
  * die liegen im Spiegel. Ein Pfad aus dem Gedaechtnis waere genau die Sorte
- * Zusage, die dieses Kit nicht macht.
+ * Zusage, die dieses Kit nicht macht. Liegt kein Spiegel da, sagt der Text das,
+ * statt auf eine Anleitung zu zeigen, die es hier nicht gibt: der Fremdtest am
+ * 29.08.2026 lief von der Ausgabe ueber `mirror.mjs --docs` bis zu
+ * `--refresh` und stand dann vor der Tokenfrage, drei Spruenge fuer eine
+ * Auskunft, die es nicht gab.
+ *
+ * **Eine Freigabe gilt einem Stand.** Das Geraet fuehrt je App zwei, und ein
+ * frisch eingespieltes Paket liegt nur im Teststand. Wer allein fuer den
+ * Livestand freigegeben ist, sieht davon nichts: die Freigabe steht, die
+ * Uebersicht bleibt leer, und das ist der verwirrendste aller Zustaende. Der
+ * Fremdtest ist genau dort haengen geblieben. Welchen Stand eine Freigabe
+ * meint, entscheidet der Administrator, und wie das im Produkt heisst, steht
+ * wieder im Handbuch.
  */
 export function releaseLines({
   place,
@@ -289,6 +301,7 @@ export function releaseLines({
   deviceCall,
   startRef,
   startPassword = false,
+  docs = false,
 } = {}) {
   const lines = [
     t(
@@ -318,15 +331,15 @@ export function releaseLines({
             `- The start password lies under ${startRef}. A session comes out of it, and the password`,
             "  stays unseen while it does:",
             `      ${deviceCall} --admin-login`,
-            "  Which route the release goes stands in the API reference of the artifact, not in the kit:",
-            "      node .ara/tools/mirror.mjs --docs",
+            `  Which route the release goes stands in the API reference of the artifact, ${docs ? "not in the kit:" : "which is not here:"}`,
+            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : "node .ara/tools/mirror.mjs --refresh   (needs a token)"}`,
           ],
           [
             `- Das Startpasswort liegt unter ${startRef}. Daraus wird eine Sitzung, und das Passwort`,
             "  bleibt dabei ungesehen:",
             `      ${deviceCall} --admin-login`,
-            "  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, nicht im Kit:",
-            "      node .ara/tools/mirror.mjs --docs",
+            `  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, ${docs ? "nicht im Kit:" : "und die liegt hier nicht:"}`,
+            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : "node .ara/tools/mirror.mjs --refresh   (braucht einen Token)"}`,
           ]
         )
       : t(
@@ -345,12 +358,18 @@ export function releaseLines({
   lines.push(
     ...t(
       [
-        `- Or a human does it in the interface: ${base}, logged in as administrator. Which page carries`,
-        "  the release stands in the admin handbook of the artifact. For that the kit is not needed.",
+        `- Or a human does it in the interface: ${base}, logged in as administrator. For that the kit`,
+        "  is not needed. Which page carries the release stands in the admin handbook of the",
+        docs
+          ? "  artifact:\n      node .ara/tools/mirror.mjs --docs"
+          : "  artifact, and there is no mirror here that would hold it.",
       ],
       [
-        `- Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Welche Seite`,
-        "  die Freigabe trägt, steht im Admin-Handbuch des Artefakts. Dafür braucht es das Kit nicht.",
+        `- Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Dafür`,
+        "  braucht es das Kit nicht. Welche Seite die Freigabe trägt, steht im Admin-Handbuch des",
+        docs
+          ? "  Artefakts:\n      node .ara/tools/mirror.mjs --docs"
+          : "  Artefakts, und einen Spiegel, der es führt, gibt es hier nicht.",
       ]
     )
   );
@@ -361,6 +380,15 @@ export function releaseLines({
         "the role says who manages, not who works with it.",
       `Solange niemand freigegeben ist, zeigt ${place} die App niemandem, auch dem Administrator nicht: ` +
         "die Rolle sagt, wer verwaltet, nicht wer damit arbeitet."
+    ),
+    "",
+    t(
+      "**And a release means a slot.** What was deployed just now lies in staging, and whoever is " +
+        "released for the live version only does not see it: the release stands, the overview stays " +
+        "empty. So the release has to mean staging. What that is called there stands in the handbook.",
+      "**Und eine Freigabe gilt einem Stand.** Was gerade eingespielt wurde, liegt im Teststand, und wer " +
+        "nur für den Livestand freigegeben ist, sieht ihn nicht: die Freigabe steht, die Übersicht bleibt " +
+        "leer. Die Freigabe muss also den Teststand meinen. Wie das dort heißt, steht im Handbuch."
     )
   );
   return lines;

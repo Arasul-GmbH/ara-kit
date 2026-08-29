@@ -581,6 +581,23 @@ export function listKeys(sshArgs, transport, key = null) {
  * und ist danach ungültig. Das ist der Weg zurück, den es nicht gibt, und
  * deshalb sagt das Werkzeug vorher, welchen es nimmt.
  */
+/**
+ * Die Laufzeit des Geraets redet dazwischen, und das gehoert nicht in den Beleg.
+ *
+ * Der Fremdtest am 29.08.2026 bekam mitten in den Nachweis des Widerrufs eine
+ * `DeprecationWarning` von Node aus dem Container. Sie sagt nichts ueber den
+ * Schluessel und nichts ueber das Geraet, sie sagt etwas ueber eine Bibliothek.
+ * Herausgenommen wird nur, was erkennbar von der Laufzeit stammt; jede andere
+ * Zeile bleibt stehen, auch eine, die niemand erwartet hat.
+ */
+function withoutRuntimeNoise(text) {
+  return String(text || "")
+    .split("\n")
+    .filter((line) => !/^\(node:\d+\)/.test(line.trim()) && !/^\(Use `node /.test(line.trim()))
+    .join("\n")
+    .trim();
+}
+
 export function revokeKey(sshArgs, transport, prefix) {
   const found = findKeyScript(sshArgs, transport);
   if (!found.ok) return found;
@@ -589,7 +606,7 @@ export function revokeKey(sshArgs, transport, prefix) {
     transport,
     `bash ${JSON.stringify(found.script)} widerrufen ${JSON.stringify(prefix)}`
   );
-  const output = scrub(`${run.stdout}\n${run.stderr}`.trim());
+  const output = withoutRuntimeNoise(scrub(`${run.stdout}\n${run.stderr}`));
   if (run.status !== 0) {
     return { ok: false, message: output || t("The device refused.", "Das Gerät hat abgelehnt.") };
   }

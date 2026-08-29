@@ -142,6 +142,12 @@ reference and admin handbook, `node .ara/tools/mirror.mjs --docs`, and never in 
 **Say that before the deploy, not after it.** Somebody who is shown a screen with a 403 on it takes
 the kit for broken. Somebody who knows beforehand that a release is still to come waits for it.
 
+**And a release means a slot.** The device carries two per app, and a package that was just deployed
+lies in staging only. Somebody released for the live version alone does not see it: the release
+stands and the overview stays empty, which is the most confusing of all states. So the release has
+to mean staging. What it is called there stands in the admin handbook and not here. A foreign test
+on 29.08.2026 got stuck at exactly that point, with the tick set.
+
 After the switch: one line into the customer's history or into the device's runsheet, and write on
 the app's README. It is the state as it is, in the words of whoever uses the app: what it can do
 today, what it cannot do, what you have to know.

@@ -168,7 +168,7 @@ import {
   writeFrontmatter,
 } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
-import { forgetSecret, getSecret, hasSecret, setSecret } from "./lib/secrets.mjs";
+import { forgetSecret, getSecret, hasSecret, otherStore, setSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, certificateKind, reason } from "./lib/arasul.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
 import { BUY_URL, STORE_CALL, buyLines, checkToken, cleanToken, installTargets, knownDevices, tokenShape } from "./lib/licence.mjs";
@@ -983,13 +983,15 @@ function showKeys() {
  * steht hier und nicht unten im Ablauf, damit es beim Lesen ein Absatz bleibt
  * und nicht zwischen zwei Handgriffen steht.
  */
-function revokeNote({ prefix, script, ref, forgotten }) {
+function revokeNote({ prefix, script, ref, forgotten, elsewhere }) {
   const wo = run.transport === "ssh" ? `SSH ${label}` : `lokal, SSH ${label} abgelehnt`;
   return (
     `\n### ${now()} · ${wo}\n` +
     `Kit-Schlüssel ${prefix} am Gerät widerrufen (${script}). ` +
-    `Eintrag ${ref} aus der Ablage genommen${forgotten.length ? ` (${forgotten.join(", ")})` : ""}, ` +
-    "api_key_ref in der Akte geleert. Ein neuer entsteht mit --deploy-key.\n"
+    `Eintrag ${ref} ${forgotten ? `aus der Ablage ${forgotten} genommen` : "lag in der gewählten Ablage nicht"}, ` +
+    "api_key_ref in der Akte geleert. Ein neuer entsteht mit --deploy-key." +
+    (elsewhere ? ` Derselbe Name liegt in der Ablage ${elsewhere}; der gehört einem anderen Klon und bleibt liegen.` : "") +
+    "\n"
   );
 }
 
@@ -1048,8 +1050,14 @@ function revokeOwnKey() {
   if (!done.ok) fail(scrub(done.message));
 
   const forgotten = forgetSecret(existing.api_key_ref);
+  // Was in der ANDEREN Ablage liegt, gehört einem anderen Klon auf diesem
+  // Rechner. Es wird genannt und nicht angefasst.
+  const elsewhere = otherStore(existing.api_key_ref);
   writeFrontmatter(file, { api_key_ref: "", checked: now() });
-  appendFileSync(file, revokeNote({ prefix: list.mine.prefix, script: done.script, ref: existing.api_key_ref, forgotten }));
+  appendFileSync(
+    file,
+    revokeNote({ prefix: list.mine.prefix, script: done.script, ref: existing.api_key_ref, forgotten, elsewhere })
+  );
 
   console.log(
     [
@@ -1061,9 +1069,21 @@ function revokeOwnKey() {
       ),
       ...(done.output ? done.output.split("\n").map((line) => `    ${line}`) : []),
       t(
-        `- The entry ${existing.api_key_ref} is out of the store, api_key_ref in the file is empty.`,
-        `- Der Eintrag ${existing.api_key_ref} ist aus der Ablage heraus, api_key_ref in der Akte ist leer.`
+        `- The entry ${existing.api_key_ref} is out of the store${forgotten ? ` (${forgotten})` : ""}, ` +
+          "api_key_ref in the file is empty.",
+        `- Der Eintrag ${existing.api_key_ref} ist aus der Ablage heraus${forgotten ? ` (${forgotten})` : ""}, ` +
+          "api_key_ref in der Akte ist leer."
       ),
+      ...(elsewhere
+        ? [
+            t(
+              `- The same name lies in the other store (${elsewhere}). It belongs to another clone on this ` +
+                "computer and stayed where it was.",
+              `- Derselbe Name liegt in der anderen Ablage (${elsewhere}). Der gehört einem anderen Klon auf ` +
+                "diesem Rechner und ist liegen geblieben."
+            ),
+          ]
+        : []),
       t(
         "- Every other key on the device stayed as it was.",
         "- Jeder andere Schlüssel am Gerät ist geblieben, wie er war."
@@ -1655,6 +1675,17 @@ function nextSteps() {
           )
         );
       }
+      // Fund 4 des Fremdtests am 29.08.2026: dass ein Geraet Kit-Schluessel
+      // sammelt und man seinen eigenen wiederfinden koennen muss, stand nur im
+      // Blatt. Wer nur die naechsten Schritte liest, erfuhr es nicht.
+      steps.push(
+        t(
+          `Which kit keys lie on the device, and which of them is this kit's: node .ara/tools/device.mjs ` +
+            `--name ${name}${customer ? ` --customer ${customer}` : ""} --keys`,
+          `Welche Kit-Schlüssel am Gerät liegen und welcher davon dieser ist: node .ara/tools/device.mjs ` +
+            `--name ${name}${customer ? ` --customer ${customer}` : ""} --keys`
+        )
+      );
       steps.push(t(`Running operation: /maintain ${place}.`, `Laufender Betrieb: /maintain ${place}.`));
     }
   } else if (!hasSecret("ARASUL_TOKEN")) {

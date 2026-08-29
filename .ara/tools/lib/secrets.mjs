@@ -233,33 +233,35 @@ export function setSecret(name, value) {
 }
 
 /**
- * Nimmt ein Geheimnis wieder heraus, aus beiden Ablagen.
+ * Nimmt ein Geheimnis wieder heraus. **Nur aus der gewählten Ablage.**
  *
  * Ein Wert, der am Gerät nicht mehr gilt, ist kein Geheimnis mehr, sondern eine
  * Falle: er sieht aus wie ein Zugang, und der nächste Aufruf damit endet in
  * einer 401, deren Grund niemand sieht. Ein widerrufener Kit-Schlüssel wird
  * deshalb vergessen und nicht überschrieben.
  *
- * Herausgenommen wird aus beiden Ablagen, auch aus der gerade nicht gewählten:
- * wer die Ablage gewechselt hat, ließe sonst genau dort den toten Wert liegen.
- * Zurück kommt, wo etwas lag.
+ * **Aus der anderen Ablage nicht.** Derselbe Name liegt dort, weil ein anderer
+ * Klon auf diesem Rechner ihn abgelegt hat, und der gehört einem anderen. Genau
+ * dieselbe Regel gilt seit 0.18.0 beim Lesen (`getSecret`), und beim Löschen
+ * wiegt sie schwerer: ein fremdes Geheimnis, das dieses Kit entfernt, ist weg.
+ * Was sonst noch wo liegt, sagt `otherStore`, und der Aufrufer schreibt es hin.
+ *
+ * Zurück kommt die Ablage, aus der etwas herausgenommen wurde, sonst `null`.
  */
 export function forgetSecret(name) {
-  const gone = [];
-  if (readEnvFile()[name] !== undefined) {
-    const lines = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8").split(/\r?\n/) : [];
-    const next = lines.filter((line) => {
-      const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=/);
-      return !match || match[1] !== name;
-    });
-    writeFileSync(ENV_FILE, next.join("\n").replace(/\n+$/, "") + "\n");
-    gone.push("env");
-  }
-  if (!ENV_ONLY && keychainAvailable() && keychainGet(name)) {
+  if (!ENV_ONLY && activeStore() === "keychain") {
+    if (!keychainGet(name)) return null;
     keychainForget(name);
-    gone.push("keychain");
+    return "keychain";
   }
-  return gone;
+  if (readEnvFile()[name] === undefined) return null;
+  const lines = existsSync(ENV_FILE) ? readFileSync(ENV_FILE, "utf8").split(/\r?\n/) : [];
+  const next = lines.filter((line) => {
+    const match = line.match(/^\s*([A-Z_][A-Z0-9_]*)\s*=/);
+    return !match || match[1] !== name;
+  });
+  writeFileSync(ENV_FILE, next.join("\n").replace(/\n+$/, "") + "\n");
+  return "env";
 }
 
 /** Ist gesetzt? Ohne den Wert preiszugeben. */

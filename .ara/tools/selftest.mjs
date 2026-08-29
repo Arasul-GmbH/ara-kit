@@ -1459,6 +1459,37 @@ check("Bei env gilt env, und der Schluesselbund gilt nicht", () => {
   }
 });
 
+check("Vergessen trifft nur die eigene Ablage", () => {
+  // Derselbe Fund wie bei getSecret in 0.18.0, eine Stufe schaerfer: was dieses
+  // Kit aus der ANDEREN Ablage entfernt, ist weg, und dort liegt es, weil ein
+  // anderer Klon auf diesem Rechner es abgelegt hat. Am 29.08.2026 nahm der
+  // erste Entwurf von --revoke-key den Eintrag aus beiden.
+  //
+  // Angefasst wird auch hier kein Schluesselbund: gewaehlt ist der
+  // Schluesselbund, und die andere Ablage ist die .env.
+  const work = mkdtempSync(join(tmpdir(), "ara-vergessen-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara", "tools"), join(fork, ".ara", "tools"), { recursive: true });
+  mkdirSync(join(fork, "business"), { recursive: true });
+  writeFileSync(join(fork, "business", "profile.md"), "---\nsecrets_store: keychain\n---\n");
+  writeFileSync(join(fork, ".env"), "ARA_SELFTEST_FREMD=aus-der-env\n");
+  const lib = JSON.stringify(join(fork, ".ara", "tools", "lib", "secrets.mjs"));
+  try {
+    const run = spawnSync(
+      "node",
+      ["-e", `import(${lib}).then((m) => process.stdout.write(String(m.forgetSecret("ARA_SELFTEST_FREMD")) + "|" + String(m.otherStore("ARA_SELFTEST_FREMD"))))`],
+      { encoding: "utf8" }
+    );
+    assert(run.status === 0, `Vergessen fiel um: ${run.stderr}`);
+    assert(run.stdout.startsWith("null|"), `die andere Ablage wurde angefasst: ${run.stdout}`);
+    assert(readFileSync(join(fork, ".env"), "utf8").includes("aus-der-env"), "der fremde Eintrag ist aus der .env verschwunden");
+    assert(run.stdout.endsWith("|env"), `die andere Ablage wird verschwiegen: ${run.stdout}`);
+    return "andere Ablage genannt, nicht angefasst";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 check("Geheimnis-Werkzeug lehnt unsinnige Ablagen ab", () => {
   const run = tool("secrets.mjs", ["--store", "irgendwas"]);
   assert(run.status !== 0, "unbekannte Ablage wurde akzeptiert");
@@ -3935,18 +3966,33 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
     startPassword: true,
   }).join("\n");
   assert(/--admin-login/.test(mit), `mit Startpasswort fehlt die Sitzung: ${mit}`);
-  assert(/mirror\.mjs --docs/.test(mit), "der Weg zur API-Referenz fehlt");
+  assert(/mirror\.mjs --refresh/.test(mit), "ohne Spiegel fehlt der Weg zum Artefakt");
   assert(!/secrets\.mjs --set/.test(mit), "es wird nach einem Passwort gefragt, das schon liegt");
 
   // Kein Produktwert: die Seite und der Weg der Freigabe stehen im Artefakt.
   for (const text of [ohne, mit]) {
     assert(!/\/api\/(freigaben|permissions)/.test(text), "das Kit nennt einen Weg, den es nicht wissen kann");
     assert(/Admin-Handbuch|admin handbook/.test(text), "das Artefakt wird nicht als Quelle genannt");
+    // Fund 1 des Fremdtests am 29.08.2026: das Haekchen allein gibt den
+    // Livestand frei, und eine frisch eingespielte App hat keinen.
+    assert(/Teststand meinen|mean staging/.test(text), `der Stand der Freigabe fehlt: ${text}`);
   }
-  return "mit und ohne Startpasswort";
+  // Fund 2: ohne Spiegel zeigt der Text nicht auf eine Anleitung, die es hier
+  // nicht gibt. Der Fremdtest lief von --docs auf --refresh in die Tokenfrage.
+  assert(!/mirror\.mjs --docs/.test(ohne), `ohne Spiegel wird auf die Anleitungen gezeigt: ${ohne}`);
+  const mitSpiegel = releaseLines({
+    place: "orin",
+    base: "https://192.0.2.10",
+    deviceCall: "node .ara/tools/device.mjs --name orin",
+    startRef: "ARASUL_START_ORIN",
+    startPassword: true,
+    docs: true,
+  }).join("\n");
+  assert(/mirror\.mjs --docs/.test(mitSpiegel), "mit Spiegel fehlt der Weg zu den Anleitungen");
+  return "mit und ohne Startpasswort, mit und ohne Spiegel";
 });
 
-checkAsync("Ohne Startpasswort fuehrt --admin-login zu einem Weg", async () => {
+await checkAsync("Ohne Startpasswort fuehrt --admin-login zu einem Weg", async () => {
   const name = "selftest-anmeldung";
   const dir = join(ROOT, "devices", name);
   const work = mkdtempSync(join(tmpdir(), "ara-anmeldung-"));
@@ -3978,7 +4024,7 @@ checkAsync("Ohne Startpasswort fuehrt --admin-login zu einem Weg", async () => {
   }
 });
 
-checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft nur ihn", async () => {
+await checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft nur ihn", async () => {
   const name = "selftest-schluessel";
   const dir = join(ROOT, "devices", name);
   const work = mkdtempSync(join(tmpdir(), "ara-schluessel-"));
@@ -4029,6 +4075,7 @@ checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft nur i
     assert(run.status === 0, `--revoke-key fehlgeschlagen: ${run.stderr}${run.stdout}`);
     assert(readFileSync(widerrufen, "utf8").trim() === "aras_abc1234", "widerrufen wurde nicht genau der eigene");
     assert(!readFileSync(envDatei, "utf8").includes(eigen), "der widerrufene Schluessel liegt noch in der Ablage");
+    assert(/aus der Ablage heraus \(env\)/.test(run.stdout), `es steht nicht da, aus welcher Ablage: ${run.stdout}`);
     const akte = readFileSync(join(dir, "device.md"), "utf8");
     assert(/^api_key_ref:\s*$/m.test(akte), `api_key_ref steht noch in der Akte: ${readFrontmatter(join(dir, "device.md")).fields.api_key_ref}`);
     assert(/widerrufen/.test(akte), "der Widerruf steht nicht im Protokoll der Akte");
@@ -4064,6 +4111,23 @@ check("Die Antwortdatei erklaert ssh_key", () => {
     assert("ssh_key" in antworten, `${datei}: das Feld selbst fehlt`);
   }
   return "vier Dateien";
+});
+
+check("Das Blatt zum Browser nennt die Warnseite des Geraets", () => {
+  // Fund 3 des Fremdtests am 29.08.2026: der Browser kam an
+  // ERR_CERT_AUTHORITY_INVALID nicht vorbei, und kein Blatt sagte, dass das
+  // erwartet ist. Das Kit weiss an anderer Stelle genau, dass ein Geraet ein
+  // selbst ausgestelltes Zertifikat traegt (`tls: selfsigned`).
+  for (const [datei, muster] of [
+    [".ara/knowledge/browser.md", /ERR_CERT_AUTHORITY_INVALID/],
+    [".ara/knowledge/browser.de.md", /ERR_CERT_AUTHORITY_INVALID/],
+  ]) {
+    const text = readFileSync(join(ROOT, datei), "utf8");
+    assert(muster.test(text), `${datei} nennt die Warnseite nicht`);
+    assert(/tls: selfsigned/.test(text), `${datei} verbindet sie nicht mit dem Eintrag in der Akte`);
+    assert(/sicher|sure/.test(text), `${datei} sagt nicht, wann man sich NICHT hindurchklickt`);
+  }
+  return "beide Fassungen";
 });
 
 check("README und Wissen tragen die Saetze zur Freigabe", () => {

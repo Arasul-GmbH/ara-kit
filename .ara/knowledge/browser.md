@@ -16,6 +16,13 @@ whatever **changes** something on a customer device is a change, no matter wheth
 trigger it from the command line or from a button. A restart through the dashboard stays a
 restart. Ask first, click second.
 
+**A device with `tls: selfsigned` brings a warning page.** The certificate comes out of the
+device's own CA, so the browser does not know its issuer and refuses the first call with
+`ERR_CERT_AUTHORITY_INVALID`. That is expected and no fault: click through it (in Chromium
+"Advanced", then the link below it), then the interface is there. The kit's own calls take the
+same route deliberately, over `tls: selfsigned` in the file. **Only click through it on a device
+you are sure of.** On a foreign address a warning like that is a warning.
+
 ## What you use it for
 
 **Check and operate the interface of a customer device.** After the installation, look

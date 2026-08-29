@@ -1304,6 +1304,7 @@ if (arg.deploy !== undefined) {
             deviceCall: `node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device}`,
             startRef,
             startPassword: hasSecret(startRef),
+            docs: Boolean(mirrorState()),
           }),
           "",
           t("A human switches live. When staging convinces:", "Live schaltet ein Mensch. Wenn der Teststand überzeugt:"),

@@ -145,6 +145,12 @@ die Freigabe geht, steht in der API-Referenz und im Admin-Handbuch des Artefakts
 **Sag das vor dem Einspielen, nicht danach.** Wer eine 403 vorgesetzt bekommt, hält das Kit für
 kaputt. Wer vorher weiß, dass die Freigabe noch kommt, wartet auf sie.
 
+**Und eine Freigabe gilt einem Stand.** Das Gerät führt je App zwei, und ein gerade eingespieltes
+Paket liegt nur im Teststand. Wer allein für den Livestand freigegeben ist, sieht ihn nicht: die
+Freigabe steht, die Übersicht bleibt leer, und das ist der verwirrendste aller Zustände. Die
+Freigabe muss also den Teststand meinen. Wie das dort heißt, steht im Admin-Handbuch und nicht
+hier. Ein Fremdtest am 29.08.2026 ist genau daran hängen geblieben, mit gesetztem Häkchen.
+
 Nach dem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des Geräts,
 und die README der App fortschreiben. Sie ist der Ist-Stand in den Worten dessen, der die
 App benutzt: was sie heute kann, was sie nicht kann, was man wissen muss.
