@@ -9,6 +9,7 @@ Read `.ara/knowledge/app.md` and work along it. Knowledge this command loads:
 `.ara/knowledge/app.md`, `.ara/knowledge/security.md`, plus `.ara/knowledge/deploy.md`
 as soon as a package goes to a device, `.ara/knowledge/platform-services.md` as soon as
 the app wants something from the platform (login, permission, flow, language model),
+`.ara/knowledge/design-system.md` as soon as you touch an interface,
 `.ara/knowledge/extensions.md` for the first interview with a customer and
 `.ara/knowledge/live-knowledge.md` for every product value. You read the profile in
 `business/profile.md` beforehand: language, branch, detail level, security level, what

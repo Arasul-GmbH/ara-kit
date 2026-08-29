@@ -296,7 +296,7 @@ Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.
 ## Jedes weitere Mal
 
 `business/profile.md` existiert. Dann geht es nicht um den Menschen, sondern um den
-Stand des Kits. Sieben Schritte, in dieser Reihenfolge:
+Stand des Kits. Acht Schritte, in dieser Reihenfolge:
 
 1. **Sagen, worauf er sitzt.** `node .ara/tools/init.mjs --show` beginnt mit drei
    Angaben: der Stand aus `.ara/VERSION`, was in diesem Stand neu ist, und bis zu welcher
@@ -335,15 +335,25 @@ Stand des Kits. Sieben Schritte, in dieser Reihenfolge:
    durch ein Verfahren, das es nicht mehr gibt. Gelöscht wird nur die unveränderte Kopie,
    erkennbar am gemerkten Hash; eine, die der Mensch angefasst hat, wird genannt und bleibt.
    Sag ihm in dem Fall, wie der Befehl heute heißt, und dass er die alte selbst löschen darf.
-5. **Sprache wechseln**, falls der Mensch das will. `language` in `business/profile.md`
+5. **Bausteine nachziehen.** `node .ara/tools/marken.mjs` hält den Spiegel des
+   Designsystems an seiner Quelle: den in der Vorlage und den in jeder App. Steht ein
+   Befund da, sagt er in einem Satz, was ist, und `--sync` zieht die Apps nach. Danach
+   muss die App neu gebaut und eingespielt werden, die Kopie ist Quelltext. Was das im
+   Einzelnen heißt, steht in `.ara/knowledge/design-system.md`.
+
+   Der Spiegel der Vorlage gehört dem Kit und wird von `--sync` nicht angefasst: er liegt
+   in der Versionsverwaltung, und eine Änderung daran im Klon eines Partners hinterließe
+   einen schmutzigen Arbeitsordner, über den das nächste Update stolpert. Steht er nicht
+   an der Quelle, sag es und mach weiter.
+6. **Sprache wechseln**, falls der Mensch das will. `language` in `business/profile.md`
    auf `de` oder `en`, dann `node .ara/tools/commands.mjs --apply`. Danach zeigt das
    Werkzeug jeden Befehl als „neu im Kit", denn seine Quelle ist eine andere Datei
    geworden. Das ist kein Fehler, sag es dazu. Ungefragt wechselst du nicht.
-6. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
+7. **Profil ergänzen**, nur wo es Lücken hat. `node .ara/tools/init.mjs --show` nennt die
    leeren Felder. Braucht ein neuer Befehl eine Angabe, die im Profil fehlt, frag genau
    diese, gebündelt. Steht bei einem Partner `invoice: later`, frag noch einmal. Nicht das
    ganze Onboarding wiederholen.
-7. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
+8. **Nachweisen.** `node .ara/tools/selftest.mjs`. Erst wenn er durchläuft, ist der neue
    Stand auf diesem Rechner belegt. Ist ein Gerät mit Arasul erreichbar, gehört
    `node .ara/tools/check-docs.mjs --device <gerät>` dazu: es hält jede Route, die im
    Wissen steht, gegen den Kontrakt dieses Geräts. Ein neuer Stand des Kits an einem

@@ -41,7 +41,7 @@ sentences. That holds for everything you write, customer documents and offers in
 | `business/` | Profile, company details, calculation sheet, what was learned. Belongs to the user. |
 | `customers/` | Partner: everything per customer, file, devices, runsheet, history. Belongs to the partner. |
 | `devices/` | Devices without a customer, in both branches: for a company all of them, for a partner their own. Belongs to the user. |
-| `apps/` | Own apps, independent of customers. Belongs to the user. Only `apps/urlaubsantrag/` belongs to the kit: the reference app to look at. |
+| `apps/` | Own apps, independent of customers. Belongs to the user entirely: the clone brings no app. |
 | `.ara/commands/` | Source of the commands: `all/` for every branch, `partner/` for partners only. `/init` puts them into `.claude/commands/`. |
 | `.ara/knowledge/` | **Procedures**: how to go about things. No product values. |
 | `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them. The Orin before it has a Linux is a guide of its own, `.ara/knowledge/flash-orin.md`: a check step per section, documented, not automated |

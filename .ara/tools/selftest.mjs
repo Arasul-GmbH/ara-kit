@@ -4048,7 +4048,11 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".ara/templates/app/backend/ablage/migrationen/001-vorgaenge.sql",
     ".ara/templates/app/frontend/package.json",
     ".ara/templates/app/frontend/src/app.tsx",
-    ".ara/templates/app/frontend/src/marken.css",
+    // Der Spiegel des Designsystems. Ohne ihn hat eine neue App keine
+    // Bausteine, und `--new` legt eine an, die nicht baut.
+    ".ara/templates/app/frontend/src/marken/index.ts",
+    ".ara/templates/app/frontend/src/marken/marken.css",
+    ".ara/templates/app/frontend/src/marken/mirror.json",
     // Die deutsche README und die Lint-Regeln liegen unter .ara/, damit die
     // Wurzel klein bleibt. Beide muessen trotzdem mitkommen.
     ".ara/README.de.md",

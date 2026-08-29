@@ -282,7 +282,7 @@ No summary of the whole conversation. No enthusiasm.
 
 ## Every further time
 
-`business/profile.md` exists. Then it is not about the human but about the version of the kit. Seven
+`business/profile.md` exists. Then it is not about the human but about the version of the kit. Eight
 steps, in this order:
 
 1. **Say what they are sitting on.** `node .ara/tools/init.mjs --show` begins with three statements:
@@ -320,14 +320,23 @@ steps, in this order:
    unchanged copy gets deleted, recognisable by the remembered hash; one the human has touched gets
    named and stays. Tell them in that case what the command is called today, and that they may delete
    the old one themselves.
-5. **Switch the language**, if the human wants that. `language` in `business/profile.md` to `de` or
+5. **Pull up the blocks.** `node .ara/tools/marken.mjs` holds the design system's mirror at its
+   source: the one in the scaffold and the one in every app. If a finding stands there, say in one
+   sentence what it is, and `--sync` pulls the apps up. Afterwards the app has to be built and
+   deployed anew, the copy is source. What that means in detail stands in
+   `.ara/knowledge/design-system.md`.
+
+   The scaffold's mirror belongs to the kit and `--sync` does not touch it: it is version
+   controlled, and a change to it in a partner's clone would leave a dirty working folder behind
+   that the next update trips over. If it does not stand at the source, say so and carry on.
+6. **Switch the language**, if the human wants that. `language` in `business/profile.md` to `de` or
    `en`, then `node .ara/tools/commands.mjs --apply`. After that the tool shows every command as
    "newer in kit", because its source has become a different file. That is not a fault, say it
    alongside. You do not switch unasked.
-6. **Complete the profile**, only where it has gaps. `node .ara/tools/init.mjs --show` names the empty
+7. **Complete the profile**, only where it has gaps. `node .ara/tools/init.mjs --show` names the empty
    fields. If a new command needs a detail that is missing from the profile, ask exactly that,
    bundled. If a partner has `invoice: later`, ask again. Do not repeat the whole onboarding.
-7. **Prove it.** `node .ara/tools/selftest.mjs`. Only when it runs through is the new version proven
+8. **Prove it.** `node .ara/tools/selftest.mjs`. Only when it runs through is the new version proven
    on this computer. If a device with Arasul is reachable,
    `node .ara/tools/check-docs.mjs --device <device>` belongs to it: it holds every route that stands
    in the knowledge against this device's contract. A new version of the kit at an old device is

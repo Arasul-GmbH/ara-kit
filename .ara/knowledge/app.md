@@ -158,14 +158,18 @@ the situation said an app had gone nowhere while it was answering on the device.
 ## The appearance
 
 The scaffold brings Arasul's look with it, so that an app does not stand in the device's frame like
-a foreign body. It is two files, and both belong to the product:
+a foreign body. It is two pieces, and both belong to the product:
 
 - `frontend/src/design.css` carries the **values**, one block per theme. They come **out of the
   mirror**: `.ara/mirror/` is the artifact that was installed with, and it holds what applies today.
   If no mirror is there, the kit writes its own default in, and the file says so in its header.
-- `frontend/src/marken.css` carries the **rules** that use those values, and with them the building
-  blocks. It is mirrored from the product's design system and gets **replaced, not written on.**
-  Whoever puts a rule into it loses it at the next version.
+  `node .ara/tools/mirror.mjs --refresh` fetches a mirror, even without an installation.
+- `frontend/src/marken/` carries the **blocks** every interface is built from, and the stylesheet
+  with their rules. The folder is a mirror of `packages/marken` in the product and gets **replaced,
+  not written on.** The guard `node .ara/tools/marken.mjs` holds it at its source.
+
+Which blocks there are, how a page comes out of them and what is forbidden while doing so stands in
+`.ara/knowledge/design-system.md`. Read that before you build an interface.
 
 Rules of your own belong at the end of `stil.css`, and they use only the names of the tokens, not a
 single colour value. Keep to that when you build something on: whatever stands as a colour in a rule
