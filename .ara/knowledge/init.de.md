@@ -240,6 +240,22 @@ Schritt, wenn Angebote anstehen.
    GitHub oder woanders. Richte es ein und erklär in zwei Zeilen, wie gesichert wird.
    Ins Profil: `backup_repo`.
 
+   **Wenn ja, eine Frage hinterher:** soll die Sicherung diese vier Ordner mit
+   aufnehmen? Für einen Partner heißt die Antwort nein, und dann ist nichts zu tun:
+   Kundenakten haben in einem Repository nichts verloren, das jemand anders klonen kann.
+   Für einen Betrieb, der mit dem Kit seine **eigenen** Geräte und Apps führt, heißt sie
+   oft ja. Wer ja sagt, trägt in der `.gitignore` eine Ausnahme ein und nennt die Ordner
+   im Profil unter `versioned`, kommagetrennt:
+
+   ```
+   versioned: business, devices, apps
+   ```
+
+   Das Feld ist eine Aussage über diesen Klon und keine Erlaubnis. Ohne es halten drei
+   Prüfungen des Selbsttests und `--plan-aktiv` verfolgte eigene Arbeit für einen Unfall,
+   und der Befehl verweigert mitten in der Arbeit. Leer heißt: keinen der vier, und das
+   ist der Normalfall.
+
 2. **Erstes Gerät.**
    - **Partner:** Richtest du dir ein eigenes Gerät ein, zum Vorführen oder Üben, oder
      fängst du direkt mit Kundengeräten an? Wenn ja: welches Modell, steht es schon da

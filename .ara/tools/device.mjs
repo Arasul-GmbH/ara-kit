@@ -125,7 +125,16 @@ import { randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { join, relative } from "node:path";
-import { PROBE, VERDICTS, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
+import {
+  PROBE,
+  VERDICTS,
+  arasulRunning,
+  deployKeyName,
+  judge,
+  parseProbe,
+  services,
+  startPasswordRef,
+} from "./lib/device.mjs";
 import { platformOf, readProfiles, supportedDevices, verificationLine, verificationOf } from "./lib/platform.mjs";
 import {
   ROOT,
@@ -1094,8 +1103,10 @@ function makeDeployKey() {
   if (run.transport === "none") {
     return { ok: false, message: t("Without a connection there is no key.", "Ohne Verbindung gibt es keinen Schlüssel.") };
   }
-  const company = readFrontmatter(join(ROOT, "business", "company.md")).fields;
-  const keyName = `Ara-Kit ${company.name || company.company || "Partner"}`;
+  const keyName = deployKeyName(
+    readFrontmatter(join(ROOT, "business", "company.md")).fields,
+    readFrontmatter(join(ROOT, "business", "profile.md")).fields
+  );
   const made = createKey(sshArgs, run.transport, keyName);
   if (!made.ok) return made;
   const ref = `ARASUL_KEY_${secretSlug}`;
@@ -1160,10 +1171,16 @@ if (known) {
 }
 // Die Geheimnisse liegen in der Ablage, die Akte trägt nur ihre Namen.
 if (deployKey?.ok) changes.api_key_ref = deployKey.ref;
+const pwRef = startPasswordRef({
+  noted: existing.start_password_ref,
+  installed: arasul?.ok ? arasul.passwordRef : null,
+  ref: startRef,
+  stored: hasSecret(startRef),
+});
+if (pwRef) changes.start_password_ref = pwRef;
 if (arasul?.ok) {
   changes.status = "installing";
   changes.net_name = arasul.netName;
-  changes.start_password_ref = arasul.passwordRef;
   // Ein frisch installiertes Gerät trägt ein Zertifikat aus seiner eigenen
   // Geräte-CA. Ohne diesen Eintrag scheiterte am 28.08.2026 der erste Aufruf
   // gegen die Schnittstelle an SELF_SIGNED_CERT_IN_CHAIN, direkt nach einer

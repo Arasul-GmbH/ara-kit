@@ -11,10 +11,9 @@
  * anlegt: Plan, Beschreibung und Bau liegen neben dem Paket, nicht darin.
  */
 
-import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, now, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
+import { ROOT, fromKit, now, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
 import { t } from "./i18n.mjs";
 
 export const APPS = join(ROOT, "apps");
@@ -371,17 +370,21 @@ export function movePlan(app, file, to) {
     );
   }
   const source = join(app.dir, "plans", from, file);
-  if (versioned(source)) {
+  if (fromKit(source)) {
     throw new Error(
       t(
-        `${file} lies in the version control of this repository.\n` +
-          "Moving it would move a file that came with the clone: the working folder would be dirty\n" +
+        `${file} came with the clone of the kit.\n` +
+          "Moving it would move a file that is not yours: the working folder would be dirty\n" +
           "afterwards, and the next update would trip over it.\n" +
-          "For an app of your own: node .ara/tools/app.mjs --app <name> --new",
-        `${file} liegt in der Versionsverwaltung dieses Repositories.\n` +
-          "Verschoben würde eine Datei, die mit dem Klon kam: der Arbeitsordner wäre danach\n" +
+          "For an app of your own: node .ara/tools/app.mjs --app <name> --new\n" +
+          "If this clone tracks apps/ on purpose, say so in business/profile.md:\n" +
+          "  versioned: apps",
+        `${file} kam mit dem Klon des Kits.\n` +
+          "Verschoben würde eine Datei, die nicht dir gehört: der Arbeitsordner wäre danach\n" +
           "schmutzig, und das nächste Update stolperte darüber.\n" +
-          "Für eine eigene App: node .ara/tools/app.mjs --app <name> --new"
+          "Für eine eigene App: node .ara/tools/app.mjs --app <name> --new\n" +
+          "Verfolgt dieser Klon apps/ mit Absicht, sag es in business/profile.md:\n" +
+          "  versioned: apps"
       )
     );
   }
@@ -393,23 +396,3 @@ export function movePlan(app, file, to) {
   return { from, to, path };
 }
 
-/**
- * Liegt diese Datei in der Versionsverwaltung des Kits?
- *
- * Der Fremdtest am 28.08.2026 schob den Plan der damaligen Referenz-App auf
- * „erledigt", und danach meldete `git status` im frischen Klon eine verschobene
- * Datei. Die Referenz-App gibt es seit 0.13.0 nicht mehr, der Klon bringt keine
- * App mit. Die Regel bleibt für jeden Fork, der eine App mit einträgt: was in
- * der Versionsverwaltung liegt, verschiebt das Werkzeug nicht.
- *
- * Gefragt wird git selbst und keine Liste im Kit: eine Liste liefe auseinander,
- * sobald jemand eine App umbenennt. Ohne Repository ist nichts versioniert,
- * dann läuft alles wie bisher.
- */
-export function versioned(path) {
-  const run = spawnSync("git", ["ls-files", "--error-unmatch", "--", path], {
-    cwd: ROOT,
-    stdio: ["ignore", "ignore", "ignore"],
-  });
-  return run.status === 0;
-}

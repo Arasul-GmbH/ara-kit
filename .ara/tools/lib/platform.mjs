@@ -210,8 +210,12 @@ export function verificationOf(platformId, dir = mirrorDir()) {
   const where = `${platformId}.json`;
   if (!platformId) return { level: null, reason: t("no catalogue profile", "kein Katalogprofil") };
   if (!existsSync(join(dir, "config", "platforms"))) {
+    // `missing` steht neben dem Grund, damit der Satz darueber nicht im Text
+    // nachsehen muss, was fehlt. Ein Grund ist fuer Menschen geschrieben und
+    // aendert sich; hieran haengt eine Entscheidung.
     return {
       level: null,
+      missing: "mirror",
       reason: t(
         "there is no mirror, so the catalogue cannot be read",
         "es gibt keinen Spiegel, also ist der Katalog nicht lesbar"
@@ -250,13 +254,24 @@ export function verificationOf(platformId, dir = mirrorDir()) {
  */
 export function verificationLine(check) {
   if (!check?.level) {
-    return t(
-      `Verification level: unknown, ${check?.reason || "no reason given"}. ` +
-        "Whether this profile was verified on the device or only built from manufacturer " +
-        "documentation, the kit cannot say here.",
-      `Verifikationsstand: unbekannt, ${check?.reason || "kein Grund genannt"}. ` +
-        "Ob dieses Profil am Gerät verifiziert oder nur nach Herstellerdoku gebaut wurde, " +
-        "kann das Kit hier nicht sagen."
+    // Fund 2 der Werkstatt am 29.08.2026: der Satz sagte, es gebe keinen
+    // Spiegel, und nicht, wie man an einen kommt. Das Kit weiss hier genau,
+    // was fehlt, und sagte es nur halb.
+    const weg = check?.missing === "mirror"
+      ? t(
+          " node .ara/tools/mirror.mjs --refresh fetches the artifact, also without an installation.",
+          " node .ara/tools/mirror.mjs --refresh holt das Artefakt, auch ohne Installation."
+        )
+      : "";
+    return (
+      t(
+        `Verification level: unknown, ${check?.reason || "no reason given"}. ` +
+          "Whether this profile was verified on the device or only built from manufacturer " +
+          "documentation, the kit cannot say here.",
+        `Verifikationsstand: unbekannt, ${check?.reason || "kein Grund genannt"}. ` +
+          "Ob dieses Profil am Gerät verifiziert oder nur nach Herstellerdoku gebaut wurde, " +
+          "kann das Kit hier nicht sagen."
+      ) + weg
     );
   }
   const meaning = check.text

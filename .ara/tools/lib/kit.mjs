@@ -4,9 +4,10 @@
  * außer Node.
  */
 
+import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { language, t } from "./i18n.mjs";
 
@@ -316,6 +317,74 @@ export function helpOnly(url, argv = process.argv.slice(2)) {
   if (!argv.some((part) => part === "--help" || part === "-h")) return;
   console.log(headerHelp(url));
   process.exit(0);
+}
+
+/**
+ * Die vier Ordner, die dem Nutzer gehoeren und die ein Update nie anfasst.
+ *
+ * Sie stehen in der `.gitignore` des Kits, und der Klon eines Partners
+ * verfolgt keinen davon: eine Kundenakte hat in einem Repository nichts
+ * verloren, das jemand anders klonen kann.
+ */
+export const USER_FOLDERS = Object.freeze(["business", "customers", "devices", "apps"]);
+
+/**
+ * Welche der vier Ordner dieser Klon mit Absicht verfolgt.
+ *
+ * Es gibt Klone, fuer die das richtig ist: ein Betrieb, der mit dem Kit seine
+ * EIGENEN Geraete und Apps fuehrt, will genau das in seiner Sicherung haben.
+ * Die Werkstatt am 29.08.2026 war so einer, und das Kit hielt sie an vier
+ * Stellen fuer einen Fehler: drei Pruefungen des Selbsttests fielen, und
+ * `--plan-aktiv` verweigerte mitten in der Arbeit.
+ *
+ * Der Grund war eine verwechselte Frage. Gemeint ist "kam diese Datei mit dem
+ * Kit", geprueft wurde "verfolgt git sie". Fuer den Klon eines Partners ist das
+ * dasselbe, fuer den eigenen Betrieb nicht. Das Feld `versioned:` im Profil
+ * sagt es, und ohne das Feld bleibt alles, wie es war: der Schutz fuer
+ * Partnerklone bleibt scharf.
+ *
+ *     versioned: business, devices, apps
+ *
+ * Das Feld ist eine Aussage ueber DIESEN Klon und keine Erlaubnis: es aendert
+ * nichts an der `.gitignore`, wer die Ordner verfolgen will, traegt dort selbst
+ * eine Ausnahme ein. Es sagt den Werkzeugen nur, dass sie das nicht fuer einen
+ * Unfall halten sollen.
+ */
+export function ownFolders(profile = join(BUSINESS, "profile.md")) {
+  const value = readFrontmatter(profile).fields.versioned || "";
+  return value
+    .split(",")
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => USER_FOLDERS.includes(part));
+}
+
+/** Verfolgt git diese Datei? Ohne Repository: nein. */
+export function tracked(path) {
+  const run = spawnSync("git", ["ls-files", "--error-unmatch", "--", path], {
+    cwd: ROOT,
+    stdio: ["ignore", "ignore", "ignore"],
+  });
+  return run.status === 0;
+}
+
+/** Liegt dieser Pfad in einem der Ordner, die der Klon mit Absicht verfolgt? */
+export function inOwnFolder(path, own = ownFolders()) {
+  if (!own.length) return false;
+  const inside = relative(ROOT, path);
+  if (!inside || inside.startsWith("..")) return false;
+  return own.includes(inside.split(sep)[0]);
+}
+
+/**
+ * Kam diese Datei mit dem Kit?
+ *
+ * Die Frage, die die Werkzeuge wirklich stellen wollen. Eine Datei, die mit
+ * dem Klon kam, verschiebt das Kit nicht: der Arbeitsordner waere danach
+ * schmutzig, und das naechste Update stolperte darueber. Eine Datei, die der
+ * Mensch selbst angelegt und mit Absicht eingetragen hat, ist seine.
+ */
+export function fromKit(path) {
+  return tracked(path) && !inOwnFolder(path);
 }
 
 /** Legt einen Ordner an, falls er fehlt. */

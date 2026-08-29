@@ -32,6 +32,7 @@ import { createServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { spawn, spawnSync } from "node:child_process";
 import {
+  appendFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -44,7 +45,15 @@ import {
 import { platform, tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
+import {
+  PROBE,
+  arasulRunning,
+  deployKeyName,
+  judge,
+  parseProbe,
+  services,
+  startPasswordRef,
+} from "./lib/device.mjs";
 import { findFaults, insideTree, nextId, parseHealProbe, planFor as healPlan, reached, readVerify } from "./lib/heal.mjs";
 import {
   matchProfile,
@@ -83,7 +92,7 @@ import {
   ship,
   troubles,
 } from "./lib/install.mjs";
-import { lastStand, movePlan, nextSteps, versioned } from "./lib/appfile.mjs";
+import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
@@ -117,7 +126,23 @@ import {
 } from "./lib/invoice.mjs";
 import { buildXml, validateXml } from "./lib/zugferd.mjs";
 import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
-import { HELP_SPLIT, ROOT, day, daysUntil, headerHelp, helpOnly, now, readFrontmatter, today, writeFrontmatter } from "./lib/kit.mjs";
+import {
+  HELP_SPLIT,
+  ROOT,
+  USER_FOLDERS,
+  day,
+  daysUntil,
+  fromKit,
+  headerHelp,
+  helpOnly,
+  inOwnFolder,
+  now,
+  ownFolders,
+  readFrontmatter,
+  today,
+  tracked,
+  writeFrontmatter,
+} from "./lib/kit.mjs";
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
@@ -547,6 +572,16 @@ check("Der Verifikationsstand kommt aus dem Spiegel und wird nicht geraten", () 
     try {
       const ohne = verificationOf("orin-64", leer);
       assert(ohne.level === null && /Spiegel/.test(ohne.reason), `ohne Spiegel: ${JSON.stringify(ohne)}`);
+      // Fund 2 der Werkstatt am 29.08.2026: der Satz sagte, es gebe keinen
+      // Spiegel, und nicht, wie man an einen kommt.
+      assert(
+        /mirror\.mjs --refresh/.test(verificationLine(ohne)),
+        `ohne Spiegel fehlt der Weg zu einem: ${verificationLine(ohne)}`
+      );
+      assert(
+        !/mirror\.mjs --refresh/.test(verificationLine(fehlt)),
+        "der Weg zum Spiegel steht da, wo der Spiegel gar nicht fehlt"
+      );
     } finally {
       rmSync(leer, { recursive: true, force: true });
     }
@@ -563,6 +598,45 @@ check("Der Verifikationsstand kommt aus dem Spiegel und wird nicht geraten", () 
   } finally {
     rmSync(spiegel, { recursive: true, force: true });
   }
+});
+
+check("Der Kit-Schluessel und das Startpasswort stehen in beiden Zweigen richtig", () => {
+  // Fund 3 der Werkstatt am 29.08.2026: business/company.md legt /init nur im
+  // Partner-Zweig an. Im Unternehmens-Zweig fiel der Ausdruck auf seinen
+  // letzten Zweig zurueck, und der Schluessel hiess am Geraet "Ara-Kit
+  // Partner". Den Namen liest dort spaeter ein Mensch.
+  assert(
+    deployKeyName({ name: "Muster GmbH" }, { company: "Andere GmbH" }) === "Ara-Kit Muster GmbH",
+    "der Firmenkopf des Partners gilt nicht zuerst"
+  );
+  assert(
+    deployKeyName({}, { company: "Arasul GmbH", name: "Kolja" }) === "Ara-Kit Arasul GmbH",
+    "im Unternehmens-Zweig kommt der Name nicht aus dem Profil"
+  );
+  assert(deployKeyName({}, { name: "Kolja" }) === "Ara-Kit Kolja", "ohne Firma gilt der Name nicht");
+  assert(deployKeyName({}, {}) === "Ara-Kit", "ohne jede Angabe wird ein Name erfunden");
+
+  // Fund 4: das Feld wurde nur beim Installieren gesetzt. Ein Geraet, auf dem
+  // Arasul schon lief, bekam es nie, obwohl --admin-login sich mit genau
+  // diesem Eintrag anmeldete.
+  const ref = "ARASUL_START_ORIN";
+  assert(
+    startPasswordRef({ noted: "", installed: ref, ref, stored: false }) === ref,
+    "nach der Installation steht der Name nicht in der Akte"
+  );
+  assert(
+    startPasswordRef({ noted: "", installed: null, ref, stored: true }) === ref,
+    "ein Eintrag in der Ablage kommt ohne Installation nicht in die Akte"
+  );
+  assert(
+    startPasswordRef({ noted: "", installed: null, ref, stored: false }) === null,
+    "ein Name wird in die Akte geschrieben, zu dem es keinen Eintrag gibt"
+  );
+  assert(
+    startPasswordRef({ noted: "ARASUL_START_EIGEN", installed: null, ref, stored: true }) === null,
+    "ein Name, der schon in der Akte steht, wird ueberschrieben"
+  );
+  return "Firmenkopf, Profil, kein erfundener Name, Startpasswort auch ohne Installation";
 });
 
 check("Das Katalogprofil wird nur genannt, wenn der Speicher dazu passt", () => {
@@ -2710,20 +2784,48 @@ check("Was live ist, wird nicht noch einmal vorgeschlagen", () => {
   return "ohne Merker, im Teststand, live, veraltet, über Compose";
 });
 
-check("Ein versionierter Plan bleibt liegen, ein eigener nicht", () => {
+check("Ein Plan aus dem Klon bleibt liegen, ein eigener nicht", () => {
   // Fund 6 des zweiten Fremdtests am 28.08.2026. `--plan-erledigt` verschob den
-  // Plan der damaligen Referenz-App, und der war versioniert: der frische Klon
+  // Plan der damaligen Referenz-App, und der kam mit dem Klon: der frische Klon
   // war danach schmutzig, und das nächste Update stolperte darüber. Die
   // Referenz-App gibt es seit 0.13.0 nicht mehr, der Klon bringt keine App mit.
-  // Die Regel bleibt: was in der Versionsverwaltung liegt, verschiebt das
-  // Werkzeug nicht, das trifft jeden Fork, der eine App mit einträgt.
+  //
+  // Fund 1 der Werkstatt am 29.08.2026: geprüft wurde "verfolgt git die Datei",
+  // gemeint war "kam sie mit dem Kit". Für einen Partnerklon ist das dasselbe,
+  // für einen Betrieb, der seine eigenen Apps versioniert, nicht: dort verweigerte
+  // `--plan-aktiv` mitten in der Arbeit. Das Feld `versioned:` im Profil trennt
+  // die beiden Fragen, und ohne das Feld bleibt der Schutz, wie er war.
   const listed = spawnSync("git", ["ls-files", "-z", "apps"], { cwd: ROOT, encoding: "utf8" });
   if (listed.status !== 0) return "übersprungen, kein Git-Repository";
   const versionierte = listed.stdout.split("\0").filter(Boolean);
-  assert(versionierte.length === 0, `der Klon bringt eine App mit: ${versionierte.slice(0, 3).join(", ")}`);
+  assert(
+    versionierte.length === 0 || ownFolders().includes("apps"),
+    `der Klon bringt eine App mit, ohne dass das Profil apps unter versioned nennt: ${versionierte.slice(0, 3).join(", ")}`
+  );
 
-  assert(versioned(join(ROOT, ".ara", "templates", "plan.md")), "eine versionierte Datei wird nicht als solche erkannt");
-  assert(!versioned(join(ROOT, ".ara", "state.json")), "eine Datei außerhalb der Versionsverwaltung gilt als versioniert");
+  assert(tracked(join(ROOT, ".ara", "templates", "plan.md")), "eine verfolgte Datei wird nicht als solche erkannt");
+  assert(!tracked(join(ROOT, ".ara", "state.json")), "eine Datei außerhalb der Versionsverwaltung gilt als verfolgt");
+  assert(fromKit(join(ROOT, ".ara", "templates", "plan.md")), "eine Datei des Kits gilt nicht als solche");
+
+  // Die Trennung selbst, an einem gespielten Profil: dieselbe verfolgte Datei,
+  // einmal mit und einmal ohne das Feld.
+  const profil = mkdtempSync(join(tmpdir(), "ara-profil-"));
+  try {
+    const datei = join(profil, "profile.md");
+    writeFileSync(datei, "---\nrole: company\nversioned: business, devices, apps\n---\n");
+    const eigene = ownFolders(datei);
+    assert(eigene.join(",") === "business,devices,apps", `das Feld wird falsch gelesen: ${eigene.join(",")}`);
+    assert(inOwnFolder(join(ROOT, "apps", "eigen", "app.json"), eigene), "eine eigene App gilt nicht als eigen");
+    assert(!inOwnFolder(join(ROOT, ".ara", "templates", "plan.md"), eigene), ".ara/ gilt als Ordner des Nutzers");
+    assert(!inOwnFolder(join(ROOT, "customers", "x", "y.md"), eigene), "ein nicht genannter Ordner gilt als eigen");
+
+    writeFileSync(datei, "---\nrole: partner\nversioned:\n---\n");
+    assert(ownFolders(datei).length === 0, "ohne Feld gilt trotzdem etwas als eigen");
+    writeFileSync(datei, "---\nrole: partner\nversioned: /etc, apps\n---\n");
+    assert(ownFolders(datei).join(",") === "apps", "ein fremder Name kommt durch das Feld");
+  } finally {
+    rmSync(profil, { recursive: true, force: true });
+  }
 
   // Der Platzhalter des Spiegels ist die zweite Stelle, an der der Fremdtest den
   // Arbeitsordner schmutzig gemacht hat. Er bleibt, wie er ist.
@@ -4012,14 +4114,23 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     ".claude/commands/eigener.md",
     ".claude/commands/.sources.json",
   ];
-  const tracked = mustBeIgnored.filter(
+  // Fund 1 der Werkstatt am 29.08.2026: ein Klon, der seinen EIGENEN Betrieb
+  // fuehrt, verfolgt business/, devices/ und apps/ mit Absicht. Was das Profil
+  // unter `versioned:` nennt, ist darum kein Fehler und wird hier nicht
+  // gemessen. Alles andere schon, und ohne das Feld ist alles andere alles.
+  const eigen = ownFolders();
+  const zuPruefen = mustBeIgnored.filter((path) => !eigen.includes(path.split("/")[0]));
+  const offen = zuPruefen.filter(
     (path) =>
       spawnSync("git", ["check-ignore", "-q", path], { cwd: ROOT }).status !== 0
   );
   assert(
-    tracked.length === 0,
-    `würde ins Repository wandern: ${tracked.join(", ")}, .gitignore prüfen`
+    offen.length === 0,
+    `würde ins Repository wandern: ${offen.join(", ")}, .gitignore prüfen`
   );
+  for (const name of eigen) {
+    assert(USER_FOLDERS.includes(name), `versioned nennt ${name}, das ist kein Ordner des Nutzers`);
+  }
 
   // Umgekehrt: das Werkzeug selbst muss verfolgt werden, sonst fehlt es nach dem Klonen.
   const mustBeTracked = [
@@ -4065,7 +4176,9 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
   );
   assert(ignored.length === 0, `fehlt nach dem Klonen: ${ignored.join(", ")}`);
 
-  return `${mustBeIgnored.length} Pfade geprüft`;
+  return eigen.length
+    ? `${zuPruefen.length} Pfade geprüft, ${eigen.join(", ")} gehören laut Profil diesem Klon`
+    : `${zuPruefen.length} Pfade geprüft`;
 });
 
 // --- Die Rechnung -------------------------------------------------------------
@@ -4766,14 +4879,15 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
     ".gitkeep",
     "Dockerfile",
   ]);
-  // Zwei Ordner sind gespiegelt und tragen die Namen ihrer Quelle. Die
-  // Textbausteine kommen aus Arasuls Steuerungsordner und tragen dessen
-  // Nummern (W1 bis W5); die Bibliothek des Designsystems kommt aus
-  // `packages/marken` des Produkts, und ihre Dateien heissen wie die
+  // Gespiegelte Ordner tragen die Namen ihrer Quelle. Die Textbausteine kommen
+  // aus Arasuls Steuerungsordner und tragen dessen Nummern (W1 bis W5); die
+  // Bibliothek des Designsystems kommt aus `packages/marken` des Produkts, in
+  // die Vorlage und von dort in jede App, und ihre Dateien heissen wie die
   // Bausteine, die darin stehen. Umbenennen hiesse hier: den Spiegel
   // verstellen, und danach kann kein Vergleich mit der Quelle mehr sagen, ob
   // eine Datei nachgezogen wurde oder von Hand geaendert.
-  const mirrored = /^\.ara\/(vorlagen\/bausteine|templates\/app\/frontend\/src\/marken)\//;
+  const mirrored =
+    /^(\.ara\/(vorlagen\/bausteine|templates\/app\/frontend\/src\/marken)|apps\/[^/]+\/frontend\/src\/marken)\//;
 
   const offenders = files.filter((path) => {
     const parts = path.split("/");
@@ -5457,6 +5571,23 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(has(".claude/commands/device.md"), "Unternehmen: Befehle nicht angelegt");
     assert(!has(".claude/commands/customer.md"), "Unternehmen: bekommt den Kundenbefehl");
 
+    // Fund 7 der Werkstatt am 29.08.2026: invoice und invoice_tool gehoeren nur
+    // dem Partner, /init leert sie fuer ein Unternehmen mit Absicht, und der
+    // Zaehler meldete sie trotzdem als Luecke. Zwei, die keine sind, und echte
+    // gehen darin unter.
+    assert(!/leer \([^)]*invoice/.test(run.stdout), `Unternehmen: Partnerfelder zaehlen als Luecke: ${run.stdout}`);
+    // Fund 8: derselbe Lauf sagte "Es fehlt nichts", obwohl Felder leer
+    // blieben. Genannt hat sie nur --show, und nur, wenn jemand es aufrief.
+    assert(/Felder gesetzt, \d+ leer/.test(run.stdout), `der Lauf mit --answers nennt die Luecken nicht: ${run.stdout}`);
+    const leereFelder = readFrontmatter(join(fork, "business", "profile.md"));
+    for (const feld of ["ssh_key", "backup_repo"]) {
+      assert(leereFelder.fields[feld] === "", `${feld} ist nicht leer, die Pruefung misst nichts`);
+      assert(new RegExp(`leer \\([^)]*${feld}`).test(run.stdout), `${feld} fehlt in der Zeile: ${run.stdout}`);
+    }
+    // `versioned` ist leer und trotzdem keine Luecke: leer heisst "keinen der
+    // vier Ordner", und das ist der Normalfall.
+    assert(!/leer \([^)]*versioned/.test(run.stdout), `versioned zaehlt als Luecke: ${run.stdout}`);
+
     // Dieselbe Antwortdatei auf Englisch: englisches Geruest, englische
     // Ueberschriften, englische Befehle. Sonst waere die zweite Sprache eine
     // Behauptung.
@@ -5565,7 +5696,16 @@ check("Der Selbsttest ist in einem blanken Klon gruen", () => {
     maxBuffer: 64 * 1024 * 1024,
   });
   if (listed.status !== 0) return "übersprungen, kein Git-Repository";
-  const dateien = listed.stdout.split("\0").filter(Boolean);
+  // Was der Klon eines Partners bekommt, ist das Kit und nicht die Arbeit
+  // dieses Rechners. Ein Klon, der seinen eigenen Betrieb fuehrt, verfolgt
+  // business/, devices/ und apps/ mit Absicht (Fund 1 der Werkstatt am
+  // 29.08.2026); die gehoeren trotzdem nicht in den nachgebauten Klon, sonst
+  // misst diese Pruefung wieder den Arbeitsordner statt das Kit.
+  const eigen = ownFolders();
+  const dateien = listed.stdout
+    .split("\0")
+    .filter(Boolean)
+    .filter((datei) => !eigen.includes(datei.split("/")[0]));
   assert(dateien.length > 100, `nur ${dateien.length} Dateien im Klon, das kann nicht das Kit sein`);
 
   const work = mkdtempSync(join(tmpdir(), "ara-klon-"));
@@ -5579,11 +5719,25 @@ check("Der Selbsttest ist in einem blanken Klon gruen", () => {
 
     // Die Ordner des Nutzers gibt es im Klon nicht. Das ist der Unterschied,
     // an dem es haengt, und er wird hier ausgesprochen statt vorausgesetzt.
-    for (const eigen of ["business", "customers", "devices", "apps", ".env", ".ara/state.json"]) {
-      assert(!existsSync(join(klon, eigen)), `der nachgebaute Klon bringt ${eigen} mit`);
+    for (const name of [...USER_FOLDERS, ".env", ".ara/state.json"]) {
+      assert(!existsSync(join(klon, name)), `der nachgebaute Klon bringt ${name} mit`);
     }
     assert(existsSync(join(klon, ".ara", "tools", "selftest.mjs")), "im Klon fehlt der Selbsttest");
     assert(readdirSync(join(klon, ".ara", "mirror")).join(",") === ".gitkeep", "der Spiegel ist mitgekommen");
+
+    // Was dieser Betrieb mit Absicht verfolgt, gehoert einem Partner nicht:
+    // seine .gitignore traegt dafuer Ausnahmen, und die kommen mit der Kopie
+    // mit. Im nachgebauten Klon werden sie zurueckgenommen, denn er soll das
+    // Kit sein und nicht dieser Arbeitsordner. Die letzte passende Zeile
+    // gewinnt, darum reicht das Anhaengen.
+    if (eigen.length) {
+      appendFileSync(
+        join(klon, ".gitignore"),
+        `\n# Nachgebauter Klon: was dieser Betrieb verfolgt, gehoert einem Partner nicht.\n${eigen
+          .map((name) => `/${name}/`)
+          .join("\n")}\n`
+      );
+    }
 
     // Ein Repository muss es sein: mehrere Pruefungen fragen git nach
     // .gitignore und nach dem, was verfolgt wird.

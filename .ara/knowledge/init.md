@@ -228,6 +228,20 @@ the next step when offers are coming up.
    not several.** If yes: where, GitHub or elsewhere. Set it up and explain in two lines how backing
    up works. Into the profile: `backup_repo`.
 
+   **If yes, one question after it:** should the backup take these four folders along? For a partner
+   the answer is no, and then there is nothing to do: customer files have no business in a repository
+   somebody else can clone. For an operation that keeps its **own** devices and apps with the kit, the
+   answer is often yes. Whoever says yes puts an exception into the `.gitignore` and names the folders
+   in the profile under `versioned`, comma separated:
+
+   ```
+   versioned: business, devices, apps
+   ```
+
+   The field is a statement about this clone and not a permission. Without it three checks of the
+   self-test and `--plan-aktiv` take tracked work of your own for an accident, and the command refuses
+   in the middle of the work. Empty means: none of the four, and that is the normal case.
+
 2. **First device.**
    - **Partner:** are you setting up a device of your own, to demonstrate or to practise, or are you
      starting straight with customer devices? If yes: which model, is it already there or is it on
