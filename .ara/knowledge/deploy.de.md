@@ -66,7 +66,10 @@ node .ara/tools/app.mjs --device <gerät> --check <ordner>
 
 Das Werkzeug liest `app.json` aus dem Ordner und hält es gegen das Schema **dieses**
 Geräts. Es meldet jede Abweichung mit dem Feld, um das es geht, und es sagt dazu, was es
-nicht prüfen konnte. Zwei Dinge musst du dabei selbst tun:
+nicht prüfen konnte. Es prüft außerdem, dass die Oberfläche im Paket ein **Bau** ist und
+nicht der Quelltext, aus dem er entsteht: das steht in jedem Kontrakt als Regel, und eine
+ungebaute Oberfläche kommt am Gerät als leere Seite an, ohne einen Hinweis darauf, woran es
+liegt. Zwei Dinge musst du dabei selbst tun:
 
 1. **Die Regeln lesen, die kein Schema trägt.** Das Werkzeug gibt sie aus, wörtlich aus
    dem Kontrakt. Sie sind keine Fußnote: „mindestens eines von Frontend und Backend",

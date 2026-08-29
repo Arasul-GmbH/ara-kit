@@ -101,6 +101,15 @@ weder das eine noch das andere und glaubt trotzdem, es gesehen zu haben.
 Ein Bau, der älter ist als der Quelltext, wird nicht eingespielt: das Werkzeug sagt es
 und hört auf. Sonst ginge der Stand von vorgestern an das Gerät, und niemand sähe es.
 
+**Der Typprüfer läuft vor dem Bündler.** In der Vorlage steht `tsc --noEmit && vite build`
+als Bauskript: ein Typfehler hält den Bau an, statt am Gerät als leere Seite anzukommen.
+
+**Ins Paket geht der Bau, nicht der Quelltext.** Das steht als Regel im Kontrakt jedes
+Geräts, und `--check` prüft es: liegen im Ordner der Oberfläche noch `package.json`, `src/`
+oder eine `tsconfig.json`, ist es der Quelltext, und das Werkzeug hört auf. Eingespielt
+bekäme der Browser sonst eine `index.html`, die auf `/src/main.tsx` zeigt, und der Mensch
+im Rahmen sähe eine leere Seite ohne einen Hinweis darauf, woran es liegt.
+
 ## Auf ein Gerät mit Arasul
 
 ```
@@ -152,15 +161,31 @@ sie dort antwortete.
 
 ## Das Aussehen
 
-Die Vorlage bringt das Erscheinungsbild von Arasul mit, damit eine App neben der
-Oberfläche des Geräts nicht wie ein Fremdkörper steht. Die Werte dafür stehen in
-`frontend/src/design.css`, und sie kommen **aus dem Spiegel**: `.ara/mirror/` ist das
-Artefakt, mit dem installiert wurde, und darin steht, was heute gilt. Liegt kein Spiegel
-vor, schreibt das Kit seine eigene Vorgabe hinein, und die Datei sagt das in ihrem Kopf.
+Die Vorlage bringt das Erscheinungsbild von Arasul mit, damit eine App im Rahmen der
+Oberfläche nicht wie ein Fremdkörper steht. Es sind zwei Dateien, und sie gehören beide dem
+Produkt:
 
-Die Regeln daneben in `stil.css` benutzen nur die Namen der Marken, keinen einzigen
-Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer Regel steht,
-bleibt beim nächsten Stand zurück.
+- `frontend/src/design.css` trägt die **Werte**, ein Block je Thema. Sie kommen **aus dem
+  Spiegel**: `.ara/mirror/` ist das Artefakt, mit dem installiert wurde, und darin steht,
+  was heute gilt. Liegt kein Spiegel vor, schreibt das Kit seine eigene Vorgabe hinein, und
+  die Datei sagt das in ihrem Kopf.
+- `frontend/src/marken.css` trägt die **Regeln**, die diese Werte benutzen, und mit ihnen
+  die Bausteine. Sie ist aus dem Designsystem des Produkts gespiegelt und wird **ersetzt,
+  nicht fortgeschrieben.** Wer eine Regel hineinschreibt, verliert sie beim nächsten Stand.
+
+Eigene Regeln gehören ans Ende von `stil.css`, und sie benutzen nur die Namen der Marken,
+keinen einzigen Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer
+Regel steht, bleibt beim nächsten Stand zurück.
+
+**Das Thema kommt vom Gerät und nicht aus der App.** Sie läuft in einem Rahmen mitten in der
+Oberfläche von Arasul, liest dessen `data-theme` am Elternfenster und hört auf Änderungen:
+wer in Arasul umschaltet, sieht die App mitgehen. Ohne Rahmen, also direkt in einem Tab,
+gilt die Einstellung des Betriebssystems. Beides steht in `frontend/src/rahmen/thema.ts`,
+und beides gehört dorthin und an keine zweite Stelle.
+
+Wenn du das prüfst, prüf es in beiden Themen und in beiden Breiten: 390 für das Telefon,
+1440 für den Schreibtisch. Unter 900 Pixeln rutschen die Aktionen unter den Titel, und eine
+Seite, die dort waagerecht rollt, ist kaputt.
 
 ## Was die Vorlage schon ist
 
@@ -172,15 +197,39 @@ genehmigt oder abgelehnt, mit dem Namen dessen, der entschieden hat, und dem Sat
 Flow geschrieben hat. Ohne Arasul wird der Vorgang angenommen und bleibt ohne Entscheidung,
 und die Seite sagt das.
 
-Die Oberfläche ist aus sechs Bausteinen gebaut, und sie tragen die Namen des
-Arasul-Designsystems: Kopf, Liste, Karte, Formular, Meldung, Menü. In der Vorlage liegen sie
-in `frontend/src/bausteine.jsx` als kleine Komponenten, die Regeln dazu in `stil.css`. Wer
-etwas dazubaut, nimmt diese Bausteine und schreibt keine zweite Karte neben die erste. Wenn
-jemand fragt, wie so eine App aussieht, leg eine an und zeig sie, statt es zu beschreiben:
+Wenn jemand fragt, wie so eine App aussieht, leg eine an und zeig sie, statt es zu
+beschreiben:
 
 ```
 node .ara/tools/app.mjs --app <name> --new
 ```
+
+## Woraus die Vorlage gebaut ist
+
+Sie steht auf demselben Stapel wie die Oberfläche des Geräts, damit ein Partner nicht zwei
+Welten lernt: **Vite, React, TypeScript, Tailwind, `react-router`, TanStack Query.** Was
+darüber hinaus zu wissen ist, sind fünf Stellen, und jede gibt es genau einmal:
+
+| Stelle | Was dort steht |
+| --- | --- |
+| `rahmen/basis.ts` | Unter welchem Pfad die App hängt. Sie rät ihn nicht, sie liest ihn aus der Adresse des Dokuments: live `/apps/<kennung>/`, im Teststand `/apps/<kennung>/test/`. Daraus folgt: **die Wege bleiben eine Ebene tief**, was tiefer will, gehört in die Suchanfrage |
+| `rahmen/thema.ts` | Das Thema, gelesen am Elternfenster |
+| `rahmen/schnittstelle.ts` | Das einzige `fetch` der App. Pfad, Anmeldung und der Umschlag um die Antwort stehen dort und sonst nirgends |
+| `rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, als Kontext mit Rolle |
+| `rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage: lädt, ging schief, ist da. Jede Abfrage geht hindurch, und die Seiten bekommen ihre Daten fertig |
+
+Das Backend folgt dem Port-Muster: `server.mjs` macht HTTP, `kern/vorgaenge.mjs` macht die
+Fälle, und der Kern kennt **zwei Anschlüsse** und die Welt sonst nicht, eine Ablage und ein
+Gerät. Beide kommen als Argument herein, also steht im Kern kein `fetch`, kein SQL und kein
+Griff in die Umgebung, und jeder Fall lässt sich prüfen, ohne eine Datenbank und ein Gerät
+zu haben. Je Entität eine Ablage, und in ihr das einzige SQL dazu. Eine zweite Entität
+bekommt eine zweite solche Datei und nicht eine zweite Art, die Datenbank zu rufen.
+
+Die Ablage ist SQLite aus Node selbst, ohne ein Paket daneben, und ihr Stand steht in ihr:
+eine Migration, die gelaufen ist, läuft nicht noch einmal. Unter
+`backend/ablage/migrationen/` liegt eine Datei je Schritt, und **was einmal gelaufen ist,
+wird nie wieder angefasst**: wer sie ändert, ändert die Vergangenheit von Datenbanken, die
+es schon gibt.
 
 ## Was du dabei nicht tust
 
@@ -189,11 +238,17 @@ node .ara/tools/app.mjs --app <name> --new
   Quelltext einer App gilt es doppelt: was sie davon braucht, bekommt sie in
   `backend/arasul.json`, und was dort nicht steht, hat sie nicht. Ein geratener Wert wird
   zur Laufzeit ein stilles Nichts.
-- **Keine zweite Ablage erfinden.** Ein eigener Datenordner je App ist am Gerät noch
-  nicht vorgesehen. Was eine App im Speicher hält, ist nach einem Neustart weg, und das
-  gehört in die README und ins Gespräch, bevor es jemand merkt.
-- **Keine eigene Anmeldung.** Wer angemeldet ist, sagt die Plattform über die Kopfzeilen
-  vor dem Container. Ein Feld im Formular, in das jemand einen Namen tippt, ist keine.
+- **Keine zweite Ablage erfinden.** Ein eigener Datenordner je App ist am Gerät noch nicht
+  vorgesehen. Die Datenbank der Vorlage liegt deshalb in der schreibbaren Schicht des
+  Containers: sie überlebt einen Neustart und **nicht das nächste Einspielen**. Das gehört
+  in die README und ins Gespräch, bevor es jemand merkt. Eine App, die sich dafür eine
+  eigene Datenbank daneben stellt, hätte eine zweite Ablage neben der, die das Produkt
+  später vorsieht.
+- **Keine eigene Anmeldung.** Wer angemeldet ist, sagt die Plattform: der Oberfläche unter
+  `api/me`, dem Backend über die Kopfzeilen vor dem Container. Ein Feld im Formular, in das
+  jemand einen Namen tippt, ist keine Anmeldung. Die Rolle steht dabei und entscheidet
+  nichts: **was ein Mensch darf, entscheidet das Gerät**, es liefert eine App nur dem aus,
+  dem sie freigegeben ist.
 - **Keine Freigabe, die die App selbst erteilt.** Sie liest ihren Stand und entscheidet
   nicht. Entschieden wird in Arasul, von einem Menschen, dem die App freigegeben ist.
 - **Nichts einspielen, was du nicht geprüft hast.** Erst `--check`, dann `--deploy`.

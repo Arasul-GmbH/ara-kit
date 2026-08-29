@@ -64,8 +64,10 @@ node .ara/tools/app.mjs --device <device> --check <folder>
 ```
 
 The tool reads `app.json` from the folder and holds it against **this** device's schema. It
-reports every deviation with the field in question, and it says what it could not check. Two
-things you have to do yourself:
+reports every deviation with the field in question, and it says what it could not check. It also
+checks that the frontend in the package is a **build** and not the source it came out of: every
+contract carries that as a rule, and an unbuilt frontend arrives on the device as an empty page
+without a hint of why. Two things you have to do yourself:
 
 1. **Read the rules no schema carries.** The tool prints them, word for word out of the contract.
    They are not a footnote: "at least one of frontend and backend", "with a backend a port is

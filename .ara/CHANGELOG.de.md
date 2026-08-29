@@ -15,6 +15,19 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.16.0 (2026-08-29)
+
+Kontrakt: bis 3
+
+- Die Vorlage einer App steht jetzt auf demselben Stapel wie die Oberfläche des Geräts: Vite, React 19, TypeScript, Tailwind 4, `react-router`, TanStack Query. Bisher war es React aus einem Skript-Tag mit handgeschriebenem CSS, und ein Partner, der die Oberfläche von Arasul gesehen hatte, fand darin nichts wieder. `npm run build` lässt `tsc --noEmit` vor dem Bündler laufen, ein Typfehler hält also den Bau an, statt am Gerät als leere Seite anzukommen.
+- Die Vorlage kennt ihren eigenen Pfad nicht und darf ihn nicht kennen. Ein Gerät liefert eine App live unter `/apps/<kennung>/` aus und im Teststand unter `/apps/<kennung>/test/`, also bekommt `react-router` seine Basis zur Laufzeit aus der Adresse des Dokuments, und die Bündel bleiben relativ verwiesen. Ein absoluter Bau zeigte aus dem Teststand auf den Livestand, und niemand sähe es der Seite an. Daraus folgt, dass die Wege eine Ebene tief bleiben; das steht im Kopf von `rahmen/basis.ts` und in der README der App.
+- Wer angemeldet ist, liest die App jetzt aus `api/me` und hält es als Kontext mit der Rolle. Dieser Weg gehört der Plattform und steht in ihrem Kontrakt, damit auch eine App ohne Backend ihren Benutzer anzeigen kann. Das Backend der Vorlage gibt den Angemeldeten in seiner eigenen Lage-Auskunft nicht mehr zurück: zwei Quellen für dieselbe Sache waren eine zu viel.
+- Das Thema kommt vom Gerät. Die App liest `data-theme` am Elternfenster und hört auf Änderungen, wer in Arasul umschaltet, sieht die App also mitgehen; ohne Rahmen gilt die Einstellung des Betriebssystems. `design.css` trägt darum jetzt einen Block je Thema statt nur einer Medienabfrage, und die Werte aller drei kommen aus dem Spiegel. Daneben liegt `marken.css`, gespiegelt aus dem Designsystem des Produkts: sie wird ersetzt und nicht fortgeschrieben, eigene Regeln gehören ans Ende von `stil.css`.
+- Das Backend der Vorlage folgt dem Port-Muster. `server.mjs` macht HTTP, `kern/vorgaenge.mjs` macht die Fälle und kennt zwei Anschlüsse und die Welt sonst nicht, eine Ablage und ein Gerät. Je Entität eine Ablage, und in ihr das einzige SQL dazu. Die Ablage ist SQLite aus Node selbst, ohne ein Paket daneben, ihr Stand steht in `pragma user_version` und je Migration eine Datei; eine, die gelaufen ist, läuft nicht noch einmal. Was darin liegt, überlebt einen Neustart des Containers und nicht das nächste Einspielen, weil ein Gerät einer App keinen eigenen Datenordner gibt, und das steht in der README der App.
+- `--check` prüft jetzt auch den Bau. Ins Paket geht das Ergebnis von `npm run build` und nicht der Ordner davor; das steht als Regel im Kontrakt jedes Geräts und wurde von niemandem geprüft. Liegen im Frontend des Pakets noch `package.json`, `src/` oder eine `tsconfig.json`, hält das Werkzeug vor dem Gerät an: eingespielt bekäme der Browser eine `index.html`, die auf `/src/main.tsx` zeigt, und der Mensch im Rahmen sähe eine leere Seite ohne einen Hinweis darauf, woran es liegt.
+- Platzhalter wurden in neun Dateiarten ersetzt und in `.ts` und `.tsx` nicht. Jede App aus der Vorlage hätte `{{name}}` in ihrer Oberfläche getragen. Jetzt stehen sie mit in der Liste.
+- Was der Browser hinterlässt, `.playwright-mcp/`, ist aus der Versionsverwaltung heraus. Der Ordner entsteht, sobald Ara den Browser benutzt, und ohne diese Zeile war der Arbeitsordner jedes Kit-Repositories danach schmutzig.
+
 ## 0.15.0 (2026-08-29)
 
 Kontrakt: bis 3

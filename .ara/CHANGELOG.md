@@ -13,6 +13,19 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.16.0 (2026-08-29)
+
+Contract: up to 3
+
+- The scaffold of an app now stands on the same stack as the device's interface: Vite, React 19, TypeScript, Tailwind 4, `react-router`, TanStack Query. Until now it was React out of a script tag with hand-written CSS, and a partner who had seen Arasul's interface found nothing in it that he recognised. `npm run build` runs `tsc --noEmit` before the bundler, so a type error stops the build instead of arriving on the device as an empty page.
+- The scaffold does not know its own path and must not. A device delivers an app live under `/apps/<id>/` and in staging under `/apps/<id>/test/`, so `react-router` gets its base at runtime out of the document's address, and the assets stay relative. An absolute build pointed from staging at the live version, and nobody would see it on the page. It follows from that that the routes stay one level deep; that stands in the header of `rahmen/basis.ts` and in the app's README.
+- Who is logged in the app now reads out of `api/me` and holds it as a context with the role. That way is the platform's and stands in its contract, so that even an app without a backend can show its user. The backend of the scaffold no longer returns the logged-in person in its own situation route: two sources for the same thing were one too many.
+- The theme comes from the device. The app reads `data-theme` on the parent window and listens for changes, so whoever switches in Arasul sees the app go along; without a frame the operating system's setting applies. `design.css` therefore now carries one block per theme instead of only a media query, and the values for all three come out of the mirror. Next to it lies `marken.css`, mirrored from the product's design system: it gets replaced, not written on, and rules of your own belong at the end of `stil.css`.
+- The backend of the scaffold follows the port pattern. `server.mjs` does HTTP, `kern/vorgaenge.mjs` does the cases and knows two connections and nothing else of the world, a store and a device. One store per entity, and in it the only SQL for it. The store is SQLite out of Node itself, without a package next to it, with its state in `pragma user_version` and one file per migration; a migration that has run does not run again. What lies in it survives a restart of the container and not the next deploy, because a device gives an app no data folder of its own, and that stands in the app's README.
+- `--check` now also checks the build. Into the package goes the result of `npm run build` and not the folder in front of it; that stands as a rule in every device's contract and was checked by nobody. If `package.json`, `src/` or a `tsconfig.json` still lie in the frontend of the package, the tool stops before the device: deployed, the browser would get an `index.html` pointing at `/src/main.tsx`, and the human in the frame would see an empty page with no hint of why.
+- Placeholders were replaced in nine kinds of file and not in `.ts` and `.tsx`. Every app out of the scaffold would have carried `{{name}}` in its interface. Now they are in the list too.
+- What the browser leaves behind, `.playwright-mcp/`, is out of version control. It comes into being as soon as Ara uses the browser, and without that line the working folder of every kit repository was dirty afterwards.
+
 ## 0.15.0 (2026-08-29)
 
 Contract: up to 3

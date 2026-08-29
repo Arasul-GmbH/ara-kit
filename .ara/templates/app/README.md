@@ -23,6 +23,18 @@ Plan erledigt ist:
 
 Der erste Plan steht unter `plans/offen/`. Was die App danach kann, gehört hierher.
 
+## Wer da ist
+
+**Nicht aus einem Formularfeld.** Angemeldet wird an Arasul, und das Sitzungscookie fährt
+bei jedem Aufruf dieser Seite mit. Wer es ist, sagt `api/me`: dieser eine Weg liegt unter
+`api/` und gehört trotzdem der Plattform, damit auch eine App ohne eigenes Backend ihren
+Benutzer anzeigen kann. Die Oberfläche liest ihn einmal und hält ihn als Kontext, das
+Backend liest denselben Menschen aus den Kopfzeilen vor dem Container.
+
+Die Rolle steht dabei und wird nicht ausgewertet: **was ein Mensch darf, entscheidet das
+Gerät.** Es liefert eine App nur dem aus, dem sie freigegeben ist. Eine Prüfung in der App
+wäre keine zweite Sicherung, sondern nur eine bessere Meldung.
+
 ## Woher sie weiß, wie sie das Gerät erreicht
 
 **Nicht aus ihrem eigenen Quelltext.** Unter welchem Namen das Gerät ihr die Adresse der
@@ -52,10 +64,10 @@ Lauf ohne Entscheidung, und der Vorgang steht auf abgelaufen. Das ist kein Fehle
 
 ## Was sie nicht kann
 
-- **Sie merkt sich nichts über einen Neustart hinweg.** Die Vorgänge liegen im Speicher des
-  Containers. Ein Gerät gibt einer App heute keinen eigenen Datenordner; eine App, die
-  sich dafür eine eigene Datenbank mitbringt, hätte eine zweite Ablage neben der, die das
-  Produkt später vorsieht. Sag das dem Kunden, bevor er es merkt.
+- **Die Vorgänge überleben das nächste Einspielen nicht.** Sie liegen in einer
+  SQLite-Datei unter `daten/` im Container. Die überlebt einen Neustart des Containers und
+  nicht die nächste Fassung: ein Gerät gibt einer App heute keinen eigenen Datenordner.
+  Sag das dem Kunden, bevor er es merkt.
 - Ohne Arasul entscheidet niemand: der Vorgang wird angenommen und bleibt liegen. Die Seite
   sagt das dann selbst.
 - Ein Satz an dieser Stelle erspart später eine Enttäuschung. Trag hier ein, was
@@ -66,22 +78,48 @@ Lauf ohne Entscheidung, und der Vorgang steht auf abgelaufen. Das ist kein Fehle
 | Ordner | Was darin liegt |
 | --- | --- |
 | `app.json` | Das Manifest: Kennung, Version, welche Ordner das Paket mitbringt, welcher Port, welche Grenzen |
-| `frontend/` | Die Oberfläche als React-Quelltext. `npm run build` legt sie nach `dist/`, und von dort geht sie ins Paket |
-| `frontend/src/bausteine.jsx` | Die sechs Bausteine der Oberfläche: Kopf, Liste, Karte, Formular, Meldung, Menü. Die Seite in `app.jsx` ist nur aus ihnen gebaut |
+| `frontend/` | Die Oberfläche: Vite, React, TypeScript, Tailwind. `npm run build` legt sie nach `dist/`, und von dort geht sie ins Paket |
 | `backend/` | Node und ein Dockerfile. Gebaut wird am Gerät, nicht hier |
-| `backend/arasul.json` | Die Vereinbarung mit dem Gerät. Im Quelltext leer, gefüllt wird sie beim Einspielen aus dem Kontrakt |
 | `flows/freigabe.md` | Der Flow mit dem Freigabe-Schritt. Der Dateiname ist der Name des Flows |
 | `plans/` | `offen/`, `aktiv/` und `erledigt/`. Aktiv ist höchstens einer |
 | `build/` | Das fertige Paket. Es entsteht beim Bauen und wird nicht von Hand bearbeitet |
+
+Die Oberfläche, von außen nach innen:
+
+| Datei | Was sie tut |
+| --- | --- |
+| `src/app.tsx` | Der Rahmen: Fehlerwand, Zwischenspeicher, Thema, Wege, Anmeldung. Und die Liste der Wege |
+| `src/rahmen/basis.ts` | Unter welchem Pfad die App hängt. Sie rät ihn nicht, sie liest ihn |
+| `src/rahmen/thema.ts` | Das Thema des Geräts, gelesen am Elternfenster und mitgeführt |
+| `src/rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, als Kontext |
+| `src/rahmen/schnittstelle.ts` | Die eine Stelle, an der etwas geholt wird |
+| `src/rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage, an einer Stelle |
+| `src/bausteine.tsx` | Kopf, Karte, Formular, Meldung. Die Seiten sind nur aus ihnen gebaut |
+| `src/vorgaenge.ts` | Typen und Abfragen der einen Entität dieser App |
+| `src/seiten/` | Die Seiten. Sie zeichnen und holen nichts selbst |
+
+Das Backend, von außen nach innen:
+
+| Datei | Was sie tut |
+| --- | --- |
+| `server.mjs` | Wege, Kopfzeilen, Statuscodes. Sonst nichts |
+| `kern/vorgaenge.mjs` | Was mit einem Vorgang passiert. Kennt zwei Anschlüsse und die Welt sonst nicht |
+| `ablage/vorgaenge.mjs` | Die eine Naht zu SQLite. Hier steht das einzige SQL der App |
+| `ablage/db.mjs` | Die Datei und ihre Migrationen. Der Stand steht in der Datenbank selbst |
+| `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst |
+| `arasul.mjs` | Die Naht zum Gerät. Kein Wert darin, den das Gerät vergibt |
+| `arasul.json` | Die Vereinbarung mit dem Gerät. Im Quelltext leer, gefüllt wird sie beim Einspielen |
 
 Die Schnittstelle des Backends, hinter `/apps/{{id}}/api/`:
 
 | Weg | Was er tut |
 | --- | --- |
-| `GET /lage` | Name der App, wer angemeldet ist, ob das Gerät Arasul mitgegeben hat |
+| `GET /lage` | Name der App und ob das Gerät ihr eine Schnittstelle gegeben hat |
 | `GET /vorgaenge` | Alle Vorgänge, vorher am Gerät nachgezogen |
 | `POST /vorgaenge` | Vorgang einreichen und den Flow starten |
 | `GET /gesund` | Für den Gesundheitscheck des Containers |
+
+`GET /api/me` steht nicht in dieser Liste: den beantwortet die Plattform.
 
 ## Womit man arbeitet
 
@@ -97,12 +135,29 @@ Auf einem Gerät ohne Arasul geht dieselbe App über Compose:
 `node .ara/tools/app.mjs --device <gerät> --app {{id}} --compose`. Was dann fehlt, sagt das
 Werkzeug in dem Moment, in dem es aufsetzt.
 
+Beim Bauen läuft `tsc --noEmit` vor `vite build`: ein Typfehler hält den Bau an, statt am
+Gerät als leere Seite anzukommen.
+
 ## Wie sie aussieht
 
 Die Werte des Aussehens stehen in `frontend/src/design.css` und kommen aus dem Spiegel des
 Produkts; liegt keiner vor, steht die Vorgabe des Kits darin, und die Datei sagt das in
-ihrem Kopf. Die Regeln daneben in `stil.css` benutzen nur die Namen der Marken, keinen
-einzigen Farbwert: beim nächsten Stand wird `design.css` ersetzt, und der Rest bleibt.
+ihrem Kopf. Ein Block je Thema, gewählt über `data-theme` am `<html>`.
 
-Neue Oberfläche entsteht aus den Bausteinen in `bausteine.jsx`, nicht aus neuem HTML
-daneben. Wer eine Farbe in eine Regel schreibt, hat sie beim nächsten Stand doppelt.
+**Das Thema kommt vom Gerät und nicht aus dieser App.** Sie läuft in einem Rahmen mitten in
+der Oberfläche von Arasul, liest dessen `data-theme` am Elternfenster und hört auf
+Änderungen: wer in Arasul umschaltet, sieht die App mitgehen. Ohne Rahmen gilt die
+Einstellung des Betriebssystems.
+
+Die Regeln daneben stehen in `marken.css`, gespiegelt aus dem Designsystem des Produkts.
+**Diese Datei wird ersetzt, nicht fortgeschrieben.** Eigene Regeln gehören ans Ende von
+`stil.css`, und sie benutzen nur die Namen der Marken, keinen einzigen Farbwert.
+
+Neue Oberfläche entsteht aus den Bausteinen in `bausteine.tsx`, nicht aus neuem HTML
+daneben. Sie tragen die Namen und die Eigenschaften des Designsystems, damit der Tausch
+gegen die Bibliothek des Produkts ein Tausch von Importen bleibt.
+
+**Die Wege der App bleiben eine Ebene tief**, also `/vorgaenge` und nicht `/vorgaenge/17`.
+Warum, steht im Kopf von `src/rahmen/basis.ts`: die Seite verweist relativ auf ihre Bündel,
+weil sie beim Bauen nicht weiß, ob sie im Teststand oder live hängt. Was ein Verweis auf ein
+einzelnes Ding braucht, gehört in die Suchanfrage.
