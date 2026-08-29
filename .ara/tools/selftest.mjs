@@ -42,7 +42,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { platform, tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PROBE, arasulRunning, judge, parseProbe, services } from "./lib/device.mjs";
 import { findFaults, insideTree, nextId, parseHealProbe, planFor as healPlan, reached, readVerify } from "./lib/heal.mjs";
@@ -105,7 +105,7 @@ import {
 } from "./lib/invoice.mjs";
 import { buildXml, validateXml } from "./lib/zugferd.mjs";
 import { embed, inspect, sRgbProfile } from "./lib/pdfa.mjs";
-import { HELP_SPLIT, ROOT, headerHelp, helpOnly, readFrontmatter, writeFrontmatter } from "./lib/kit.mjs";
+import { HELP_SPLIT, ROOT, day, daysUntil, headerHelp, helpOnly, now, readFrontmatter, today, writeFrontmatter } from "./lib/kit.mjs";
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
@@ -1161,7 +1161,7 @@ check("Agenda erkennt Termine und Lücken", () => {
     const deviceDir = join(dir, "devices", "probe");
     spawnSync("mkdir", ["-p", deviceDir]);
 
-    const past = new Date(Date.now() - 5 * 86_400_000).toISOString().slice(0, 10);
+    const past = day(-5);
     writeFileSync(
       join(dir, "customer.md"),
       `---\nid: ${customer}\nlegal_name: Probe GmbH\nstatus: lead\nfollow_up: ${past}\nfollow_up_note: nachfassen\n---\n\nProbe.\n`
@@ -1175,7 +1175,7 @@ check("Agenda erkennt Termine und Lücken", () => {
     const ownDir = join(ROOT, "devices", "_selftest-own");
     rmSync(ownDir, { recursive: true, force: true });
     spawnSync("mkdir", ["-p", ownDir]);
-    const soon = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+    const soon = day(10);
     writeFileSync(join(ownDir, "device.md"), `---\nname: _selftest-own\nstatus: live\nmaintenance_until: ${soon}\n---\n`);
 
     const run = tool("agenda.mjs", []);
@@ -1202,9 +1202,6 @@ check("Kalkulationsblatt meldet jede fehlende Zahl mit ihrer Folge", () => {
   // beides, die Zählung und dass jede Zahl ihre Folge nennt.
   const dir = mkdtempSync(join(tmpdir(), "ara-kalk-"));
   const file = join(dir, "company.md");
-  const day = (offset) =>
-    new Date(Date.now() + offset * 86_400_000).toISOString().slice(0, 10);
-
   try {
     // Das leere Blatt, so wie es aus der Vorlage entsteht.
     writeFileSync(file, readFileSync(join(ROOT, ".ara", "templates", "company.md"), "utf8"));
@@ -2348,7 +2345,7 @@ await checkAsync("Die Leistungsbeschreibung bekommt ihre Werte vom Geraet", asyn
   // nichts sagt, leer bleibt und mit einer Begruendung genannt wird.
   const name = "selftest-papier";
   const akte = join(ROOT, "devices", name);
-  const datei = join(akte, `leistungsbeschreibung-${new Date().toISOString().slice(0, 10)}.md`);
+  const datei = join(akte, `leistungsbeschreibung-${today()}.md`);
 
   // Zwei Geraete in einem: erst eines, das Modelle und Apps aufzaehlt, dann
   // eines, das beides nicht kennt.
@@ -4942,6 +4939,132 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     return "anlegen, ansehen, einspielen, nachziehen, Hash-Erkennung, /init in beiden Zweigen";
   } finally {
     server.close();
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+// --- Datum und blanker Klon ---------------------------------------------------
+
+check("Ein Datum im Kit ist der Tag vor Ort", () => {
+  // Der Fehler, an dem ein frischer Klon am 29.08.2026 um 01:05 durchfiel.
+  // `toISOString()` rechnet in UTC. In Mitteleuropa ist es zwischen 22 Uhr und
+  // Mitternacht dort schon der naechste Tag noch nicht, sondern immer noch der
+  // vorige: der Selbsttest legte eine Wartung "in zehn Tagen" an, `daysUntil`
+  // las neun daraus, und die Leistungsbeschreibung suchte ihr Papier unter dem
+  // Datum des Vortags. Im Worktree fiel es nie auf, weil dort niemand nachts
+  // gemessen hat, und die Uhrzeit steht in keinem Klon anders als im Worktree.
+  assert(day(0) === today(), "day(0) und today() sind nicht derselbe Tag");
+  for (const versatz of [-400, -5, -1, 0, 1, 10, 90]) {
+    assert(daysUntil(day(versatz)) === versatz, `day(${versatz}) liegt ${daysUntil(day(versatz))} Tage entfernt`);
+  }
+
+  // Feste Zeitpunkte, damit die Pruefung nicht davon abhaengt, wann sie laeuft.
+  // Der erste ist der gemessene Fehlschlag selbst.
+  const fest = [
+    [[10, new Date(2026, 7, 29, 1, 5)], "2026-09-08"],
+    [[0, new Date(2026, 7, 29, 1, 5)], "2026-08-29"],
+    [[-5, new Date(2026, 7, 29, 23, 59)], "2026-08-24"],
+    // Zeitumstellung: an diesen Tagen hat der Tag 23 oder 25 Stunden, und wer
+    // 86_400_000 Millisekunden addiert, landet daneben.
+    [[1, new Date(2026, 2, 28, 23, 30)], "2026-03-29"],
+    [[1, new Date(2026, 9, 24, 23, 30)], "2026-10-25"],
+    // Ueber Monat und Jahr hinweg.
+    [[1, new Date(2026, 11, 31, 12, 0)], "2027-01-01"],
+    [[-1, new Date(2026, 0, 1, 0, 30)], "2025-12-31"],
+  ];
+  for (const [[versatz, von], erwartet] of fest) {
+    assert(day(versatz, von) === erwartet, `day(${versatz}) auf ${von} gibt ${day(versatz, von)} statt ${erwartet}`);
+  }
+  assert(now(new Date(2026, 7, 29, 1, 5)) === "2026-08-29 01:05", `Zeitstempel falsch: ${now(new Date(2026, 7, 29, 1, 5))}`);
+
+  // Und die Stelle selbst: kein Werkzeug schneidet sich ein Datum aus einer
+  // UTC-Zeichenkette. Ein voller Zeitstempel mit Z darf bleiben, der ist ehrlich.
+  const treffer = [];
+  const scan = (dir) => {
+    for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+      const pfad = join(dir, eintrag.name);
+      if (eintrag.isDirectory()) {
+        scan(pfad);
+        continue;
+      }
+      if (!eintrag.name.endsWith(".mjs")) continue;
+      const text = readFileSync(pfad, "utf8");
+      for (const zeile of text.split("\n")) {
+        if (/toISOString\(\)\s*\.slice\(/.test(zeile)) treffer.push(`${relative(ROOT, pfad)}: ${zeile.trim()}`);
+      }
+    }
+  };
+  scan(join(ROOT, ".ara", "tools"));
+  assert(
+    treffer.length === 0,
+    `ein Datum kommt aus UTC statt aus dem Kalender vor Ort, day() oder today() nehmen:\n    ${treffer.join("\n    ")}`
+  );
+  return `${fest.length} feste Zeitpunkte, Zeitumstellung, Jahreswechsel`;
+});
+
+check("Der Selbsttest ist in einem blanken Klon gruen", () => {
+  // Gemessen am 29.08.2026: `git clone` von GitHub, dann dieser Selbsttest, und
+  // er sagte einem Fremden beim ersten Befehl, das Kit sei nicht verlaesslich.
+  // Im Worktree lief derselbe Stand gruen, denn dort liegt ein Profil, ein
+  // Spiegel und eine echte Geraeteakte. Wer nur im Worktree misst, misst seinen
+  // Arbeitsordner. Diese Pruefung baut den Klon nach: nur was in der
+  // Versionsverwaltung liegt, keine Akte, kein Profil, kein Spiegel.
+  if (process.env.ARA_SELFTEST_KLON) return "übersprungen, dies ist der Lauf im Klon";
+
+  const listed = spawnSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+  });
+  if (listed.status !== 0) return "übersprungen, kein Git-Repository";
+  const dateien = listed.stdout.split("\0").filter(Boolean);
+  assert(dateien.length > 100, `nur ${dateien.length} Dateien im Klon, das kann nicht das Kit sein`);
+
+  const work = mkdtempSync(join(tmpdir(), "ara-klon-"));
+  const klon = join(work, "ara-kit");
+  try {
+    for (const datei of dateien) {
+      const ziel = join(klon, datei);
+      mkdirSync(dirname(ziel), { recursive: true });
+      cpSync(join(ROOT, datei), ziel);
+    }
+
+    // Die Ordner des Nutzers gibt es im Klon nicht. Das ist der Unterschied,
+    // an dem es haengt, und er wird hier ausgesprochen statt vorausgesetzt.
+    for (const eigen of ["business", "customers", "devices", "apps", ".env", ".ara/state.json"]) {
+      assert(!existsSync(join(klon, eigen)), `der nachgebaute Klon bringt ${eigen} mit`);
+    }
+    assert(existsSync(join(klon, ".ara", "tools", "selftest.mjs")), "im Klon fehlt der Selbsttest");
+    assert(readdirSync(join(klon, ".ara", "mirror")).join(",") === ".gitkeep", "der Spiegel ist mitgekommen");
+
+    // Ein Repository muss es sein: mehrere Pruefungen fragen git nach
+    // .gitignore und nach dem, was verfolgt wird.
+    const git = (...args) =>
+      spawnSync("git", ["-c", "user.name=Selbsttest", "-c", "user.email=selbsttest@example.invalid", ...args], {
+        cwd: klon,
+        encoding: "utf8",
+      });
+    assert(git("init", "-q", "-b", "main").status === 0, "im Klon laesst sich kein Repository anlegen");
+    assert(git("add", "-A").status === 0, "im Klon laesst sich nichts eintragen");
+    assert(git("commit", "-q", "--no-gpg-sign", "-m", "klon").status === 0, "im Klon laesst sich nichts festschreiben");
+
+    const run = spawnSync(process.execPath, [join(klon, ".ara", "tools", "selftest.mjs")], {
+      cwd: klon,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      env: { ...process.env, ARA_SELFTEST_KLON: "1", ARA_LANGUAGE: TOOL_LANGUAGE },
+    });
+    const ausgabe = `${run.stdout}${run.stderr}`;
+    const gefallen = ausgabe.split("\n").filter((zeile) => /^FEHL/.test(zeile));
+    assert(
+      run.status === 0,
+      `im blanken Klon fallen ${gefallen.length || "?"} Prüfungen:\n    ${(gefallen.length ? gefallen : ausgabe.split("\n").slice(-5)).join("\n    ")}`
+    );
+    const zahl = ausgabe.match(/^(\d+) von (\d+) Prüfungen bestanden\.$/m);
+    assert(zahl, `der Lauf im Klon nennt kein Ergebnis: ${ausgabe.split("\n").slice(-5).join(" | ")}`);
+    assert(zahl[1] === zahl[2], `im Klon bestanden nur ${zahl[1]} von ${zahl[2]}`);
+    return `${dateien.length} Dateien, ${zahl[2]} Prüfungen, alle grün`;
+  } finally {
     rmSync(work, { recursive: true, force: true });
   }
 });

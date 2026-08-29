@@ -14,16 +14,35 @@ export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", ".
 export const CUSTOMERS = join(ROOT, "customers");
 export const BUSINESS = join(ROOT, "business");
 
+const pad = (n) => String(n).padStart(2, "0");
+
+/**
+ * Ein Kalendertag vor Ort, um `offset` Tage verschoben: 2026-08-16
+ *
+ * Hier steht mit Absicht kein `toISOString()`. Das rechnet in UTC, und wer in
+ * Mitteleuropa nach 22 Uhr danach fragt, bekommt das Datum von gestern. Am
+ * 29.08.2026 um 01:05 fiel der Selbsttest in einem frischen Klon genau daran:
+ * er legte eine Wartung "in zehn Tagen" an, das Werkzeug las neun daraus, und
+ * die Leistungsbeschreibung suchte ihr Papier unter dem Datum des Vortags.
+ * Ein Datum im Kit ist der Tag, den der Mensch vor dem Rechner sieht.
+ *
+ * Der Umweg über die Bestandteile statt über Millisekunden ist ebenso
+ * beabsichtigt: an einem Tag der Zeitumstellung hat der Tag nicht 24 Stunden,
+ * und `Date.now() + n * 86_400_000` landet dann einen Tag daneben.
+ */
+export function day(offset = 0, from = new Date()) {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + Number(offset || 0));
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** Zeitstempel in lesbarer lokaler Form: 2026-08-16 15:42 */
-export function now() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+export function now(from = new Date()) {
+  return `${day(0, from)} ${pad(from.getHours())}:${pad(from.getMinutes())}`;
 }
 
 /** Datum allein: 2026-08-16 */
 export function today() {
-  return now().slice(0, 10);
+  return day(0);
 }
 
 /** Tage bis zu einem Datum. Negativ heißt überfällig. */

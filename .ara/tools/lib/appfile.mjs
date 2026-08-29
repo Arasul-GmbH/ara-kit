@@ -14,7 +14,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
+import { ROOT, now, readFrontmatter, today, writeFrontmatter } from "./kit.mjs";
 import { t } from "./i18n.mjs";
 
 export const APPS = join(ROOT, "apps");
@@ -138,7 +138,7 @@ export function readApp(name) {
       // Ein Bau, der älter ist als die Quelle, ist kein Bau, sondern ein
       // Missverständnis: eingespielt würde der Stand von vorgestern.
       stale: newest(dir, NOT_IN_PACKAGE) > newest(buildDir),
-      time: new Date(statSync(buildManifest).mtimeMs).toISOString().slice(0, 16).replace("T", " "),
+      time: now(new Date(statSync(buildManifest).mtimeMs)),
     };
   }
   return app;
