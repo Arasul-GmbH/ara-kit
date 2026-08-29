@@ -21,10 +21,12 @@
  *   node .ara/tools/marken.mjs --source <folder>   where the source lies
  *   node .ara/tools/marken.mjs --json          for evaluation
  *
- * The source is the mirror of the product, `.ara/mirror/packages/marken/src/`.
- * Without one there is no source, and then the guard only asks the questions it
- * can answer here. `--source` names a folder instead, which is what kit work
- * needs: the library moves in the product before it is in any release.
+ * The source is the mirror of the product, `.ara/mirror/packages/marken/src/`;
+ * without one, the kit's scaffold takes its place, because that is what `--new`
+ * would have laid down. The scaffold is never its own source: a mirror that
+ * measures itself always says yes. `--source` names a folder instead, which is
+ * what kit work needs: the library moves in the product before it is in any
+ * release.
  *
  * **The guard never repairs on its own.** `--sync` writes, and only into
  * `apps/`. The scaffold belongs to the kit: it is version controlled, and a
@@ -56,11 +58,12 @@
  *   node .ara/tools/marken.mjs --source <ordner>   wo die Quelle liegt
  *   node .ara/tools/marken.mjs --json          zur Auswertung
  *
- * Die Quelle ist der Spiegel des Produkts, `.ara/mirror/packages/marken/src/`.
- * Ohne ihn gibt es keine Quelle, und dann stellt der Waechter nur die Fragen,
- * die er hier beantworten kann. `--source` nennt stattdessen einen Ordner, und
- * genau das braucht die Arbeit am Kit: die Bibliothek bewegt sich im Produkt,
- * bevor sie in einer Auslieferung steht.
+ * Die Quelle ist der Spiegel des Produkts, `.ara/mirror/packages/marken/src/`;
+ * ohne ihn tritt die Vorlage des Kits an seine Stelle, denn sie ist das, was
+ * `--new` hingelegt haette. Ihre eigene Quelle ist die Vorlage nie: ein Spiegel,
+ * der sich an sich selbst misst, sagt immer ja. `--source` nennt stattdessen
+ * einen Ordner, und genau das braucht die Arbeit am Kit: die Bibliothek bewegt
+ * sich im Produkt, bevor sie in einer Auslieferung steht.
  *
  * **Der Waechter repariert nichts von allein.** `--sync` schreibt, und nur
  * nach `apps/`. Die Vorlage gehoert dem Kit: sie liegt in der
@@ -94,10 +97,16 @@ const MIRROR = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
 const short = (path) => relative(ROOT, path) || ".";
 
 /**
- * Wo die Quelle liegt: der genannte Ordner, sonst der Spiegel des Produkts.
+ * Wo die Quelle liegt: der genannte Ordner, sonst der Spiegel des Produkts,
+ * sonst die Vorlage des Kits.
  *
- * Die Vorlage ist hier ausdruecklich keine Quelle. Sie ist selbst ein Spiegel,
- * und ein Spiegel, der sich an sich selbst misst, sagt immer ja.
+ * Die Vorlage ist die schwaechste der drei, und sie steht trotzdem da. Sie ist
+ * selbst ein Spiegel, also kann sie ueber ihren eigenen Stand nichts sagen; ein
+ * Spiegel, der sich an sich selbst misst, sagt immer ja. Fuer eine App ist sie
+ * aber genau die richtige Auskunft: sie ist das, was `--new` hingelegt haette.
+ * Ohne sie stuende der Waechter da, sagte "zieh nach", und `--sync` antwortete,
+ * es gebe nichts, woraus. Genau das war am 29.08.2026 der Fall, denn die
+ * Auslieferung 0.3.0 des Produkts traegt `packages/marken` noch nicht.
  */
 function findSource() {
   const named = typeof arg.source === "string" ? arg.source : null;
@@ -114,7 +123,8 @@ function findSource() {
     return { dir: path, origin: "named" };
   }
   const inMirror = libraryInMirror(MIRROR);
-  return inMirror ? { dir: inMirror, origin: "mirror" } : null;
+  if (inMirror) return { dir: inMirror, origin: "mirror" };
+  return existsSync(join(SCAFFOLD, "fassung.ts")) ? { dir: SCAFFOLD, origin: "scaffold" } : null;
 }
 
 /** Jede App, die eine Kopie der Bibliothek traegt. */
@@ -245,6 +255,18 @@ if (arg.sync) {
     );
   }
   const version = source.origin === "mirror" ? mirrorState()?.version || null : null;
+  if (arg.scaffold && source.origin === "scaffold") {
+    fail(
+      t(
+        "The scaffold cannot be its own source.\n" +
+          "  node .ara/tools/mirror.mjs --refresh   fetches the artifact\n" +
+          "  --source <folder>                      names a folder instead",
+        "Die Vorlage kann nicht ihre eigene Quelle sein.\n" +
+          "  node .ara/tools/mirror.mjs --refresh   holt das Artefakt\n" +
+          "  --source <ordner>                      nennt stattdessen einen Ordner"
+      )
+    );
+  }
   const written = [];
   for (const target of targets) {
     if (target.scaffold && !arg.scaffold) continue;
@@ -303,13 +325,20 @@ lines.push(
         `Source: ${short(source.dir)}, version ${library.fassung}, ${blocks(library).length} blocks`,
         `Quelle: ${short(source.dir)}, Fassung ${library.fassung}, ${blocks(library).length} Bausteine`
       )
-    : t(
-        "Source: none. The mirror carries no packages/marken, so only the mirrors themselves\n" +
-          "are checked. node .ara/tools/mirror.mjs --refresh fetches the artifact.",
-        "Quelle: keine. Der Spiegel traegt kein packages/marken, geprueft werden also nur die\n" +
-          "Spiegel selbst. node .ara/tools/mirror.mjs --refresh holt das Artefakt."
-      )
+    : t("Source: none, and no scaffold either.", "Quelle: keine, und auch keine Vorlage.")
 );
+if (source?.origin === "scaffold") {
+  lines.push(
+    t(
+      "That is the scaffold of the kit: the mirror carries no packages/marken. Whether the\n" +
+        "scaffold itself is current, only a mirror of the product says.\n" +
+        "  node .ara/tools/mirror.mjs --refresh   fetches the artifact",
+      "Das ist die Vorlage des Kits: der Spiegel traegt kein packages/marken. Ob die Vorlage\n" +
+        "selbst aktuell ist, sagt nur ein Spiegel des Produkts.\n" +
+        "  node .ara/tools/mirror.mjs --refresh   holt das Artefakt"
+    )
+  );
+}
 lines.push("");
 for (const entry of report) {
   lines.push(`${entry.befunde.length ? "FEHL" : "ok  "}  ${entry.ziel}: ${t("version", "Fassung")} ${entry.fassung || "?"}`);
@@ -325,12 +354,7 @@ lines.push(
         `${bad.length} von ${report.length} Spiegeln tragen einen Befund.\n` +
           "  node .ara/tools/marken.mjs --sync   zieht die Apps nach"
       )
-    : source
-      ? t(`${report.length} mirrors, all at the source.`, `${report.length} Spiegel, alle an der Quelle.`)
-      : t(
-          `${report.length} mirrors, none of them edited. Whether they are current, only a source says.`,
-          `${report.length} Spiegel, keiner verstellt. Ob sie aktuell sind, sagt nur eine Quelle.`
-        )
+    : t(`${report.length} mirrors, all at the source.`, `${report.length} Spiegel, alle an der Quelle.`)
 );
 console.log(lines.join("\n"));
 process.exit(bad.length ? 1 : 0);

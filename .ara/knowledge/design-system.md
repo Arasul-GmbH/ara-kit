@@ -107,8 +107,13 @@ node .ara/tools/marken.mjs --source <folder>   name a source by hand
 
 It asks three questions: does every file match its hash, does the mirror stand at the
 source's version, and is it complete (no class without a rule, no block without an export).
-Without a mirror of the product there is no source, and then it only asks the questions it
-can answer here, and says so.
+
+**Which source applies**, in this order: the folder behind `--source`, otherwise the mirror
+of the product, otherwise the kit's scaffold. The third is the weakest, and it stands there
+all the same: for an app the scaffold is exactly the right answer, because it is what
+`--new` would have laid down. The scaffold is never its own source, a mirror that measures
+itself always says yes. Whether it is current itself, only a mirror of the product says,
+and the guard writes that down.
 
 `--sync` writes only into `apps/`. The scaffold belongs to the kit and is version
 controlled; pulling it up is a matter for the kit and not a handgrip in a partner's clone.

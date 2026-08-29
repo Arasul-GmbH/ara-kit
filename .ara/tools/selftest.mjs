@@ -3374,6 +3374,18 @@ check("Der Waechter meldet einen verstellten Spiegel", () => {
   }
   assert(tool("marken.mjs", []).status === 0, "der Spiegel wurde nicht wiederhergestellt");
 
+  // Ohne Spiegel des Produkts tritt die Vorlage als Quelle an. Sonst sagte der
+  // Waechter "zieh nach", und --sync antwortete, es gebe nichts, woraus: genau
+  // die Sackgasse, in der das Kit am 29.08.2026 stand, denn die Auslieferung
+  // 0.3.0 traegt packages/marken noch nicht. Ihre eigene Quelle ist die
+  // Vorlage nie.
+  const ausSichSelbst = tool("marken.mjs", ["--sync", "--scaffold"]);
+  assert(ausSichSelbst.status === 1, "die Vorlage wurde aus sich selbst nachgezogen");
+  assert(
+    /eigene Quelle/.test(ausSichSelbst.stderr + ausSichSelbst.stdout),
+    `der Grund fehlt: ${ausSichSelbst.stderr}${ausSichSelbst.stdout}`
+  );
+
   // Eine Quelle, die weiter ist als der Spiegel: dann ist er veraltet und
   // nicht verstellt, und der Waechter sagt beides verschieden.
   const quelle = mkdtempSync(join(tmpdir(), "ara-marken-"));
@@ -3386,7 +3398,7 @@ check("Der Waechter meldet einen verstellten Spiegel", () => {
   } finally {
     rmSync(quelle, { recursive: true, force: true });
   }
-  return `${blocks(bibliothek).length} Bausteine, Fassung ${bibliothek.fassung}, verstellt, fehlend und veraltet erkannt`;
+  return `${blocks(bibliothek).length} Bausteine, Fassung ${bibliothek.fassung}, verstellt, fehlend, veraltet und die Vorlage als eigene Quelle`;
 });
 
 check("Das Aussehen einer App trägt ein Thema je Block", () => {

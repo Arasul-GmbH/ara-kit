@@ -108,8 +108,13 @@ node .ara/tools/marken.mjs --source <ordner>   eine Quelle von Hand nennen
 
 Er stellt drei Fragen: passt jede Datei zu ihrem Hash, steht der Spiegel auf der Fassung
 der Quelle, und ist er vollständig (keine Klasse ohne Regel, kein Baustein ohne Ausgabe).
-Ohne Spiegel des Produkts gibt es keine Quelle, und dann stellt er nur die Fragen, die er
-hier beantworten kann, und sagt das auch.
+
+**Welche Quelle gilt**, in dieser Reihenfolge: der Ordner hinter `--source`, sonst der
+Spiegel des Produkts, sonst die Vorlage des Kits. Die dritte ist die schwächste, und sie
+steht trotzdem da: für eine App ist die Vorlage genau die richtige Auskunft, denn sie ist
+das, was `--new` hingelegt hätte. Ihre eigene Quelle ist die Vorlage nie, ein Spiegel, der
+sich an sich selbst misst, sagt immer ja. Ob sie selbst aktuell ist, sagt nur ein Spiegel
+des Produkts, und der Wächter schreibt das dazu.
 
 `--sync` schreibt nur nach `apps/`. Die Vorlage gehört dem Kit und liegt in der
 Versionsverwaltung; sie nachzuziehen ist eine Sache des Kits und kein Handgriff im Klon
