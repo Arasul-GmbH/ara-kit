@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -31,8 +32,17 @@ function ohneCrossOrigin(): Plugin {
   };
 }
 
+/**
+ * `@marken` zeigt auf den Spiegel des Designsystems, genau wie in der
+ * Oberflaeche des Geraets. Ein Pfad-Alias und kein Paket: die Bibliothek wird
+ * mit dieser App uebersetzt, und es gibt kein `dist/`, das jemand vergisst.
+ * Der Name ist derselbe wie dort, damit derselbe Quelltext hier und dort laeuft.
+ */
 export default defineConfig({
   base: "./",
+  resolve: {
+    alias: { "@marken": fileURLToPath(new URL("./src/marken", import.meta.url)) },
+  },
   plugins: [tailwindcss(), react(), ohneCrossOrigin()],
   build: { outDir: "dist", emptyOutDir: true, sourcemap: false },
 });

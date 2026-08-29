@@ -9,6 +9,7 @@ Lies `.ara/knowledge/app.de.md` und arbeite danach. Wissen, das dieser Befehl l�
 `.ara/knowledge/app.de.md`, `.ara/knowledge/security.de.md`, dazu `.ara/knowledge/deploy.de.md`,
 sobald ein Paket an ein Gerät geht, `.ara/knowledge/platform-services.de.md`, sobald die App
 etwas von der Plattform will (Anmeldung, Freigabe, Flow, Sprachmodell),
+`.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst,
 `.ara/knowledge/extensions.de.md` beim ersten Interview mit einem Kunden und
 `.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil
 in `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, womit das

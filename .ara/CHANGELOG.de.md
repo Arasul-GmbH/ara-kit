@@ -15,6 +15,20 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.17.0 (2026-08-29)
+
+Kontrakt: bis 3
+
+- Die Bibliothek des Geräts liegt jetzt in der App-Vorlage. Bis 0.16.0 brachte sie eine eigene `bausteine.tsx` mit: vier Bausteine, nachgebaut nach den Namen des Designsystems, mit einem Ablaufdatum im Kopf. Jetzt liegt der Spiegel von `packages/marken` darin, Datei für Datei: Kopf, Liste, Karte, Formular, Meldung und Menü, dazu `index.ts`, `fassung.ts` und `marken.css`. Wortgleich, denn ein Spiegel, an dem jemand den Kopf umschreibt, lässt sich nicht mehr gegen seine Quelle halten. Importiert wird über `@marken`, denselben Alias, unter dem die Oberfläche des Geräts die Bibliothek kennt: derselbe Quelltext läuft hier und dort.
+- Neben dem Spiegel liegt `mirror.json` mit Fassung, Quelle, Datum und je Datei einem Hash, und darüber wacht `node .ara/tools/marken.mjs`. Er stellt drei Fragen: passt jede Datei zu ihrem Hash, steht der Spiegel auf der Fassung der Quelle, und ist er vollständig. `--sync` zieht die Apps nach, und zwar nur die: die Vorlage liegt in der Versionsverwaltung, und ein Werkzeug, das sie im Klon eines Partners änderte, hinterließe einen schmutzigen Arbeitsordner. `/init` fragt den Wächter, seit diesem Stand als eigener Schritt. Die Quelle ist der Spiegel des Produkts; solange der `packages/marken` nicht mitbringt, tritt die Vorlage des Kits an seine Stelle, denn sie ist das, was `--new` hingelegt hätte. Ihre eigene Quelle ist die Vorlage nie.
+- Die Vorlage benutzt alle sechs Bausteine. Die Vorgangsliste ist eine Datenliste aus `Liste` und `ListenEintrag`, der ausgewählte Vorgang steht als `Karte` darunter, und welcher das ist, steht in der Suchanfrage statt im Zustand der Seite. Dazu eine Seitenleiste mit den Ansichten und Wegen: über 900 Pixeln eine Spalte, darunter derselbe Inhalt im `Menue` über der Seite.
+- Neu im Wissen: `.ara/knowledge/design-system.md`. Welche sechs Bausteine es gibt und was an jedem wichtig ist, wie eine Seite aus ihnen entsteht, und was verboten ist: keine eigene Farbe, kein eigener Baustein neben einem vorhandenen, nichts im Spiegel ändern, keine zweite Schwelle. Dazu eine Tabelle, was jeder Befund des Wächters heißt.
+- Ein Klon, der seine eigene Arbeit versioniert, war nicht vorgesehen. Das Kit fragte an vier Stellen "verfolgt git diese Datei" und meinte "kam sie mit dem Kit". Für einen Partnerklon ist das dasselbe, für einen Betrieb, der seine eigenen Geräte und Apps führt, nicht: drei Prüfungen des Selbsttests fielen, und `--plan-aktiv` verweigerte mitten in der Arbeit. Das neue Feld `versioned:` im Profil nennt die Ordner, die diesem Klon gehören, und trennt die beiden Fragen. Leer heißt weiter: keiner, und dann ist alles wie vorher.
+- Ohne Spiegel sagte niemand, wie man an einen kommt. Der Satz zum Verifikationsstand und der Kopf der erzeugten `design.css` nennen jetzt `node .ara/tools/mirror.mjs --refresh`.
+- Der Kit-Schlüssel hieß im Unternehmens-Zweig am Gerät "Ara-Kit Partner": `business/company.md` gibt es dort nicht, und der Ausdruck fiel auf seinen letzten Zweig zurück. Der Name kommt jetzt aus dem Profil, wenn es keinen Firmenkopf gibt, und ohne jede Angabe heißt der Schlüssel "Ara-Kit" statt etwas Erfundenes.
+- `start_password_ref` stand nur nach einer Installation in der Akte. Ein Gerät, auf dem Arasul schon lief, bekam es nie, obwohl `--admin-login` sich mit genau diesem Eintrag anmeldete. Liegt der Eintrag in der Ablage, steht der Name jetzt in der Akte.
+- `/init` zählte im Unternehmens-Zweig `invoice` und `invoice_tool` als Lücke, obwohl es sie selbst leert, und der Weg über die Antwortdatei sagte "Es fehlt nichts", obwohl Felder leer blieben. Beides steht jetzt richtig da: die Felder des anderen Zweigs zählen nicht mit, und der Lauf mit `--answers` endet mit derselben Zeile wie `--show`.
+
 ## 0.16.0 (2026-08-29)
 
 Kontrakt: bis 3

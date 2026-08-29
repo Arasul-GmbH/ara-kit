@@ -19,7 +19,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import type { UseQueryResult } from "@tanstack/react-query";
-import { Meldung } from "../bausteine";
+import { Meldung } from "@marken";
 
 export interface AsyncBoundaryProps<T> {
   abfrage: UseQueryResult<T>;

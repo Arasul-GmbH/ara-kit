@@ -228,6 +228,20 @@ the next step when offers are coming up.
    not several.** If yes: where, GitHub or elsewhere. Set it up and explain in two lines how backing
    up works. Into the profile: `backup_repo`.
 
+   **If yes, one question after it:** should the backup take these four folders along? For a partner
+   the answer is no, and then there is nothing to do: customer files have no business in a repository
+   somebody else can clone. For an operation that keeps its **own** devices and apps with the kit, the
+   answer is often yes. Whoever says yes puts an exception into the `.gitignore` and names the folders
+   in the profile under `versioned`, comma separated:
+
+   ```
+   versioned: business, devices, apps
+   ```
+
+   The field is a statement about this clone and not a permission. Without it three checks of the
+   self-test and `--plan-aktiv` take tracked work of your own for an accident, and the command refuses
+   in the middle of the work. Empty means: none of the four, and that is the normal case.
+
 2. **First device.**
    - **Partner:** are you setting up a device of your own, to demonstrate or to practise, or are you
      starting straight with customer devices? If yes: which model, is it already there or is it on
@@ -282,7 +296,7 @@ No summary of the whole conversation. No enthusiasm.
 
 ## Every further time
 
-`business/profile.md` exists. Then it is not about the human but about the version of the kit. Seven
+`business/profile.md` exists. Then it is not about the human but about the version of the kit. Eight
 steps, in this order:
 
 1. **Say what they are sitting on.** `node .ara/tools/init.mjs --show` begins with three statements:
@@ -320,14 +334,23 @@ steps, in this order:
    unchanged copy gets deleted, recognisable by the remembered hash; one the human has touched gets
    named and stays. Tell them in that case what the command is called today, and that they may delete
    the old one themselves.
-5. **Switch the language**, if the human wants that. `language` in `business/profile.md` to `de` or
+5. **Pull up the blocks.** `node .ara/tools/marken.mjs` holds the design system's mirror at its
+   source: the one in the scaffold and the one in every app. If a finding stands there, say in one
+   sentence what it is, and `--sync` pulls the apps up. Afterwards the app has to be built and
+   deployed anew, the copy is source. What that means in detail stands in
+   `.ara/knowledge/design-system.md`.
+
+   The scaffold's mirror belongs to the kit and `--sync` does not touch it: it is version
+   controlled, and a change to it in a partner's clone would leave a dirty working folder behind
+   that the next update trips over. If it does not stand at the source, say so and carry on.
+6. **Switch the language**, if the human wants that. `language` in `business/profile.md` to `de` or
    `en`, then `node .ara/tools/commands.mjs --apply`. After that the tool shows every command as
    "newer in kit", because its source has become a different file. That is not a fault, say it
    alongside. You do not switch unasked.
-6. **Complete the profile**, only where it has gaps. `node .ara/tools/init.mjs --show` names the empty
+7. **Complete the profile**, only where it has gaps. `node .ara/tools/init.mjs --show` names the empty
    fields. If a new command needs a detail that is missing from the profile, ask exactly that,
    bundled. If a partner has `invoice: later`, ask again. Do not repeat the whole onboarding.
-7. **Prove it.** `node .ara/tools/selftest.mjs`. Only when it runs through is the new version proven
+8. **Prove it.** `node .ara/tools/selftest.mjs`. Only when it runs through is the new version proven
    on this computer. If a device with Arasul is reachable,
    `node .ara/tools/check-docs.mjs --device <device>` belongs to it: it holds every route that stands
    in the knowledge against this device's contract. A new version of the kit at an old device is

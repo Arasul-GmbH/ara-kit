@@ -319,6 +319,24 @@ function apply(answers) {
 }
 
 /** Was im Profil steht und was fehlt, mit Folge. */
+/**
+ * Felder, die dem anderen Zweig gehoeren und in diesem keine Luecke sind.
+ *
+ * Die Vorlage sagt an ihnen "nur Partner", und beim Schreiben leert `/init`
+ * sie fuer ein Unternehmen. Wer sie danach mitzaehlt, zaehlt seine eigene
+ * Entscheidung als Mangel.
+ */
+const OTHER_BRANCH = Object.freeze({ company: ["invoice", "invoice_tool"] });
+
+/**
+ * Felder, deren leerer Wert eine Antwort ist und keine Luecke.
+ *
+ * `versioned` sagt, welche der vier eigenen Ordner dieser Klon mit Absicht
+ * verfolgt. Leer heisst: keinen, und das ist der Normalfall. Wer es als Luecke
+ * zaehlt, meldet jedem Partner dauerhaft eine, die keine ist.
+ */
+const NOT_A_GAP = Object.freeze(["versioned"]);
+
 function status() {
   const profile = readFrontmatter(PROFILE);
   if (!profile.exists) {
@@ -326,8 +344,15 @@ function status() {
   }
   const company = readFrontmatter(COMPANY);
   const role = profile.fields.role;
-  const set = Object.entries(profile.fields).filter(([, v]) => v).map(([k]) => k);
-  const missing = Object.entries(profile.fields).filter(([, v]) => !v).map(([k]) => k);
+  // Fund 7 der Werkstatt am 29.08.2026: `invoice` und `invoice_tool` gehoeren
+  // nur dem Partner, und /init leert sie fuer ein Unternehmen mit Absicht.
+  // Trotzdem zaehlte der Zaehler sie als Luecke, und ein sauber ausgefuelltes
+  // Unternehmensprofil meldete dauerhaft zwei, die keine sind. Echte Luecken
+  // gehen darin unter.
+  const foreign = OTHER_BRANCH[role] || [];
+  const own = Object.entries(profile.fields).filter(([k]) => !foreign.includes(k));
+  const set = own.filter(([, v]) => v).map(([k]) => k);
+  const missing = own.filter(([k, v]) => !v && !NOT_A_GAP.includes(k)).map(([k]) => k);
   const consequences = (CONSEQUENCES[role] || [])
     .filter(([key, where]) => !(where === "company" ? company.fields : profile.fields)[key])
     .map(([key, where, why]) => ({ key, file: where === "company" ? "business/company.md" : "business/profile.md", why: why() }));
@@ -374,6 +399,13 @@ if (arg.answers) {
   console.log(t(`Written: ${result.written.join(", ")}`, `Geschrieben: ${result.written.join(", ")}`));
   console.log(result.commands);
   console.log("");
+  // Fund 8 der Werkstatt am 29.08.2026: der Weg ueber die Antwortdatei sagte
+  // "Es fehlt nichts, was ein Befehl braucht", obwohl zwei Felder leer
+  // geblieben waren. Die zweite Regel dieses Verfahrens heisst "nichts
+  // stillschweigend durchgehen lassen", und sie griff hier nicht: die Luecken
+  // nannte nur `--show`, und nur, wenn jemand es aufrief. Jetzt endet der Lauf
+  // mit derselben Zeile.
+  printGaps(lage);
   printConsequences(lage);
   console.log(
     t(
@@ -404,16 +436,7 @@ if (!lage.exists) {
   );
   process.exit(0);
 }
-console.log(
-  t(
-    `Profile: ${lage.name || "without a name"}, branch ${lage.role === "partner" ? "partner" : "company"}, ` +
-      `${lage.set.length} fields set, ${lage.missing.length} empty`,
-    `Profil: ${lage.name || "ohne Namen"}, Zweig ${lage.role === "partner" ? "Partner" : "Unternehmen"}, ` +
-      `${lage.set.length} Felder gesetzt, ${lage.missing.length} leer`
-  ) +
-    (lage.missing.length ? ` (${lage.missing.join(", ")})` : "") +
-    "."
-);
+printGaps(lage);
 if (lage.role === "partner") {
   console.log(
     t(
@@ -423,6 +446,20 @@ if (lage.role === "partner") {
   );
 }
 printConsequences(lage);
+
+/** Eine Zeile: wer im Profil steht, wie viel darin steht und was leer blieb. */
+function printGaps(lage) {
+  console.log(
+    t(
+      `Profile: ${lage.name || "without a name"}, branch ${lage.role === "partner" ? "partner" : "company"}, ` +
+        `${lage.set.length} fields set, ${lage.missing.length} empty`,
+      `Profil: ${lage.name || "ohne Namen"}, Zweig ${lage.role === "partner" ? "Partner" : "Unternehmen"}, ` +
+        `${lage.set.length} Felder gesetzt, ${lage.missing.length} leer`
+    ) +
+      (lage.missing.length ? ` (${lage.missing.join(", ")})` : "") +
+      "."
+  );
+}
 
 function printConsequences(lage) {
   if (!lage.consequences.length) {

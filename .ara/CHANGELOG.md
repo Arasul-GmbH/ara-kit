@@ -13,6 +13,20 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.17.0 (2026-08-29)
+
+Contract: up to 3
+
+- The device's library now lies in the app scaffold. Up to 0.16.0 it brought a `bausteine.tsx` of its own: four blocks, rebuilt after the design system's names, with an expiry date in the header. Now the mirror of `packages/marken` lies in it, file for file: Kopf, Liste, Karte, Formular, Meldung and Menue, plus `index.ts`, `fassung.ts` and `marken.css`. Word for word, because a mirror whose header somebody rewrites can no longer be held against its source. The import goes through `@marken`, the same alias under which the device's interface knows the library: the same source runs here and there.
+- Next to the mirror lies `mirror.json` with version, source, date and a hash per file, and `node .ara/tools/marken.mjs` watches over it. It asks three questions: does every file match its hash, does the mirror stand at the source's version, and is it complete. `--sync` pulls the apps up, and only those: the scaffold is version controlled, and a tool that changed it in a partner's clone would leave a dirty working folder behind. `/init` asks the guard, from this version on as a step of its own. The source is the mirror of the product; as long as that does not bring `packages/marken` along, the kit's scaffold takes its place, because it is what `--new` would have laid down. The scaffold is never its own source.
+- The scaffold uses all six blocks. The list of items is a data list out of `Liste` and `ListenEintrag`, the selected item stands as a `Karte` below it, and which one that is stands in the search query instead of in the page's state. Beside it a sidebar with the views and paths: above 900 pixels a column, below it the same content in the `Menue` over the page.
+- New in the knowledge: `.ara/knowledge/design-system.md`. Which six blocks there are and what matters about each, how a page comes out of them, and what is forbidden: no colour of your own, no block of your own beside an existing one, change nothing in the mirror, no second threshold. Plus a table of what each of the guard's findings means.
+- A clone that versions its own work was not foreseen. In four places the kit asked "does git track this file" and meant "did it come with the kit". For a partner's clone that is the same thing, for an operation that keeps its own devices and apps it is not: three checks of the self-test fell, and `--plan-aktiv` refused in the middle of the work. The new field `versioned:` in the profile names the folders that belong to this clone and separates the two questions. Empty still means: none, and then everything is as it was.
+- Without a mirror nobody said how to get one. The sentence about the verification level and the header of the generated `design.css` now name `node .ara/tools/mirror.mjs --refresh`.
+- In the company branch the kit key was called "Ara-Kit Partner" on the device: `business/company.md` does not exist there, and the expression fell back to its last branch. The name now comes out of the profile if there is no company head, and without any statement at all the key is called "Ara-Kit" instead of something invented.
+- `start_password_ref` only stood in the file after an installation. A device on which Arasul was already running never got it, although `--admin-login` logged in with exactly that entry. If the entry lies in the store, the name now stands in the file.
+- In the company branch `/init` counted `invoice` and `invoice_tool` as a gap although it empties them itself, and the answer-file path said "nothing is missing" although fields stayed empty. Both stand right now: the other branch's fields do not count, and the run with `--answers` ends with the same line as `--show`.
+
 ## 0.16.0 (2026-08-29)
 
 Contract: up to 3

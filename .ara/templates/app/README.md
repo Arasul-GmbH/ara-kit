@@ -16,8 +16,11 @@ Plan erledigt ist:
   kommt von der Anmeldung des Geräts und nicht aus dem Formular.
 - Jeder Vorgang startet den Flow `freigabe`. Dessen erster Schritt fordert eine Freigabe
   an, und damit hält der Lauf an.
-- Die Liste zeigt, woran ein Vorgang hängt, lässt sich auf offene und entschiedene
-  einschränken und zieht den Stand alle paar Sekunden nach, solange etwas offen ist.
+- Die Liste zeigt, woran ein Vorgang hängt, und zieht den Stand alle paar Sekunden nach,
+  solange etwas offen ist. Ein Klick auf eine Zeile klappt den Vorgang darunter auf, mit
+  allem, was an ihm hängt.
+- Links stehen die Bereiche: die Ansichten der Liste (alle, offene, entschiedene) und der
+  Weg zum Formular. Unter 900 Pixeln stehen dieselben Einträge im Menü über der Seite.
 - Nach der Entscheidung steht am Vorgang, wer entschieden hat, bei einer Ablehnung die
   Begründung, und der Satz, den der Flow danach geschrieben hat.
 
@@ -88,15 +91,18 @@ Die Oberfläche, von außen nach innen:
 
 | Datei | Was sie tut |
 | --- | --- |
-| `src/app.tsx` | Der Rahmen: Fehlerwand, Zwischenspeicher, Thema, Wege, Anmeldung. Und die Liste der Wege |
+| `src/app.tsx` | Der Rahmen: Fehlerwand, Zwischenspeicher, Thema, Seitenleiste, Wege, Anmeldung |
 | `src/rahmen/basis.ts` | Unter welchem Pfad die App hängt. Sie rät ihn nicht, sie liest ihn |
 | `src/rahmen/thema.ts` | Das Thema des Geräts, gelesen am Elternfenster und mitgeführt |
 | `src/rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, als Kontext |
 | `src/rahmen/schnittstelle.ts` | Die eine Stelle, an der etwas geholt wird |
 | `src/rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage, an einer Stelle |
-| `src/bausteine.tsx` | Kopf, Karte, Formular, Meldung. Die Seiten sind nur aus ihnen gebaut |
+| `src/rahmen/seitenleiste.tsx` | Die Bereiche: als Spalte, unter 900 px als Menü über der Seite |
+| `src/rahmen/fenster.ts` | Die eine Schwelle, unter der eine Spalte gilt |
+| `src/marken/` | Die Bausteine des Geräts, gespiegelt. Import über `@marken`. Wird ersetzt, nicht bearbeitet |
 | `src/vorgaenge.ts` | Typen und Abfragen der einen Entität dieser App |
-| `src/seiten/` | Die Seiten. Sie zeichnen und holen nichts selbst |
+| `src/seiten/liste.tsx` | Die Datenliste, mit dem einen ausgewählten Vorgang darunter |
+| `src/seiten/neu.tsx` | Die Formularseite: einen Vorgang einreichen |
 
 Das Backend, von außen nach innen:
 
@@ -140,22 +146,35 @@ Gerät als leere Seite anzukommen.
 
 ## Wie sie aussieht
 
-Die Werte des Aussehens stehen in `frontend/src/design.css` und kommen aus dem Spiegel des
-Produkts; liegt keiner vor, steht die Vorgabe des Kits darin, und die Datei sagt das in
-ihrem Kopf. Ein Block je Thema, gewählt über `data-theme` am `<html>`.
+Zwei Stücke, und beide gehören dem Gerät. Die Werte stehen in
+`frontend/src/design.css` und kommen aus dem Spiegel des Produkts; liegt keiner vor, steht
+die Vorgabe des Kits darin, und die Datei sagt das in ihrem Kopf. Ein Block je Thema,
+gewählt über `data-theme` am `<html>`.
 
 **Das Thema kommt vom Gerät und nicht aus dieser App.** Sie läuft in einem Rahmen mitten in
 der Oberfläche von Arasul, liest dessen `data-theme` am Elternfenster und hört auf
 Änderungen: wer in Arasul umschaltet, sieht die App mitgehen. Ohne Rahmen gilt die
 Einstellung des Betriebssystems.
 
-Die Regeln daneben stehen in `marken.css`, gespiegelt aus dem Designsystem des Produkts.
-**Diese Datei wird ersetzt, nicht fortgeschrieben.** Eigene Regeln gehören ans Ende von
-`stil.css`, und sie benutzen nur die Namen der Marken, keinen einzigen Farbwert.
+Das zweite Stück ist die Bibliothek unter `frontend/src/marken/`: die sechs Bausteine des
+Geräts, Kopf, Liste, Karte, Formular, Meldung und Menü, mit dem Stylesheet, das ihre
+Regeln trägt. Sie ist ein **Spiegel** von `packages/marken` im Produkt, Datei für Datei,
+und `frontend/src/marken/mirror.json` sagt, aus welcher Fassung sie kommt und mit welchen
+Hashes.
 
-Neue Oberfläche entsteht aus den Bausteinen in `bausteine.tsx`, nicht aus neuem HTML
-daneben. Sie tragen die Namen und die Eigenschaften des Designsystems, damit der Tausch
-gegen die Bibliothek des Produkts ein Tausch von Importen bleibt.
+**Der ganze Ordner wird ersetzt, nicht fortgeschrieben.** Wer darin eine Zeile ändert,
+verliert sie beim nächsten Stand, und bis dahin meldet der Wächter des Kits sie:
+
+```
+node .ara/tools/marken.mjs          steht der Spiegel an seiner Quelle
+node .ara/tools/marken.mjs --sync   ihn nachziehen
+```
+
+**Neue Oberfläche entsteht aus diesen Bausteinen**, importiert über `@marken`, denselben
+Namen, unter dem die Oberfläche von Arasul sie kennt. Kein eigenes `<div>` daneben, das
+aussieht wie eine Karte, und keine eigene Farbe: eigene Regeln gehören ans Ende von
+`stil.css` und benutzen nur die Namen der Marken (`var(--ara-kante)`), keinen einzigen
+Farbwert.
 
 **Die Wege der App bleiben eine Ebene tief**, also `/vorgaenge` und nicht `/vorgaenge/17`.
 Warum, steht im Kopf von `src/rahmen/basis.ts`: die Seite verweist relativ auf ihre Bündel,

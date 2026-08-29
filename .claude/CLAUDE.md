@@ -41,13 +41,13 @@ sentences. That holds for everything you write, customer documents and offers in
 | `business/` | Profile, company details, calculation sheet, what was learned. Belongs to the user. |
 | `customers/` | Partner: everything per customer, file, devices, runsheet, history. Belongs to the partner. |
 | `devices/` | Devices without a customer, in both branches: for a company all of them, for a partner their own. Belongs to the user. |
-| `apps/` | Own apps, independent of customers. Belongs to the user. Only `apps/urlaubsantrag/` belongs to the kit: the reference app to look at. |
+| `apps/` | Own apps, independent of customers. Belongs to the user entirely: the clone brings no app. |
 | `.ara/commands/` | Source of the commands: `all/` for every branch, `partner/` for partners only. `/init` puts them into `.claude/commands/`. |
 | `.ara/knowledge/` | **Procedures**: how to go about things. No product values. |
 | `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them. The Orin before it has a Linux is a guide of its own, `.ara/knowledge/flash-orin.md`: a check step per section, documented, not automated |
 | `.ara/vorlagen/` | **The paperwork**: offer, annexes, handover record. The only place for it, see `.ara/vorlagen/README.md`. German. |
 | `.ara/nachweise/` | Evidence on AI classification and data processing. Annexes 4 and 5 to the offer. Mirrored from Arasul's control folder, do not edit here. German. |
-| `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. |
+| `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. Its `frontend/src/marken/` is the mirror of the product's design system, watched by `marken.mjs`. |
 | `.ara/README.de.md`, `.ara/.markdownlint-cli2.jsonc` | German half of the README, rules for the document check. Both here so the root stays small. |
 | `.ara/tools/` | Scripts (Node). You call them instead of rebuilding what they do. |
 | `.ara/mirror/` | The fetched installation artifact, comes into being at `/device --install arasul`. Do not edit. |
@@ -146,6 +146,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 | `invoice.mjs` | Invoice: assign a number from the number range, create a document from the offer, check the mandatory details under section 14 UStG, print as a ZUGFeRD PDF (`--new`, `--check`, `--pdf`, `--validate`, `--void`) |
 | `evidence.mjs` | Picture evidence per line of the service description (`--plan`, `--record`, `--render`). Runs, but is wired into no procedure, see `.ara/knowledge/leistungsbeschreibung.md` |
 | `service-description.mjs` | Service description with values from the device: software version, contract version, models, apps, every value with its source. What stayed unmeasured stays a placeholder |
+| `marken.mjs` | The guard over the design system: it holds the mirror of `packages/marken` in the app scaffold and in every app against its source, by version and by hash (`--check`, `--sync`, `--source`) |
 | `pdf.mjs` | Markdown becomes a PDF in the house style (`--check`, `--force`) |
 | `secrets.mjs` | Store secrets and look up what is set |
 | `update.mjs` | Bring the kit up to date (`--check` only looks), does not touch user folders |

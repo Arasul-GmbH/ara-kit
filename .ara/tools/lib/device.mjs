@@ -243,3 +243,37 @@ export function services(facts) {
 export function arasulRunning(state) {
   return state === "running" || state === "found";
 }
+
+/**
+ * Wie der Kit-Schluessel am Geraet heisst.
+ *
+ * Der Name steht in der Schluesselliste des Geraets, und dort liest ihn spaeter
+ * ein Mensch. `business/company.md` legt `/init` nur im Partner-Zweig an; im
+ * Unternehmens-Zweig blieb der Ausdruck darum auf seinem letzten Zweig stehen,
+ * und der Schluessel hiess "Ara-Kit Partner" (Fund 3 der Werkstatt am
+ * 29.08.2026). Das Profil gibt es in beiden Zweigen und traegt `company`.
+ *
+ * Kein Rueckfall auf ein Wort, das nach einem Namen aussieht: steht nirgends
+ * einer, heisst der Schluessel "Ara-Kit" und behauptet nichts.
+ */
+export function deployKeyName(company = {}, profile = {}) {
+  const owner = company.name || company.company || profile.company || profile.name;
+  return owner ? `Ara-Kit ${owner}` : "Ara-Kit";
+}
+
+/**
+ * Welchen Namen die Akte fuer das Startpasswort bekommt.
+ *
+ * `installed` ist der Name aus einer Installation, die dieser Lauf gemacht hat.
+ * Gab es keine, zaehlt trotzdem, ob in der Ablage ein Eintrag unter dem
+ * erwarteten Namen liegt: ein Geraet, auf dem Arasul schon lief, bekam das Feld
+ * sonst nie, obwohl `--admin-login` sich damit anmeldete (Fund 4 der Werkstatt
+ * am 29.08.2026). Was schon in der Akte steht, bleibt stehen.
+ *
+ * `null` heisst: nichts zu schreiben.
+ */
+export function startPasswordRef({ noted = "", installed = null, ref = "", stored = false }) {
+  if (installed) return installed;
+  if (noted) return null;
+  return stored && ref ? ref : null;
+}

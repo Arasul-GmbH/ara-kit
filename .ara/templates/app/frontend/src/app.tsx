@@ -7,6 +7,7 @@
  *   `QueryClientProvider`   ein Zwischenspeicher fuer alle Abfragen
  *   `useThema`              das Thema des Geraets, gelesen und mitgefuehrt
  *   `BrowserRouter`         die Wege, unter dem Pfad, an dem die App haengt
+ *   `Seitenleiste`          die Bereiche, als Spalte oder als Menue
  *   `AnmeldungRahmen`       wer da ist, aus `api/me`, bevor etwas gezeichnet wird
  *
  * Die Reihenfolge ist eine Entscheidung: die Anmeldung steht INNEN, weil sie
@@ -21,8 +22,9 @@ import { basisPfad } from "./rahmen/basis";
 import { useThema } from "./rahmen/thema";
 import { AnmeldungRahmen } from "./rahmen/anmeldung";
 import { Fehlerwand } from "./rahmen/async-boundary";
-import { Meldung } from "./bausteine";
-import { Liste } from "./seiten/liste";
+import { Meldung } from "@marken";
+import { Seitenleiste } from "./rahmen/seitenleiste";
+import { Vorgaenge } from "./seiten/liste";
 import { Neu } from "./seiten/neu";
 
 /**
@@ -50,7 +52,7 @@ const speicher = new QueryClient({
 function Wege() {
   return (
     <Routes>
-      <Route path="/" element={<Liste />} />
+      <Route path="/" element={<Vorgaenge />} />
       <Route path="/neu" element={<Neu />} />
       <Route
         path="*"
@@ -66,11 +68,17 @@ export function App() {
     <Fehlerwand>
       <QueryClientProvider client={speicher}>
         <BrowserRouter basename={basisPfad()}>
-          <main className="ara-strom">
-            <AnmeldungRahmen>
-              <Wege />
-            </AnmeldungRahmen>
-          </main>
+          {/* Die Seitenleiste steht INNERHALB des Routers und ausserhalb der
+              Anmeldung: sie liest die Adresse, und sie soll auch dastehen,
+              solange das Geraet noch nicht gesagt hat, wer da ist. */}
+          <div className="rahmen">
+            <Seitenleiste />
+            <main className="ara-strom">
+              <AnmeldungRahmen>
+                <Wege />
+              </AnmeldungRahmen>
+            </main>
+          </div>
         </BrowserRouter>
       </QueryClientProvider>
     </Fehlerwand>

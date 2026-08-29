@@ -17,6 +17,7 @@ ssh_key:                  # Name des Schlüssels in ~/.ssh
 secrets_store: env        # env | keychain
 browser: yes              # yes | no, darf Ara den Browser selbst bedienen
 backup_repo:              # wo dieses Kit gesichert wird, falls eingerichtet
+versioned:                # welche eigenen Ordner dieser Klon verfolgt, kommagetrennt: business, customers, devices, apps
 first_device:             # Modell des ersten Geräts, leer wenn keins ansteht
 first_device_state:       # present | ordered | none
 first_app:                # ein Satz: was die erste App tun soll

@@ -54,12 +54,15 @@ kit, not about the human.
    kit, adapted by hand or both. Missing and newer in the kit: show the difference, then
    `node .ara/tools/commands.mjs --apply`. Adapted ones stay, unless the human wants the
    kit's version: `--replace <name>`.
-5. If the human wants a different language, set `language` in `business/profile.md` and run
+5. `node .ara/tools/marken.mjs` says whether the design system's mirror still stands at its
+   source. Apps that are behind: `--sync`, and afterwards they have to be built and
+   deployed anew.
+6. If the human wants a different language, set `language` in `business/profile.md` and run
    `--apply` again. Every command then shows as "newer in kit", because its source has
    become a different file. Do not switch unasked.
-6. `node .ara/tools/init.mjs --show` also names the gaps in the profile. If something is
+7. `node .ara/tools/init.mjs --show` also names the gaps in the profile. If something is
    missing that a new command needs, ask exactly that, not the whole profile again.
-7. `node .ara/tools/selftest.mjs`, so that the new version demonstrably runs on this
+8. `node .ara/tools/selftest.mjs`, so that the new version demonstrably runs on this
    computer.
 
 Briefly on stance: do as much as possible yourself, check instead of asking, and put

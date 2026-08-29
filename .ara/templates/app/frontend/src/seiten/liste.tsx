@@ -1,70 +1,89 @@
 /**
- * Die Vorgaenge, die es gibt.
+ * Die Datenliste: die Vorgaenge, die es gibt, und der eine, den man gerade
+ * ansieht.
  *
- * Was hier steht, ist der Ablauf und keine Gestaltung: die Bausteine machen
- * das Aussehen, `AsyncBoundary` macht die drei Ausgaenge einer Abfrage. Die
- * Ansicht steht in der Adresse und nicht im Zustand der Seite, damit ein Link
- * auf "die offenen" ein Link auf die offenen bleibt.
+ * Zwei Bausteine tragen sie. `Liste` und `ListenEintrag` sind die Reihe: ein
+ * Eintrag ist ein Knopf, sobald er etwas tut, und damit nimmt er Tastatur und
+ * Screenreader mit. `Karte` ist der eine ausgewaehlte Vorgang darunter, mit
+ * allem, was an ihm haengt.
+ *
+ * **Welcher ausgewaehlt ist, steht in der Adresse** (`?nr=17`) und nicht im
+ * Zustand dieser Seite. Zwei Gruende: ein Verweis auf einen Vorgang bleibt
+ * einer, und die Wege der App bleiben eine Ebene tief, wie es `basis.ts`
+ * verlangt.
+ *
+ * Was hier steht, ist der Ablauf und keine Gestaltung. Kein `<div>` mit
+ * eigener Klasse, wo ein Baustein dasselbe tut: die zweite Karte neben der
+ * ersten ist der Anfang des zweiten Erscheinungsbilds.
  */
 
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
+import { Karte, Kopf, Liste as Reihe, ListenEintrag, Meldung } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
-import { Karte, Knopf, Kopf, Meldung } from "../bausteine";
+import { ANSICHTEN, ansichtAus, type Ansicht } from "../rahmen/seitenleiste";
 import { STAND, useLage, useVorgaenge, zeitpunkt, type Vorgang } from "../vorgaenge";
 
-const ANSICHTEN = [
-  { id: "alle", wort: "Alle" },
-  { id: "offen", wort: "Offen" },
-  { id: "entschieden", wort: "Entschieden" },
-] as const;
+/** Wie die Ansicht heisst, in denselben Worten wie in der Seitenleiste. */
+function wortFuer(ansicht: Ansicht): string {
+  return ANSICHTEN.find((eintrag) => eintrag.id === ansicht)?.wort ?? "Alle";
+}
 
-function passt(vorgang: Vorgang, ansicht: string): boolean {
+function passt(vorgang: Vorgang, ansicht: Ansicht): boolean {
   if (ansicht === "offen") return vorgang.status === "wartet";
   if (ansicht === "entschieden") return vorgang.status !== "wartet";
   return true;
 }
 
-function Zeile({ vorgang }: { vorgang: Vorgang }) {
+/** Wie ein Vorgang steht, als Wort mit der Farbe daneben. */
+function Stand({ vorgang }: { vorgang: Vorgang }) {
   const stand = STAND[vorgang.status] ?? { wort: vorgang.status, art: "hinweis" as const };
+  // Die Farbe steht NEBEN dem Wort und nicht anstelle davon: ein Stand, der
+  // nur an seiner Farbe zu erkennen ist, ist fuer manche keiner.
   return (
-    <li>
-      {/* Die Farbe steht NEBEN dem Wort und nicht anstelle davon: ein Stand,
-          der nur an seiner Farbe zu erkennen ist, ist fuer manche keiner. */}
-      <Karte titel={vorgang.titel} hinweis={<span className="stand" data-art={stand.art}>{stand.wort}</span>}>
-        <p>
-          {vorgang.von}, {zeitpunkt(vorgang.gestellt)}
-          {vorgang.text && vorgang.text !== "ohne Angabe" ? `, ${vorgang.text}` : ""}
-        </p>
-        {vorgang.entschieden_von && (
-          <p>
-            entschieden von {vorgang.entschieden_von}
-            {vorgang.begruendung ? `: ${vorgang.begruendung}` : ""}
-          </p>
-        )}
-        {vorgang.bemerkung && <p>{vorgang.bemerkung}</p>}
-        {vorgang.hinweis && <p>{vorgang.hinweis}</p>}
-      </Karte>
-    </li>
+    <span className="stand" data-art={stand.art}>
+      {stand.wort}
+    </span>
   );
 }
 
-export function Liste() {
+function Einzelheiten({ vorgang }: { vorgang: Vorgang }) {
+  return (
+    <Karte titel={vorgang.titel} hinweis={<Stand vorgang={vorgang} />} kennzeichen="vorgang">
+      <p>
+        {vorgang.von}, {zeitpunkt(vorgang.gestellt)}
+      </p>
+      {vorgang.text && vorgang.text !== "ohne Angabe" && <p>{vorgang.text}</p>}
+      {vorgang.entschieden_von && (
+        <p>
+          entschieden von {vorgang.entschieden_von}
+          {vorgang.begruendung ? `: ${vorgang.begruendung}` : ""}
+        </p>
+      )}
+      {vorgang.bemerkung && <p>{vorgang.bemerkung}</p>}
+      {vorgang.hinweis && <p>{vorgang.hinweis}</p>}
+    </Karte>
+  );
+}
+
+export function Vorgaenge() {
   const [suche, setSuche] = useSearchParams();
-  const ansicht = suche.get("ansicht") ?? "alle";
+  const ansicht = ansichtAus(suche);
+  const gewaehlt = Number(suche.get("nr")) || null;
   const lage = useLage();
   const vorgaenge = useVorgaenge();
 
+  const waehlen = (id: number) => {
+    const naechste = new URLSearchParams(suche);
+    if (gewaehlt === id) naechste.delete("nr");
+    else naechste.set("nr", String(id));
+    setSuche(naechste);
+  };
+
   return (
     <>
-      <Kopf
-        titel="Vorgänge"
-        beschreibung="Eingereicht hier, entschieden in Arasul."
-        aktionen={
-          <Link to="/neu" className="ara-knopf" data-art="haupt">
-            Neuer Vorgang
-          </Link>
-        }
-      />
+      {/* Der Weg zum Formular steht in der Seitenleiste und nicht auch noch
+          hier: zwei Knoepfe fuer dieselbe Handlung sind einer zu viel. */}
+      <Kopf titel="Vorgänge" beschreibung="Eingereicht hier, entschieden in Arasul." />
 
       {/* Warum kein Flow anhaelt, sagt die App selbst: "ohne Arasul" und "das
           Geraet hat den Wert nicht gesetzt" sehen gleich aus und sind es nicht. */}
@@ -79,30 +98,33 @@ export function Liste() {
         }
       </AsyncBoundary>
 
-      <nav className="ara-formular__aktionen" aria-label="Ansicht">
-        {ANSICHTEN.map((eintrag) => (
-          <Knopf
-            key={eintrag.id}
-            art={eintrag.id === ansicht ? "haupt" : "still"}
-            onKlick={() => setSuche(eintrag.id === "alle" ? {} : { ansicht: eintrag.id })}
-          >
-            {eintrag.wort}
-          </Knopf>
-        ))}
-      </nav>
-
       <AsyncBoundary abfrage={vorgaenge} laedt="Vorgänge werden geholt">
         {(alle) => {
           const sichtbar = alle.filter((vorgang) => passt(vorgang, ansicht));
           if (!sichtbar.length) {
-            return <Meldung>{alle.length ? "In dieser Ansicht liegt nichts." : "Noch kein Vorgang eingereicht."}</Meldung>;
+            return (
+              <Meldung>
+                {alle.length ? "In dieser Ansicht liegt nichts." : "Noch kein Vorgang eingereicht."}
+              </Meldung>
+            );
           }
+          const offen = sichtbar.find((vorgang) => vorgang.id === gewaehlt);
           return (
-            <ul className="vorgaenge">
-              {sichtbar.map((vorgang) => (
-                <Zeile key={vorgang.id} vorgang={vorgang} />
-              ))}
-            </ul>
+            <>
+              <Reihe beschriftung={`${wortFuer(ansicht)}: ${sichtbar.length} von ${alle.length}`}>
+                {sichtbar.map((vorgang) => (
+                  <ListenEintrag
+                    key={vorgang.id}
+                    titel={vorgang.titel}
+                    hinweis={<Stand vorgang={vorgang} />}
+                    aktiv={vorgang.id === gewaehlt}
+                    kennzeichen={`vorgang-${vorgang.id}`}
+                    onKlick={() => waehlen(vorgang.id)}
+                  />
+                ))}
+              </Reihe>
+              {offen && <Einzelheiten vorgang={offen} />}
+            </>
           );
         }}
       </AsyncBoundary>

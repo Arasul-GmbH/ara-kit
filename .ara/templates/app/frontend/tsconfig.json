@@ -4,7 +4,16 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["vite/client"],
+    // `node` steht dabei, weil `vite.config.ts` mitgeprueft wird und dort
+    // `node:url` steht. Ohne diese Typen faellt `tsc --noEmit` an der ersten
+    // Zeile der Bau-Einstellungen, und zwar erst beim Bauen.
+    "types": ["vite/client", "node"],
+
+    // Derselbe Alias wie in `vite.config.ts` und in der Oberflaeche des
+    // Geraets. Ohne ihn faende `tsc --noEmit` die Bibliothek nicht, und der
+    // Bau bliebe erst im Browser stehen.
+    "baseUrl": ".",
+    "paths": { "@marken": ["./src/marken/index.ts"] },
     "jsx": "react-jsx",
     "isolatedModules": true,
     "moduleDetection": "force",

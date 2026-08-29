@@ -1,21 +1,31 @@
-/**
- * Die Marken des Arasul-Aussehens und die sechs Bausteine, die daraus gebaut
- * sind: Kopf, Liste, Karte, Formular, Meldung, Menue.
- *
- * SPIEGEL, KEINE QUELLE. Die Quelle ist `packages/marken/src/marken.css` im
- * Produkt, abgeschrieben am 29.08.2026. Diese Kopie steht hier, damit eine App
- * aus der Vorlage vom ersten Bau an aussieht wie das Geraet, auch auf einem
- * Rechner, der noch kein Arasul gesehen hat. Liegt ein Spiegel unter
- * `.ara/mirror/`, nimmt `--new` die Datei von dort und diese hier bleibt
- * ungelesen liegen.
- *
- * Jeder Wert steht als `var(--marke-der-shell, <derselbe Wert>)`. Die Marken
- * der Shell setzt `design.css` daneben, je Thema. Fehlt eine, gilt der
- * Rueckfall, und der ist das Thema "Schwarz".
- *
- * Sie wird ersetzt, nicht fortgeschrieben. Wer hier eine Regel dazuschreibt,
- * verliert sie beim naechsten Stand. Eigene Regeln gehoeren nach `stil.css`.
- */
+/* =============================================================================
+   Die Marken des Geraets: Schrift, Farben, Abstaende -- und die sechs
+   Bausteine, die daraus gebaut sind. (Phase D7, 28.08.2026)
+   =============================================================================
+   EIN ERSCHEINUNGSBILD FUER DIE SHELL UND JEDE APP. Bis D6 hatte Arasul seine
+   Oberflaeche und jede App ihre eigene: die Beispielapp brachte zwoelf Zeilen
+   `stil.css` mit, die Vorlage des Kits haette die dreizehnte gehabt. Zwei
+   Erscheinungsbilder auf einem Bildschirm sind kein Geschmack, sondern ein
+   Fehler -- der Mensch sieht sie als ein Ding, weil sie in einem Rahmen
+   uebereinander liegen.
+
+   WOHER DIE WERTE KOMMEN. Aus `apps/dashboard-frontend/src/index.css`, dem
+   Thema „Schwarz" -- kein neues Erscheinungsbild, dieselben Marken. Jeder
+   Wert steht hier als `var(--token-der-shell, <derselbe Wert>)`:
+
+     in der Shell   der Token ist gesetzt  ->  die Bibliothek folgt dem Thema
+                                               (Schwarz, Dunkel, Hell)
+     in einer App   der Token fehlt        ->  der Rueckfall gilt, und das ist
+                                               genau das Thema „Schwarz"
+
+   Damit gibt es EINE Quelle fuer die Werte (die Shell) und trotzdem kein
+   Stylesheet, das eine App nur zur Haelfte laedt.
+
+   KEINE REGEL AUF `body` UND KEINE AUF EINEM ELEMENT-NAMEN OHNE KLASSE. Diese
+   Datei wird in der Shell neben Tailwind geladen; was hier `p` oder `button`
+   faerbte, faerbte dort auch, was gar nicht zur Bibliothek gehoert. Eine App
+   ohne Bau setzt stattdessen `class="ara-seite"` auf ihren `<body>`.
+   ========================================================================== */
 
 :root {
   /* Schrift */

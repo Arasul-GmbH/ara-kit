@@ -162,16 +162,21 @@ sie dort antwortete.
 ## Das Aussehen
 
 Die Vorlage bringt das Erscheinungsbild von Arasul mit, damit eine App im Rahmen der
-Oberfläche nicht wie ein Fremdkörper steht. Es sind zwei Dateien, und sie gehören beide dem
+Oberfläche nicht wie ein Fremdkörper steht. Es sind zwei Stücke, und sie gehören beide dem
 Produkt:
 
 - `frontend/src/design.css` trägt die **Werte**, ein Block je Thema. Sie kommen **aus dem
   Spiegel**: `.ara/mirror/` ist das Artefakt, mit dem installiert wurde, und darin steht,
   was heute gilt. Liegt kein Spiegel vor, schreibt das Kit seine eigene Vorgabe hinein, und
-  die Datei sagt das in ihrem Kopf.
-- `frontend/src/marken.css` trägt die **Regeln**, die diese Werte benutzen, und mit ihnen
-  die Bausteine. Sie ist aus dem Designsystem des Produkts gespiegelt und wird **ersetzt,
-  nicht fortgeschrieben.** Wer eine Regel hineinschreibt, verliert sie beim nächsten Stand.
+  die Datei sagt das in ihrem Kopf. Einen Spiegel holt
+  `node .ara/tools/mirror.mjs --refresh`, auch ohne Installation.
+- `frontend/src/marken/` trägt die **Bausteine**, aus denen jede Oberfläche gebaut wird,
+  und das Stylesheet mit ihren Regeln. Der Ordner ist ein Spiegel von `packages/marken` im
+  Produkt und wird **ersetzt, nicht fortgeschrieben.** Der Wächter
+  `node .ara/tools/marken.mjs` hält ihn an seiner Quelle.
+
+Welche Bausteine es gibt, wie eine Seite aus ihnen entsteht und was dabei verboten ist,
+steht in `.ara/knowledge/design-system.md`. Lies das, bevor du an einer Oberfläche baust.
 
 Eigene Regeln gehören ans Ende von `stil.css`, und sie benutzen nur die Namen der Marken,
 keinen einzigen Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer

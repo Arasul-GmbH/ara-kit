@@ -1,14 +1,14 @@
 /**
  * Das Stylesheet der App. Drei Teile, und nur der dritte gehoert ihr.
  *
- *   `tailwindcss`  die Werkzeugklassen, fuer Anordnung und Abstand
- *   `design.css`   die Werte des Geraets, je Thema. Erzeugt beim Anlegen
- *   `marken.css`   die Bausteine des Designsystems. Gespiegelt, wird ersetzt
+ *   `tailwindcss`      die Werkzeugklassen, fuer Anordnung und Abstand
+ *   `design.css`       die Werte des Geraets, je Thema. Erzeugt beim Anlegen
+ *   `marken/`          die Bausteine des Designsystems. Gespiegelt, wird ersetzt
  *
  * Ganz unten stehen die eigenen Regeln. **Kein Farbwert steht darin**, nur
  * Marken: `var(--ara-kante)` statt `rgba(...)`. Beim naechsten Stand des
- * Geraets werden `design.css` und `marken.css` ersetzt, und was hier steht,
- * bleibt. Eine Farbe, die hier stuende, bliebe zurueck.
+ * Geraets werden `design.css` und der Ordner `marken/` ersetzt, und was hier
+ * steht, bleibt. Eine Farbe, die hier stuende, bliebe zurueck.
  *
  * `layer(components)` fuer die Bausteine: ungeschichtetes CSS gewinnt gegen
  * jede Schicht, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an einem
@@ -18,7 +18,7 @@
 
 @import "tailwindcss";
 @import "./design.css";
-@import "./marken.css" layer(components);
+@import "./marken/marken.css" layer(components);
 
 /* Dunkel ist kein Systemzustand, sondern der, den das Geraet nennt. `thema.ts`
    schreibt ihn an das `<html>`, und `dark:` folgt ihm. */
@@ -45,22 +45,50 @@
   --color-warning: var(--warning);
 }
 
-/* --- Eigene Regeln --------------------------------------------------------- */
+/* --- Eigene Regeln ---------------------------------------------------------
 
-/* Die Reihe der Vorgaenge: eine Liste und kein Stapel von Kaesten. Der
-   Screenreader zaehlt sie damit, und der Mensch sieht, wo eine aufhoert. */
-.vorgaenge {
+   Hier steht die Anordnung dieser App und sonst nichts. Kein Farbwert, keine
+   Schrift, kein Radius: das sind Werte des Geraets, sie stehen in `design.css`
+   und werden dort ersetzt. Was hier eine Farbe braucht, nimmt eine Marke.
+
+   Die Schwelle 900 px ist dieselbe wie in `marken/marken.css` und in
+   `rahmen/fenster.ts`. Drei Stellen, eine Zahl: `@media` kann keine Variable
+   lesen, und die Bibliothek bringt keine Klasse fuer eine Seitenleiste mit. */
+
+/* Unter der Schwelle steht alles untereinander: der Knopf, der das Menue
+   oeffnet, und darunter der Inhalt. */
+.rahmen {
   display: flex;
   flex-direction: column;
-  gap: var(--ara-abstand-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
-/* Ein Link, der wie ein Knopf aussieht, ist im Fluss und nicht im Kasten. */
-a.ara-knopf {
-  text-decoration: none;
+.seitenleiste-schmal {
+  padding: var(--ara-abstand-3) var(--ara-abstand-3) 0;
+}
+
+@media (min-width: 900px) {
+  .rahmen {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    align-items: start;
+    min-height: 100vh;
+  }
+
+  .seitenleiste {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ara-abstand-3);
+    padding: var(--ara-abstand-4);
+    border-right: 1px solid var(--ara-kante);
+    position: sticky;
+    top: 0;
+  }
+
+  /* Der Inhalt steht am linken Rand seiner eigenen Spalte und nicht in der
+     Mitte des ganzen Fensters: sonst rutscht er unter die Seitenleiste. */
+  .rahmen > .ara-strom {
+    margin: 0;
+  }
 }
 
 /* Wie ein Vorgang steht. Das Wort traegt die Aussage, die Farbe steht daneben. */
