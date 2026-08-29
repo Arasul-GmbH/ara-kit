@@ -4036,6 +4036,12 @@ checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft nur i
     // Ein zweiter Lauf hat nichts mehr zu widerrufen und sagt das, statt zu raten.
     run = await toolAsync("device.mjs", ["--name", name, "--revoke-key"], env);
     assert(run.status !== 0 && /--keys/.test(run.stderr), `ohne Eintrag fehlt der Weg: ${run.stderr}`);
+
+    // Und ohne Verbindung wird gar nichts gelesen: `runRemote` faellt sonst auf
+    // die lokale Shell zurueck, und dann suchte das Kit das Skript hier.
+    writeFrontmatter(join(dir, "device.md"), { address: "192.0.2.10", api_key_ref: "ARASUL_KEY_SELFTEST_SCHLUESSEL" });
+    run = await toolAsync("device.mjs", ["--name", name, "--keys"], env);
+    assert(run.status !== 0 && /Verbindung/.test(run.stderr), `ohne Verbindung wird trotzdem gelistet: ${run.stdout}${run.stderr}`);
     return "eigener markiert, fremder unberuehrt";
   } finally {
     rmSync(dir, { recursive: true, force: true });

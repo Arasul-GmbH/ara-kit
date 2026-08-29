@@ -902,6 +902,17 @@ function profileLines() {
  * nichts hinzu.
  */
 function keyList() {
+  // Ohne Verbindung gibt es nichts zu lesen. Der Zweig ist wichtig: `runRemote`
+  // faellt ohne SSH auf die lokale Shell zurueck, und ein `find` nach dem Skript
+  // liefe dann auf diesem Rechner statt auf dem Geraet.
+  if (run.transport === "none") {
+    fail(
+      t(
+        `No connection to ${label}, so nothing can be read about the keys on ${place}.`,
+        `Keine Verbindung zu ${label}, also ist über die Schlüssel auf ${place} nichts zu lesen.`
+      )
+    );
+  }
   const stored = existing.api_key_ref ? getSecret(existing.api_key_ref) : null;
   const found = listKeys(sshArgs, run.transport, stored);
   return { stored, ...found };
