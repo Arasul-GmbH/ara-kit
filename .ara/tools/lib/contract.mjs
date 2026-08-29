@@ -40,6 +40,14 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 3,
     kann: "Ein Flow darf anhalten, bis ein Mensch entscheidet: die Vorlage einer App bringt einen Flow mit Freigabe-Schritt mit, und /app fragt im Interview, an welcher Stelle das gebraucht wird.",
   },
+  {
+    version: 4,
+    kann: "Eine App sagt im Manifest, auf welcher Fassung des Designsystems sie steht: das Kit schreibt `marken` aus dem Spiegel in seiner Vorlage, und das Gerät hält es gegen seine eigene.",
+  },
+  {
+    version: 5,
+    kann: "Die Werte, die das Gerät einer App in den Container legt, liest das Kit in ihrer Rolle (`umgebung.basis`, `umgebung.schluessel`, `umgebung.datenbank`), und es hängt die Wege der App relativ an die Basis (`endpunkte[].relativ`), statt den Vorsatz ein zweites Mal davorzusetzen.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */

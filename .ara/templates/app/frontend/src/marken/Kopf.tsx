@@ -23,11 +23,21 @@ export interface KopfProps {
   beschreibung?: ReactNode;
   /** Aktionen rechts. Unter 900 px rutschen sie unter den Titel. */
   aktionen?: ReactNode;
+  /**
+   * Mittig und ohne Trennlinie -- die Form einer Seite, die aus nichts als
+   * sich selbst besteht: die Anmeldung, das erste Konto, ein Absturz.
+   *
+   * Sie kam mit H5 dazu, weil `scripts/test/bausteine.py` seither auch
+   * `components/ui/` liest und dort zwei handgeschriebene `h1` fand. Beide
+   * waren dieselbe Sache wie dieser Baustein, nur zentriert; der Unterschied
+   * ist eine Eigenschaft und kein zweiter Seitenkopf.
+   */
+  mittig?: boolean;
 }
 
-export function Kopf({ titel, symbol, beschreibung, aktionen }: KopfProps) {
+export function Kopf({ titel, symbol, beschreibung, aktionen, mittig = false }: KopfProps) {
   return (
-    <div className="ara-kopf">
+    <div className="ara-kopf" data-mittig={mittig ? 'true' : undefined}>
       <div className="ara-kopf__text">
         <h1 className="ara-kopf__titel">
           {symbol && (

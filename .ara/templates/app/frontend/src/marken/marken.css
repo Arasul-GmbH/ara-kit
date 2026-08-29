@@ -9,17 +9,30 @@
    Fehler -- der Mensch sieht sie als ein Ding, weil sie in einem Rahmen
    uebereinander liegen.
 
-   WOHER DIE WERTE KOMMEN. Aus `apps/dashboard-frontend/src/index.css`, dem
-   Thema „Schwarz" -- kein neues Erscheinungsbild, dieselben Marken. Jeder
-   Wert steht hier als `var(--token-der-shell, <derselbe Wert>)`:
+   WOHER DIE WERTE KOMMEN. Aus `apps/dashboard-frontend/src/index.css`. Kein
+   neues Erscheinungsbild, dieselben Marken. Jeder Wert steht hier als
+   `var(--token-der-shell, <derselbe Wert>)`:
 
      in der Shell   der Token ist gesetzt  ->  die Bibliothek folgt dem Thema
-                                               (Schwarz, Dunkel, Hell)
-     in einer App   der Token fehlt        ->  der Rueckfall gilt, und das ist
-                                               genau das Thema „Schwarz"
+     in einer App   der Token fehlt        ->  der Rueckfall gilt
 
    Damit gibt es EINE Quelle fuer die Werte (die Shell) und trotzdem kein
-   Stylesheet, das eine App nur zur Haelfte laedt.
+   Stylesheet, das eine App nur zur Haelfte laedt. `scripts/test/marken.py`
+   haelt jeden Rueckfall an seinem Token in `index.css` fest -- eine Kopie,
+   die auseinanderlaeuft, ist die zweite Wahrheit, die es hier nicht geben
+   darf.
+
+   ZWEI THEMEN, UND HELL IST DER GRUND (Phase H2, 29.08.2026). Bis dahin
+   waren die Rueckfaelle die Werte des dunklen Themas, und eine App stand
+   IMMER darauf -- auch wenn der Mensch die Shell hell eingestellt hatte:
+   CSS-Variablen reichen nicht ueber eine Dokumentgrenze, und eine App laeuft
+   im iframe als eigenes Dokument. Seit H2 ist es wie in `index.css`: `:root`
+   IST Hell (die Vorgabe), und `[data-theme='dark']` weiter unten traegt
+   alles, was im Dunkeln abweicht. Das Attribut schreibt `AppRahmen` in das
+   Dokument des iframes (gleiche Herkunft) -- die App muss dafuer nichts tun.
+
+   Hell braucht keinen Selektor. Was `index.css` in seinem Dunkel-Block NICHT
+   ueberschreibt, steht deshalb auch hier nur einmal.
 
    KEINE REGEL AUF `body` UND KEINE AUF EINEM ELEMENT-NAMEN OHNE KLASSE. Diese
    Datei wird in der Shell neben Tailwind geladen; was hier `p` oder `button`
@@ -38,26 +51,42 @@
     'Roboto',
     sans-serif
   );
-  --ara-schrift-fest: var(--font-mono, 'JetBrains Mono', 'Fira Code', Menlo, Monaco, monospace);
+  --ara-schrift-fest: var(
+    --font-mono,
+    'JetBrains Mono',
+    'Fira Code',
+    source-code-pro,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace
+  );
   --ara-groesse-xs: var(--text-ui-xs, 0.75rem);
   --ara-groesse-sm: var(--text-ui-sm, 0.8125rem);
   --ara-groesse: var(--text-ui, 0.875rem);
   --ara-groesse-lg: var(--text-ui-lg, 1rem);
   --ara-groesse-titel: var(--text-3xl, 1.5rem);
 
-  /* Farben */
-  --ara-flaeche: var(--background, #0a0a0a);
-  --ara-flaeche-karte: var(--card, #121212);
-  --ara-flaeche-hoch: var(--popover, #161616);
-  --ara-wisch: var(--accent, rgba(228, 228, 228, 0.07));
-  --ara-text: var(--foreground, #e6e6e6);
-  --ara-text-leise: var(--muted-foreground, rgba(228, 228, 228, 0.55));
-  --ara-kante: var(--border, rgba(228, 228, 228, 0.08));
-  --ara-akzent: var(--primary, #81a1c1);
-  --ara-akzent-text: var(--primary-foreground, #0a0a0a);
+  /* Farben -- Thema HELL, die Vorgabe. Die Abweichungen des dunklen Themas
+     stehen unten in `[data-theme='dark']`; was hier steht und dort fehlt,
+     gilt in beiden. */
+  --ara-flaeche: var(--background, #f6f6f6);
+  --ara-flaeche-karte: var(--card, #ffffff);
+  --ara-flaeche-hoch: var(--popover, #ffffff);
+  --ara-wisch: var(--accent, rgba(16, 16, 16, 0.05));
+  --ara-text: var(--foreground, #1a1a1a);
+  --ara-text-leise: var(--muted-foreground, #6b6b6b);
+  --ara-kante: var(--border, rgba(16, 16, 16, 0.1));
+  --ara-akzent: var(--primary, #2d8fd9);
+  --ara-akzent-text: var(--primary-foreground, #ffffff);
   --ara-fehler: var(--destructive, #ef4444);
   --ara-erfolg: var(--success, #10b981);
   --ara-warnung: var(--warning, #f59e0b);
+
+  /* Der Schleier unter dem Menue. Er war bis H2 fest `rgb(0 0 0 / 0.5)` und
+     damit der einzige Wert der Bibliothek ohne Token -- im hellen Thema eine
+     Spur zu schwarz, im dunklen eine Spur zu hell. */
+  --ara-schleier: var(--backdrop-color, rgba(0, 0, 0, 0.4));
 
   /* Abstaende und Rundungen */
   --ara-abstand-1: var(--spacing-ui-1, 0.3125rem);
@@ -75,6 +104,34 @@
      Sie steht hier als Zahl zum Nachlesen; `@media` kann keine Variable
      lesen, die Zahl in den Abfragen unten ist dieselbe. */
   --ara-schmal-bis: 899px;
+}
+
+/* =============================================================================
+   THEMA »DUNKEL« -- was von der Vorgabe abweicht (Phase H2)
+   =============================================================================
+   Dieselbe Form wie in `index.css`: `:root` ist Hell, dieser Block
+   ueberschreibt. Und dieselbe Form wie oben -- `var(--token-der-shell,
+   <Rueckfall>)`, nur dass der Rueckfall jetzt der dunkle Wert ist. In der
+   Shell ist der Token ohnehin gesetzt und dieser Block wirkungslos; er ist
+   fuer das eine Dokument, in dem KEIN Token steht: den iframe einer App.
+
+   HIER STEHT NUR, WAS `index.css` in seinem Dunkel-Block auch ueberschreibt.
+   `--destructive`, `--success` und `--warning` fehlen dort und fehlen darum
+   auch hier -- eine Fehlerfarbe, die es nur im Dunkeln gibt, waere eine, die
+   im Hellen fehlt. `scripts/test/marken.py` prueft beide Richtungen.
+   ========================================================================== */
+
+[data-theme='dark'] {
+  --ara-flaeche: var(--background, #141414);
+  --ara-flaeche-karte: var(--card, #181818);
+  --ara-flaeche-hoch: var(--popover, #1c1c1c);
+  --ara-wisch: var(--accent, rgba(228, 228, 228, 0.07));
+  --ara-text: var(--foreground, #e6e6e6);
+  --ara-text-leise: var(--muted-foreground, rgba(228, 228, 228, 0.55));
+  --ara-kante: var(--border, rgba(228, 228, 228, 0.08));
+  --ara-akzent: var(--primary, #81a1c1);
+  --ara-akzent-text: var(--primary-foreground, #0a0a0a);
+  --ara-schleier: var(--backdrop-color, rgba(0, 0, 0, 0.7));
 }
 
 /* JEDES KAESTCHEN RECHNET SEINEN RAND MIT. Ohne diese Regel ist `width: 100%`
@@ -135,6 +192,22 @@
   margin-bottom: var(--ara-abstand-4);
   padding-bottom: var(--ara-abstand-3);
   border-bottom: 1px solid var(--ara-kante);
+}
+
+/* Die mittige Form (H5): eine Seite, die aus nichts als sich selbst besteht --
+   die Anmeldung, das erste Konto, ein Absturz. Ohne Trennlinie, denn darunter
+   kommt kein zweiter Abschnitt, von dem sie zu trennen waere. */
+.ara-kopf[data-mittig='true'] {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 0;
+  border-bottom: 0;
+  text-align: center;
+}
+
+.ara-kopf[data-mittig='true'] .ara-kopf__titel {
+  justify-content: center;
 }
 
 .ara-kopf__text {
@@ -224,9 +297,16 @@ a.ara-liste__eintrag:hover {
   background-color: var(--ara-wisch);
 }
 
+/* DER AKTIVE EINTRAG HEBT SICH UEBER SCHRIFTSTAERKE UND EINE LINIE AB (H5).
+   Bis dahin trug er `--ara-wisch` -- dieselbe Flaeche, die jeder Eintrag beim
+   Ueberfahren bekommt. „Hier bist du" und „hier ist gerade die Maus" sahen
+   damit gleich aus, und wer die Maus stehen liess, sah zwei aktive Eintraege.
+   Die Linie liegt als `inset`-Schatten IM Eintrag: sie kann nicht aus ihrem
+   Kasten ragen und damit auch nicht zur Rollbreite des Dokuments zaehlen
+   (der Fund der G1-Abnahme). */
 .ara-liste__eintrag[aria-current='true'],
 .ara-liste__eintrag[data-aktiv='true'] {
-  background-color: var(--ara-wisch);
+  box-shadow: inset 2px 0 0 var(--ara-text);
   color: var(--ara-text);
   font-weight: 600;
 }
@@ -242,12 +322,37 @@ a.ara-liste__eintrag:hover {
   height: 1.125rem;
 }
 
-.ara-liste__wort {
+/* Die dichte Form: eine Spalte, die mit der Maus bedient wird (H5). Sie ist
+   der Grund, aus dem es in der Shell keine zweite Liste mehr gibt. */
+.ara-liste[data-dicht='true'] .ara-liste__eintrag {
+  min-height: 0;
+  padding: var(--ara-abstand-1) var(--ara-abstand-2);
+  font-size: var(--ara-groesse-sm);
+}
+
+.ara-liste__text {
+  display: flex;
   min-width: 0;
   flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.ara-liste__wort {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.ara-liste__unterzeile {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--ara-groesse-xs);
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ara-text-leise);
 }
 
 .ara-liste__hinweis {
@@ -471,7 +576,7 @@ button.ara-karte:hover {
   inset: 0;
   z-index: 60;
   border: 0;
-  background-color: rgb(0 0 0 / 0.5);
+  background-color: var(--ara-schleier);
 }
 
 .ara-menue {

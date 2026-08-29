@@ -57,6 +57,7 @@ import {
   hasSecret,
   keychainAvailable,
   keychainHint,
+  otherStore,
   setSecret,
 } from "./lib/secrets.mjs";
 
@@ -153,11 +154,13 @@ if (typeof arg.store === "string") {
   console.log(
     t(
       `Store changed to: ${storeLabel(wanted)}.\n` +
-        "Secrets already stored stay where they are, they are still found.\n" +
-        "If you want to move them, set them once again.",
+        "Secrets already stored stay where they lie, and from now on they no longer apply:\n" +
+        "what counts is the chosen store and nothing else. Set them once again to move them.\n" +
+        "  node .ara/tools/secrets.mjs --show   says which names lie in the other one",
       `Ablage umgestellt auf: ${storeLabel(wanted)}.\n` +
-        "Bereits hinterlegte Geheimnisse bleiben, wo sie sind, sie werden weiterhin gefunden.\n" +
-        "Wenn du sie umziehen willst, setz sie einmal neu."
+        "Bereits hinterlegte Geheimnisse bleiben liegen, wo sie liegen, und gelten von jetzt an nicht mehr:\n" +
+        "es zählt die gewählte Ablage und sonst keine. Setz sie einmal neu, dann ziehen sie um.\n" +
+        "  node .ara/tools/secrets.mjs --show   sagt, welche Namen in der anderen liegen"
     )
   );
   process.exit(0);
@@ -227,8 +230,22 @@ if (typeof arg.set === "string") {
     "",
   ];
   const named = new Set();
+  const anderswo = [];
+
+  /**
+   * Ein Name liegt nicht in der gewählten Ablage, aber in der anderen. Das
+   * gilt nicht als hinterlegt, und es wird trotzdem gesagt: sonst sucht
+   * jemand nach einem Wechsel der Ablage einen Wert, der zwei Zeilen weiter
+   * liegt.
+   */
+  const merkeAnderswo = (name) => {
+    const wo = hasSecret(name) ? null : otherStore(name);
+    if (wo) anderswo.push({ name, wo });
+  };
+
   for (const entry of KNOWN) {
     named.add(entry.name);
+    merkeAnderswo(entry.name);
     lines.push(
       `- ${entry.name}: ${hasSecret(entry.name) ? t("stored", "hinterlegt") : t("missing", "fehlt")}: ${entry.info}`
     );
@@ -239,6 +256,7 @@ if (typeof arg.set === "string") {
     lines.push("", t("Secrets of the devices, names from their files:", "Geheimnisse der Geräte, Namen aus der jeweiligen Akte:"));
     for (const entry of devices) {
       named.add(entry.ref);
+      merkeAnderswo(entry.ref);
       lines.push(
         t(
           `- ${entry.ref}: ${entry.set ? "stored" : "missing"}: device ${entry.place}, ${entry.info}`,
@@ -271,6 +289,21 @@ if (typeof arg.set === "string") {
         "Weitere Namen in der Ablage, die zu keiner Akte und zu keinem bekannten Eintrag gehören:"
       ),
       ...rest.map((name) => `- ${name}`)
+    );
+  }
+  if (anderswo.length) {
+    lines.push(
+      "",
+      t(
+        `These names do not lie in the chosen store, but in the other one. They do not apply:`,
+        `Diese Namen liegen nicht in der gewählten Ablage, sondern in der anderen. Sie gelten nicht:`
+      ),
+      ...anderswo.map((entry) =>
+        t(
+          `- ${entry.name}: lies in the ${entry.wo === "env" ? ".env" : "keychain"}. --set fetches it over.`,
+          `- ${entry.name}: liegt in ${entry.wo === "env" ? "der .env" : "dem Schlüsselbund"}. --set holt es herüber.`
+        )
+      )
     );
   }
   if (store === "keychain") {

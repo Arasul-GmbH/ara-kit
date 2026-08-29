@@ -174,6 +174,49 @@ export async function call({
 }
 
 /** Die Begründung des Geräts in einem Satz. Es begründet im Klartext, das ist wertvoller als eine Nummer. */
+/**
+ * Traegt dieses Geraet ein selbst ausgestelltes Zertifikat?
+ *
+ * **Gemessen, nicht geraten.** Zweimal derselbe Aufruf: einmal mit Pruefung,
+ * einmal ohne. Scheitert der erste genau am Zertifikat und kommt der zweite
+ * durch, dann liegt dort eines, das dieser Rechner nicht kennt -- und genau
+ * das heisst `tls: selfsigned` in der Akte.
+ *
+ * Bis zum 29.08.2026 trug das Kit den Eintrag nur ein, wenn es selbst gerade
+ * installiert hatte: dann hat es zugesehen, wie die Geraete-CA entstand. Ein
+ * Geraet, auf dem Arasul schon lief, bekam ihn nie, und jeder Aufruf ueber die
+ * Schnittstelle brach ab, bis jemand die Zeile von Hand hinschrieb.
+ *
+ * Zurueck kommt `"selfsigned"`, `"verifiable"` oder `null`. `null` heisst: es
+ * war nicht zu messen, und dann wird auch nichts eingetragen. Ein Kit, das aus
+ * "keine Antwort" ein "selbst ausgestellt" macht, schaltete die Pruefung an
+ * einem Geraet ab, ueber das es nichts weiss.
+ */
+export async function certificateKind(base, { timeout = 8_000 } = {}) {
+  const url = new URL("/", base.endsWith("/") ? base : `${base}/`);
+  if (url.protocol !== "https:") return null;
+
+  const versuch = (insecure) =>
+    new Promise((done) => {
+      const req = httpsRequest(
+        url,
+        { method: "HEAD", ...(insecure ? { rejectUnauthorized: false } : {}) },
+        (res) => {
+          res.resume();
+          done({ ok: true });
+        }
+      );
+      req.setTimeout(timeout, () => req.destroy(new Error("zeit")));
+      req.on("error", (error) => done({ ok: false, code: error.code }));
+      req.end();
+    });
+
+  const streng = await versuch(false);
+  if (streng.ok) return "verifiable";
+  if (!TLS_HINTS.has(streng.code)) return null;
+  return (await versuch(true)).ok ? "selfsigned" : null;
+}
+
 export function reason(answer) {
   const message =
     answer?.error?.message ||

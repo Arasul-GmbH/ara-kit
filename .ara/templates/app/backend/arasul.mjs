@@ -120,13 +120,23 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
     return null;
   }
 
-  /** Ein Weg aus der Vereinbarung, mit Werten statt Platzhaltern. */
+  /**
+   * Ein Weg aus der Vereinbarung, mit Werten statt Platzhaltern.
+   *
+   * Genommen wird `relativ`, wenn er dasteht, und sonst `pfad`. Der
+   * Unterschied ist der Vorsatz der aeusseren Schnittstelle: die Adresse in
+   * `basis` endet darauf, und `pfad` faengt damit an. Wer beides
+   * aneinanderhaengt, ruft ihn zweimal und bekommt einen 404 -- der Fund vom
+   * Orin. Welcher der beiden gilt, entscheidet nicht diese Datei, sondern das
+   * Geraet: das Kit hat es aus dem Kontrakt hierher geschrieben.
+   */
   function weg(schalter, werte = {}) {
     const eintrag = wege[schalter];
-    if (!eintrag?.pfad) return null;
+    const roh = typeof eintrag?.relativ === "string" ? eintrag.relativ : eintrag?.pfad;
+    if (!roh) return null;
     return {
       verb: eintrag.verb || "GET",
-      pfad: eintrag.pfad.replace(/\{([a-z_]+)\}/g, (ganz, schluesselName) =>
+      pfad: roh.replace(/\{([a-z_]+)\}/g, (ganz, schluesselName) =>
         schluesselName in werte ? encodeURIComponent(String(werte[schluesselName])) : ganz
       ),
     };

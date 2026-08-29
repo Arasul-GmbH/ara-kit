@@ -5,16 +5,17 @@ nicht zwei Programme, er sieht einen Bildschirm. Zwei Erscheinungsbilder darauf 
 Geschmack, sondern ein Fehler.
 
 Darum gibt es genau eine Bibliothek für beide Seiten. Sie heißt im Produkt
-`packages/marken`, und das Kit spiegelt sie in die App-Vorlage. Wer eine App baut, baut aus
-ihren Bausteinen, und dann sieht die App aus wie das Gerät, ohne dass jemand eine Farbe
-abgeschrieben hat.
+`packages/marken`, und sie geht von dort als **Paket** hinaus: `marken.json` nennt die
+Fassung, die Abhängigkeiten und jede Datei mit ihrem sha256. Das Kit spiegelt dieses Paket
+in die App-Vorlage. Wer eine App baut, baut aus ihren Teilen, und dann sieht die App aus wie
+das Gerät, ohne dass jemand eine Farbe abgeschrieben hat.
 
 ## Die Kette: eine Quelle, zwei Spiegel
 
 | Wo | Was | Wem gehört es |
 | --- | --- | --- |
 | `packages/marken` im Produkt | die Quelle | dem Produkt |
-| `.ara/mirror/packages/marken/src/` | das geholte Artefakt | dem Produkt, hier abgelegt |
+| `.ara/mirror/packages/marken/` | das geholte Paket, mit seinem Stempel | dem Produkt, hier abgelegt |
 | `.ara/templates/app/frontend/src/marken/` | der Spiegel der Vorlage | dem Kit |
 | `apps/<app>/frontend/src/marken/` | die Kopie einer App | dem Nutzer |
 
@@ -23,29 +24,55 @@ wie das Gerät, auch auf einem Rechner, der noch kein Arasul gesehen hat. Liegt 
 einer App ein Spiegel des Produkts vor, nimmt `--new` die Bibliothek von dort statt aus der
 Vorlage: die des Geräts ist die richtige.
 
-Neben jedem Spiegel liegt `mirror.json`: Fassung, Quelle, Datum und je Datei ein Hash. Sie
-ist die Antwort auf die Frage, die sonst niemand beantworten kann, nämlich ob eine Datei
-nachgezogen oder von Hand geändert wurde.
+**Das Paket ist, was `marken.json` nennt.** Einundsiebzig Dateien, und siebzig davon gehen
+in den Spiegel. `browser/marken.js` bleibt draußen: es ist das Bündel für eine App **ohne**
+Bau, es bringt React-DOM mit und hängt eine App an einen Knoten. Eine App aus der Vorlage
+hat einen Bau und einen eigenen Einstieg. Der Stempel des Spiegels sagt das unter
+`nicht_gespiegelt`, samt Grund, denn "vollständig" heißt nicht "alles", sondern "alles,
+wovon gesagt ist, warum es fehlt".
 
-## Die sechs Bausteine
+Neben jedem Spiegel liegt `mirror.json`: Fassung, Quelle, Datum, die Abhängigkeiten und je
+Datei ein Hash. Sie ist die Antwort auf die Frage, die sonst niemand beantworten kann,
+nämlich ob eine Datei nachgezogen oder von Hand geändert wurde.
 
-Sie tragen deutsche Namen, weil sie im Produkt so heißen. Alles, was sie zeichnen, trägt
-Klassen mit dem Vorsatz `ara-`, und die Regeln dazu stehen in `marken.css` daneben.
+## Drei Sätze, und jeder hat seine Höhe
 
-| Baustein | Wofür | Was du wissen musst |
-| --- | --- | --- |
-| `Kopf` | Der Kopf einer Seite: Titel, ein Satz darunter, Aktionen rechts | Der Titel ist das einzige `h1` der Seite. Unter 900 Pixeln rutschen die Aktionen unter den Titel |
-| `Liste` mit `ListenEintrag` | Eine Reihe von Einträgen: eine Datenliste, die Bereiche einer App, was sie aufzählt | Ein Eintrag mit `onKlick` ist ein Knopf und nimmt damit Tastatur und Screenreader mit. `aktiv` markiert die Zeile, auf der man steht |
-| `Karte` | Die erhabene Fläche für ein Ding, das für sich steht | Mit `onKlick` wird sie ein Knopf, ohne ihn ein Kasten. Eine Karte, die anklickbar aussieht und keine ist, ist eine Falle |
-| `Formular` mit `Feld` und `Knopf` | Eine Eingabe | Es ist ein `form`: die Eingabetaste im letzten Feld sendet ab. `Feld` verlangt eine Kennung, sonst finden Beschriftung und Eingabe nicht zusammen. `Knopf` kennt `still`, `haupt` und `gefahr` |
-| `Meldung` | Was das Gerät dem Menschen sagt | Die Art (`hinweis`, `erfolg`, `warnung`, `fehler`) bestimmt die Farbe **und** die Rolle für den Screenreader. Die Art steht immer auch im Text: eine Meldung, die nur an ihrer Farbe zu erkennen ist, ist für manche keine |
-| `Menue` | Die Fläche über der Seite, unter 900 Pixeln | Escape schließt, ein Klick auf den Schleier schließt, der Fokus springt hinein und danach zurück, und mit Tab kommt niemand dahinter. Jede Ansicht, die kommt, macht es zu |
+| Satz | Wo | Wie viele | Was sie sind |
+| --- | --- | --- | --- |
+| Primitive | `marken/primitive/` | 46 | Button, Input, Dialog, Tabelle, Kalender, Reiter, Abzeichen. Sie wissen nichts außer sich selbst, und man setzt sie zusammen |
+| Muster | `marken/muster/` | 9 | Datenliste, Suchauswahl, Seitenleiste, Formularseite, Dateiablage, Kennzahl, Leerzustand, Ladezustand, Dialogform. Sie sind **aus** Primitiven gemacht und lösen eine Aufgabe, die in jeder Anwendung wiederkommt |
+| Bausteine | `marken/*.tsx` | 6 | Kopf, Liste, Karte, Formular, Meldung, Menue. Reines CSS (Klassen `ara-*`), sie laufen in einer App **ohne** Bau |
 
-Was es heute **nicht** gibt: eine Tabelle, ein Dialog, eine Reiterleiste, eine Fußzeile,
-ein Anzeiger für einen Fortschritt. Wer so etwas braucht, baut es in seiner App aus dem,
-was da ist, hält sich an die Marken und sagt im Plan, dass es eine eigene Sache ist. Das
-Produkt zieht mit weiteren Bausteinen nach; wenn einer davon kommt, wird die eigene Sache
-gegen ihn getauscht.
+Wer einen Bau hat, nimmt die Primitive und die Muster. Die sechs Bausteine bleiben für den
+Kopf einer Seite und für eine Meldung nützlich; was aber ein ganzes Formular ist, ist ein
+Muster, und es nachzubauen sind zweihundert Zeilen, die die nächste Anwendung anders
+schreibt.
+
+**Zwei Stylesheets gehören dazu**, und sie werden getrennt geladen:
+
+- `marken/theme.css` trägt die Werte, beide Themen, und den `@theme`-Block, aus dem Tailwind
+  `bg-primary`, `text-muted-foreground` und `rounded-md` baut. Es wird **ohne Schicht**
+  geladen: ein `@theme` in einem `layer(...)`-Import ist keins mehr.
+- `marken/marken.css` trägt die Regeln der sechs Bausteine. Es wird **mit**
+  `layer(components)` geladen: ungeschichtetes CSS gewinnt gegen jede Schicht, auch gegen
+  die Werkzeugklassen, und eine Tailwind-Klasse an einem Baustein wäre sonst wirkungslos.
+
+Beide stehen in dieser Reihenfolge in der `stil.css` der Vorlage, und daneben steht keine
+zweite Datei mit Werten. Bis 0.17.0 schrieb das Kit eine (`design.css`, aus der `index.css`
+der Shell abgelesen); seit die Bibliothek ihre Marken selbst trägt, wäre das die zweite
+Wahrheit, und die beiden waren sich nicht einig, welches Thema die Vorgabe ist.
+
+## Zwei Themen, und Hell setzt nichts
+
+Das Gerät kennt Hell und Dunkel. Hell ist `:root` und braucht keinen Selektor; Dunkel steht
+als Klasse `dark` und als `data-theme="dark"` am `<html>`. Die Shell schreibt beides **in
+das Dokument der App selbst**, bei jedem Wechsel und bei jedem Laden, und schickt denselben
+Wert zusätzlich als Nachricht (`{typ: "arasul:theme", theme}`), und das ist der einzige Weg,
+der Hell ausdrücklich nennt.
+
+Eine App muss dafür also nichts tun. `rahmen/thema.ts` in der Vorlage liest und rät nicht:
+es hört auf die Nachricht, beobachtet sein eigenes `<html>` und schreibt nur dann selbst,
+wenn es gar keinen Rahmen gibt, denn dann tut es sonst niemand.
 
 ## Wie eine App sie einsetzt
 
@@ -53,50 +80,51 @@ Der Import geht über `@marken`, denselben Alias, unter dem die Oberfläche des 
 Bibliothek kennt. Derselbe Quelltext läuft dort und hier:
 
 ```tsx
-import { Karte, Kopf, Liste, ListenEintrag, Meldung } from "@marken";
+import { Button, Datenliste, Kopf, Meldung, Seitenleiste } from "@marken";
 ```
 
-Eine Seite ist ein `Kopf` und darunter Bausteine. Was der Ablauf ist, steht in der Seite;
-was das Aussehen ist, steht im Baustein. Die Vorlage zeigt drei Fälle, und an ihnen kannst
-du dich entlanghangeln:
+Die Vorlage zeigt drei Fälle, und an ihnen kann man sich entlanghangeln:
 
-- **Datenliste** (`seiten/liste.tsx`): `Liste` mit `ListenEintrag` je Zeile, darunter der
-  eine ausgewählte als `Karte`. Welcher ausgewählt ist, steht in der Suchanfrage
-  (`?nr=17`) und nicht im Zustand der Seite: ein Verweis auf einen Vorgang bleibt damit
-  einer, und die Wege der App bleiben eine Ebene tief.
-- **Formularseite** (`seiten/neu.tsx`): `Formular` mit `Feld` je Eingabe und `Knopf` in den
-  Aktionen. Der eine Hauptknopf trägt `art="haupt"`.
-- **Seitenleiste** (`rahmen/seitenleiste.tsx`): `Liste` mit den Bereichen, über 900 Pixeln
-  als Spalte, darunter derselbe Inhalt im `Menue`. Die Schwelle steht in
-  `rahmen/fenster.ts` und ist dieselbe wie in `marken.css`.
+- **Datenliste** (`seiten/liste.tsx`): das Muster `Datenliste`. Sortieren, Suchen, ein
+  Leerzustand, und unter 900 Pixeln eine Kartenliste statt einer Tabelle. Die Spalten sind
+  Daten und kein Markup: `zelle` sagt, was dasteht, `wert` sagt, wonach sortiert und worin
+  gesucht wird, und beides ist getrennt, weil "vor 3 Tagen" nach einem Zeitstempel sortiert.
+- **Formularseite** (`seiten/neu.tsx`): `Formularseite` mit einer `Feldgruppe` je Abschnitt.
+  Die Gruppe trägt Überschrift, Beschreibung und die Trennlinie; `Formularseite` nimmt sie
+  der letzten wieder ab. Die Eingaben sind die Primitive `Label`, `Input`, `Textarea`,
+  `Button`.
+- **Seitenleiste** (`rahmen/seitenleiste.tsx`): das Muster `Seitenleiste`, darum herum ein
+  `SidebarProvider` mit `SidebarInset` und `SidebarTrigger`. Die Einträge gehen als Liste
+  hinein; welcher aktiv ist, sagt die App, denn sie kennt ihren Router und das Muster
+  keinen.
 
-Die Anordnung der Seite gehört der App und nicht der Bibliothek: ein Raster, eine Spalte,
-ein Abstand stehen als eigene Regel am Ende von `stil.css`. Farben, Schriften und Rundungen
-stehen dort nicht, dafür gibt es die Marken.
+Die Anordnung der Seite gehört der Bibliothek und nicht der App: `SidebarProvider` hält die
+Spalte, `SidebarInset` trägt den Inhalt. Was als eigene Regel übrig bleibt, steht am Ende
+von `stil.css`, und keine Farbe, keine Schrift und kein Radius steht darin.
 
 ## Was verboten ist
 
-Vier Dinge, und jedes hat denselben Grund: sie laufen beim nächsten Stand des Geräts von
-der Oberfläche weg, in der die App hängt.
+Vier Dinge, und jedes hat denselben Grund: sie laufen beim nächsten Stand des Geräts von der
+Oberfläche weg, in der die App hängt.
 
-1. **Keine eigene Farbe.** Kein `#1a1a1a`, kein `rgba(...)` in einer Regel dieser App.
-   Was eine Farbe braucht, nimmt eine Marke: `var(--ara-kante)`, `var(--ara-akzent)`,
-   `var(--ara-text-leise)`. Eine Farbe, die du hinschreibst, ist eine, die beim nächsten
+1. **Keine eigene Farbe.** Kein `#1a1a1a`, kein `rgba(...)` in einer Regel dieser App. Was
+   eine Farbe braucht, nimmt eine Marke: `var(--ara-kante)`, `bg-card`,
+   `text-muted-foreground`. Eine Farbe, die man hinschreibt, ist eine, die beim nächsten
    Thema falsch ist.
-2. **Kein eigener Baustein neben einem vorhandenen.** Kein `<div className="karte">`, das
-   aussieht wie eine `Karte`. Der Unterschied zwischen den beiden ist in vier Wochen keine
-   Entscheidung mehr, sondern ein Zufall.
+2. **Kein eigenes Teil neben einem vorhandenen.** Kein `<div className="karte">`, das
+   aussieht wie eine `Karte`, und keine Liste mit Suchfeld neben `Datenliste`. In vier Wochen
+   ist der Unterschied zwischen beiden keine Entscheidung mehr, sondern ein Zufall.
 3. **Nichts im Spiegel ändern.** Der Ordner `frontend/src/marken/` wird **ersetzt**, nicht
-   fortgeschrieben. Wer dort eine Zeile ändert, verliert sie beim nächsten Nachziehen, und
-   bis dahin meldet sie der Wächter. Was dir an einem Baustein fehlt, gehört ins Produkt
-   und nicht in die Kopie.
-4. **Keine zweite Schwelle.** Unter 900 Pixeln eine Spalte, darüber die Aufteilung. Wer
-   eine zweite Zahl einführt, hat einen Zustand mehr, in dem die App neben der Oberfläche
-   steht.
+   fortgeschrieben. Wer eine Zeile darin ändert, verliert sie beim nächsten Nachziehen, und
+   bis dahin meldet der Wächter sie. Was an einem Teil fehlt, gehört ins Produkt und nicht
+   in die Kopie.
+4. **Keine zweite Schwelle.** Unter 900 Pixeln eine Spalte, darüber die Anordnung. Die
+   Bibliothek trägt die eine Schwelle (`useSchmalesFenster`); wer eine zweite Zahl einführt,
+   hat einen Zustand mehr, in dem die App neben der Oberfläche steht.
 
 ## Der Wächter
 
-Eine Kopie veraltet lautlos. Wer einen Baustein ändert und nicht nachzieht, sieht in der
+Eine Kopie veraltet lautlos. Wer ein Teil ändert und nicht nachzieht, sieht in der
 Oberfläche des Geräts das Neue und in jeder App das Alte, und nichts an einer laufenden App
 würde davon rot.
 
@@ -106,31 +134,40 @@ node .ara/tools/marken.mjs --sync          die Apps an die Quelle nachziehen
 node .ara/tools/marken.mjs --source <ordner>   eine Quelle von Hand nennen
 ```
 
-Er stellt drei Fragen: passt jede Datei zu ihrem Hash, steht der Spiegel auf der Fassung
-der Quelle, und ist er vollständig (keine Klasse ohne Regel, kein Baustein ohne Ausgabe).
+Er stellt vier Fragen: passt jede Datei zu ihrem Hash, steht der Spiegel auf der Fassung der
+Quelle, ist er vollständig (keine Klasse ohne Regel, keine Datei, zu der kein Weg führt),
+und trägt die `package.json` der App die vierzehn Abhängigkeiten, die die Bibliothek
+braucht. Die letzte gibt es, weil die Bibliothek **mit** der App übersetzt wird: ohne diese
+Frage fällt der Bau erst an dem Import, der ins Leere zeigt, und die Meldung nennt dann ein
+Primitiv statt des fehlenden Pakets.
 
-**Welche Quelle gilt**, in dieser Reihenfolge: der Ordner hinter `--source`, sonst der
-Spiegel des Produkts, sonst die Vorlage des Kits. Die dritte ist die schwächste, und sie
-steht trotzdem da: für eine App ist die Vorlage genau die richtige Auskunft, denn sie ist
-das, was `--new` hingelegt hätte. Ihre eigene Quelle ist die Vorlage nie, ein Spiegel, der
-sich an sich selbst misst, sagt immer ja. Ob sie selbst aktuell ist, sagt nur ein Spiegel
-des Produkts, und der Wächter schreibt das dazu.
+**Welche Quelle gilt**, in dieser Reihenfolge: der Ordner hinter `--source`, sonst das Paket
+im Spiegel des Produkts, sonst die Vorlage des Kits. `--source` nennt das, was im Produkt
+`scripts/deploy/marken-paket.py --ausgabe <ordner>` hinlegt: ein Ordner mit `marken.json`
+und `src/` darin. Die dritte ist die schwächste, und sie steht trotzdem da: für eine App ist
+die Vorlage genau die richtige Auskunft, denn sie ist das, was `--new` hingelegt hätte. Ihre
+eigene Quelle ist die Vorlage nie, ein Spiegel, der sich an sich selbst misst, sagt immer
+ja.
 
 `--sync` schreibt nur nach `apps/`. Die Vorlage gehört dem Kit und liegt in der
-Versionsverwaltung; sie nachzuziehen ist eine Sache des Kits und kein Handgriff im Klon
-eines Partners.
+Versionsverwaltung; sie nachzuziehen ist Sache des Kits und kein Handgriff im Klon eines
+Partners. Es schreibt außerdem `marken` in die `app.json` der App: seit Kontrakt 4 sagt eine
+App in ihrem Manifest, auf welcher Fassung sie steht, und eine Zahl, die nach dem Nachziehen
+stehen bleibt, ist genau die Auskunft, an der das Gerät eine veraltete Kopie erkennen soll.
 
-**`/init` fragt ihn.** Wer das Kit auf den neuesten Stand bringt, sieht dabei, ob seine
-Apps noch an der Bibliothek stehen, und zieht sie in einem Schritt nach. Danach wird die
-App neu gebaut: die Kopie ist Quelltext und kein Bündel.
+**`/init` fragt ihn.** Wer das Kit aktualisiert, sieht dabei, ob seine Apps noch an der
+Bibliothek stehen, und zieht sie in einem Schritt nach. Danach wird die App neu gebaut: die
+Kopie ist Quelltext und kein Bündel.
 
 ## Wenn ein Befund kommt
 
 | Was dasteht | Was es heißt | Was du tust |
 | --- | --- | --- |
-| `... wurde von Hand verstellt` | Jemand hat im Spiegel geändert | Den Grund erfragen. Was gebraucht wird, gehört ins Produkt. Dann `--sync` |
-| `... fehlt im Spiegel` | Eine Datei ist weg | `--sync` |
+| `... wurde von Hand verstellt` | Jemand hat im Spiegel etwas geändert | Frag nach, warum. Was gebraucht wird, gehört ins Produkt. Danach `--sync` |
+| `... fehlt im Spiegel` | Eine Datei fehlt | `--sync` |
 | `die Quelle steht auf X, dieser Spiegel auf Y` | Die Bibliothek ist weitergegangen | `--sync`, danach die App neu bauen und einspielen |
-| `... weicht bei gleicher Fassung ab` | Die Quelle hat sich bewegt, ohne die Fassung zu heben | Das ist ein Fehler im Produkt. Sag es, und zieh trotzdem nach |
-| `... hat keine Regel in marken.css` | Ein Baustein ohne Aussehen | Der Spiegel ist unvollständig. Neu holen |
+| `... weicht bei gleicher Fassung von der Quelle ab` | Die Quelle hat sich bewegt, ohne die Fassung zu heben | Das ist ein Fehler im Produkt. Sag es, und zieh trotzdem nach |
+| `... hat keine Regel in marken.css` | Ein Baustein ohne Aussehen | Der Spiegel ist unvollständig. Hol ihn neu |
+| `von der index.ts führt kein Weg zu ...` | Eine Datei, die keine App findet, und der Bau übersetzt sie trotzdem mit | Der Spiegel ist unvollständig. Hol ihn neu |
+| `die Bibliothek braucht X, die package.json kennt es nicht` | Die App lässt sich nicht bauen | Die Fassung aus `mirror.json` in die `frontend/package.json` eintragen, dann `npm install` |
 | `es gibt keine mirror.json` | Der Spiegel sagt nicht, woher er kommt | `--sync` legt sie an |

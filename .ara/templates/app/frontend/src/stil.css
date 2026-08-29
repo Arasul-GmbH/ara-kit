@@ -1,94 +1,101 @@
 /**
- * Das Stylesheet der App. Drei Teile, und nur der dritte gehoert ihr.
+ * Das Stylesheet der App. Vier Teile, und nur der vierte gehoert ihr.
  *
- *   `tailwindcss`      die Werkzeugklassen, fuer Anordnung und Abstand
- *   `design.css`       die Werte des Geraets, je Thema. Erzeugt beim Anlegen
- *   `marken/`          die Bausteine des Designsystems. Gespiegelt, wird ersetzt
+ *   `tailwindcss`        die Werkzeugklassen, fuer Anordnung und Abstand
+ *   `tw-animate-css`     die Bewegungen, die die Primitive benutzen
+ *   `marken/theme.css`   die Werte des Geraets, je Thema. OHNE Schicht
+ *   `marken/marken.css`  die Regeln der sechs Bausteine. MIT `layer(components)`
+ *
+ * Die Reihenfolge steht so in der EINBAU.md des Pakets, und die beiden
+ * Schichtangaben sind keine Nachlaessigkeit:
+ *
+ *   `theme.css` ohne Schicht, weil ein `@theme` in einem `layer(...)`-Import
+ *   keins mehr ist. Es gaebe dann kein `bg-primary`, und die
+ *   sechsundvierzig Primitive staenden ohne Farbe da.
+ *
+ *   `marken.css` mit `layer(components)`, weil ungeschichtetes CSS gegen jede
+ *   Schicht gewinnt, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an
+ *   einem Baustein waere sonst wirkungslos, und genau das erwartet niemand,
+ *   der sie dorthin schreibt.
+ *
+ * **Die Werte stehen in der Bibliothek und nicht hier.** Bis zum 29.08.2026
+ * schrieb das Kit sie beim Anlegen als `design.css` daneben, aus dem Spiegel
+ * abgelesen. Seit die Bibliothek als Paket kommt, traegt sie ihre Tokens
+ * selbst (`theme.css`), und zwei Dateien, die dieselben Marken setzen, sind
+ * die zweite Wahrheit: die eine sagte, Hell sei die Vorgabe, die andere,
+ * Schwarz. Der ganze Ordner `marken/` wird beim naechsten Stand ersetzt, und
+ * was hier unten steht, bleibt.
  *
  * Ganz unten stehen die eigenen Regeln. **Kein Farbwert steht darin**, nur
- * Marken: `var(--ara-kante)` statt `rgba(...)`. Beim naechsten Stand des
- * Geraets werden `design.css` und der Ordner `marken/` ersetzt, und was hier
- * steht, bleibt. Eine Farbe, die hier stuende, bliebe zurueck.
- *
- * `layer(components)` fuer die Bausteine: ungeschichtetes CSS gewinnt gegen
- * jede Schicht, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an einem
- * Baustein waere sonst wirkungslos, und genau das erwartet niemand, der sie
- * dorthin schreibt.
+ * Marken: `var(--ara-kante)` statt `rgba(...)`. Eine Farbe, die hier stuende,
+ * bliebe beim naechsten Stand zurueck.
  */
 
 @import "tailwindcss";
-@import "./design.css";
+@import "tw-animate-css";
+@import "./marken/theme.css";
 @import "./marken/marken.css" layer(components);
 
-/* Dunkel ist kein Systemzustand, sondern der, den das Geraet nennt. `thema.ts`
-   schreibt ihn an das `<html>`, und `dark:` folgt ihm. */
-@custom-variant dark (&:where([data-theme="black"], [data-theme="dark"], [data-theme="black"] *, [data-theme="dark"] *));
+/* Dunkel ist kein Systemzustand, sondern der, den das Geraet nennt. Die Shell
+   setzt beides an das Dokument dieser App: die Klasse `dark` und
+   `data-theme="dark"`. Hell setzt gar nichts, denn `:root` IST hell. Diese
+   Zeile steht wortgleich in der `index.css` des Geraets; ohne Rahmen schreibt
+   `rahmen/thema.ts` dieselben zwei Dinge. */
+@custom-variant dark (&:is(.dark *));
 
-/* Die Marken als Tailwind-Farben: `bg-card`, `text-muted-foreground`, und sie
-   wechseln das Thema mit, weil hier die Variable steht und nicht ihr Wert. */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-accent: var(--accent);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-destructive: var(--destructive);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
+/* --- Ein Fehler der Bibliothek, hier aufgefangen ----------------------------
+
+   Fassung 3.1.0 des Designsystems schreibt Breiten aus einer Variablen in der
+   Schreibweise von Tailwind 3: `w-[--sidebar-breite]`. Tailwind 4 packt das
+   nicht mehr in ein `var()`, es setzt `width: --sidebar-breite` -- ungueltiges
+   CSS, und der Browser laesst die Regel fallen. Die Folge sieht man erst im
+   Bild: die Seitenleiste liegt UEBER dem Inhalt statt neben ihm, weil der
+   Platzhalter, der ihre Spalte freihaelt, null breit ist. Richtig waere in
+   Tailwind 4 `w-(--sidebar-breite)`.
+
+   **Das gehoert ins Produkt und nicht hierher.** Der Spiegel wird nicht
+   angefasst: eine Zeile, die man dort aendert, ist beim naechsten Nachziehen
+   weg, und bis dahin meldet der Waechter sie. Diese Regeln stehen deshalb an
+   der einzigen Stelle, an der die App etwas Eigenes sagen darf, und sie
+   verschwinden wieder, sobald die Bibliothek die Schreibweise umstellt.
+   Gefunden am 29.08.2026 am Orin, Kontrakt 5, Bibliothek 3.1.0. */
+
+[data-slot="sidebar-gap"],
+[data-slot="sidebar-container"] {
+  width: var(--sidebar-breite);
+}
+
+[data-slot="sidebar"][data-einklappen="symbole"] [data-slot="sidebar-gap"],
+[data-slot="sidebar"][data-einklappen="symbole"] [data-slot="sidebar-container"] {
+  width: var(--sidebar-breite-symbole);
+}
+
+[data-slot="sidebar"][data-einklappen="nichts"] [data-slot="sidebar-gap"] {
+  width: 0;
+}
+
+[data-slot="sidebar"][data-schmal="true"] {
+  width: var(--sidebar-breite-blatt);
 }
 
 /* --- Eigene Regeln ---------------------------------------------------------
 
-   Hier steht die Anordnung dieser App und sonst nichts. Kein Farbwert, keine
-   Schrift, kein Radius: das sind Werte des Geraets, sie stehen in `design.css`
-   und werden dort ersetzt. Was hier eine Farbe braucht, nimmt eine Marke.
+   Was hier steht, ist wenig, und das ist die Absicht. Kein Farbwert, keine
+   Schrift, kein Radius: das sind Werte des Geraets, sie stehen in
+   `marken/theme.css` und werden dort ersetzt. Was hier eine Farbe braucht,
+   nimmt eine Marke.
 
-   Die Schwelle 900 px ist dieselbe wie in `marken/marken.css` und in
-   `rahmen/fenster.ts`. Drei Stellen, eine Zahl: `@media` kann keine Variable
-   lesen, und die Bibliothek bringt keine Klasse fuer eine Seitenleiste mit. */
+   Auch die Anordnung steht nicht mehr hier. Bis zum 29.08.2026 trug diese Datei
+   ein eigenes Raster fuer Seitenleiste und Inhalt und `rahmen/fenster.ts`
+   eine zweite Schwelle bei 900 px. Beides bringt die Bibliothek mit
+   (`SidebarProvider`, `SidebarInset`, `useSchmalesFenster`), und es gibt im
+   Produkt genau EINE Schwelle. */
 
-/* Unter der Schwelle steht alles untereinander: der Knopf, der das Menue
-   oeffnet, und darunter der Inhalt. */
-.rahmen {
-  display: flex;
-  flex-direction: column;
-}
-
-.seitenleiste-schmal {
-  padding: var(--ara-abstand-3) var(--ara-abstand-3) 0;
-}
-
-@media (min-width: 900px) {
-  .rahmen {
-    display: grid;
-    grid-template-columns: 15rem minmax(0, 1fr);
-    align-items: start;
-    min-height: 100vh;
-  }
-
-  .seitenleiste {
-    display: flex;
-    flex-direction: column;
-    gap: var(--ara-abstand-3);
-    padding: var(--ara-abstand-4);
-    border-right: 1px solid var(--ara-kante);
-    position: sticky;
-    top: 0;
-  }
-
-  /* Der Inhalt steht am linken Rand seiner eigenen Spalte und nicht in der
-     Mitte des ganzen Fensters: sonst rutscht er unter die Seitenleiste. */
-  .rahmen > .ara-strom {
-    margin: 0;
-  }
+/* Der Inhalt steht am linken Rand seiner eigenen Spalte und nicht in der
+   Mitte des ganzen Fensters: sonst rutscht er unter die Seitenleiste. */
+.ara-strom {
+  margin: 0;
+  min-width: 0;
 }
 
 /* Wie ein Vorgang steht. Das Wort traegt die Aussage, die Farbe steht daneben. */

@@ -1,5 +1,43 @@
 {
   "_note": "Answer file for /init without an interview: node .ara/tools/init.mjs --answers <this file>. The fields are named like in business/profile.md. The prose fields are addressed to you, that is how Ara writes them into the profile. This file is an example with invented values, not a specification.",
+  "_values": {
+    "_": "The fields below only know these values. Everything else is refused by --answers, with the list in the message.",
+    "role": [
+      "partner",
+      "company"
+    ],
+    "language": [
+      "en",
+      "de"
+    ],
+    "detail_level": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "security_level": [
+      "standard",
+      "relaxed"
+    ],
+    "secrets_store": [
+      "env",
+      "keychain"
+    ],
+    "browser": [
+      "yes",
+      "no"
+    ],
+    "invoice": [
+      "yes",
+      "no",
+      "later"
+    ],
+    "first_device_state": [
+      "present",
+      "ordered",
+      "none"
+    ]
+  },
   "role": "company",
   "language": "en",
   "name": "Murat Example",

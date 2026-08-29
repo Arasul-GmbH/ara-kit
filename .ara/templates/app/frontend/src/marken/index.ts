@@ -1,37 +1,42 @@
 /**
- * `@marken` -- das Designsystem des Geraets (Phase D7, 28.08.2026).
+ * `@marken` -- das Designsystem des Geraets (Phase D7, erweitert in H3).
  *
- * Die Marken sind Schrift, Farben und Abstaende aus
- * `apps/dashboard-frontend/src/index.css`; sechs Bausteine sind daraus
- * gebaut: Kopf, Liste, Karte, Formular, Meldung, Menue. Kein neues
- * Erscheinungsbild -- ein gemeinsames.
+ * DREI SAETZE, EINE QUELLE, ZWEI LAUFZEITEN:
  *
- * ZWEI WEGE HINEIN, EINE QUELLE:
+ *   die Primitive (H3, H4)
+ *                        Sechsundvierzig Grundbausteine auf Radix und
+ *                        Tailwind: Button, Input, Dialog, Tabs, Badge,
+ *                        Tabelle, Kalender, Suchliste … Sie brauchen einen
+ *                        Bau und die Tokens aus `theme.css`. Wer einen Bau
+ *                        hat, nimmt sie.
+ *   die Muster (H4)      Datenliste, Suchauswahl, Dateiablage, Seitenleiste,
+ *                        Formularseite mit Feldgruppen, Leerzustand,
+ *                        Ladezustand -- die Formen, die eine Fachanwendung
+ *                        wiederkehrend braucht, aus Primitiven gebaut. Auch
+ *                        sie brauchen einen Bau.
+ *   die Bausteine (D7)   Kopf, Liste, Karte, Formular, Meldung, Menue --
+ *                        auf reinem CSS (`marken.css`, Klassen `ara-*`).
+ *                        Sie laufen in einer App OHNE Bau, die nur
+ *                        `browser/marken.js` laedt.
  *
- *   die Shell     `import { Karte } from '@marken'` -- Vite loest den Alias
+ * ZWEI WEGE HINEIN:
+ *
+ *   die Shell     `import { Button } from '@marken'` -- Vite loest den Alias
  *                 auf DIESEN Ordner auf (`vite.config.ts`), genau wie `@` auf
  *                 `src/`. KEIN npm-Paket und kein Eintrag im Lockfile: die
  *                 Bibliothek wird mit der Shell uebersetzt, nicht vor ihr
  *                 gebaut. Ein Paket waere ein `dist/`, das jemand vergisst.
- *   eine App      `import { Karte } from './marken.js'` -- das Buendel unter
- *                 `browser/` bringt React mit und braucht keinen Bau. Eine App
- *                 MIT Bau (die Vorlage des Kits, E5) nimmt stattdessen diese
- *                 Quelle ueber den Spiegel.
+ *   eine App      MIT Bau (die Vorlage des Kits, E5) nimmt diese Quelle ueber
+ *                 den Spiegel und hat alle drei Saetze. OHNE Bau laedt sie
+ *                 `browser/marken.js` und hat die sechs Bausteine.
  *
- * Das Stylesheet gehoert dazu und wird getrennt geladen: die Shell holt es in
- * `index.css`, eine App ueber ein `<link>`.
+ * Die Stylesheets gehoeren dazu und werden getrennt geladen: `theme.css`
+ * (die Tokens, Pflicht fuer die Primitive) und `marken.css` (die Regeln der
+ * sechs Bausteine). Die Shell holt beide in `index.css`, eine App ueber ein
+ * `<link>` beziehungsweise ein `@import`.
  */
 
-export { Kopf } from './Kopf';
-export type { KopfProps } from './Kopf';
-export { Liste, ListenEintrag } from './Liste';
-export type { ListeProps, ListenEintragProps } from './Liste';
-export { Karte } from './Karte';
-export type { KarteProps } from './Karte';
-export { Formular, Feld, Knopf } from './Formular';
-export type { FormularProps, FeldProps, KnopfProps, KnopfArt } from './Formular';
-export { Meldung } from './Meldung';
-export type { MeldungProps, MeldungsArt } from './Meldung';
-export { Menue } from './Menue';
-export type { MenueProps } from './Menue';
-export { FASSUNG } from './fassung';
+export * from './bausteine';
+export * from './primitive';
+export * from './muster';
+export { cn } from './cn';

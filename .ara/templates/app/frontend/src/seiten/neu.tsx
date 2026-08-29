@@ -1,10 +1,15 @@
 /**
  * Die Formularseite: einen Vorgang einreichen.
  *
- * Sie ist aus `Formular`, `Feld` und `Knopf` gebaut, und das ist mehr als eine
- * Ansammlung von Eingaben: es ist ein `form`, also sendet die Eingabetaste im
- * letzten Feld ab, und der Browser bietet seine Hilfen an. Die Beschriftung
- * gehoert zum Feld, weil `Feld` eine Kennung verlangt; ohne sie laese ein
+ * Sie ist aus `Formularseite` und `Feldgruppe` gebaut, den Mustern der
+ * Bibliothek. Die Gruppe traegt Ueberschrift, Beschreibung und die Trennlinie
+ * dazwischen; `Formularseite` nimmt der letzten Gruppe ihre Linie wieder ab.
+ * Das ist die Stelle, an der eine Anwendung sonst ihre fuenfte Art erfindet,
+ * zwei Abschnitte zu trennen.
+ *
+ * Ein `form` bleibt es trotzdem, und das ist mehr als eine Ansammlung von
+ * Eingaben: die Eingabetaste im letzten Feld sendet ab, und der Browser bietet
+ * seine Hilfen an. `Label` und `id` gehoeren zusammen; ohne sie laese ein
  * Screenreader ein Feld ohne Namen vor.
  *
  * **Wer ihn einreicht, steht in keinem Feld.** Das sagt die Plattform, und die
@@ -14,7 +19,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Feld, Formular, Karte, Knopf, Kopf, Meldung } from "@marken";
+import { Button, Feldgruppe, Formularseite, Input, Kopf, Label, Meldung, Textarea } from "@marken";
 import { useAnmeldung } from "../rahmen/anmeldung";
 import { useEinreichen } from "../vorgaenge";
 
@@ -25,7 +30,8 @@ export function Neu() {
   const einreichen = useEinreichen();
   const weiter = useNavigate();
 
-  const absenden = () => {
+  const absenden = (ereignis: React.FormEvent) => {
+    ereignis.preventDefault();
     if (!titel.trim() || einreichen.isPending) return;
     einreichen.mutate({ titel, text }, { onSuccess: () => weiter("/") });
   };
@@ -39,7 +45,11 @@ export function Neu() {
             ? `Eingereicht als ${anmeldung.nutzer}.`
             : "Das Gerät nennt keinen Namen für diese Sitzung."
         }
-        aktionen={<Knopf onKlick={() => weiter("/")} kennzeichen="zurueck">Zurück</Knopf>}
+        aktionen={
+          <Button variant="ghost" onClick={() => weiter("/")} data-kennzeichen="zurueck">
+            Zurück
+          </Button>
+        }
       />
 
       {einreichen.isError && (
@@ -48,34 +58,32 @@ export function Neu() {
         </Meldung>
       )}
 
-      <Karte>
-        <Formular
-          onAbsenden={absenden}
-          aktionen={
-            <Knopf
-              typ="absenden"
-              art="haupt"
-              kennzeichen="einreichen"
-              gesperrt={!titel.trim() || einreichen.isPending}
-            >
+      <form onSubmit={absenden}>
+        <Formularseite>
+          <Feldgruppe titel="Worum es geht" beschreibung="Ein Satz, an dem man den Vorgang wiedererkennt.">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="titel">Titel</Label>
+              <Input
+                id="titel"
+                value={titel}
+                onChange={(e) => setTitel(e.target.value)}
+                maxLength={200}
+                required
+              />
+            </div>
+          </Feldgruppe>
+
+          <Feldgruppe titel="Was dazu zu sagen ist" beschreibung="Darf leer bleiben.">
+            <Textarea id="text" value={text} onChange={(e) => setText(e.target.value)} rows={4} />
+          </Feldgruppe>
+
+          <div className="flex justify-end">
+            <Button type="submit" variant="solid" data-kennzeichen="einreichen" disabled={!titel.trim() || einreichen.isPending}>
               {einreichen.isPending ? "Wird eingereicht …" : "Einreichen"}
-            </Knopf>
-          }
-        >
-          <Feld kennung="titel" beschriftung="Worum es geht">
-            <input
-              id="titel"
-              value={titel}
-              onChange={(e) => setTitel(e.target.value)}
-              maxLength={200}
-              required
-            />
-          </Feld>
-          <Feld kennung="text" beschriftung="Was dazu zu sagen ist" hinweis="Darf leer bleiben.">
-            <textarea id="text" value={text} onChange={(e) => setText(e.target.value)} rows={3} />
-          </Feld>
-        </Formular>
-      </Karte>
+            </Button>
+          </div>
+        </Formularseite>
+      </form>
     </>
   );
 }

@@ -4,6 +4,7 @@
   "name": "{{name}}",
   "version": "0.1.0",
   "beschreibung": "{{beschreibung}}",
+  "marken": "{{marken}}",
   "frontend": {
     "verzeichnis": "frontend"
   },

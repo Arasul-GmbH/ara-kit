@@ -158,32 +158,31 @@ the situation said an app had gone nowhere while it was answering on the device.
 ## The appearance
 
 The scaffold brings Arasul's look with it, so that an app does not stand in the device's frame like
-a foreign body. It is two pieces, and both belong to the product:
+a foreign body. It is **one** piece, and it belongs to the product:
+`frontend/src/marken/`, the mirror of the library. It carries all three sets, the values of both
+themes (`theme.css`) and the rules of the six blocks (`marken.css`). The folder gets **replaced, not
+written on.** The guard `node .ara/tools/marken.mjs` holds it at its source.
 
-- `frontend/src/design.css` carries the **values**, one block per theme. They come **out of the
-  mirror**: `.ara/mirror/` is the artifact that was installed with, and it holds what applies today.
-  If no mirror is there, the kit writes its own default in, and the file says so in its header.
-  `node .ara/tools/mirror.mjs --refresh` fetches a mirror, even without an installation.
-- `frontend/src/marken/` carries the **blocks** every interface is built from, and the stylesheet
-  with their rules. The folder is a mirror of `packages/marken` in the product and gets **replaced,
-  not written on.** The guard `node .ara/tools/marken.mjs` holds it at its source.
+Up to 0.17.0 there was a second piece, `frontend/src/design.css`, with the values read out of the
+shell. Since the library carries its own tokens, that would be two files setting the same marks, and
+the two disagreed about which theme is the default. There is only one now.
 
-Which blocks there are, how a page comes out of them and what is forbidden while doing so stands in
+What the sets are, how a page comes out of them and what is forbidden while doing so stands in
 `.ara/knowledge/design-system.md`. Read that before you build an interface.
 
 Rules of your own belong at the end of `stil.css`, and they use only the names of the tokens, not a
 single colour value. Keep to that when you build something on: whatever stands as a colour in a rule
 falls behind at the next version.
 
-**The theme comes from the device, not from the app.** It runs in a frame in the middle of Arasul's
-interface, reads that frame's `data-theme` on the parent window and listens for changes: whoever
-switches in Arasul sees the app go along. Without a frame, so directly in a tab, the operating
-system's setting applies. Both stand in `frontend/src/rahmen/thema.ts`, and both belong there and at
-no second place.
+**The theme comes from the device, not from the app.** The shell writes it into the app's own
+document at every change and at every load, and sends the same value as a message; light sets
+nothing, because `:root` is light. `frontend/src/rahmen/thema.ts` therefore reads and does not
+guess. Without a frame, so directly in a tab, the operating system's setting applies, and only then
+does the app write the attribute itself.
 
 When you check that, check it in both themes and in both widths: 390 for the phone, 1440 for the
-desk. Below 900 pixels the actions slide under the title, and a page that scrolls sideways there is
-broken.
+desk. Below 900 pixels the sidebar becomes a sheet over the page and a data list becomes a card
+list, and a page that scrolls sideways there is broken.
 
 ## What the scaffold already is
 
@@ -209,7 +208,7 @@ places to know, and each exists exactly once:
 | Place | What stands there |
 | --- | --- |
 | `rahmen/basis.ts` | Under which path the app hangs. It does not guess it, it reads it out of the document's address: live `/apps/<id>/`, in staging `/apps/<id>/test/`. It follows from that: **the routes stay one level deep**, whatever wants to go deeper belongs in the query |
-| `rahmen/thema.ts` | The theme, read on the parent window |
+| `rahmen/thema.ts` | The theme, read at the app's own document, which the shell writes into |
 | `rahmen/schnittstelle.ts` | The app's only `fetch`. Path, login and the envelope around the answer stand there and nowhere else |
 | `rahmen/anmeldung.tsx` | Who is there, out of `api/me`, as a context with role |
 | `rahmen/async-boundary.tsx` | The three exits of a query: loading, went wrong, is there. Every query goes through it, and the pages get their data ready |
