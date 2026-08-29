@@ -1,0 +1,544 @@
+/**
+ * Die Marken des Arasul-Aussehens und die sechs Bausteine, die daraus gebaut
+ * sind: Kopf, Liste, Karte, Formular, Meldung, Menue.
+ *
+ * SPIEGEL, KEINE QUELLE. Die Quelle ist `packages/marken/src/marken.css` im
+ * Produkt, abgeschrieben am 29.08.2026. Diese Kopie steht hier, damit eine App
+ * aus der Vorlage vom ersten Bau an aussieht wie das Geraet, auch auf einem
+ * Rechner, der noch kein Arasul gesehen hat. Liegt ein Spiegel unter
+ * `.ara/mirror/`, nimmt `--new` die Datei von dort und diese hier bleibt
+ * ungelesen liegen.
+ *
+ * Jeder Wert steht als `var(--marke-der-shell, <derselbe Wert>)`. Die Marken
+ * der Shell setzt `design.css` daneben, je Thema. Fehlt eine, gilt der
+ * Rueckfall, und der ist das Thema "Schwarz".
+ *
+ * Sie wird ersetzt, nicht fortgeschrieben. Wer hier eine Regel dazuschreibt,
+ * verliert sie beim naechsten Stand. Eigene Regeln gehoeren nach `stil.css`.
+ */
+
+:root {
+  /* Schrift */
+  --ara-schrift: var(
+    --font-sans,
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    sans-serif
+  );
+  --ara-schrift-fest: var(--font-mono, 'JetBrains Mono', 'Fira Code', Menlo, Monaco, monospace);
+  --ara-groesse-xs: var(--text-ui-xs, 0.75rem);
+  --ara-groesse-sm: var(--text-ui-sm, 0.8125rem);
+  --ara-groesse: var(--text-ui, 0.875rem);
+  --ara-groesse-lg: var(--text-ui-lg, 1rem);
+  --ara-groesse-titel: var(--text-3xl, 1.5rem);
+
+  /* Farben */
+  --ara-flaeche: var(--background, #0a0a0a);
+  --ara-flaeche-karte: var(--card, #121212);
+  --ara-flaeche-hoch: var(--popover, #161616);
+  --ara-wisch: var(--accent, rgba(228, 228, 228, 0.07));
+  --ara-text: var(--foreground, #e6e6e6);
+  --ara-text-leise: var(--muted-foreground, rgba(228, 228, 228, 0.55));
+  --ara-kante: var(--border, rgba(228, 228, 228, 0.08));
+  --ara-akzent: var(--primary, #81a1c1);
+  --ara-akzent-text: var(--primary-foreground, #0a0a0a);
+  --ara-fehler: var(--destructive, #ef4444);
+  --ara-erfolg: var(--success, #10b981);
+  --ara-warnung: var(--warning, #f59e0b);
+
+  /* Abstaende und Rundungen */
+  --ara-abstand-1: var(--spacing-ui-1, 0.3125rem);
+  --ara-abstand-2: var(--spacing-ui-2, 0.625rem);
+  --ara-abstand-3: var(--spacing-ui-3, 0.875rem);
+  --ara-abstand-4: var(--spacing-ui-4, 1.125rem);
+  --ara-rundung-sm: var(--radius-sm, 6px);
+  --ara-rundung: var(--radius-md, 8px);
+  --ara-rundung-lg: var(--radius-lg, 12px);
+
+  /* Bewegung. Eine Stelle, damit nicht jede Regel ihre eigene Zeit erfindet. */
+  --ara-uebergang: var(--transition-base, 0.2s ease);
+
+  /* Die eine Schwelle: darunter eine Spalte, darueber drei (D1, D7).
+     Sie steht hier als Zahl zum Nachlesen; `@media` kann keine Variable
+     lesen, die Zahl in den Abfragen unten ist dieselbe. */
+  --ara-schmal-bis: 899px;
+}
+
+/* JEDES KAESTCHEN RECHNET SEINEN RAND MIT. Ohne diese Regel ist `width: 100%`
+   plus Innenabstand breiter als das, was da ist -- am 28.08.2026 bei 390 px
+   gemessen: die Beispielapp rollte um 29 Pixel waagerecht, und genau danach
+   fragt die Oberflaechen-Abnahme in jeder Zelle. In der Shell setzt Tailwind
+   das global; eine App ohne Bau hat niemanden, der es tut. */
+.ara-seite,
+.ara-seite *,
+.ara-seite *::before,
+.ara-seite *::after,
+.ara-kopf,
+.ara-liste,
+.ara-karte,
+.ara-formular,
+.ara-meldung,
+.ara-menue,
+.ara-knopf,
+.ara-strom {
+  box-sizing: border-box;
+}
+
+/* Die Grundflaeche einer App OHNE Bau: sie setzt diese Klasse auf ihren
+   `<body>` und bekommt damit Schrift, Farbe und Rand. Die Shell setzt sie
+   nicht -- dort macht das Tailwind. */
+.ara-seite {
+  margin: 0;
+  background-color: var(--ara-flaeche);
+  color: var(--ara-text);
+  font-family: var(--ara-schrift);
+  font-size: var(--ara-groesse);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Alles, was aus der Bibliothek kommt, erbt Schrift und Farbe von hier --
+   auch in der Shell, wo `body` eine andere Kette traegt. */
+.ara-kopf,
+.ara-liste,
+.ara-karte,
+.ara-formular,
+.ara-meldung,
+.ara-menue,
+.ara-knopf {
+  font-family: var(--ara-schrift);
+  color: var(--ara-text);
+}
+
+/* --- Kopf -----------------------------------------------------------------
+   Der Kopf einer Seite: Titel, ein Satz darunter, Aktionen rechts. Unter der
+   Schwelle rutschen die Aktionen unter den Titel, statt ihn zu quetschen. */
+.ara-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ara-abstand-3);
+  margin-bottom: var(--ara-abstand-4);
+  padding-bottom: var(--ara-abstand-3);
+  border-bottom: 1px solid var(--ara-kante);
+}
+
+.ara-kopf__text {
+  min-width: 0;
+}
+
+.ara-kopf__titel {
+  display: flex;
+  align-items: center;
+  gap: var(--ara-abstand-2);
+  margin: 0;
+  font-size: var(--ara-groesse-titel);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ara-text);
+}
+
+.ara-kopf__symbol {
+  display: inline-flex;
+  color: var(--ara-text-leise);
+}
+
+.ara-kopf__symbol > svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.ara-kopf__satz {
+  margin: var(--ara-abstand-1) 0 0;
+  font-size: var(--ara-groesse-sm);
+  color: var(--ara-text-leise);
+}
+
+.ara-kopf__aktionen {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--ara-abstand-2);
+}
+
+/* --- Liste ----------------------------------------------------------------
+   Eine Reihe von Eintraegen, mit oder ohne Klick. Kein Marker: eine Liste in
+   der Oberflaeche ist eine Reihe und keine Aufzaehlung im Fliesstext. */
+.ara-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ara-liste__beschriftung {
+  padding: var(--ara-abstand-1) var(--ara-abstand-2);
+  font-size: var(--ara-groesse-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ara-text-leise);
+}
+
+.ara-liste__eintrag {
+  display: flex;
+  align-items: center;
+  gap: var(--ara-abstand-2);
+  width: 100%;
+  min-height: 2.75rem; /* 44px, die Fingerkuppe aus der Apple-HIG */
+  padding: var(--ara-abstand-2);
+  border: 0;
+  border-radius: var(--ara-rundung-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition:
+    background-color var(--ara-uebergang),
+    color var(--ara-uebergang);
+}
+
+button.ara-liste__eintrag,
+a.ara-liste__eintrag {
+  cursor: pointer;
+}
+
+button.ara-liste__eintrag:hover,
+a.ara-liste__eintrag:hover {
+  background-color: var(--ara-wisch);
+}
+
+.ara-liste__eintrag[aria-current='true'],
+.ara-liste__eintrag[data-aktiv='true'] {
+  background-color: var(--ara-wisch);
+  color: var(--ara-text);
+  font-weight: 600;
+}
+
+.ara-liste__symbol {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ara-text-leise);
+}
+
+.ara-liste__symbol > svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.ara-liste__wort {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ara-liste__hinweis {
+  flex-shrink: 0;
+  font-size: var(--ara-groesse-xs);
+  color: var(--ara-text-leise);
+}
+
+/* --- Karte ----------------------------------------------------------------
+   Die einzige erhabene Flaeche der Bibliothek. `--card` ist in der Shell
+   genau dafuer reserviert (DESIGN.md, Regel „eine Flaechenfarbe"). */
+.ara-karte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ara-abstand-1);
+  width: 100%;
+  padding: var(--ara-abstand-3);
+  border: 1px solid var(--ara-kante);
+  border-radius: var(--ara-rundung);
+  background-color: var(--ara-flaeche-karte);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  transition:
+    border-color var(--ara-uebergang),
+    background-color var(--ara-uebergang);
+}
+
+button.ara-karte {
+  cursor: pointer;
+}
+
+button.ara-karte:hover {
+  border-color: var(--ara-akzent);
+  background-color: var(--ara-wisch);
+}
+
+.ara-karte__kopf {
+  display: flex;
+  align-items: center;
+  gap: var(--ara-abstand-2);
+  width: 100%;
+}
+
+.ara-karte__titel {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--ara-groesse-lg);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ara-karte__hinweis {
+  flex-shrink: 0;
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--ara-rundung-sm);
+  background-color: var(--ara-wisch);
+  font-size: var(--ara-groesse-xs);
+  color: var(--ara-text-leise);
+}
+
+.ara-karte__inhalt {
+  font-size: var(--ara-groesse-sm);
+  color: var(--ara-text-leise);
+}
+
+/* --- Formular -------------------------------------------------------------
+   Felder untereinander, Knoepfe in einer Reihe darunter. */
+.ara-formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ara-abstand-3);
+}
+
+.ara-feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ara-abstand-1);
+}
+
+.ara-feld__beschriftung {
+  font-size: var(--ara-groesse-sm);
+  font-weight: 500;
+  color: var(--ara-text);
+}
+
+.ara-feld__hinweis {
+  font-size: var(--ara-groesse-xs);
+  color: var(--ara-text-leise);
+}
+
+.ara-feld input,
+.ara-feld textarea,
+.ara-feld select {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--ara-abstand-2);
+  border: 1px solid var(--ara-kante);
+  border-radius: var(--ara-rundung-sm);
+  background-color: var(--ara-flaeche);
+  color: var(--ara-text);
+  font-family: inherit;
+  font-size: var(--ara-groesse);
+  transition: border-color var(--ara-uebergang);
+}
+
+.ara-feld input:focus-visible,
+.ara-feld textarea:focus-visible,
+.ara-feld select:focus-visible {
+  border-color: var(--ara-akzent);
+  outline: 2px solid var(--ara-akzent);
+  outline-offset: 1px;
+}
+
+.ara-formular__aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ara-abstand-2);
+}
+
+.ara-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ara-abstand-1);
+  min-height: 2.75rem;
+  padding: 0 var(--ara-abstand-3);
+  border: 1px solid var(--ara-kante);
+  border-radius: var(--ara-rundung-sm);
+  background-color: transparent;
+  color: var(--ara-text);
+  font-family: inherit;
+  font-size: var(--ara-groesse);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color var(--ara-uebergang),
+    border-color var(--ara-uebergang),
+    opacity var(--ara-uebergang);
+}
+
+.ara-knopf:hover:not(:disabled) {
+  background-color: var(--ara-wisch);
+}
+
+.ara-knopf:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ara-knopf[data-art='haupt'] {
+  border-color: transparent;
+  background-color: var(--ara-akzent);
+  color: var(--ara-akzent-text);
+}
+
+.ara-knopf[data-art='haupt']:hover:not(:disabled) {
+  opacity: 0.88;
+  background-color: var(--ara-akzent);
+}
+
+.ara-knopf[data-art='gefahr'] {
+  border-color: var(--ara-fehler);
+  color: var(--ara-fehler);
+}
+
+.ara-knopf[data-art='gefahr']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--ara-fehler) 15%, transparent);
+}
+
+/* --- Meldung --------------------------------------------------------------
+   Was das Geraet dem Menschen sagt: Hinweis, Erfolg, Warnung, Fehler. Die
+   Farbe steht NEBEN dem Wort und nicht anstelle davon -- eine Meldung, die
+   allein an ihrer Farbe zu erkennen ist, ist fuer manche keine. */
+.ara-meldung {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ara-abstand-1);
+  padding: var(--ara-abstand-3);
+  border: 1px solid var(--ara-kante);
+  border-left-width: 3px;
+  border-radius: var(--ara-rundung-sm);
+  background-color: var(--ara-flaeche-karte);
+  font-size: var(--ara-groesse-sm);
+}
+
+.ara-meldung__titel {
+  margin: 0;
+  font-size: var(--ara-groesse);
+  font-weight: 600;
+}
+
+.ara-meldung[data-art='erfolg'] {
+  border-left-color: var(--ara-erfolg);
+}
+
+.ara-meldung[data-art='warnung'] {
+  border-left-color: var(--ara-warnung);
+}
+
+.ara-meldung[data-art='fehler'] {
+  border-left-color: var(--ara-fehler);
+}
+
+.ara-meldung[data-art='hinweis'] {
+  border-left-color: var(--ara-akzent);
+}
+
+/* --- Menue ----------------------------------------------------------------
+   Das Menue hinter dem Hamburger-Knopf: unter der Schwelle eine Flaeche von
+   links ueber die ganze Hoehe, darueber eine Flaeche unter dem Knopf.
+
+   Es liegt UEBER allem und ist deshalb das einzige Ding der Bibliothek mit
+   einem z-index. Wer es offen hat, sieht nichts anderes -- und genau darum
+   schliesst jede Ansicht, die kommt, das Menue. */
+.ara-menue__schleier {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: 0;
+  background-color: rgb(0 0 0 / 0.5);
+}
+
+.ara-menue {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 61;
+  display: flex;
+  width: min(20rem, 85vw);
+  flex-direction: column;
+  border-right: 1px solid var(--ara-kante);
+  background-color: var(--ara-flaeche-hoch);
+  box-shadow: 8px 0 24px rgb(0 0 0 / 0.35);
+}
+
+.ara-menue__kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ara-abstand-2);
+  padding: var(--ara-abstand-2) var(--ara-abstand-3);
+  border-bottom: 1px solid var(--ara-kante);
+  font-size: var(--ara-groesse-sm);
+  font-weight: 600;
+}
+
+.ara-menue__inhalt {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--ara-abstand-2);
+}
+
+.ara-menue__zu {
+  display: inline-flex;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--ara-rundung-sm);
+  background: transparent;
+  color: var(--ara-text-leise);
+  cursor: pointer;
+  transition:
+    background-color var(--ara-uebergang),
+    color var(--ara-uebergang);
+}
+
+.ara-menue__zu:hover {
+  background-color: var(--ara-wisch);
+  color: var(--ara-text);
+}
+
+/* --- Der Strom ------------------------------------------------------------
+   Eine Spalte, in der die Dinge untereinander stehen: die Form, in der eine
+   App unter der Schwelle gelesen wird. Ueber der Schwelle darf zweispaltig
+   werden, was dafuer gebaut ist (`data-breit`). */
+.ara-strom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ara-abstand-3);
+  width: 100%;
+  max-width: 56rem;
+  margin: 0 auto;
+  padding: var(--ara-abstand-3);
+}
+
+@media (min-width: 900px) {
+  .ara-strom {
+    padding: var(--ara-abstand-4);
+  }
+
+  .ara-strom[data-breit='true'] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}

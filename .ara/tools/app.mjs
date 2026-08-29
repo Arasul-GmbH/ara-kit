@@ -101,7 +101,7 @@ import {
   validName,
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
-import { designCss, readDesign } from "./lib/design.mjs";
+import { designCss, readDesign, readMarken } from "./lib/design.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 
 helpOnly(import.meta.url);
@@ -239,7 +239,10 @@ function fill(text, values) {
   return text.replace(/\{\{([a-z]+)\}\}/g, (whole, key) => (key in values ? values[key] : whole));
 }
 
-const TEXT_FILE = /\.(json|md|css|js|jsx|mjs|html|conf|txt)$|^Dockerfile$|^\.gitignore$/;
+// Was Platzhalter tragen darf. Eine Datei, die hier fehlt, wandert unveraendert
+// mit, und ein `{{name}}` darin bliebe stehen: `.tsx` fehlte bis E13, und die
+// Oberflaeche der Vorlage hiess in jeder neuen App "{{name}}".
+const TEXT_FILE = /\.(json|md|css|js|jsx|mjs|ts|tsx|sql|html|conf|txt)$|^Dockerfile$|^\.gitignore$/;
 
 /** Die Vorlage in den Ordner der App kopieren, Platzhalter ersetzt. */
 function copyTemplate(from, to, values) {
@@ -292,12 +295,21 @@ function createApp(name) {
   for (const state of ["offen", "aktiv", "erledigt"]) ensureDir(join(dir, "plans", state));
 
   // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Sonst steht die
-  // Vorgabe des Kits in der Datei, und sie sagt selbst, dass sie es ist.
+  // Vorgabe des Kits in der Datei, und sie sagt selbst, dass sie es ist. Es
+  // sind zwei Dateien: `design.css` traegt die Werte je Thema, `marken.css` die
+  // Regeln, die sie benutzen.
   const mirror = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
   const design = readDesign(existsSync(mirror) ? mirror : null);
-  const styles = join(dir, "frontend", "src", "design.css");
-  if (existsSync(join(dir, "frontend", "src"))) {
-    writeFileSync(styles, designCss(design, { date: today(), version: mirrorState()?.version || null }));
+  const marken = existsSync(mirror) ? readMarken(mirror) : null;
+  const srcDir = join(dir, "frontend", "src");
+  if (existsSync(srcDir)) {
+    writeFileSync(
+      join(srcDir, "design.css"),
+      designCss(design, { date: today(), version: mirrorState()?.version || null })
+    );
+    // Die Vorlage bringt eine Kopie mit. Liegt im Spiegel eine, gilt die: sie
+    // ist die des Geraets, mit dem hier gearbeitet wird.
+    if (marken) writeFileSync(join(srcDir, "marken.css"), marken.css);
   }
 
   writeState({ app: name });
@@ -310,8 +322,8 @@ function createApp(name) {
         "- Oberfläche, Backend und ein Flow mit Freigabe liegen als Vorlage darin"
       ),
       t(
-        `- Appearance: ${design.source === "mirror" ? `out of the mirror (${relative(ROOT, design.file)})` : "the kit's default, no mirror was there"}`,
-        `- Aussehen: ${design.source === "mirror" ? `aus dem Spiegel (${relative(ROOT, design.file)})` : "Vorgabe des Kits, es lag kein Spiegel vor"}`
+        `- Appearance: ${design.source === "mirror" ? `out of the mirror (${relative(ROOT, design.file)})` : "the kit's default, no mirror was there"}${marken ? ", building blocks too" : ""}`,
+        `- Aussehen: ${design.source === "mirror" ? `aus dem Spiegel (${relative(ROOT, design.file)})` : "Vorgabe des Kits, es lag kein Spiegel vor"}${marken ? ", die Bausteine auch" : ""}`
       ),
       "",
       t(
@@ -969,6 +981,52 @@ function checkDelivery(dir, manifest) {
 }
 
 /**
+ * Ist im Paket die Oberflaeche, oder ist es ihr Quelltext?
+ *
+ * Die Vorlage baut mit Vite, TypeScript und Tailwind; was ins Paket gehoert,
+ * ist das Ergebnis aus `dist/`, nicht der Ordner davor. Der Unterschied faellt
+ * sonst erst am Geraet auf, und dann sieht der Mensch im Rahmen eine leere
+ * Seite: der Browser bekommt eine `index.html`, die auf `/src/main.tsx` zeigt,
+ * und die gibt es dort nicht.
+ *
+ * Geprueft wird an dem, was ein Bau immer hat und ein Quellordner nie: eine
+ * `index.html` direkt im Ordner. Und an dem, was ein Quellordner immer hat und
+ * ein Bau nie: ein `package.json` oder ein `src/` daneben. Beides zusammen,
+ * damit weder eine Oberflaeche ohne Bau (die es geben darf, sie ist dann schon
+ * fertig) noch ein vergessener Bau durchrutscht.
+ */
+function checkBuild(dir, manifest) {
+  const folder = manifest?.frontend?.verzeichnis;
+  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return [];
+  const path = join(dir, folder);
+  if (!existsSync(path) || !statSync(path).isDirectory()) return [];
+
+  const problems = [];
+  const quelle = ["package.json", "tsconfig.json", "src", "vite.config.ts", "vite.config.js"].filter((name) =>
+    existsSync(join(path, name))
+  );
+  if (quelle.length) {
+    problems.push(
+      t(
+        `\`${folder}\` in the package is the source, not the build: ${quelle.join(", ")} lie in it. ` +
+          "What goes to the device is the result of `npm run build`, out of `dist/`.",
+        `\`${folder}\` im Paket ist der Quelltext und nicht der Bau: darin liegen ${quelle.join(", ")}. ` +
+          "An das Gerät geht das Ergebnis von `npm run build`, aus `dist/`."
+      )
+    );
+  }
+  if (!existsSync(join(path, "index.html"))) {
+    problems.push(
+      t(
+        `\`${folder}\` has no index.html. Without it the device has nothing to deliver under the app's path.`,
+        `In \`${folder}\` gibt es keine index.html. Ohne sie hat das Gerät unter dem Pfad der App nichts auszuliefern.`
+      )
+    );
+  }
+  return problems;
+}
+
+/**
  * Wo die Vereinbarung mit dem Gerät im Paket liegt, wenn die App eine will.
  *
  * Sie liegt im Bauordner des Backends, denn nur was dort liegt, kommt in das
@@ -1039,8 +1097,8 @@ function reportManifest(where, result, delivery) {
     lines.push(
       "",
       t(
-        "## The manifest promises more than the folder delivers",
-        "## Das Manifest verspricht mehr, als der Ordner liefert"
+        "## What lies in the package does not fit the manifest",
+        "## Was im Paket liegt, passt nicht zum Manifest"
       ),
       "",
       ...delivery.map((p) => `- ${p}`)
@@ -1085,7 +1143,7 @@ function reportManifest(where, result, delivery) {
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = checkDelivery(dir, manifest);
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest)];
   if (arg.json) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
@@ -1102,7 +1160,7 @@ if (arg.check !== undefined) {
 if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = checkDelivery(dir, manifest);
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest)];
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));

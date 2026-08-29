@@ -32,5 +32,10 @@ AUFTRAG.md
 node_modules/
 *.log
 
+# Was der Browser hinterlaesst: Bilder, Baumausdrucke, Protokolle. Er legt den
+# Ordner an, sobald Ara ihn benutzt, und ohne diese Zeile stuende danach in
+# jedem Kit-Repo ein schmutziger Arbeitsordner.
+.playwright-mcp/
+
 # Interne Planung am Kit selbst. Bleibt lokal, gehoert nicht ins oeffentliche Repo.
 entwicklung/

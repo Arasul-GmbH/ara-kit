@@ -87,6 +87,7 @@ import { lastStand, movePlan, nextSteps, versioned } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
+import { DEFAULT_DARK, designCss, findMarken, readDesign, readMarken } from "./lib/design.mjs";
 import {
   needsParameter,
   parseHealth,
@@ -2098,6 +2099,25 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       `die Arbeit an der App ging mit ins Paket: ${gesehen.inhalt.join(", ")}`
     );
 
+    // Ins Paket geht der BAU der Oberfläche und nicht ihr Quelltext. Der
+    // Kontrakt sagt es als Regel ("Das Frontend ist fertig gebaut, das Gerät
+    // liefert aus"), geprüft hat es bis E13 niemand: am Gerät bekam der Browser
+    // dann eine index.html, die auf /src/main.tsx zeigt, und der Mensch im
+    // Rahmen sah eine leere Seite.
+    writeFileSync(join(appDir, "frontend", "package.json"), JSON.stringify({ name: "probe-frontend" }));
+    mkdirSync(join(appDir, "frontend", "src"), { recursive: true });
+    writeFileSync(join(appDir, "frontend", "src", "main.tsx"), "// Quelltext\n");
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build"], env)).status === 0, "Bau ohne Bauskript fehlgeschlagen");
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--check", "--base", base], env);
+    assert(run.status !== 0, "der Quelltext im Paket ging als Bau durch");
+    assert(/package.json/.test(run.stdout), `--check sagt nicht, woran es liegt: ${run.stdout}`);
+    gesehen.paket = false;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base], env);
+    assert(run.status !== 0 && !gesehen.paket, "der Quelltext wurde eingespielt");
+    rmSync(join(appDir, "frontend", "package.json"), { force: true });
+    rmSync(join(appDir, "frontend", "src"), { recursive: true, force: true });
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build"], env)).status === 0, "Bau nach dem Aufräumen fehlgeschlagen");
+
     // Eine App mit Backend bekommt die Vereinbarung dieses Geraets ins Paket:
     // unter welchen Namen es ihr Adresse und Schluessel in den Container legt,
     // in welcher Kopfzeile der Schluessel mitgeht, welche Wege es dafuer fuehrt.
@@ -2527,7 +2547,22 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
   try {
     let run = tool("app.mjs", ["--app", name, "--new", "--titel", "Probe"]);
     assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}${run.stdout}`);
-    for (const datei of ["app.json", "README.md", "backend/Dockerfile", "flows/freigabe.md", "frontend/src/design.css"]) {
+    for (const datei of [
+      "app.json",
+      "README.md",
+      "backend/Dockerfile",
+      "backend/kern/vorgaenge.mjs",
+      "backend/ablage/vorgaenge.mjs",
+      "backend/ablage/migrationen/001-vorgaenge.sql",
+      "flows/freigabe.md",
+      "frontend/package.json",
+      "frontend/tsconfig.json",
+      "frontend/src/app.tsx",
+      // Erzeugt beim Anlegen, nicht kopiert: die Werte des Aussehens.
+      "frontend/src/design.css",
+      // Gespiegelt: die Regeln, die diese Werte benutzen.
+      "frontend/src/marken.css",
+    ]) {
       assert(existsSync(join(dir, datei)), `aus der Vorlage fehlt: ${datei}`);
     }
     const manifest = JSON.parse(readFileSync(join(dir, "app.json"), "utf8"));
@@ -2901,15 +2936,21 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
     },
     async ({ ruf, einreichen, protokoll }) => {
       const lage = await ruf("/lage");
-      assert(lage.daten.nutzer === "Jürgen", `die App liest den Angemeldeten nicht: ${JSON.stringify(lage.daten)}`);
+      // Wer angemeldet ist, sagt `api/me`, und das beantwortet die Plattform.
+      // Das Backend der App liest denselben Menschen aus den Kopfzeilen, und
+      // sichtbar wird das am Einreicher weiter unten.
+      assert(!("nutzer" in lage.daten), "das Backend gibt den Angemeldeten zurück, statt ihn der Plattform zu lassen");
       assert(lage.daten.arasul === true, `die App sieht die Schnittstelle des Geräts nicht: ${lage.daten.hinweis}`);
       assert(/ARASUL_BASIS_URL/.test(protokoll()), `die App sagt beim Start nicht, woran sie hängt: ${protokoll()}`);
 
       const gestellt = await einreichen("Neuer Monitor", "Der alte flackert.");
       assert(gestellt.code === 201, `Vorgang abgewiesen: ${JSON.stringify(gestellt.daten)}`);
       assert(gestellt.daten.vorgang.von === "Jürgen", "der Einreicher kommt nicht aus der Anmeldung");
+      // Als Zeichenkette und nicht als Zahl: welche Form die Nummer eines
+      // Laufs hat, ist ein Wert des Geraets. Die Ablage der Vorlage legt sich
+      // deshalb nicht auf INTEGER fest, und die App vergleicht sie als Text.
       assert(
-        gestellt.daten.vorgang.lauf === 7,
+        String(gestellt.daten.vorgang.lauf) === "7",
         `der Flow wurde nicht gestartet: ${JSON.stringify(gestellt.daten.vorgang)}`
       );
       assert(gestellt.daten.vorgang.status === "wartet", `der Vorgang wartet nicht: ${gestellt.daten.vorgang.status}`);
@@ -3005,7 +3046,20 @@ check("Die Vorlage rät keinen Wert, den das Gerät vergibt", () => {
   // Werte anders nennt, findet sie nichts, hält das für „hier läuft kein
   // Arasul" und legt jeden Vorgang ohne Lauf ab.
   const backend = join(ROOT, ".ara", "templates", "app", "backend");
-  const quelle = readFileSync(join(backend, "server.mjs"), "utf8");
+  // Das ganze Backend und nicht nur der Einstieg: seit E13 liegt die Naht zum
+  // Gerät in `arasul.mjs`, und eine Prüfung, die nur `server.mjs` liest, sähe
+  // genau dort nicht hin, wo die Werte heute stünden.
+  const quellen = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? quellen(join(dir, entry.name))
+        : /\.mjs$/.test(entry.name)
+          ? [join(dir, entry.name)]
+          : []
+    );
+  const dateien = quellen(backend);
+  assert(dateien.length >= 4, `das Backend der Vorlage besteht aus zu wenigen Dateien: ${dateien.length}`);
+  const quelle = dateien.map((datei) => readFileSync(datei, "utf8")).join("\n");
   const verboten = [
     [/ARASUL_API_URL|ARASUL_API_SCHLUESSEL/, "der Name eines Umgebungswerts, den das Gerät vergibt"],
     [/["'`]x-api-key["'`]/i, "die Kopfzeile des Schlüssels"],
@@ -3018,6 +3072,21 @@ check("Die Vorlage rät keinen Wert, den das Gerät vergibt", () => {
     assert(!treffer, `im Backend der Vorlage steht ${was}: ${treffer?.[0]}`);
   }
 
+  // Die Oberfläche genauso: sie kennt ihren eigenen Pfad nicht und ruft ihre
+  // Schnittstelle relativ zu dem, was das Gerät ihr als Adresse gegeben hat.
+  const frontend = join(ROOT, ".ara", "templates", "app", "frontend", "src");
+  const seiten = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory() ? seiten(join(dir, entry.name)) : /\.tsx?$/.test(entry.name) ? [join(dir, entry.name)] : []
+    );
+  for (const datei of seiten(frontend)) {
+    // Ohne Kommentare: dort steht der Pfad als Erklärung, und genau dort gehört
+    // er auch hin.
+    const code = readFileSync(datei, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+    const treffer = code.match(/["'`]\/apps\//);
+    assert(!treffer, `${relative(ROOT, datei)} schreibt den Pfad der Plattform in den Quelltext: ${treffer?.[0]}`);
+  }
+
   // Leer kommt sie aus dem Klon: gefüllt wird sie beim Einspielen, aus dem
   // Kontrakt des einen Geräts, auf das die App geht.
   const leer = JSON.parse(readFileSync(join(backend, ARRANGEMENT_FILE), "utf8"));
@@ -3027,7 +3096,181 @@ check("Die Vorlage rät keinen Wert, den das Gerät vergibt", () => {
   // Und sie kommt ins Image: was nur im Paket liegt, sieht der Container nicht.
   const dockerfile = readFileSync(join(backend, "Dockerfile"), "utf8");
   assert(new RegExp(`COPY[^\\n]*${ARRANGEMENT_FILE}`).test(dockerfile), "die Vereinbarung geht nicht ins Image");
-  return "sechs geratene Werte, keiner mehr in der Vorlage";
+  return "sechs geratene Werte, keiner mehr in der Vorlage, und kein Plattformpfad in der Oberfläche";
+});
+
+check("Die Vorlage hält ihre Nähte auseinander", () => {
+  // Das Backend folgt dem Port-Muster: der Kern kennt zwei Anschlüsse und die
+  // Welt sonst nicht. Steht in ihm ein `fetch` oder ein SQL, ist die Trennung
+  // weg, und mit ihr die Möglichkeit, einen Fall zu prüfen, ohne eine Datenbank
+  // und ein Gerät zu haben.
+  const vorlage = join(ROOT, ".ara", "templates", "app");
+  // Ohne Kommentare: dort stehen die drei Namen als Erklaerung, und genau dort
+  // gehoeren sie auch hin.
+  const ohneKommentar = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const kern = ohneKommentar(readFileSync(join(vorlage, "backend", "kern", "vorgaenge.mjs"), "utf8"));
+  for (const [muster, was] of [
+    [/\bfetch\s*\(/, "ein Aufruf ans Netz"],
+    [/node:sqlite|db\.prepare|\b(SELECT|INSERT INTO|UPDATE|DELETE FROM)\s/i, "eine Abfrage an die Datenbank"],
+    [/process\.env/, "ein Griff in die Umgebung"],
+  ]) {
+    const treffer = kern.match(muster);
+    assert(!treffer, `im Kern der Vorlage steht ${was}: ${treffer?.[0]}`);
+  }
+
+  // Und umgekehrt: die Abfragen ueber die Vorgaenge stehen an genau einer
+  // Stelle. Zwei Ablagen zu derselben Entität laufen auseinander, sobald jemand
+  // eine Spalte dazunimmt. Gemeint sind Anweisungen ueber Tabellen: `db.mjs`
+  // legt die Datenbank an und wendet Migrationen an, das ist ihre Aufgabe.
+  const backendDateien = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((eintrag) =>
+      eintrag.isDirectory()
+        ? backendDateien(join(dir, eintrag.name))
+        : /\.mjs$/.test(eintrag.name)
+          ? [join(dir, eintrag.name)]
+          : []
+    );
+  const mitSql = backendDateien(join(vorlage, "backend")).filter((datei) =>
+    /\b(SELECT|INSERT INTO|UPDATE|DELETE FROM)\s/i.test(ohneKommentar(readFileSync(datei, "utf8")))
+  );
+  assert(
+    mitSql.length === 1 && mitSql[0].endsWith(join("ablage", "vorgaenge.mjs")),
+    `das SQL der Vorlage liegt an ${mitSql.length} Stellen: ${mitSql.map((d) => relative(ROOT, d)).join(", ")}`
+  );
+
+  // Die Oberfläche hat dieselbe Regel: ein `fetch`, und es steht in der Datei,
+  // die dafür da ist. Jedes weitere baute seinen eigenen Pfad und seine eigene
+  // Fehlerbehandlung, und beim dritten stimmte eines von beiden nicht mehr.
+  const oberflaeche = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((eintrag) =>
+      eintrag.isDirectory()
+        ? oberflaeche(join(dir, eintrag.name))
+        : /\.tsx?$/.test(eintrag.name)
+          ? [join(dir, eintrag.name)]
+          : []
+    );
+  const mitFetch = oberflaeche(join(vorlage, "frontend", "src")).filter((datei) =>
+    /\bfetch\s*\(/.test(ohneKommentar(readFileSync(datei, "utf8")))
+  );
+  assert(
+    mitFetch.length === 1 && mitFetch[0].endsWith("schnittstelle.ts"),
+    `die Oberfläche holt an ${mitFetch.length} Stellen: ${mitFetch.map((d) => relative(ROOT, d)).join(", ")}`
+  );
+  return "Kern ohne Netz und ohne SQL, ein SQL, ein fetch";
+});
+
+await checkAsync("Die Ablage der Vorlage wandert mit ihren Migrationen", async () => {
+  // Der Stand steht in der Datenbank selbst. Eine Migration, die gelaufen ist,
+  // läuft nicht noch einmal; sonst legte der zweite Start dieselbe Tabelle an
+  // und der Container käme nicht hoch.
+  const { oeffnen } = await import(
+    new URL("../templates/app/backend/ablage/db.mjs", import.meta.url).href
+  );
+  const { vorgangsAblage } = await import(
+    new URL("../templates/app/backend/ablage/vorgaenge.mjs", import.meta.url).href
+  );
+  const ordner = mkdtempSync(join(tmpdir(), "ara-ablage-"));
+  try {
+    const datei = join(ordner, "tief", "probe.db");
+    const erst = oeffnen(datei);
+    assert(erst.angewandt.length >= 1, "beim ersten Öffnen wurde keine Migration angewandt");
+    assert(erst.stand === erst.angewandt.length, `der Stand passt nicht zur Zahl: ${erst.stand}`);
+
+    const ablage = vorgangsAblage(erst.db);
+    const angelegt = ablage.anlegen({
+      titel: "Neuer Monitor",
+      text: "Der alte flackert.",
+      von: "Jürgen",
+      gestellt: "2026-08-29T08:00:00.000Z",
+      status: "wartet",
+      lauf: 7,
+      hinweis: null,
+    });
+    assert(angelegt.id === 1 && angelegt.lauf === "7", `der Vorgang kam anders zurück: ${JSON.stringify(angelegt)}`);
+    assert(ablage.wartende().length === 1, "ein wartender Vorgang wird nicht als wartend gefunden");
+    const fortgeschrieben = ablage.fortschreiben(angelegt.id, {
+      status: "genehmigt",
+      entschieden_von: "Anna",
+      begruendung: null,
+      bemerkung: "Anna hat genehmigt.",
+      hinweis: null,
+    });
+    assert(fortgeschrieben.status === "genehmigt" && fortgeschrieben.titel === "Neuer Monitor", "der Vorgang verlor seinen Titel");
+    assert(ablage.wartende().length === 0, "ein entschiedener Vorgang wartet weiter");
+    erst.db.close();
+
+    const zweit = oeffnen(datei);
+    assert(zweit.angewandt.length === 0, `beim zweiten Öffnen lief eine Migration erneut: ${zweit.angewandt.join(", ")}`);
+    assert(zweit.stand === erst.stand, "der Stand ist beim zweiten Öffnen ein anderer");
+    assert(vorgangsAblage(zweit.db).alle().length === 1, "der Vorgang hat den Neustart nicht überlebt");
+    zweit.db.close();
+    return `${erst.angewandt.join(", ")} einmal angewandt, beim zweiten Start nichts`;
+  } finally {
+    rmSync(ordner, { recursive: true, force: true });
+  }
+});
+
+check("Das Aussehen einer App trägt ein Thema je Block", () => {
+  // Die App liest `data-theme` am Elternfenster und setzt es an ihrem eigenen
+  // `<html>`. Dafür braucht `design.css` je Thema einen Block. Die
+  // Medienabfrage bleibt für den Fall ohne Rahmen, und sie darf nur dann
+  // greifen: sonst überschriebe sie das Thema, das das Gerät gerade nennt.
+  const vorgabe = designCss(readDesign(null), { date: "2026-08-29", version: null });
+  for (const waehler of [":root {", '[data-theme="dark"] {', '[data-theme="light"] {', ":root:not([data-theme])"]) {
+    assert(vorgabe.includes(waehler), `in design.css fehlt der Block ${waehler}`);
+  }
+  for (const marke of Object.keys(DEFAULT_DARK)) {
+    assert(vorgabe.includes(`--${marke}:`), `die Marke ${marke} steht nicht in design.css`);
+  }
+  assert(/Vorgabe des Kits/.test(vorgabe), "die Datei sagt nicht, dass sie die Vorgabe des Kits ist");
+
+  // Mit einem Spiegel gilt der Spiegel, und die Datei sagt es. Der erfundene
+  // Spiegel nennt zwei Werte anders und einen gar nicht: der genannte gilt, der
+  // fehlende wird benannt statt stillschweigend ersetzt.
+  const spiegel = mkdtempSync(join(tmpdir(), "ara-spiegel-"));
+  try {
+    const css = join(spiegel, "apps", "shell", "src");
+    mkdirSync(css, { recursive: true });
+    writeFileSync(
+      join(css, "index.css"),
+      [
+        ":root {",
+        "  --background: #010203;",
+        "  --foreground: #fefefe;",
+        "  --radius-lg: 20px;",
+        "}",
+        "",
+        "[data-theme='dark'] {",
+        "  --background: #111213;",
+        "}",
+        "",
+        ".light {",
+        "  --background: #fafbfc;",
+        "}",
+        "",
+      ].join("\n")
+    );
+    const design = readDesign(spiegel);
+    assert(design.source === "mirror", "der Spiegel wurde nicht gelesen");
+    assert(design.dark.background === "#010203", `Schwarz kommt nicht aus dem Spiegel: ${design.dark.background}`);
+    assert(design.dim.background === "#111213", `Dunkel kommt nicht aus dem Spiegel: ${design.dim.background}`);
+    assert(design.light.background === "#fafbfc", `Hell kommt nicht aus dem Spiegel: ${design.light.background}`);
+    assert(design.shape["radius-lg"] === "20px", "die Rundungen kommen nicht aus dem Spiegel");
+    assert(design.missing.includes("card"), `der fehlende Wert wird nicht benannt: ${design.missing.join(", ")}`);
+    const ausSpiegel = designCss(design, { date: "2026-08-29", version: "1.2.3" });
+    assert(/Uebernommen aus dem Spiegel am 2026-08-29, Produktversion 1.2.3/.test(ausSpiegel), "die Herkunft fehlt");
+    assert(/aus der Vorgabe des Kits ergaenzt/.test(ausSpiegel), "die Lücke wird verschwiegen");
+
+    // Das Stylesheet der Bausteine liegt an einer anderen Stelle im Artefakt.
+    assert(findMarken(spiegel) === null, "ein Stylesheet wurde gefunden, das es nicht gibt");
+    const marken = join(spiegel, "packages", "marken", "src");
+    mkdirSync(marken, { recursive: true });
+    writeFileSync(join(marken, "marken.css"), ".ara-karte { color: red; }\n");
+    assert(readMarken(spiegel)?.css.includes("ara-karte"), "das gespiegelte Stylesheet wurde nicht gelesen");
+    return "drei Themen, Herkunft benannt, Lücke benannt";
+  } finally {
+    rmSync(spiegel, { recursive: true, force: true });
+  }
 });
 
 check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wird gesagt", () => {
@@ -3719,6 +3962,13 @@ check("Partnerdaten bleiben von der Versionskontrolle ausgenommen", () => {
     // Vorlage keinen Flow: sie ist die Stelle, an der das Kit beim Einspielen
     // hineinschreibt, was das Geraet vergibt.
     ".ara/templates/app/backend/arasul.json",
+    // Und der Rest der Vorlage: ohne den Kern, die Ablage und die Oberflaeche
+    // legt `--new` eine App an, die nicht baut.
+    ".ara/templates/app/backend/kern/vorgaenge.mjs",
+    ".ara/templates/app/backend/ablage/migrationen/001-vorgaenge.sql",
+    ".ara/templates/app/frontend/package.json",
+    ".ara/templates/app/frontend/src/app.tsx",
+    ".ara/templates/app/frontend/src/marken.css",
     // Die deutsche README und die Lint-Regeln liegen unter .ara/, damit die
     // Wurzel klein bleibt. Beide muessen trotzdem mitkommen.
     ".ara/README.de.md",

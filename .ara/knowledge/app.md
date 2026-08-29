@@ -100,6 +100,15 @@ still believes they have seen it.
 A build older than the source code does not get deployed: the tool says so and stops. Otherwise the
 version from the day before yesterday would go to the device and nobody would see it.
 
+**The type checker runs before the bundler.** The scaffold has `tsc --noEmit && vite build` as its
+build script: a type error stops the build instead of arriving on the device as an empty page.
+
+**Into the package goes the build, not the source.** That stands as a rule in every device's
+contract, and `--check` checks it: if `package.json`, `src/` or a `tsconfig.json` still lie in the
+frontend folder, it is the source, and the tool stops. Deployed, the browser would otherwise get an
+`index.html` pointing at `/src/main.tsx`, and the human in the frame would see an empty page with no
+hint of why.
+
 ## Onto a device with Arasul
 
 ```
@@ -148,15 +157,29 @@ the situation said an app had gone nowhere while it was answering on the device.
 
 ## The appearance
 
-The scaffold brings Arasul's look with it, so that an app does not stand next to the device's
-interface like a foreign body. The values for that stand in `frontend/src/design.css`, and they
-come **out of the mirror**: `.ara/mirror/` is the artifact that was installed with, and it holds
-what applies today. If no mirror is there, the kit writes its own default in, and the file says so
-in its header.
+The scaffold brings Arasul's look with it, so that an app does not stand in the device's frame like
+a foreign body. It is two files, and both belong to the product:
 
-The rules next to it in `stil.css` use only the names of the tokens, not a single colour value.
-Keep to that when you build something on: whatever stands as a colour in a rule falls behind at the
-next version.
+- `frontend/src/design.css` carries the **values**, one block per theme. They come **out of the
+  mirror**: `.ara/mirror/` is the artifact that was installed with, and it holds what applies today.
+  If no mirror is there, the kit writes its own default in, and the file says so in its header.
+- `frontend/src/marken.css` carries the **rules** that use those values, and with them the building
+  blocks. It is mirrored from the product's design system and gets **replaced, not written on.**
+  Whoever puts a rule into it loses it at the next version.
+
+Rules of your own belong at the end of `stil.css`, and they use only the names of the tokens, not a
+single colour value. Keep to that when you build something on: whatever stands as a colour in a rule
+falls behind at the next version.
+
+**The theme comes from the device, not from the app.** It runs in a frame in the middle of Arasul's
+interface, reads that frame's `data-theme` on the parent window and listens for changes: whoever
+switches in Arasul sees the app go along. Without a frame, so directly in a tab, the operating
+system's setting applies. Both stand in `frontend/src/rahmen/thema.ts`, and both belong there and at
+no second place.
+
+When you check that, check it in both themes and in both widths: 390 for the phone, 1440 for the
+desk. Below 900 pixels the actions slide under the title, and a page that scrolls sideways there is
+broken.
 
 ## What the scaffold already is
 
@@ -167,15 +190,37 @@ in Arasul, and afterwards the item stands as approved or rejected, with the name
 decided and the sentence the flow wrote. Without Arasul the item is accepted and stays without a
 decision, and the page says so.
 
-The interface is built from six building blocks, and they carry the names of Arasul's design
-system: head, list, card, form, message, menu. In the scaffold they lie in
-`frontend/src/bausteine.jsx` as small components with the rules in `stil.css`. Whoever builds
-something on takes these blocks and does not write a second card next to the first. If somebody
-asks what such an app looks like, create one and show it, instead of describing it:
+If somebody asks what such an app looks like, create one and show it, instead of describing it:
 
 ```
 node .ara/tools/app.mjs --app <name> --new
 ```
+
+## What the scaffold is built from
+
+It stands on the same stack as the device's interface, so that a partner does not learn two worlds:
+**Vite, React, TypeScript, Tailwind, `react-router`, TanStack Query.** Beyond that there are five
+places to know, and each exists exactly once:
+
+| Place | What stands there |
+| --- | --- |
+| `rahmen/basis.ts` | Under which path the app hangs. It does not guess it, it reads it out of the document's address: live `/apps/<id>/`, in staging `/apps/<id>/test/`. It follows from that: **the routes stay one level deep**, whatever wants to go deeper belongs in the query |
+| `rahmen/thema.ts` | The theme, read on the parent window |
+| `rahmen/schnittstelle.ts` | The app's only `fetch`. Path, login and the envelope around the answer stand there and nowhere else |
+| `rahmen/anmeldung.tsx` | Who is there, out of `api/me`, as a context with role |
+| `rahmen/async-boundary.tsx` | The three exits of a query: loading, went wrong, is there. Every query goes through it, and the pages get their data ready |
+
+The backend follows the port pattern: `server.mjs` does HTTP, `kern/vorgaenge.mjs` does the cases,
+and the core knows **two connections** and nothing else of the world, a store and a device. Both come
+in as an argument, so there is no `fetch` in the core, no SQL and no reach into the environment, and
+every case can be checked without having a database and a device. One store per entity, and in it
+the only SQL for it. A second entity gets a second such file and not a second way to call the
+database.
+
+The store is SQLite out of Node itself, without a package next to it, and its state stands inside it:
+a migration that has run does not run again. Under `backend/ablage/migrationen/` lies one file per
+step, and **what has run once never gets touched again**: whoever changes it changes the past of
+databases that already exist.
 
 ## What you do not do while doing this
 
@@ -184,10 +229,14 @@ node .ara/tools/app.mjs --app <name> --new
   holds twice over: what it needs of them it gets in `backend/arasul.json`, and what is not in there
   it does not have. A value it guesses turns into a silent nothing at runtime.
 - **Do not invent a second store.** A data folder of its own per app is not provided for on the
-  device yet. What an app holds in memory is gone after a restart, and that belongs in the README
-  and in the conversation, before somebody notices it.
-- **No login of your own.** Who is logged in the platform says over the headers in front of the
-  container. A field in a form somebody types a name into is not a login.
+  device yet. That is why the scaffold's database lies in the container's writable layer: it
+  survives a restart and **not the next deploy**. That belongs in the README and in the
+  conversation, before somebody notices it. An app that puts a database of its own next to it would
+  have a second store beside the one the product will provide later.
+- **No login of your own.** Who is logged in, the platform says: to the interface under `api/me`, to
+  the backend over the headers in front of the container. A field in a form somebody types a name
+  into is not a login. The role stands there and decides nothing: **what a human may do the device
+  decides**, it delivers an app only to the one it is shared with.
 - **No approval the app grants itself.** It reads its state and does not decide. Deciding happens
   in Arasul, by a human to whom the app is shared.
 - **Deploy nothing you have not checked.** First `--check`, then `--deploy`.

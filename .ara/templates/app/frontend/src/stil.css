@@ -1,263 +1,77 @@
 /**
- * Die Regeln der Oberfläche. Die Werte stehen in `design.css`.
+ * Das Stylesheet der App. Drei Teile, und nur der dritte gehoert ihr.
  *
- * Kein Farbwert steht hier, nur Marken: `var(--card)` statt `#121212`. Beim
- * nächsten Stand des Geräts wird `design.css` ersetzt, und diese Datei bleibt,
- * wie sie ist. Eine Farbe, die hier stünde, bliebe zurück.
+ *   `tailwindcss`  die Werkzeugklassen, fuer Anordnung und Abstand
+ *   `design.css`   die Werte des Geraets, je Thema. Erzeugt beim Anlegen
+ *   `marken.css`   die Bausteine des Designsystems. Gespiegelt, wird ersetzt
  *
- * Flächen trennen sich durch Linien, nicht durch eine zweite Flächenfarbe, und
- * es gibt einen Akzent: die Hauptaktion und der aktive Zustand. Alles andere
- * ist Graustufe. Statusfarben nur, wenn wirklich ein Zustand gemeint ist.
+ * Ganz unten stehen die eigenen Regeln. **Kein Farbwert steht darin**, nur
+ * Marken: `var(--ara-kante)` statt `rgba(...)`. Beim naechsten Stand des
+ * Geraets werden `design.css` und `marken.css` ersetzt, und was hier steht,
+ * bleibt. Eine Farbe, die hier stuende, bliebe zurueck.
  *
- * Die Regeln gehören zu den sechs Bausteinen in `bausteine.jsx`, in derselben
- * Reihenfolge: Kopf, Menü, Karte, Formular, Meldung, Liste.
+ * `layer(components)` fuer die Bausteine: ungeschichtetes CSS gewinnt gegen
+ * jede Schicht, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an einem
+ * Baustein waere sonst wirkungslos, und genau das erwartet niemand, der sie
+ * dorthin schreibt.
  */
 
-* {
-  box-sizing: border-box;
+@import "tailwindcss";
+@import "./design.css";
+@import "./marken.css" layer(components);
+
+/* Dunkel ist kein Systemzustand, sondern der, den das Geraet nennt. `thema.ts`
+   schreibt ihn an das `<html>`, und `dark:` folgt ihm. */
+@custom-variant dark (&:where([data-theme="black"], [data-theme="dark"], [data-theme="black"] *, [data-theme="dark"] *));
+
+/* Die Marken als Tailwind-Farben: `bg-card`, `text-muted-foreground`, und sie
+   wechseln das Thema mit, weil hier die Variable steht und nicht ihr Wert. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+}
+
+/* --- Eigene Regeln --------------------------------------------------------- */
+
+/* Die Reihe der Vorgaenge: eine Liste und kein Stapel von Kaesten. Der
+   Screenreader zaehlt sie damit, und der Mensch sieht, wo eine aufhoert. */
+.vorgaenge {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ara-abstand-2);
   margin: 0;
   padding: 0;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-
-.seite {
-  max-width: 46rem;
-  margin: 0 auto;
-  padding: 2rem 1.25rem 4rem;
-}
-
-/* Kopf */
-
-.kopf {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 1.5rem;
-}
-
-.kopf > div {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-}
-
-.leise {
-  color: var(--muted-foreground);
-  font-size: 0.8125rem;
-}
-
-/* Menü */
-
-.menue {
-  display: flex;
-  gap: 0.25rem;
-  margin: -0.25rem 0 0.75rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.menue > button {
-  background: transparent;
-  color: var(--muted-foreground);
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  min-height: 2.25rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: -1px;
-}
-
-.menue > button:hover:not(:disabled) {
-  color: var(--foreground);
-  opacity: 1;
-}
-
-.menue > button.gewaehlt {
-  color: var(--foreground);
-  border-bottom-color: var(--primary);
-}
-
-.menue .zahl {
-  margin-left: 0.375rem;
-  font-size: 0.75rem;
-  padding: 0 0.375rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--muted-foreground);
-}
-
-/* Karte */
-
-.karte {
-  background: var(--card);
-  color: var(--card-foreground);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-}
-
-/* Formular */
-
-.feld {
-  display: block;
-  margin-bottom: 0.875rem;
-}
-
-.feld > span {
-  display: block;
-  font-size: 0.8125rem;
-  color: var(--muted-foreground);
-  margin-bottom: 0.25rem;
-}
-
-input,
-select,
-textarea {
-  width: 100%;
-  background: var(--background);
-  color: var(--foreground);
-  border: 1px solid var(--input);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.625rem;
-  font: inherit;
-  font-size: 0.9375rem;
-}
-
-textarea {
-  resize: vertical;
-  line-height: 1.5;
-}
-
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 1px;
-}
-
-button {
-  font: inherit;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.875rem;
-  min-height: 2.5rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-button:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-button.leise {
-  background: transparent;
-  color: var(--foreground);
-  border-color: var(--border);
-  font-size: 0.8125rem;
-}
-
-/* Meldung */
-
-.meldung {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--warning);
-  border-radius: var(--radius-sm);
-  padding: 0.75rem 1rem;
-  margin-bottom: 1.5rem;
-  font-size: 0.875rem;
-  color: var(--muted-foreground);
-}
-
-.meldung.fehler {
-  border-left-color: var(--destructive);
-  color: var(--foreground);
-}
-
-.meldung.erfolg {
-  border-left-color: var(--success);
-}
-
-/* Liste */
-
-.liste {
   list-style: none;
 }
 
-.liste > li {
-  padding: 0.75rem 0;
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+/* Ein Link, der wie ein Knopf aussieht, ist im Fluss und nicht im Kasten. */
+a.ara-knopf {
+  text-decoration: none;
 }
 
-.liste > li:first-child {
-  border-top: 0;
+/* Wie ein Vorgang steht. Das Wort traegt die Aussage, die Farbe steht daneben. */
+.stand[data-art="erfolg"] {
+  color: var(--ara-erfolg);
 }
 
-.marke {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  color: var(--muted-foreground);
-  white-space: nowrap;
+.stand[data-art="warnung"] {
+  color: var(--ara-warnung);
 }
 
-.marke.wartet {
-  color: var(--warning);
-  border-color: var(--warning);
-}
-
-.marke.ja {
-  color: var(--success);
-  border-color: var(--success);
-}
-
-.marke.nein {
-  color: var(--destructive);
-  border-color: var(--destructive);
-}
-
-.leer {
-  color: var(--muted-foreground);
-  font-size: 0.875rem;
-  padding: 0.75rem 0;
+.stand[data-art="fehler"] {
+  color: var(--ara-fehler);
 }
