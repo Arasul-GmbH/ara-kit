@@ -1,0 +1,17 @@
+{
+  "hinweis": "Diese Datei fuellt das Ara-Kit beim Einspielen aus dem Kontrakt des Geraets. Von Hand bleibt sie so, wie sie hier steht: was zwischen App und Geraet vereinbart ist, raet die App nicht. Steht hier null, hat die App keinen Rahmen, und sie sagt das an jedem Vorgang.",
+  "geraet": null,
+  "erzeugt": null,
+  "kontrakt": null,
+  "umgebung": {
+    "basis": null,
+    "schluessel": null,
+    "laut_kontrakt": null
+  },
+  "kopf": null,
+  "wege": {
+    "flow_starten": null,
+    "lauf_lesen": null,
+    "freigaben_lesen": null
+  }
+}

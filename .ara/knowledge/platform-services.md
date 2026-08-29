@@ -170,6 +170,11 @@ key comes from `/device` with `--deploy-key`; an app's key the device puts into 
 itself at deployment, together with the address of the interface. Which names the two values carry
 the contract says under `umgebung`.
 
+**An app learns those names from the kit and not from its own source.** At deployment `app.mjs`
+reads them out of the device's contract and puts them, together with the header and the ways, into
+the package as `backend/arasul.json`. An app that guesses a name instead finds nothing on a device
+that names it differently and takes that for a device without Arasul.
+
 **The chat is stateless.** Every call is a job of its own with exactly the history that is sent
 along. Whoever wants a conversation keeps it themselves and sends it along. An app that builds on a
 memory on the device builds on something that does not exist.

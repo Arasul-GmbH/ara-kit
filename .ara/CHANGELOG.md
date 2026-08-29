@@ -13,6 +13,17 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.15.0 (2026-08-29)
+
+Contract: up to 3
+
+- An app out of the scaffold started no run. Measured on 29.08.2026 against a played device that names its values in its contract: the POST on the app's item route answered 201, `vorgang.lauf` stood at `null`, the item at "ohne entscheidung" with the sentence "this device has given the app no interface", and the device had not heard a single call in all that time. The approval step was not refused, it was skipped, and because the item looked like one without Arasul, nobody looked in the right place for three explanations.
+- The cause stood in the scaffold's backend: six values that are agreed between kit and product stood there out of somebody's head. `ARASUL_API_URL` and `ARASUL_API_SCHLUESSEL` as the names of the two values the device puts into the container, `x-api-key` as the header for the key, three paths without the prefix of the outer interface. None of them stands in the contract, none in the mirror. If the app does not find the two names, address and key stay empty, it never calls at all, and it takes that result for a device without Arasul.
+- The scaffold now knows none of those values. The kit reads them at deployment out of the one device's contract and puts them into the package as `backend/arasul.json`: the names of the two environment values, the header for the key and the three ways, each one only after the device names it in its own endpoints. `--check` prints that beforehand and lists what this device does not promise. In the clone the file lies empty, and it goes into the image, otherwise the container would not see it.
+- No silent `null` any more. If an item stays without a run, the reason stands at it, and "without Arasul" stands there only when the device really gave the app nothing. An empty environment value, a way the contract does not carry, a status the device returns, an answer without a number: every case gets its own sentence, at the item, in the app's situation route and once in the container's log at start.
+- The scaffold no longer pins itself to one shape of answer either. Any answer of the 2xx class is accepted instead of exactly 202, the run number is read whether it stands bare or in an envelope, and the approval for a run the app looks for in the list of its own approvals instead of over a query parameter no contract names.
+- The self-test carried the fault along. The played device answered exactly what the scaffold guessed: the same names, the same header, the same paths, 202 and the number without an envelope. What that proved was that the scaffold agrees with itself. It now hands out names of its own, a header of its own, puts its ways under the prefix of the outer interface and answers 200 with an envelope; next to that come three checks: that none of those values stands in the scaffold's source any more, that the arrangement arrives in the package, and that a frame that stands but yields no run does not pass as "without Arasul".
+
 ## 0.14.6 (2026-08-29)
 
 Contract: up to 3
