@@ -13,6 +13,13 @@
  * Nachziehen zurückbleibt. Die Änderungsliste nennt die Zahl trotzdem je Stand,
  * und der Selbsttest hält den obersten Eintrag gegen den Code.
  *
+ * **Über einen fremden Stand sagt der eigene Code nichts.** Wer nachsieht, was
+ * ein Update brächte, redet über ein Kit, das noch nicht läuft:
+ * `KIT_CONTRACT_VERSIONS` gehört dann dem falschen von beiden, und die Antwort
+ * wäre die eigene Grenze im Gewand der fremden. Dafür steht die Zahl je Stand in
+ * der Änderungsliste. `contractOf` liest sie dort, `compatibility` nimmt sie
+ * entgegen, und ohne Angabe bleibt es beim Code des laufenden Kits.
+ *
  * Reine Funktionen: kein Netz, keine Dateien außer der, die hereingereicht wird.
  */
 
@@ -82,18 +89,42 @@ export function entriesSince(entries, version) {
 }
 
 /**
- * Die Verträglichkeit zum Gerät, in Sätzen und aus dem Code.
+ * Die Kontraktfassung, die ein Stand für sich nennt.
  *
- * Sie sagt, was das Kit versteht, und nicht, was ein Gerät kann: welche Fassung
+ * Für den laufenden Stand ist der Code die Quelle. Für einen geholten gibt es
+ * ihn nicht: er liegt in einem Ordner, der noch nicht eingespielt ist, und ihn
+ * ausgerechnet beim Nachsehen laufen zu lassen wäre das Gegenteil von nachsehen.
+ * Was bleibt, ist die Zeile, die dieser Stand selbst in seine Änderungsliste
+ * geschrieben hat, im Eintrag zu seiner Nummer. Sein eigener Selbsttest hat sie
+ * dort gegen seinen Code gehalten, bevor er ausgeliefert wurde.
+ *
+ * Nennt er sie nicht, ist die Antwort `null` und nicht die eigene Zahl: eine
+ * Lücke ist zu sagen, nicht zu füllen.
+ */
+export function contractOf(changelog, version) {
+  const entry = parseChangelog(changelog).find((item) => item.version === version);
+  return entry && entry.contract !== null ? entry.contract : null;
+}
+
+/**
+ * Die Verträglichkeit zum Gerät, in Sätzen.
+ *
+ * Sie sagt, was ein Kit versteht, und nicht, was ein Gerät kann: welche Fassung
  * dort läuft, sagt der Kontrakt dieses einen Geräts. Das ist derselbe
  * Unterschied, der `KIT_CONTRACT_VERSIONS` ehrlich hält.
+ *
+ * `contract` ist die Zahl, über die geredet wird. Ohne Angabe ist es die des
+ * laufenden Kits, aus dem Code; über einen geholten Stand reicht der Aufrufer
+ * dessen Zahl herein. `null` heißt, dieser Stand nennt sie nicht.
  */
-export function compatibility() {
+export function compatibility(contract = KIT_CONTRACT_VERSION) {
   return [
-    t(
-      `Understands contract versions up to ${KIT_CONTRACT_VERSION}.`,
-      `Versteht Kontraktfassungen bis ${KIT_CONTRACT_VERSION}.`
-    ),
+    contract === null
+      ? t(
+          "Up to which contract version it understands, its change list does not say.",
+          "Bis zu welcher Kontraktfassung es versteht, sagt seine Änderungsliste nicht."
+        )
+      : t(`Understands contract versions up to ${contract}.`, `Versteht Kontraktfassungen bis ${contract}.`),
     t(
       "A device with a lower version is served, with a higher one the kit says what it is missing.",
       "Ein Gerät mit einer kleineren Fassung wird bedient, bei einer größeren sagt das Kit, was ihm fehlt."
@@ -110,8 +141,12 @@ export function compatibility() {
  *
  * `since` ist der Stand, von dem jemand kommt. Ohne ihn wird nur der oberste
  * Eintrag gezeigt: das ist der Fall „was ist gerade drin", nicht „was kam dazu".
+ *
+ * `contract` gehört zu dem Stand, über den der Block redet. Ohne Angabe ist das
+ * der laufende, und dann ist der eigene Code die Quelle. Wer einen geholten
+ * Stand vorliest, reicht `contractOf(changelog, version)` herein.
  */
-export function standBlock({ version, changelog, since = null }) {
+export function standBlock({ version, changelog, since = null, contract = KIT_CONTRACT_VERSION }) {
   const entries = parseChangelog(changelog);
   const relevant = since ? entriesSince(entries, since) : entries.slice(0, 1);
   const lines = [];
@@ -136,6 +171,9 @@ export function standBlock({ version, changelog, since = null }) {
       for (const point of entry.lines) lines.push(`  ${point}`);
     }
   }
-  lines.push(t(`Compatibility: ${compatibility()[0]} ${compatibility()[1]}`, `Verträglichkeit: ${compatibility()[0]} ${compatibility()[1]}`));
+  const sentences = compatibility(contract);
+  lines.push(
+    t(`Compatibility: ${sentences[0]} ${sentences[1]}`, `Verträglichkeit: ${sentences[0]} ${sentences[1]}`)
+  );
   return lines;
 }

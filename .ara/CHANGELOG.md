@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.20.2 (2026-08-30)
+
+Contract: up to 5
+
+- `node .ara/tools/update.mjs --check` names the compatibility of the fetched version, not that of the running one. The number comes out of the contract line of the fetched change list, in the entry to its number. Until now `standBlock()` asked the code of the process that was running, and that is the old kit: on 30.08.2026 a clone on 0.15.0 read "up to 3" under "New since 0.15.0" while the version it would have got understood up to 5. That is the wrong way round for the one decision the line exists for. Whoever reads that the number does not move does not deploy, because they believe it brings nothing.
+- Does a fetched version not name a contract line, the tool says so instead of filling the gap with its own number. A gap is to be named, not to be guessed at.
+- `--json` carries the same statement machine-readable: `contract.hier` out of the code of this run, `contract.dort` out of the change list of the fetched folder.
+- The compatibility of a foreign version comes out of its change list and not out of its code. The code lies in a folder that has not been deployed, and running it of all things while only looking would be the opposite of looking. Its own self-test held that line against its code before it was shipped.
+- The self-test holds the two apart. The version in the test archive carries a contract line above the limit of the running kit, and `--check` has to read that one out; up to now both numbers were the same in the test, and the swap could not be seen.
+
 ## 0.20.1 (2026-08-30)
 
 Contract: up to 5

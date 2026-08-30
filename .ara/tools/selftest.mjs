@@ -147,7 +147,7 @@ import {
   writeFrontmatter,
 } from "./lib/kit.mjs";
 import { isVariant } from "./lib/i18n.mjs";
-import { compareVersions, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
+import { compareVersions, contractOf, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
 import { keychainAvailable } from "./lib/secrets.mjs";
 
@@ -1942,6 +1942,33 @@ check("Was neu ist, richtet sich nach dem Stand, von dem jemand kommt", () => {
   assert(block.some((z) => /Kontraktfassungen bis/.test(z)), "die Vertraeglichkeit zum Geraet fehlt");
   const ohne = standBlock({ version: "0.9.0", changelog, since: "0.9.0" });
   assert(ohne.some((z) => /nichts/.test(z)), "ohne Neues wird das nicht gesagt");
+
+  // Die Kontraktzahl gehoert dem Stand, ueber den geredet wird. Fuer den
+  // laufenden ist der Code die Quelle, fuer einen geholten seine eigene
+  // Aenderungsliste: der Code dieses Laufs weiss ueber ihn nichts.
+  assert(contractOf(changelog, "0.9.0") === 4, "die Kontraktzeile wird zum Eintrag nicht gefunden");
+  assert(contractOf(changelog, "0.8.0") === null, "ein Eintrag ohne Kontraktzeile bekommt eine Zahl");
+  assert(contractOf(changelog, "0.7.0") === null, "ein Stand ohne Eintrag bekommt eine Zahl");
+
+  const fremdeGrenze = KIT_CONTRACT_VERSION + 1;
+  const fremd = standBlock({ version: "0.9.0", changelog, since: "0.8.0", contract: fremdeGrenze });
+  assert(
+    fremd.some((z) => z.includes(`Kontraktfassungen bis ${fremdeGrenze}`)),
+    "die hereingereichte Fassung wird nicht vorgelesen"
+  );
+  assert(
+    !fremd.some((z) => z.includes(`Kontraktfassungen bis ${KIT_CONTRACT_VERSION}`)),
+    "der Block liest die Grenze des laufenden Kits vor"
+  );
+
+  // Nennt ein Stand seine Grenze nicht, wird die Luecke gesagt und nicht mit
+  // der eigenen Zahl gefuellt.
+  const stumm = standBlock({ version: "0.9.0", changelog, since: "0.8.0", contract: null });
+  assert(
+    stumm.some((z) => /Bis zu welcher Kontraktfassung/.test(z)),
+    "ein Stand ohne Kontraktzeile bekommt trotzdem eine Zahl"
+  );
+  assert(!stumm.some((z) => /Kontraktfassungen bis/.test(z)), "eine Luecke wird als Zahl vorgelesen");
 });
 
 // --- Kontrakt und Deploy -----------------------------------------------------
@@ -5895,9 +5922,16 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   // Beide Fassungen der Aenderungsliste bekommen den neuen Eintrag: welche
   // gelesen wird, entscheidet die Sprache, und dieser Test soll in beiden gruen
   // sein. Die Kontraktzeile heisst je Fassung anders, gelesen werden beide.
+  //
+  // Ihre Zahl liegt ueber der des laufenden Kits, und daran haengt der ganze
+  // Fall: `--check` redet ueber den geholten Stand, also muss es dessen Grenze
+  // vorlesen. Nimmt es die eigene, steht unter "Neu seit" die kleinere Zahl,
+  // und wer sie liest zieht nicht nach, weil er glaubt, es bringe nichts. Genau
+  // so las es sich am 30.08.2026 an einem Klon auf 0.15.0.
+  const fremdeGrenze = KIT_CONTRACT_VERSION + 1;
   for (const [datei, kontrakt] of [
-    ["CHANGELOG.md", "Contract: up to 3"],
-    ["CHANGELOG.de.md", "Kontrakt: bis 3"],
+    ["CHANGELOG.md", `Contract: up to ${fremdeGrenze}`],
+    ["CHANGELOG.de.md", `Kontrakt: bis ${fremdeGrenze}`],
   ]) {
     writeFileSync(
       join(source, ".ara", datei),
@@ -5963,7 +5997,20 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(run.stdout.includes(`Stand: ${neuerStand}`), `der neue Stand wird nicht genannt: ${run.stdout}`);
     assert(run.stdout.includes(`Neu seit ${stand}`), "es wird nicht gesagt, von welchem Stand es kommt");
     assert(/erfundener Punkt/.test(run.stdout), "der Eintrag der Aenderungsliste fehlt");
-    assert(/Kontraktfassungen bis/.test(run.stdout), "die Vertraeglichkeit zum Geraet fehlt");
+    assert(
+      run.stdout.includes(`Kontraktfassungen bis ${fremdeGrenze}`),
+      `die Vertraeglichkeit ist nicht die des geholten Standes (bis ${fremdeGrenze}): ${run.stdout}`
+    );
+    assert(
+      !run.stdout.includes(`Kontraktfassungen bis ${KIT_CONTRACT_VERSION}`),
+      `--check liest die Grenze des laufenden Kits vor: ${run.stdout}`
+    );
+    // Dieselbe Aussage maschinenlesbar, fuer die Auswertung.
+    run = await forkTool("update.mjs", ["--check", "--json"], env);
+    const lageJson = JSON.parse(run.stdout);
+    assert(lageJson.contract.dort === fremdeGrenze, `--json nennt dort ${lageJson.contract.dort}`);
+    assert(lageJson.contract.hier === KIT_CONTRACT_VERSION, `--json nennt hier ${lageJson.contract.hier}`);
+    assert(!has(".ara/knowledge/probe.md"), "--check --json hat eingespielt");
 
     // 3. Einspielen.
     run = await forkTool("update.mjs", [], env);

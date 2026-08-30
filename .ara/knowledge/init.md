@@ -314,6 +314,13 @@ steps, in this order:
    per file what would be new, changed or removed. It names the version it would go to, and out of the
    change list `.ara/CHANGELOG.md` every point that has been added since their own. Nothing new: one
    line, done. That also runs in a fork without an upstream remote, the source is an archive.
+
+   **The compatibility in that line belongs to the fetched version, not to the running one.** It comes
+   out of the contract line of the fetched change list, and it is the number a partner decides on: on
+   30.08.2026 a clone on 0.15.0 read "up to 3" under "New since 0.15.0", while the version it would
+   have got understood up to 5, and that made deploying look pointless. Whoever wants the number of
+   their own kit reads step 1. Does the fetched version not name a contract line, the tool says that
+   instead of filling the gap.
 3. **Deploy**, with a confirmation. `node .ara/tools/update.mjs` replaces `.ara/` and the minimum of
    `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`). `business/`, `customers/`,
    `devices/`, `apps/`, the mirror, the marker `.ara/state.json` and the generated commands stay as
