@@ -184,7 +184,7 @@ function Sidebar({
           data-slot="sidebar"
           data-schmal="true"
           side={seite === 'links' ? 'left' : 'right'}
-          className="w-[--sidebar-breite-blatt] p-0"
+          className="w-(--sidebar-breite-blatt) p-0"
           style={{ '--sidebar-breite-blatt': SEITENLEISTE_BLATT } as React.CSSProperties}
         >
           {/* Ein Blatt ohne zugaenglichen Namen ist fuer einen Screenreader
@@ -215,20 +215,20 @@ function Sidebar({
       <div
         data-slot="sidebar-gap"
         className={cn(
-          'relative w-[--sidebar-breite] bg-transparent transition-[width] duration-200 ease-linear',
+          'relative w-(--sidebar-breite) bg-transparent transition-[width] duration-200 ease-linear',
           'group-data-[einklappen=nichts]:w-0',
-          'group-data-[einklappen=symbole]:w-[--sidebar-breite-symbole]'
+          'group-data-[einklappen=symbole]:w-(--sidebar-breite-symbole)'
         )}
       />
       <div
         data-slot="sidebar-container"
         className={cn(
-          'fixed inset-y-0 z-10 flex h-svh w-[--sidebar-breite] transition-[left,right,width] duration-200 ease-linear',
+          'fixed inset-y-0 z-10 flex h-svh w-(--sidebar-breite) transition-[left,right,width] duration-200 ease-linear',
           'group-data-[eingebettet]/sidebar-wrapper:absolute group-data-[eingebettet]/sidebar-wrapper:h-full',
           seite === 'links'
             ? 'left-0 group-data-[einklappen=nichts]:left-[calc(var(--sidebar-breite)*-1)]'
             : 'right-0 group-data-[einklappen=nichts]:right-[calc(var(--sidebar-breite)*-1)]',
-          'group-data-[einklappen=symbole]:w-[--sidebar-breite-symbole]',
+          'group-data-[einklappen=symbole]:w-(--sidebar-breite-symbole)',
           seite === 'links' ? 'border-r border-border' : 'border-l border-border',
           className
         )}

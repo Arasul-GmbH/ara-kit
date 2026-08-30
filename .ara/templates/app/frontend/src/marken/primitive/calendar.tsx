@@ -58,20 +58,20 @@ function Calendar({
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          'size-[--cell-size] p-0 aria-disabled:opacity-50',
+          'size-(--cell-size) p-0 aria-disabled:opacity-50',
           vorgabe.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          'size-[--cell-size] p-0 aria-disabled:opacity-50',
+          'size-(--cell-size) p-0 aria-disabled:opacity-50',
           vorgabe.button_next
         ),
         month_caption: cn(
-          'flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]',
+          'flex h-(--cell-size) w-full items-center justify-center px-(--cell-size)',
           vorgabe.month_caption
         ),
         dropdowns: cn(
-          'flex h-[--cell-size] w-full items-center justify-center gap-1.5 text-ui font-medium',
+          'flex h-(--cell-size) w-full items-center justify-center gap-1.5 text-ui font-medium',
           vorgabe.dropdowns
         ),
         dropdown_root: cn(
@@ -92,7 +92,7 @@ function Calendar({
           vorgabe.weekday
         ),
         week: cn('mt-2 flex w-full', vorgabe.week),
-        week_number_header: cn('w-[--cell-size] select-none', vorgabe.week_number_header),
+        week_number_header: cn('w-(--cell-size) select-none', vorgabe.week_number_header),
         week_number: cn('text-ui-xs text-muted-foreground select-none', vorgabe.week_number),
         day: cn(
           'group/day relative aspect-square h-full w-full p-0 text-center select-none [&:first-child[data-selected=true]_button]:rounded-l-md [&:last-child[data-selected=true]_button]:rounded-r-md',
@@ -124,7 +124,7 @@ function Calendar({
         DayButton: CalendarDayButton,
         WeekNumber: ({ children, ...rest }) => (
           <td {...rest}>
-            <div className="flex size-[--cell-size] items-center justify-center text-center">
+            <div className="flex size-(--cell-size) items-center justify-center text-center">
               {children}
             </div>
           </td>
@@ -171,7 +171,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        'flex aspect-square size-auto w-full min-w-[--cell-size] flex-col gap-1 leading-none font-normal',
+        'flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal',
         'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground',
         'data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground',
         'data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-start=true]:rounded-l-md',

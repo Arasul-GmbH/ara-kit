@@ -32,5 +32,23 @@
  * KEINE neue Hauptzahl: nichts ist weggefallen und nichts hat seine
  * Bedeutung geaendert. Eine Vorlage auf 3.0 laeuft mit dieser Fassung
  * unveraendert weiter -- sie kennt die drei neuen Formen nur nicht.
+ *
+ * 3.1.1 (Auftrag J31): eine Reparatur, kein neuer Baustein. Drei Dateien
+ * schrieben eine Breite aus einer Variablen in der Tailwind-3-Kurzform
+ * (eckige Klammern um den Variablennamen). Tailwind 4 packt die nicht mehr
+ * in `var()`,
+ * sondern schreibt `width: --sidebar-breite` -- ungueltiges CSS, das der
+ * Browser wortlos verwirft. Im Rahmen des Orin gemessen: der Platzhalter der
+ * Seitenleiste war null breit, und die Leiste lag ueber dem Inhalt. Jetzt
+ * `w-(--sidebar-breite)`. Betroffen waren `sidebar`, `calendar` und
+ * `Suchauswahl`; die Fassung steigt trotzdem, weil eine App auf 3.1.0 diese
+ * drei kaputt bekommt und der Spiegel des Kits an dieser Zahl haengt.
+ *
+ * Warum die falsche Schreibweise hier nicht ausgeschrieben steht: dieser
+ * Ordner ist eine Tailwind-Quelle (`@source` in `index.css`), und der Scanner
+ * liest Text, nicht JavaScript -- ein Kommentar ist fuer ihn kein Kommentar.
+ * Beim ersten Anlauf stand sie hier, und der fertige Bau trug prompt
+ * `.w-\[--sidebar-breite\]{width:--sidebar-breite}` -- eine Regel, die
+ * niemand benutzt, aus einem Satz darueber, dass man sie nicht benutzen soll.
  */
-export const FASSUNG = '3.1.0';
+export const FASSUNG = '3.1.1';
