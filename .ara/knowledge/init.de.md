@@ -319,6 +319,13 @@ Stand des Kits. Acht Schritte, in dieser Reihenfolge:
    Kontraktfassung dieses Kit mit einem Gerät zusammenarbeitet. Gib sie in zwei Sätzen
    weiter, bevor irgendetwas geholt wird. Die Verträglichkeit ist eine Aussage über das
    Kit, nicht über ein Gerät: welche Fassung ein Gerät führt, sagt sein Kontrakt.
+
+   **Nennt eine Geräteakte eine größere Zahl, sagt das Werkzeug es an derselben Stelle**,
+   mit dem Gerät und mit dem Weg: `node .ara/tools/update.mjs`. Die Zahl kommt vom Gerät,
+   `/device` hat sie beim Kontakt gelesen und als `contract` in die Akte geschrieben. Dann
+   ist Schritt 3 nicht wahlfrei: solange das Kit hinterherliegt, bricht jedes Einspielen
+   auf dieses Gerät ab, und die Meldung liest sich wie ein Fehler in der App. Sag es in
+   einem Satz und geh weiter zu Schritt 2.
 2. **Nachsehen.** `node .ara/tools/update.mjs --check` holt den Stand aus dem Arasul-Repo
    und zeigt je Datei, was neu, geändert oder entfernt wäre. Es nennt dazu den Stand, auf
    den es ginge, und aus der Änderungsliste `.ara/CHANGELOG.md` jeden Punkt, der seit dem

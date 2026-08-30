@@ -53,7 +53,19 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { LANGUAGES, language, localized, setLanguage, t } from "./lib/i18n.mjs";
-import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter, today } from "./lib/kit.mjs";
+import {
+  BUSINESS,
+  ROOT,
+  devicePath,
+  fail,
+  helpOnly,
+  listCustomers,
+  listDevices,
+  parseArgs,
+  readFrontmatter,
+  today,
+} from "./lib/kit.mjs";
+import { KIT_CONTRACT_VERSION, catchUpLines } from "./lib/contract.mjs";
 import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
 import { CLOSED_FIELDS, ROLES } from "./lib/profile.mjs";
 
@@ -368,6 +380,35 @@ function status() {
  * `/init` sagt das vor allem anderen. Ein Partner, der nur eine Liste geänderter
  * Dateien sieht, weiß danach nicht, ob sein Gerät noch dazu passt.
  */
+/**
+ * Geräte, die weiter sind als dieses Kit.
+ *
+ * `/init` hat kein Gerät vor sich, aber die Akten stehen da: `device.mjs`
+ * schreibt die Kontraktfassung hinein, die es beim Kontakt am Gerät gelesen
+ * hat. Ein Klon, der hinter seinem Gerät liegt, erfährt es damit hier, vor der
+ * ersten App, und nicht erst an einem Deploy, der mit „Nichts eingespielt"
+ * abbricht.
+ *
+ * Behauptet wird nichts. Gelesen wird nur, was einmal am Gerät gemessen wurde,
+ * und eine Akte ohne diese Zahl kommt nicht vor.
+ */
+function devicesAhead() {
+  const places = [
+    ...listDevices(null).map((device) => ({ customer: null, device })),
+    ...listCustomers().flatMap((customer) => listDevices(customer).map((device) => ({ customer, device }))),
+  ];
+  const ahead = [];
+  for (const { customer, device } of places) {
+    const value = readFrontmatter(join(devicePath(customer, device), "device.md")).fields.contract;
+    const carried = Number(value);
+    if (!value || !Number.isInteger(carried)) continue;
+    if (carried > KIT_CONTRACT_VERSION) {
+      ahead.push({ place: customer ? `${customer}/${device}` : device, contract: carried });
+    }
+  }
+  return ahead;
+}
+
 function stand() {
   const version = existsSync(VERSION_FILE) ? readFileSync(VERSION_FILE, "utf8").trim() : "";
   const changelog = existsSync(CHANGELOG) ? readFileSync(CHANGELOG, "utf8") : "";
@@ -377,8 +418,28 @@ function stand() {
     date: entries[0]?.version === version ? entries[0].date : "",
     news: entries[0]?.version === version ? entries[0].lines : [],
     contract: compatibility(),
+    ahead: devicesAhead(),
     lines: standBlock({ version, changelog }),
   };
+}
+
+/**
+ * Die Zeilen für den Fall, dass ein Gerät weiter ist als dieses Kit.
+ *
+ * Sie stehen ganz oben, direkt hinter dem Stand: wer sie liest, hat noch nichts
+ * angefangen, was gleich abbricht.
+ */
+function printAhead(lage) {
+  if (!lage.stand.ahead.length) return;
+  for (const { place, contract } of lage.stand.ahead) {
+    console.log(
+      t(
+        `${place} carries contract version ${contract}, this kit understands up to ${KIT_CONTRACT_VERSION}.`,
+        `${place} führt Kontraktfassung ${contract}, dieses Kit versteht bis ${KIT_CONTRACT_VERSION}.`
+      )
+    );
+  }
+  for (const line of catchUpLines()) console.log(line);
 }
 
 if (arg.answers) {
@@ -398,6 +459,7 @@ if (arg.answers) {
   // stillschweigend durchgehen lassen", und sie griff hier nicht: die Luecken
   // nannte nur `--show`, und nur, wenn jemand es aufrief. Jetzt endet der Lauf
   // mit derselben Zeile.
+  printAhead(lage);
   printGaps(lage);
   printConsequences(lage);
   console.log(
@@ -419,6 +481,7 @@ if (arg.json) {
   process.exit(0);
 }
 for (const line of lage.stand.lines) console.log(line);
+printAhead(lage);
 console.log("");
 if (!lage.exists) {
   console.log(

@@ -170,6 +170,7 @@ import {
 import { localized, t } from "./lib/i18n.mjs";
 import { forgetSecret, getSecret, hasSecret, otherStore, setSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, certificateKind, reason } from "./lib/arasul.mjs";
+import { CONTRACT_PATH, catchUpLines, checkVersion } from "./lib/contract.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
 import { BUY_URL, STORE_CALL, buyLines, checkToken, cleanToken, installTargets, knownDevices, tokenShape } from "./lib/licence.mjs";
 import {
@@ -1491,6 +1492,79 @@ if (!changes.tls && !existing.tls && arasulRunning(svc.arasul.state) && (existin
     // Zertifikat, und ein Eintrag daraus wäre eine erfundene.
   }
 }
+// --- Der Kontrakt, beim ersten Kontakt ---------------------------------------
+
+/**
+ * Versteht dieses Kit, was dieses Gerät verspricht?
+ *
+ * Die Frage gehört hierher und nicht erst an den Deploy. Am 30.08.2026 stand
+ * eine Werkstatt auf Kontrakt 3, der Orin führte 5, und der Partner erfuhr es
+ * daran, dass `--deploy` mit „Nichts eingespielt" abbrach. Er suchte den Fehler
+ * danach in seiner App. Beim ersten Kontakt mit dem Gerät ist die Zahl schon
+ * lesbar, und der Weg heraus ist ein Aufruf.
+ *
+ * Gelesen wird nur der Kontrakt, der einzige Pfad, den das Kit auswendig kennt.
+ * Was nicht zu lesen war, wird gesagt und nicht geraten: eine Plattform, die
+ * gerade erst hochkommt, ist keine Aussage über ihre Fassung.
+ */
+async function readContract() {
+  const ref = deployKey?.ok ? deployKey.ref : existing.api_key_ref || "";
+  const address = existing.api_base || host;
+  if (!ref || !address) return null;
+  const secret = getSecret(ref);
+  if (!secret) return { ok: false, message: t(`${ref} is not in the store.`, `${ref} steht nicht in der Ablage.`) };
+  try {
+    const answer = await call({
+      base: baseUrl(address),
+      key: secret,
+      path: CONTRACT_PATH,
+      insecure: (changes.tls || existing.tls || "").toLowerCase() === "selfsigned",
+      timeout: 20_000,
+    });
+    if (!answer.ok) return { ok: false, message: reason(answer) };
+    return { ok: true, version: checkVersion(answer.data) };
+  } catch (error) {
+    return { ok: false, message: error.message };
+  }
+}
+
+// Gefragt wird, wo eine Schnittstelle zu erwarten ist: Arasul läuft, wurde
+// gerade installiert, oder die Akte nennt einen Kit-Schlüssel, also war das Kit
+// schon einmal an dieser Schnittstelle. Sonst nicht: eine Absage von einem
+// Rechner, auf dem nie etwas lief, ist keine Auskunft.
+let contractState = null;
+if (
+  !dryRun &&
+  run.transport !== "none" &&
+  (arasulRunning(svc.arasul.state) || arasul?.ok || Boolean(existing.api_key_ref))
+) {
+  contractState = await readContract();
+}
+if (contractState?.ok) {
+  // Die Zahl des Geräts steht danach in der Akte: /init findet sie dort ohne
+  // Gerät wieder und sagt vor jeder Arbeit, dass dieses Kit nachziehen muss.
+  changes.contract = contractState.version.device ?? "";
+  console.log(
+    contractState.version.ok
+      ? `\n${contractState.version.text}`
+      : [
+          "",
+          t(
+            `This kit does not understand the contract of ${place}.`,
+            `Dieses Kit versteht den Kontrakt von ${place} nicht.`
+          ),
+          contractState.version.text,
+        ].join("\n")
+  );
+} else if (contractState) {
+  console.log(
+    t(
+      `\nThe contract of ${place} could not be read, so the contract version stays unmeasured: ${scrub(contractState.message)}`,
+      `\nDer Kontrakt von ${place} war nicht zu lesen, die Kontraktfassung bleibt darum ungemessen: ${scrub(contractState.message)}`
+    )
+  );
+}
+
 if (!dryRun) writeFrontmatter(file, changes);
 
 const entry = [
@@ -1526,6 +1600,14 @@ const entry = [
         deployKey.ok
           ? `Kit-Schlüssel angelegt (${deployKey.label}), Bereich app:deploy, hinterlegt unter ${deployKey.ref}. Klartext nur am Gerät, einmalig.`
           : `Kit-Schlüssel nicht angelegt: ${scrub(deployKey.message)}`,
+      ]
+    : []),
+  ...(contractState
+    ? [
+        contractState.ok
+          ? `Kontrakt gelesen: das Gerät führt Fassung ${contractState.version.device}, dieses Kit versteht bis ` +
+            `${contractState.version.kit}. ${contractState.version.ok ? "Sie passen zueinander." : `Das Kit muss nachziehen: ${catchUpLines()[1]}`}`
+          : `Kontrakt nicht gelesen, die Fassung des Geräts bleibt ungemessen: ${scrub(contractState.message)}`,
       ]
     : []),
 ].join("\n");
@@ -1608,6 +1690,19 @@ function nextSteps() {
     );
     return steps;
   }
+  // Steht das Kit hinter dem Gerät, kommt das zuerst. Jeder andere Schritt
+  // bricht daran ab, und wer die Reihenfolge umdreht, sucht den Grund später
+  // in seiner App.
+  if (contractState?.ok && !contractState.version.ok) {
+    steps.push(
+      t(
+        `First the kit, then this device: it carries contract version ${contractState.version.device}, ` +
+          `and this kit understands up to ${contractState.version.kit}. `,
+        `Erst das Kit, dann dieses Gerät: es führt Kontraktfassung ${contractState.version.device}, ` +
+          `und dieses Kit versteht bis ${contractState.version.kit}. `
+      ) + catchUpLines()[1]
+    );
+  }
   if (run.transport === "local") {
     steps.push(
       t(
@@ -1651,12 +1746,26 @@ function nextSteps() {
         ) + `node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --deploy-key`
       );
     } else {
-      steps.push(
-        t(
-          `Arasul runs and the kit key lies under ${keyRef}. Does the kit fit this device? `,
-          `Arasul läuft und der Kit-Schlüssel liegt unter ${keyRef}. Passt das Kit zu diesem Gerät? `
-        ) + `node .ara/tools/app.mjs ${where} --contract`
-      );
+      // Ob das Kit zu diesem Gerät passt, hat dieser Lauf schon gelesen. Passt
+      // es nicht, steht das ganz oben, und die Frage hier noch einmal zu
+      // stellen hiesse, eine beantwortete Frage als offen auszugeben.
+      if (contractState?.ok && contractState.version.ok) {
+        steps.push(
+          t(
+            `Arasul runs, the kit key lies under ${keyRef}, and the contract of this device fits this kit. ` +
+              `The whole contract: node .ara/tools/app.mjs ${where} --contract`,
+            `Arasul läuft, der Kit-Schlüssel liegt unter ${keyRef}, und der Kontrakt dieses Geräts passt zu diesem Kit. ` +
+              `Der ganze Kontrakt: node .ara/tools/app.mjs ${where} --contract`
+          )
+        );
+      } else if (!contractState?.ok) {
+        steps.push(
+          t(
+            `Arasul runs and the kit key lies under ${keyRef}. Does the kit fit this device? `,
+            `Arasul läuft und der Kit-Schlüssel liegt unter ${keyRef}. Passt das Kit zu diesem Gerät? `
+          ) + `node .ara/tools/app.mjs ${where} --contract`
+        );
+      }
       // Der Kit-Schlüssel trägt app:deploy. Der erste Mitarbeiter und die erste
       // Freigabe brauchen eine Sitzung, und die gibt es aus dem Startpasswort.
       if (startPwRef) {
@@ -1868,6 +1977,11 @@ if (arg.json) {
             }
           : null,
         deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
+        // Die Fassung des Geräts, gelesen und nicht behauptet. `null` heißt:
+        // nicht gemessen, und das ist etwas anderes als "passt".
+        contract: contractState?.ok
+          ? { device: contractState.version.device, kit: contractState.version.kit, ok: contractState.version.ok }
+          : null,
         next: steps,
         licence: { token_stored: hasSecret("ARASUL_TOKEN"), buy_url: BUY_URL, store_call: STORE_CALL },
         closing: closingLines().filter((line) => line && !line.startsWith("#")),

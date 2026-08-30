@@ -87,7 +87,7 @@ import { ROOT, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, t
 import { localized, t } from "./lib/i18n.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
-import { checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
+import { catchUpLines, checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
 import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
 import {
   NOT_IN_PACKAGE,
@@ -907,6 +907,36 @@ function flowSection() {
   ];
 }
 
+/**
+ * Warum dieser Lauf mit 1 endet, wenn das Manifest in Ordnung war.
+ *
+ * `--check` gab bis 0.19.1 den Rückgabecode 1 aus, ohne dass die Ursache am
+ * Ende stand: die Kontraktzeile stand als dritter Punkt oben, direkt darunter
+ * „Das Schema dieses Geräts nimmt das Manifest an", und wer den Bericht von
+ * unten liest, sieht ein angenommenes Manifest und eine 1. Am 30.08.2026 war
+ * das der Grund, aus dem in einer App gesucht wurde, was im Kit lag.
+ *
+ * Der Abschnitt steht darum ganz am Schluss, mit der Ursache und dem Weg.
+ */
+function versionSection() {
+  if (version.ok) return [];
+  return [
+    "",
+    "",
+    t(`## Return code 1: ${place} is ahead of this kit`, `## Rückgabecode 1: ${place} ist weiter als dieses Kit`),
+    "",
+    version.device === null
+      ? version.text
+      : t(
+          `The device carries contract version ${version.device}, this kit understands up to ${version.kit}. ` +
+            "The manifest has nothing to do with it.",
+          `Das Gerät führt Kontraktfassung ${version.device}, dieses Kit versteht bis ${version.kit}. ` +
+            "Das Manifest hat damit nichts zu tun."
+        ),
+    catchUpLines()[1],
+  ];
+}
+
 /** Ruft einen Endpunkt, aber nur, wenn der Kontrakt ihn nennt. */
 async function endpoint(verb, path, options = {}) {
   try {
@@ -938,6 +968,7 @@ if (arg.contract) {
         )
       )
       .concat(flowSection())
+      .concat(versionSection())
       .join("\n")
   );
   process.exit(version.ok ? 0 : 1);
@@ -1184,7 +1215,11 @@ if (arg.check !== undefined) {
       : null;
     console.log(JSON.stringify({ device: place, folder: dir, version, delivery, arrangement, ...result }, null, 2));
   } else {
-    console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery) + arrangementSection(dir, manifest).join("\n"));
+    console.log(
+      reportManifest(relative(ROOT, dir) || dir, result, delivery) +
+        arrangementSection(dir, manifest).join("\n") +
+        versionSection().join("\n")
+    );
   }
   process.exit(result.ok && !delivery.length && version.ok ? 0 : 1);
 }
@@ -1199,7 +1234,12 @@ if (arg.deploy !== undefined) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
   }
-  if (!version.ok) fail(`${version.text}\n` + t("Nothing deployed.", "Nichts eingespielt."));
+  // „Nichts eingespielt" allein schickt den Menschen in seine App. Der Grund
+  // liegt hier im Kit, und der Weg heraus steht in derselben Meldung.
+  // „Nichts eingespielt" zuerst, der Grund gleich dahinter und der Weg zuletzt:
+  // wer eine Absage liest, liest ihre letzte Zeile. Am 30.08.2026 stand dort
+  // nichts, und gesucht wurde danach in der App.
+  if (!version.ok) fail(`${t("Nothing deployed.", "Nichts eingespielt.")} ${version.text}`);
 
   // Bevor gepackt wird, bekommt die App die Vereinbarung dieses Geräts: unter
   // welchen Namen es ihr Adresse und Schlüssel in den Container legt, in

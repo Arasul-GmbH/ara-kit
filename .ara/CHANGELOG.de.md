@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.20.0 (2026-08-30)
+
+Kontrakt: bis 5
+
+- Ein Klon, der hinter seinem Gerät liegt, erfährt es beim ersten Kontakt und nicht erst beim Einspielen. `/device` liest nach der Prüfung den Kontrakt des Geräts, sagt, ob dieses Kit die Fassung versteht, die es führt, und nennt den einen Weg heraus: `node .ara/tools/update.mjs`. Am 30.08.2026 stand die Werkstatt auf Kontraktfassung 3 und der Orin führte 5; `--check` nahm das Manifest an und gab trotzdem 1 zurück, `--deploy` brach mit „Nichts eingespielt" ab, und gesucht wurde in der App. Das war schon der Grund, an dem ein Fremder am 29.08. scheiterte.
+- Die Zahl, die das Gerät führt, geht als `contract` in seine Akte, am Gerät gelesen und nicht behauptet. `/init` findet sie dort ohne Gerät wieder: `node .ara/tools/init.mjs --show` nennt jedes Gerät, das weiter ist als dieses Kit, mit dem Gerät und mit dem Weg, bevor irgendetwas anderes angefangen wird. Was nicht zu lesen war, bleibt ungemessen und wird als solches genannt, denn eine Plattform, die gerade hochkommt, sagt nichts über ihre Fassung.
+- `--check` endet nicht mehr mit Rückgabecode 1 ohne Satz. Der Grund steht am Schluss des Berichts, dort, wo jemand aufhört zu lesen, mit beiden Zahlen und mit dem Weg. Seine erste Zeile sagt, dass das Manifest damit nichts zu tun hat: der Bericht darüber kann im selben Atemzug sagen, dass das Schema des Geräts das Manifest annimmt, und aus diesen beiden sieht eine App wie die Schuldige aus.
+- `--deploy` sagt zuerst „Nichts eingespielt" und den Grund gleich dahinter, in einer Zeile. Bis 0.19.1 stand der Grund vor der Absage, und die letzte Zeile, die ein Mensch liest, ist die, nach der er handelt.
+- Der Weg ist ein Aufruf und nicht mehr nur ein Befehl im Gespräch. Jede Stelle nennt `node .ara/tools/update.mjs` und sagt, dass `/init` denselben Weg geht: `/init` führt daran vorbei, aber wer gerade abgebrochen ist, liest eine Zeile und kein Verfahren.
+
 ## 0.19.1 (2026-08-30)
 
 Kontrakt: bis 5

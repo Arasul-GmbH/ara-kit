@@ -22,6 +22,7 @@ tls:                      # selfsigned, wenn das Gerät ein selbst ausgestelltes
 docker:                   # running | present | missing
 ollama:                   # present | container | missing, Programm oder Container
 arasul:                   # running | traces | none, was am Gerät gefunden wurde, kein Produktstand
+contract:                 # Kontraktfassung, die dieses Gerät führt, von device.mjs am Gerät gelesen. Keine Aussage über das Kit
 net_name:                 # Name, unter dem das Gerät im Kundennetz auftritt, vom Installer gesetzt
 api_key_ref:              # Kit-Schlüssel (app:deploy) für den Deploy: Name des Eintrags, kein Wert
 start_password_ref:       # Startpasswort aus der Installation: Name des Eintrags, kein Wert

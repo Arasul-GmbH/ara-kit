@@ -22,8 +22,18 @@ For a customer device `--customer <customer>` comes along. The tool:
    as a container, traces of Arasul,
 4. recognises the device from that, without prior knowledge, and says how well backed that is,
 5. delivers the verdict and writes finding, profile and verdict into the file, under "Prüfungen",
-6. remembers the device in `.ara/state.json`,
-7. names the next step.
+6. reads the device's contract, if there is an interface to expect one at, and says whether this
+   kit understands it,
+7. remembers the device in `.ara/state.json`,
+8. names the next step.
+
+**Step 6 is the one that spares a search in the wrong place.** The contract carries the number the
+device stands on, and the kit knows the highest it understands. If the device is ahead, `/device`
+says so at the first contact and names the one way out, `node .ara/tools/update.mjs`. Up to 0.19.1
+that only came out at a deploy, as "Nothing deployed", and on 30.08.2026 a partner looked for it in
+their app for three hours. The number goes into the file as `contract`, so that `/init` finds it
+again without the device. What could not be read stays unmeasured and gets named as such: a
+platform that is just coming up says nothing about its version.
 
 It only reads. The interventions are `--install` and `--deploy-key`, both further down, both only
 on request and after confirmation.

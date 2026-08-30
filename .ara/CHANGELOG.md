@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.20.0 (2026-08-30)
+
+Contract: up to 5
+
+- A clone that is behind its device finds out at the first contact and not at a deploy. `/device` reads the device's contract after the check, says whether this kit understands the version it carries, and names the one way out: `node .ara/tools/update.mjs`. On 30.08.2026 a workshop stood on contract version 3 and the Orin carried 5; `--check` accepted the manifest and returned 1 anyway, `--deploy` broke off with "Nothing deployed", and the search went into the app. That was already the reason a stranger got stuck on 29.08.
+- The number the device carries goes into its file as `contract`, read on the device and not claimed. `/init` finds it there without a device: `node .ara/tools/init.mjs --show` names every device that is ahead of this kit, with the device and the way, before anything else gets started. What could not be read stays unmeasured and gets named as such, because a platform that is just coming up says nothing about its version.
+- `--check` no longer ends with return code 1 without a sentence. The reason stands at the end of the report, where somebody stops reading, with both numbers and the way. Its first line says that the manifest has nothing to do with it: the report above it can say in the same breath that the device's schema accepts the manifest, and out of those two an app looks like the culprit.
+- `--deploy` says "Nothing deployed" first and the reason right after it, in one line. Up to 0.19.1 the reason stood in front of the refusal, and the last line a person reads is the one they act on.
+- The way is a call and no longer only a command in the chat. Every place names `node .ara/tools/update.mjs` and says that `/init` goes the same way: `/init` leads past it, but somebody whose deploy has just broken off reads one line and not a procedure.
+
 ## 0.19.1 (2026-08-30)
 
 Contract: up to 5
