@@ -8,7 +8,8 @@
         "--browser",
         "chromium",
         "--viewport-size",
-        "1400,900"
+        "1400,900",
+        "--ignore-https-errors"
       ]
     }
   }

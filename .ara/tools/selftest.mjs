@@ -4209,11 +4209,16 @@ check("Die Antwortdatei erklaert ssh_key", () => {
   return "vier Dateien";
 });
 
-check("Das Blatt zum Browser nennt die Warnseite des Geraets", () => {
+check("Das Blatt zum Browser nennt den Weg am Zertifikat vorbei", () => {
   // Fund 3 des Fremdtests am 29.08.2026: der Browser kam an
   // ERR_CERT_AUTHORITY_INVALID nicht vorbei, und kein Blatt sagte, dass das
   // erwartet ist. Das Kit weiss an anderer Stelle genau, dass ein Geraet ein
   // selbst ausgestelltes Zertifikat traegt (`tls: selfsigned`).
+  //
+  // Befund vom 30.08.2026: das Blatt nannte die Warnseite und riet zum
+  // Hindurchklicken, aber es gibt nichts zum Klicken. `browser_navigate`
+  // bricht ab, bevor eine Seite da ist. Der Weg ist der Schalter beim Start,
+  // und der steht in `.mcp.json`.
   for (const [datei, muster] of [
     [".ara/knowledge/browser.md", /ERR_CERT_AUTHORITY_INVALID/],
     [".ara/knowledge/browser.de.md", /ERR_CERT_AUTHORITY_INVALID/],
@@ -4221,7 +4226,9 @@ check("Das Blatt zum Browser nennt die Warnseite des Geraets", () => {
     const text = readFileSync(join(ROOT, datei), "utf8");
     assert(muster.test(text), `${datei} nennt die Warnseite nicht`);
     assert(/tls: selfsigned/.test(text), `${datei} verbindet sie nicht mit dem Eintrag in der Akte`);
-    assert(/sicher|sure/.test(text), `${datei} sagt nicht, wann man sich NICHT hindurchklickt`);
+    assert(/sicher|sure/.test(text), `${datei} sagt nicht, wann man eine Adresse NICHT oeffnet`);
+    assert(/--ignore-https-errors/.test(text), `${datei} nennt den Schalter nicht`);
+    assert(/\.mcp\.json/.test(text), `${datei} sagt nicht, wo der Schalter steht`);
   }
   return "beide Fassungen";
 });
@@ -5420,7 +5427,16 @@ check("Browser-Werkzeug ist eingerichtet", () => {
   const file = join(ROOT, ".mcp.json");
   assert(existsSync(file), ".mcp.json fehlt, der Browser steht dann nicht zur Verfügung");
   const config = JSON.parse(readFileSync(file, "utf8"));
-  assert(config.mcpServers?.playwright, "kein Browser in .mcp.json eingetragen");
+  const browser = config.mcpServers?.playwright;
+  assert(browser, "kein Browser in .mcp.json eingetragen");
+
+  // Ein Geraet stellt sein Zertifikat aus der eigenen Geraete-CA aus. Ohne
+  // diesen Schalter bricht `browser_navigate` mit ERR_CERT_AUTHORITY_INVALID
+  // ab, bevor eine Seite da ist, und niemand sieht seine App im Rahmen.
+  assert(
+    (browser.args || []).includes("--ignore-https-errors"),
+    "der Browser startet ohne --ignore-https-errors, ein Geraet mit tls: selfsigned bleibt ihm zu"
+  );
 
   const settings = JSON.parse(readFileSync(join(ROOT, ".claude", "settings.json"), "utf8"));
   assert(

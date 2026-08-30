@@ -16,12 +16,25 @@ whatever **changes** something on a customer device is a change, no matter wheth
 trigger it from the command line or from a button. A restart through the dashboard stays a
 restart. Ask first, click second.
 
-**A device with `tls: selfsigned` brings a warning page.** The certificate comes out of the
-device's own CA, so the browser does not know its issuer and refuses the first call with
-`ERR_CERT_AUTHORITY_INVALID`. That is expected and no fault: click through it (in Chromium
-"Advanced", then the link below it), then the interface is there. The kit's own calls take the
-same route deliberately, over `tls: selfsigned` in the file. **Only click through it on a device
-you are sure of.** On a foreign address a warning like that is a warning.
+**A device with `tls: selfsigned` needs no detour.** The certificate comes out of the
+device's own CA, so the browser does not know its issuer and would refuse the first call with
+`ERR_CERT_AUTHORITY_INVALID`, before a page is even there. There is nothing to click through
+then: `browser_navigate` breaks off, and no warning page appears in which you could choose
+"Advanced". The kit therefore starts its browser with `--ignore-https-errors`, the entry stands
+in `.mcp.json`, and the interface of such a device is there at the first call. The kit's own
+calls take the same route deliberately, over `tls: selfsigned` in the file.
+
+**If a call breaks off with `ERR_CERT_AUTHORITY_INVALID` nevertheless, that switch is missing.**
+Look into `.mcp.json`, put `--ignore-https-errors` into the browser's arguments and start the
+session anew, the entry only takes effect at the start. Do not build a context of your own over
+`browser_run_code_unsafe` for it: that carries you one page far and leaves the next call standing
+in the same place. The other way round proves nothing: a device that opens without the switch may
+owe that to a decision the browser has kept in its profile, and that profile lies on this computer
+only.
+
+**The switch holds for every address, not only for the device.** So open only addresses you are
+sure of. On a foreign address a certificate that does not check out stays a warning, and the
+browser no longer shows it to you.
 
 ## What you use it for
 

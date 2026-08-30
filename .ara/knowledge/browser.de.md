@@ -18,13 +18,26 @@ Was auf einem Kundengerät etwas **verändert**, ist eine Änderung, egal ob du 
 Kommandozeile oder über eine Schaltfläche auslöst. Ein Neustart über das Dashboard bleibt
 ein Neustart. Erst fragen, dann klicken.
 
-**Ein Gerät mit `tls: selfsigned` bringt eine Warnseite.** Das Zertifikat kommt aus der
-Geräte-CA, der Browser kennt ihren Aussteller nicht und lehnt den ersten Aufruf mit
-`ERR_CERT_AUTHORITY_INVALID` ab. Das ist erwartet und kein Fehler: klick dich hindurch (in
-Chromium "Erweitert", dann der Link darunter), danach steht die Oberfläche. Die eigenen Aufrufe
-des Kits gehen denselben Weg mit Absicht, über `tls: selfsigned` in der Akte. **Klick dich nur
-auf einem Gerät hindurch, bei dem du sicher bist.** Auf einer fremden Adresse ist so eine
-Warnung eine Warnung.
+**Ein Gerät mit `tls: selfsigned` braucht keinen Umweg.** Das Zertifikat kommt aus der
+Geräte-CA, der Browser kennt ihren Aussteller nicht und lehnte den ersten Aufruf mit
+`ERR_CERT_AUTHORITY_INVALID` ab, bevor überhaupt eine Seite da ist. Hindurchklicken lässt sich
+dann nichts: `browser_navigate` bricht ab, und es erscheint keine Warnseite, in der du
+"Erweitert" wählen könntest. Das Kit startet seinen Browser deshalb mit `--ignore-https-errors`,
+der Eintrag steht in `.mcp.json`, und die Oberfläche eines solchen Geräts steht beim ersten
+Aufruf. Die eigenen Aufrufe des Kits gehen denselben Weg mit Absicht, über `tls: selfsigned` in
+der Akte.
+
+**Bricht ein Aufruf trotzdem mit `ERR_CERT_AUTHORITY_INVALID` ab, fehlt dieser Schalter.** Sieh
+in `.mcp.json` nach, trag `--ignore-https-errors` in die Argumente des Browsers ein und starte
+die Sitzung neu, der Eintrag greift erst beim Start. Bau dir dafür keinen eigenen Kontext über
+`browser_run_code_unsafe`: der trägt dich eine Seite weit und lässt den nächsten Aufruf an
+derselben Stelle stehen. Umgekehrt beweist nichts: ein Gerät, das ohne den Schalter aufgeht, kann
+das einer Entscheidung verdanken, die der Browser in seinem Profil behalten hat, und das Profil
+liegt nur auf diesem Rechner.
+
+**Der Schalter gilt für jede Adresse, nicht nur für das Gerät.** Öffne deshalb nur Adressen, bei
+denen du sicher bist. Auf einer fremden Adresse bleibt ein Zertifikat, das nicht aufgeht, eine
+Warnung, und der Browser zeigt sie dir nicht mehr.
 
 ## Wofür du ihn benutzt
 
