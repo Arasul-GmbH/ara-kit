@@ -331,6 +331,14 @@ Stand des Kits. Acht Schritte, in dieser Reihenfolge:
    den es ginge, und aus der Änderungsliste `.ara/CHANGELOG.md` jeden Punkt, der seit dem
    eigenen dazugekommen ist. Nichts Neues: eine Zeile, fertig. Das läuft auch in einem
    Fork ohne Upstream-Remote, die Quelle ist ein Archiv.
+
+   **Die Verträglichkeit in dieser Zeile gehört dem geholten Stand, nicht dem laufenden.**
+   Sie kommt aus der Kontraktzeile der geholten Änderungsliste, und sie ist die Zahl, an
+   der ein Partner entscheidet: am 30.08.2026 las ein Klon auf 0.15.0 unter „Neu seit
+   0.15.0" die Zahl bis 3, während der Stand, den er bekommen hätte, bis 5 verstand, und
+   damit sah Nachziehen nach nichts aus. Wer die Zahl des eigenen Kits will, liest
+   Schritt 1. Nennt der geholte Stand keine Kontraktzeile, sagt das Werkzeug das, statt die
+   Lücke zu füllen.
 3. **Einspielen**, mit Bestätigung. `node .ara/tools/update.mjs` ersetzt `.ara/` und das
    Minimum von `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`).
    `business/`, `customers/`, `devices/`, `apps/`, der Spiegel, der Merker

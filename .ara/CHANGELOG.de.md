@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.20.2 (2026-08-30)
+
+Kontrakt: bis 5
+
+- `node .ara/tools/update.mjs --check` nennt die Verträglichkeit des geholten Standes, nicht die des laufenden. Die Zahl kommt aus der Kontraktzeile der geholten Änderungsliste, aus dem Eintrag zu ihrer Nummer. Bisher fragte `standBlock()` den Code des Prozesses, der gerade läuft, und das ist das alte Kit: am 30.08.2026 las ein Klon auf 0.15.0 unter „Neu seit 0.15.0" die Zahl bis 3, während der Stand, den er bekommen hätte, bis 5 verstand. Das ist genau verkehrt herum für die eine Entscheidung, für die die Zeile da ist. Wer liest, dass sich die Zahl nicht bewegt, zieht nicht nach, weil er glaubt, es bringe nichts.
+- Nennt ein geholter Stand keine Kontraktzeile, sagt das Werkzeug das, statt die Lücke mit der eigenen Zahl zu füllen. Eine Lücke ist zu nennen und nicht zu raten.
+- `--json` trägt dieselbe Aussage maschinenlesbar: `contract.hier` aus dem Code dieses Laufs, `contract.dort` aus der Änderungsliste des geholten Ordners.
+- Die Verträglichkeit eines fremden Standes kommt aus seiner Änderungsliste und nicht aus seinem Code. Der Code liegt in einem Ordner, der nicht eingespielt ist, und ihn ausgerechnet beim Nachsehen laufen zu lassen wäre das Gegenteil von nachsehen. Sein eigener Selbsttest hat die Zeile gegen seinen Code gehalten, bevor er ausgeliefert wurde.
+- Der Selbsttest hält die beiden auseinander. Der Stand im Testarchiv trägt eine Kontraktzeile über der Grenze des laufenden Kits, und `--check` muss diese vorlesen; bisher waren beide Zahlen im Test gleich, und die Verwechslung war daran nicht zu sehen.
+
 ## 0.20.1 (2026-08-30)
 
 Kontrakt: bis 5

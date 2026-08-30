@@ -58,8 +58,9 @@ import { basename, dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { language, t, variantOf } from "./lib/i18n.mjs";
 import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
+import { KIT_CONTRACT_VERSION } from "./lib/contract.mjs";
 import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
-import { standBlock } from "./lib/version.mjs";
+import { contractOf, standBlock } from "./lib/version.mjs";
 
 const SOURCE =
   process.env.ARA_KIT_SOURCE ||
@@ -204,13 +205,26 @@ function stand(root) {
  * Eine Liste geänderter Dateien beantwortet die Frage nicht, die ein Partner
  * vor dem Einspielen hat: was kann es jetzt, und passt es noch zu meinem Gerät.
  * Beides steht in der Änderungsliste des geholten Standes.
+ *
+ * **Die Verträglichkeit gehört dem geholten Stand, nicht dem laufenden.** Hier
+ * läuft das alte Kit und redet über das neue; nähme es seine eigene Grenze aus
+ * `KIT_CONTRACT_VERSION`, stünde unter „Neu seit 0.15.0" die Zahl, die gerade
+ * das Problem ist. Am 30.08.2026 las sich das an einem Klon auf 0.15.0 als
+ * „bis 3", während der geholte Stand bis 5 verstand, und genau die Zahl ist der
+ * Grund nachzuziehen. Sie kommt darum aus der Änderungsliste des geholten
+ * Ordners, `contractOf` liest sie im Eintrag zu dessen Nummer.
  */
 function news(fresh, here) {
   if (!fresh.version) return [];
   if (fresh.version === here.version) {
     return [t(`Version: ${here.version}, unchanged.`, `Stand: ${here.version}, unverändert.`)];
   }
-  return standBlock({ version: fresh.version, changelog: fresh.changelog, since: here.version || null });
+  return standBlock({
+    version: fresh.version,
+    changelog: fresh.changelog,
+    since: here.version || null,
+    contract: contractOf(fresh.changelog, fresh.version),
+  });
 }
 
 function describe(diff) {
@@ -249,7 +263,16 @@ try {
   if (arg.json) {
     console.log(
       JSON.stringify(
-        { source: SOURCE, version: { hier: here.version, dort: fresh.version }, applied: !arg.check && total > 0, ...diff },
+        {
+          source: SOURCE,
+          version: { hier: here.version, dort: fresh.version },
+          // Dieselbe Frage in maschinenlesbar: `hier` kommt aus dem Code dieses
+          // Laufs, `dort` aus der Aenderungsliste des geholten Ordners. null
+          // heisst, der geholte Stand nennt seine Grenze nicht.
+          contract: { hier: KIT_CONTRACT_VERSION, dort: contractOf(fresh.changelog, fresh.version) },
+          applied: !arg.check && total > 0,
+          ...diff,
+        },
         null,
         2
       )
