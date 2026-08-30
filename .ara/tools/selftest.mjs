@@ -2095,7 +2095,11 @@ check("Das Kit kennt die höchste Fassung, die es versteht", () => {
   // älteres ist kein Halt: geprüft wird ohnehin gegen dessen Schema.
   const neuer = checkVersion({ ...KONTRAKT, kontrakt: KIT_CONTRACT_VERSION + 1, sonderfeld: { x: 1 } });
   assert(!neuer.ok && neuer.state === "device-newer", "neueres Gerät gilt als passend");
+  // Der Weg ist ein Aufruf und nicht nur ein Befehl im Gespraech: /init fuehrt
+  // daran vorbei, aber wer gerade abgebrochen ist, liest eine Zeile.
+  assert(/update\.mjs/.test(neuer.text), "neueres Gerät führt nicht zum Aufruf, der das Kit nachzieht");
   assert(/init/.test(neuer.text), "neueres Gerät führt nicht zum Hinweis auf das Kit-Update");
+  assert(neuer.device === KIT_CONTRACT_VERSION + 1 && neuer.kit === KIT_CONTRACT_VERSION, "die beiden Zahlen fehlen als Zahlen");
   assert(new RegExp(`Fassung ${KIT_CONTRACT_VERSION + 1}`).test(neuer.text), "die unbekannte Fassung wird nicht benannt");
   assert(/sonderfeld/.test(neuer.text), "das Kit sagt nicht, welches Feld es nicht liest");
 
@@ -4093,6 +4097,98 @@ await checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft
   } finally {
     rmSync(dir, { recursive: true, force: true });
     rmSync(work, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Ein Geraet, das weiter ist als das Kit, faellt beim ersten Kontakt auf", async () => {
+  // Der Befund vom 30.08.2026: die Werkstatt stand auf Kontrakt 3, der Orin
+  // fuehrte 5. `--check` nahm das Manifest an und gab trotzdem 1 zurueck,
+  // `--deploy` brach mit "Nichts eingespielt" ab, und gesucht wurde danach in
+  // der App. Drei Stellen muessen es sagen und alle drei denselben Weg nennen:
+  // der erste Kontakt mit dem Geraet, /init und jede Pruefung einer App.
+  const name = "selftest-voraus";
+  const dir = join(ROOT, "devices", name);
+  const work = mkdtempSync(join(tmpdir(), "ara-voraus-"));
+  const quelle = join(work, "probeapp");
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const voraus = KIT_CONTRACT_VERSION + 1;
+
+  mkdirSync(quelle, { recursive: true });
+  writeFileSync(join(quelle, "app.json"), JSON.stringify(MANIFEST, null, 2));
+  writeFileSync(join(quelle, "index.html"), "<p>Probe</p>\n");
+  writeFileSync(join(work, ".env"), "ARASUL_KEY_SELFTEST_VORAUS=aras_selbsttest\n");
+
+  // Das gespielte Geraet: derselbe Kontrakt, nur eine Fassung weiter, als
+  // dieses Kit versteht. Ein Produktwert steht darin nicht.
+  const server = createServer((request, response) => {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ data: { ...KONTRAKT, kontrakt: voraus } }));
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(dir, "device.md"));
+  // SSH auf Port 1 wird abgelehnt, geprueft wird darum lokal. Die
+  // Schnittstelle steht in api_base, und der Kit-Schluessel in der Akte sagt,
+  // dass dieses Kit dort schon einmal war.
+  writeFrontmatter(join(dir, "device.md"), {
+    name,
+    address: "localhost",
+    ssh_port: "1",
+    api_base: base,
+    verdict: "supported",
+    api_key_ref: "ARASUL_KEY_SELFTEST_VORAUS",
+  });
+  const env = { ARA_ENV_FILE: join(work, ".env") };
+
+  try {
+    // 1. Der erste Kontakt mit dem Geraet.
+    let run = await toolAsync("device.mjs", ["--name", name], env);
+    const text = `${run.stdout}${run.stderr}`;
+    assert(/versteht den Kontrakt/.test(text), `/device sagt nicht, dass das Kit den Kontrakt nicht versteht: ${text}`);
+    assert(new RegExp(`Fassung ${voraus}`).test(text), `die Fassung des Geraets wird nicht genannt: ${text}`);
+    assert(/update\.mjs/.test(text), `der Weg heraus fehlt beim ersten Kontakt: ${text}`);
+    assert(/nicht die App/.test(text), `es steht nicht da, wo der Fehler nicht liegt: ${text}`);
+    const naechste = text.split("Nächste Schritte")[1] || "";
+    assert(/update\.mjs/.test(naechste), `der naechste Schritt nennt das Nachziehen nicht: ${naechste}`);
+
+    // Und die Zahl steht in der Akte, gelesen am Geraet, nicht behauptet.
+    const { fields } = readFrontmatter(join(dir, "device.md"));
+    assert(fields.contract === String(voraus), `die Kontraktfassung steht nicht in der Akte: ${fields.contract}`);
+    assert(/Kontrakt gelesen/.test(readFileSync(join(dir, "device.md"), "utf8")), "der Kontrakt steht nicht im Protokoll");
+
+    // 2. /init, ohne Geraet vor sich: es liest die Akte.
+    run = await toolAsync("init.mjs", ["--show"], env);
+    assert(new RegExp(`${name} führt Kontraktfassung ${voraus}`).test(run.stdout), `/init nennt das Geraet nicht: ${run.stdout}`);
+    assert(/update\.mjs/.test(run.stdout), `/init nennt den Weg nicht: ${run.stdout}`);
+    const lage = JSON.parse((await toolAsync("init.mjs", ["--show", "--json"], env)).stdout);
+    assert(lage.stand.ahead.some((e) => e.place === name && e.contract === voraus), "die Auswertung findet das Geraet nicht");
+
+    // 3. --check nimmt das Manifest an und endet trotzdem mit 1. Dann muss die
+    // Ursache dastehen, und zwar dort, wo jemand aufhoert zu lesen: am Schluss.
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    assert(run.status === 1, `--check endet nicht mit 1: ${run.status}`);
+    assert(/nimmt das Manifest an/.test(run.stdout), "das Manifest wurde gar nicht angenommen, der Fall ist ein anderer");
+    assert(/Rückgabecode 1/.test(run.stdout), `--check nennt die Ursache des Rueckgabecodes nicht: ${run.stdout}`);
+    assert(/update\.mjs/.test(run.stdout), `--check nennt den Weg nicht: ${run.stdout}`);
+    const schluss = run.stdout.trimEnd().split("\n").slice(-4).join("\n");
+    assert(/update\.mjs/.test(schluss), `der Weg steht nicht am Schluss: ${schluss}`);
+
+    // 4. Und --deploy laesst niemanden mit "Nichts eingespielt" allein.
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    assert(run.status !== 0, "ein Geraet, das weiter ist, bekam ein Paket");
+    assert(/Nichts eingespielt/.test(run.stderr), `die Absage fehlt: ${run.stderr}`);
+    assert(/update\.mjs/.test(run.stderr), `die Absage nennt den Weg nicht: ${run.stderr}`);
+    return `Geraet ${voraus}, Kit ${KIT_CONTRACT_VERSION}`;
+  } finally {
+    server.close();
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
   }
 });
 

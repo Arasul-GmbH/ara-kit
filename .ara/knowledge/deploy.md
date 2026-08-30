@@ -24,8 +24,17 @@ it knows the highest version it understands. Three situations follow from that:
   device's schema anyway, and only what stands in its contract gets called. A device nobody has
   touched for half a year is not an error case, it is the normal case in an installed base.
 - **The device carries a higher number.** The kit stops and says what it is missing: which
-  versions it does not know, and which fields the device names that it does not read. Fetch the
-  current version of the kit with `/init`, then try again.
+  versions it does not know, and which fields the device names that it does not read. The way out
+  is one call, and it is not in the app:
+
+  ```
+  node .ara/tools/update.mjs
+  ```
+
+  `/init` goes the same way. **The mistake is not in the app**, and every place that runs into it
+  says so: `/device` at the first contact with the device, `/init` out of the device file, and
+  `--check` and `--deploy` at the end of their output. On 30.08.2026 a workshop stood on contract
+  version 3, the Orin carried 5, and three hours went into an app that was fine.
 - **The device names none at all.** Then it is older than the contract itself.
 
 Deployment happens only in the first two situations. Sending a package on the off-chance means

@@ -25,8 +25,18 @@ gebaut wäre, sondern die höchste Fassung, die es versteht. Daraus folgen drei 
   steht. Ein Gerät, das seit einem halben Jahr niemand angefasst hat, ist kein Fehlerfall,
   sondern der Normalfall in einem Bestand.
 - **Das Gerät führt eine größere Zahl.** Das Kit hört auf und sagt, was ihm fehlt: welche
-  Fassungen es nicht kennt, und welche Felder das Gerät nennt, die es nicht liest. Hol den
-  aktuellen Stand des Kits mit `/init`, dann noch einmal.
+  Fassungen es nicht kennt, und welche Felder das Gerät nennt, die es nicht liest. Der Weg
+  heraus ist ein Aufruf, und er liegt nicht in der App:
+
+  ```
+  node .ara/tools/update.mjs
+  ```
+
+  `/init` geht denselben Weg. **Der Fehler liegt nicht in der App**, und jede Stelle, die
+  hineinläuft, sagt es: `/device` beim ersten Kontakt mit dem Gerät, `/init` aus der
+  Geräteakte, und `--check` und `--deploy` am Ende ihrer Ausgabe. Am 30.08.2026 stand eine
+  Werkstatt auf Kontraktfassung 3, der Orin führte 5, und drei Stunden gingen in eine App,
+  der nichts fehlte.
 - **Das Gerät nennt gar keine.** Dann ist es älter als der Kontrakt selbst.
 
 Eingespielt wird nur in den ersten beiden Lagen. Ein Paket auf gut Glück zu schicken

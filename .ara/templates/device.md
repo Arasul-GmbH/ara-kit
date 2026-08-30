@@ -22,6 +22,7 @@ tls:                      # selfsigned, when the device carries a self-signed ce
 docker:                   # running | present | missing
 ollama:                   # present | container | missing, program or container
 arasul:                   # running | traces | none, what was found on the device, not a product version
+contract:                 # contract version this device carries, read by device.mjs from the device. Not a statement about the kit
 net_name:                 # name under which the device appears in the customer network, set by the installer
 api_key_ref:              # kit key (app:deploy) for the deploy: name of the entry, not a value
 start_password_ref:       # start password from the installation: name of the entry, not a value

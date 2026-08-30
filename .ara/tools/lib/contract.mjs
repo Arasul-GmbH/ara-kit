@@ -78,6 +78,38 @@ export function unreadFields(contract) {
   return Object.keys(contract || {}).filter((key) => !READ_FIELDS.has(key));
 }
 
+/**
+ * Der eine Weg, mit dem ein Kit hinter einem Gerät nachzieht.
+ *
+ * Er steht als Aufruf da und nicht als Befehl im Gespräch: `/init` führt daran
+ * vorbei, aber ein Partner, dessen Deploy gerade abgebrochen ist, liest eine
+ * Zeile und keine Anleitung. Am 30.08.2026 stand die Werkstatt auf Kontrakt 3,
+ * der Orin führte 5, und der Weg heraus hieß genau das hier.
+ */
+export const UPDATE_CALL = "node .ara/tools/update.mjs";
+
+/**
+ * Was ein Mensch tut, dessen Kit hinter dem Gerät liegt.
+ *
+ * Zwei Sätze, immer dieselben, an jeder Stelle, an der es auffällt: beim ersten
+ * Kontakt mit dem Gerät, bei `/init` und bei jeder Prüfung einer App. Der erste
+ * Satz sagt, wo der Fehler **nicht** liegt. Das ist der wichtigere: der Befund
+ * vom 29.08.2026 war ein Partner, der drei Stunden in seiner App suchte, weil
+ * das Kit nur „Nichts eingespielt" sagte.
+ */
+export function catchUpLines() {
+  return [
+    t(
+      "The kit is behind the device, not the app. Nothing in the app changes that.",
+      "Das Kit liegt hinter dem Gerät, nicht die App. In der App ändert daran nichts etwas."
+    ),
+    t(
+      `Catch up with: ${UPDATE_CALL}. /init goes the same way.`,
+      `Nachziehen mit: ${UPDATE_CALL}. Denselben Weg geht /init.`
+    ),
+  ];
+}
+
 /** Der eine Pfad, den das Kit auswendig kennt. Alles andere steht im Kontrakt. */
 export const CONTRACT_PATH = "/api/v1/external/contract";
 
@@ -431,6 +463,8 @@ export function checkVersion(contract) {
     return {
       ok: false,
       state: "unknown",
+      device: null,
+      kit,
       text: t(
         "This device names no contract version. It is older than the contract itself.",
         "Dieses Gerät nennt keine Kontraktversion. Es ist älter als der Kontrakt selbst."
@@ -441,6 +475,8 @@ export function checkVersion(contract) {
     return {
       ok: true,
       state: "same",
+      device,
+      kit,
       text: t(
         `Contract version ${device}, this kit understands it.`,
         `Kontraktversion ${device}, dieses Kit versteht sie.`
@@ -452,6 +488,8 @@ export function checkVersion(contract) {
     return {
       ok: true,
       state: "device-older",
+      device,
+      kit,
       text:
         t(
           `The device carries contract version ${device}, this kit understands up to ${kit}. It works with ` +
@@ -471,6 +509,8 @@ export function checkVersion(contract) {
   return {
     ok: false,
     state: "device-newer",
+    device,
+    kit,
     text:
       t(
         `The device carries contract version ${device}, this kit understands up to ${kit}. ` +
@@ -486,10 +526,7 @@ export function checkVersion(contract) {
             ` Das Gerät nennt außerdem ${fremd.join(", ")}, damit fängt dieses Kit nichts an.`
           )
         : "") +
-      t(
-        " Fetch the current version of the kit with /init before you deploy anything.",
-        " Hol den aktuellen Stand des Kits mit /init, bevor du etwas einspielst."
-      ),
+      ` ${catchUpLines().join(" ")}`,
   };
 }
 

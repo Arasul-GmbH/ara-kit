@@ -22,8 +22,19 @@ Bei einem Kundengerät kommt `--customer <kunde>` dazu. Das Werkzeug:
    Ollama als Programm oder als Container, Hinweise auf Arasul,
 4. erkennt daraus das Gerät, ohne Vorwissen, und sagt, wie gut das belegt ist,
 5. fällt das Urteil und schreibt Befund, Profil und Urteil in die Akte, unter „Prüfungen",
-6. merkt sich das Gerät in `.ara/state.json`,
-7. nennt den nächsten Schritt.
+6. liest den Kontrakt des Geräts, wenn dort eine Schnittstelle zu erwarten ist, und sagt,
+   ob dieses Kit ihn versteht,
+7. merkt sich das Gerät in `.ara/state.json`,
+8. nennt den nächsten Schritt.
+
+**Schritt 6 ist der, der eine Suche an der falschen Stelle erspart.** Der Kontrakt trägt
+die Zahl, auf der das Gerät steht, und das Kit kennt die höchste, die es versteht. Ist das
+Gerät weiter, sagt `/device` es beim ersten Kontakt und nennt den einen Weg heraus,
+`node .ara/tools/update.mjs`. Bis 0.19.1 kam das erst beim Einspielen heraus, als „Nichts
+eingespielt", und am 30.08.2026 suchte ein Partner es drei Stunden in seiner App. Die Zahl
+geht als `contract` in die Akte, damit `/init` sie ohne das Gerät wiederfindet. Was nicht
+zu lesen war, bleibt ungemessen und wird als solches genannt: eine Plattform, die gerade
+hochkommt, sagt nichts über ihre Fassung.
 
 Es liest nur. Eingriffe sind `--install` und `--deploy-key`, beide weiter unten, beide
 nur auf Wunsch und nach Bestätigung.

@@ -304,6 +304,12 @@ steps, in this order:
    kit works together with a device. Pass them on in two sentences before anything gets fetched. The
    compatibility is a statement about the kit, not about a device: which version a device carries its
    contract says.
+
+   **If a device file names a higher number, the tool says so right there**, with the device and the
+   way: `node .ara/tools/update.mjs`. The number comes from the device, `/device` read it at the
+   contact and wrote it into the file as `contract`. In that case step 3 is not optional: as long as
+   the kit is behind, every deploy onto that device breaks off, and the message reads like a fault in
+   the app. Say it in one sentence and go on to step 2.
 2. **Look.** `node .ara/tools/update.mjs --check` fetches the version from the Arasul repo and shows
    per file what would be new, changed or removed. It names the version it would go to, and out of the
    change list `.ara/CHANGELOG.md` every point that has been added since their own. Nothing new: one
