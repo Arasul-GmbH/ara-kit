@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.20.1 (2026-08-30)
+
+Contract: up to 5
+
+- The kit's browser gets past the self-issued certificate of a device. `.mcp.json` starts it with `--ignore-https-errors`, so `browser_navigate` reaches the interface of a device with `tls: selfsigned` at the first call. Up to now it broke off with `ERR_CERT_AUTHORITY_INVALID`, before a page was even there, and a partner never saw their app in the frame.
+- The sheet on the browser no longer sends anybody to a warning page that does not appear. Since 0.19.0 it said to click through it, in Chromium "Advanced" and then the link below; through the kit's browser there is nothing to click, the call breaks off in front of the page. In its place stands the switch, where it is entered, and the sentence that a context of your own over `browser_run_code_unsafe` carries you one page far and no further.
+- Both sheets say why a device that opens without the switch proves nothing: the browser keeps a decision per profile, and that profile lies on one computer. Measured on 30.08.2026 against the Orin, twice with the same server and the same arguments, once with a profile of its own: without the switch `ERR_CERT_AUTHORITY_INVALID`, with it the login page.
+- The self-test holds both together. `.mcp.json` has to carry the switch, and both sheets have to name it together with the file it stands in.
+
 ## 0.20.0 (2026-08-30)
 
 Contract: up to 5

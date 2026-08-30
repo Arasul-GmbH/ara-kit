@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.20.1 (2026-08-30)
+
+Kontrakt: bis 5
+
+- Der Browser des Kits kommt am selbst ausgestellten Zertifikat eines Geräts vorbei. `.mcp.json` startet ihn mit `--ignore-https-errors`, damit erreicht `browser_navigate` die Oberfläche eines Geräts mit `tls: selfsigned` beim ersten Aufruf. Bisher brach er mit `ERR_CERT_AUTHORITY_INVALID` ab, bevor überhaupt eine Seite da war, und ein Partner sah seine App nie im Rahmen.
+- Das Blatt zum Browser schickt niemanden mehr auf eine Warnseite, die nicht kommt. Seit 0.19.0 stand dort, man solle sich hindurchklicken, in Chromium "Erweitert" und dann der Link darunter; über den Browser des Kits gibt es nichts zu klicken, der Aufruf bricht vor der Seite ab. An seiner Stelle steht der Schalter, wo er eingetragen ist, und der Satz, dass ein eigener Kontext über `browser_run_code_unsafe` eine Seite weit trägt und nicht weiter.
+- Beide Blätter sagen, warum ein Gerät, das ohne den Schalter aufgeht, nichts beweist: der Browser behält eine Entscheidung je Profil, und das Profil liegt auf einem Rechner. Gemessen am 30.08.2026 gegen den Orin, zweimal mit demselben Server und denselben Argumenten, jeweils mit einem eigenen Profil: ohne den Schalter `ERR_CERT_AUTHORITY_INVALID`, mit ihm die Anmeldeseite.
+- Der Selbsttest hält beides zusammen. `.mcp.json` muss den Schalter tragen, und beide Blätter müssen ihn zusammen mit der Datei nennen, in der er steht.
+
 ## 0.20.0 (2026-08-30)
 
 Kontrakt: bis 5
