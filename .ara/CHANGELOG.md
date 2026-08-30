@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.19.1 (2026-08-30)
+
+Contract: up to 5
+
+- The mirror of the design system stands at version 3.1.1. In three files the library wrote a width out of a variable in Tailwind 3's short form (`sidebar`, `calendar`, `Suchauswahl`); Tailwind 4 no longer wraps those in a `var()`, it writes `width: --name`, and the browser drops the rule. In the Orin's frame you saw it as a sidebar lying over the content, because the placeholder that keeps its column open was zero wide. The library changed the spelling in 3.1.1, the kit follows.
+- The emergency lines in the scaffold's `stil.css` are gone. They had stood there since 29.08.2026 with a date and the sentence that they disappear again as soon as the library changes the spelling, and they set the sidebar's four widths a second time by hand. That case has now happened. An app out of the scaffold therefore carries no rule any more that catches a cause which no longer exists.
+- Measured on the Orin, in the frame at 1440 pixels, in light and in dark: the app's frame 1042 pixels wide, the sidebar's placeholder 256 pixels, the content starts at 256. Without the emergency lines.
+
 ## 0.19.0 (2026-08-29)
 
 Contract: up to 5

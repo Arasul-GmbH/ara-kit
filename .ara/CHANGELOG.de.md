@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.19.1 (2026-08-30)
+
+Kontrakt: bis 5
+
+- Der Spiegel des Designsystems steht auf Fassung 3.1.1. Die Bibliothek schrieb in drei Dateien eine Breite aus einer Variablen in der Kurzform von Tailwind 3 (`sidebar`, `calendar`, `Suchauswahl`); Tailwind 4 packt die nicht mehr in ein `var()`, sondern schreibt `width: --name`, und der Browser laesst die Regel fallen. Im Rahmen des Orin sah man es als Seitenleiste ueber dem Inhalt, weil der Platzhalter, der ihre Spalte freihaelt, null breit war. Die Bibliothek hat es in 3.1.1 umgestellt, das Kit zieht nach.
+- Die Notzeilen in der `stil.css` der Vorlage sind gestrichen. Sie standen dort seit dem 29.08.2026 mit Datum und dem Satz, dass sie wieder verschwinden, sobald die Bibliothek die Schreibweise umstellt, und setzten die vier Breiten der Seitenleiste noch einmal von Hand. Genau dieser Fall ist eingetreten. Eine App aus der Vorlage traegt damit keine Regel mehr, die eine Ursache abfaengt, die es nicht mehr gibt.
+- Gemessen am Orin, im Rahmen bei 1440 Pixeln, in Hell und in Dunkel: der Rahmen der App 1042 Pixel breit, der Platzhalter der Seitenleiste 256 Pixel, der Inhalt beginnt bei 256. Ohne die Notzeilen.
+
 ## 0.19.0 (2026-08-29)
 
 Kontrakt: bis 5
