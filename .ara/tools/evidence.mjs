@@ -64,6 +64,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   ROOT,
+  customerPath,
   ensureDir,
   fail,
   helpOnly,
@@ -903,7 +904,7 @@ function commandSet(place, lines, ledger) {
 
 function commandRender(place, lines, ledger) {
   const { fields } = readFrontmatter(join(place.path, "device.md"));
-  const kunde = readFrontmatter(join(ROOT, "customers", place.customer, "customer.md"));
+  const kunde = readFrontmatter(join(customerPath(place.customer), "customer.md"));
   const version = mirrorVersion();
   const platforms = mirrorPlatforms();
   const offen = [];

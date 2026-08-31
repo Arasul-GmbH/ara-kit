@@ -4,7 +4,8 @@
  *
  * Fetches the version from the Arasul repo and replaces only what belongs to
  * Arasul: `.ara/` and the minimum of `.claude/` (CLAUDE.md, settings.json,
- * commands/init.md, skills/). Everything else stays: business/, customers/,
+ * commands/init.md, skills/). In the company branch what belongs to partners
+ * only stays out, see PARTNER_ONLY in lib/commands.mjs. Everything else stays: business/, customers/,
  * devices/, apps/, the generated commands under .claude/commands/, the mirror, the
  * marker, the .env.
  *
@@ -26,7 +27,8 @@
  *
  * Holt den Stand aus dem Arasul-Repo und ersetzt nur, was Arasul gehoert: `.ara/`
  * und das Minimum von `.claude/` (CLAUDE.md, settings.json, commands/init.md,
- * skills/). Alles andere bleibt liegen: business/, customers/, devices/, apps/,
+ * skills/). Im Zweig Unternehmen bleibt draussen, was nur Partnern gehoert,
+ * siehe PARTNER_ONLY in lib/commands.mjs. Alles andere bleibt liegen: business/, customers/, devices/, apps/,
  * die erzeugten Befehle unter .claude/commands/, der Spiegel, der Merker, die .env.
  *
  *   node .ara/tools/update.mjs           Stand holen, Aenderung zeigen, einspielen
@@ -57,7 +59,8 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { language, t, variantOf } from "./lib/i18n.mjs";
-import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
+import { BUSINESS, ROOT, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
+import { partnerOnly } from "./lib/commands.mjs";
 import { KIT_CONTRACT_VERSION } from "./lib/contract.mjs";
 import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
 import { contractOf, standBlock } from "./lib/version.mjs";
@@ -82,7 +85,13 @@ const SKIP = [join(".ara", "mirror"), join(".ara", "state.json")];
 helpOnly(import.meta.url);
 const arg = parseArgs();
 
+// Ein Unternehmen bekommt die Partnerware nicht wieder eingespielt, die
+// `commands.mjs --apply` bei /init weggeraeumt hat. Die Liste steht in
+// lib/commands.mjs, damit beide Werkzeuge dieselbe lesen.
+const company = readFrontmatter(join(BUSINESS, "profile.md")).fields.role === "company";
+
 function skipped(rel) {
+  if (company && partnerOnly(rel)) return true;
   return SKIP.some((s) => rel === s || rel.startsWith(s + "/"));
 }
 

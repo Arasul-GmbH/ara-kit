@@ -107,6 +107,14 @@ die Sprache sonst dort. Partner bekommen `all/` und `partner/` aus `.ara/command
 Unternehmen nur `all/`. Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart
 der Sitzung.
 
+Für ein Unternehmen räumt derselbe Aufruf weg, was nur Partnern gehört und trotzdem mit
+dem Klon kam: die Skills `customers`, `sales` und `pricing`, die Vorlagen für Angebot,
+Rechnung und Endkundenbedingungen unter `.ara/vorlagen/`, das Wissen zu crm, sales,
+pricing und invoicing, und einen leeren Ordner `customers/`. Die Liste ist `PARTNER_ONLY`
+in `.ara/tools/lib/commands.mjs`, und `update.mjs` liest dieselbe, ein Update bringt sie
+also nicht zurück. Wird aus dem Unternehmen einmal ein Partner: `role` im Profil ändern,
+dann holt `node .ara/tools/update.mjs` sie wieder.
+
 Ab jetzt sprichst du die gewählte Sprache. Ins Frontmatter kommt `language`, und aus dem
 Feld lesen alle Werkzeuge, in welcher Sprache sie ausgeben.
 
@@ -340,7 +348,8 @@ Stand des Kits. Acht Schritte, in dieser Reihenfolge:
    Schritt 1. Nennt der geholte Stand keine Kontraktzeile, sagt das Werkzeug das, statt die
    Lücke zu füllen.
 3. **Einspielen**, mit Bestätigung. `node .ara/tools/update.mjs` ersetzt `.ara/` und das
-   Minimum von `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`).
+   Minimum von `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`), im
+   Zweig Unternehmen ohne das, was nur Partnern gehört.
    `business/`, `customers/`, `devices/`, `apps/`, der Spiegel, der Merker
    `.ara/state.json` und die erzeugten Befehle bleiben, wie sie sind. Wer das Kit mit git
    führt, sieht die Änderung danach in `git status` und committet sie.

@@ -155,6 +155,7 @@ import {
 import { platformOf, readProfiles, supportedDevices, verificationLine, verificationOf } from "./lib/platform.mjs";
 import {
   ROOT,
+  customerPath,
   devicePath,
   ensureDir,
   fail,
@@ -436,7 +437,7 @@ if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
     )
   );
 }
-if (customer && !existsSync(join(ROOT, "customers", customer))) {
+if (customer && !existsSync(customerPath(customer))) {
   fail(
     t(
       `There is no customer "${customer}". First /customer ${customer}.`,
