@@ -102,6 +102,13 @@ node .ara/tools/commands.mjs --apply --role <partner|company> --language <de|en>
 language there. Partners get `all/` and `partner/` from `.ara/commands/`, companies only `all/`. If
 Claude Code does not know a command yet, restarting the session helps.
 
+For a company the same call clears away what belongs to partners only and came with the clone
+anyway: the skills `customers`, `sales` and `pricing`, the templates for offer, invoice and end
+customer terms under `.ara/vorlagen/`, the knowledge on crm, sales, pricing and invoicing, and an
+empty folder `customers/`. The list is `PARTNER_ONLY` in `.ara/tools/lib/commands.mjs`, and
+`update.mjs` reads the same one, so an update does not bring it back. Should the company become a
+partner one day: change `role` in the profile, then `node .ara/tools/update.mjs` fetches it again.
+
 From now on you speak the chosen language. `language` goes into the frontmatter, and out of that
 field every tool reads which language it prints in.
 
@@ -322,7 +329,8 @@ steps, in this order:
    their own kit reads step 1. Does the fetched version not name a contract line, the tool says that
    instead of filling the gap.
 3. **Deploy**, with a confirmation. `node .ara/tools/update.mjs` replaces `.ara/` and the minimum of
-   `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`). `business/`, `customers/`,
+   `.claude/` (`CLAUDE.md`, `settings.json`, `skills/`, `commands/init.md`), in the company branch
+   without what belongs to partners only. `business/`, `customers/`,
    `devices/`, `apps/`, the mirror, the marker `.ara/state.json` and the generated commands stay as
    they are. Whoever keeps the kit in git sees the change in `git status` afterwards and commits it.
 4. **Pull the commands along.** `node .ara/tools/commands.mjs` shows, for the branch from the profile,

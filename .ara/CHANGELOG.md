@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.21.0 (2026-08-30)
+
+Contract: up to 5
+
+- A company gets no partner goods at `/init`. `BRANCHES` in `commands.mjs` cut only the commands by branch; the skills `customers`, `sales` and `pricing`, the templates for offer, invoice and end customer terms and the knowledge on crm, sales, pricing and invoicing came with the clone regardless of the branch, and `update.mjs` deployed them to everybody again. A company that saw that after `/init` took the kit for a dealer's tool. Now `commands.mjs --apply --role company` clears them away, together with an empty folder `customers/`, and says what went and how it comes back: `role` in the profile, then `update.mjs`.
+- The list is one, `PARTNER_ONLY` in `lib/commands.mjs`. `update.mjs` reads it and leaves the partner goods out for a company, on both sides of the comparison: neither "new" nor deployed. The partner branch is unchanged.
+- The self-test keeps its customers in a throwaway folder under `os.tmpdir()`, not under `customers/` in the kit. Until now it created `customers/_selftest` at the root and cleared only the subfolder, and every run left an empty `customers/` behind, also in a company's clone. Every tool reads `ARA_CUSTOMERS` for that, see `lib/kit.mjs`. Without the variable `customers/` in the kit applies, as before.
+- The self-test checks the cut in a throwaway copy for both branches, holds the update against a company that ran `/init`, and skips the checks that need partner goods in a clone that has none, named as such instead of red.
+
 ## 0.20.2 (2026-08-30)
 
 Contract: up to 5

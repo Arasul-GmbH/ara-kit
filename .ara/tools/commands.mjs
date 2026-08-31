@@ -86,7 +86,7 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { RETIRED } from "./lib/commands.mjs";
+import { BRANCHES, PARTNER_ONLY, RETIRED } from "./lib/commands.mjs";
 import { LANGUAGES, isVariant, language, t, variantOf } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
@@ -95,8 +95,8 @@ const TARGET = join(ROOT, ".claude", "commands");
 const MANIFEST = join(TARGET, ".sources.json");
 const ROLES = ["partner", "company"];
 
-// Zweig zu Quellordner. `all/` gilt immer.
-const BRANCHES = { partner: ["all", "partner"], company: ["all"] };
+// Zweig zu Quellordner: BRANCHES in lib/commands.mjs. Daneben steht dort, was
+// nur der Partner bekommt und ein Unternehmen bei --apply los wird.
 
 // Befehle, die das Profil erst freigeben muss. Ein Partner, der seine Rechnungen
 // weiter in der Buchhaltung schreibt oder es noch nicht entschieden hat, bekommt
@@ -282,8 +282,29 @@ if (arg.apply || replace.length) {
   placed = todo;
 }
 
+/**
+ * Ein Unternehmen bekommt keine Partnerware. Was der Klon davon mitbringt,
+ * geht bei --apply weg: Skills, Vorlagen, Wissen aus PARTNER_ONLY, und der
+ * Ordner customers/, wenn er leer ist. Einen Ordner mit Inhalt fasst das Kit
+ * nie an, der gehoert dem Menschen, auch wenn er im falschen Zweig liegt.
+ */
+let cut = [];
+if (arg.apply && branch === "company") {
+  for (const rel of PARTNER_ONLY) {
+    const path = join(ROOT, rel);
+    if (!existsSync(path)) continue;
+    rmSync(path, { recursive: true, force: true });
+    cut.push(rel);
+  }
+  const customers = join(ROOT, "customers");
+  if (existsSync(customers) && readdirSync(customers).length === 0) {
+    rmSync(customers, { recursive: true });
+    cut.push("customers/");
+  }
+}
+
 if (arg.json) {
-  console.log(JSON.stringify({ ...lage, applied: Boolean(arg.apply), replaced: replace }, null, 2));
+  console.log(JSON.stringify({ ...lage, applied: Boolean(arg.apply), replaced: replace, cut }, null, 2));
   process.exit(0);
 }
 
@@ -347,6 +368,16 @@ if (arg.apply || replace.length) {
           "Replace anyway with: node .ara/tools/commands.mjs --replace <name>",
         `Nicht angefasst, weil von Hand geaendert: ${kept.map((c) => `/${c.name}`).join(", ")}. ` +
           "Trotzdem ersetzen mit: node .ara/tools/commands.mjs --replace <name>"
+      )
+    );
+  }
+  if (cut.length) {
+    console.log(
+      t(
+        `\nCompany branch, removed because it belongs to partners only: ${cut.join(", ")}. ` +
+          "Should this become a partner one day: set role in the profile, then node .ara/tools/update.mjs brings it back.",
+        `\nZweig Unternehmen, weggeraeumt, weil es nur Partnern gehoert: ${cut.join(", ")}. ` +
+          "Wird daraus einmal ein Partner: role im Profil aendern, dann holt node .ara/tools/update.mjs es zurueck."
       )
     );
   }

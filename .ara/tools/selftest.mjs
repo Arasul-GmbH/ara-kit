@@ -70,7 +70,7 @@ import {
   findEndpoint,
   promisedFolders,
 } from "./lib/contract.mjs";
-import { RETIRED } from "./lib/commands.mjs";
+import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
 import {
   EXTERNAL_PREFIX,
   bareApiPaths,
@@ -259,11 +259,31 @@ if (!process.env.ARA_LANGUAGE) {
   process.exit(again.status ?? 1);
 }
 
+/**
+ * Die Kundenakten dieses Laufs liegen in einem Wegwerfordner, nicht im Kit.
+ *
+ * Bis 0.20.2 legte der Selbsttest `customers/_selftest` unter der Wurzel an und
+ * raeumte danach nur den Unterordner: uebrig blieb ein leerer Ordner
+ * customers/ in jedem Klon, auch dem eines Unternehmens, das keine Kunden
+ * fuehrt. Jedes Werkzeug liest `ARA_CUSTOMERS`, siehe lib/kit.mjs, und der
+ * Lauf hier zeigt damit auf einen Ordner unter os.tmpdir(), der am Ende weg ist.
+ */
+const CUSTOMERS_TMP = mkdtempSync(join(tmpdir(), "ara-customers-"));
+process.on("exit", () => rmSync(CUSTOMERS_TMP, { recursive: true, force: true }));
+
+/**
+ * Bringt dieser Klon die Partnerware mit? Ein Unternehmen hat sie nach /init
+ * nicht mehr, und die Pruefungen, die sie brauchen, sagen dann "uebersprungen"
+ * statt "rot": gemessen wird das Kit dieses Zweigs, nicht das des anderen.
+ */
+const PARTNER_MATERIAL = PARTNER_ONLY.every((rel) => existsSync(join(ROOT, rel)));
+const OHNE_PARTNERWARE = "übersprungen, Zweig Unternehmen ohne Partnerware";
+
 function tool(file, args, input, env = {}) {
   return spawnSync("node", [join(ROOT, ".ara", "tools", file), ...args], {
     encoding: "utf8",
     input,
-    env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ...env },
+    env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_CUSTOMERS: CUSTOMERS_TMP, ...env },
   });
 }
 
@@ -275,7 +295,7 @@ function tool(file, args, input, env = {}) {
 function toolAsync(file, args, env = {}) {
   return new Promise((done) => {
     const child = spawn("node", [join(ROOT, ".ara", "tools", file), ...args], {
-      env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ...env },
+      env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_CUSTOMERS: CUSTOMERS_TMP, ...env },
     });
     let stdout = "";
     let stderr = "";
@@ -371,7 +391,7 @@ check("Leere Vorlagenfelder liefern keine Kommentartexte", () => {
 
 check("Laufzettel anlegen, fortschreiben, lesen", () => {
   const customer = "_selftest";
-  const dir = join(ROOT, "customers", customer);
+  const dir = join(CUSTOMERS_TMP, customer);
   rmSync(dir, { recursive: true, force: true });
   try {
     let run = tool("runsheet.mjs", ["--create", "--customer", customer, "--device", "probe"]);
@@ -1244,7 +1264,7 @@ check("Die Orin-Anleitung hat je Abschnitt einen Prüfschritt", () => {
 
 check("Agenda erkennt Termine und Lücken", () => {
   const customer = "_selftest";
-  const dir = join(ROOT, "customers", customer);
+  const dir = join(CUSTOMERS_TMP, customer);
   rmSync(dir, { recursive: true, force: true });
   try {
     const deviceDir = join(dir, "devices", "probe");
@@ -4286,7 +4306,7 @@ check("README und Wissen tragen die Saetze zur Freigabe", () => {
 
 check("customer.mjs legt die Akte an und gibt das Lagebild samt Geräten", () => {
   const name = "selftest-kunde";
-  const dir = join(ROOT, "customers", name);
+  const dir = join(CUSTOMERS_TMP, name);
   try {
     rmSync(dir, { recursive: true, force: true });
 
@@ -5065,6 +5085,8 @@ check("pdf.mjs druckt kein Frontmatter", () => {
 await checkAsync("Eine Rechnung entsteht aus einer Kundenakte, mit Nummer und Anhang", async () => {
   // Der ganze Weg an einem Wegwerf-Kit: Firmenkopf, Kundenakte, Angebot,
   // Rechnung, Pruefliste, Druck. Nichts davon fasst die echten Ordner an.
+  // Der Weg beginnt bei der Rechnungsvorlage, und die gehoert dem Partner.
+  if (!PARTNER_MATERIAL) return OHNE_PARTNERWARE;
   const work = mkdtempSync(join(tmpdir(), "ara-invoice-"));
   const fork = join(work, "kit");
   cpSync(join(ROOT, ".ara"), join(fork, ".ara"), {
@@ -5222,6 +5244,7 @@ check("Kein Absender von Arasul im Papier des Partners", () => {
   const EXCEPTION_FILE = "endkundenbedingungen.md";
   const EXCEPTION_ANCHOR = /Hersteller der Software ist Arasul/;
   let exceptionUsed = false;
+  if (!PARTNER_MATERIAL) return OHNE_PARTNERWARE;
 
   const offenders = [];
   const scan = (dir) => {
@@ -5270,6 +5293,7 @@ check("Kein Absender von Arasul im Papier des Partners", () => {
 check("PDF-Werkzeug haelt Platzhalter zurueck und druckt sonst", () => {
   // Der Zweck des Werkzeugs ist, dass kein Angebot mit "{Betrag} Euro" beim
   // Kunden landet. Also wird genau das geprüft.
+  if (!PARTNER_MATERIAL) return OHNE_PARTNERWARE;
   let run = tool("pdf.mjs", [join(ROOT, ".ara", "vorlagen", "angebot.md"), "--check"]);
   assert(run.status !== 0, "ungefuellte Platzhalter fuehren nicht zum Abbruch");
   assert(/\{Betrag\}/.test(run.stderr), "die gefundenen Platzhalter werden nicht benannt");
@@ -5716,6 +5740,66 @@ check("Die Befehle werden in der Sprache des Profils angelegt", () => {
   }
 });
 
+check("Ein Unternehmen bekommt bei /init keine Partnerware, ein Partner alles", () => {
+  // Befund vom 30.08.2026: BRANCHES schnitt nur die Befehle nach Zweig. Skills,
+  // Vorlagen und Wissen kamen zweigblind mit dem Klon, und ein Unternehmen, das
+  // nach /init die Skills sales, pricing und customers und einen Ordner
+  // customers/ sah, hielt das Kit fuer ein Haendlerwerkzeug. Geprueft wird in
+  // einer Wegwerfkopie: der Schnitt fuer das Unternehmen, und dass der Partner
+  // nichts davon verliert.
+  if (!PARTNER_MATERIAL) return OHNE_PARTNERWARE;
+  // Die Liste muss auf Dateien zeigen, die es gibt: ein Eintrag ins Leere
+  // schneidet nichts und faellt sonst nie auf.
+  for (const rel of PARTNER_ONLY) assert(existsSync(join(ROOT, rel)), `PARTNER_ONLY nennt ${rel}, das gibt es nicht`);
+  assert(partnerOnly(".claude/skills/sales/SKILL.md") && !partnerOnly(".claude/skills/salesx/SKILL.md"), "partnerOnly trifft daneben");
+
+  const fall = (role) => {
+    const dir = mkdtempSync(join(tmpdir(), `ara-zweig-${role}-`));
+    try {
+      cpSync(join(ROOT, ".ara"), join(dir, ".ara"), {
+        recursive: true,
+        filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src),
+      });
+      cpSync(join(ROOT, ".claude"), join(dir, ".claude"), { recursive: true });
+      mkdirSync(join(dir, "customers"), { recursive: true });
+      const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", role, "--language", "de"], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+      assert(run.status === 0, `${role}: --apply fehlgeschlagen: ${run.stderr}`);
+      const da = PARTNER_ONLY.filter((rel) => existsSync(join(dir, rel)));
+      return { run, da, customers: existsSync(join(dir, "customers")) };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  const firma = fall("company");
+  assert(firma.da.length === 0, `Unternehmen behaelt Partnerware: ${firma.da.join(", ")}`);
+  assert(!firma.customers, "Unternehmen behaelt den leeren Ordner customers/");
+  assert(/removed because|weggeraeumt/.test(firma.run.stdout), `der Schnitt wird nicht genannt: ${firma.run.stdout}`);
+  assert(/update\.mjs/.test(firma.run.stdout), "der Weg zurueck zum Partner wird nicht genannt");
+
+  const partner = fall("partner");
+  assert(partner.da.length === PARTNER_ONLY.length, `Partner verliert: ${PARTNER_ONLY.filter((r) => !partner.da.includes(r)).join(", ")}`);
+  assert(partner.customers, "Partner verliert den Ordner customers/");
+  return `${PARTNER_ONLY.length} Eintraege, Unternehmen ohne, Partner mit`;
+});
+
+check("Der Selbsttest laesst kein customers/ im Kit zurueck", () => {
+  // Der Wegwerfordner liegt unter os.tmpdir(), und alles, was diese Datei an
+  // Kunden anlegt, geht dorthin. Ein `join(ROOT, "customers"` in einer
+  // Pruefung waere der Rueckfall.
+  const quelle = readFileSync(join(ROOT, ".ara", "tools", "selftest.mjs"), "utf8");
+  const treffer = quelle
+    .split("\n")
+    .filter((zeile) => /join\(ROOT, "customers"/.test(zeile) && !/inOwnFolder/.test(zeile) && !/^\s*\/\//.test(zeile));
+  assert(treffer.length === 0, `Kunden im Kit statt im Wegwerfordner:\n    ${treffer.join("\n    ")}`);
+  assert(CUSTOMERS_TMP.startsWith(tmpdir()), `der Wegwerfordner liegt nicht unter tmpdir: ${CUSTOMERS_TMP}`);
+  return relative(tmpdir(), CUSTOMERS_TMP);
+});
+
 // --- Verweise ---------------------------------------------------------------
 
 check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
@@ -5741,6 +5825,10 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
       if (target.includes("*") || target.endsWith("/")) continue;
       // Der Spiegel und der Merker entstehen erst zur Laufzeit.
       if (target.startsWith(".ara/mirror/") || target === ".ara/state.json") continue;
+      // Der Schnitt eines Unternehmens nimmt die Partnerware heraus. Die
+      // Verweise darauf stehen weiter in CLAUDE.md und in den Befehlsquellen,
+      // denn die sind in beiden Zweigen dieselben Dateien: hier kein Rost.
+      if (!PARTNER_MATERIAL && partnerOnly(target)) continue;
       if (existsSync(join(ROOT, target))) continue;
       missing.push(`${relative(ROOT, file)} → ${target}`);
     }
@@ -5942,7 +6030,11 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     );
   }
   writeFileSync(join(source, ".ara", "persona", "ara.md"), read(".ara/persona/ara.md") + "\nNeu.\n");
-  rmSync(join(source, ".ara", "knowledge", "sales.md"));
+  // Die Entfernt-Probe: der neue Stand hat eine Datei nicht mehr. Im
+  // Partnerzweig ist das sales.md. Einem Unternehmens-Klon fehlt sie schon,
+  // dort weicht die Probe auf eine Datei beider Zweige aus.
+  const entfernteDatei = PARTNER_MATERIAL ? ".ara/knowledge/sales.md" : ".ara/knowledge/browser.md";
+  rmSync(join(source, ...entfernteDatei.split("/")));
   // Auch hier beide Sprachen: kopiert wird die Fassung, die zur Sprache passt.
   for (const datei of ["device.md", "device.de.md"]) {
     writeFileSync(
@@ -5992,7 +6084,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     run = await forkTool("update.mjs", ["--check"], env);
     assert(run.status === 0, `--check fehlgeschlagen: ${run.stderr}`);
     assert(/neu\s+\.ara\/knowledge\/probe\.md/.test(run.stdout), "neue Datei nicht gemeldet");
-    assert(/entfernt\s+\.ara\/knowledge\/sales\.md/.test(run.stdout), "entfernte Datei nicht gemeldet");
+    assert(new RegExp(`entfernt\\s+${entfernteDatei.replace(/\./g, "\\.")}`).test(run.stdout), "entfernte Datei nicht gemeldet");
     assert(!has(".ara/knowledge/probe.md"), "--check hat eingespielt");
     assert(run.stdout.includes(`Stand: ${neuerStand}`), `der neue Stand wird nicht genannt: ${run.stdout}`);
     assert(run.stdout.includes(`Neu seit ${stand}`), "es wird nicht gesagt, von welchem Stand es kommt");
@@ -6016,7 +6108,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     run = await forkTool("update.mjs", [], env);
     assert(run.status === 0, `Update fehlgeschlagen: ${run.stderr}${run.stdout}`);
     assert(has(".ara/knowledge/probe.md"), "neue Datei fehlt");
-    assert(!has(".ara/knowledge/sales.md"), "entfernte Datei liegt noch da");
+    assert(!has(entfernteDatei), "entfernte Datei liegt noch da");
     assert(/Neu\.\s*$/.test(read(".ara/persona/ara.md")), "geaenderte Datei nicht ersetzt");
     assert(/Neu im Kit/.test(read(".ara/commands/all/device.md")), "Befehlsquelle nicht ersetzt");
     // Die Koeder.
@@ -6109,6 +6201,21 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/Technikstand dieses Rechners\n\nStand \d{4}-\d{2}-\d{2}:/.test(read("business/profile.md")), "Unternehmen: Technikstand fehlt");
     assert(has(".claude/commands/device.md"), "Unternehmen: Befehle nicht angelegt");
     assert(!has(".claude/commands/customer.md"), "Unternehmen: bekommt den Kundenbefehl");
+    // /init hat die Partnerware weggeraeumt, und ein Update bringt sie einem
+    // Unternehmen nicht zurueck: weder als "neu" gemeldet noch eingespielt.
+    assert(!has(".claude/skills/sales/SKILL.md"), "Unternehmen: der Skill sales blieb liegen");
+    assert(!has(".ara/knowledge/pricing.md"), "Unternehmen: das Wissen pricing blieb liegen");
+    let nachziehen = await forkTool("update.mjs", ["--check"], env);
+    assert(nachziehen.status === 0, `Unternehmen: --check fehlgeschlagen: ${nachziehen.stderr}`);
+    assert(
+      !/skills\/sales|knowledge\/pricing|vorlagen\/angebot/.test(nachziehen.stdout),
+      `Unternehmen: Partnerware gilt als neu: ${nachziehen.stdout}`
+    );
+    nachziehen = await forkTool("update.mjs", [], env);
+    assert(nachziehen.status === 0, `Unternehmen: Update fehlgeschlagen: ${nachziehen.stderr}`);
+    assert(!has(".claude/skills/sales/SKILL.md"), "Unternehmen: update.mjs spielt den Skill sales wieder ein");
+    assert(!has(".ara/knowledge/pricing.md"), "Unternehmen: update.mjs spielt das Wissen pricing wieder ein");
+    assert(!has(".ara/vorlagen/angebot.md"), "Unternehmen: update.mjs spielt die Angebotsvorlage wieder ein");
 
     // Fund 7 der Werkstatt am 29.08.2026: invoice und invoice_tool gehoeren nur
     // dem Partner, /init leert sie fuer ein Unternehmen mit Absicht, und der
@@ -6151,10 +6258,20 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(/^role: partner$/m.test(read("business/profile.md")), "Partner: Zweig fehlt im Profil");
     assert(/^hourly_rate: 95$/m.test(read("business/company.md")), "Partner: Stundensatz nicht in company.md");
     assert(has(".claude/commands/customer.md"), "Partner: bekommt den Kundenbefehl nicht");
+    // Der Weg zurueck: aus dem Unternehmen wurde ein Partner, das Update holt
+    // die Partnerware wieder. Messbar ist das nur, wo der neue Stand sie
+    // mitbringt, und der kommt hier aus diesem Klon.
+    if (PARTNER_MATERIAL) {
+      nachziehen = await forkTool("update.mjs", [], env);
+      assert(nachziehen.status === 0, `Partner: Update fehlgeschlagen: ${nachziehen.stderr}`);
+      assert(has(".claude/skills/sales/SKILL.md") && has(".ara/vorlagen/angebot.md"), "Partner: bekommt die Partnerware nicht zurueck");
+    }
     run = await forkTool("init.mjs", ["--json"]);
     const lage2 = JSON.parse(run.stdout);
     assert(lage2.role === "partner" && lage2.consequences.some((c) => c.key === "invoice"), "offene Rechnungsentscheidung wird nicht gemeldet");
-    return "anlegen, ansehen, einspielen, nachziehen, Hash-Erkennung, /init in beiden Zweigen";
+    return PARTNER_MATERIAL
+      ? "anlegen, ansehen, einspielen, nachziehen, Hash-Erkennung, /init in beiden Zweigen"
+      : "anlegen, ansehen, einspielen, nachziehen, Hash-Erkennung, /init in beiden Zweigen, Weg zurueck ohne Partnerware nicht messbar";
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
@@ -6244,7 +6361,10 @@ check("Der Selbsttest ist in einem blanken Klon gruen", () => {
   const dateien = listed.stdout
     .split("\0")
     .filter(Boolean)
-    .filter((datei) => !eigen.includes(datei.split("/")[0]));
+    .filter((datei) => !eigen.includes(datei.split("/")[0]))
+    // Ein Unternehmen hat die Partnerware nach /init nicht mehr, git fuehrt
+    // sie trotzdem noch. Was nicht da ist, kommt auch nicht in den Klon.
+    .filter((datei) => existsSync(join(ROOT, datei)));
   assert(dateien.length > 100, `nur ${dateien.length} Dateien im Klon, das kann nicht das Kit sein`);
 
   const work = mkdtempSync(join(tmpdir(), "ara-klon-"));

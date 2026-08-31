@@ -12,7 +12,9 @@ import { fileURLToPath } from "node:url";
 import { language, t } from "./i18n.mjs";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
-export const CUSTOMERS = join(ROOT, "customers");
+// Der Selbsttest legt seine Kunden in einem Wegwerfordner an und nicht im Kit:
+// ARA_CUSTOMERS zeigt dorthin. Ohne die Variable gilt customers/ im Kit.
+export const CUSTOMERS = process.env.ARA_CUSTOMERS || join(ROOT, "customers");
 export const BUSINESS = join(ROOT, "business");
 
 const pad = (n) => String(n).padStart(2, "0");

@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.21.0 (2026-08-30)
+
+Kontrakt: bis 5
+
+- Ein Unternehmen bekommt bei `/init` keine Partnerware. `BRANCHES` in `commands.mjs` schnitt nur die Befehle nach Zweig; die Skills `customers`, `sales` und `pricing`, die Vorlagen für Angebot, Rechnung und Endkundenbedingungen und das Wissen zu crm, sales, pricing und invoicing kamen zweigblind mit dem Klon, und `update.mjs` spielte sie jedem wieder ein. Ein Unternehmen, das das nach `/init` sah, hielt das Kit für ein Händlerwerkzeug. Jetzt räumt `commands.mjs --apply --role company` sie weg, mit einem leeren Ordner `customers/` dazu, und sagt, was ging und wie es zurückkommt: `role` im Profil, dann `update.mjs`.
+- Die Liste ist eine, `PARTNER_ONLY` in `lib/commands.mjs`. `update.mjs` liest sie und lässt die Partnerware für ein Unternehmen aus, auf beiden Seiten des Vergleichs: weder „neu" noch eingespielt. Der Zweig Partner ist unverändert.
+- Der Selbsttest führt seine Kunden in einem Wegwerfordner unter `os.tmpdir()`, nicht unter `customers/` im Kit. Bisher legte er `customers/_selftest` unter der Wurzel an und räumte nur den Unterordner, und jeder Lauf hinterließ ein leeres `customers/`, auch im Klon eines Unternehmens. Jedes Werkzeug liest dafür `ARA_CUSTOMERS`, siehe `lib/kit.mjs`. Ohne die Variable gilt `customers/` im Kit, wie bisher.
+- Der Selbsttest prüft den Schnitt in einer Wegwerfkopie für beide Zweige, hält das Update gegen ein Unternehmen, das `/init` durchlaufen hat, und überspringt in einem Klon ohne Partnerware die Prüfungen, die sie brauchen, benannt statt rot.
+
 ## 0.20.2 (2026-08-30)
 
 Kontrakt: bis 5
