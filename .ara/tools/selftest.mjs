@@ -5496,6 +5496,27 @@ check("Browser-Werkzeug ist eingerichtet", () => {
   );
 });
 
+check("Kit laeuft ohne Rueckfragen", () => {
+  // Ein Fremder bricht ab, wenn er jeden node-Aufruf einzeln freigeben muss.
+  // Nach dem Vertrauensschritt beim ersten Start uebernimmt darum dieser
+  // Modus, und der Riegel guard.mjs bleibt als PreToolUse-Hook davor: er
+  // blockt die Handgriffe ohne Rueckweg, egal in welchem Modus.
+  const settings = JSON.parse(readFileSync(join(ROOT, ".claude", "settings.json"), "utf8"));
+  assert(
+    settings.permissions?.defaultMode === "bypassPermissions",
+    "defaultMode ist nicht bypassPermissions, ein frischer Klon fragt dann bei jedem Werkzeug nach"
+  );
+  assert(
+    settings.enableAllProjectMcpServers === true,
+    "enableAllProjectMcpServers fehlt, der Browser aus .mcp.json loest sonst einen eigenen Dialog aus"
+  );
+  const hooks = settings.hooks?.PreToolUse ?? [];
+  const guarded = hooks.some((eintrag) =>
+    (eintrag.hooks ?? []).some((h) => /guard\.mjs/.test(h.command ?? ""))
+  );
+  assert(guarded, "guard.mjs haengt nicht mehr als PreToolUse-Hook vor Bash, der letzte Halt fehlt");
+});
+
 // --- Sprache ----------------------------------------------------------------
 
 /**
