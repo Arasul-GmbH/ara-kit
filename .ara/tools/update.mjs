@@ -239,7 +239,7 @@ function news(fresh, here) {
 function describe(diff) {
   const label = t(
     { added: "new        ", changed: "changed    ", removed: "removed    " },
-    { added: "neu        ", changed: "geaendert  ", removed: "entfernt   " }
+    { added: "neu        ", changed: "geändert   ", removed: "entfernt   " }
   );
   const lines = [];
   for (const rel of diff.added) lines.push(`${label.added}${rel}`);
@@ -331,7 +331,7 @@ try {
             "Nicht angefasst: business/, customers/, devices/, apps/, deine Zugaenge,",
             "der Spiegel und die erzeugten Befehle unter .claude/commands/.",
             "",
-            "Weiter mit: node .ara/tools/commands.mjs   (neue oder geaenderte Befehle)",
+            "Weiter mit: node .ara/tools/commands.mjs   (neue oder geänderte Befehle)",
             "Pruefen mit: node .ara/tools/selftest.mjs",
           ]
         ),

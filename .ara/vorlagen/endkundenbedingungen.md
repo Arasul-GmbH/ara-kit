@@ -1,23 +1,23 @@
 > **Endkundenbedingungen.** Fassung 2 vom 24.08.2026.
 >
 > **Wozu dieses Dokument existiert.** Der Endkunde eines Partners hat mit Arasul
-> keinen Vertrag. Ihm gegenueber gelten deshalb weder AGB noch
+> keinen Vertrag. Ihm gegenüber gelten deshalb weder AGB noch
 > Haftungsbegrenzung, es gelten § 823 BGB und das Produkthaftungsrecht unmittelbar
-> gegen den Hersteller. Das ist die groesste Luecke im Partnermodell, und sie
-> laesst sich nur auf diesem Weg schliessen: der Partner vereinbart die
+> gegen den Hersteller. Das ist die größte Lücke im Partnermodell, und sie
+> lässt sich nur auf diesem Weg schließen: der Partner vereinbart die
 > Bedingungen im eigenen Namen mit seinem Kunden und bezieht Arasul als
-> beguenstigten Dritten ein.
+> begünstigten Dritten ein.
 >
-> **Einbeziehung.** Nach § 305 Abs. 2 BGB ist ein ausdruecklicher Hinweis VOR
-> Vertragsschluss erforderlich. Eine nachtraegliche Einbeziehung, etwa erst beim
-> ersten Start des Geraets, traegt nicht. Der Partner ist dazu nach Ziffer 5a
+> **Einbeziehung.** Nach § 305 Abs. 2 BGB ist ein ausdrücklicher Hinweis VOR
+> Vertragsschluss erforderlich. Eine nachträgliche Einbeziehung, etwa erst beim
+> ersten Start des Geräts, trägt nicht. Der Partner ist dazu nach Ziffer 5a
 > seines Partnervertrages mit Arasul verpflichtet, mit Vertragsstrafe.
 >
 > **Neu in Fassung 2:** Ziffer 4 Entwicklungsstand, Ziffer 7 Erweiterungen,
-> salvatorische Klausel. Die Ziffern 4 bis 8 stehen wortgleich in den Vertraegen
-> von Arasul; Quelle ist `.ara/vorlagen/bausteine/`. Den Abgleich fuehrt Arasul im
+> salvatorische Klausel. Die Ziffern 4 bis 8 stehen wortgleich in den Verträgen
+> von Arasul; Quelle ist `.ara/vorlagen/bausteine/`. Den Abgleich führt Arasul im
 > eigenen Steuerungsordner, nicht im Kit. **Der Text zwischen den Markierungen
-> wird nicht von Hand geaendert.**
+> wird nicht von Hand geändert.**
 
 ---
 
@@ -258,30 +258,30 @@ Ort, Datum: {offen}
 {Endkunde}: ________________
 
 <!--
-PRUEFLISTE FUER DEN PARTNER, VOR VERTRAGSSCHLUSS:
+PRÜFLISTE FÜR DEN PARTNER, VOR VERTRAGSSCHLUSS:
 - [ ] Diese Bedingungen dem Kunden VOR Vertragsschluss in Textform gegeben und
-      den Nachweis aufbewahrt. Nachtraeglich traegt es nicht, § 305 Abs. 2 BGB
+      den Nachweis aufbewahrt. Nachträglich trägt es nicht, § 305 Abs. 2 BGB
 - [ ] Anlage "Leistungsbeschreibung" mitgegeben. Ohne sie sind Ziffer 4 und 5
       leer und der Vorserienstand ist nicht vereinbart
 - [ ] Anlage "Drittlizenzen" mitgegeben
-- [ ] Beide Unterschriften, oder eine dokumentierte Bestaetigung in Textform
+- [ ] Beide Unterschriften, oder eine dokumentierte Bestätigung in Textform
 
 WAS AN DIESEM DOKUMENT UNSICHER IST, UND WARUM ES TROTZDEM SO STEHT:
-1. DIE KONSTRUKTION SELBST. Ziffer 6 soll die Haftung des Herstellers gegenueber
+1. DIE KONSTRUKTION SELBST. Ziffer 6 soll die Haftung des Herstellers gegenüber
    einem Dritten begrenzen, mit dem er keinen Vertrag hat. Rechtlich ist das ein
-   Vertrag mit Schutzwirkung zugunsten Dritter, teils ueber einen Verzicht. Die
-   IT-Recht-Kanzlei empfiehlt fuer Reseller-Modelle ausdruecklich, Hersteller-EULAs
-   auf urheberrechtliche Nutzungsregelungen zu BESCHRAENKEN
+   Vertrag mit Schutzwirkung zugunsten Dritter, teils über einen Verzicht. Die
+   IT-Recht-Kanzlei empfiehlt für Reseller-Modelle ausdrücklich, Hersteller-EULAs
+   auf urheberrechtliche Nutzungsregelungen zu BESCHRÄNKEN
    (it-recht-kanzlei.de/eula-software-vertrieb.html, abgerufen 22.08.2026).
-   Diese Vorlage geht bewusst darueber hinaus. Begruendung: faellt der Verzicht,
-   steht Arasul dort, wo es ohne dieses Dokument ohnehin staende. Der Versuch
+   Diese Vorlage geht bewusst darüber hinaus. Begründung: fällt der Verzicht,
+   steht Arasul dort, wo es ohne dieses Dokument ohnehin stände. Der Versuch
    kostet nichts und kann viel bringen. Die salvatorische Klausel in Ziffer 10
-   sorgt dafuer, dass ein Fall der Ziffer 6 den Rest nicht mitreisst.
-2. Deliktische Ansprueche aus § 823 BGB und Ansprueche nach dem ProdHaftG lassen
-   sich hierueber voraussichtlich NICHT ausschliessen. § 14 ProdHaftG ist
-   zwingend. Die Klausel wirkt also im besten Fall auf vertragsaehnliche und
-   quasi-vertragliche Ansprueche.
-3. Die Betraege in Block W2 Absatz 2 sind dieselben wie in beiden Vertraegen.
+   sorgt dafür, dass ein Fall der Ziffer 6 den Rest nicht mitreißt.
+2. Deliktische Ansprüche aus § 823 BGB und Ansprüche nach dem ProdHaftG lassen
+   sich hierüber voraussichtlich NICHT ausschließen. § 14 ProdHaftG ist
+   zwingend. Die Klausel wirkt also im besten Fall auf vertragsähnliche und
+   quasi-vertragliche Ansprüche.
+3. Die Beträge in Block W2 Absatz 2 sind dieselben wie in beiden Verträgen.
    Das ist keine Bequemlichkeit: weichen sie ab, gilt nach § 305c Abs. 2 BGB die
-   fuer den Vertragspartner guenstigere, also die hoechste.
+   für den Vertragspartner günstigere, also die höchste.
 -->

@@ -1,35 +1,35 @@
 > **Anlage "Drittlizenzen".** Fassung 3 vom 24.08.2026.
 >
-> Sie traegt Block W5: Ziffer 8 in `endkundenbedingungen.md`, Ziffer 12 im
+> Sie trägt Block W5: Ziffer 8 in `endkundenbedingungen.md`, Ziffer 12 im
 > Kaufvertrag von Arasul, Ziffer 13 im Partnervertrag mit Arasul. **Ohne diese
 > Anlage sind alle drei Klauseln wertlos.**
 >
 > **Warum sie existiert.** Ausgeliefert wird fremder Code, darunter mehrere
-> Komponenten unter Copyleft, waehrend das `LICENSE` des Produktrepos das
+> Komponenten unter Copyleft, während das `LICENSE` des Produktrepos das
 > Gesamtpaket als "proprietary and confidential, all rights reserved" bezeichnet.
 > Wird das Gesamtsystem an einen Kunden ausgeliefert, liegt ein "conveying" im
-> Sinne der GPL und AGPL vor, das die Pflicht zur Quellcodeueberlassung und zur
-> Weitergabe der Lizenztexte ausloest. Ein Unterlassungsanspruch trifft dann
+> Sinne der GPL und AGPL vor, das die Pflicht zur Quellcodeüberlassung und zur
+> Weitergabe der Lizenztexte auslöst. Ein Unterlassungsanspruch trifft dann
 > nicht ein Feature, sondern die Auslieferung des Produkts, und nach dem ersten
-> Verkauf zusaetzlich die Haftung wegen Rechtsmangels nach § 435 BGB.
+> Verkauf zusätzlich die Haftung wegen Rechtsmangels nach § 435 BGB.
 
 ---
 
-# SPERRE: diese Anlage ist noch nicht versandfaehig
+# SPERRE: diese Anlage ist noch nicht versandfähig
 
 **Stand 24.08.2026.** Abschnitt "Nicht Bestandteil der Lieferung" beschreibt den
 **Zielzustand**. Er ist heute noch nicht der Auslieferungsstand:
 
-| Bedingung | Stand am 24.08.2026 | Wo sie erfuellt wird |
+| Bedingung | Stand am 24.08.2026 | Wo sie erfüllt wird |
 | --- | --- | --- |
-| n8n startet nicht mehr ohne ausdrueckliches Profil | **offen** | Produktrepo, Issue 599 |
-| `searxng` traegt eine feste Fassung statt `latest` | **offen** | Produktrepo |
+| n8n startet nicht mehr ohne ausdrückliches Profil | **offen** | Produktrepo, Issue 599 |
+| `searxng` trägt eine feste Fassung statt `latest` | **offen** | Produktrepo |
 | SBOM gegen den gebauten Stand liegt vor | **offen** | `syft` oder `trivy`, Arbeitsrechner |
 | `LICENSE` des Produktrepos berichtigt | **offen** | Produktrepo |
 
-**Solange die erste Zeile offen ist, waere die Aussage "n8n ist nicht Bestandteil
+**Solange die erste Zeile offen ist, wäre die Aussage "n8n ist nicht Bestandteil
 der Lieferung" unwahr.** Eine unwahre Angabe in einer Vertragsanlage ist schlimmer
-als das Lizenzproblem, das sie loesen soll: sie eroeffnet § 444 BGB und nimmt
+als das Lizenzproblem, das sie lösen soll: sie eröffnet § 444 BGB und nimmt
 jeder Haftungsklausel die Wirkung. Diese Anlage wird deshalb nicht versendet,
 bevor die erste Zeile erledigt ist.
 
@@ -42,20 +42,20 @@ Dockerfiles gelesen am 24.08.2026 · Lizenzen abgerufen am 23.08.2026
 
 ## Wie diese Liste entstanden ist
 
-Drei Ebenen, alle aus der Live-Quelle gelesen, keine aus dem Gedaechtnis:
+Drei Ebenen, alle aus der Live-Quelle gelesen, keine aus dem Gedächtnis:
 
 1. **`image:`-Zeilen** in den sechs Compose-Dateien des Produktrepos.
-2. **`FROM`-Zeilen** der zwoelf Dockerfiles der selbst gebauten Dienste.
+2. **`FROM`-Zeilen** der zwölf Dockerfiles der selbst gebauten Dienste.
 3. **Die Bibliotheken innerhalb der Abbilder.** Diese Ebene fehlt weiterhin. Sie
    entsteht nur mit einem SBOM-Werkzeug gegen den ausgelieferten Stand. Am
    23.08.2026 waren weder `syft` noch `trivy` auf dem Arbeitsrechner installiert.
    Solange sie fehlt, tragen die Zeilen `alpine`, `ubuntu`, `node` und `python`
    unten "offen".
 
-## Was im Auslieferungsstand laeuft und was nicht
+## Was im Auslieferungsstand läuft und was nicht
 
 Am 24.08.2026 aus `compose/*.yaml` gelesen. Ein Dienst mit `profiles:` startet nur,
-wenn das Profil ausdruecklich aktiviert wird; `scripts/deploy/deploy-local.sh` und
+wenn das Profil ausdrücklich aktiviert wird; `scripts/deploy/deploy-local.sh` und
 `deploy.yml` aktivieren keines.
 
 | Profil | Dienste | Im Auslieferungsstand aktiv |
@@ -66,9 +66,9 @@ wenn das Profil ausdruecklich aktiviert wird; `scripts/deploy/deploy-local.sh` u
 | `classic-rag` | qdrant, embedding-service | nein |
 | `automation` (Zielzustand, Issue 599) | n8n, n8n-runners | nein |
 
-**Das aendert die Bewertung, nicht die Liste.** Ob ein Abbild, das auf dem Geraet
+**Das ändert die Bewertung, nicht die Liste.** Ob ein Abbild, das auf dem Gerät
 liegt aber nicht startet, bereits weitergegeben ist, ist eine offene Rechtsfrage.
-Aufgefuehrt bleiben deshalb alle Komponenten, die auf dem Geraet liegen.
+Aufgeführt bleiben deshalb alle Komponenten, die auf dem Gerät liegen.
 
 ## Ebene 1: gezogene Container-Abbilder
 
@@ -92,15 +92,15 @@ Aus den `FROM`-Zeilen der Dockerfiles, Fassungen aus den `ARG`-Vorgaben.
 | --- | --- | --- | --- | --- |
 | `ollama/ollama` | 0.32.12 | `services/llm-service` | MIT | github.com/ollama/ollama, belegt |
 | `dustynv/l4t-pytorch` | r36.4.0 | `services/embedding-service` | **offen**, siehe unten | github.com/dusty-nv/jetson-containers, `LICENSE.md` ist MIT, betrifft aber nur die Bauskripte |
-| `node` | 22-alpine, 20-alpine, 22-slim | fuenf Dienste | Node.js selbst MIT, Abbild **offen** | github.com/nodejs/node, `LICENSE`, belegt |
-| `python` | 3.11.12-slim | fuenf Dienste | CPython PSF License v2, Abbild **offen** | docs.python.org/3/license.html, belegt |
+| `node` | 22-alpine, 20-alpine, 22-slim | fünf Dienste | Node.js selbst MIT, Abbild **offen** | github.com/nodejs/node, `LICENSE`, belegt |
+| `python` | 3.11.12-slim | fünf Dienste | CPython PSF License v2, Abbild **offen** | docs.python.org/3/license.html, belegt |
 | `nginx` | 1.27-alpine | `apps/dashboard-frontend` | BSD-2-Clause | github.com/nginx/nginx, belegt |
 | `alpine` | 3.19 | `services/backup-service` | **offen**, Distribution mit gemischten Lizenzen | ohne SBOM nicht feststellbar |
 | `ubuntu` | 22.04 | `services/llm-service` | **offen**, Distribution mit gemischten Lizenzen, GPL-Anteile zu erwarten | ohne SBOM nicht feststellbar |
 
 ## Nicht Bestandteil der Lieferung: Erweiterungen
 
-Die Plattform sieht nach Block W4 der Vertraege vor, dass Erweiterungen und
+Die Plattform sieht nach Block W4 der Verträge vor, dass Erweiterungen und
 Software Dritter installiert und angebunden werden. **Solche Erweiterungen sind
 nicht Bestandteil der Lieferung**, auch dann nicht, wenn die Plattform ihre
 Installation vorsieht oder erleichtert. Wer sie installiert, lizenziert und
@@ -112,7 +112,7 @@ betreibt sie selbst.
 | {weitere} | {Lizenzgeber} | {Bedingungen} | der Betreiber |
 
 **Warum n8n hier steht und nicht oben.** Die Sustainable Use License sagt
-woertlich, abgerufen am 23.08.2026:
+wörtlich, abgerufen am 23.08.2026:
 
 > "You may use or modify the software only for your own internal business
 > purposes or for non-commercial or personal use."
@@ -120,47 +120,47 @@ woertlich, abgerufen am 23.08.2026:
 > "You may distribute the software or provide it to others only if you do so free
 > of charge for non-commercial purposes."
 
-Das Geschaeftsmodell ist entgeltliche Weitergabe an Partner, die weiterverkaufen.
-Beide Saetze stehen dem dem Wortlaut nach entgegen. **Am 24.08.2026 entschieden:
+Das Geschäftsmodell ist entgeltliche Weitergabe an Partner, die weiterverkaufen.
+Beide Sätze stehen dem dem Wortlaut nach entgegen. **Am 24.08.2026 entschieden:
 n8n wird aus dem Auslieferungsumfang genommen.** Die Plattform bleibt in der Lage,
 n8n als Erweiterung aufzunehmen; der Betreiber installiert und lizenziert es
 selbst. Ab diesem Punkt gibt Arasul n8n nicht weiter, und die Lizenz des
 Lizenzgebers gilt unmittelbar zwischen ihm und dem Betreiber.
 
 **Bedingung, siehe Sperre oben:** die Aussage gilt erst, wenn n8n im Produkt nicht
-mehr ohne ausdrueckliches Profil startet. Bis dahin liegt es im Standardstack.
+mehr ohne ausdrückliches Profil startet. Bis dahin liegt es im Standardstack.
 
 ## Was daraus folgt, in der Reihenfolge des Risikos
 
 ### 1. Copyleft: zwei im Auslieferungsstand, zwei hinter einem Profil
 
 AGPL-3.0 tragen MinIO, SearXNG, Loki und Promtail. **Im Auslieferungsstand laufen
-davon zwei**, MinIO und SearXNG; Loki und Promtail haengen am Profil `monitoring`,
+davon zwei**, MinIO und SearXNG; Loki und Promtail hängen am Profil `monitoring`,
 das der Deploy nicht aktiviert.
 
-Fuer die beiden aktiven gilt: Lizenztext beilegen, Quellcode zugaenglich machen,
-und die AGPL erfasst nach ihrem Abschnitt 13 zusaetzlich den Netzzugriff. Fuer die
-beiden inaktiven ist zu klaeren, ob ihr Abbild trotzdem auf dem Geraet liegt; dann
+Für die beiden aktiven gilt: Lizenztext beilegen, Quellcode zugänglich machen,
+und die AGPL erfasst nach ihrem Abschnitt 13 zusätzlich den Netzzugriff. Für die
+beiden inaktiven ist zu klären, ob ihr Abbild trotzdem auf dem Gerät liegt; dann
 gilt dasselbe.
 
 **Der Widerspruch zum eigenen `LICENSE` besteht in jedem Fall.** "All rights
-reserved" fuer ein Paket mit AGPL-Bestandteilen ist unzutreffend. Zu berichtigen
+reserved" für ein Paket mit AGPL-Bestandteilen ist unzutreffend. Zu berichtigen
 im Produktrepo, nicht von hier aus.
 
-### 2. `searxng/searxng` traegt weiterhin `latest`
+### 2. `searxng/searxng` trägt weiterhin `latest`
 
-Ein Auslieferungsstand ohne feste Fassung laesst sich weder dokumentieren noch
-reproduzieren, und die Lizenzangabe oben gilt dann fuer einen Stand, den niemand
-benennen kann. Am 24.08.2026 unveraendert. Vor der ersten Auslieferung
+Ein Auslieferungsstand ohne feste Fassung lässt sich weder dokumentieren noch
+reproduzieren, und die Lizenzangabe oben gilt dann für einen Stand, den niemand
+benennen kann. Am 24.08.2026 unverändert. Vor der ersten Auslieferung
 festnageln.
 
-### 3. Das L4T-Abbild ist ungeklaert
+### 3. Das L4T-Abbild ist ungeklärt
 
 `dustynv/l4t-pytorch` ist ein Gemeinschaftsabbild. Die Bauskripte in
 `jetson-containers` stehen unter MIT, belegt. Der **Inhalt** des Abbilds ist
 NVIDIA-Software auf L4T-Basis mit eigenen Bedingungen, und die stehen nicht in
-dieser Lizenzdatei. Ohne diese Klaerung ist unbekannt, ob das Abbild als Teil
-eines verkauften Geraets weitergegeben werden darf.
+dieser Lizenzdatei. Ohne diese Klärung ist unbekannt, ob das Abbild als Teil
+eines verkauften Geräts weitergegeben werden darf.
 
 ## Sprachmodelle
 
@@ -169,15 +169,15 @@ eines verkauften Geraets weitergegeben werden darf.
 | {Kennung} | {Fassung} | offen | offen | {URL} |
 
 Nicht erhoben. Der Katalog steht laut `roadmap/arasul-jet.md` selbst zur
-Entscheidung, und eine Lizenzliste gegen einen Katalog, der sich noch aendert,
-waere beim naechsten Bauen falsch. Faellig, sobald der Katalog steht.
+Entscheidung, und eine Lizenzliste gegen einen Katalog, der sich noch ändert,
+wäre beim nächsten Bauen falsch. Fällig, sobald der Katalog steht.
 
-**Offene Frage:** Wenn Modelle nur gebuendelt und unveraendert weitergegeben
+**Offene Frage:** Wenn Modelle nur gebündelt und unverändert weitergegeben
 werden, ohne eigenes Training oder Finetuning, entsteht daraus voraussichtlich
-keine Anbieterrolle fuer ein GPAI-Modell nach Art. 53 der Verordnung
+keine Anbieterrolle für ein GPAI-Modell nach Art. 53 der Verordnung
 (EU) 2024/1689. Belegt ist das nicht; eine Kommissionsleitlinie zur Abgrenzung
-wurde nicht gefunden. Unabhaengig davon gelten die Lizenzbedingungen des
-jeweiligen Modells, und manche schliessen kommerzielle Weitergabe aus.
+wurde nicht gefunden. Unabhängig davon gelten die Lizenzbedingungen des
+jeweiligen Modells, und manche schließen kommerzielle Weitergabe aus.
 
 ## Bibliotheken
 
@@ -197,11 +197,11 @@ Auslieferungsstand.
 - [ ] SBOM gegen den ausgelieferten Stand erzeugen. `syft` oder `trivy`
       installieren, gegen den gebauten Stand laufen lassen, nicht gegen den
       Entwicklungsstand. Erst danach sind die "offen"-Zeilen in Ebene 2 belegbar
-- [ ] Fuer MinIO und SearXNG: Lizenztext beilegen, Weg zur Quellcodeueberlassung
-      beschreiben. Fuer Loki und Promtail zuerst klaeren, ob ihr Abbild trotz
+- [ ] Für MinIO und SearXNG: Lizenztext beilegen, Weg zur Quellcodeüberlassung
+      beschreiben. Für Loki und Promtail zuerst klären, ob ihr Abbild trotz
       inaktivem Profil mit ausgeliefert wird
-- [ ] `dustynv/l4t-pytorch` klaeren: welche NVIDIA-Bedingungen fuer den Inhalt
-      gelten und ob Weitergabe im Geraet zulaessig ist
+- [ ] `dustynv/l4t-pytorch` klären: welche NVIDIA-Bedingungen für den Inhalt
+      gelten und ob Weitergabe im Gerät zulässig ist
 - [ ] `searxng/searxng` auf eine feste Fassung nageln
 - [ ] `LICENSE` des Produktrepos berichtigen
 - [ ] Modellliste nachziehen, sobald der Katalog entschieden ist

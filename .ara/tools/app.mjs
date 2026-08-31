@@ -348,7 +348,7 @@ function createApp(name) {
             `- Designsystem: Fassung ${library.fassung}, ${library.files.size} Dateien, ` +
               `${source ? "aus dem Spiegel" : "die Kopie der Vorlage.\n  node .ara/tools/mirror.mjs --refresh holt das Artefakt"}`
           )
-        : t("- Design system: none, the scaffold carries no library", "- Designsystem: keines, die Vorlage traegt keine Bibliothek"),
+        : t("- Design system: none, the scaffold carries no library", "- Designsystem: keines, die Vorlage trägt keine Bibliothek"),
       "",
       t(
         "Next: write the plan that says what this app should do.",

@@ -222,7 +222,7 @@ function findings(target, source) {
   // der Bau uebersetzt sie trotzdem mit.
   for (const name of unreachable(library)) {
     out.push(
-      t(`no path leads from index.ts to ${name}`, `von der index.ts fuehrt kein Weg zu ${name}`)
+      t(`no path leads from index.ts to ${name}`, `von der index.ts führt kein Weg zu ${name}`)
     );
   }
 
@@ -285,7 +285,7 @@ if (arg.sync) {
         "There is no source: the mirror carries no packages/marken.\n" +
           "  node .ara/tools/mirror.mjs --refresh   fetches the artifact\n" +
           "  --source <folder>                      names a folder instead",
-        "Es gibt keine Quelle: der Spiegel traegt kein packages/marken.\n" +
+        "Es gibt keine Quelle: der Spiegel trägt kein packages/marken.\n" +
           "  node .ara/tools/mirror.mjs --refresh   holt das Artefakt\n" +
           "  --source <ordner>                      nennt stattdessen einen Ordner"
       )
@@ -328,7 +328,7 @@ if (arg.sync) {
             ? [
                 t(
                   "The scaffold is version controlled: that change belongs in a commit of the kit.",
-                  "Die Vorlage liegt in der Versionsverwaltung: diese Aenderung gehoert in einen Commit des Kits."
+                  "Die Vorlage liegt in der Versionsverwaltung: diese Änderung gehört in einen Commit des Kits."
                 ),
               ]
             : []),
@@ -369,7 +369,7 @@ lines.push(
           `${library.abhaengigkeiten ? `, ${Object.keys(library.abhaengigkeiten).length} dependencies` : ", no stamp, so no dependencies"}`,
         `Quelle: ${short(source.dir)}, Fassung ${library.fassung}, ${library.files.size} Dateien ` +
           `(${sets(library).primitive} Primitive, ${sets(library).muster} Muster, ${sets(library).bausteine} Bausteine)` +
-          `${library.abhaengigkeiten ? `, ${Object.keys(library.abhaengigkeiten).length} Abhaengigkeiten` : ", ohne Stempel, also ohne Abhaengigkeiten"}`
+          `${library.abhaengigkeiten ? `, ${Object.keys(library.abhaengigkeiten).length} Abhängigkeiten` : ", ohne Stempel, also ohne Abhängigkeiten"}`
       )
     : t("Source: none, and no scaffold either.", "Quelle: keine, und auch keine Vorlage.")
 );
@@ -379,7 +379,7 @@ if (source?.origin === "scaffold") {
       "That is the scaffold of the kit: the mirror carries no packages/marken. Whether the\n" +
         "scaffold itself is current, only a mirror of the product says.\n" +
         "  node .ara/tools/mirror.mjs --refresh   fetches the artifact",
-      "Das ist die Vorlage des Kits: der Spiegel traegt kein packages/marken. Ob die Vorlage\n" +
+      "Das ist die Vorlage des Kits: der Spiegel trägt kein packages/marken. Ob die Vorlage\n" +
         "selbst aktuell ist, sagt nur ein Spiegel des Produkts.\n" +
         "  node .ara/tools/mirror.mjs --refresh   holt das Artefakt"
     )

@@ -344,7 +344,7 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
     throw new Error(
       t(
         "There is no startxref in the file, this is not a complete PDF.",
-        "In der Datei steht kein startxref, das ist kein vollstaendiges PDF."
+        "In der Datei steht kein startxref, das ist kein vollständiges PDF."
       )
     );
   }
@@ -356,7 +356,7 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
       t(
         "This file keeps its cross-references as a stream. The tool only writes on classic " +
           "tables, the way Chromium prints them.",
-        "Diese Datei fuehrt ihre Querverweise als Strom. Das Werkzeug schreibt nur klassische " +
+        "Diese Datei führt ihre Querverweise als Strom. Das Werkzeug schreibt nur klassische " +
           "Tabellen fort, wie Chromium sie druckt."
       )
     );
@@ -368,7 +368,7 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
   const rootNumber = Number((trailer.Root || "").match(/^(\d+)/)?.[1]);
   if (!rootNumber) throw new Error(t("There is no catalogue (/Root) in the trailer.", "Im Trailer steht kein Katalog (/Root)."));
   const size = Number(trailer.Size);
-  if (!size) throw new Error(t("There is no size (/Size) in the trailer.", "Im Trailer steht keine Groesse (/Size)."));
+  if (!size) throw new Error(t("There is no size (/Size) in the trailer.", "Im Trailer steht keine Größe (/Size)."));
 
   const info = Number((trailer.Info || "").match(/^(\d+)/)?.[1]) || null;
   const infoFields = info
@@ -385,7 +385,7 @@ export function embed(pdf, { xml, attachment, profile, description, author, modi
       t(
         "The catalogue of this PDF already carries a name tree. The tool would overwrite it " +
           "and therefore does not.",
-        "Der Katalog dieses PDF fuehrt schon einen Namensbaum. Das Werkzeug wuerde ihn ueberschreiben " +
+        "Der Katalog dieses PDF führt schon einen Namensbaum. Das Werkzeug würde ihn überschreiben " +
           "und tut es darum nicht."
       )
     );

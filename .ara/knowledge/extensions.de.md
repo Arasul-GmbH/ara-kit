@@ -76,7 +76,7 @@ und es hat eine Folge, die du kennen musst:
 **Wer eine Erweiterung installiert, lizenziert sie selbst.** Das gilt für eigene
 Erweiterungen genauso wie für fremde Software, die der Kunde dazuhaben will. Viele
 verbreitete Automatisierungswerkzeuge stehen unter Lizenzen, die eine entgeltliche
-Weitergabe durch Dritte ausschliessen. Wenn du so etwas für einen Kunden installierst,
+Weitergabe durch Dritte ausschließen. Wenn du so etwas für einen Kunden installierst,
 schließt **er** die Lizenz mit dem Anbieter, nicht du und nicht Arasul.
 
 Prüf vor der Installation zwei Dinge und schreib das Ergebnis in den Verlauf:
@@ -88,8 +88,8 @@ Prüf vor der Installation zwei Dinge und schreib das Ergebnis in den Verlauf:
    Abschnitt 6 ein, damit später klar ist, was bei der Übergabe drauf war und wer
    dafür einsteht.
 
-Für den Betrieb einer Erweiterung wird weder Funktion noch Verfuegbarkeit noch
-Verträglichkeit mit kuenftigen Fassungen geschuldet. Sag das dem Kunden, bevor du
+Für den Betrieb einer Erweiterung wird weder Funktion noch Verfügbarkeit noch
+Verträglichkeit mit künftigen Fassungen geschuldet. Sag das dem Kunden, bevor du
 etwas installierst, nicht danach.
 
 Verfahren für das Papier: `.ara/knowledge/paperwork.de.md`

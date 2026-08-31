@@ -4756,13 +4756,13 @@ check("Der Nummernkreis ist fortlaufend und laesst sich nicht zurueckdrehen", ()
   assert(peekNumber("2027-01-02", heil).number === "2027-0001", "das neue Jahr faengt nicht bei 0001 an");
 
   const luecke = ledger(2026, 3, ["2026-0001", "2026-0003"]);
-  assert(auditLedger(luecke).some((p) => /Luecke/.test(p)), "eine Luecke faellt nicht auf");
+  assert(auditLedger(luecke).some((p) => /Lücke/.test(p)), "eine Luecke faellt nicht auf");
 
   const doppelt = ledger(2026, 2, ["2026-0001", "2026-0001", "2026-0002"]);
   assert(auditLedger(doppelt).some((p) => /zweimal/.test(p)), "eine doppelte Nummer faellt nicht auf");
 
   const gedreht = ledger(2026, 1, ["2026-0001", "2026-0002"]);
-  assert(auditLedger(gedreht).some((p) => /zurueckgedreht/.test(p)), "ein gedrehter Kopf faellt nicht auf");
+  assert(auditLedger(gedreht).some((p) => /zurückgedreht/.test(p)), "ein gedrehter Kopf faellt nicht auf");
 
   let refused = false;
   try {
@@ -5152,7 +5152,7 @@ await checkAsync("Eine Rechnung entsteht aus einer Kundenakte, mit Nummer und An
     run = await forkTool(["--check", beleg]);
     assert(run.status === 0, `die Pruefliste ist rot:\n${run.stdout}`);
     assert(!/FEHL/.test(run.stdout), `die Pruefliste ist rot:\n${run.stdout}`);
-    assert(/Ungeprueft:/.test(run.stdout), "es wird nicht gesagt, was ungeprueft bleibt");
+    assert(/Ungeprüft:/.test(run.stdout), "es wird nicht gesagt, was ungeprueft bleibt");
 
     // 4. Die zweite Rechnung bekommt die naechste Nummer.
     run = await forkTool([
@@ -5183,8 +5183,8 @@ await checkAsync("Eine Rechnung entsteht aus einer Kundenakte, mit Nummer und An
     assert(/storniert/.test(read("business/invoices.md")), "die Stornierung steht nicht im Nummernkreis");
     assert(/Kunde springt ab/.test(read("business/invoices.md")), "der Grund fehlt");
     run = await forkTool([]);
-    assert(!/Luecke/.test(run.stdout), `der Kreis meldet eine Luecke: ${run.stdout}`);
-    assert(/Naechste waere 2026-0004/.test(run.stdout), "nach einer Stornierung wird die Nummer neu vergeben");
+    assert(!/Lücke/.test(run.stdout), `der Kreis meldet eine Luecke: ${run.stdout}`);
+    assert(/Nächste wäre 2026-0004/.test(run.stdout), "nach einer Stornierung wird die Nummer neu vergeben");
 
     // 7. Drucken, und der Anhang muss aus dem fertigen PDF zurueckkommen.
     run = await forkTool(["--pdf", beleg]);
@@ -5799,7 +5799,7 @@ check("Ein Unternehmen bekommt bei /init keine Partnerware, ein Partner alles", 
   const firma = fall("company");
   assert(firma.da.length === 0, `Unternehmen behaelt Partnerware: ${firma.da.join(", ")}`);
   assert(!firma.customers, "Unternehmen behaelt den leeren Ordner customers/");
-  assert(/removed because|weggeraeumt/.test(firma.run.stdout), `der Schnitt wird nicht genannt: ${firma.run.stdout}`);
+  assert(/removed because|weggeräumt/.test(firma.run.stdout), `der Schnitt wird nicht genannt: ${firma.run.stdout}`);
   assert(/update\.mjs/.test(firma.run.stdout), "der Weg zurueck zum Partner wird nicht genannt");
 
   const partner = fall("partner");
@@ -6184,7 +6184,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     merkeAls("Der alte Befehl, wie ihn das Kit hingelegt hat.\n");
     run = await forkTool("commands.mjs", []);
     assert(
-      new RegExp(`abgeloest\\s+/${alterName}`).test(run.stdout),
+      new RegExp(`abgelöst\\s+/${alterName}`).test(run.stdout),
       `abgeloester Befehl wird nicht gemeldet: ${run.stdout}`
     );
     assert(new RegExp(`/${nachfolger}`).test(run.stdout), "der neue Name wird nicht genannt");
@@ -6217,7 +6217,7 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(!has("business/company.md"), "Unternehmen: company.md angelegt, obwohl es keine Angebote gibt");
     assert(/^role: company$/m.test(read("business/profile.md")), "Unternehmen: Zweig fehlt im Profil");
     assert(/^language: de$/m.test(read("business/profile.md")), "Unternehmen: Sprache fehlt im Profil");
-    assert(/^## Was ich vorhabe\n\nDas Geraet/m.test(read("business/profile.md")), "Unternehmen: Prosa nicht eingesetzt");
+    assert(/^## Was ich vorhabe\n\nDas Gerät/m.test(read("business/profile.md")), "Unternehmen: Prosa nicht eingesetzt");
     assert(!/<!--[\s\S]*Wo du hin willst/.test(read("business/profile.md")), "Unternehmen: Vorlagenkommentar steht noch im Profil");
     assert(/Technikstand dieses Rechners\n\nStand \d{4}-\d{2}-\d{2}:/.test(read("business/profile.md")), "Unternehmen: Technikstand fehlt");
     assert(has(".claude/commands/device.md"), "Unternehmen: Befehle nicht angelegt");

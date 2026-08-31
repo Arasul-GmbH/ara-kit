@@ -1,7 +1,7 @@
 <!-- gespiegelt-aus-arasul -->
 > **Gespiegelt aus dem Steuerungsordner von Arasul. Hier nicht
-> bearbeiten**, jede Aenderung wird beim naechsten Spiegeln
-> ueberschrieben. Wer etwas geaendert haben will, sagt es Arasul.
+> bearbeiten**, jede Änderung wird beim nächsten Spiegeln
+> überschrieben. Wer etwas geändert haben will, sagt es Arasul.
 >
 > Quelle: `templates/legal/nachweise/datenverarbeitung.md` · Stand: 2026-08-26
 
@@ -111,7 +111,7 @@ Verfahren und seine Abnahme sind Teil der technischen Dokumentation.
 
 | Angabe | Quelle | Abgerufen |
 | --- | --- | --- |
-| Netzbereiche, Messverfahren, Grenzen der Messung | Abnahme der Souveraenitaet im Produkt, Kopfkommentar des Pruefskripts | 2026-08-25 |
+| Netzbereiche, Messverfahren, Grenzen der Messung | Abnahme der Souveränität im Produkt, Kopfkommentar des Prüfskripts | 2026-08-25 |
 | Unterauftragsverarbeiter und Rechtsgrundlage | Vereinbarung zur Auftragsverarbeitung, Ziffer 7 | fortlaufend |
 | Externe Modelle nicht eingerichtet | Kaufvertrag, Ziffer 10 Absatz 5 | fortlaufend |
 | Angaben zu Tailscale Inc. | `tailscale.com/legal/dpa` | 2026-08-24 |

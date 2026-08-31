@@ -1,7 +1,7 @@
 <!-- gespiegelt-aus-arasul -->
 > **Gespiegelt aus dem Steuerungsordner von Arasul. Hier nicht
-> bearbeiten**, jede Aenderung wird beim naechsten Spiegeln
-> ueberschrieben. Wer etwas geaendert haben will, sagt es Arasul.
+> bearbeiten**, jede Änderung wird beim nächsten Spiegeln
+> überschrieben. Wer etwas geändert haben will, sagt es Arasul.
 >
 > Quelle: `templates/legal/nachweise/ki-einstufung.md` · Stand: 2026-08-25
 
@@ -105,7 +105,7 @@ Navigator des TÜV SÜD (`tuv-sud.risk-navigator.ai`).
 | `artificialintelligenceact.eu/article/16` für den Wortlaut von Art. 16 | 2026-08-23 |
 | VO (EU) 2026/1744 (Digital Omnibus), Verschiebung der Hochrisiko-Fristen | 2026-08-23 |
 | KI-Marktüberwachungs- und Innovationsförderungsgesetz, Zuständigkeit BNetzA | 2026-08-23 |
-| Block W3, wortgleich in allen Vertraegen | fortlaufend |
+| Block W3, wortgleich in allen Verträgen | fortlaufend |
 
 Die Herleitung der Rechtslage liegt bei Arasul, im Entscheidungsprotokoll vom
 23.08.2026. Dort steht auch, warum Arasul kein eigenes Einstufungswerkzeug
