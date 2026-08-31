@@ -23,9 +23,9 @@
       "Read(./business/**)",
       "Read(./devices/**)",
       "Read(./.ara/**)",
-      "Write(./customers/**)",
-      "Write(./business/**)",
-      "Write(./devices/**)"
+      "Edit(./customers/**)",
+      "Edit(./business/**)",
+      "Edit(./devices/**)"
     ],
     "deny": [
       "Read(./.env)",
