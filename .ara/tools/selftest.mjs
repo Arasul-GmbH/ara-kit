@@ -109,6 +109,7 @@ import {
   unreachable,
   writeLibrary,
 } from "./lib/marken.mjs";
+import { standardExempt, standardFindings } from "./lib/standard.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
   needsParameter,
@@ -2903,6 +2904,107 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
     run = tool("app.mjs", ["--device", "gibtsnicht", "--app", name, "--deploy"]);
     assert(run.status !== 0, "ohne Bau wurde eingespielt");
     return "anlegen, Pläne, Lage";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
+check("Die Vorlage der App hält den Standard der Bibliothek", () => {
+  // Die Regel, die das Kit an jede App hält, muss die Vorlage selbst halten:
+  // eine Vorlage mit eigener Farbe wäre die Anleitung zum Verstoß. `scaffold`
+  // erlaubt genau eines, den Platzhalter {{marken}}, den --new füllt.
+  const template = join(ROOT, ".ara", "templates", "app");
+  const befunde = standardFindings(template, { scaffold: true });
+  assert(befunde.length === 0, `die Vorlage steht neben der Bibliothek: ${befunde.join(" | ")}`);
+  return "keine eigene Farbe, keine Palettenklasse, kein eigenes Primitiv";
+});
+
+check("Eine App neben der Bibliothek wird rot, ein fremder Container nicht", () => {
+  // Ohne Zwang sehen die Apps eines Partners nach drei Monaten alle anders
+  // aus. Das Gerät vergleicht das Feld `marken` ausdrücklich nicht, der
+  // Wächter des Produkts prüft nur die Shell: gehalten wird der Standard beim
+  // Bauen mit dem Kit, und dass er hält, steht hier. Jede Verstoßart einmal,
+  // an einer Kopie der Vorlage, und die Verdrahtung über --build.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-standard";
+  const dir = join(ROOT, "apps", name);
+  try {
+    let run = tool("app.mjs", ["--app", name, "--new", "--titel", "Standardprobe"]);
+    assert(run.status === 0, `Anlegen fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(standardFindings(dir).length === 0, `die frische App verstößt schon: ${standardFindings(dir).join(" | ")}`);
+
+    // Ein Hex-Wert außerhalb von theme.css, in einer eigenen Regel der App.
+    const stil = join(dir, "frontend", "src", "stil.css");
+    const stilVorher = readFileSync(stil, "utf8");
+    writeFileSync(stil, `${stilVorher}\n.eigene { color: #e11d48; }\n`);
+    let befunde = standardFindings(dir);
+    assert(befunde.some((b) => /#e11d48/.test(b) && /theme\.css/.test(b)), `der Hex-Wert fällt nicht auf: ${befunde.join(" | ")}`);
+    // Im Kommentar ist derselbe Wert ein Beispiel und kein Verstoß.
+    writeFileSync(stil, `${stilVorher}\n/* kein Verstoß: #e11d48 */\n`);
+    assert(standardFindings(dir).length === 0, "ein Hex-Wert im Kommentar wird rot");
+    writeFileSync(stil, stilVorher);
+
+    // Palettenklasse, eigene Primitive: eine Seite, wie sie jemand schreibt,
+    // der die Bibliothek nicht kennt.
+    const seite = join(dir, "frontend", "src", "seiten", "fremd.tsx");
+    writeFileSync(
+      seite,
+      [
+        "export function Fremd() {",
+        "  return (",
+        "    <div className=\"bg-red-500\">",
+        "      <h1>Titel</h1>",
+        "      <div role=\"tablist\" />",
+        "      <fieldset />",
+        "      <dialog />",
+        "      <table />",
+        "    </div>",
+        "  );",
+        "}",
+        "",
+      ].join("\n")
+    );
+    befunde = standardFindings(dir);
+    assert(befunde.some((b) => /bg-red-500/.test(b)), `die Palettenklasse fällt nicht auf: ${befunde.join(" | ")}`);
+    for (const [teil, statt] of [["<h1>", "Kopf"], ["<table>", "Datenliste"], ["<dialog>", "Dialog"], ["<fieldset>", "Feldgruppe"], ['role="tablist"', "Tabs"]]) {
+      assert(
+        befunde.some((b) => b.includes(teil) && b.includes(statt)),
+        `das eigene ${teil} fällt nicht auf oder nennt nicht ${statt}: ${befunde.join(" | ")}`
+      );
+    }
+
+    // Die Verdrahtung: --build hält an, bevor irgendetwas gebaut ist.
+    run = tool("app.mjs", ["--app", name, "--build"]);
+    assert(run.status !== 0, "trotz Verstoß wurde gebaut");
+    assert(/steht nicht auf der Bibliothek/.test(run.stderr), `der Grund fehlt: ${run.stderr}`);
+    assert(/app\.de\.md/.test(run.stderr), "der Weg zur Regel im Wissen fehlt");
+    assert(!existsSync(join(dir, "build")), "trotz Verstoß liegt ein Bau da");
+    rmSync(seite);
+
+    // Das Feld marken: fehlt es, rot; nennt es eine andere Fassung, rot.
+    const manifestPfad = join(dir, "app.json");
+    const manifest = JSON.parse(readFileSync(manifestPfad, "utf8"));
+    const { marken, ...ohneMarken } = manifest;
+    writeFileSync(manifestPfad, `${JSON.stringify(ohneMarken, null, 2)}\n`);
+    befunde = standardFindings(dir);
+    assert(befunde.some((b) => /marken/.test(b)), `das fehlende Feld marken fällt nicht auf: ${befunde.join(" | ")}`);
+    writeFileSync(manifestPfad, `${JSON.stringify({ ...manifest, marken: "0.0.0-alt" }, null, 2)}\n`);
+    befunde = standardFindings(dir);
+    assert(befunde.some((b) => /0\.0\.0-alt/.test(b)), `die veraltete Fassung fällt nicht auf: ${befunde.join(" | ")}`);
+    run = tool("app.mjs", ["--app", name, "--build"]);
+    assert(run.status !== 0 && /marken/.test(run.stderr), "ein veraltetes marken hält den Bau nicht an");
+
+    // Der fremde Container: kein Frontend, fertiges Image, kein eigener Bau.
+    // Er ist ausgenommen, auch ohne marken.
+    const fremd = { schema: 1, id: name, name: "Fremd", version: "1.0.0", backend: { image: "fremd:1.0.0" } };
+    assert(standardExempt(fremd), "ein fremder Container gilt nicht als ausgenommen");
+    assert(!standardExempt(manifest), "die App aus der Vorlage gilt als ausgenommen");
+    writeFileSync(manifestPfad, `${JSON.stringify(fremd, null, 2)}\n`);
+    assert(standardFindings(dir).length === 0, "ein fremder Container wird am Standard gemessen");
+    return "Farbe, Klasse, fünf Primitive, marken, Ausnahme";
   } finally {
     rmSync(dir, { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });

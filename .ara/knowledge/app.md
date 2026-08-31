@@ -191,6 +191,32 @@ Rules of your own belong at the end of `stil.css`, and they use only the names o
 single colour value. Keep to that when you build something on: whatever stands as a colour in a rule
 falls behind at the next version.
 
+**The kit builds only apps that stand on the library.** Without that, a partner's apps all look
+different after three months, and the uniform picture is gone. The device expressly does not compare,
+and the product's guard checks only the shell: held is the standard here, before every build and
+before every way onto a device (`--build`, `--check`, `--deploy`, `--compose`). Four findings stop
+the tool, each with the sentence that says what belongs there instead:
+
+- **A colour value of your own.** Values live in the library's `theme.css` and nowhere else; a rule
+  of the app takes a token. Wrong: `color: #e11d48;` or `background: rgb(225 29 72);` in `stil.css`.
+  Right: `color: var(--ara-fehler);`.
+- **A Tailwind palette colour.** Only the token classes of the theme apply, they follow the device.
+  Wrong: `className="bg-red-500"` or `text-white`. Right: `bg-primary`, `text-muted-foreground`,
+  `border-border`.
+- **A primitive of your own.** The page title is the block `Kopf`, not an own `<h1>`; a table is the
+  primitive `Table` or the pattern `Datenliste`, not an own `<table>`; the same holds for `<dialog>`
+  (`Dialog`), `<fieldset>` (`Feldgruppe`) and a hand-built tab bar with `role="tablist"` (`Tabs`).
+- **The field `marken` is missing or stale.** The manifest says which version of the design system
+  the app stands on, and the copy in the app is the anchor: an app that carries
+  `frontend/src/marken/` has to name the field, the field has to name the copy's version, and the
+  field without the copy is just as red. `--new` writes it, `marken.mjs --sync` keeps it current.
+
+Measured is the app's own frontend source, not the mirror `src/marken/`: that one belongs to the
+product, and whether it is right, `marken.mjs` says over its hashes. **A foreign container is
+exempt**: an app without `frontend` in its manifest, with a finished `image` instead of a build of
+its own, brings no interface that could stand beside the device's. The self-test holds the scaffold
+itself to the same rule.
+
 **The theme comes from the device, not from the app.** The shell writes it into the app's own
 document at every change and at every load, and sends the same value as a message; light sets
 nothing, because `:root` is light. `frontend/src/rahmen/thema.ts` therefore reads and does not

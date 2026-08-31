@@ -198,6 +198,35 @@ Eigene Regeln gehören ans Ende von `stil.css`, und sie benutzen nur die Namen d
 keinen einzigen Farbwert. Halt dich daran, wenn du etwas dazubaust: was als Farbe in einer
 Regel steht, bleibt beim nächsten Stand zurück.
 
+**Das Kit baut nur Apps, die auf der Bibliothek stehen.** Ohne das sehen die Apps eines
+Partners nach drei Monaten alle anders aus, und das einheitliche Bild ist weg. Das Gerät
+vergleicht ausdrücklich nicht, und der Wächter des Produkts prüft nur die Shell: gehalten
+wird der Standard hier, vor jedem Bau und vor jedem Weg auf ein Gerät (`--build`,
+`--check`, `--deploy`, `--compose`). Vier Befunde halten das Werkzeug an, jeder mit dem
+Satz, was stattdessen dorthin gehört:
+
+- **Ein eigener Farbwert.** Werte stehen in der `theme.css` der Bibliothek und nirgendwo
+  sonst, eine Regel der App nimmt eine Marke. Falsch: `color: #e11d48;` oder
+  `background: rgb(225 29 72);` in der `stil.css`. Richtig: `color: var(--ara-fehler);`.
+- **Eine Tailwind-Palettenfarbe.** Es gelten nur die Token-Klassen des Themas, sie folgen
+  dem Gerät. Falsch: `className="bg-red-500"` oder `text-white`. Richtig: `bg-primary`,
+  `text-muted-foreground`, `border-border`.
+- **Ein eigenes Primitiv.** Der Seitentitel ist der Baustein `Kopf`, kein eigenes `<h1>`;
+  eine Tabelle ist das Primitiv `Table` oder das Muster `Datenliste`, kein eigenes
+  `<table>`; dasselbe gilt für `<dialog>` (`Dialog`), `<fieldset>` (`Feldgruppe`) und eine
+  handgebaute Reiterleiste mit `role="tablist"` (`Tabs`).
+- **Das Feld `marken` fehlt oder ist veraltet.** Das Manifest sagt, auf welcher Fassung des
+  Designsystems die App steht, und die Kopie in der App ist der Anker: wer
+  `frontend/src/marken/` trägt, muss das Feld führen, das Feld muss die Fassung der Kopie
+  nennen, und das Feld ohne Kopie ist genauso rot. `--new` schreibt es, `marken.mjs --sync`
+  hält es aktuell.
+
+Gemessen wird der eigene Quelltext der Oberfläche, nicht der Spiegel `src/marken/`: der
+gehört dem Produkt, und ob er stimmt, sagt `marken.mjs` über seine Hashes. **Ein fremder
+Container ist ausgenommen**: eine App ohne `frontend` im Manifest, mit fertigem `image`
+statt eines eigenen Baus, bringt keine Oberfläche mit, die neben der des Geräts stehen
+könnte. Der Selbsttest hält die Vorlage selbst an dieselbe Regel.
+
 **Das Thema kommt vom Gerät und nicht aus der App.** Die Shell schreibt es in das Dokument
 der App selbst, bei jedem Wechsel und bei jedem Laden, und schickt denselben Wert zusätzlich
 als Nachricht; Hell setzt nichts, denn `:root` ist hell. `frontend/src/rahmen/thema.ts`

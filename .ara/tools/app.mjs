@@ -102,6 +102,7 @@ import {
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
+import { standardFindings } from "./lib/standard.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
@@ -435,6 +436,35 @@ function shiftPlan(app, file, to) {
 const noAppleDouble = (path) => !/(^|\/)\._/.test(path);
 
 /**
+ * Der Standard: gebaut und eingespielt wird nur, was auf der Bibliothek steht.
+ *
+ * Eigene Farben, Palettenklassen, eigene Primitive und ein fehlendes oder
+ * veraltetes Feld `marken` halten hier an, vor dem Bau und vor jedem Weg an
+ * ein Gerät. Das Gerät vergleicht das Feld ausdrücklich nicht, und der
+ * Wächter des Produkts prüft nur die Shell: wenn der Standard gehalten wird,
+ * dann beim Bauen mit dem Kit. Ein fremder Container ohne Frontend ist
+ * ausgenommen, das entscheidet `standardFindings` am Manifest.
+ */
+function failOnStandard(app) {
+  const findings = standardFindings(app.dir, { manifest: app.manifest });
+  if (!findings.length) return;
+  fail(
+    [
+      t(
+        `${app.name} does not stand on the library. Nothing gets built or deployed like that:`,
+        `${app.name} steht nicht auf der Bibliothek. So wird nichts gebaut und nichts eingespielt:`
+      ),
+      ...findings.map((line) => `- ${line}`),
+      "",
+      t(
+        'The rule with examples stands in .ara/knowledge/app.md under "The appearance".',
+        'Die Regel mit Beispielen steht in .ara/knowledge/app.de.md unter "Das Aussehen".'
+      ),
+    ].join("\n")
+  );
+}
+
+/**
  * Bauen heißt: aus dem Ordner der App wird das Paket.
  *
  * Was **nicht** hineingehört, weiß das Kit von sich selbst: Pläne und die
@@ -452,6 +482,7 @@ function buildApp(app) {
     fail(t(`The app ${app.name} does not exist yet. First --new.`, `Die App ${app.name} gibt es noch nicht. Zuerst --new.`));
   }
   if (app.manifestProblem) fail(app.manifestProblem);
+  failOnStandard(app);
 
   const buildDir = join(app.dir, "build");
   rmSync(buildDir, { recursive: true, force: true });
@@ -762,6 +793,9 @@ function folderFor(value) {
       ) + `node .ara/tools/app.mjs --app ${name} --build`
     );
   }
+  // Auch mit frischem Bau noch einmal: der Standard gilt vor jedem Weg an ein
+  // Gerät, und ein Bau aus einer älteren Fassung des Kits hat ihn nie gesehen.
+  failOnStandard(app);
   writeState({ app: name });
   return join(app.dir, "build");
 }
