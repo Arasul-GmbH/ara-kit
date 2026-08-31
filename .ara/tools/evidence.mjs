@@ -160,7 +160,7 @@ function readSpecLines() {
         "The table of functional areas cannot be found in the template.\n" +
           'Expected in section 3 is a table whose first column is called "Funktionsbereich".',
         "In der Vorlage ist die Tabelle der Funktionsbereiche nicht auffindbar.\n" +
-          'Erwartet wird in Abschnitt 3 eine Tabelle, deren erste Spalte "Funktionsbereich" heisst.'
+          'Erwartet wird in Abschnitt 3 eine Tabelle, deren erste Spalte "Funktionsbereich" heißt.'
       )
     );
   }
@@ -722,7 +722,7 @@ function commandRecord(place, lines, ledger) {
       t(
         `The picture is ${groesse.width} by ${groesse.height} pixels. ` +
           `A screenshot of the interface has at least ${MIN_BREITE} by ${MIN_HOEHE}.`,
-        `Das Bild ist ${groesse.width} mal ${groesse.height} Bildpunkte gross. ` +
+        `Das Bild ist ${groesse.width} mal ${groesse.height} Bildpunkte groß. ` +
           `Ein Bildschirmfoto der Oberfläche hat mindestens ${MIN_BREITE} mal ${MIN_HOEHE}.`
       )
     );

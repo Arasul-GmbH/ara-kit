@@ -1,30 +1,30 @@
 <!-- gespiegelt-aus-arasul -->
 > **Gespiegelt aus dem Steuerungsordner von Arasul. Hier nicht
-> bearbeiten**, jede Aenderung wird beim naechsten Spiegeln
-> ueberschrieben. Wer etwas geaendert haben will, sagt es Arasul.
+> bearbeiten**, jede Änderung wird beim nächsten Spiegeln
+> überschrieben. Wer etwas geändert haben will, sagt es Arasul.
 >
 > Quelle: `templates/uebergabeprotokoll.md` · Stand: 2026-08-25
 
 # Übergabeprotokoll
 
-> Vorlage fuer die Abnahme nach einer Geraeteauslieferung.
+> Vorlage für die Abnahme nach einer Geräteauslieferung.
 > **Jede Zeile braucht einen Nachweis, nicht eine Behauptung. Ein Eintrag ohne
 > Nachweis ist wertlos.**
 >
-> **Fassung 3 vom 24.08.2026.** Neu: die uebergebenen Anlagen stehen als eigene
-> Positionen, der Entwicklungsstand wird bestaetigt, und die Schutzmassnahmen nach
+> **Fassung 3 vom 24.08.2026.** Neu: die übergebenen Anlagen stehen als eigene
+> Positionen, der Entwicklungsstand wird bestätigt, und die Schutzmaßnahmen nach
 > Abschnitt 8 der Leistungsbeschreibung bekommen eine eigene Tabelle. Ohne diese
-> Bestaetigung ist Ziffer 10 Absatz 3 der Vertraege nicht erfuellt.
+> Bestätigung ist Ziffer 10 Absatz 3 der Verträge nicht erfüllt.
 >
 > **Fassung 2 vom 22.08.2026.** Vorher sagte der Abnahmeabschnitt "zur Kenntnis
-> genommen". Das ist keine Abnahmeerklaerung nach § 640 BGB, und daran haengen
-> vier Folgen: die zweite Rate wird nach § 641 BGB nicht faellig, die Gefahr geht
-> nach § 644 BGB nicht ueber, die Beweislast fuer Mangelfreiheit bleibt bei
-> Arasul, und die Verjaehrung nach § 634a BGB beginnt nicht zu laufen.
-> Ausserdem verlangte die Zeile zur Testfrage eine gemessene Antwortzeit ins
+> genommen". Das ist keine Abnahmeerklärung nach § 640 BGB, und daran hängen
+> vier Folgen: die zweite Rate wird nach § 641 BGB nicht fällig, die Gefahr geht
+> nach § 644 BGB nicht über, die Beweislast für Mangelfreiheit bleibt bei
+> Arasul, und die Verjährung nach § 634a BGB beginnt nicht zu laufen.
+> Außerdem verlangte die Zeile zur Testfrage eine gemessene Antwortzeit ins
 > Protokoll. Ein unterschriebenes Protokoll mit einer Zahl darin ist eine
 > Beschaffenheitsvereinbarung nach § 434 Abs. 2 BGB. Beides behoben.
-> Quelle fuer die Inhalte ist der Laufzettel aus `ara-kit`, erzeugt von `/device`.
+> Quelle für die Inhalte ist der Laufzettel aus `ara-kit`, erzeugt von `/device`.
 
 ---
 
@@ -135,11 +135,11 @@ Für Arasul: ________________
 
 <!--
 REGELN:
-- Keine Zeile abzeichnen, die nicht vorgefuehrt wurde
-- Die Funktionsnachweise und Abschnitt 3 der Leistungsbeschreibung muessen
+- Keine Zeile abzeichnen, die nicht vorgeführt wurde
+- Die Funktionsnachweise und Abschnitt 3 der Leistungsbeschreibung müssen
   zueinander passen. Das ist keine Formsache: die Anlage ist die vereinbarte
   Beschaffenheit, dieses Protokoll ist der Beweis
-- Zugangsdaten nie in dieses Protokoll schreiben, getrennt uebergeben
-- Nach der Uebergabe: offene Punkte nach company/follow-ups.md, Status des Kunden
+- Zugangsdaten nie in dieses Protokoll schreiben, getrennt übergeben
+- Nach der Übergabe: offene Punkte nach company/follow-ups.md, Status des Kunden
   auf ausgeliefert setzen
 -->

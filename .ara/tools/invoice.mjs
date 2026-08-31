@@ -141,23 +141,23 @@ if (arg.void) {
     fail(t(`The number ${number} does not stand in the number range.`, `Die Nummer ${number} steht nicht im Nummernkreis.`));
   }
   const reason = str(arg.reason);
-  if (!reason) fail(t('Cancelling needs a reason: --reason "…".', 'Zum Stornieren gehoert ein Grund: --reason "…".'));
+  if (!reason) fail(t('Cancelling needs a reason: --reason "…".', 'Zum Stornieren gehört ein Grund: --reason "…".'));
   updateEntry(number, { State: "storniert", Reason: reason });
   console.log(
     t(
       `${number} now stands as cancelled in the number range. The number stays assigned, ` +
         "otherwise the range would have a gap.",
       `${number} steht jetzt als storniert im Nummernkreis. Die Nummer bleibt vergeben, ` +
-        "sonst haette der Kreis eine Luecke."
+        "sonst hätte der Kreis eine Lücke."
     ) +
       (entry.State === "gestellt"
         ? t(
             "\n\nCareful: this document was already printed. If it was with the customer, the note " +
               "here is not enough. Then a cancellation invoice with its own number is needed, and the " +
               "kit does not write that. That runs through the accounting.",
-            "\n\nAchtung: dieser Beleg war schon gedruckt. War er beim Kunden, genuegt der " +
+            "\n\nAchtung: dieser Beleg war schon gedruckt. War er beim Kunden, genügt der " +
               "Vermerk hier nicht. Dann braucht es eine Stornorechnung mit eigener Nummer, und die " +
-              "schreibt das Kit nicht. Das laeuft ueber die Buchhaltung."
+              "schreibt das Kit nicht. Das läuft über die Buchhaltung."
           )
         : "")
   );
@@ -267,7 +267,7 @@ if (arg.new) {
       ),
       ...open.map((check) => `  ${check.label}: ${check.hint}`),
       "",
-      t(`Fill them in, then: `, `Fuellen, dann: `) + `node .ara/tools/invoice.mjs --check ${relative(ROOT, file)}`
+      t(`Fill them in, then: `, `Füllen, dann: `) + `node .ara/tools/invoice.mjs --check ${relative(ROOT, file)}`
     );
   } else {
     lines.push(
@@ -293,7 +293,7 @@ if (str(arg.validate)) {
       fail(
         t(
           `No attached invoice file sits in ${basename(path)}.`,
-          `In ${basename(path)} steckt keine angehaengte Rechnungsdatei.`
+          `In ${basename(path)} steckt keine angehängte Rechnungsdatei.`
         )
       );
     }
@@ -482,7 +482,7 @@ if (!state.attachment || state.attachment.xml.trim() !== xml.trim()) {
   fail(
     t(
       `The PDF is written, but the attachment does not read back: ${relative(ROOT, out)}`,
-      `Das PDF ist geschrieben, aber der Anhang liest sich nicht zurueck: ${relative(ROOT, out)}`
+      `Das PDF ist geschrieben, aber der Anhang liest sich nicht zurück: ${relative(ROOT, out)}`
     )
   );
 }
@@ -511,8 +511,8 @@ console.log(
     t(
       `Attached: ${state.attachment.name}, ${Buffer.byteLength(state.attachment.xml)} bytes, ` +
         `profile ${PROFILE.name}, read back and checked.`,
-      `Angehaengt: ${state.attachment.name}, ${Buffer.byteLength(state.attachment.xml)} Byte, ` +
-        `Profil ${PROFILE.name}, zurueckgelesen und geprueft.`
+      `Angehängt: ${state.attachment.name}, ${Buffer.byteLength(state.attachment.xml)} Byte, ` +
+        `Profil ${PROFILE.name}, zurückgelesen und geprüft.`
     ),
     t(
       `Marking: ${state.header}, PDF/A-3B ${state.pdfa ? "set" : "missing"}, ` +
@@ -529,7 +529,7 @@ console.log(
         ]
       : []),
     "",
-    t("What stays unchecked:", "Ungeprueft bleibt:"),
+    t("What stays unchecked:", "Ungeprüft bleibt:"),
     ...UNCHECKED.map((line) => `  ${line}`),
     "",
     t("Nothing gets sent. The human decides that.", "Verschickt wird nichts. Das entscheidet der Mensch."),
@@ -566,13 +566,13 @@ function survey() {
       `Number range ${ledger.format}, year ${ledger.year || "none yet"}, last assigned ` +
         `${ledger.last || "none"}. The next would be ${nextNumber(ledger)}.`,
       `Nummernkreis ${ledger.format}, Jahr ${ledger.year || "noch keins"}, zuletzt vergeben ` +
-        `${ledger.last || "keine"}. Naechste waere ${nextNumber(ledger)}.`
+        `${ledger.last || "keine"}. Nächste wäre ${nextNumber(ledger)}.`
     )
   );
   if (!rows.length) {
     console.log(
       customer
-        ? t(`No number is assigned for "${customer}" yet.`, `Fuer "${customer}" ist noch keine Nummer vergeben.`)
+        ? t(`No number is assigned for "${customer}" yet.`, `Für "${customer}" ist noch keine Nummer vergeben.`)
         : t("No number assigned yet.", "Noch keine Nummer vergeben.")
     );
   }
@@ -642,7 +642,7 @@ function positionSource(dir) {
     return { origin: relative(ROOT, offer), rows: found.rows };
   }
   return {
-    origin: t("no source, one line to fill in", "keiner Quelle, eine Zeile zum Ausfuellen"),
+    origin: t("no source, one line to fill in", "keiner Quelle, eine Zeile zum Ausfüllen"),
     rows: [{ text: "{Was geleistet wurde}", quantity: "1", unit: "", price: "{Betrag}", rate: "" }],
   };
 }
@@ -820,8 +820,8 @@ function report(result, asJson) {
     );
     for (const problem of result.problems) console.log(`  ${problem}`);
   }
-  console.log(t("Checked:", "Geprueft:"));
+  console.log(t("Checked:", "Geprüft:"));
   for (const line of result.checked) console.log(`  ${line}`);
-  console.log(t("Not checked:", "Ungeprueft:"));
+  console.log(t("Not checked:", "Ungeprüft:"));
   for (const line of result.unchecked) console.log(`  ${line}`);
 }

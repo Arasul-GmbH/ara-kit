@@ -57,8 +57,8 @@ Kontrakt: bis 5
 
 Kontrakt: bis 5
 
-- Der Spiegel des Designsystems steht auf Fassung 3.1.1. Die Bibliothek schrieb in drei Dateien eine Breite aus einer Variablen in der Kurzform von Tailwind 3 (`sidebar`, `calendar`, `Suchauswahl`); Tailwind 4 packt die nicht mehr in ein `var()`, sondern schreibt `width: --name`, und der Browser laesst die Regel fallen. Im Rahmen des Orin sah man es als Seitenleiste ueber dem Inhalt, weil der Platzhalter, der ihre Spalte freihaelt, null breit war. Die Bibliothek hat es in 3.1.1 umgestellt, das Kit zieht nach.
-- Die Notzeilen in der `stil.css` der Vorlage sind gestrichen. Sie standen dort seit dem 29.08.2026 mit Datum und dem Satz, dass sie wieder verschwinden, sobald die Bibliothek die Schreibweise umstellt, und setzten die vier Breiten der Seitenleiste noch einmal von Hand. Genau dieser Fall ist eingetreten. Eine App aus der Vorlage traegt damit keine Regel mehr, die eine Ursache abfaengt, die es nicht mehr gibt.
+- Der Spiegel des Designsystems steht auf Fassung 3.1.1. Die Bibliothek schrieb in drei Dateien eine Breite aus einer Variablen in der Kurzform von Tailwind 3 (`sidebar`, `calendar`, `Suchauswahl`); Tailwind 4 packt die nicht mehr in ein `var()`, sondern schreibt `width: --name`, und der Browser lässt die Regel fallen. Im Rahmen des Orin sah man es als Seitenleiste über dem Inhalt, weil der Platzhalter, der ihre Spalte freihält, null breit war. Die Bibliothek hat es in 3.1.1 umgestellt, das Kit zieht nach.
+- Die Notzeilen in der `stil.css` der Vorlage sind gestrichen. Sie standen dort seit dem 29.08.2026 mit Datum und dem Satz, dass sie wieder verschwinden, sobald die Bibliothek die Schreibweise umstellt, und setzten die vier Breiten der Seitenleiste noch einmal von Hand. Genau dieser Fall ist eingetreten. Eine App aus der Vorlage trägt damit keine Regel mehr, die eine Ursache abfängt, die es nicht mehr gibt.
 - Gemessen am Orin, im Rahmen bei 1440 Pixeln, in Hell und in Dunkel: der Rahmen der App 1042 Pixel breit, der Platzhalter der Seitenleiste 256 Pixel, der Inhalt beginnt bei 256. Ohne die Notzeilen.
 
 ## 0.19.0 (2026-08-29)
@@ -234,27 +234,27 @@ Kontrakt: bis 3
 
 Kontrakt: bis 3
 
-- Das Startpasswort des Administrators kommt aus dem Kit wieder heraus, ohne sichtbar zu werden. `node .ara/tools/device.mjs --name <geraet> --admin-login` meldet sich am Geraet an und gibt die Sitzung aus, `--token` gibt nur den Ausweis. Weg und Benutzername kommen aus `arasul-release.json`, wenn das Artefakt sie nennt, sonst aus `--login-path` und `--login-user`, und das Werkzeug sagt jedes Mal, woher es sie hat. Der Weg geht an der Schnittstelle entlang und nicht ueber SSH, er kommt darum ohne Anmeldenamen und Schluessel aus und nimmt die Adresse aus `address` oder `api_base`.
-- `secrets.mjs --show` zaehlt jeden Namen auf, den das Kit vergibt, nicht nur die Kit-Schluessel. Das Startpasswort lag vorher unter `ARASUL_START_<geraet>` da, und dieses Blatt nannte den Namen nicht.
-- Die Ausgabe des Installers wird mitgelesen statt durchgereicht, und dabei maskiert: Kit-Schluessel und Startpasswort gehen nicht mehr im Klartext ueber den Bildschirm. Der Satz "Klartext wird nicht angezeigt" stimmt jetzt wieder.
-- Neu am Ende von `/device`: **Was der Installer nicht konnte.** Seine Absagen, etwa eine fehlgeschlagene SSH-Haertung oder ein Firewall-Setup ohne Root-Rechte, stehen danach beisammen und in der Akte, statt in mehreren hundert Zeilen unterzugehen.
-- Nach einer eigenen Installation traegt die Akte `tls: selfsigned`. Das Geraet stellt sein Zertifikat aus einer eigenen Geraete-CA aus, und der erste Aufruf gegen die Schnittstelle scheiterte sonst an `SELF_SIGNED_CERT_IN_CHAIN`.
-- Die Fassung des Artefakts liest das Kit aus `arasul-release.json`, wenn keine Datei `VERSION` dabei ist. Spiegel, Geraeteakte und der Ordnername am Geraet sagten sonst "unbekannt", obwohl die Zahl danebenlag.
-- `/app` weiss ohne `--device`, was es selbst an ein Geraet geschickt hat: welche Fassung im Teststand steht und welche live ist, je App und Geraet. Ist die gebaute Fassung live, wird nicht wieder `--check` und `--deploy` vorgeschlagen, sondern der Plan und die README.
-- Der Plan der Referenz-App laesst sich nicht mehr verschieben: `--plan-aktiv` und `--plan-erledigt` verweigern jeden Plan, der in der Versionsverwaltung liegt. Der Spiegel behaelt beim Auspacken seinen `.gitkeep`. Beides machte den frischen Klon schmutzig.
+- Das Startpasswort des Administrators kommt aus dem Kit wieder heraus, ohne sichtbar zu werden. `node .ara/tools/device.mjs --name <geraet> --admin-login` meldet sich am Gerät an und gibt die Sitzung aus, `--token` gibt nur den Ausweis. Weg und Benutzername kommen aus `arasul-release.json`, wenn das Artefakt sie nennt, sonst aus `--login-path` und `--login-user`, und das Werkzeug sagt jedes Mal, woher es sie hat. Der Weg geht an der Schnittstelle entlang und nicht über SSH, er kommt darum ohne Anmeldenamen und Schlüssel aus und nimmt die Adresse aus `address` oder `api_base`.
+- `secrets.mjs --show` zählt jeden Namen auf, den das Kit vergibt, nicht nur die Kit-Schlüssel. Das Startpasswort lag vorher unter `ARASUL_START_<geraet>` da, und dieses Blatt nannte den Namen nicht.
+- Die Ausgabe des Installers wird mitgelesen statt durchgereicht, und dabei maskiert: Kit-Schlüssel und Startpasswort gehen nicht mehr im Klartext über den Bildschirm. Der Satz "Klartext wird nicht angezeigt" stimmt jetzt wieder.
+- Neu am Ende von `/device`: **Was der Installer nicht konnte.** Seine Absagen, etwa eine fehlgeschlagene SSH-Härtung oder ein Firewall-Setup ohne Root-Rechte, stehen danach beisammen und in der Akte, statt in mehreren hundert Zeilen unterzugehen.
+- Nach einer eigenen Installation trägt die Akte `tls: selfsigned`. Das Gerät stellt sein Zertifikat aus einer eigenen Geräte-CA aus, und der erste Aufruf gegen die Schnittstelle scheiterte sonst an `SELF_SIGNED_CERT_IN_CHAIN`.
+- Die Fassung des Artefakts liest das Kit aus `arasul-release.json`, wenn keine Datei `VERSION` dabei ist. Spiegel, Geräteakte und der Ordnername am Gerät sagten sonst "unbekannt", obwohl die Zahl danebenlag.
+- `/app` weiß ohne `--device`, was es selbst an ein Gerät geschickt hat: welche Fassung im Teststand steht und welche live ist, je App und Gerät. Ist die gebaute Fassung live, wird nicht wieder `--check` und `--deploy` vorgeschlagen, sondern der Plan und die README.
+- Der Plan der Referenz-App lässt sich nicht mehr verschieben: `--plan-aktiv` und `--plan-erledigt` verweigern jeden Plan, der in der Versionsverwaltung liegt. Der Spiegel behält beim Auspacken seinen `.gitkeep`. Beides machte den frischen Klon schmutzig.
 
 ## 0.9.0 (2026-08-28)
 
 Kontrakt: bis 3
 
-- Der Installer wird so gerufen, wie das Artefakt es sagt: der Einstiegspunkt kommt aus `arasul-release.json`, nicht aus dem Gedaechtnis des Kits, und er bekommt Startpasswort und Netzname mit. Nur dabei entstehen am Geraet Netzname, Fassung, Startpasswort und die Erstausgabe. Nennt das Artefakt keinen Einstiegspunkt, haelt das Kit an, statt zu raten.
-- Das Startpasswort wuerfelt das Kit und legt es in die Geheimnis-Ablage. Die Geraeteakte traegt nur den Namen des Eintrags, in `start_password_ref`, und den Netznamen in `net_name`.
-- Das Artefakt wird nach `$HOME/arasul-<fassung>` geschoben und nicht mehr nach `$HOME/arasul`. Das Kit fand sonst beim naechsten Lauf sein eigenes Paket und hielt es fuer eine Installation.
-- Die Spurensuche unterscheidet drei Lagen statt zwei: die Plattform laeuft, es liegen nur Reste da, oder da ist nichts. Ueber Reste hinweg wird nur mit `--despite-traces` installiert, und das gehoert vorher bestaetigt.
-- Ueberall, wo das Kit packt oder auspackt, bleiben die `._`-Beiwerkdateien von macOS draussen. 1124 davon gingen mit einem Artefakt an ein Geraet, und Traefik stieg an einer davon aus.
-- `secrets.mjs --set` nimmt den Wert von der Standardeingabe, wenn kein Terminal dranhaengt. Ohne das blieb ein Token in einer nicht-interaktiven Sitzung auf "fehlt".
-- Jedes Werkzeug beantwortet `--help` mit seiner Kopfhilfe und tut sonst nichts. Vorher fuehrte `device.mjs --help` eine Geraetepruefung aus und `mirror.mjs --help` lud den Spiegel.
-- Neu: `node .ara/tools/mirror.mjs --docs` zeigt, welche Anleitungen mit dem Artefakt kamen. Das Wissen zu `/device` und `/maintain` nennt darueber den Weg zum ersten Mitarbeiter und zur ersten Freigabe, auch ohne Browser.
+- Der Installer wird so gerufen, wie das Artefakt es sagt: der Einstiegspunkt kommt aus `arasul-release.json`, nicht aus dem Gedächtnis des Kits, und er bekommt Startpasswort und Netzname mit. Nur dabei entstehen am Gerät Netzname, Fassung, Startpasswort und die Erstausgabe. Nennt das Artefakt keinen Einstiegspunkt, hält das Kit an, statt zu raten.
+- Das Startpasswort würfelt das Kit und legt es in die Geheimnis-Ablage. Die Geräteakte trägt nur den Namen des Eintrags, in `start_password_ref`, und den Netznamen in `net_name`.
+- Das Artefakt wird nach `$HOME/arasul-<fassung>` geschoben und nicht mehr nach `$HOME/arasul`. Das Kit fand sonst beim nächsten Lauf sein eigenes Paket und hielt es für eine Installation.
+- Die Spurensuche unterscheidet drei Lagen statt zwei: die Plattform läuft, es liegen nur Reste da, oder da ist nichts. Über Reste hinweg wird nur mit `--despite-traces` installiert, und das gehört vorher bestätigt.
+- Überall, wo das Kit packt oder auspackt, bleiben die `._`-Beiwerkdateien von macOS draußen. 1124 davon gingen mit einem Artefakt an ein Gerät, und Traefik stieg an einer davon aus.
+- `secrets.mjs --set` nimmt den Wert von der Standardeingabe, wenn kein Terminal dranhängt. Ohne das blieb ein Token in einer nicht-interaktiven Sitzung auf "fehlt".
+- Jedes Werkzeug beantwortet `--help` mit seiner Kopfhilfe und tut sonst nichts. Vorher führte `device.mjs --help` eine Geräteprüfung aus und `mirror.mjs --help` lud den Spiegel.
+- Neu: `node .ara/tools/mirror.mjs --docs` zeigt, welche Anleitungen mit dem Artefakt kamen. Das Wissen zu `/device` und `/maintain` nennt darüber den Weg zum ersten Mitarbeiter und zur ersten Freigabe, auch ohne Browser.
 - `.env.example` schickt niemanden mehr zu `/start`. Den Befehl gibt es seit E1 nicht mehr.
 
 ## 0.8.0 (2026-08-27)
@@ -262,11 +262,11 @@ Kontrakt: bis 3
 Kontrakt: bis 3
 
 - Neuer Befehl `/invoice`, nur im Partnerzweig und nur mit `invoice: yes` im Profil: die Rechnung entsteht aus dem Angebot der Kundenakte, bekommt ihre Nummer aus dem Nummernkreis und wird als ZUGFeRD-PDF gedruckt. Im PDF steckt die Rechnung noch einmal als `factur-x.xml` nach EN 16931, damit die Buchhaltung des Kunden sie einliest, statt sie abzutippen.
-- Die Pflichtangaben nach § 14 Abs. 4 UStG sind eine Pruefliste, die vor dem Druck rot wird. Fehlt eine, wird nicht gedruckt: eine unvollstaendige Rechnung berechtigt den Kunden nicht zum Vorsteuerabzug, und das faellt bei ihm auf.
-- Der Nummernkreis liegt in `business/invoices.md` und gehoert dem Partner. Fortlaufend je Jahr, ohne Luecke, ohne Zurueckdrehen. Eine verworfene Rechnung wird storniert, nicht geloescht, und ihre Nummer bleibt vergeben.
-- Ein Beleg, eine Wahrheit: die Zahlen im XML kommen aus derselben Tabelle, die gedruckt wird. Geprueft wird das Ergebnis gegen die Geschaeftsregeln der EN 16931, und der Selbsttest sagt dazu, was ungeprueft bleibt.
-- Die Kundenakte fuehrt jetzt die Anschrift in `street`, `postcode` und `city`, dazu `country` und `vat_id`. Eine Rechnung braucht sie einzeln, ein Angebot ohnehin.
-- `pdf.mjs` druckt kein Frontmatter mehr. Ein Beleg traegt seine maschinenlesbaren Felder im Kopf, und die sind keine Zeile fuer den Kunden.
+- Die Pflichtangaben nach § 14 Abs. 4 UStG sind eine Prüfliste, die vor dem Druck rot wird. Fehlt eine, wird nicht gedruckt: eine unvollständige Rechnung berechtigt den Kunden nicht zum Vorsteuerabzug, und das fällt bei ihm auf.
+- Der Nummernkreis liegt in `business/invoices.md` und gehört dem Partner. Fortlaufend je Jahr, ohne Lücke, ohne Zurückdrehen. Eine verworfene Rechnung wird storniert, nicht gelöscht, und ihre Nummer bleibt vergeben.
+- Ein Beleg, eine Wahrheit: die Zahlen im XML kommen aus derselben Tabelle, die gedruckt wird. Geprüft wird das Ergebnis gegen die Geschäftsregeln der EN 16931, und der Selbsttest sagt dazu, was ungeprüft bleibt.
+- Die Kundenakte führt jetzt die Anschrift in `street`, `postcode` und `city`, dazu `country` und `vat_id`. Eine Rechnung braucht sie einzeln, ein Angebot ohnehin.
+- `pdf.mjs` druckt kein Frontmatter mehr. Ein Beleg trägt seine maschinenlesbaren Felder im Kopf, und die sind keine Zeile für den Kunden.
 
 ## 0.7.0 (2026-08-27)
 

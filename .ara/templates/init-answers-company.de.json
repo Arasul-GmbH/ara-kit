@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Antwortdatei fuer /init ohne Interview: node .ara/tools/init.mjs --answers <diese Datei>. Die Felder heissen wie in business/profile.md. Die Prosa-Felder sind in Du-Form an dich gerichtet, so schreibt Ara sie ins Profil. Diese Datei ist ein Beispiel mit erfundenen Werten, keine Vorgabe.",
+  "_hinweis": "Antwortdatei für /init ohne Interview: node .ara/tools/init.mjs --answers <diese Datei>. Die Felder heißen wie in business/profile.md. Die Prosa-Felder sind in Du-Form an dich gerichtet, so schreibt Ara sie ins Profil. Diese Datei ist ein Beispiel mit erfundenen Werten, keine Vorgabe.",
   "_werte": {
     "_": "Die Felder darunter kennen nur diese Werte. Alles andere weist --answers ab, samt Liste in der Meldung.",
     "role": [
@@ -39,8 +39,8 @@
     ]
   },
   "_felder": {
-    "_": "Was der Name allein nicht sagt. Die uebrigen Felder heissen wie in business/profile.md und tragen deine eigenen Worte.",
-    "ssh_key": "Der Name deines privaten SSH-Schluessels in ~/.ssh auf DIESEM Rechner, ohne Pfad, zum Beispiel id_ed25519. Das Kit haelt nur den Namen, der Schluessel selbst bleibt liegen, wo er liegt, und wird nie kopiert. Damit erreicht das Kit spaeter Geraete, das Geraet muss den passenden oeffentlichen Schluessel also kennen (seine .ssh/authorized_keys). Gibt es hier noch keinen: ssh-keygen -t ed25519 legt einen an. Leer ist erlaubt, dann kommt remote.mjs nur dorthin, wohin ssh auch ohne benannten Schluessel kommt."
+    "_": "Was der Name allein nicht sagt. Die übrigen Felder heißen wie in business/profile.md und tragen deine eigenen Worte.",
+    "ssh_key": "Der Name deines privaten SSH-Schlüssels in ~/.ssh auf DIESEM Rechner, ohne Pfad, zum Beispiel id_ed25519. Das Kit hält nur den Namen, der Schlüssel selbst bleibt liegen, wo er liegt, und wird nie kopiert. Damit erreicht das Kit später Geräte, das Gerät muss den passenden öffentlichen Schlüssel also kennen (seine .ssh/authorized_keys). Gibt es hier noch keinen: ssh-keygen -t ed25519 legt einen an. Leer ist erlaubt, dann kommt remote.mjs nur dorthin, wohin ssh auch ohne benannten Schlüssel kommt."
   },
   "role": "company",
   "language": "de",
@@ -59,10 +59,10 @@
   "backup_repo": "",
   "first_device": "steht noch nicht fest",
   "first_device_state": "ordered",
-  "first_app": "Urlaubsantrag: Mitarbeiter stellt, Meister gibt frei, Buero sieht den Plan",
-  "about": "Du leitest die Arbeitsvorbereitung und kuemmerst dich nebenbei um die IT im Haus. Du kennst jeden Ablauf in der Firma, aber Linux und Container sind neu fuer dich, darum willst du viel erklaert bekommen.",
-  "working": "Du willst mitlernen: Ara sagt, was sie tut, waehrend sie es tut. Vor jeder Aenderung am Geraet wirst du gefragt.",
-  "house": "Buchhaltung ueber den Steuerberater in DATEV, Auftraege und Lager in Sage 100, Mail in Outlook, Dokumente auf einem Netzlaufwerk. Daran sollen Apps spaeter andocken, zuerst an das Netzlaufwerk.",
-  "plans": "Das Geraet ist bestellt und soll im Buero stehen. Nutzen sollen es zuerst Buero und Meister, spaeter die Fertigung. Die erste App ist der Urlaubsantrag, danach die Suche in den Auftragsunterlagen.",
+  "first_app": "Urlaubsantrag: Mitarbeiter stellt, Meister gibt frei, Büro sieht den Plan",
+  "about": "Du leitest die Arbeitsvorbereitung und kümmerst dich nebenbei um die IT im Haus. Du kennst jeden Ablauf in der Firma, aber Linux und Container sind neu für dich, darum willst du viel erklärt bekommen.",
+  "working": "Du willst mitlernen: Ara sagt, was sie tut, während sie es tut. Vor jeder Änderung am Gerät wirst du gefragt.",
+  "house": "Buchhaltung über den Steuerberater in DATEV, Aufträge und Lager in Sage 100, Mail in Outlook, Dokumente auf einem Netzlaufwerk. Daran sollen Apps später andocken, zuerst an das Netzlaufwerk.",
+  "plans": "Das Gerät ist bestellt und soll im Büro stehen. Nutzen sollen es zuerst Büro und Meister, später die Fertigung. Die erste App ist der Urlaubsantrag, danach die Suche in den Auftragsunterlagen.",
   "deviations": ""
 }

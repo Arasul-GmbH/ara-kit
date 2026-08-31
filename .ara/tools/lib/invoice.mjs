@@ -266,7 +266,7 @@ export function auditLedger(ledger = readLedger()) {
       seen.add(count);
     }
     for (let expected = 1; expected <= Math.max(...sorted); expected++) {
-      if (!seen.has(expected)) problems.push(`${makeNumber(year, expected)} fehlt, der Kreis hat eine Luecke.`);
+      if (!seen.has(expected)) problems.push(`${makeNumber(year, expected)} fehlt, der Kreis hat eine Lücke.`);
     }
   }
   if (ledger.year) {
@@ -274,7 +274,7 @@ export function auditLedger(ledger = readLedger()) {
     if (highest > ledger.last) {
       problems.push(
         `Im Kopf steht last: ${ledger.last}, in der Liste steht ${makeNumber(ledger.year, highest)}. ` +
-          "Der Kopf ist zurueckgedreht worden."
+          "Der Kopf ist zurückgedreht worden."
       );
     }
   }
@@ -310,7 +310,7 @@ export function peekNumber(date, ledger = readLedger()) {
         problems.join("\n  ") +
         t(
           "\nThat gets corrected by hand, not overwritten.",
-          "\nDas wird von Hand berichtigt, nicht ueberschrieben."
+          "\nDas wird von Hand berichtigt, nicht überschrieben."
         )
     );
   }
@@ -319,8 +319,8 @@ export function peekNumber(date, ledger = readLedger()) {
       t(
         `Numbers for ${ledger.year} have already been assigned. An invoice dated ${year} ` +
           "would get a number behind an older one, and the range would no longer be sequential.",
-        `Es sind schon Nummern fuer ${ledger.year} vergeben. Eine Rechnung mit Datum aus ${year} ` +
-          "bekaeme eine Nummer hinter einer aelteren, und der Kreis waere nicht mehr fortlaufend."
+        `Es sind schon Nummern für ${ledger.year} vergeben. Eine Rechnung mit Datum aus ${year} ` +
+          "bekäme eine Nummer hinter einer älteren, und der Kreis wäre nicht mehr fortlaufend."
       )
     );
   }

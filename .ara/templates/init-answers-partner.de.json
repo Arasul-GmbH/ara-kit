@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Antwortdatei fuer /init ohne Interview: node .ara/tools/init.mjs --answers <diese Datei>. Die Felder heissen wie in business/profile.md. Die Prosa-Felder sind in Du-Form an dich gerichtet, so schreibt Ara sie ins Profil. Diese Datei ist ein Beispiel mit erfundenen Werten, keine Vorgabe.",
+  "_hinweis": "Antwortdatei für /init ohne Interview: node .ara/tools/init.mjs --answers <diese Datei>. Die Felder heißen wie in business/profile.md. Die Prosa-Felder sind in Du-Form an dich gerichtet, so schreibt Ara sie ins Profil. Diese Datei ist ein Beispiel mit erfundenen Werten, keine Vorgabe.",
   "_werte": {
     "_": "Die Felder darunter kennen nur diese Werte. Alles andere weist --answers ab, samt Liste in der Meldung.",
     "role": [
@@ -39,22 +39,22 @@
     ]
   },
   "_felder": {
-    "_": "Was der Name allein nicht sagt. Die uebrigen Felder heissen wie in business/profile.md und tragen deine eigenen Worte.",
-    "ssh_key": "Der Name deines privaten SSH-Schluessels in ~/.ssh auf DIESEM Rechner, ohne Pfad, zum Beispiel id_ed25519. Das Kit haelt nur den Namen, der Schluessel selbst bleibt liegen, wo er liegt, und wird nie kopiert. Damit erreicht das Kit spaeter Geraete, das Geraet muss den passenden oeffentlichen Schluessel also kennen (seine .ssh/authorized_keys). Gibt es hier noch keinen: ssh-keygen -t ed25519 legt einen an. Leer ist erlaubt, dann kommt remote.mjs nur dorthin, wohin ssh auch ohne benannten Schluessel kommt."
+    "_": "Was der Name allein nicht sagt. Die übrigen Felder heißen wie in business/profile.md und tragen deine eigenen Worte.",
+    "ssh_key": "Der Name deines privaten SSH-Schlüssels in ~/.ssh auf DIESEM Rechner, ohne Pfad, zum Beispiel id_ed25519. Das Kit hält nur den Namen, der Schlüssel selbst bleibt liegen, wo er liegt, und wird nie kopiert. Damit erreicht das Kit später Geräte, das Gerät muss den passenden öffentlichen Schlüssel also kennen (seine .ssh/authorized_keys). Gibt es hier noch keinen: ssh-keygen -t ed25519 legt einen an. Leer ist erlaubt, dann kommt remote.mjs nur dorthin, wohin ssh auch ohne benannten Schlüssel kommt."
   },
   "role": "partner",
   "language": "de",
   "name": "Jana Beispiel",
   "salutation": "Jana",
   "company": "Beispiel IT-Service",
-  "region": "Muensterland",
+  "region": "Münsterland",
   "skills": "administration, sales",
   "tools": "Lexoffice, HubSpot, Nextcloud, Microsoft 365",
   "invoice": "later",
   "invoice_tool": "Lexoffice",
   "detail_level": "medium",
   "security_level": "standard",
-  "experience": "Linux-Server ja, SSH taeglich, Hardware beim Kunden ja",
+  "experience": "Linux-Server ja, SSH täglich, Hardware beim Kunden ja",
   "ssh_key": "id_ed25519",
   "secrets_store": "env",
   "browser": "yes",
@@ -63,13 +63,13 @@
   "first_device_state": "none",
   "first_app": "",
   "about": "Du richtest seit zehn Jahren Server und Netze bei kleinen Betrieben ein und verkaufst das selbst. Software schreibst du nicht, du willst wissen, was ein Schritt tut, nicht wie er innen aussieht.",
-  "working": "Du willst Ergebnis und einen Satz Begruendung, nicht mehr. Aenderungen an Kundengeraeten bestaetigst du einzeln, auch die kleinen.",
+  "working": "Du willst Ergebnis und einen Satz Begründung, nicht mehr. Änderungen an Kundengeräten bestätigst du einzeln, auch die kleinen.",
   "house": "Rechnungen und Buchhaltung laufen in Lexoffice, Kundenkontakte in HubSpot, Dateien in Nextcloud, Mail und Kalender in Microsoft 365. Das ist auch der Stack, den du bei den meisten Kunden vorfindest.",
-  "plans": "Arasul ist fuer dich ein Nebengeschaeft neben dem Systemhaus, mit drei bis fuenf Kunden im ersten Jahr, vor allem Handwerk und kleine Kanzleien. Dein Engpass ist Zeit, nicht Technik.",
+  "plans": "Arasul ist für dich ein Nebengeschäft neben dem Systemhaus, mit drei bis fünf Kunden im ersten Jahr, vor allem Handwerk und kleine Kanzleien. Dein Engpass ist Zeit, nicht Technik.",
   "deviations": "",
   "company_file": {
     "legal_name": "Beispiel IT-Service e. K.",
-    "address": "Musterweg 3, 48143 Muenster",
+    "address": "Musterweg 3, 48143 Münster",
     "phone": "0251 000000",
     "email": "post@beispiel-it.example",
     "website": "beispiel-it.example",

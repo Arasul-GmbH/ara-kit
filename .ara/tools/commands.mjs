@@ -338,8 +338,8 @@ for (const old of lage.retired) {
     t(
       `${old.removed ? "removed     " : "retired     "} /${old.name}  (now called /${old.successor}` +
         `${old.untouched ? "" : ", changed by hand"})`,
-      `${old.removed ? "entfernt   " : "abgeloest  "} /${old.name}  (heisst jetzt /${old.successor}` +
-        `${old.untouched ? "" : ", von Hand geaendert"})`
+      `${old.removed ? "entfernt   " : "abgelöst   "} /${old.name}  (heißt jetzt /${old.successor}` +
+        `${old.untouched ? "" : ", von Hand geändert"})`
     )
   );
 }
@@ -366,7 +366,7 @@ if (arg.apply || replace.length) {
       t(
         `Left alone, because changed by hand: ${kept.map((c) => `/${c.name}`).join(", ")}. ` +
           "Replace anyway with: node .ara/tools/commands.mjs --replace <name>",
-        `Nicht angefasst, weil von Hand geaendert: ${kept.map((c) => `/${c.name}`).join(", ")}. ` +
+        `Nicht angefasst, weil von Hand geändert: ${kept.map((c) => `/${c.name}`).join(", ")}. ` +
           "Trotzdem ersetzen mit: node .ara/tools/commands.mjs --replace <name>"
       )
     );
@@ -376,8 +376,8 @@ if (arg.apply || replace.length) {
       t(
         `\nCompany branch, removed because it belongs to partners only: ${cut.join(", ")}. ` +
           "Should this become a partner one day: set role in the profile, then node .ara/tools/update.mjs brings it back.",
-        `\nZweig Unternehmen, weggeraeumt, weil es nur Partnern gehoert: ${cut.join(", ")}. ` +
-          "Wird daraus einmal ein Partner: role im Profil aendern, dann holt node .ara/tools/update.mjs es zurueck."
+        `\nZweig Unternehmen, weggeräumt, weil es nur Partnern gehört: ${cut.join(", ")}. ` +
+          "Wird daraus einmal ein Partner: role im Profil ändern, dann holt node .ara/tools/update.mjs es zurück."
       )
     );
   }
@@ -388,9 +388,9 @@ if (arg.apply || replace.length) {
         `Retired and changed by hand, therefore left lying: ` +
           `${geblieben.map((old) => `/${old.name} (now /${old.successor})`).join(", ")}. ` +
           "Compare and delete them yourself, otherwise the command exists twice.",
-        `Abgeloest und von Hand geaendert, darum liegen geblieben: ` +
+        `Abgelöst und von Hand geändert, darum liegen geblieben: ` +
           `${geblieben.map((old) => `/${old.name} (jetzt /${old.successor})`).join(", ")}. ` +
-          "Vergleichen und selbst loeschen, sonst gibt es den Befehl zweimal."
+          "Vergleichen und selbst löschen, sonst gibt es den Befehl zweimal."
       )
     );
   }
@@ -416,7 +416,7 @@ if (arg.apply || replace.length) {
           "Those stay untouched under --apply. If you want the kit's version: --replace <name>, " +
           "compare with diff first." +
           (by("conflict").length ? " With \"both\" the kit is newer as well, then the comparison is worth twice as much." : ""),
-        `${kept.length} von Hand geaendert (${kept.map((c) => `/${c.name}`).join(", ")}). ` +
+        `${kept.length} von Hand geändert (${kept.map((c) => `/${c.name}`).join(", ")}). ` +
           "Die bleiben bei --apply liegen. Wer die Kit-Fassung will: --replace <name>, " +
           "vorher mit diff vergleichen." +
           (by("conflict").length ? " Bei \"beides\" ist auch das Kit neuer, dann lohnt der Vergleich doppelt." : "")
@@ -428,8 +428,8 @@ if (arg.apply || replace.length) {
       t(
         `Retired: ${lage.retired.map((old) => `/${old.name} is now called /${old.successor}`).join(", ")}. ` +
           "--apply clears the unchanged ones away, adapted ones stay lying.",
-        `Abgeloest: ${lage.retired.map((old) => `/${old.name} heisst jetzt /${old.successor}`).join(", ")}. ` +
-          "Die unveraenderten raeumt --apply weg, angepasste bleiben liegen."
+        `Abgelöst: ${lage.retired.map((old) => `/${old.name} heißt jetzt /${old.successor}`).join(", ")}. ` +
+          "Die unveränderten räumt --apply weg, angepasste bleiben liegen."
       )
     );
   }

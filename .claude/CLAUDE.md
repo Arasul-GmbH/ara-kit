@@ -21,6 +21,11 @@ clone before `/init`, English applies. `/init` asks in the first round with ques
 - **Tool output follows the profile.** Every tool reads `language` and prints in it. In the
   code the two languages stand next to each other as `t(en, de)`, at the place where the
   line comes into being.
+- **German is written with real umlauts in content, ASCII only in file and folder names.**
+  ä, ö, ü and ß belong in every German text: documents, templates, the paperwork, the
+  German branches of `t()`. The substitute spellings ae, oe, ue and ss stand only in file
+  and folder names and in identifiers in code. The self-test checks German content for the
+  substitute patterns and goes red on a find.
 - **This file and `.claude/commands/init.md` are English only.** They are instructions to
   you, loaded by the harness under exactly this name, and they exist before any profile
   does. Whatever you say to the human you say in the language of the profile.

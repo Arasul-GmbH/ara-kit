@@ -334,8 +334,8 @@ export function parseXml(text) {
     if (raw.startsWith("/")) {
       const name = raw.slice(1).trim();
       const node = stack.pop();
-      if (!node) fail(t(`</${name}> without an opening element`, `</${name}> ohne oeffnendes Element`));
-      if (node.name !== name) fail(t(`</${name}> closes <${node.name}>`, `</${name}> schliesst <${node.name}>`));
+      if (!node) fail(t(`</${name}> without an opening element`, `</${name}> ohne öffnendes Element`));
+      if (node.name !== name) fail(t(`</${name}> closes <${node.name}>`, `</${name}> schließt <${node.name}>`));
       continue;
     }
 
@@ -706,7 +706,7 @@ export function validateXml(text) {
       [
         "lesbar als XML",
         `Ordnung der Elemente gegen das Modell im Kit (${PROFILE.name})`,
-        "Geschaeftsregeln der EN 16931, soweit sie am Dokument pruefbar sind",
+        "Geschäftsregeln der EN 16931, soweit sie am Dokument prüfbar sind",
       ]
     ),
     unchecked: UNCHECKED,
@@ -728,7 +728,7 @@ export const UNCHECKED = t(
   [
     "das amtliche XSD der UN/CEFACT. Es liegt dem Kit nicht bei, und geholt wird zur Laufzeit nichts",
     "die Schematron-Regeln der KoSIT und die deutschen Zusatzregeln BR-DE-*",
-    "die Codelisten in voller Laenge, geprueft wird nur die Form der Codes",
-    "die Konformitaet des PDF zu PDF/A-3. Dafuer braucht es einen Pruefer wie veraPDF",
+    "die Codelisten in voller Länge, geprüft wird nur die Form der Codes",
+    "die Konformität des PDF zu PDF/A-3. Dafür braucht es einen Prüfer wie veraPDF",
   ]
 );

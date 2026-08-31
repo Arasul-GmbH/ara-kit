@@ -283,7 +283,7 @@ if (placeholders.length > 0) {
   console.error(
     t(
       `${placeholders.length} unfilled placeholders in ${basename(sourcePath)}:`,
-      `${placeholders.length} ungefuellte Platzhalter in ${basename(sourcePath)}:`
+      `${placeholders.length} ungefüllte Platzhalter in ${basename(sourcePath)}:`
     )
   );
   for (const hit of placeholders) {
@@ -292,7 +292,7 @@ if (placeholders.length > 0) {
   console.error(
     t(
       "\nEvery one of them would land at the customer like that. Fill them in, then try again.",
-      "\nJeder davon wuerde so beim Kunden landen. Fuellen, dann noch einmal."
+      "\nJeder davon würde so beim Kunden landen. Füllen, dann noch einmal."
     )
   );
   if (!arg.force) {
@@ -551,7 +551,7 @@ function logoTag() {
     console.error(
       t(
         `Note: ${extname(path)} as a logo is not supported. Printed without a logo.`,
-        `Hinweis: ${extname(path)} als Logo wird nicht unterstuetzt. Ohne Logo gedruckt.`
+        `Hinweis: ${extname(path)} als Logo wird nicht unterstützt. Ohne Logo gedruckt.`
       )
     );
     return "";
@@ -696,7 +696,7 @@ try {
 
   if (run.error) {
     throw new Error(
-      t(`Chromium could not be started: ${run.error.message}`, `Chromium liess sich nicht starten: ${run.error.message}`)
+      t(`Chromium could not be started: ${run.error.message}`, `Chromium ließ sich nicht starten: ${run.error.message}`)
     );
   }
   if (!existsSync(target)) {
