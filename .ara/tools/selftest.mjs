@@ -5592,6 +5592,169 @@ check("Jede Datei gibt es in beiden Sprachen", () => {
   return `${pairs} Paare`;
 });
 
+check("Deutscher Inhalt trägt echte Umlaute", () => {
+  // Deutsch schreibt sich mit ä, ö, ü und ß. Die Umschrift ae/oe/ue/ss gehört
+  // nur in Datei- und Ordnernamen und in Bezeichner im Code. Ein Kunde, der
+  // "Geraet" und "Uebergabe" in einem Angebot liest, hält das Papier für
+  // unfertig. Geprüft werden die deutschen Blätter (ohne Codeblöcke,
+  // Codespannen und Adressen) und die deutschen Zweige von t() in den
+  // Werkzeugen (ohne ${}-Einschübe und ohne Codespannen).
+
+  // Wörter, die die Muster tragen und trotzdem richtig sind: Fremdnamen,
+  // Bezeichner aus Kontrakt und Vorlage, Beispiel-Slugs und Fugen wie zuerst.
+  const erlaubt =
+    /^(?:issues?|traefik|bluetooth|due|oem(?:-config)?|mueller(?:-metallbau)?|ohne-schluessel|menue|(?:akt|event|man|individ|virt|vis|punkt)uell\w*|\w*zu(?:ent|erkenn|eign|erst|einander)\w*)$/;
+
+  const verdaechtig = (text) => {
+    const funde = [];
+    for (const treffer of text.matchAll(/[A-Za-zÄÖÜäöüß]+(?:-[A-Za-zÄÖÜäöüß]+)*/g)) {
+      const wort = treffer[0];
+      const klein = wort.toLowerCase();
+      if (erlaubt.test(klein)) continue;
+      const ersatz =
+        /(?<![aeouq])ue/.test(klein) ||
+        /(?<![aeou])ae/.test(klein) ||
+        /(?<![aeou])oe/.test(klein) ||
+        // Fugen wie Quellcodeueberlassung und geaendert: nach Vokal oder
+        // Vorsilbe ge- sind die Paare trotzdem Ersatz.
+        /ueb|geae|geoe|geue/.test(klein) ||
+        // ss, das ein ß war. Nach ie immer, nach ei fast immer (weissagen
+        // nicht), der Rest sind einzelne Stämme.
+        /iess|eiss(?!ag)/.test(klein) ||
+        /^(?:ausser|aussen$|draussen$|gross|weiss)|strasse$|massnahme|massgeb|massstab/.test(klein);
+      if (ersatz) funde.push(wort);
+    }
+    return funde;
+  };
+
+  // Markdown ohne Codebloecke, Codespannen und Adressen: dort stehen
+  // Dateinamen, Befehle und Bezeichner, und die sind ASCII mit Absicht.
+  const prosa = (blatt) =>
+    blatt
+      .replace(/^```[\s\S]*?^```/gm, "")
+      .replace(/`[^`\n]*`/g, "")
+      .replace(/\bhttps?:\/\/\S+/g, "");
+
+  // Ein String oder Template ab `start`, mitsamt ${}-Einschueben.
+  const stringEnde = (quelle, start) => {
+    const zeichen = quelle[start];
+    let i = start + 1;
+    while (i < quelle.length) {
+      if (quelle[i] === "\\") { i += 2; continue; }
+      if (zeichen === "`" && quelle[i] === "$" && quelle[i + 1] === "{") {
+        let tiefe = 1;
+        i += 2;
+        while (i < quelle.length && tiefe > 0) {
+          if (quelle[i] === "{") tiefe += 1;
+          if (quelle[i] === "}") tiefe -= 1;
+          i += 1;
+        }
+        continue;
+      }
+      if (quelle[i] === zeichen) return i + 1;
+      i += 1;
+    }
+    return i;
+  };
+
+  // Das zweite Argument jedes t()-Aufrufs, als roher Ausdruck.
+  const zweiteArgumente = (quelle) => {
+    const raus = [];
+    const aufruf = /(?<![A-Za-z0-9_$.])t\(/g;
+    let treffer;
+    while ((treffer = aufruf.exec(quelle))) {
+      const argumente = [];
+      let tiefe = 1;
+      let stueck = "";
+      let i = treffer.index + treffer[0].length;
+      while (i < quelle.length && tiefe > 0) {
+        const c = quelle[i];
+        if (c === '"' || c === "'" || c === "`") {
+          const ende = stringEnde(quelle, i);
+          stueck += quelle.slice(i, ende);
+          i = ende;
+          continue;
+        }
+        if (c === "(" || c === "[" || c === "{") tiefe += 1;
+        if (c === ")" || c === "]" || c === "}") {
+          tiefe -= 1;
+          if (tiefe === 0) break;
+        }
+        if (c === "," && tiefe === 1) {
+          argumente.push(stueck);
+          stueck = "";
+          i += 1;
+          continue;
+        }
+        stueck += c;
+        i += 1;
+      }
+      argumente.push(stueck);
+      if (argumente[1]) raus.push(argumente[1]);
+    }
+    return raus;
+  };
+
+  // Aus einem Ausdruck die String-Inhalte, ohne ${}-Einschuebe und ohne
+  // Codespannen: dort stehen Kontraktfelder wie `umgebung.schluessel`.
+  const deutscheZweige = (quelle) => {
+    const teile = [];
+    for (const ausdruck of zweiteArgumente(quelle)) {
+      let i = 0;
+      while (i < ausdruck.length) {
+        const c = ausdruck[i];
+        if (c === '"' || c === "'" || c === "`") {
+          const ende = stringEnde(ausdruck, i);
+          let inhalt = ausdruck.slice(i + 1, ende - 1);
+          if (c === "`") inhalt = inhalt.replace(/\$\{[\s\S]*?\}/g, " ");
+          teile.push(inhalt);
+          i = ende;
+          continue;
+        }
+        i += 1;
+      }
+    }
+    return teile.join("\n").replace(/`[^`\n]*`/g, "");
+  };
+
+  const sammeln = (dir, passt) => {
+    if (!existsSync(dir)) return [];
+    const raus = [];
+    for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+      const pfad = join(dir, eintrag.name);
+      if (eintrag.isDirectory()) raus.push(...sammeln(pfad, passt));
+      else if (passt(eintrag.name)) raus.push(pfad);
+    }
+    return raus;
+  };
+
+  const blaetter = [
+    ...sammeln(join(ROOT, ".ara", "vorlagen"), (n) => n.endsWith(".md")),
+    ...sammeln(join(ROOT, ".ara", "nachweise"), (n) => n.endsWith(".md")),
+    ...readdirSync(join(ROOT, ".ara", "templates"))
+      .filter((n) => /\.de\.(md|json)$/.test(n))
+      .map((n) => join(ROOT, ".ara", "templates", n)),
+    ...sammeln(join(ROOT, ".ara", "knowledge"), (n) => n.endsWith(".de.md")),
+    ...sammeln(join(ROOT, ".ara", "commands"), (n) => n.endsWith(".de.md")),
+    join(ROOT, ".ara", "persona", "ara.de.md"),
+    join(ROOT, ".ara", "README.de.md"),
+    join(ROOT, ".ara", "CHANGELOG.de.md"),
+  ];
+  const werkzeuge = sammeln(join(ROOT, ".ara", "tools"), (n) => n.endsWith(".mjs"));
+
+  const funde = [];
+  for (const pfad of blaetter) {
+    const woerter = verdaechtig(prosa(readFileSync(pfad, "utf8")));
+    if (woerter.length) funde.push(`${relative(ROOT, pfad)}: ${[...new Set(woerter)].join(", ")}`);
+  }
+  for (const pfad of werkzeuge) {
+    const woerter = verdaechtig(deutscheZweige(readFileSync(pfad, "utf8")));
+    if (woerter.length) funde.push(`${relative(ROOT, pfad)}: ${[...new Set(woerter)].join(", ")}`);
+  }
+  assert(funde.length === 0, `ASCII-Ersatz statt Umlaut:\n    ${funde.join("\n    ")}`);
+  return `${blaetter.length} Blätter, ${werkzeuge.length} Werkzeuge`;
+});
+
 check("Jede Route steht in beiden Fassungen des Blattes", () => {
   // Eine Uebersetzung, die eine Route verliert, faellt sonst erst am Geraet auf,
   // und dann nur in einer Sprache. Geprueft wird Blatt gegen Blatt: dieselben
