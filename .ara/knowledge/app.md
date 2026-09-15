@@ -53,6 +53,7 @@ Asking goes on until every point is answered or explicitly left open. What stays
 | **The steps** | The sequence from the point of view of the human in front of it, one step per line |
 | **Where a flow is needed** | Where a language model really does the work. What only shifts data back and forth is a program and not a flow |
 | **Where a human decides** | Every place where a run should stop and wait for an approval, and what the human has to see while doing it |
+| **Which shape it takes** | A form is rarely all of it: a document shown on the device, a mail when something is decided, a lookup in a foreign system, a foreign tool behind the login. The five patterns with code that runs stand in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | That decides the construction. Something that gets checked is an afternoon. Something that may never be wrong is a project |

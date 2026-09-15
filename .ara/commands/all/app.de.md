@@ -10,8 +10,9 @@ Lies `.ara/knowledge/app.de.md` und arbeite danach. Wissen, das dieser Befehl l�
 sobald ein Paket an ein Gerät geht, `.ara/knowledge/platform-services.de.md`, sobald die App
 etwas von der Plattform will (Anmeldung, Freigabe, Flow, Sprachmodell),
 `.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst,
-`.ara/knowledge/extensions.de.md` beim ersten Interview mit einem Kunden und
-`.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil
+`.ara/knowledge/extensions.de.md` beim ersten Interview mit einem Kunden,
+`.ara/knowledge/app-patterns.de.md`, sobald eine Idee entsteht, damit die App nicht beim
+Formular stehen bleibt, und `.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil
 in `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, womit das
 Haus arbeitet.
 
@@ -31,7 +32,11 @@ Aufruf zu jedem Schritt. Sag das in drei Zeilen weiter und mach den ersten davon
 alles aufzuzählen, was ginge.
 
 **Gibt es die App noch nicht**, ist das Interview dran, bevor irgendetwas angelegt wird:
-die Prüfliste steht im Verfahren. Erst danach `--new` und der erste Plan. Was offen
+die Prüfliste steht im Verfahren. Ist der Wunsch klein, ein Formular, nenn einmal, was
+daneben liegt: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden
+ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung.
+Die fünf Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und
+der Plan nennt das, das er benutzt. Erst danach `--new` und der erste Plan. Was offen
 geblieben ist, steht als Annahme im Plan und wird beim nächsten Mal vorgelesen.
 
 **Ist ein Plan aktiv**, geh zuerst seine Annahmen durch, dann bau, was darin steht, dann
