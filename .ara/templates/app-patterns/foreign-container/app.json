@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "fremder-dienst",
+  "name": "Fremder Dienst",
+  "version": "0.1.0",
+  "beschreibung": "Ein fertiges Image aus einer Registry als App hinter der Anmeldung des Geräts. Kein eigener Quelltext, ein Bauplan aus einer Zeile.",
+  "backend": {
+    "image": "arasul-fremder-dienst:0.1.0",
+    "bauen": {
+      "verzeichnis": "backend"
+    },
+    "gesundheit": "/",
+    "umgebung": {}
+  },
+  "ports": {
+    "backend": 80
+  },
+  "ressourcen": {
+    "speicher": "64m",
+    "cpus": 0.25
+  }
+}
