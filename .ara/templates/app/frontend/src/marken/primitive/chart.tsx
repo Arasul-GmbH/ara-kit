@@ -25,9 +25,11 @@
  * 1. Nur Grau und Blau (Befund F-25). Vorher liefen drei Linien in Violett
  *    (`--color-chart-2`), Blau und Orange (`--color-chart-3`). Drei Farben für
  *    drei Werte derselben Einheit behaupten eine Bedeutung, die es nicht gibt.
- *    SERIENFARBEN hat vier Einträge, von kräftigem Blau nach Grau. Wer mehr
- *    Reihen übergibt, bekommt Wiederholungen; vier ist bewusst die Grenze,
- *    innerhalb derer sich Linien noch unterscheiden lassen.
+ *    SERIENFARBEN hat drei Einträge, von Blau über Schwarz nach Grau. Wer mehr
+ *    Reihen übergibt, bekommt Wiederholungen; drei ist bewusst die Grenze,
+ *    innerhalb derer sich Linien noch unterscheiden lassen. Seit dem
+ *    30.08.2026 gibt es auch keine Diagrammpalette (`--color-chart-*`) mehr:
+ *    die Linien nehmen dieselben Tokens wie alles andere.
  * 2. Keine Karte drumherum. Die Fläche stellt der Aufrufer, das Diagramm
  *    bringt nur die Linien mit.
  */
@@ -46,16 +48,15 @@ import {
 import { cn } from '../cn';
 
 /**
- * Vier Werte von kraeftigem Blau nach Grau.
+ * Drei Werte von Blau ueber Schwarz nach Grau.
  *
- * Alle vier stehen in `theme.css` und folgen damit dem Thema -- recharts
+ * Alle drei stehen in `theme.css` und folgen damit dem Thema -- recharts
  * nimmt die rohe CSS-Variable und keine Tailwind-Klasse, also muss der Name
- * hier der des Tokens sein und nicht der der Utility. Vier ist bewusst die
+ * hier der des Tokens sein und nicht der der Utility. Drei ist bewusst die
  * Grenze: darueber lassen sich Linien derselben Einheit nicht mehr
  * auseinanderhalten, und wer mehr Reihen uebergibt, bekommt Wiederholungen.
  */
 export const SERIENFARBEN = [
-  'var(--color-chart-1)',
   'var(--primary)',
   'var(--foreground)',
   'var(--muted-foreground)',

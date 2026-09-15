@@ -40,7 +40,7 @@ nämlich ob eine Datei nachgezogen oder von Hand geändert wurde.
 | Satz | Wo | Wie viele | Was sie sind |
 | --- | --- | --- | --- |
 | Primitive | `marken/primitive/` | 46 | Button, Input, Dialog, Tabelle, Kalender, Reiter, Abzeichen. Sie wissen nichts außer sich selbst, und man setzt sie zusammen |
-| Muster | `marken/muster/` | 9 | Datenliste, Suchauswahl, Seitenleiste, Formularseite, Dateiablage, Kennzahl, Leerzustand, Ladezustand, Dialogform. Sie sind **aus** Primitiven gemacht und lösen eine Aufgabe, die in jeder Anwendung wiederkommt |
+| Muster | `marken/muster/` | 10 | Datenliste, Suchauswahl, Seitenleiste, Formularseite, Dateiablage, Dokumentanzeige, Kennzahl, Leerzustand, Ladezustand, Dialogform. Sie sind **aus** Primitiven gemacht und lösen eine Aufgabe, die in jeder Anwendung wiederkommt |
 | Bausteine | `marken/*.tsx` | 6 | Kopf, Liste, Karte, Formular, Meldung, Menue. Reines CSS (Klassen `ara-*`), sie laufen in einer App **ohne** Bau |
 
 Wer einen Bau hat, nimmt die Primitive und die Muster. Die sechs Bausteine bleiben für den

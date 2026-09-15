@@ -10,10 +10,11 @@ Read `.ara/knowledge/app.md` and work along it. Knowledge this command loads:
 as soon as a package goes to a device, `.ara/knowledge/platform-services.md` as soon as
 the app wants something from the platform (login, permission, flow, language model),
 `.ara/knowledge/design-system.md` as soon as you touch an interface,
-`.ara/knowledge/extensions.md` for the first interview with a customer and
-`.ara/knowledge/live-knowledge.md` for every product value. You read the profile in
-`business/profile.md` beforehand: language, branch, detail level, security level, what
-the house works with.
+`.ara/knowledge/extensions.md` for the first interview with a customer,
+`.ara/knowledge/app-patterns.md` as soon as an idea is being formed, so that the app does
+not stop at a form, and `.ara/knowledge/live-knowledge.md` for every product value. You
+read the profile in `business/profile.md` beforehand: language, branch, detail level,
+security level, what the house works with.
 
 **The argument.** `<app>` is the app under `apps/<app>/`. Apps sit at the
 top, independent of customers: the same app may run at three customers, and where it runs
@@ -31,8 +32,12 @@ for every step. Pass that on in three lines and do the first of them, instead of
 everything that would be possible.
 
 **If the app does not exist yet**, the interview comes before anything is created: the
-checklist is in the procedure. Only after that `--new` and the first plan. Whatever stayed
-open goes into the plan as an assumption and gets read out next time.
+checklist is in the procedure. When the wish is small, a form, name once what lies next to
+it: a document shown on the device, a mail when something is decided, a lookup in a foreign
+system, a foreign tool behind the login. The five patterns with code that runs stand in
+`.ara/knowledge/app-patterns.md`, and the plan names the one it uses. Only after that
+`--new` and the first plan. Whatever stayed open goes into the plan as an assumption and
+gets read out next time.
 
 **If a plan is active**, walk through its assumptions first, then build what it says, then
 `--build`. The build is the package, not the running app: what it does you see on the

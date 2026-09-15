@@ -3468,6 +3468,334 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
   );
 });
 
+// --- Die Muster jenseits des Formulars ---------------------------------------
+
+/** Der Ordner der Muster, und die Vorlage daneben. */
+const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
+
+check("Das Wissen kennt fünf Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+  // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt fünf Muster, und
+  // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
+  // ist ein Muster ohne Beleg.
+  for (const blatt of [".ara/knowledge/app-patterns.md", ".ara/knowledge/app-patterns.de.md"]) {
+    const text = readFileSync(join(ROOT, blatt), "utf8");
+    for (const nummer of [1, 2, 3, 4, 5]) {
+      assert(new RegExp(`^## ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
+    }
+    const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
+    assert(pfade.length >= 8, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
+    for (const pfad of pfade) assert(existsSync(join(ROOT, pfad)), `${blatt} nennt ${pfad}, die Datei fehlt`);
+    // Was das Blatt über die Bibliothek sagt, steht so in der Bibliothek.
+    for (const wort of ["quelle", "art", "hoehe", "pdf-dateien", "Dokumentanzeige", "Dateiablage"]) {
+      assert(text.includes(wort), `${blatt} nennt ${wort} nicht`);
+    }
+  }
+  // Und /app kennt sie in der Ideenphase: der Befehl lädt das Blatt, die
+  // Prüfliste fragt danach, --new nennt es.
+  for (const [datei, muster] of [
+    [".ara/commands/all/app.md", /app-patterns\.md/],
+    [".ara/commands/all/app.de.md", /app-patterns\.de\.md/],
+    [".ara/knowledge/app.md", /app-patterns\.md/],
+    [".ara/knowledge/app.de.md", /app-patterns\.de\.md/],
+    [".ara/tools/app.mjs", /app-patterns\.md[\s\S]*app-patterns\.de\.md/],
+  ]) {
+    assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
+  }
+  return "fünf Muster, beide Fassungen, Befehl, Prüfliste und --new";
+});
+
+check("Die Vorlage trägt die Dokumentanzeige, und das Muster Dokumente benutzt sie richtig", () => {
+  // Muster 2 stützt sich auf einen Baustein, der erst seit Fassung 4.1.0 in der
+  // Bibliothek liegt. Die Namen der Eigenschaften kommen aus der Bibliothek und
+  // nicht aus dem Gedächtnis: `quelle` und `art` müssen dort stehen, und die
+  // Seite des Musters muss genau die übergeben.
+  const spiegel = join(ROOT, ".ara", "templates", "app", "frontend", "src", "marken");
+  const bibliothek = readLibrary(spiegel);
+  assert(bibliothek?.fassung, "die Vorlage trägt keine Bibliothek");
+  const [gross, klein] = bibliothek.fassung.split(".").map(Number);
+  assert(gross > 4 || (gross === 4 && klein >= 1), `die Bibliothek der Vorlage steht auf ${bibliothek.fassung}, die Dokumentanzeige kam mit 4.1.0`);
+  const anzeige = join(spiegel, "muster", "Dokumentanzeige.tsx");
+  assert(existsSync(anzeige), "muster/Dokumentanzeige.tsx fehlt im Spiegel der Vorlage");
+  const quelle = readFileSync(anzeige, "utf8");
+  for (const eigenschaft of ["quelle?:", "art?:", "name?:", "hoehe?:", "kennzeichen?:"]) {
+    assert(quelle.includes(eigenschaft), `die Dokumentanzeige kennt ${eigenschaft.replace("?:", "")} nicht mehr`);
+  }
+  assert(/export \{ Dokumentanzeige \}/.test(readFileSync(join(spiegel, "muster", "index.ts"), "utf8")), "muster/index.ts führt die Dokumentanzeige nicht");
+
+  const seite = readFileSync(join(PATTERNS, "documents", "frontend", "src", "seiten", "dokumente.tsx"), "utf8");
+  assert(/import \{[^}]*Dokumentanzeige[^}]*\} from "@marken"/.test(seite), "die Seite holt die Dokumentanzeige nicht aus @marken");
+  assert(/<Dokumentanzeige[\s\S]*?quelle=\{[\s\S]*?art=\{/.test(seite), "die Seite übergibt der Dokumentanzeige nicht quelle und art");
+  assert(/vorschau=\{false\}/.test(seite), "die Dateiablage der Seite zeigt eine zweite Vorschau");
+
+  // Der Bau der Vorlage legt die Stützdateien von pdf.js neben die Chunks, und
+  // die Abhängigkeit steht in der package.json: ohne beides endet ein PDF im
+  // Fehlerzustand, und das sähe man erst am Gerät.
+  const paket = JSON.parse(readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "package.json"), "utf8"));
+  assert(paket.dependencies["pdfjs-dist"], "pdfjs-dist fehlt in der package.json der Vorlage");
+  assert(/pdf-dateien/.test(readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "vite.config.ts"), "utf8")), "die vite.config.ts der Vorlage legt pdf-dateien nicht bei");
+
+  // In eine App aus der Vorlage gelegt, hält das Muster den Standard.
+  const kopie = mkdtempSync(join(tmpdir(), "ara-muster-"));
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app"), kopie, { recursive: true });
+    cpSync(join(PATTERNS, "documents"), kopie, { recursive: true });
+    const befunde = standardFindings(kopie, { scaffold: true });
+    assert(befunde.length === 0, `das Muster Dokumente steht neben der Bibliothek: ${befunde.join(" | ")}`);
+  } finally {
+    rmSync(kopie, { recursive: true, force: true });
+  }
+  return `Bibliothek ${bibliothek.fassung}, quelle und art, pdf-dateien, Standard gehalten`;
+});
+
+await checkAsync("Das Muster Dokumente läuft im Backend der Vorlage: hochladen, zeigen, entfernen", async () => {
+  // So, wie das Blatt es sagt: die Dateien des Musters über die Vorlage, drei
+  // Zeilen in server.mjs, und dann läuft es. Geprüft wird an einer Kopie der
+  // Vorlage, ohne Gerät: die Dokumente brauchen keines.
+  const paket = mkdtempSync(join(tmpdir(), "ara-dokumente-"));
+  let app = null;
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
+    cpSync(join(PATTERNS, "documents", "backend"), paket, { recursive: true });
+    const server = join(paket, "server.mjs");
+    let quelle = readFileSync(server, "utf8");
+    const naehte = [
+      [
+        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
+        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' +
+          'import { dokumentAblage } from "./ablage/dokumente.mjs";\n' +
+          'import { dokumente as dokumentKern } from "./kern/dokumente.mjs";\n' +
+          'import { dokumentWege } from "./wege/dokumente.mjs";\n',
+      ],
+      [
+        "const vorgangsKern = kern({ ablage: vorgangsAblage(db), geraet, name: NAME });\n",
+        "const vorgangsKern = kern({ ablage: vorgangsAblage(db), geraet, name: NAME });\n" +
+          "const dokumente = dokumentWege({\n" +
+          "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
+          '  von: (anfrage) => ausUtf8(anfrage.headers["x-arasul-user"]),\n' +
+          "});\n",
+      ],
+      [
+        "  json(antwort, 404, { fehler: `${NAME} kennt ${pfad} nicht.` });",
+        "  if (await dokumente(anfrage, antwort, pfad)) return;\n\n  json(antwort, 404, { fehler: `${NAME} kennt ${pfad} nicht.` });",
+      ],
+    ];
+    for (const [alt, neu] of naehte) {
+      assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
+      quelle = quelle.replace(alt, neu);
+    }
+    writeFileSync(server, quelle);
+
+    app = spawn("node", [server], {
+      env: { ...process.env, PORT: "0", ARASUL_APP_NAME: "Probe", APP_DATEN: join(paket, "daten") },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let ausgabe = "";
+    let fehlerausgabe = "";
+    app.stderr.on("data", (stueck) => (fehlerausgabe += String(stueck)));
+    const basis = await new Promise((fertig, gescheitert) => {
+      const zeit = setTimeout(() => gescheitert(new Error(`die App hat nicht gestartet: ${fehlerausgabe}`)), 10_000);
+      app.stdout.on("data", (stueck) => {
+        ausgabe += String(stueck);
+        const treffer = ausgabe.match(/auf (\d+)/);
+        if (treffer) {
+          clearTimeout(zeit);
+          fertig(`http://127.0.0.1:${treffer[1]}`);
+        }
+      });
+    });
+    await new Promise((fertig) => setTimeout(fertig, 300));
+    assert(/002-dokumente\.sql/.test(ausgabe), `die zweite Migration lief nicht: ${ausgabe}`);
+
+    const kopf = { "x-arasul-user": Buffer.from("Jürgen", "utf8").toString("latin1"), "x-arasul-role": "mitarbeiter" };
+    const hoch = (name, art, bytes) =>
+      fetch(`${basis}/dokumente`, {
+        method: "POST",
+        body: bytes,
+        headers: { ...kopf, "content-type": art, "x-dateiname": encodeURIComponent(name) },
+      });
+    const pdf = Buffer.from("%PDF-1.4\n%selbsttest\n%%EOF\n");
+    let antwort = await hoch("Angebot Müller.pdf", "application/pdf", pdf);
+    let daten = await antwort.json();
+    assert(antwort.status === 201, `PDF abgewiesen: ${JSON.stringify(daten)}`);
+    assert(daten.dokument.name === "Angebot Müller.pdf" && daten.dokument.von === "Jürgen", `Name oder Einreicher kommen nicht an: ${JSON.stringify(daten.dokument)}`);
+    assert(daten.dokument.art === "application/pdf" && daten.dokument.groesse === pdf.length, "Art oder Größe stimmen nicht");
+    assert(!("inhalt" in daten.dokument), "die Antwort trägt die Bytes mit");
+
+    antwort = await hoch("tabelle.xlsx", "application/vnd.ms-excel", Buffer.from("x"));
+    daten = await antwort.json();
+    assert(antwort.status === 400 && /PDF und Bilder/.test(daten.fehler), `eine Tabelle wurde angenommen: ${antwort.status} ${JSON.stringify(daten)}`);
+
+    antwort = await hoch("gross.pdf", "application/pdf", Buffer.alloc(10 * 1024 * 1024 + 1));
+    daten = await antwort.json();
+    assert(antwort.status === 413 && /Bytes/.test(daten.fehler), `über der Grenze kam kein 413 mit Satz: ${antwort.status} ${JSON.stringify(daten)}`);
+
+    antwort = await fetch(`${basis}/dokumente`, { headers: kopf });
+    daten = await antwort.json();
+    assert(daten.dokumente.length === 1 && daten.grenze_bytes > 0, `die Liste stimmt nicht: ${JSON.stringify(daten)}`);
+    assert(!("inhalt" in daten.dokumente[0]), "die Liste trägt die Bytes mit");
+
+    antwort = await fetch(`${basis}/dokumente/${daten.dokumente[0].id}/datei`, { headers: kopf });
+    const bytes = Buffer.from(await antwort.arrayBuffer());
+    assert(antwort.status === 200 && bytes.equals(pdf), "die Bytes kommen nicht so zurück, wie sie hineingingen");
+    assert(antwort.headers.get("content-type") === "application/pdf", `falscher Typ: ${antwort.headers.get("content-type")}`);
+    assert(/inline; filename\*=UTF-8''Angebot%20M%C3%BCller\.pdf/.test(antwort.headers.get("content-disposition") || ""), "der Name steht nicht kodiert in der Antwort");
+    assert(/no-store/.test(antwort.headers.get("cache-control") || ""), "ein Dokument darf in keinem Zwischenspeicher liegen");
+
+    antwort = await fetch(`${basis}/dokumente/99/datei`, { headers: kopf });
+    assert(antwort.status === 404, "ein Dokument, das es nicht gibt, antwortet nicht mit 404");
+    antwort = await fetch(`${basis}/dokumente/1`, { method: "DELETE", headers: kopf });
+    assert(antwort.status === 200, "Entfernen ging nicht");
+    antwort = await fetch(`${basis}/dokumente/1`, { method: "DELETE", headers: kopf });
+    assert(antwort.status === 404, "ein zweites Entfernen antwortet nicht mit 404");
+    // Die Wege der Vorlage bleiben, wie sie sind.
+    antwort = await fetch(`${basis}/vorgaenge`, { headers: kopf });
+    assert(antwort.status === 200, "die Vorgänge der Vorlage antworten nicht mehr");
+    antwort = await fetch(`${basis}/nix`, { headers: kopf });
+    assert(antwort.status === 404, "ein fremder Weg antwortet nicht mehr mit 404");
+    return "Migration, PDF angenommen, Tabelle abgewiesen, 413 über der Grenze, Bytes zurück, entfernt";
+  } finally {
+    app?.kill("SIGTERM");
+    rmSync(paket, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Das Muster Post sendet über SMTP, und das Passwort bleibt im Prozess", async () => {
+  // Ein lokales Relais spielt den Postausgang des Kunden. Geprüft wird das
+  // Gespräch, wie es auf der Leitung steht, und dass eine Post, die nicht
+  // rausgeht, ein Satz ist und kein Absturz.
+  const { createServer: netServer } = await import("node:net");
+  const { post, postAusUmgebung, nachricht } = await import(join(PATTERNS, "mail", "backend", "post.mjs"));
+  const gesehen = [];
+  let brief = "";
+  const relais = netServer((s) => {
+    s.write("220 selbsttest bereit\r\n");
+    let rumpf = false;
+    let rest = "";
+    s.on("data", (stueck) => {
+      rest += stueck;
+      let i;
+      while ((i = rest.indexOf("\r\n")) >= 0) {
+        const zeile = rest.slice(0, i);
+        rest = rest.slice(i + 2);
+        if (rumpf) {
+          if (zeile === ".") {
+            rumpf = false;
+            s.write("250 angenommen als 42\r\n");
+          } else brief += `${zeile}\n`;
+          continue;
+        }
+        gesehen.push(zeile);
+        if (/^EHLO/i.test(zeile)) s.write("250-selbsttest\r\n250 8BITMIME\r\n");
+        else if (/^MAIL FROM/i.test(zeile)) s.write("250 ok\r\n");
+        else if (/^RCPT TO/i.test(zeile)) s.write(/niemand@/.test(zeile) ? "550 kennt niemand\r\n" : "250 ok\r\n");
+        else if (/^DATA/i.test(zeile)) {
+          rumpf = true;
+          s.write("354 los\r\n");
+        } else if (/^QUIT/i.test(zeile)) {
+          s.write("221 tschüss\r\n");
+          s.end();
+        } else s.write("500 was\r\n");
+      }
+    });
+  });
+  await new Promise((fertig) => relais.listen(0, "127.0.0.1", fertig));
+  try {
+    const umgebung = { SMTP_HOST: "127.0.0.1", SMTP_PORT: String(relais.address().port), SMTP_VON: "app@beispiel.de" };
+    const anschluss = post(postAusUmgebung(umgebung), { zeitlimit: 5000 });
+    const ergebnis = await anschluss.senden({ an: ["anna@beispiel.de", "bernd@beispiel.de"], betreff: "Prüfung: genehmigt", text: "Anna hat entschieden.\nGrüße" });
+    assert(ergebnis.gesendet, `die Mail ging nicht raus: ${ergebnis.fehler}`);
+    assert(gesehen.some((z) => z === "MAIL FROM:<app@beispiel.de>"), `der Absender kommt nicht aus SMTP_VON: ${gesehen.join(" | ")}`);
+    assert(gesehen.filter((z) => /^RCPT TO/.test(z)).length === 2, "nicht jeder Empfänger bekam ein RCPT TO");
+    assert(/^Subject: =\?UTF-8\?B\?/m.test(brief), "ein Betreff mit Umlaut steht unkodiert in der Kopfzeile");
+    const inhalt = Buffer.from(brief.split("\n\n")[1].replace(/\n/g, ""), "base64").toString("utf8");
+    assert(/Grüße/.test(inhalt), `der Rumpf kommt nicht als UTF-8 an: ${inhalt}`);
+
+    const abgelehnt = await anschluss.senden({ an: "niemand@beispiel.de", betreff: "x", text: "y" });
+    assert(!abgelehnt.gesendet && /RCPT TO niemand@beispiel\.de.*550/.test(abgelehnt.fehler), `eine Ablehnung ist kein Satz: ${JSON.stringify(abgelehnt)}`);
+    const ohne = await post(postAusUmgebung({})).senden({ an: "a@b.de", betreff: "x", text: "y" });
+    assert(!ohne.gesendet && /SMTP_HOST/.test(ohne.fehler), `ohne Host fehlt der Satz: ${ohne.fehler}`);
+    const zu = await post(postAusUmgebung({ SMTP_HOST: "127.0.0.1", SMTP_PORT: "1", SMTP_VON: "a@b.de" }), { zeitlimit: 2000 }).senden({ an: "a@b.de", betreff: "x", text: "y" });
+    assert(!zu.gesendet && /nicht erreichbar/.test(zu.fehler), `ein Postausgang, der nicht antwortet, ist kein Satz: ${zu.fehler}`);
+    // Eine Anmeldung ohne TLS schickte das Passwort im Klartext: das Modul weist sie ab.
+    const klartext = await post(postAusUmgebung({ ...umgebung, SMTP_BENUTZER: "u", SMTP_PASSWORT: "streng-geheim" })).senden({ an: "a@b.de", betreff: "x", text: "y" });
+    assert(!klartext.gesendet && /TLS/.test(klartext.fehler) && !/streng-geheim/.test(klartext.fehler), `Anmeldung ohne TLS: ${klartext.fehler}`);
+    assert(!nachricht({ von: "a@b.de", an: ["c@d.de"], betreff: "x", text: "y" }).includes("streng-geheim"), "das Passwort steht in der Nachricht");
+    return "EHLO, MAIL FROM, zwei RCPT TO, DATA, QUIT; Ablehnung, kein Host, nicht erreichbar, kein Klartext";
+  } finally {
+    relais.close();
+  }
+});
+
+await checkAsync("Das Muster fremde Schnittstelle antwortet in Sätzen und verrät den Schlüssel nicht", async () => {
+  const { fremd, fremdAusUmgebung } = await import(join(PATTERNS, "foreign-api", "backend", "fremd.mjs"));
+  const gesehen = [];
+  const dienst = createServer((anfrage, antwort) => {
+    gesehen.push(`${anfrage.method} ${anfrage.url} ${anfrage.headers.authorization || "-"}`);
+    const json = (code, daten) => {
+      antwort.writeHead(code, { "content-type": "application/json" });
+      antwort.end(JSON.stringify(daten));
+    };
+    if (anfrage.url.startsWith("/orte")) return json(200, { data: { ort: "Musterstadt" } });
+    if (anfrage.url === "/langsam") return setTimeout(() => json(200, {}), 3000);
+    if (anfrage.url === "/text") {
+      antwort.writeHead(200, { "content-type": "text/html" });
+      return antwort.end("<html>");
+    }
+    json(404, { error: { message: "kennt dieser Dienst nicht" } });
+  });
+  await new Promise((fertig) => dienst.listen(0, "127.0.0.1", fertig));
+  try {
+    const auskunft = fremdAusUmgebung({ FREMD_BASIS: `http://127.0.0.1:${dienst.address().port}/`, FREMD_SCHLUESSEL: "streng-geheim" });
+    assert(!auskunft.basis.endsWith("/"), "die Basis behält ihren Schrägstrich");
+    const anschluss = fremd({ name: "die Adressauskunft", basis: auskunft.basis, kopfzeilen: { authorization: `Bearer ${auskunft.schluessel}` }, zeitlimit: 800 });
+    const gut = await anschluss.rufen("GET", "/orte?plz=12345");
+    assert(gut.code === 200 && gut.daten?.ort === "Musterstadt" && gut.fehler === null, `die gute Antwort: ${JSON.stringify(gut)}`);
+    const fehlt = await anschluss.rufen("GET", "/nix");
+    assert(fehlt.code === 404 && /die Adressauskunft antwortete auf GET \/nix mit 404: kennt dieser Dienst nicht/.test(fehlt.fehler), `404: ${JSON.stringify(fehlt)}`);
+    const zeit = await anschluss.rufen("GET", "/langsam");
+    assert(zeit.code === 0 && /nicht geantwortet/.test(zeit.fehler), `Zeitlimit: ${JSON.stringify(zeit)}`);
+    const text = await anschluss.rufen("GET", "/text");
+    assert(text.daten === null && /nicht mit JSON/.test(text.fehler), `kein JSON: ${JSON.stringify(text)}`);
+    const ohne = await fremd({ basis: null }).rufen("GET", "/x");
+    assert(/FREMD_BASIS/.test(ohne.fehler), `ohne Basis: ${ohne.fehler}`);
+    assert(gesehen.every((z) => / Bearer streng-geheim$/.test(z)), `der Schlüssel fährt nicht mit: ${gesehen.join(" | ")}`);
+    assert(!JSON.stringify([fehlt, zeit, text]).includes("streng-geheim"), "der Schlüssel steht in einem Fehlersatz");
+    return "gut, 404, Zeitlimit, kein JSON, ohne Basis";
+  } finally {
+    dienst.close();
+  }
+});
+
+check("Das Muster fremder Container hält den Kontrakt: ein Bauplan aus einer Zeile, keine eigene Oberfläche", () => {
+  // Das Gerät nimmt kein fertiges Image, es baut aus dem Paket: mit `backend`
+  // braucht das Manifest `bauen`. Der Weg für ein fremdes Image ist deshalb ein
+  // Bauplan aus einer Zeile. Geprüft gegen ein Schema in der Form des
+  // Kontrakts, mit den Feldern, die die Vorlage selbst benutzt.
+  const ordner = join(PATTERNS, "foreign-container");
+  const manifest = JSON.parse(readFileSync(join(ordner, "app.json"), "utf8"));
+  const schema = {
+    ...KONTRAKT.app_json.schema,
+    properties: {
+      ...KONTRAKT.app_json.schema.properties,
+      beschreibung: { type: "string", maxLength: 500 },
+      ressourcen: { type: "object", properties: { speicher: { type: "string" }, cpus: { type: "number" } }, additionalProperties: false },
+      marken: { type: "string" },
+    },
+  };
+  const ergebnis = checkManifest({ app_json: { schema, regeln: KONTRAKT.app_json.regeln } }, manifest);
+  assert(ergebnis.ok, `das Manifest fällt am Schema: ${ergebnis.problems.join(" | ")}`);
+  assert(!manifest.frontend, "der fremde Container bringt eine Oberfläche mit");
+  assert(manifest.backend?.image && manifest.backend?.bauen?.verzeichnis === "backend", "ohne Bauplan nimmt das Gerät das Paket nicht");
+  assert(manifest.backend.gesundheit && manifest.ports?.backend, "Gesundheitsweg oder Port fehlen");
+  const bauplan = readFileSync(join(ordner, "backend", "Dockerfile"), "utf8")
+    .split("\n")
+    .filter((zeile) => zeile.trim() && !zeile.startsWith("#"));
+  assert(bauplan.length === 1 && /^FROM \S+$/.test(bauplan[0]), `der Bauplan ist nicht eine Zeile FROM: ${bauplan.join(" | ")}`);
+  assert(standardFindings(ordner).length === 0, "der Standard der Bibliothek meldet etwas an einer App ohne Oberfläche");
+  return `${bauplan[0]}, Manifest gültig, kein frontend`;
+});
+
 check("Die Vorlage rät keinen Wert, den das Gerät vergibt", () => {
   // Der eigentliche Fund vom 29.08.2026. Im Backend der Vorlage standen sechs
   // Werte, die zwischen Kit und Produkt vereinbart sind: zwei Namen von

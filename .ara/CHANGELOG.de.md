@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.22.0 (2026-09-15)
+
+Kontrakt: bis 5
+
+- Das Wissen zeigt, was eine App jenseits des Formulars ist. `.ara/knowledge/app-patterns.de.md` trägt fünf Muster mit Code, der läuft: mehrere Routen mit Seitenleiste (die Vorlage selbst), ein Dokument hochgeladen und in der Dokumentanzeige der Bibliothek gezeigt, eine Mail aus dem Backend der App über SMTP mit den Werten aus dem Manifest, eine fremde API aus dem Backend gerufen, und ein fremder Container als App hinter der Anmeldung des Geräts. Ein Partner, der nur den Vorgang mit seinem Freigabe-Schritt fand, hielt Arasul für ein Formularwerkzeug. Der Code liegt unter `.ara/templates/app-patterns/`, geteilt wie die Vorlage, und jede Datei sagt in ihrem Kopf, wo sie hingehört.
+- `/app` kennt die Muster in der Ideenphase: der Befehl lädt das Blatt, sobald eine Idee entsteht, die Prüfliste des Interviews fragt, welche Gestalt die App annimmt, und `--new` nennt das Blatt.
+- Der Spiegel des Designsystems in der Vorlage steht auf 4.1.0: das Muster `Dokumentanzeige` für PDF und Bilder, und `Dateiablage` mit Vorschau. Der Bau der Vorlage legt die Stützdateien der PDF-Bibliothek neben ihre Chunks (`pdf-dateien/`), und `pdfjs-dist` steht in ihrer `package.json`. Seit 4.0.0 kennt die Bibliothek nur Blau, Grau und Rot, deshalb färbt die `stil.css` der Vorlage einen Stand mit dem Akzent und dem leisen Text statt mit den Marken, die weggefallen sind.
+- Mail und eine fremde API sind Sache der App und kein Dienst der Plattform; das Blatt sagt das und sagt, wohin ein Passwort und ein Schlüssel nicht gehören: nicht ins Manifest. Ein fremder Container geht mit einem Bauplan aus einer Zeile hinein, weil das Gerät baut und kein fertiges Image nimmt, wie die Regeln seines Kontrakts sagen.
+- Der Selbsttest lässt die Muster laufen: die Dokumente im Backend der Vorlage, die Mail durch ein lokales Relais, die fremde API gegen einen lokalen Stellvertreter, das Manifest des fremden Containers durch die Manifestprüfung, und jeden Pfad, den das Blatt nennt, gegen die Dateien.
+
 ## 0.21.0 (2026-08-30)
 
 Kontrakt: bis 5

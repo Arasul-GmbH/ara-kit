@@ -356,6 +356,10 @@ function createApp(name) {
         "Als Nächstes: den Plan schreiben, der sagt, was diese App tun soll."
       ),
       `  node .ara/tools/app.mjs --app ${name} --plan "<titel>"`,
+      t(
+        "What an app can do beyond a form, with code that runs: .ara/knowledge/app-patterns.md",
+        "Was eine App jenseits des Formulars kann, mit Code, der läuft: .ara/knowledge/app-patterns.de.md"
+      ),
     ].join("\n")
   );
 }

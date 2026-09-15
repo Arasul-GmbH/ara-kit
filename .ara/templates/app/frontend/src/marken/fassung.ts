@@ -50,5 +50,25 @@
  * Beim ersten Anlauf stand sie hier, und der fertige Bau trug prompt
  * `.w-\[--sidebar-breite\]{width:--sidebar-breite}` -- eine Regel, die
  * niemand benutzt, aus einem Satz darueber, dass man sie nicht benutzen soll.
+ *
+ * 4.0.0 (Auftrag farben-blau-grau-rot, 30.08.2026): die Palette ist kleiner
+ * geworden, und das ist ein Bruch. `--success` (Gruen) und `--warning`
+ * (Orange) sind aus `theme.css` gestrichen, mit ihnen `--ara-erfolg` und
+ * `--ara-warnung` in `marken.css` und die Diagrammpalette `--color-chart-*`.
+ * Eine App auf 3.x, die `text-success` oder `var(--ara-warnung)` schreibt,
+ * bekommt dafuer nichts mehr -- deshalb die neue Hauptzahl. Die Namen der
+ * Varianten (`success`, `warning`, `erfolg`, `warnung`) bleiben: sie sagen,
+ * WAS es ist; die Farbe folgt daraus. Erfolg ist Blau, eine Warnung Grau,
+ * ein Fehler Rot.
+ *
+ * 4.1.0 (Auftrag bibliothek-dokumentanzeige, 31.08.2026): die
+ * `Dokumentanzeige` -- PDF (pdf.js, CSP-konform ohne eval) und Bilder mit
+ * Seitenblaettern, Zoom und Vollbild. Sie ist das einzige Muster auf reinem
+ * CSS und geht deshalb mit ins Buendel; pdf.js liegt als eigener Brocken
+ * `marken-pdf.js` daneben und laedt erst mit der ersten PDF-Quelle, die
+ * Stuetzdateien (Worker, WASM, Schriften, CMaps, ICC) im Ordner
+ * `browser/pdf-dateien/`. Die `Dateiablage` zeigt seither eine Vorschau der
+ * gewaehlten Datei (`vorschau`, abwaehlbar). Keine neue Hauptzahl: eine App
+ * auf 4.0.0 laeuft unveraendert, sie kennt das Muster nur nicht.
  */
-export const FASSUNG = '3.1.1';
+export const FASSUNG = '4.1.0';

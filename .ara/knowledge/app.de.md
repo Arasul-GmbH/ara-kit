@@ -54,6 +54,7 @@ lies vorher `business/profile.md`: womit das Haus arbeitet, gehört in den erste
 | **Die Schritte** | Der Ablauf aus Sicht des Menschen davor, ein Schritt je Zeile |
 | **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Was nur Daten hin und her schiebt, ist ein Programm und kein Flow |
 | **Wo ein Mensch entscheidet** | Jede Stelle, an der ein Lauf anhalten und auf eine Freigabe warten soll, und was der Mensch dabei sehen muss |
+| **Welche Gestalt sie annimmt** | Ein Formular ist selten alles: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung. Die fünf Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Das entscheidet die Bauweise. Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |

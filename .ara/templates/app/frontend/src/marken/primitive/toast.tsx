@@ -15,6 +15,10 @@ import { cn } from '../cn';
  * Die Farbe sitzt am linken Rand und nicht auf der Flaeche: eine flaechig rote
  * Meldung liest sich als Alarm, und die meisten sind keiner. Dieselbe
  * Entschaerfung wie beim destruktiven Knopf (Plan 016) und beim Abzeichen.
+ * Und es sind drei Farben fuer vier Arten: `success` ist Blau wie `info`,
+ * `warning` ist Grau, `error` ist Rot -- Gruen und Orange sind seit dem
+ * 30.08.2026 nicht mehr in der Palette; was fuer eine Meldung es ist, sagt
+ * das Symbol und der Text.
  *
  * `pointer-events-none` am Behaelter und `-auto` an der Meldung: der Streifen
  * oben rechts ist sonst eine unsichtbare Wand vor der Oberflaeche darunter.
@@ -25,8 +29,9 @@ const toastVariants = cva(
     variants: {
       art: {
         info: 'border-l-[3px] border-l-primary [&_[data-slot=toast-icon]]:text-primary',
-        success: 'border-l-[3px] border-l-success [&_[data-slot=toast-icon]]:text-success',
-        warning: 'border-l-[3px] border-l-warning [&_[data-slot=toast-icon]]:text-warning',
+        success: 'border-l-[3px] border-l-primary [&_[data-slot=toast-icon]]:text-primary',
+        warning:
+          'border-l-[3px] border-l-muted-foreground [&_[data-slot=toast-icon]]:text-muted-foreground',
         error: 'border-l-[3px] border-l-destructive [&_[data-slot=toast-icon]]:text-destructive',
       },
     },
