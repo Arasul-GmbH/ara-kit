@@ -1,3 +1,6 @@
+import { cpSync, copyFileSync, mkdirSync, rmSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
@@ -33,6 +36,42 @@ function ohneCrossOrigin(): Plugin {
 }
 
 /**
+ * Die Stuetzdateien von pdf.js neben das uebersetzte JavaScript legen.
+ *
+ * Die `Dokumentanzeige` der Bibliothek loest Worker, WASM, Schriften, CMaps
+ * und ICC-Profile zur Laufzeit relativ zu `import.meta.url` auf, absichtlich
+ * ohne Vite-Asset-Import: im Bau der Bibliothek bettet Vite jedes Asset als
+ * data:-URI ein, und einen data:-Worker laesst die Content-Security-Policy des
+ * Geraets nicht zu. Also legt jeder Bau, der die Bibliothek uebersetzt, den
+ * Ordner `pdf-dateien/` neben seine Chunks, hier unter `dist/assets/`. Das ist
+ * `pdf-dateien.mjs` aus dem Paket der Bibliothek, in TypeScript, damit
+ * `tsc --noEmit` diese Datei weiter mitprueft. Ohne den Ordner zeigt die
+ * Dokumentanzeige Bilder, und ein PDF endet im Fehlerzustand.
+ *
+ * Der Worker heisst `.js` und nicht `.mjs`: fuer `.mjs` kennt der Webserver
+ * am Geraet keinen JavaScript-Typ, und einen Module-Worker mit
+ * `application/octet-stream` verwirft der Browser wortlos.
+ */
+function pdfDateienBeilegen(zielOrdner: () => string): Plugin {
+  return {
+    name: "pdf-dateien-beilegen",
+    apply: "build",
+    closeBundle() {
+      const quelle = dirname(createRequire(import.meta.url).resolve("pdfjs-dist/package.json"));
+      const ordner = join(zielOrdner(), "pdf-dateien");
+      rmSync(ordner, { recursive: true, force: true });
+      mkdirSync(ordner, { recursive: true });
+      copyFileSync(join(quelle, "build", "pdf.worker.min.mjs"), join(ordner, "pdf.worker.min.js"));
+      for (const teil of ["wasm", "standard_fonts", "cmaps", "iccs"]) {
+        cpSync(join(quelle, teil), join(ordner, teil), { recursive: true });
+      }
+    },
+  };
+}
+
+const hier = (weg: string): string => fileURLToPath(new URL(weg, import.meta.url));
+
+/**
  * `@marken` zeigt auf den Spiegel des Designsystems, genau wie in der
  * Oberflaeche des Geraets. Ein Pfad-Alias und kein Paket: die Bibliothek wird
  * mit dieser App uebersetzt, und es gibt kein `dist/`, das jemand vergisst.
@@ -41,8 +80,8 @@ function ohneCrossOrigin(): Plugin {
 export default defineConfig({
   base: "./",
   resolve: {
-    alias: { "@marken": fileURLToPath(new URL("./src/marken", import.meta.url)) },
+    alias: { "@marken": hier("./src/marken") },
   },
-  plugins: [tailwindcss(), react(), ohneCrossOrigin()],
+  plugins: [tailwindcss(), react(), ohneCrossOrigin(), pdfDateienBeilegen(() => hier("./dist/assets"))],
   build: { outDir: "dist", emptyOutDir: true, sourcemap: false },
 });

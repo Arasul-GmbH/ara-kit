@@ -5,6 +5,7 @@ import { FileIcon, UploadIcon, XIcon } from 'lucide-react';
 
 import { cn } from '../cn';
 import { Button } from '../primitive/button';
+import { Dokumentanzeige } from './Dokumentanzeige';
 
 /** Eine Groesse in Bytes, so wie ein Mensch sie liest. */
 function groesseInWorten(bytes: number): string {
@@ -37,6 +38,14 @@ function groesseInWorten(bytes: number): string {
  * SIE IST GESTEUERT: die Liste kommt von aussen, jede Aenderung geht nach
  * aussen. Zwei Wahrheiten darueber, was gerade ausgewaehlt ist, sind eine
  * zu viel.
+ *
+ * SIE ZEIGT, WAS SIE ANGENOMMEN HAT (Auftrag bibliothek-dokumentanzeige).
+ * Ein PDF oder Bild in der Liste steht unter ihr in der `Dokumentanzeige`;
+ * ein Klick auf einen Dateinamen wechselt dorthin. Ohne die Vorschau war
+ * ein hochgeladenes Dokument nur ein Name mit einer Groesse -- ob es das
+ * richtige ist, sah der Mensch erst nach dem Absenden, oder nie. Welche
+ * Datei gerade gezeigt wird, ist Zustand DIESER Flaeche (wie `ueber`), keine
+ * zweite Wahrheit ueber die Auswahl. `vorschau={false}` schaltet sie ab.
  */
 export interface DateiablageProps {
   /** Die gewaehlten Dateien. */
@@ -50,8 +59,14 @@ export interface DateiablageProps {
   maxGroesse?: number;
   /** Was ueber dem Kasten steht. */
   hinweis?: string;
+  /** Zeigt unter der Liste die gewaehlte PDF- oder Bilddatei (Dokumentanzeige). */
+  vorschau?: boolean;
   disabled?: boolean;
   className?: string;
+}
+
+function anzeigbar(datei: File): boolean {
+  return datei.type === 'application/pdf' || datei.type.startsWith('image/');
 }
 
 export function Dateiablage({
@@ -61,12 +76,28 @@ export function Dateiablage({
   akzeptiert,
   maxGroesse,
   hinweis = 'Datei hierher ziehen oder auswählen',
+  vorschau = true,
   disabled,
   className,
 }: DateiablageProps) {
   const eingabe = React.useRef<HTMLInputElement>(null);
   const [ueber, setUeber] = React.useState(false);
   const [abgewiesen, setAbgewiesen] = React.useState<string[]>([]);
+  const [vorschauWahl, setVorschauWahl] = React.useState<number | null>(null);
+
+  // Abgeleitet, nicht synchronisiert: faellt die gewaehlte Datei aus der
+  // Liste, rueckt die erste anzeigbare nach -- ohne einen Effekt, der einem
+  // veralteten Index hinterherlaeuft.
+  const gezeigt = React.useMemo(() => {
+    if (!vorschau) return null;
+    if (vorschauWahl !== null) {
+      const datei = dateien[vorschauWahl];
+      if (datei && anzeigbar(datei)) return vorschauWahl;
+    }
+    const erste = dateien.findIndex(anzeigbar);
+    return erste === -1 ? null : erste;
+  }, [dateien, vorschau, vorschauWahl]);
+  const gezeigteDatei = gezeigt === null ? undefined : dateien[gezeigt];
 
   const uebernehmen = React.useCallback(
     (liste: FileList | null) => {
@@ -147,7 +178,19 @@ export function Dateiablage({
               className="flex items-center gap-2 rounded-md border border-border px-ui-2 py-ui-1 text-ui-sm"
             >
               <FileIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate">{datei.name}</span>
+              {vorschau && anzeigbar(datei) ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => setVorschauWahl(i)}
+                  data-aktiv={gezeigt === i || undefined}
+                  className="min-w-0 flex-1 truncate text-left hover:underline focus-visible:underline focus-visible:outline-none data-[aktiv=true]:font-medium"
+                >
+                  {datei.name}
+                </button>
+              ) : (
+                <span className="min-w-0 flex-1 truncate">{datei.name}</span>
+              )}
               <span className="shrink-0 text-ui-xs text-muted-foreground">
                 {groesseInWorten(datei.size)}
               </span>
@@ -164,6 +207,10 @@ export function Dateiablage({
             </li>
           ))}
         </ul>
+      )}
+
+      {gezeigteDatei && (
+        <Dokumentanzeige quelle={gezeigteDatei} name={gezeigteDatei.name} hoehe="20rem" />
       )}
     </div>
   );

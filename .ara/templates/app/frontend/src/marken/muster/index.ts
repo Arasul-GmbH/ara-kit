@@ -38,7 +38,10 @@
  * selbst (`marken.py`, Punkt 7).
  *
  * SIE BRAUCHEN EINEN BAU, wie die Primitive: sie sind auf Tailwind
- * geschrieben. `browser.ts` gibt sie deshalb nicht aus.
+ * geschrieben. `browser.ts` gibt sie deshalb nicht aus -- mit EINER
+ * Ausnahme: die `Dokumentanzeige` ist auf reinem CSS geschrieben
+ * (`marken.css`), weil eine App ohne Bau Dokumente genauso zeigt wie eine
+ * mit, und geht als einziges Muster mit ins Buendel.
  */
 
 export { Datenliste } from './Datenliste';
@@ -47,6 +50,8 @@ export { Bestaetigung, Dialogform } from './Dialogform';
 export type { BestaetigungProps, DialogformProps } from './Dialogform';
 export { Dateiablage } from './Dateiablage';
 export type { DateiablageProps } from './Dateiablage';
+export { Dokumentanzeige } from './Dokumentanzeige';
+export type { DokumentanzeigeProps, DokumentArt } from './Dokumentanzeige';
 export { Feldgruppe, Formularseite } from './Feldgruppe';
 export type { FeldgruppeProps, FormularseiteProps } from './Feldgruppe';
 export { Kennzahl, Kennzahlen } from './Kennzahl';

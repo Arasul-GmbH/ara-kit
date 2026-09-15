@@ -63,13 +63,16 @@
   min-width: 0;
 }
 
-/* Wie ein Vorgang steht. Das Wort traegt die Aussage, die Farbe steht daneben. */
+/* Wie ein Vorgang steht. Das Wort traegt die Aussage, die Farbe steht daneben.
+   Seit Marken 4.0.0 gibt es nur Blau, Grau und Rot: Erfolg ist der Akzent, eine
+   Warnung der leise Text, ein Fehler bleibt rot. Dieselben drei Marken nimmt
+   `marken.css` fuer die Meldung. */
 .stand[data-art="erfolg"] {
-  color: var(--ara-erfolg);
+  color: var(--ara-akzent);
 }
 
 .stand[data-art="warnung"] {
-  color: var(--ara-warnung);
+  color: var(--ara-text-leise);
 }
 
 .stand[data-art="fehler"] {

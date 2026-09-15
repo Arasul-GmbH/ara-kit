@@ -24,10 +24,13 @@ const buttonVariants = cva(
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
+        // Erfolg ist Blau, eine Warnung ist Grau (30.08.2026): die Palette
+        // kennt kein Gruen und kein Orange mehr, und ein Knopf, der warnt,
+        // sagt das in seiner Beschriftung.
         success:
-          'bg-secondary text-primary border border-primary/30 hover:bg-secondary/80 active:bg-secondary/70 focus-visible:ring-success/20',
+          'bg-secondary text-primary border border-primary/30 hover:bg-secondary/80 active:bg-secondary/70 focus-visible:ring-primary/20',
         warning:
-          'bg-warning text-warning-foreground hover:bg-warning/85 active:bg-warning/75 focus-visible:ring-warning/20',
+          'bg-secondary text-muted-foreground border border-muted-foreground/30 hover:bg-secondary/80 active:bg-secondary/70 focus-visible:ring-muted-foreground/20',
         'outline-danger':
           'border border-foreground/20 bg-foreground/5 text-foreground hover:bg-foreground/10 hover:border-foreground/30',
         'outline-success':

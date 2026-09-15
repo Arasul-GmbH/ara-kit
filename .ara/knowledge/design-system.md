@@ -40,7 +40,7 @@ pulled up or edited by hand.
 | Set | Where | How many | What they are |
 | --- | --- | --- | --- |
 | Primitives | `marken/primitive/` | 46 | Button, Input, Dialog, Table, Calendar, Tabs, Badge. They know nothing but themselves, and you put them together |
-| Patterns | `marken/muster/` | 9 | Datenliste, Suchauswahl, Seitenleiste, Formularseite, Dateiablage, Kennzahl, Leerzustand, Ladezustand, Dialogform. They are made **of** primitives and solve a task that comes back in every application |
+| Patterns | `marken/muster/` | 10 | Datenliste, Suchauswahl, Seitenleiste, Formularseite, Dateiablage, Dokumentanzeige, Kennzahl, Leerzustand, Ladezustand, Dialogform. They are made **of** primitives and solve a task that comes back in every application |
 | Blocks | `marken/*.tsx` | 6 | Kopf, Liste, Karte, Formular, Meldung, Menue. Pure CSS (classes `ara-*`), they run in an app **without** a build |
 
 Whoever has a build takes the primitives and the patterns. The six blocks stay useful for

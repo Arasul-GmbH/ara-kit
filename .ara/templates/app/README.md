@@ -98,7 +98,7 @@ Die Oberfläche, von außen nach innen:
 | `src/rahmen/schnittstelle.ts` | Die eine Stelle, an der etwas geholt wird |
 | `src/rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage, an einer Stelle |
 | `src/rahmen/seitenleiste.tsx` | Die Bereiche, im Muster `Seitenleiste`: als Spalte, unter 900 px als Blatt über der Seite |
-| `src/marken/` | Die Bibliothek des Geräts, gespiegelt: 46 Primitive, 9 Muster, 6 Bausteine, beide Stylesheets. Import über `@marken`. Wird ersetzt, nicht bearbeitet |
+| `src/marken/` | Die Bibliothek des Geräts, gespiegelt: 46 Primitive, 10 Muster, 6 Bausteine, beide Stylesheets. Import über `@marken`. Wird ersetzt, nicht bearbeitet |
 | `src/vorgaenge.ts` | Typen und Abfragen der einen Entität dieser App |
 | `src/seiten/liste.tsx` | Die Datenliste, mit dem einen ausgewählten Vorgang darunter |
 | `src/seiten/neu.tsx` | Die Formularseite: einen Vorgang einreichen |
@@ -153,7 +153,7 @@ Abhängigkeiten sie braucht und mit welchen Hashes. Drei Sätze liegen darin:
 | Satz | Wo | Wie viele |
 | --- | --- | --- |
 | Primitive | `marken/primitive/` | 46 |
-| Muster | `marken/muster/` | 9 |
+| Muster | `marken/muster/` | 10 |
 | Bausteine (laufen auch ohne Bau) | `marken/*.tsx` | 6 |
 
 Dazu die beiden Stylesheets: `marken/theme.css` trägt die Werte beider Themen,
