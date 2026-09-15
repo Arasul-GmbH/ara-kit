@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.22.0 (2026-09-15)
+
+Contract: up to 5
+
+- The knowledge shows what an app is beyond a form. `.ara/knowledge/app-patterns.md` carries five patterns with code that runs: several routes with a sidebar (the scaffold itself), a document uploaded and shown in the library's viewer, a mail out of the app's backend over SMTP with the values from the manifest, a foreign API called from the backend, and a foreign container as an app behind the device's login. A partner who found only the item with its approval step took Arasul for a form tool. The code lies under `.ara/templates/app-patterns/`, split the way the scaffold is, and each file says in its head where it goes.
+- `/app` knows the patterns in the idea phase: the command loads the sheet as soon as an idea is being formed, the interview checklist asks which shape the app takes, and `--new` names the sheet.
+- The scaffold's mirror of the design system stands on 4.1.0: the pattern `Dokumentanzeige` for PDF and images, and `Dateiablage` with a preview. The scaffold's build lays the support files of the PDF library next to its chunks (`pdf-dateien/`), and `pdfjs-dist` stands in its `package.json`. Since 4.0.0 the library knows only blue, grey and red, so the scaffold's `stil.css` colours a state with the accent and the quiet text instead of the tokens that fell away.
+- Mail and a foreign API are the app's own doing, not a service of the platform; the sheet says so and says where a password and a key do not go: not into the manifest. A foreign container goes in with a build plan of one line, because the device builds and takes no finished image, as its contract rules say.
+- The self-test runs the patterns: the documents in the scaffold's backend, the mail through a local relay, the foreign API against a local stub, the manifest of the foreign container through the manifest check, and every path the sheet names against the files.
+
 ## 0.21.0 (2026-08-30)
 
 Contract: up to 5
