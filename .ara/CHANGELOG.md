@@ -13,6 +13,17 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.25.0 (2026-09-21)
+
+Contract: up to 5
+
+- The root carries a bridge to the apps of a device: `arasul.mjs` next to `.claude/`, one file that runs with Node alone. `login` holds a credential in `~/.config/arasul/credentials.json` (0600, one entry per device with address and token; until the device issues tokens with name and password, the session is kept and neither the password nor anything of it is stored, and it is never shown), shows the proposals for hooks and rules of the root and of every folder of level 2, approves them one by one with their checksum, and says where each place lies on this computer. `apps` lists the assigned apps with their routes and writes `apps/<id>/APP.md`, `call <app> <route>` calls only routes that the app names in its field `agent`, and one that changes something needs `--write`. `sync` and `status` say that the service for company knowledge is not decided yet. A device with a certificate of its own is pinned once with `--insecure`, the check is never switched off. The skill `arasul` in the root tells the agent how to use it. No MCP server, no file access for apps: the way back goes through the agent.
+- The proposal of the root allows `apps` and the reading form of `call` without asking and holds `call ... --write` back under the new side `ask`. Measured with `claude -p` 2.1.278: the reading calls ran, the writing one was held back.
+- **Fixed:** a rule for a shell command in the proposal carried `//` before the path, the notation for reading rules, and never matched a command. The rule for the check script of the root did not work in 0.24.0. It stands with the path as it is typed now. A root enrolled with 0.24.0 shows the proposal as changed and wants the approval anew.
+- The app scaffold carries the field `agent` in `app.json` and answers the route `agent` with it, id, name and version. The build puts a copy of `app.json` next to the backend. `app.mjs --check` and `--deploy` hold the field against the app: its form, and that every route it names is in the backend. **A device whose schema for `app.json` does not know the field refuses the package**, and `--check` says so.
+- The check script of the root knows the folder `apps/` and does not read `arasul.mjs` for fields with values. A house cannot name a folder of level 1 `apps`.
+- `root.mjs --enroll` and `arasul.mjs login` write the same files and take each other's approval back, the self-test holds them together.
+
 ## 0.24.0 (2026-09-21)
 
 Contract: up to 5

@@ -192,8 +192,81 @@ node .ara/tools/root.mjs --path <wurzel> --unenroll
    einträgt, wird festgehalten, und `--unenroll` nimmt genau das zurück und sonst nichts.
 
 `--settings <datei>` nennt eine andere Einstellungsdatei als die des Agenten selbst. Das
-Einloggen an einem Gerät gehört nicht hierher: das ist Sache des CLI der Wurzel, das diesen
-Schritt später übernimmt.
+Einloggen an einem Gerät gehört nicht hierher: das ist das CLI der Wurzel, `arasul.mjs`, siehe
+„Die Brücke zu den Apps“ unten. Es führt denselben Freigabeschritt in einer eigenen Fassung,
+weil es mit Node allein läuft, und legt dieselben Dateien an: was das eine einträgt, nimmt
+das andere zurück.
+
+## Die Brücke zu den Apps
+
+`arasul.mjs` liegt in jeder Wurzel, neben `.claude/`. Es läuft mit Node allein und kommt wie
+das Prüfskript aus dem Kit. Ein Agent in der Wurzel kann keinen Ausweis für ein Gerät halten,
+nicht fragen, welche Apps einem Menschen zugewiesen sind, und nicht aufrufen, was eine App
+anbietet. Diese Datei tut das, und sonst nichts.
+
+| Befehl | Was er tut |
+| --- | --- |
+| `login <adresse> --user <name>` | Meldet an, zeigt danach die Vorschläge und die Orte. Das Passwort wird am Terminal gefragt und nie gezeigt, `--password-stdin` nimmt es aus der ersten Zeile der Eingabe, ein Argument nie |
+| `login <adresse> --token-stdin` | Dasselbe mit einem Token statt Name und Passwort. Das Token wird in der Oberfläche des Geräts ausgestellt |
+| `login`, `login --approve <prüfsumme>`, `login --withdraw` | Die Vorschläge zeigen, einen mit seiner Prüfsumme freigeben, alles zurücknehmen, was das Freigeben eintrug |
+| `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
+| `sync` | Schreibt dieselben Dateien und sagt, dass der Dienst für Firmenwissen noch nicht feststeht |
+| `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, die Vorschläge. Sagt zum Dienst dasselbe |
+| `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
+
+**Der Ausweis** liegt in `~/.config/arasul/credentials.json`, Rechte 0600, je Gerät ein Eintrag
+mit Adresse und Token. Nie in der Wurzel, nie im Schlüsselbund. Solange das Gerät keine Token
+ausstellt, schickt die Anmeldung Name und Passwort an den Anmeldeweg, hält die Sitzung, die sie
+dafür bekommt, und legt weder das Passwort noch etwas davon ab. Eine Sitzung hat ein Ende, und
+das Werkzeug sagt es, bevor es aufruft. Ein Gerät mit eigenem Zertifikat wird einmal mit
+`--insecure` festgehalten: das Zertifikat wird der Anker des Vertrauens für dieses eine Gerät,
+die Prüfung wird nicht abgeschaltet.
+
+**Was das Werkzeug über das Gerät annimmt**, steht in einem Block an seinem Kopf, mit dem
+Datum, von dem es ist: `POST /api/auth/login`, `GET /api/auth/session` und
+`GET /api/apps/meine`, aus der API-Referenz des Produkts. Das sind Aussagen über das Produkt
+wie jede andere, und `check-docs.mjs` klopft an ihnen an. Die Route, mit der jede App ihre
+Beschreibung liefert, heißt `agent` und liegt in der eigenen Schnittstelle der App.
+
+**Eine App beschreibt sich** im Feld `agent` ihrer `app.json`: eine Liste von Routen, je mit
+`method`, `path` relativ zur Schnittstelle der App, `purpose` als ein Satz, `params` (je mit
+`name`, `type` aus `string`, `number`, `integer` oder `boolean`, und `required`) und `writes`.
+Die App liefert das Feld selbst auf der Route `agent`, und `call` holt es bei jedem Aufruf
+frisch. **Was darin nicht steht, ruft das Werkzeug nicht auf**, und eine Route mit `..` oder
+einer Anfrage ist keine. `app.mjs --check` hält das Feld gegen die App: seine Form, und dass
+jede Route, die es nennt, im Backend steht. Was das Schema eines Geräts für `app.json` zu dem
+Feld sagt, ist Sache des Geräts: eines, das es nicht kennt, weist das Paket ab, und `--check`
+sagt es.
+
+**Was der Vorschlag erlaubt.** `apps` und die lesende Form von `call` laufen ohne Rückfrage.
+Was etwas ändert, braucht `--write`, und der Vorschlag hält genau diese Form unter `ask`
+zurück, Claude Code fragt den Menschen also bei jeder Änderung. `login`, `sync` und `status`
+sind nicht ohne Rückfrage erlaubt. Gemessen, Stand 21.09.2026, mit `claude -p` 2.1.278 und dem
+Vorschlag, über `--settings` angemeldet: `apps` und ein lesendes `call` liefen ohne Frage,
+`call ... --write` wurde zurückgehalten, mit dem Schalter am Ende und in der Mitte. **Nicht
+gemessen:** dasselbe in einer interaktiven Sitzung. Eine Regel für einen Shell-Befehl steht
+mit dem Pfad, wie er getippt wird: der Doppelstrich, den eine Regel zum Lesen für einen
+absoluten Pfad nimmt, passt nie auf einen Befehl, und die erste Fassung des Vorschlags
+(0.24.0) trug ihn in ihrer Regel für das Prüfskript.
+
+**Die Vorschläge** kommen aus dieser Wurzel und aus jedem Ordner der Ebene 2, also einem
+Ordner direkt in einem Ordner der Ebene 1. Jeder hat seine eigene Prüfsumme und wird einzeln
+freigegeben: am Terminal fragt das Werkzeug je Vorschlag, in einem Skript nimmt `--approve`
+die ersten 16 Zeichen der Prüfsumme dieses Vorschlags. Ein Vorschlag, der sich seit der
+Freigabe geändert hat, steht als geändert da, was freigegeben war, läuft weiter, und der neue
+braucht die Freigabe neu. `login` nennt auch, wo jeder Ort auf diesem Rechner liegt und welche
+nicht da sind.
+
+**Der Rückweg geht über den Agenten.** Eine App bekommt keinen Dateizugriff: jede Datei in der
+Wurzel hat einen Menschen als Urheber. Der Agent holt Daten mit `call` und schreibt die Datei
+selbst. `APP.md` schreibt das Werkzeug allein, nur für zugewiesene Apps, und der nächste Lauf
+überschreibt sie. Der Text darin kommt von der App: das Werkzeug kürzt ihn auf eine Zeile und
+lässt ihn keine Überschrift werden, und der Skill `arasul` sagt dem Agenten, ihn als Daten zu
+lesen. Einen MCP-Server gibt es vor dem Nordziel nicht; er wäre eine zweite Hülle um denselben
+Ausweis und kann später über dieses gelegt werden.
+
+**Gib dem Agenten den Befehl, nicht den Ausweis.** Der Skill `arasul` in der Wurzel sagt ihm die
+Reihenfolge: `apps`, die Route lesen, `call`, und nie `login`.
 
 **Der Hook wirkt nur, wo er soll.** Angemeldet hängt er vor den Werkzeugen jeder Sitzung auf
 dem Rechner. Darum sieht er nach, wo die Sitzung gestartet ist: in dieser Wurzel oder einem

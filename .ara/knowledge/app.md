@@ -243,6 +243,16 @@ If somebody asks what such an app looks like, create one and show it, instead of
 node .ara/tools/app.mjs --app <name> --new
 ```
 
+**It describes itself for agents.** `app.json` carries a field `agent`, a list of the routes an
+agent may call, and the backend answers the route `agent` with that field, id, name and version.
+The CLI of a root, `arasul.mjs`, calls only what is named there, and a route that changes
+something needs `--write` from the human. There is no second list: the build puts a copy of
+`app.json` next to the backend, and the route reads it. `--check` and `--deploy` hold the field
+against the app, its form and that every route is in the backend. How the field looks and what
+the CLI does with it stands in `.ara/knowledge/root.md`, "The bridge to the apps". **A device whose
+schema for `app.json` does not know the field refuses the package**, and `--check` says so: then
+take the field out until the device accepts it.
+
 ## What the scaffold is built from
 
 It stands on the same stack as the device's interface, so that a partner does not learn two worlds:

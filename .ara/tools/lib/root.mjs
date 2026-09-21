@@ -63,7 +63,8 @@ const NOT_FILES = new Set([PER_PLACE, METHOD_RULES, "example.json"]);
 
 /** Die Ordner der Methode. Ein Haus nennt keinen seiner Ordner der Ebene 1 so. */
 export const METHOD_FOLDERS = Object.freeze(["company", "roadmap", "experiments", "customers", "templates", "archive"]);
-const RESERVED_FOLDERS = new Set([...METHOD_FOLDERS, "node_modules"]);
+// `apps` is where the bridge writes what an app says about itself, see `arasul.mjs` in the root.
+const RESERVED_FOLDERS = new Set([...METHOD_FOLDERS, "apps", "node_modules"]);
 
 export const PROPOSAL = join(".claude", "proposal", "proposal.json");
 
@@ -192,8 +193,17 @@ function proposalNote(language) {
  * die Wurzel und die Orte auf diesem Rechner zu lesen.
  */
 export function proposalFor(places, { method = false, language }) {
-  const allow = ["Read({root}/**)", "Bash(node {root}/.claude/scripts/:*)"];
+  // The bridge: `apps` and the reading form of `call` run without asking. What changes something
+  // needs `--write`, and the `ask` rule below hands exactly that form back to the human. A rule
+  // of the kind `Bash(...:*)` alone would let `call ... --write` through as well.
+  const allow = [
+    "Read({root}/**)",
+    "Bash(node {root}/.claude/scripts/:*)",
+    "Bash(node {root}/arasul.mjs apps:*)",
+    "Bash(node {root}/arasul.mjs call:*)",
+  ];
   const deny = ["Read({root}/.env)", "Read({root}/**/.env)"];
+  const ask = ["Bash(node {root}/arasul.mjs call*--write*)"];
   if (method) deny.push("Edit({root}/archive/**)");
   const additional = ["{root}"];
   for (const place of places) {
@@ -207,7 +217,7 @@ export function proposalFor(places, { method = false, language }) {
   }
   return {
     note: proposalNote(language),
-    permissions: { allow, deny, additionalDirectories: additional },
+    permissions: { allow, deny, ask, additionalDirectories: additional },
     hook: { event: "PreToolUse", matcher: "Write|Edit|NotebookEdit|Bash", script: "boundary.mjs" },
   };
 }
@@ -377,7 +387,8 @@ function mergeRules(root, ...changes) {
   const proposal = JSON.parse(readFileSync(file, "utf8"));
   proposal.permissions ||= {};
   for (const change of changes) {
-    for (const side of ["allow", "deny", "additionalDirectories"]) {
+    for (const side of ["allow", "deny", "ask", "additionalDirectories"]) {
+      if (side === "ask" && !(change.ask || []).length && !proposal.permissions.ask) continue;
       proposal.permissions[side] ||= [];
       for (const rule of change[side] || []) {
         if (!proposal.permissions[side].includes(rule)) proposal.permissions[side].push(rule);

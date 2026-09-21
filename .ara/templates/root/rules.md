@@ -18,6 +18,7 @@ both, and the skills and agents in `.claude/`.
 | the boundary and the permission rules that are proposed | `.claude/proposal/proposal.json` |
 | the skills and agents of this root | `.claude/skills/`, `.claude/agents/` |
 | whether this root contradicts itself | `node .claude/scripts/check.mjs` |
+| which apps a person may ask, and what each says about itself | `arasul.mjs`, and `apps/<id>/APP.md` that it writes |
 
 **The same fact in two places is a mistake, not a backup.** What lives in a place stays
 there, this root refers to it. What is business of the whole house lives here.
@@ -36,7 +37,12 @@ there, this root refers to it. What is business of the whole house lives here.
    `.claude/proposal/`. Nothing in this folder is active by itself: it takes effect only
    once a person has consented and enrolled it into their own settings. A place with
    `write: yes` in `.claude/places.json` is exempt, by decision of the house.
-4. **After a change the check runs.** `node .claude/scripts/check.mjs` ends without a
+4. **Apps get no file access.** Every file in this root has a human as its author. What an
+   app says about itself comes into `apps/<id>/APP.md` through `arasul.mjs` and by nothing
+   else. The way back goes through the agent: it fetches data with `arasul.mjs call` and
+   writes the file itself. Only routes that an app names for agents are called, and one that
+   changes something needs `--write`.
+5. **After a change the check runs.** `node .claude/scripts/check.mjs` ends without a
    finding, or the finding is fixed before the next piece of work starts.
 
 ## Where new things go
@@ -44,6 +50,7 @@ there, this root refers to it. What is business of the whole house lives here.
 | What comes into being | where to |
 | --- | --- |
 {{folder_rows}}
+| what an app says about itself | `apps/<id>/APP.md`, written by `arasul.mjs`, never by hand |
 | a new place | a line in `.claude/places.json`, never a copy in here |
 | a script the house uses | anywhere it is needed, scripts are allowed everywhere |
 
