@@ -6818,6 +6818,39 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
     lauf = await pruefen();
     assert(lauf.status !== 0 && /steht doppelt da/.test(lauf.stdout), "dieselbe Route zweimal besteht");
 
+    // Ein Backend, das seine Wege als Muster schreibt und nicht als Zeichenkette.
+    schreiben({}, 'const wege = [/^\\/agent$/, /^\\/antraege$/];\nconst verb = ["GET", "POST"];\n');
+    lauf = await pruefen();
+    assert(lauf.status === 0, `ein Backend mit einer Tabelle von Mustern besteht nicht: ${lauf.stdout}`);
+
+    // Ein Gerät, dessen Schema die Einträge selbst beschreibt: seine Worte gelten, und das Kit
+    // sagt denselben Fehler nicht ein zweites Mal. Was kein Schema trägt, fällt weiterhin auf.
+    const genau = JSON.parse(JSON.stringify(kennt));
+    genau.app_json.schema.properties.agent = {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          method: { type: "string", enum: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
+          path: { type: "string" },
+          purpose: { type: "string", minLength: 1 },
+          params: { type: "array" },
+          writes: { type: "boolean" },
+        },
+        required: ["method", "path", "purpose", "params", "writes"],
+        additionalProperties: false,
+      },
+    };
+    kontrakt = genau;
+    schreiben({ agent: [{ ...agent[0], extra: 1 }] });
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /`agent\[0\]\.extra`/.test(lauf.stdout), `das Gerät weist das unbekannte Feld nicht ab: ${lauf.stdout}`);
+    assert(!/agent: agent\[0\]/.test(lauf.stdout), `das Kit wiederholt den Befund des Geräts in eigenen Worten: ${lauf.stdout}`);
+    schreiben({ agent: [...agent, { method: "DELETE", path: "antraege", purpose: "Einen Antrag zurückziehen.", params: [], writes: false }] });
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /DELETE ändert etwas/.test(lauf.stdout), `eine Regel, die kein Schema trägt, fällt nicht mehr auf: ${lauf.stdout}`);
+    kontrakt = kennt;
+
     // Fehlt das Feld ganz, beschreibt die App sich nicht, und das ist kein Fehler des Pakets.
     schreiben();
     const ohne = JSON.parse(readFileSync(join(quelle, "app.json"), "utf8"));
@@ -6847,7 +6880,7 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
     rmSync(kopie);
     lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base], env);
     assert(lauf.status !== 0 && /kopiert app\.json/.test(lauf.stdout), `ein Paket, dessen Dockerfile app.json kopiert und ohne sie: ${lauf.stdout}`);
-    return "Form in zehn Fällen, Routen im Backend, GET agent, Gerät ohne das Feld, Kopie neben dem Backend";
+    return "Form in zehn Fällen, Routen als Zeichenkette und als Muster, ein Gerät, das die Einträge selbst beurteilt, GET agent, Gerät ohne das Feld, Kopie neben dem Backend";
   } finally {
     server.close();
     rmSync(akte, { recursive: true, force: true });

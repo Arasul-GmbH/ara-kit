@@ -25,9 +25,10 @@
  * `--check` and `--deploy` also take a folder: `--deploy <folder>` deploys a
  * package that does not come out of `apps/`.
  *
- * `--check` and `--deploy` also hold the field `agent` of `app.json` against the app: its
- * form, and that every route it names exists in the backend, `GET agent` included. The
- * build puts a copy of `app.json` next to the backend so that the route can answer.
+ * `--check` and `--deploy` also hold the field `agent` of `app.json` against the app. Over its
+ * form the device's schema judges, and what the device has already refused the kit does not say
+ * a second time. Beyond that every route it names has to exist in the backend, `GET agent`
+ * included. The build puts a copy of `app.json` next to the backend so that the route can answer.
  *
  * For a customer device `--customer <customer>` comes along. Address and key stand
  * in the device file, not in the command: that way no device can be addressed with
@@ -64,9 +65,11 @@
  * `--check` und `--deploy` nehmen auch einen Ordner: `--deploy <ordner>` spielt
  * ein Paket ein, das nicht aus `apps/` kommt.
  *
- * `--check` und `--deploy` halten auch das Feld `agent` der `app.json` gegen die App: seine
- * Form, und dass jede Route, die es nennt, im Backend steht, `GET agent` eingeschlossen. Der
- * Bau legt eine Kopie der `app.json` neben das Backend, damit die Route antworten kann.
+ * `--check` und `--deploy` halten auch das Feld `agent` der `app.json` gegen die App. Über seine
+ * Form urteilt das Schema des Geräts, und was das Gerät schon abgewiesen hat, sagt das Kit nicht
+ * ein zweites Mal. Darüber hinaus muss jede Route, die es nennt, im Backend stehen, `GET agent`
+ * eingeschlossen. Der Bau legt eine Kopie der `app.json` neben das Backend, damit die Route
+ * antworten kann.
  *
  * Bei einem Kundengerät kommt `--customer <kunde>` dazu. Adresse und Schlüssel
  * stehen in der Geräteakte, nicht im Befehl: damit kann kein Gerät mit den Daten
@@ -1262,7 +1265,7 @@ function reportManifest(where, result, delivery) {
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems)];
   if (arg.json) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
@@ -1283,7 +1286,7 @@ if (arg.check !== undefined) {
 if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems)];
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
