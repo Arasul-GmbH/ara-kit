@@ -1,0 +1,32 @@
+{
+  "name": "Hafenkante Toolmaking Ltd",
+  "places": [
+    {
+      "name": "shop-floor-app",
+      "kind": "github",
+      "where": "https://github.com/hafenkante-example/shop-floor-app",
+      "local": "~/Code/hafenkante/shop-floor-app",
+      "purpose": "the app the shop floor books machine hours in"
+    },
+    {
+      "name": "website",
+      "kind": "github",
+      "where": "https://github.com/hafenkante-example/website",
+      "purpose": "the public website, built by an agency, read here only"
+    },
+    {
+      "name": "projects",
+      "kind": "folder",
+      "where": "https://hafenkante-example.sharepoint.com/sites/projects",
+      "local": "~/Library/CloudStorage/OneDrive-HafenkanteExample/Projects",
+      "write": "yes",
+      "purpose": "one folder per customer project, drawings and records, kept by the project leads"
+    },
+    {
+      "name": "procedures",
+      "kind": "folder",
+      "where": "https://hafenkante-example.sharepoint.com/sites/procedures",
+      "purpose": "work instructions and the quality manual, owned by quality management"
+    }
+  ]
+}

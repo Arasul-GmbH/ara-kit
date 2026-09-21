@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.23.0 (2026-09-21)
+
+Contract: up to 5
+
+- The kit lays out the root folder of a whole house. `/root` and `node .ara/tools/root.mjs --path <folder> --name "<house>"` create, outside of the kit, a tree with rules and a truth table, `company/`, a roadmap with one sheet per place and a card stack, `experiments/`, `customers/`, `templates/`, `archive/`, a check script with 13 checks, a boundary hook with its cases, a card tool and rights per folder in `settings.json` after the kit's own pattern. The scaffold lies under `.ara/templates/root/` in both languages. After laying out the root needs the kit no more, its scripts run with Node alone.
+- Embedded places are a reference, never a copy. A place is a GitHub repository or a foreign folder such as SharePoint, it stands in a list with where it lives and at most where it lies on this computer. The hook keeps a session in the root from writing into a place, through the tools and through the shell, also through a link, because such a session does not load the rules of the place. `write: yes` opens a place by decision of the house. `--place` adds one to an existing root and leaves rights entered by hand alone.
+- An invented company comes along as a showcase: `--example` lays it out with filled sheets, cards in every column, an experiment, a customer and four places. Its dates count from the day of laying out, so its own check script finds nothing in it, today and in a year.
+- The scaffold carries its rules as `rules.md` and not under the name the agent loads: a rules file in a subfolder is read along as soon as a file next to it is read, and whoever worked on the scaffold worked by the rules of a foreign root.
+- The self-test lays out a root in both languages and runs its check script, builds twelve mistakes into the showcase and expects each from its own check, runs the cases of the boundary, moves cards by their rules, and looks for anything of Arasul's own in what was laid out.
+
 ## 0.22.0 (2026-09-15)
 
 Contract: up to 5
