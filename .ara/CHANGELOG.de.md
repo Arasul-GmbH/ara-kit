@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.26.0 (2026-09-22)
+
+Kontrakt: bis 6
+
+- Das Kit versteht Kontraktfassung 6. Eine App nennt im Manifest die Routen, die sie einem Agenten anbietet (`agent`): das Kit liest das Feld, reicht es unverändert an das Gerät weiter und hält jede Route, die es nennt, gegen den Quelltext des Backends. Bisher bekam ein Gerät mit Fassung 6 den Satz, was dem Kit fehlt, und es ließ sich nichts darauf einspielen, ganz gleich, wie die App aussah.
+- **Die Quelle der Form ist das Schema des Geräts.** Was das Gerät mit seinen Worten bereits abgewiesen hat, sagt `--check` nicht ein zweites Mal in den Worten des Kits. Übrig bleibt, was kein Schema trägt und was über den Aufruf entscheidet: `writes` bei einer Methode, die etwas ändert, dieselbe Route zweimal. Diese Lesung ist die des CLI in der Wurzel, und eine Route, die sie nicht annimmt, ruft das CLI nicht auf.
+- Die Suche nach einer Route im Backend findet einen Pfad auch, wenn er in einem regulären Ausdruck steht (`/^\/journal$/`), nicht nur in Anführungszeichen. Ein Backend mit einer Tabelle von Mustern bekam bisher den Befund, seine Route gebe es nicht.
+- Gemessen gegen ein Gerät mit Kontraktfassung 6: der Kontrakt liest sich mit Rückgabe 0, die Prüfung einer App mit dem Feld endet ohne Befund, und eine ohne das Feld endet wie zuvor.
+
 ## 0.25.0 (2026-09-21)
 
 Kontrakt: bis 5
