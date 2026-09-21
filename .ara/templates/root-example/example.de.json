@@ -1,0 +1,32 @@
+{
+  "name": "Hafenkante Werkzeugbau GmbH",
+  "places": [
+    {
+      "name": "shop-floor-app",
+      "kind": "github",
+      "where": "https://github.com/hafenkante-example/shop-floor-app",
+      "local": "~/Code/hafenkante/shop-floor-app",
+      "purpose": "die App, in der die Werkstatt Maschinenstunden bucht"
+    },
+    {
+      "name": "website",
+      "kind": "github",
+      "where": "https://github.com/hafenkante-example/website",
+      "purpose": "die öffentliche Website, von einer Agentur gebaut, hier nur gelesen"
+    },
+    {
+      "name": "projects",
+      "kind": "folder",
+      "where": "https://hafenkante-example.sharepoint.com/sites/projects",
+      "local": "~/Library/CloudStorage/OneDrive-HafenkanteExample/Projects",
+      "write": "yes",
+      "purpose": "ein Ordner je Kundenprojekt, Zeichnungen und Protokolle, geführt von den Projektleitern"
+    },
+    {
+      "name": "procedures",
+      "kind": "folder",
+      "where": "https://hafenkante-example.sharepoint.com/sites/procedures",
+      "purpose": "Arbeitsanweisungen und das Qualitätshandbuch, in der Hand des Qualitätsmanagements"
+    }
+  ]
+}
