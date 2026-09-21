@@ -100,11 +100,11 @@ function expand(path) {
   return isAbsolute(path) ? path : resolve(ROOT, path);
 }
 
-/** A path the way a permission rule in settings.json writes it. */
+/** A path the way a permission rule of the proposal writes it. {root} is this folder. */
 function rulePath(path) {
   if (path.startsWith("~/")) return path;
   if (isAbsolute(path)) return `/${path}`;
-  return `./${path.replace(/^\.\//, "")}`;
+  return `{root}/${path.replace(/^\.\//, "")}`;
 }
 
 function frontmatter(text) {
@@ -236,7 +236,7 @@ function c5() {
     ? listed.stdout.split("\0").filter(Boolean)
     : files(["."], { ext: "" }).map(rel);
   for (const name of names) {
-    if (name.startsWith(`${FROZEN}/`) || name.startsWith(".claude/scripts/") || name.startsWith(".claude/hooks/")) continue;
+    if (name.startsWith(`${FROZEN}/`) || name.startsWith(".claude/scripts/") || name.startsWith(".claude/proposal/")) continue;
     if (![".md", ".json", ".sh", ".mjs", ".yml", ".csv"].includes(extname(name))) continue;
     const path = join(ROOT, name);
     if (!existsSync(path)) continue;
@@ -412,9 +412,10 @@ function c9() {
   }
 }
 
-// --- 10 No folder at the top without a line in the table and without rights ---------
+// --- 10 No folder at the top without a line in the table -------------------------------
 // A folder nobody wrote down grows over. One direction only: a table line
-// without a folder is a segment of a deeper path and no finding.
+// without a folder is a segment of a deeper path and no finding. The house names
+// its folders of level 1 when the root is laid out, and later by hand: a line here.
 function c10() {
   const rules = join(ROOT, ".claude", "CLAUDE.md");
   if (!existsSync(rules)) {
@@ -422,7 +423,6 @@ function c10() {
     return;
   }
   const section = read(rules).split(/^## (?:Where new things go|Wohin Neues gehört)/m)[1] || "";
-  const settings = JSON.stringify(readJson(join(ROOT, ".claude", "settings.json"), {}).permissions || {});
   const embedded = new Set(places().map((place) => place.local).filter(Boolean).map((local) => rel(expand(local)).split("/")[0]));
   for (const folder of subfolders(ROOT)) {
     const name = folder.split(sep).pop();
@@ -431,12 +431,6 @@ function c10() {
       report(10, `${name}/`, t(
         "folder at the top without a line in the table 'Where new things go' of .claude/CLAUDE.md. Enter it or dissolve it.",
         "Ordner auf oberster Ebene ohne Zeile in der Tabelle 'Wohin Neues gehört' der .claude/CLAUDE.md. Eintragen oder auflösen."
-      ));
-    }
-    if (!settings.includes(`(./${name}/**)`)) {
-      report(10, `${name}/`, t(
-        "folder at the top without rights in .claude/settings.json. Every folder says there who may read and who may change.",
-        "Ordner auf oberster Ebene ohne Rechte in .claude/settings.json. Jeder Ordner sagt dort, wer lesen und wer ändern darf."
       ));
     }
   }
@@ -458,9 +452,9 @@ function c11() {
     report(11, ".claude/places.json", t("is missing or carries no list 'places'", "fehlt oder trägt keine Liste 'places'"));
     return;
   }
-  const settings = readJson(join(ROOT, ".claude", "settings.json"), {});
-  const deny = settings.permissions?.deny || [];
-  const allow = settings.permissions?.allow || [];
+  const proposal = readJson(join(ROOT, ".claude", "proposal", "proposal.json"), {});
+  const deny = proposal.permissions?.deny || [];
+  const allow = proposal.permissions?.allow || [];
   const seen = new Set();
   for (const place of list.places) {
     const name = place.name || "?";
@@ -475,13 +469,22 @@ function c11() {
     for (const field of ["where", "purpose"]) {
       if (!place[field]) report(11, ".claude/places.json", t(`place '${name}': ${field} is missing`, `Ort '${name}': ${field} fehlt`));
     }
-    if (!place.local) continue;
+    if (!place.local) {
+      // A reference only. A folder of the same name in this root is its copy.
+      if (existsSync(join(ROOT, name)) && !lstatSync(join(ROOT, name)).isSymbolicLink()) {
+        report(11, `${name}/`, t(
+          `place '${name}' has no local path, so a folder of this name in this root is a copy of it`,
+          `Ort '${name}' hat keinen lokalen Pfad, ein Ordner dieses Namens in dieser Wurzel ist also seine Kopie`
+        ));
+      }
+      continue;
+    }
 
     const local = expand(place.local);
     const rule = `(${rulePath(place.local)}/**)`;
     const writable = place.write === "yes";
     if (writable ? !allow.includes(`Edit${rule}`) : !deny.includes(`Edit${rule}`)) {
-      report(11, ".claude/settings.json", writable
+      report(11, ".claude/proposal/proposal.json", writable
         ? t(`place '${name}' may be written, but Edit${rule} does not stand under allow`, `Ort '${name}' darf beschrieben werden, aber Edit${rule} steht nicht unter allow`)
         : t(`place '${name}' is read only, but Edit${rule} does not stand under deny`, `Ort '${name}' ist nur zum Lesen, aber Edit${rule} steht nicht unter deny`));
     }
@@ -495,24 +498,6 @@ function c11() {
         `Ort '${name}' liegt als Kopie in dieser Wurzel. Erlaubt ist ein Link, oder ein Klon, den .gitignore auslässt.`
       ));
     }
-  }
-  const locals = new Set(list.places.map((place) => place.local && expand(place.local)).filter(Boolean));
-  for (const folder of subfolders(ROOT)) {
-    if (existsSync(join(folder, ".git")) && !locals.has(folder)) {
-      report(11, rel(folder), t(
-        "a repository of its own in this root that .claude/places.json does not name",
-        "ein eigenes Repository in dieser Wurzel, das .claude/places.json nicht nennt"
-      ));
-    }
-  }
-  const hooked = (settings.hooks?.PreToolUse || []).some((entry) =>
-    (entry.hooks || []).some((hook) => /boundary\.mjs/.test(hook.command || ""))
-  );
-  if (!hooked) {
-    report(11, ".claude/settings.json", t(
-      "boundary.mjs does not hang in front of the tools any more, the boundary to the places is open",
-      "boundary.mjs hängt nicht mehr vor den Werkzeugen, die Grenze zu den Orten ist offen"
-    ));
   }
 }
 
@@ -535,17 +520,196 @@ function c12() {
 
 // --- 13 The boundary holds ---------------------------------------------------------------
 function c13() {
-  const script = join(ROOT, ".claude", "scripts", "boundary-test.mjs");
+  const script = join(ROOT, ".claude", "proposal", "boundary-test.mjs");
   const run = spawnSync(process.execPath, [script], { encoding: "utf8" });
   if (run.status !== 0) {
-    report(13, ".claude/scripts/boundary-test.mjs", t(
+    report(13, ".claude/proposal/boundary-test.mjs", t(
       `ends with ${run.status}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`,
       `endet mit ${run.status}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`
     ));
   }
 }
 
-const CHECKS = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13];
+// --- The tree as it lies: one walk for 14 and 17 ------------------------------------------
+// A repository is not walked into: it has rules of its own, and what stands in it is not
+// this root's business. A link is not followed, the frozen folder is not looked at.
+const MANIFESTS = ["package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "composer.json", "Gemfile"];
+const CODE_EXT = [".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go", ".rs", ".java", ".rb", ".php", ".c", ".cpp", ".cs", ".swift", ".kt"];
+let walked = null;
+function tree() {
+  if (walked) return walked;
+  walked = { settings: [], repositories: [], sources: [] };
+  const walk = (dir) => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    const names = new Set(entries.map((entry) => entry.name));
+    if (dir !== ROOT && names.has(".git")) {
+      walked.repositories.push(dir);
+      return;
+    }
+    const inClaude = rel(dir).split("/")[0] === ".claude";
+    if (dir !== ROOT && !inClaude) {
+      const manifest = MANIFESTS.find((name) => names.has(name)) || [...names].find((name) => /\.(csproj|sln)$/.test(name));
+      const src = entries.find((entry) => entry.isDirectory() && entry.name === "src");
+      const code = src && files([rel(join(dir, "src"))], { ext: "" }).some((file) => CODE_EXT.includes(extname(file)));
+      if (manifest || code || names.has("node_modules")) {
+        walked.sources.push({ dir, why: manifest || (code ? "src/" : "node_modules/") });
+        return;
+      }
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink() || entry.name === ".git" || entry.name === "node_modules") continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (dir === ROOT && entry.name === FROZEN) continue;
+        walk(path);
+      } else if (/^settings(\.local)?\.json$/.test(entry.name) && dir.split(sep).pop() === ".claude") {
+        walked.settings.push(path);
+      }
+    }
+  };
+  walk(ROOT);
+  return walked;
+}
+
+// --- 14 No settings.json in the tree ------------------------------------------------------
+// A settings.json in a folder that is cloned or shared is a decision taken for everybody who
+// opens the folder, and a hook in it runs without anybody having agreed. What the house wants
+// as boundary and rights lies in .claude/proposal/ and goes into the user's own settings after
+// consent. Scripts are not touched by this: they are allowed everywhere.
+function c14() {
+  for (const file of tree().settings) {
+    report(14, rel(file), t(
+      "a settings file in the tree. Nothing here may be active by itself. Put what it says into .claude/proposal/proposal.json and enrol it, or delete it.",
+      "eine Einstellungsdatei im Baum. Nichts hier darf von selbst wirken. Trag, was sie sagt, in .claude/proposal/proposal.json ein und melde es an, oder lösche sie."
+    ));
+  }
+}
+
+// --- 15 Confidential things by pattern in the root and in level 1 ---------------------------
+// By file name and by markers that only a real secret carries. Only the two upper levels: deeper
+// lies the house's own work, and a check that walks a shared drive is slow and wrong often.
+// A file of the kind .env.example is the pattern of a file, no secret.
+const SECRET_NAMES = [
+  /^\.env(\..+)?$/, /\.(pem|key|p12|pfx|kdbx|keystore)$/, /^id_(rsa|dsa|ecdsa|ed25519)$/,
+  /^credentials\.json$/, /^secrets?\.(json|ya?ml|env|txt)$/, /^\.netrc$/,
+];
+const SECRET_OK = /^\.env\.(example|sample|template|dist)$/;
+const SECRET_MARKS = [
+  [/-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP )?PRIVATE KEY/, t("private key", "privater Schlüssel")],
+  [/\bAKIA[0-9A-Z]{16}\b/, t("AWS access key", "AWS-Zugangsschlüssel")],
+  [/\bgh[pousr]_[A-Za-z0-9]{36,}\b/, t("GitHub token", "GitHub-Token")],
+  [/\bgithub_pat_[A-Za-z0-9_]{50,}\b/, t("GitHub token", "GitHub-Token")],
+  [/\bsk-ant-[A-Za-z0-9_-]{20,}/, t("API key", "API-Schlüssel")],
+  [/\bxox[baprs]-[A-Za-z0-9-]{10,}/, t("Slack token", "Slack-Token")],
+];
+function c15() {
+  const candidates = [];
+  for (const entry of readdirSync(ROOT, { withFileTypes: true })) {
+    if (entry.isSymbolicLink()) continue;
+    if (entry.isFile()) candidates.push(join(ROOT, entry.name));
+    else if (entry.isDirectory() && ![".git", ".claude", FROZEN, "node_modules"].includes(entry.name)) {
+      for (const inner of readdirSync(join(ROOT, entry.name), { withFileTypes: true })) {
+        if (inner.isFile() && !inner.isSymbolicLink()) candidates.push(join(ROOT, entry.name, inner.name));
+      }
+    }
+  }
+  for (const file of candidates) {
+    const name = file.split(sep).pop();
+    if (!SECRET_OK.test(name) && SECRET_NAMES.some((pattern) => pattern.test(name))) {
+      report(15, rel(file), t(
+        "a file of the kind that holds secrets, in the root or in level 1. It belongs in the keychain or a password manager, not in a folder that is shared.",
+        "eine Datei von der Art, die Geheimnisse trägt, in der Wurzel oder in Ebene 1. Sie gehört in den Schlüsselbund oder einen Passwortmanager, nicht in einen Ordner, der geteilt wird."
+      ));
+      continue;
+    }
+    if (statSync(file).size > 500_000) continue;
+    const text = read(file);
+    if (text.includes("\0")) continue;
+    const mark = SECRET_MARKS.find(([pattern]) => pattern.test(text));
+    if (mark) report(15, rel(file), t(`carries a value in plain text: ${mark[1]}`, `trägt einen Wert im Klartext: ${mark[1]}`));
+  }
+}
+
+// --- 16 References go up, never sideways and never down --------------------------------------
+// A session that starts in a folder of level 1 loads this root's rules and its own. It can
+// follow a reference to the root. A reference to a sibling makes two islands depend on each
+// other, and a rule of the root that names something inside a folder writes down what is
+// derived there and will be wrong the day after. Meant are the house's own folders: the
+// folders of the method refer to each other by design.
+const METHOD_TOP = ["company", "roadmap", "experiments", "customers", "templates", "archive"];
+function houseFolders() {
+  const embedded = new Set(places().map((place) => place.local).filter(Boolean).map((local) => rel(expand(local)).split("/")[0]));
+  return subfolders(ROOT)
+    .map((dir) => dir.split(sep).pop())
+    .filter((name) => !METHOD_TOP.includes(name) && name !== "node_modules" && !embedded.has(name));
+}
+/** Where a reference in a file points: relative to the file first, then relative to the root. */
+function references(file) {
+  const text = read(file);
+  const found = new Set();
+  for (const m of text.matchAll(/\]\(([^)\s#]+)[^)]*\)/g)) if (!/^(https?:|mailto:|\/|<)/.test(m[1])) found.add(m[1]);
+  for (const m of text.matchAll(/`([^`\s]+)`/g)) {
+    if (m[1].includes("/") && !/^(\/|http|~)/.test(m[1]) && !/[<*{$]/.test(m[1])) found.add(m[1]);
+  }
+  return [...found].flatMap((target) => [resolve(dirname(file), target), resolve(ROOT, target)].map((path) => ({ target, path })));
+}
+function c16() {
+  const house = houseFolders();
+  const top = new Set(subfolders(ROOT).map((dir) => dir.split(sep).pop()));
+  // Down: a rule of the root that names something inside a folder of the house.
+  const rootDocs = [join(ROOT, "README.md"), ...files(".claude")].filter((file) => file.endsWith(".md") && existsSync(file));
+  for (const file of rootDocs) {
+    const seen = new Set();
+    for (const { target, path } of references(file)) {
+      const parts = relative(ROOT, path).split(sep);
+      if (parts[0] === ".." || parts.length < 2 || !house.includes(parts[0]) || seen.has(target)) continue;
+      seen.add(target);
+      report(16, rel(file), t(
+        `names ${target}, something inside '${parts[0]}/'. A rule of the root names the folder, not its contents.`,
+        `nennt ${target}, etwas in '${parts[0]}/'. Eine Regel der Wurzel nennt den Ordner, nicht seinen Inhalt.`
+      ));
+    }
+  }
+  // Sideways: a document in a folder of the house that points at a sibling.
+  for (const name of house) {
+    for (const file of files([name], { deep: false })) {
+      const seen = new Set();
+      for (const { target, path } of references(file)) {
+        const parts = relative(ROOT, path).split(sep);
+        if (parts[0] === ".." || !top.has(parts[0]) || parts[0] === name || !existsSync(path) || seen.has(target)) continue;
+        seen.add(target);
+        report(16, rel(file), t(
+          `points at ${target}, into '${parts[0]}/'. A folder of level 1 refers to the root and to nothing next to it.`,
+          `verweist auf ${target}, in '${parts[0]}/'. Ein Ordner der Ebene 1 verweist auf die Wurzel und auf nichts neben sich.`
+        ));
+      }
+    }
+  }
+}
+
+// --- 17 No repository and no source tree in the tree ------------------------------------------
+// Code lives in a place, a repository with rules of its own. A .git in here that
+// .claude/places.json does not name is one nobody knows about, a source tree is a place
+// that was copied in. A script is neither: single scripts are allowed everywhere.
+function c17() {
+  const named = new Set(places().map((place) => place.local && expand(place.local)).filter(Boolean));
+  for (const dir of tree().repositories) {
+    if (named.has(dir)) continue;
+    report(17, `${rel(dir)}/`, t(
+      "a repository in this root that .claude/places.json does not name. Name it there as a place, or take it out.",
+      "ein Repository in dieser Wurzel, das .claude/places.json nicht nennt. Als Ort dort eintragen, oder herausnehmen."
+    ));
+  }
+  for (const { dir, why } of tree().sources) {
+    if (named.has(dir)) continue;
+    report(17, `${rel(dir)}/`, t(
+      `a source tree (${why}) in this root. Code belongs in a place. Single scripts are fine, a project is not.`,
+      `ein Quelltextbaum (${why}) in dieser Wurzel. Code gehört in einen Ort. Einzelne Skripte sind in Ordnung, ein Projekt nicht.`
+    ));
+  }
+}
+
+const CHECKS = [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17];
 
 const argv = process.argv.slice(2);
 const only = argv.includes("--only") ? Number(argv[argv.indexOf("--only") + 1]) : null;

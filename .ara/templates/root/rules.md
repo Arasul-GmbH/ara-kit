@@ -3,27 +3,20 @@
 <!-- Three sentences: what this organisation does, for whom, and who decides here.
      Replace this comment. Everything else in this file already holds. -->
 
-This folder is the root of {{name}}. It says what is true, what is due and where things
-lie. The work itself happens in the embedded places: repositories and shared folders that
-this root names and never copies.
+This folder is the root of {{name}}. It says what is true and where things lie. The work
+itself happens in the embedded places: repositories and shared folders that this root names
+and never copies.
 
-**North goal:** stands in `company/goal.md`, with date and milestones. Never from memory.
-
-**Bottleneck:** the card stack `roadmap/backlog/`, the one work list over all places. One
-card per place at a time. What does not lie as a card in `ready/` is not started.
+Start the agent here or in one of the folders directly below. It loads these rules from
+both, and the skills and agents in `.claude/`.
 
 ## Where the truth stands
 
 | When it is about | read |
 | --- | --- |
-| situation, goal, bottleneck, assumptions | `company/core.md`, then on from there |
-| the north goal and its milestones | `company/goal.md` |
-| what binds beyond the single case | `company/decisions.md` |
-| dates and promises | `company/follow-ups.md` |
 | which places belong to this root, where they live, who may write | `.claude/places.json` |
-| what a place has to be able to do by when | `roadmap/`, one sheet per place |
-| ideas and undertakings in order | `roadmap/backlog/`, one file per card, the folder is the state |
-| who may read and change what in here | `.claude/settings.json`, one line per folder |
+| the boundary and the permission rules that are proposed | `.claude/proposal/proposal.json` |
+| the skills and agents of this root | `.claude/skills/`, `.claude/agents/` |
 | whether this root contradicts itself | `node .claude/scripts/check.mjs` |
 
 **The same fact in two places is a mistake, not a backup.** What lives in a place stays
@@ -39,35 +32,21 @@ there, this root refers to it. What is business of the whole house lives here.
    the day after.
 3. **From a session in this root nothing is written into an embedded place.** Reading is
    free. A place has its own rules, and a session in the root does not load them. Whoever
-   wants to change something there starts a session there. `.claude/hooks/boundary.mjs`
-   holds the boundary, its cases stand in `.claude/scripts/boundary-test.mjs`. A place
-   with `write: yes` in `.claude/places.json` is exempt, by decision of the house.
-4. **Goals here, implementation there.** This root lays down *what* a place has to be
-   able to do by when, in its sheet under `roadmap/`, with milestone and deadline. *How*
-   it is built the place decides. A goal without a milestone is an idea and belongs on a
-   card in `roadmap/backlog/new/`.
-5. **No maintenance run.** The history of version control is the journal, the reason
-   belongs in the commit. Into `company/` goes only what binds beyond the single case.
-   Nothing is written back just so that it is written.
-6. **After a change the check runs.** `node .claude/scripts/check.mjs` ends without a
+   wants to change something there starts a session there. The boundary is a proposal in
+   `.claude/proposal/`. Nothing in this folder is active by itself: it takes effect only
+   once a person has consented and enrolled it into their own settings. A place with
+   `write: yes` in `.claude/places.json` is exempt, by decision of the house.
+4. **After a change the check runs.** `node .claude/scripts/check.mjs` ends without a
    finding, or the finding is fixed before the next piece of work starts.
 
 ## Where new things go
 
 | What comes into being | where to |
 | --- | --- |
-| a fact about the house | `company/<topic>.md`, one topic per file, with `As of:` and `Source:` |
-| a decision that binds beyond the single case | one line at the top of `company/decisions.md` |
-| a date or a promise | one line in `company/follow-ups.md`, subject 80 characters at most |
-| a goal for a place | `roadmap/<place>.md`, with milestone and deadline |
-| an idea or an undertaking | a card in `roadmap/backlog/new/`, through `node .claude/scripts/cards.mjs new` |
-| a large undertaking | several cards with a common `ref`, the rank gives the order |
-| the test of an assumption | `experiments/NNN-<slug>/`, with an `experiment.md` |
-| a customer file | `customers/<slug>/`, finished documents in it under `documents/` |
-| a template for a paper the house sends out itself | `templates/` |
-| finished and frozen | `archive/<year>/` |
-| a new place | a line in `.claude/places.json`, through the kit or by hand, never a copy in here |
+{{folder_rows}}
+| a new place | a line in `.claude/places.json`, never a copy in here |
+| a script the house uses | anywhere it is needed, scripts are allowed everywhere |
 
-**A new folder at the top comes into being only with a line in this table, rights in
-`.claude/settings.json` and a look at `.claude/scripts/check.mjs`.** Without that the
-folder grows over again, and the check says so.
+**A new folder at the top comes into being only with a line in this table.** Without that
+the folder grows over again, and the check says so. Code does not lie here: it lies in a
+place, and this root refers to it.

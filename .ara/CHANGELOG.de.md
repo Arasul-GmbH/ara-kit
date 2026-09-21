@@ -15,6 +15,17 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.24.0 (2026-09-21)
+
+Kontrakt: bis 5
+
+- `/root` legt ein Gerüst an, keine Arbeitsweise. Ohne Schalter trägt die Wurzel `.claude/CLAUDE.md` mit den Regeln, `.claude/skills/` (place, where-things-go) und `.claude/agents/` (place-reader, root-checker), die Liste der Orte, das Prüfskript und die Ordner der Ebene 1, die das Haus mit `--folders` oder im Interview nennt. Das Kit bringt keine eigenen mit. Alles aus 0.23.0, was Arbeit steuert, `company/`, `roadmap/` mit dem Kartenstapel, `experiments/`, `customers/`, `templates/`, `archive/`, das Kartenwerkzeug und sein Skill, ist jetzt ein Zusatz: `--method` legt ihn mit dem Gerüst aus oder in eine bestehende Wurzel, hängt seine Regeln an und überschreibt nichts. Seine Prüfungen laufen unverändert weiter. Das Gerüst liegt unter `.ara/templates/root/`, der Zusatz unter `.ara/templates/root-method/`.
+- Nichts im angelegten Baum läuft von selbst. Es liegt keine `settings.json` darin und kein scharfer Hook. Der Grenz-Hook und die Erlaubnisregeln liegen in `.claude/proposal/` als Vorschlag. `--enroll` zeigt, was in die eigenen Einstellungen des Nutzers käme, dazu eine Prüfsumme über Vorschlag und Hook, `--enroll --consent <prüfsumme>` schreibt es, `--unenroll` nimmt genau das zurück. Der Hook, der läuft, ist eine Kopie neben den Einstellungen, eine Änderung im Baum wirkt also erst nach neuer Zustimmung, und `--show` sagt, dass der Vorschlag sich geändert hat. Der Hook wirkt nur in einer Sitzung, die in der Wurzel oder darunter gestartet ist, nicht in einem Ort und nicht anderswo, denn angemeldet hängt er vor jeder Sitzung auf dem Rechner. Das Einloggen an einem Gerät, der Abgleich und das Abfragen von Apps gehören nicht dazu, das bleibt beim CLI der Wurzel.
+- Das Prüfskript hat 17 Prüfungen. Neu: keine `settings.json` im Baum (14), Vertrauliches nach Muster in der Wurzel und in Ebene 1 (15), Verweise nur nach oben, kein Nachbar und kein Inhalt eines Ordners in einer Regel der Wurzel (16), kein `.git`, das die Liste nicht nennt, und kein Quelltextbaum im Baum (17). Einzelne Skripte sind überall erlaubt und kein Befund. Ein Ordner, der den Namen eines Ortes ohne lokalen Pfad trägt, gilt als seine Kopie (11).
+- Ein unbekannter Schalter von `root.mjs` wird gemeldet und hält das Werkzeug an, ebenso ein loses Argument und eine unbekannte `--language`. `--lang` wurde früher überlesen, und die Wurzel kam in der Sprache des Profils heraus.
+- Die Vorzeigefassung folgt dem Gerüst: zwei Ordner der Ebene 1 und nichts, das von selbst läuft, und sie kommt mit der Methode.
+- Gemessen in einer echten Sitzung, `claude -p` 2.1.278 mit einer Einstellungsdatei über `--settings`: eine Sitzung eine Ebene unter der Wurzel lädt Regeln, Skills und Agents der Wurzel, mit und ohne `.git`. Die Tilde in `additionalDirectories` wird aufgelöst. Mit Zustimmung hält der Hook ein Schreiben in einen geschlossenen Ort über Werkzeug und Shell an, von der Ebene darunter und aus der Wurzel, und lässt eine Sitzung im Ort in Ruhe. Ohne Zustimmung wirkt er nicht. Nicht gemessen: dasselbe über `~/.claude/settings.json` selbst und in einer interaktiven Sitzung.
+
 ## 0.23.0 (2026-09-21)
 
 Kontrakt: bis 5

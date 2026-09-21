@@ -2,10 +2,18 @@
  * Die Firmenwurzel: was aus dem Geruest unter `.ara/templates/root/` wird.
  *
  * Eine Wurzel ist ein Ordner AUSSERHALB des Kits. Sie sagt fuer ein ganzes Haus,
- * was stimmt, was ansteht und wo etwas liegt, und sie nennt die Orte, an denen
- * gearbeitet wird, ohne sie zu kopieren. Nach dem Anlegen braucht sie das Kit
- * nicht mehr: Pruefskript, Grenze und Kartenwerkzeug liegen in ihr und laufen
- * mit Node allein.
+ * was stimmt und wo etwas liegt, und sie nennt die Orte, an denen gearbeitet
+ * wird, ohne sie zu kopieren. Nach dem Anlegen braucht sie das Kit nicht mehr:
+ * das Pruefskript liegt in ihr und laeuft mit Node allein.
+ *
+ * Zwei Schichten. Das Geruest (`.ara/templates/root/`) ist immer da: Regeln,
+ * Skills, Agents, Liste der Orte, Pruefskript, die Ordner der Ebene 1, die das
+ * Haus nennt. Die Methode (`.ara/templates/root-method/`) ist ein Zusatz: company,
+ * roadmap mit Kartenstapel, experiments, customers, templates, archive. Nichts im
+ * angelegten Baum wirkt von selbst: keine settings.json, kein scharfer Hook. Was
+ * das Haus an Grenze und Rechten will, liegt als Vorschlag in
+ * `.claude/proposal/`, und erst `root-enroll.mjs` schreibt es nach Zustimmung
+ * in die Einstellungen des Nutzers.
  *
  * Hier stehen nur Daten und reine Funktionen plus das Auslegen selbst. Der
  * Selbsttest liest dieselbe Liste `ROOT_TARGETS`, gegen die er Verweise im
@@ -27,6 +35,7 @@ import { ROOT, day, today } from "./kit.mjs";
 import { isVariant, t, variantOf } from "./i18n.mjs";
 
 export const TEMPLATE = join(ROOT, ".ara", "templates", "root");
+export const METHOD = join(ROOT, ".ara", "templates", "root-method");
 export const EXAMPLE = join(ROOT, ".ara", "templates", "root-example");
 
 /**
@@ -42,20 +51,21 @@ const RENAMES = [
   [/^readme\.md$/, "README.md"],
   [/^gitignore$/, ".gitignore"],
   [/^scripts\//, ".claude/scripts/"],
-  [/^hooks\//, ".claude/hooks/"],
+  [/^proposal\//, ".claude/proposal/"],
+  [/^skills\//, ".claude/skills/"],
+  [/^agents\//, ".claude/agents/"],
 ];
-// Das Blatt je Ort entsteht je Ort und nicht einmal.
+// Das Blatt je Ort entsteht je Ort und nicht einmal. Die Regeln der Methode
+// werden an die Regeln des Geruests gehaengt, sie sind keine Datei fuer sich.
 const PER_PLACE = "roadmap/place.md";
+const METHOD_RULES = "rules-method.md";
+const NOT_FILES = new Set([PER_PLACE, METHOD_RULES, "example.json"]);
 
-/** Die Ordner ganz oben in einer Wurzel, mit dem Recht, das sie tragen. */
-export const FOLDERS = Object.freeze({
-  company: "Edit",
-  roadmap: "Edit",
-  experiments: "Edit",
-  customers: "Edit",
-  templates: "Edit",
-  archive: "Read",
-});
+/** Die Ordner der Methode. Ein Haus nennt keinen seiner Ordner der Ebene 1 so. */
+export const METHOD_FOLDERS = Object.freeze(["company", "roadmap", "experiments", "customers", "templates", "archive"]);
+const RESERVED_FOLDERS = new Set([...METHOD_FOLDERS, "node_modules"]);
+
+export const PROPOSAL = join(".claude", "proposal", "proposal.json");
 
 export const KINDS = Object.freeze(["github", "folder"]);
 
@@ -80,15 +90,14 @@ function sources(base) {
   return out.sort();
 }
 
+const laid = (base) => sources(base).filter((source) => !NOT_FILES.has(source)).map(targetOf);
+const ALWAYS = [".claude/root.json", ".claude/places.json", PROPOSAL.split(sep).join("/")];
+
 /** Was in jeder frischen Wurzel liegt, als Pfade relativ zu ihr. */
-export const ROOT_TARGETS = Object.freeze(
-  new Set([
-    ...sources(TEMPLATE).filter((source) => source !== PER_PLACE).map(targetOf),
-    ".claude/settings.json",
-    ".claude/root.json",
-    ".claude/places.json",
-  ])
-);
+export const ROOT_TARGETS = Object.freeze(new Set([...laid(TEMPLATE), ...ALWAYS]));
+
+/** Was die Methode zusaetzlich bringt. */
+export const METHOD_TARGETS = Object.freeze(new Set(laid(METHOD)));
 
 /**
  * Fuellt die Platzhalter eines Blattes.
@@ -98,6 +107,9 @@ export const ROOT_TARGETS = Object.freeze(
  */
 export function fill(text, values) {
   return text
+    // A line that is only a placeholder and comes out empty disappears with its line break:
+    // an empty line inside a table would end the table.
+    .replace(/^\{\{([a-z_]+)\}\}\r?\n/gm, (whole, key) => (key in values && values[key] === "" ? "" : whole))
     .replace(/\{\{day([+-]\d+)\}\}/g, (_, offset) => day(Number(offset)))
     .replace(/\{\{year\}\}/g, today().slice(0, 4))
     .replace(/\{\{([a-z_]+)\}\}/g, (whole, key) => (key in values ? String(values[key]) : whole));
@@ -108,11 +120,17 @@ export function expandHome(path, base) {
   return isAbsolute(path) ? path : resolve(base, path);
 }
 
-/** Ein Pfad, wie ihn eine Rechteregel in settings.json schreibt. */
+/**
+ * Ein Pfad, wie ihn eine Rechteregel im Vorschlag schreibt.
+ *
+ * `{root}` steht fuer die Wurzel. Eine Regel in den Einstellungen des Nutzers
+ * gilt von jedem Ordner aus, ein `./` darin waere der Ordner der jeweiligen
+ * Sitzung. Beim Anmelden wird `{root}` zum ausgeschriebenen Pfad.
+ */
 export function rulePath(local) {
   if (local.startsWith("~/")) return local;
   if (isAbsolute(local)) return `/${local}`;
-  return `./${local.replace(/^\.\//, "")}`;
+  return `{root}/${local.replace(/^\.\//, "")}`;
 }
 
 /**
@@ -145,8 +163,6 @@ export function normalizePlace(raw, lang) {
   return { place, problems };
 }
 
-const HOOK = 'node "$CLAUDE_PROJECT_DIR/.claude/hooks/boundary.mjs"';
-
 function placeRules(place) {
   if (!place.local) return { allow: [], deny: [] };
   const rule = `(${rulePath(place.local)}/**)`;
@@ -155,66 +171,44 @@ function placeRules(place) {
     : { allow: [`Read${rule}`], deny: [`Edit${rule}`] };
 }
 
+const outside = (place, root) => place.local && relative(root, expandHome(place.local, root)).startsWith("..");
+
+function proposalNote(language) {
+  return t(
+    "A proposal, not a setting. Nothing in this folder is active by itself. The kit's enrolment step writes it into the user's own settings after consent, with a checksum over this file and boundary.mjs. Whoever changes either needs the consent again. {root} stands for this folder.",
+    "Ein Vorschlag, keine Einstellung. Nichts in diesem Ordner wirkt von selbst. Der Anmeldeschritt des Kits schreibt ihn nach Zustimmung in die eigenen Einstellungen des Nutzers, mit einer Prüfsumme über diese Datei und boundary.mjs. Wer eine von beiden ändert, braucht die Zustimmung neu. {root} steht für diesen Ordner.",
+    language
+  );
+}
+
 /**
- * Die Rechte einer frischen Wurzel: eine Zeile je Ordner, nach dem Vorbild des Kits.
+ * Der Vorschlag: Grenz-Hook und Erlaubnisregeln, als Datei und nicht als
+ * `settings.json`. Eine Datei dieses Namens im Baum haette ein Ordner der Ebene 1
+ * oder ein Klon nicht zu fragen, und ein Hook darin liefe bei jedem, der den
+ * Ordner oeffnet, ohne dass er es je erlaubt hat.
  *
- * `defaultMode` bleibt `default`, und das ist der Punkt: nur dann sagt eine
- * Zeile `Edit(./company/**)` etwas. Im Modus acceptEdits waere jeder Ordner
- * offen und die Liste Schmuck.
+ * Nur Regeln, die auch aus jedem Ordner gelten: alle tragen einen Pfad, keine
+ * ein `./`. `additionalDirectories` bringt die Sitzung eine Ebene tiefer dazu,
+ * die Wurzel und die Orte auf diesem Rechner zu lesen.
  */
-export function settingsFor(places, root) {
-  const allow = ["Read(./**)"];
-  const deny = [];
-  for (const [folder, right] of Object.entries(FOLDERS)) {
-    allow.push(`${right}(./${folder}/**)`);
-    if (right === "Read") deny.push(`Edit(./${folder}/**)`);
-  }
-  allow.push(
-    "Bash(node .claude/scripts/:*)",
-    "Bash(git status:*)",
-    "Bash(git log:*)",
-    "Bash(git diff:*)",
-    "Bash(git add:*)",
-    "Bash(git commit:*)",
-    "Bash(git mv:*)",
-    "Bash(ls:*)",
-    "Bash(gh repo view:*)",
-    "Bash(gh pr list:*)",
-    "Bash(gh issue list:*)"
-  );
-  deny.push(
-    "Read(./.env)",
-    "Read(./**/.env)",
-    "Read(~/.ssh/id_*)",
-    "Read(~/.aws/**)",
-    "Read(~/.config/gcloud/**)",
-    "Bash(env)",
-    "Bash(printenv:*)",
-    "Bash(git push --force:*)",
-    "Bash(git push -f:*)"
-  );
-  const additional = [];
+export function proposalFor(places, { method = false, language }) {
+  const allow = ["Read({root}/**)", "Bash(node {root}/.claude/scripts/:*)"];
+  const deny = ["Read({root}/.env)", "Read({root}/**/.env)"];
+  if (method) deny.push("Edit({root}/archive/**)");
+  const additional = ["{root}"];
   for (const place of places) {
     const rules = placeRules(place);
     allow.push(...rules.allow);
     deny.push(...rules.deny);
-    // Der Pfad bleibt, wie das Haus ihn geschrieben hat: `~/...` gilt auf jedem
-    // Rechner, der ausgeschriebene Pfad traegt einen Benutzernamen in eine
-    // Datei, die das Haus teilt.
-    const outside = place.local && relative(root, expandHome(place.local, root)).startsWith("..");
-    if (outside) additional.push(place.local);
+    // Der Pfad bleibt, wie das Haus ihn geschrieben hat: `~/...` gilt auf jedem Rechner.
+    if (place.local && !additional.includes(place.local) && !place.local.startsWith("{root}")) {
+      additional.push(place.local);
+    }
   }
   return {
-    $schema: "https://json.schemastore.org/claude-code-settings.json",
-    permissions: {
-      defaultMode: "default",
-      allow,
-      deny,
-      ...(additional.length ? { additionalDirectories: additional } : {}),
-    },
-    hooks: {
-      PreToolUse: [{ matcher: "Write|Edit|NotebookEdit|Bash", hooks: [{ type: "command", command: HOOK }] }],
-    },
+    note: proposalNote(language),
+    permissions: { allow, deny, additionalDirectories: additional },
+    hook: { event: "PreToolUse", matcher: "Write|Edit|NotebookEdit|Bash", script: "boundary.mjs" },
   };
 }
 
@@ -232,14 +226,15 @@ function placesNote(language) {
 }
 
 /** Legt einen Baum des Kits in die Wurzel, in der Sprache der Wurzel. */
-function layTree(base, root, language, values) {
+function layTree(base, root, language, values, { keep = false } = {}) {
   const written = [];
   for (const source of sources(base)) {
-    if (source === PER_PLACE || source === "example.json") continue;
+    if (NOT_FILES.has(source)) continue;
     const from = join(base, source);
     const german = variantOf(from, "de");
     const chosen = language === "de" && existsSync(german) ? german : from;
     const target = join(root, targetOf(source));
+    if (keep && existsSync(target)) continue;
     mkdirSync(dirname(target), { recursive: true });
     if (/\.(md|json|csv)$/.test(source) || source === "gitignore") {
       writeFileSync(target, fill(readFileSync(chosen, "utf8"), values));
@@ -254,7 +249,7 @@ function layTree(base, root, language, values) {
 function placeSheet(root, place, language) {
   const target = join(root, "roadmap", `${place.name}.md`);
   if (existsSync(target)) return false;
-  const from = join(TEMPLATE, PER_PLACE);
+  const from = join(METHOD, PER_PLACE);
   const german = variantOf(from, "de");
   const text = readFileSync(language === "de" && existsSync(german) ? german : from, "utf8");
   writeFileSync(target, fill(text, { place: place.name, where: place.where, purpose: place.purpose }));
@@ -279,31 +274,120 @@ export function readExample(language) {
 }
 
 /**
- * Legt eine Wurzel an. `root` ist leer oder fehlt, das prueft der Aufrufer.
+ * Prueft die Ordner der Ebene 1, die das Haus nennt.
+ *
+ * `name` oder `name=wofuer`, durch Kommas getrennt, oder schon eine Liste aus
+ * `{ name, purpose }`. Ein Ordner heisst wie ein Ort nur, wenn das Haus es so
+ * will, das prueft nur das Pruefskript.
  */
-export function layOut({ root, name, language, places, example = false, kitVersion }) {
-  const values = { name, today: today(), kit_version: kitVersion };
+export function normalizeFolders(raw, lang) {
+  const list = typeof raw === "string"
+    ? raw.split(",").map((part) => part.trim()).filter(Boolean).map((part) => {
+        const cut = part.indexOf("=");
+        return cut < 0 ? { name: part } : { name: part.slice(0, cut).trim(), purpose: part.slice(cut + 1).trim() };
+      })
+    : raw || [];
+  const folders = [];
+  const problems = [];
+  for (const entry of list) {
+    const name = String(entry.name || "").trim();
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) {
+      problems.push(t(`folder '${name}' is not lower case with hyphens`, `Ordner '${name}' ist nicht klein mit Bindestrichen`, lang));
+    } else if (RESERVED_FOLDERS.has(name)) {
+      problems.push(t(`folder '${name}' is taken by the method or by the tools`, `Ordner '${name}' gehört der Methode oder den Werkzeugen`, lang));
+    } else if (folders.some((known) => known.name === name)) {
+      problems.push(t(`folder '${name}' stands there twice`, `Ordner '${name}' steht doppelt da`, lang));
+    } else {
+      folders.push({ name, purpose: String(entry.purpose || "").trim() });
+    }
+  }
+  return { folders, problems };
+}
+
+/** Die Zeilen der Tabelle "Wohin Neues gehoert" fuer die Ordner der Ebene 1. */
+function folderRows(folders, language) {
+  return folders
+    .map((folder) => `| ${folder.purpose || t(`what belongs to ${folder.name}`, `was zu ${folder.name} gehört`, language)} | \`${folder.name}/\` |`)
+    .join("\n");
+}
+
+/** Die Regeln der Methode, gefuellt, zum Anhaengen an die Regeln des Geruests. */
+function methodRules(language, values) {
+  const from = join(METHOD, METHOD_RULES);
+  const german = variantOf(from, "de");
+  return fill(readFileSync(language === "de" && existsSync(german) ? german : from, "utf8"), values);
+}
+
+function appendMethodRules(root, language, values) {
+  const file = join(root, ".claude", "CLAUDE.md");
+  const text = readFileSync(file, "utf8").replace(/\n*$/, "\n");
+  writeFileSync(file, `${text}\n${methodRules(language, values)}`);
+}
+
+function makeFolders(root, folders) {
+  for (const folder of folders) {
+    const dir = join(root, folder.name);
+    mkdirSync(dir, { recursive: true });
+    if (!readdirSync(dir).length) writeFileSync(join(dir, ".gitkeep"), "");
+  }
+}
+
+/**
+ * Legt eine Wurzel an. `root` ist leer oder fehlt, das prueft der Aufrufer.
+ *
+ * Ohne `method` entsteht nur das Geruest. Die Vorzeigefassung ist eine
+ * erfundene Firma mit gefuellten Blaettern und braucht darum die Methode.
+ */
+export function layOut({ root, name, language, places, folders = [], method = false, example = false, kitVersion }) {
+  const withMethod = method || example;
+  const values = { name, today: today(), kit_version: kitVersion, folder_rows: folderRows(folders, language) };
   mkdirSync(root, { recursive: true });
   const written = layTree(TEMPLATE, root, language, values);
+  if (withMethod) {
+    written.push(...layTree(METHOD, root, language, values));
+    appendMethodRules(root, language, values);
+  }
   if (example) written.push(...layTree(EXAMPLE, root, language, values));
+  makeFolders(root, folders);
 
-  writeJson(join(root, ".claude", "root.json"), { name, language, created: today(), kit: kitVersion, example });
+  writeJson(join(root, ".claude", "root.json"), { name, language, created: today(), kit: kitVersion, method: withMethod, example });
   writeJson(join(root, ".claude", "places.json"), { note: placesNote(language), places });
-  writeJson(join(root, ".claude", "settings.json"), settingsFor(places, root));
-  // Das Blatt fuer die Ziele der Wurzel selbst, in derselben Form wie die der Orte.
-  placeSheet(root, {
-    name: "root",
-    where: t("this folder", "dieser Ordner", language),
-    purpose: t("the business of the whole house", "das Geschäft des ganzen Hauses", language),
-  }, language);
+  writeJson(join(root, PROPOSAL), proposalFor(places, { method: withMethod, language }));
+  if (withMethod) {
+    // Das Blatt fuer die Ziele der Wurzel selbst, in derselben Form wie die der Orte.
+    placeSheet(root, {
+      name: "root",
+      where: t("this folder", "dieser Ordner", language),
+      purpose: t("the business of the whole house", "das Geschäft des ganzen Hauses", language),
+    }, language);
+  }
   for (const place of places) {
-    placeSheet(root, place, language);
+    if (withMethod) placeSheet(root, place, language);
     ignoreLocal(root, place);
   }
   return [...new Set(written)].sort();
 }
 
-/** Traegt einen Ort in eine bestehende Wurzel ein: Liste, Rechte, Blatt. */
+/**
+ * Ergaenzt Regeln eines Vorschlags, ohne neu zu schreiben: was das Haus von Hand
+ * eingetragen hat, bleibt.
+ */
+function mergeRules(root, ...changes) {
+  const file = join(root, PROPOSAL);
+  const proposal = JSON.parse(readFileSync(file, "utf8"));
+  proposal.permissions ||= {};
+  for (const change of changes) {
+    for (const side of ["allow", "deny", "additionalDirectories"]) {
+      proposal.permissions[side] ||= [];
+      for (const rule of change[side] || []) {
+        if (!proposal.permissions[side].includes(rule)) proposal.permissions[side].push(rule);
+      }
+    }
+  }
+  writeJson(file, proposal);
+}
+
+/** Traegt einen Ort in eine bestehende Wurzel ein: Liste, Vorschlag, bei der Methode das Blatt. */
 export function addPlace(root, place) {
   const meta = JSON.parse(readFileSync(join(root, ".claude", "root.json"), "utf8"));
   const listFile = join(root, ".claude", "places.json");
@@ -314,26 +398,45 @@ export function addPlace(root, place) {
   list.places.push(place);
   writeJson(listFile, list);
 
-  // Die Rechte werden ergaenzt, nicht neu geschrieben: was das Haus von Hand
-  // eingetragen hat, bleibt.
-  const settingsFile = join(root, ".claude", "settings.json");
-  const settings = JSON.parse(readFileSync(settingsFile, "utf8"));
-  settings.permissions ||= {};
   const rules = placeRules(place);
-  for (const side of ["allow", "deny"]) {
-    settings.permissions[side] ||= [];
-    for (const rule of rules[side]) {
-      if (!settings.permissions[side].includes(rule)) settings.permissions[side].push(rule);
-    }
-  }
-  if (place.local && relative(root, expandHome(place.local, root)).startsWith("..")) {
-    const dirs = (settings.permissions.additionalDirectories ||= []);
-    if (!dirs.includes(place.local)) dirs.push(place.local);
-  }
-  writeJson(settingsFile, settings);
-  placeSheet(root, place, meta.language);
+  mergeRules(root, {
+    ...rules,
+    additionalDirectories: outside(place, root) && !place.local.startsWith("{root}") ? [place.local] : [],
+  });
+  if (meta.method) placeSheet(root, place, meta.language);
   ignoreLocal(root, place);
   return meta;
+}
+
+/**
+ * Legt die Methode in eine bestehende Wurzel: Ordner, Kartenwerkzeug, Regeln,
+ * ein Blatt je Ort. Ueberschrieben wird nichts. Liegt einer der Ordner schon da,
+ * gehoert er dem Haus, und die Methode wartet, bis es ihn umbenannt hat.
+ */
+export function addMethod(root) {
+  const metaFile = join(root, ".claude", "root.json");
+  const meta = JSON.parse(readFileSync(metaFile, "utf8"));
+  if (meta.method) throw new Error(t("The method lies in this root already.", "Die Methode liegt in dieser Wurzel schon."));
+  const taken = METHOD_FOLDERS.filter((folder) => existsSync(join(root, folder)));
+  if (taken.length) {
+    throw new Error(t(
+      `The folder ${taken.join(", ")} exists already and belongs to the house. Rename it first, the method brings its own.`,
+      `Der Ordner ${taken.join(", ")} liegt schon da und gehört dem Haus. Benenne ihn zuerst um, die Methode bringt ihren eigenen mit.`
+    ));
+  }
+  const values = { name: meta.name, today: today(), kit_version: meta.kit, folder_rows: "" };
+  const written = layTree(METHOD, root, meta.language, values, { keep: true });
+  appendMethodRules(root, meta.language, values);
+  const places = JSON.parse(readFileSync(join(root, ".claude", "places.json"), "utf8")).places || [];
+  placeSheet(root, {
+    name: "root",
+    where: t("this folder", "dieser Ordner", meta.language),
+    purpose: t("the business of the whole house", "das Geschäft des ganzen Hauses", meta.language),
+  }, meta.language);
+  for (const place of places) placeSheet(root, place, meta.language);
+  mergeRules(root, { deny: ["Edit({root}/archive/**)"] });
+  writeJson(metaFile, { ...meta, method: true });
+  return written;
 }
 
 /** Laesst das Pruefskript der Wurzel laufen, in ihr und mit ihrem Node. */

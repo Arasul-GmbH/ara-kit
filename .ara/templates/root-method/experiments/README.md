@@ -2,7 +2,7 @@
 
 One folder per assumption that is tested: `NNN-<slug>/`, numbered in order. In it an
 `experiment.md` with thesis, test, criterion and result, everything else next to it.
-Two sublevels at most, the second only as a shelf per matter. Source trees are exempt.
+Two sublevels at most, the second only as a shelf per matter. Code does not lie here, it lies in a place.
 
 An experiment says beforehand by what it counts as confirmed and by what as refuted. An
 experiment without a criterion for failing is a project.

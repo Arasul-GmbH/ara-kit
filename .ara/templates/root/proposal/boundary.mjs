@@ -8,6 +8,13 @@
  * there. Reading is free. A place that carries `write: yes` in .claude/places.json is
  * exempt, that is a decision of the house and stands there for everybody to read.
  *
+ * This file is a proposal. Nothing in the folder runs it. After a person has consented, the
+ * kit's enrolment step puts a copy next to the user's own settings and hangs it in front of
+ * the tools from there, for every session on the computer. So the hook first asks where the
+ * session started: it acts only in a session that started in this root, or in a folder of
+ * it that is no place. A session in a place, and every session elsewhere, is not its
+ * business. Whoever starts one in the place is exactly who it sends people to.
+ *
  * REACH, expressly: a hook does not see into a process. `node script.mjs <place>` is
  * invisible here. The boundary works against tool and shell writes, not against the
  * house's own scripts. Whoever takes it for tighter is wrong.
@@ -28,6 +35,14 @@
  * trägt, ist ausgenommen, das ist eine Entscheidung des Hauses und steht dort für alle
  * lesbar.
  *
+ * Diese Datei ist ein Vorschlag. Nichts im Ordner führt sie aus. Hat ein Mensch zugestimmt,
+ * legt der Anmeldeschritt des Kits eine Kopie neben die eigenen Einstellungen des Nutzers und
+ * hängt sie von dort vor die Werkzeuge, für jede Sitzung auf dem Rechner. Darum fragt der
+ * Hook zuerst, wo die Sitzung gestartet ist: er wirkt nur in einer Sitzung, die in dieser
+ * Wurzel gestartet ist, oder in einem ihrer Ordner, der kein Ort ist. Eine Sitzung in einem
+ * Ort und jede Sitzung anderswo geht ihn nichts an. Wer im Ort eine startet, ist genau der,
+ * zu dem er die Leute schickt.
+ *
  * REICHWEITE, ausdrücklich: ein Hook sieht nicht in einen Prozess. `node skript.mjs <ort>`
  * ist hier unsichtbar. Die Grenze wirkt gegen Werkzeug- und Shell-Schreibzugriffe, nicht
  * gegen die eigenen Skripte des Hauses. Wer sie für dichter hält, irrt.
@@ -42,7 +57,12 @@ import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+// The copy that runs from the user's settings is told its root. The file in the tree finds it
+// by where it lies: .claude/proposal/ is two levels below.
+const given = process.argv.indexOf("--root");
+const ROOT = given > 0 && process.argv[given + 1]
+  ? resolve(process.argv[given + 1])
+  : resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 function readJson(path, fallback) {
   try {
@@ -172,8 +192,8 @@ function split(command) {
   return words;
 }
 
-function bashBlocked(command) {
-  let cwd = ROOT;
+function bashBlocked(command, start) {
+  let cwd = start;
   const words = split(command);
   if (!words) {
     // Unbalanced quotes, practically always a heredoc. Its body is text, no
@@ -248,9 +268,11 @@ function bashBlocked(command) {
 }
 
 function hint(place) {
+  // With the method a place has a sheet, without it there is nothing to point at.
+  const sheet = existsSync(join(ROOT, "roadmap", `${place}.md`));
   return t(
-    `From this root nothing is written into the place '${place}'. Start a session in the place itself, its own rules apply there. What the place has to be able to do stands here, in roadmap/${place}.md and on a card.`,
-    `Aus dieser Wurzel wird nicht in den Ort '${place}' geschrieben. Starte eine Sitzung im Ort selbst, dort gelten seine eigenen Regeln. Was der Ort können muss, steht hier, in roadmap/${place}.md und auf einer Karte.`
+    `From this root nothing is written into the place '${place}'. Start a session in the place itself, its own rules apply there.${sheet ? ` What the place has to be able to do stands here, in roadmap/${place}.md and on a card.` : ""}`,
+    `Aus dieser Wurzel wird nicht in den Ort '${place}' geschrieben. Starte eine Sitzung im Ort selbst, dort gelten seine eigenen Regeln.${sheet ? ` Was der Ort können muss, steht hier, in roadmap/${place}.md und auf einer Karte.` : ""}`
   );
 }
 
@@ -264,14 +286,30 @@ try {
   process.exit(0);
 }
 
+// Where the session started. An event without it is treated as one in the root: better a
+// refusal too many than a boundary that is open because a field was missing.
+const start = event.cwd ? real(resolve(String(event.cwd))) : ROOT;
+const inRoot = (() => {
+  const inside = relative(real(ROOT), start);
+  return inside === "" || (!inside.startsWith("..") && !isAbsolute(inside));
+})();
+// Every place counts here, also the ones that may be written: a session that started in one
+// is a session of that place and loads its rules.
+const ALL = (LIST.places || []).filter((entry) => entry.local).map((entry) => real(expand(entry.local)));
+const inPlace = ALL.some((path) => {
+  const inside = relative(path, start);
+  return inside === "" || (!inside.startsWith("..") && !isAbsolute(inside));
+});
+if (!inRoot || inPlace) process.exit(0);
+
 const tool = event.tool_name || "";
 const input = event.tool_input || {};
 let place = null;
 if (["Write", "Edit", "NotebookEdit"].includes(tool)) {
   const path = input.file_path || input.notebook_path || "";
-  place = path ? placeOf(expand(path)) : null;
+  place = path ? placeOf(expand(path, start)) : null;
 } else if (tool === "Bash") {
-  place = bashBlocked(String(input.command || ""));
+  place = bashBlocked(String(input.command || ""), start);
 }
 
 if (place) {

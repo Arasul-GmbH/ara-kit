@@ -1,5 +1,15 @@
 {
   "name": "Hafenkante Toolmaking Ltd",
+  "folders": [
+    {
+      "name": "sales",
+      "purpose": "offers, enquiries and the follow-up of both"
+    },
+    {
+      "name": "quality",
+      "purpose": "audits and the records that come out of them"
+    }
+  ],
   "places": [
     {
       "name": "shop-floor-app",
