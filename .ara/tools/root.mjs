@@ -218,7 +218,7 @@ function doEnrol() {
     console.log(`    ${proposal.command}`);
     console.log(t("  a copy of the hook next to the settings, that is the one that runs:", "  eine Kopie des Hooks neben den Einstellungen, sie ist es, die läuft:"));
     console.log(`    ${proposal.script}`);
-    for (const [side, label] of [["allow", "allow"], ["deny", "deny"], ["additionalDirectories", "additionalDirectories"]]) {
+    for (const [side, label] of [["allow", "allow"], ["deny", "deny"], ["ask", "ask"], ["additionalDirectories", "additionalDirectories"]]) {
       if (!proposal.rules[side].length) continue;
       console.log(`  ${label}:`);
       listRules(proposal.rules[side]);

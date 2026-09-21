@@ -15,6 +15,17 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.25.0 (2026-09-21)
+
+Kontrakt: bis 5
+
+- Die Wurzel trägt eine Brücke zu den Apps eines Geräts: `arasul.mjs` neben `.claude/`, eine Datei, die mit Node allein läuft. `login` hält einen Ausweis in `~/.config/arasul/credentials.json` (0600, je Gerät ein Eintrag mit Adresse und Token; solange das Gerät keine Token ausstellt, mit Name und Passwort, die Sitzung wird gehalten und weder das Passwort noch etwas davon abgelegt oder je gezeigt), zeigt die Vorschläge für Hooks und Regeln der Wurzel und jedes Ordners der Ebene 2, gibt sie einzeln mit ihrer Prüfsumme frei und sagt, wo jeder Ort auf diesem Rechner liegt. `apps` listet die zugewiesenen Apps mit ihren Routen und schreibt `apps/<id>/APP.md`, `call <app> <route>` ruft nur Routen auf, die die App in ihrem Feld `agent` nennt, und eine, die etwas ändert, braucht `--write`. `sync` und `status` sagen, dass der Dienst für Firmenwissen noch nicht feststeht. Ein Gerät mit eigenem Zertifikat wird einmal mit `--insecure` festgehalten, die Prüfung wird nie abgeschaltet. Der Skill `arasul` in der Wurzel sagt dem Agenten, wie er es nutzt. Kein MCP-Server, kein Dateizugriff für Apps: der Rückweg geht über den Agenten.
+- Der Vorschlag der Wurzel erlaubt `apps` und die lesende Form von `call` ohne Rückfrage und hält `call ... --write` unter der neuen Seite `ask` zurück. Gemessen mit `claude -p` 2.1.278: die lesenden Aufrufe liefen, der schreibende wurde zurückgehalten.
+- **Behoben:** eine Regel für einen Shell-Befehl im Vorschlag trug `//` vor dem Pfad, die Schreibweise der Leseregeln, und passte nie auf einen Befehl. Die Regel für das Prüfskript der Wurzel wirkte in 0.24.0 nicht. Sie steht jetzt mit dem Pfad, wie er getippt wird. Eine mit 0.24.0 angemeldete Wurzel zeigt den Vorschlag als geändert und will die Freigabe neu.
+- Das App-Gerüst trägt das Feld `agent` in `app.json` und beantwortet die Route `agent` damit, samt Kennung, Name und Version. Der Bau legt eine Kopie der `app.json` neben das Backend. `app.mjs --check` und `--deploy` halten das Feld gegen die App: seine Form, und dass jede Route, die es nennt, im Backend steht. **Ein Gerät, dessen Schema für `app.json` das Feld nicht kennt, weist das Paket ab**, und `--check` sagt es.
+- Das Prüfskript der Wurzel kennt den Ordner `apps/` und liest `arasul.mjs` nicht auf Felder mit Werten. Ein Haus kann keinen Ordner der Ebene 1 `apps` nennen.
+- `root.mjs --enroll` und `arasul.mjs login` legen dieselben Dateien an und nehmen die Freigabe des anderen zurück, der Selbsttest hält sie zusammen.
+
 ## 0.24.0 (2026-09-21)
 
 Kontrakt: bis 5

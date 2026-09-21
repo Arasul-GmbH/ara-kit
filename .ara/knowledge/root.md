@@ -186,8 +186,77 @@ node .ara/tools/root.mjs --path <root> --unenroll
    `--unenroll` takes back exactly that and nothing else.
 
 `--settings <file>` names another settings file than the agent's own. Logging in to a
-device is not part of this: that is the CLI of the root, which will take over this step
-later.
+device is not part of this: that is the CLI of the root, `arasul.mjs`, see "The bridge to
+the apps" below. It carries the same approval step in a version of its own, because it runs
+with Node alone, and it writes the same files: what one enters, the other takes back.
+
+## The bridge to the apps
+
+`arasul.mjs` lies in every root, next to `.claude/`. It runs with Node alone and comes out of
+the kit like the check script. An agent in the root cannot hold a credential for a device, ask
+which apps a person is assigned to or call what an app offers. This file does that, and
+nothing else.
+
+| Command | What it does |
+| --- | --- |
+| `login <address> --user <name>` | Logs in, then shows the proposals and the places. The password is asked for at the terminal and never shown, `--password-stdin` takes it from the first line of the input, an argument never |
+| `login <address> --token-stdin` | The same with a token instead of name and password. The token is issued in the device's front end |
+| `login`, `login --approve <checksum>`, `login --withdraw` | Show the proposals, approve one by its checksum, take back everything the approving entered |
+| `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
+| `sync` | Writes the same files and says that the service for company knowledge is not decided yet |
+| `status` | The device, the credential, whether the device accepts it, the proposals. States the same about the service |
+| `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
+
+**The credential** lies in `~/.config/arasul/credentials.json`, mode 0600, one entry per device
+with its address and token. Never in the root, never in the keychain. Until the device issues
+tokens the login sends name and password to the login route, keeps the session it gets in
+return and stores neither the password nor anything of it. A session has an end, and the
+tool says so before it calls. A device with a certificate of its own is pinned once with
+`--insecure`, which stores that certificate as the trust anchor for this one device; the check
+is not switched off.
+
+**What the tool assumes about the device** stands in one block at its head, with the date it is
+from: `POST /api/auth/login`, `GET /api/auth/session` and `GET /api/apps/meine`, out of the API
+reference of the product. They are statements about the product like any other, and
+`check-docs.mjs` knocks at them. The route each app answers with its description is called
+`agent` and lies in the app's own interface.
+
+**An app describes itself** in the field `agent` of its `app.json`: a list of routes, each with
+`method`, `path` relative to the app's interface, `purpose` as one sentence, `params` (each
+with `name`, `type` of `string`, `number`, `integer` or `boolean`, and `required`) and
+`writes`. The app delivers the field itself on the route `agent`, and `call` fetches it afresh
+with every call. **What is not in it, the tool does not call**, and a route with `..` or a
+query is not one. `app.mjs --check` holds the field against the app: its form, and that every
+route it names is in the backend. What a device's schema for `app.json` says about the field
+is the device's business: one that does not know it refuses the package, and `--check` says so.
+
+**What the proposal allows.** `apps` and the reading form of `call` run without asking. What
+changes something needs `--write`, and the proposal holds exactly that form back under `ask`, so
+Claude Code asks the human at every change. `login`, `sync` and `status` are not allowed
+without asking. Measured as of 2026-09-21 with `claude -p` 2.1.278 and the proposal enrolled
+through `--settings`: `apps` and a reading `call` ran without a question, `call ... --write`
+was held back, with the flag at the end and in the middle. **Not measured:** the same in an
+interactive session. A rule for a shell command stands with the path as it is typed: the
+`//` that a rule for reading takes for an absolute path never matches a command, and the
+first version of the proposal (0.24.0) carried it in its rule for the check script.
+
+**The proposals** come from this root and from every folder of level 2, that is a folder
+directly in a folder of level 1. Each has its own checksum and is approved one by one: on a
+terminal the tool asks per proposal, in a script `--approve` takes the first 16 characters of
+that proposal's checksum. A proposal that has changed since the approval is shown as changed,
+what was approved keeps running and the new one needs the approval anew. `login` also lists
+where each place lies on this computer and which ones are not here.
+
+**The way back is through the agent.** An app gets no file access: every file in the root has a
+human as its author. The agent fetches data with `call` and writes the file itself. `APP.md`
+is written by the tool alone, only for assigned apps, and is overwritten by the next run. Text
+in it comes from the app: the tool cuts it to one line and does not let it become a heading,
+and the skill `arasul` tells the agent to read it as data. There is no MCP server before the
+north goal; it would be a second cover around the same credential and can be put over this
+one later.
+
+**Give the agent the command, not the credential.** The skill `arasul` in the root tells it
+the order: `apps`, read the route, `call`, and never `login`.
 
 **The hook acts only where it should.** Enrolled, it hangs in front of the tools of every
 session on the computer. So it looks at where the session started: in this root or a folder

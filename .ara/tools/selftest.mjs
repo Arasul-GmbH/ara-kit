@@ -33,13 +33,16 @@ import { createServer as createHttpsServer } from "node:https";
 import { spawn, spawnSync } from "node:child_process";
 import {
   appendFileSync,
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { platform, tmpdir } from "node:os";
@@ -71,6 +74,7 @@ import {
   promisedFolders,
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
+import { agentFindings } from "./lib/agentfield.mjs";
 import { EXAMPLE as ROOT_EXAMPLE, METHOD as ROOT_METHOD, METHOD_FOLDERS as ROOT_FOLDERS, METHOD_TARGETS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE } from "./lib/root.mjs";
 import {
   EXTERNAL_PREFIX,
@@ -5967,7 +5971,10 @@ check("Nichts Arasul-Eigenes steckt in einer Firmenwurzel", () => {
           if (eintrag.isDirectory()) scan(pfad);
           else {
             readFileSync(pfad, "utf8").split(/\r?\n/).forEach((zeile, i) => {
-              if (eigen.test(zeile)) funde.push(`${lang} ${relative(root, pfad)}:${i + 1}: ${zeile.trim().slice(0, 80)}`);
+              // Die Brücke zu den Apps trägt den Namen des Produkts, das ist ihr Zweck: die Datei, ihr
+              // Skill und jede Nennung von beiden in Regeln, Vorschlag und Prüfskript.
+              if (/^arasul\.mjs$|^\.claude\/skills\/arasul\//.test(relative(root, pfad))) return;
+              if (eigen.test(zeile.replace(/arasul\.mjs|`arasul`|skills\/arasul|\.config\/arasul/g, ""))) funde.push(`${lang} ${relative(root, pfad)}:${i + 1}: ${zeile.trim().slice(0, 80)}`);
             });
           }
         }
@@ -6277,6 +6284,578 @@ check("Die Anmeldung schreibt nur nach Zustimmung mit Prüfsumme, und eine Ände
   assert(!existsSync(kopie), "die Kopie des Hooks bleibt nach --unenroll liegen");
   assert(/nichts zurückzunehmen/.test(anmelden("--unenroll").stdout), "--unenroll an einer nicht angemeldeten Wurzel sagt nichts");
   return "ansehen schreibt nichts, falsche Summe nichts, Änderung verlangt neu, zurück ist genau zurück";
+});
+
+// --- Die Brücke: arasul.mjs in der Wurzel ------------------------------------
+//
+// Ein Agent im Firmenordner fragt die Apps eines Geräts über eine Datei, die mit Node
+// allein läuft. Hier läuft sie gegen ein nachgestelltes Gerät, das nur tut, was die
+// API-Referenz des Produkts sagt, und einmal gegen das Backend der Vorlage selbst. Nichts
+// davon fasst die echten Einstellungen unter ~/.claude oder ~/.config/arasul an: jeder
+// Aufruf bekommt ein eigenes Verzeichnis dafür.
+
+const BRUECKE_PASSWORT = "geheim-passwort-42";
+const base64url = (wert) => Buffer.from(JSON.stringify(wert)).toString("base64url");
+const brueckeToken = (exp = Math.floor(Date.now() / 1000) + 3600) => `${base64url({ alg: "none" })}.${base64url({ sub: "anna", exp })}.unterschrift`;
+const BRUECKE_TOKEN = brueckeToken();
+
+const BRUECKE_AGENT = {
+  id: "urlaub",
+  name: "Urlaubsantrag",
+  version: "1.2.0",
+  agent: [
+    { method: "GET", path: "antraege", purpose: "Alle Anträge der Person, neueste zuerst.", params: [{ name: "limit", type: "integer", required: false }], writes: false },
+    { method: "POST", path: "antraege", purpose: "Einen Antrag stellen.", params: [{ name: "von", type: "string", required: true }, { name: "tage", type: "integer", required: true }], writes: true },
+    { method: "GET", path: "../../api/admin", purpose: "Eine Route, die aus der Schnittstelle der App hinauszeigt.", params: [], writes: false },
+  ],
+};
+
+/**
+ * Das nachgestellte Gerät. `weiter` ist die Adresse eines echten Backends, an das
+ * `/apps/selftest-bruecke/api/…` durchgereicht wird, wie es Traefik hinter der Forward-Auth tut.
+ */
+async function brueckeGeraet({ tls = null, weiter = null } = {}) {
+  const gesehen = [];
+  const handler = (anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (stueck) => teile.push(stueck));
+    anfrage.on("end", async () => {
+      const rumpf = Buffer.concat(teile).toString("utf8");
+      const [pfad, frage = ""] = anfrage.url.split("?");
+      const ausweis = anfrage.headers.authorization || null;
+      gesehen.push({ verb: anfrage.method, pfad, frage, rumpf, ausweis });
+      const senden = (status, inhalt) => {
+        antwort.writeHead(status, { "Content-Type": "application/json" });
+        antwort.end(JSON.stringify(inhalt));
+      };
+      if (pfad === "/api/auth/login") {
+        const eingabe = JSON.parse(rumpf || "{}");
+        return eingabe.username === "anna" && eingabe.password === BRUECKE_PASSWORT
+          ? senden(200, { token: BRUECKE_TOKEN, user: { username: "anna", role: "mitarbeiter" } })
+          : senden(401, { error: { message: "Anmeldung abgewiesen" } });
+      }
+      const gueltig = ausweis === `Bearer ${BRUECKE_TOKEN}`;
+      if (pfad === "/api/auth/session") return senden(200, gueltig ? { authenticated: true, user: { username: "anna" } } : { authenticated: false, user: null });
+      if (!gueltig) return senden(401, { error: { message: "Kein gültiger Ausweis" } });
+      if (pfad === "/api/apps/meine") {
+        return senden(200, {
+          data: [
+            { id: "urlaub", name: "Urlaubsantrag", live: { version: "1.2.0", pfad: "/apps/urlaub/" }, test: null },
+            ...(weiter ? [{ id: "selftest-bruecke", name: "Vorlage", live: { version: "0.1.0", pfad: "/apps/selftest-bruecke/" }, test: null }] : []),
+            { id: "nur-test", name: "Nur Teststand", live: null, test: { version: "0.1.0" } },
+            { id: "stumm", name: "Ohne Beschreibung", live: { version: "1.0.0", pfad: "/apps/stumm/" }, test: null },
+            { id: "../boese", name: "Ungültige Kennung", live: { version: "1.0.0", pfad: "/apps/x/" }, test: null },
+          ],
+        });
+      }
+      if (pfad === "/apps/urlaub/api/agent") return senden(200, BRUECKE_AGENT);
+      if (pfad === "/apps/urlaub/api/antraege") return senden(200, { data: anfrage.method === "GET" ? [{ von: "2026-10-01", frage }] : { angelegt: JSON.parse(rumpf || "{}") } });
+      if (weiter && pfad.startsWith("/apps/selftest-bruecke/api/")) {
+        const ziel = `${weiter}/${pfad.slice("/apps/selftest-bruecke/api/".length)}${frage ? `?${frage}` : ""}`;
+        const antwortDurch = await fetch(ziel, { method: anfrage.method, headers: { "content-type": "application/json", "x-arasul-user": "anna" }, body: ["GET", "HEAD"].includes(anfrage.method) ? undefined : rumpf });
+        antwort.writeHead(antwortDurch.status, { "Content-Type": "application/json" });
+        return antwort.end(await antwortDurch.text());
+      }
+      return senden(404, { error: { message: "Weg nicht bekannt" } });
+    });
+  };
+  const server = tls ? createHttpsServer(tls, handler) : createServer(handler);
+  await new Promise((bereit) => server.listen(tls?.port || 0, "127.0.0.1", bereit));
+  const adresse = `${tls ? "https" : "http"}://127.0.0.1:${server.address().port}`;
+  return { adresse, gesehen, port: server.address().port, schliessen: () => new Promise((fertig) => server.close(fertig)) };
+}
+
+/** Ruft `arasul.mjs` in der Wurzel so auf, wie ein Mensch es tut: mit Node, im Ordner der Wurzel. */
+function bruecke(wurzel, args, { input = "", env = {} } = {}) {
+  return new Promise((fertig) => {
+    const kind = spawn("node", [join(wurzel.root, "arasul.mjs"), ...args], {
+      cwd: wurzel.root,
+      env: { ...process.env, ...wurzel.env, ...env },
+    });
+    let stdout = "";
+    let stderr = "";
+    kind.stdout.on("data", (stueck) => (stdout += stueck));
+    kind.stderr.on("data", (stueck) => (stderr += stueck));
+    kind.stdin.end(input);
+    kind.on("close", (status) => fertig({ status, stdout, stderr }));
+  });
+}
+
+/** Eine Wurzel samt eigenem Ausweis- und Einstellungsordner: nichts davon ist das des Nutzers. */
+function brueckeWurzel(args = ["--name", "Probehaus", "--language", "de", "--folders", "sales,product"]) {
+  const { root, run } = wurzel(args);
+  assert(run.status === 0, `root.mjs endet mit ${run.status}: ${run.stderr || run.stdout}`);
+  const eigen = wegwerfordner("ara-bruecke-");
+  const settings = join(eigen, "claude", "settings.json");
+  return { root, ausweise: join(eigen, "ausweis"), settings, env: { ARASUL_CONFIG_DIR: join(eigen, "ausweis"), CLAUDE_CONFIG_DIR: join(eigen, "claude") }, eigen };
+}
+
+await checkAsync("Die Brücke meldet an, legt den Ausweis mit 0600 ab und zeigt das Passwort nie", async () => {
+  const w = brueckeWurzel();
+  const geraet = await brueckeGeraet();
+  try {
+    const anmelden = (...args) => bruecke(w, ["login", geraet.adresse, "--user", "anna", ...args], { input: `${BRUECKE_PASSWORT}\n` });
+
+    // Falsches Passwort: nichts wird abgelegt, und das Passwort steht nirgends.
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: "falsch-und-geheim\n" });
+    assert(lauf.status !== 0 && /weist die Anmeldung ab/.test(lauf.stderr), `falsches Passwort wird nicht abgewiesen: ${lauf.stderr}`);
+    assert(!existsSync(join(w.ausweise, "credentials.json")), "nach einer abgewiesenen Anmeldung liegt ein Ausweis da");
+    assert(!(lauf.stdout + lauf.stderr).includes("falsch-und-geheim"), "das eingegebene Passwort steht in der Ausgabe");
+
+    // Ein Passwort als Argument gibt es nicht: es stünde in der Prozessliste.
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password", "x"]);
+    assert(lauf.status !== 0 && /Unbekannter Schalter/.test(lauf.stderr), "ein Passwort als Argument wird angenommen");
+    // Ohne Terminal und ohne --password-stdin kommt es von nirgends, und es hängt nichts.
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna"]);
+    assert(lauf.status !== 0 && /Terminal/.test(lauf.stderr), `ohne Terminal wird nicht erklärt, woher das Passwort kommt: ${lauf.stderr}`);
+
+    lauf = await anmelden("--password-stdin");
+    assert(lauf.status === 0, `Anmeldung endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    const datei = join(w.ausweise, "credentials.json");
+    assert((statSync(datei).mode & 0o777) === 0o600, `der Ausweis hat die Rechte ${(statSync(datei).mode & 0o777).toString(8)}`);
+    const inhalt = readFileSync(datei, "utf8");
+    const eintrag = JSON.parse(inhalt).devices[new URL(geraet.adresse).hostname];
+    assert(eintrag?.address === geraet.adresse && eintrag.token === BRUECKE_TOKEN && eintrag.user === "anna", `der Eintrag ist unvollständig: ${inhalt}`);
+    assert(!inhalt.includes(BRUECKE_PASSWORT), "das Passwort liegt in der Ausweisdatei");
+    const ausgabe = lauf.stdout + lauf.stderr;
+    assert(!ausgabe.includes(BRUECKE_PASSWORT) && !ausgabe.includes(BRUECKE_TOKEN), "das Passwort oder das Token steht in der Ausgabe");
+    assert(!readdirSync(w.root, { recursive: true }).some((eintragName) => /credentials|ausweis/i.test(eintragName)), "im Firmenordner liegt ein Ausweis");
+
+    // Eine Datei mit weiteren Rechten wird beim Lesen zugezogen.
+    chmodSync(datei, 0o644);
+    lauf = await bruecke(w, ["status"]);
+    assert((statSync(datei).mode & 0o777) === 0o600, "eine zu offene Ausweisdatei bleibt offen");
+
+    // status und sync sagen ehrlich, was noch nicht feststeht.
+    assert(lauf.status === 0 && /angenommen/.test(lauf.stdout), `status meldet den Ausweis nicht als angenommen: ${lauf.stdout}`);
+    assert(/steht noch nicht fest/.test(lauf.stdout), `status sagt nicht, dass der Dienst noch nicht feststeht: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["sync"]);
+    assert(lauf.status === 0 && /steht noch nicht fest/.test(lauf.stdout) && /Sonst wurde nichts abgeglichen/.test(lauf.stdout), `sync sagt nicht, dass der Dienst noch nicht feststeht: ${lauf.stdout}`);
+
+    // Das Token statt Name und Passwort: dieselbe Datei, andere Art.
+    lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token"], { input: "ein-widerrufenes-token\n" });
+    assert(lauf.status !== 0 && !JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"], "ein Token, das das Gerät nicht kennt, wird abgelegt");
+    lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token"], { input: `${BRUECKE_TOKEN}\n` });
+    assert(lauf.status === 0 && JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"].kind === "token", `die Anmeldung mit Token scheitert: ${lauf.stderr}${lauf.stdout}`);
+
+    // Eine Sitzung, die zu Ende ist, sagt es, ohne das Gerät zu fragen.
+    const daten = JSON.parse(readFileSync(datei, "utf8"));
+    daten.devices["mit-token"].token = brueckeToken(Math.floor(Date.now() / 1000) - 60);
+    writeFileSync(datei, JSON.stringify(daten));
+    const vorher = geraet.gesehen.length;
+    lauf = await bruecke(w, ["apps", "--device", "mit-token"]);
+    assert(lauf.status !== 0 && /zu Ende/.test(lauf.stderr) && geraet.gesehen.length === vorher, `eine abgelaufene Sitzung wird nicht vor dem Aufruf erkannt: ${lauf.stderr}`);
+    return "0600, kein Passwort in Datei und Ausgabe, kein Passwort als Argument, Token angenommen, Ablauf erkannt";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Die Brücke listet Apps mit Routen, schreibt APP.md nur für zugewiesene und ruft nur, was die App nennt", async () => {
+  const w = brueckeWurzel();
+  const geraet = await brueckeGeraet();
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    const gerufen = () => geraet.gesehen.filter((f) => f.pfad.startsWith("/apps/")).map((f) => `${f.verb} ${f.pfad}`);
+
+    lauf = await bruecke(w, ["apps"]);
+    assert(lauf.status === 0, `apps endet mit ${lauf.status}: ${lauf.stderr}`);
+    assert(/urlaub \(Urlaubsantrag\), 1\.2\.0/.test(lauf.stdout) && /GET\s+antraege/.test(lauf.stdout) && /POST\s+antraege\s+\[ändert etwas\]/.test(lauf.stdout), `apps zeigt Apps und Routen nicht:\n${lauf.stdout}`);
+    assert(/Nicht aufgeführt, fehlerhaft/.test(lauf.stdout), "eine Route, die aus der Schnittstelle hinauszeigt, wird nicht als fehlerhaft gemeldet");
+    assert(/nur der Teststand|nur der Teststand ist|Nur der Teststand/i.test(lauf.stdout) && /beschreibt sich nicht/.test(lauf.stdout), `Teststand und stumme App fehlen in der Ausgabe:\n${lauf.stdout}`);
+
+    // APP.md nur für zugewiesene Apps mit Beschreibung, nie außerhalb von apps/.
+    const md = join(w.root, "apps", "urlaub", "APP.md");
+    assert(existsSync(md), "für die zugewiesene App liegt keine APP.md da");
+    const text = readFileSync(md, "utf8");
+    assert(/### POST antraege/.test(text) && /Ändert etwas: ja, braucht --write/.test(text) && /`von` \(string, Pflicht\)/.test(text), `APP.md trägt die Route nicht: ${text}`);
+    assert(!/admin/.test(text), "die hinauszeigende Route steht in APP.md");
+    for (const keine of ["nur-test", "stumm", "boese"]) assert(!existsSync(join(w.root, "apps", keine)), `für ${keine} liegt ein Ordner da`);
+    assert(!existsSync(join(w.root, "boese")) && !existsSync(join(w.root, "..", "boese")), "eine ungültige Kennung hat außerhalb von apps/ geschrieben");
+    assert(readdirSync(join(w.root, "apps")).join() === "urlaub", `apps/ trägt mehr als die zugewiesene App: ${readdirSync(join(w.root, "apps"))}`);
+    assert(inWurzel(w.root, "scripts/check.mjs").status === 0, `das Prüfskript der Wurzel meldet nach apps/ einen Befund: ${inWurzel(w.root, "scripts/check.mjs").stdout}`);
+
+    // sync schreibt dieselbe Datei.
+    rmSync(md);
+    lauf = await bruecke(w, ["sync"]);
+    assert(existsSync(md) && /APP\.md geschrieben für 1 von 3/.test(lauf.stdout), `sync schreibt APP.md nicht: ${lauf.stdout}`);
+
+    // Lesen geht, mit einem Parameter, und das Gerät sieht den Ausweis.
+    lauf = await bruecke(w, ["call", "urlaub", "antraege", "limit=2"]);
+    assert(lauf.status === 0 && JSON.parse(lauf.stdout).data[0].frage === "limit=2", `lesendes call: ${lauf.stdout}${lauf.stderr}`);
+    assert(geraet.gesehen.at(-1).ausweis === `Bearer ${BRUECKE_TOKEN}`, "der Ausweis geht nicht als Bearer mit");
+
+    // Was etwas ändert, geht nur mit --write, und ohne es geht nichts hinaus.
+    const vorPost = gerufen().filter((z) => z.startsWith("POST")).length;
+    lauf = await bruecke(w, ["call", "urlaub", "antraege", "von=2026-10-01", "tage=3", "--method", "POST"]);
+    assert(lauf.status !== 0 && /--write/.test(lauf.stderr), `eine ändernde Route läuft ohne --write: ${lauf.stdout}${lauf.stderr}`);
+    assert(gerufen().filter((z) => z.startsWith("POST")).length === vorPost, "ohne --write ist ein POST hinausgegangen");
+    lauf = await bruecke(w, ["call", "urlaub", "antraege", "von=2026-10-01", "tage=3", "--write"]);
+    assert(lauf.status === 0, `ändernder Aufruf mit --write: ${lauf.stderr}${lauf.stdout}`);
+    const post = geraet.gesehen.filter((f) => f.verb === "POST" && f.pfad === "/apps/urlaub/api/antraege").at(-1);
+    assert(post && JSON.parse(post.rumpf).tage === 3 && JSON.parse(post.rumpf).von === "2026-10-01", `der Rumpf ist nicht nach der Art der Parameter gebaut: ${post?.rumpf}`);
+
+    // Nur was die App nennt. Nichts davon erreicht das Gerät.
+    const vorher = geraet.gesehen.length;
+    for (const [args, was] of [
+      [["urlaub", "geheim"], "eine Route, die die App nicht nennt"],
+      [["urlaub", "../../api/admin"], "eine Route mit .."],
+      [["urlaub", "/api/apps/meine"], "ein Weg des Geräts"],
+      [["urlaub", "antraege?x=1"], "eine Route mit Anfrage"],
+      [["stumm", "irgendwas"], "eine App ohne Beschreibung"],
+      [["urlaub", "antraege", "unbekannt=1"], "ein Parameter, den die Route nicht nennt"],
+      [["urlaub", "antraege", "limit=abc"], "ein Parameter der falschen Art"],
+      [["urlaub", "antraege", "--write", "--method", "POST"], "eine ändernde Route ohne ihre Pflichtparameter"],
+      [["../boese", "antraege"], "eine App mit ungültiger Kennung"],
+    ]) {
+      lauf = await bruecke(w, ["call", ...args]);
+      assert(lauf.status !== 0, `${was} wird aufgerufen`);
+    }
+    const hinaus = geraet.gesehen.slice(vorher).map((f) => `${f.verb} ${f.pfad}`).filter((z) => !/\/agent$/.test(z));
+    assert(hinaus.length === 0, `dabei ging etwas an das Gerät, das kein Aufruf sein durfte: ${hinaus.join(", ")}`);
+    assert(!geraet.gesehen.some((f) => f.pfad === "/api/admin"), "die Route mit .. hat das Gerät erreicht");
+
+    // Ein Ausweis, den das Gerät nicht mehr annimmt, wird gesagt und nicht überspielt.
+    const daten = JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8"));
+    for (const eintrag of Object.values(daten.devices)) eintrag.token = brueckeToken(Math.floor(Date.now() / 1000) + 7200);
+    writeFileSync(join(w.ausweise, "credentials.json"), JSON.stringify(daten));
+    lauf = await bruecke(w, ["call", "urlaub", "antraege"]);
+    assert(lauf.status !== 0 && /weist den Ausweis ab/.test(lauf.stderr), `ein widerrufener Ausweis wird nicht gesagt: ${lauf.stderr}`);
+    return "apps, APP.md nur zugewiesen, lesen ohne, ändern nur mit --write, neun Aufrufe ohne Weg hinaus";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Die Brücke spricht mit dem Backend der Vorlage: agent kommt aus app.json, call liest und schreibt", async () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const merker = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const appName = "selftest-bruecke";
+  const appDir = join(ROOT, "apps", appName);
+  const daten = wegwerfordner("ara-daten-");
+  let backend = null;
+  let geraet = null;
+  try {
+    const neu = tool("app.mjs", ["--app", appName, "--new"], "");
+    assert(neu.status === 0, `app.mjs --new endet mit ${neu.status}: ${neu.stderr}`);
+    backend = spawn("node", [join(appDir, "backend", "server.mjs")], { env: { ...process.env, PORT: "0", APP_DATEN: daten } });
+    const port = await new Promise((fertig, fehler) => {
+      let gelesen = "";
+      backend.stdout.on("data", (stueck) => {
+        gelesen += stueck;
+        const treffer = gelesen.match(/hört auf (\d+)/);
+        if (treffer) fertig(Number(treffer[1]));
+      });
+      backend.on("exit", () => fehler(new Error(`das Backend der Vorlage startet nicht: ${gelesen}`)));
+      setTimeout(() => fehler(new Error("das Backend der Vorlage meldet keinen Port")), 15_000);
+    });
+
+    // Die Route agent liefert das Feld aus app.json, mit Kennung, Name und Version.
+    const antwort = await (await fetch(`http://127.0.0.1:${port}/agent`)).json();
+    const manifest = JSON.parse(readFileSync(join(appDir, "app.json"), "utf8"));
+    assert(antwort.id === appName && antwort.version === manifest.version && JSON.stringify(antwort.agent) === JSON.stringify(manifest.agent), `GET agent liefert nicht das Feld aus app.json: ${JSON.stringify(antwort)}`);
+    assert(manifest.agent.length >= 2 && manifest.agent.some((route) => route.writes === true), "das Gerüst nennt keine ändernde Route, an der sich --write zeigen ließe");
+    assert(agentFindings(appDir, manifest).length === 0, `das Gerüst besteht die eigene Prüfung nicht: ${agentFindings(appDir, manifest).join("; ")}`);
+
+    // Und die Brücke liest es hinter der Weiterleitung, wie hinter Traefik.
+    geraet = await brueckeGeraet({ weiter: `http://127.0.0.1:${port}` });
+    const w = brueckeWurzel();
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["apps"]);
+    assert(/^selftest-bruecke, 0\.1\.0/m.test(lauf.stdout) && /GET\s+vorgaenge/.test(lauf.stdout) && /POST\s+vorgaenge/.test(lauf.stdout), `apps zeigt die Routen der Vorlage nicht:\n${lauf.stdout}`);
+    lauf = await bruecke(w, ["call", appName, "vorgaenge"]);
+    assert(lauf.status === 0 && JSON.parse(lauf.stdout).vorgaenge.length === 0, `GET vorgaenge der Vorlage: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["call", appName, "vorgaenge", "titel=Erster Vorgang", "--write"]);
+    assert(lauf.status === 0 && JSON.parse(lauf.stdout).vorgang?.titel === "Erster Vorgang", `POST vorgaenge der Vorlage: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["call", appName, "vorgaenge"]);
+    assert(JSON.parse(lauf.stdout).vorgaenge.length === 1, `der eingereichte Vorgang steht nicht in der Liste: ${lauf.stdout}`);
+    assert(existsSync(join(w.root, "apps", appName, "APP.md")), "für die Vorlage liegt keine APP.md da");
+    return "GET agent aus app.json, apps, lesen, einreichen mit --write, wieder lesen";
+  } finally {
+    backend?.kill();
+    await geraet?.schliessen();
+    rmSync(appDir, { recursive: true, force: true });
+    if (merker === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, merker);
+  }
+});
+
+await checkAsync("Die Brücke hält ein eigenes Zertifikat einmal fest und schaltet die Prüfung nie ab", async () => {
+  const erzeugt = (name) => {
+    const dir = wegwerfordner("ara-zert-");
+    const lauf = spawnSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", join(dir, "k.pem"), "-out", join(dir, "z.pem"), "-days", "1", "-subj", `/CN=${name}`], { encoding: "utf8" });
+    return lauf.status === 0 ? { key: readFileSync(join(dir, "k.pem")), cert: readFileSync(join(dir, "z.pem")) } : null;
+  };
+  const erstes = erzeugt("geraet-a");
+  const zweites = erzeugt("geraet-b");
+  if (!erstes || !zweites) return "übersprungen, openssl stellt hier kein Zertifikat aus";
+  const w = brueckeWurzel();
+  let geraet = await brueckeGeraet({ tls: erstes });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status !== 0 && /--insecure/.test(lauf.stderr), `ein eigenes Zertifikat wird nicht benannt: ${lauf.stderr}`);
+    assert(!existsSync(join(w.ausweise, "credentials.json")), "nach der Zertifikatsabweisung liegt ein Ausweis da");
+    assert(!geraet.gesehen.some((f) => f.pfad === "/api/auth/login"), "das Passwort ist an ein Gerät gegangen, dessen Zertifikat nicht geprüft war");
+
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--insecure"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0 && /SHA-256 [0-9A-F:]{95}/.test(lauf.stdout), `--insecure hält das Zertifikat nicht fest: ${lauf.stdout}${lauf.stderr}`);
+    const eintrag = Object.values(JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8")).devices)[0];
+    assert(/BEGIN CERTIFICATE/.test(eintrag.ca || ""), "das festgehaltene Zertifikat liegt nicht im Eintrag");
+    lauf = await bruecke(w, ["apps"]);
+    assert(lauf.status === 0, `mit dem festgehaltenen Zertifikat geht apps nicht: ${lauf.stderr}`);
+
+    // Am selben Port antwortet jetzt ein Gerät mit einem anderen Zertifikat: das geht nicht durch.
+    const port = geraet.port;
+    await geraet.schliessen();
+    geraet = await brueckeGeraet({ tls: { ...zweites, port } });
+    const vorher = geraet.gesehen.length;
+    lauf = await bruecke(w, ["apps"]);
+    assert(lauf.status !== 0 && geraet.gesehen.length === vorher, `ein anderes Zertifikat am selben Port wird angenommen: ${lauf.stdout}${lauf.stderr}`);
+    assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_TOKEN), "das Token steht in der Ausgabe");
+    return "ohne --insecure abgewiesen, ohne dass das Passwort hinausging, einmal festgehalten, ein anderes Zertifikat abgewiesen";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Die Brücke zeigt Vorschläge aus der Wurzel und den Ordnern der Ebene 2 und gibt jeden mit seiner Prüfsumme frei", async () => {
+  const lokal = wegwerfordner("ara-ort-");
+  const orte = join(wegwerfordner("ara-orte-"), "orte.json");
+  writeFileSync(orte, JSON.stringify([
+    { name: "api", kind: "folder", where: lokal, local: lokal, purpose: "probe" },
+    { name: "fern", kind: "github", where: "https://github.com/x/y", local: "~/gibt-es-nicht-auf-diesem-rechner/fern", purpose: "nicht hier" },
+    { name: "nur-verweis", kind: "github", where: "https://github.com/x/z", purpose: "nur ein Verweis" },
+  ]));
+  const w = brueckeWurzel(["--name", "Probehaus", "--language", "de", "--folders", "sales,product", "--places", orte]);
+  // Ein Vorschlag im Ordner der Ebene 2, einer in Ebene 1 und einer in Ebene 3: nur der erste zählt.
+  const vorschlagIn = (pfad, wache = null) => {
+    mkdirSync(join(w.root, pfad, ".claude", "proposal"), { recursive: true });
+    writeFileSync(join(w.root, pfad, ".claude", "proposal", "proposal.json"), JSON.stringify({
+      permissions: { allow: ["Read({root}/**)"], deny: ["Edit({root}/fest/**)"] },
+      ...(wache ? { hook: { event: "PreToolUse", matcher: "Bash", script: wache } } : {}),
+    }, null, 2));
+    if (wache) writeFileSync(join(w.root, pfad, ".claude", "proposal", wache), "process.exit(0);\n");
+  };
+  vorschlagIn(join("sales", "team"), "wache.mjs");
+  vorschlagIn("product");
+  vorschlagIn(join("sales", "team", "tief"));
+  const eigene = { model: "x", permissions: { allow: ["Bash(ls:*)"] } };
+  mkdirSync(join(w.eigen, "claude"), { recursive: true });
+  writeFileSync(w.settings, JSON.stringify(eigene, null, 2));
+  const einstellungen = () => readFileSync(w.settings, "utf8");
+  const login = (...args) => bruecke(w, ["login", ...args, "--settings", w.settings]);
+
+  let lauf = await login();
+  assert(lauf.status === 0, `login ohne Adresse endet mit ${lauf.status}: ${lauf.stderr}`);
+  const summen = [...lauf.stdout.matchAll(/Prüfsumme: ([0-9a-f]{64})/g)].map((treffer) => treffer[1]);
+  assert(summen.length === 2 && summen[0] !== summen[1], `zwei Vorschläge mit je eigener Prüfsumme erwartet, gefunden ${summen.length}:\n${lauf.stdout}`);
+  assert(/Vorschlag 1 von 2: diese Wurzel/.test(lauf.stdout) && /Vorschlag 2 von 2: sales\/team/.test(lauf.stdout), `die beiden Vorschläge tragen ihre Orte nicht:\n${lauf.stdout}`);
+  assert(!/Vorschlag \d von \d: (product|sales\/team\/tief)/.test(lauf.stdout), "ein Vorschlag aus Ebene 1 oder 3 wird gezeigt");
+  assert(/Bash\(node [^)]*arasul\.mjs apps:\*\)/.test(lauf.stdout) && /Bash\(node [^)]*arasul\.mjs call:\*\)/.test(lauf.stdout) && /ask:\s+Bash\(node [^)]*arasul\.mjs call\*--write\*\)/.test(lauf.stdout), `der Vorschlag der Wurzel nennt apps, call und --write nicht:\n${lauf.stdout}`);
+  assert(einstellungen() === JSON.stringify(eigene, null, 2), "das Zeigen hat die Einstellungen verändert");
+  assert(/Orte auf diesem Rechner/.test(lauf.stdout) && lauf.stdout.includes(lokal) && /fern\s+.*\(nicht auf diesem Rechner\)/.test(lauf.stdout) && /nur-verweis\s+nur Verweis/.test(lauf.stdout), `die Orte werden nicht aufgelöst:\n${lauf.stdout}`);
+
+  // Die Summe der Wurzel ist die, die das Kit für sie nennt: ein Freigabeschritt, zwei Wege.
+  const kit = tool("root.mjs", ["--path", w.root, "--settings", w.settings, "--enroll"], "");
+  assert(kit.stdout.includes(summen[0]), `das Kit nennt für die Wurzel eine andere Prüfsumme:\n${kit.stdout}`);
+
+  // Falsche, zu kurze und fremde Summen schreiben nichts.
+  for (const falsch of ["0123456789abcdef0123", summen[0].slice(0, 8), "x".repeat(16)]) {
+    lauf = await login("--approve", falsch);
+    assert(lauf.status !== 0 && einstellungen() === JSON.stringify(eigene, null, 2), `die Summe ${falsch} wird hingenommen`);
+  }
+  // Ein Vorschlag mit einem Hook, der ein Skript nennt, das nicht daneben liegt, lässt sich nicht freigeben.
+  const kaputt = join(w.root, "sales", "team", ".claude", "proposal", "wache.mjs");
+  const gutesSkript = readFileSync(kaputt, "utf8");
+  rmSync(kaputt);
+  lauf = await login();
+  assert(/nicht freigebbar/.test(lauf.stdout), "ein Hook ohne Skript gilt als freigebbar");
+  writeFileSync(kaputt, gutesSkript);
+
+  // Freigeben: nur die Wurzel, und was dem Nutzer gehört, bleibt.
+  lauf = await login("--approve", summen[0].slice(0, 16));
+  assert(lauf.status === 0 && /Freigegeben: diese Wurzel/.test(lauf.stdout), `Freigabe der Wurzel: ${lauf.stdout}${lauf.stderr}`);
+  let nach = JSON.parse(einstellungen());
+  const echt = realpathSync(w.root);
+  assert(nach.model === "x" && nach.permissions.allow.includes("Bash(ls:*)"), "die eigenen Einstellungen des Nutzers sind weg");
+  assert(nach.permissions.allow.includes(`Bash(node ${echt}/arasul.mjs apps:*)`) && nach.permissions.allow.includes(`Bash(node ${echt}/arasul.mjs call:*)`), `apps und call stehen nicht als Erlaubnis da: ${JSON.stringify(nach.permissions.allow)}`);
+  assert(nach.permissions.ask.includes(`Bash(node ${echt}/arasul.mjs call*--write*)`), "die ändernde Form von call wird nicht zurückgegeben");
+  assert(!JSON.stringify(nach).includes("{root}") && !JSON.stringify(nach.permissions.allow.filter((r) => r.startsWith("Bash("))).includes("//"), "ein {root} oder ein Doppelstrich in einer Shell-Regel blieb stehen");
+  assert(!existsSync(join(w.root, ".claude", "settings.json")), "die Freigabe hat eine settings.json in den Baum gelegt");
+  assert(!nach.permissions.deny?.some((r) => r.includes("/fest/")), "der Vorschlag aus Ebene 2 ist ohne Freigabe in den Einstellungen");
+  assert(inWurzel(w.root, "scripts/check.mjs").status === 0, "das Prüfskript hat nach der Freigabe einen Befund");
+  lauf = await bruecke(w, ["status", "--settings", w.settings]);
+  assert(/freigegeben 1, nicht freigegeben 1/.test(lauf.stdout), `status zählt die Vorschläge nicht: ${lauf.stdout}`);
+
+  // Das Kit nimmt zurück, was die Brücke eintrug, und umgekehrt.
+  const zurueck = tool("root.mjs", ["--path", w.root, "--settings", w.settings, "--unenroll"], "");
+  assert(zurueck.status === 0 && JSON.stringify(JSON.parse(einstellungen())) === JSON.stringify(eigene), `das Kit nimmt die Freigabe der Brücke nicht zurück:\n${zurueck.stdout}\n${einstellungen()}`);
+  const vomKit = tool("root.mjs", ["--path", w.root, "--settings", w.settings, "--enroll", "--consent", summen[0].slice(0, 16)], "");
+  assert(vomKit.status === 0, `das Kit gibt nicht frei: ${vomKit.stderr}`);
+  lauf = await login("--approve", summen[0].slice(0, 16));
+  assert(/Neu freigegeben/.test(lauf.stdout), `die Brücke erkennt die Freigabe des Kits nicht: ${lauf.stdout}`);
+  assert(JSON.parse(einstellungen()).hooks.PreToolUse.length === 1, "der Hook hängt nach der zweiten Freigabe doppelt davor");
+
+  // Der Ordner der Ebene 2 mit eigenem Hook: eigene Kopie, eigene Summe.
+  lauf = await login("--approve", summen[1].slice(0, 16));
+  assert(/Freigegeben: sales\/team/.test(lauf.stdout), `Freigabe des Ordners der Ebene 2: ${lauf.stdout}${lauf.stderr}`);
+  nach = JSON.parse(einstellungen());
+  const kopien = nach.hooks.PreToolUse.flatMap((e) => e.hooks).map((h) => h.command.match(/node "([^"]+)"/)[1]);
+  assert(kopien.length === 2 && kopien.every((k) => existsSync(k)) && kopien.some((k) => /wache\.mjs$/.test(k)), `die Kopien der beiden Hooks fehlen: ${kopien}`);
+
+  // Ändert sich ein Vorschlag, gilt die Freigabe nicht mehr für ihn.
+  appendFileSync(join(w.root, "sales", "team", ".claude", "proposal", "wache.mjs"), "// anders\n");
+  lauf = await login();
+  assert(/hat sich seither geändert/.test(lauf.stdout), `ein geänderter Vorschlag wird nicht gemeldet:\n${lauf.stdout}`);
+  lauf = await login("--approve", summen[1].slice(0, 16));
+  assert(lauf.status !== 0, "die alte Summe gilt für den geänderten Vorschlag");
+  lauf = await bruecke(w, ["status", "--settings", w.settings]);
+  assert(/seit der Freigabe geändert 1/.test(lauf.stdout), `status meldet die Änderung nicht: ${lauf.stdout}`);
+
+  // Zurücknehmen: genau das Eigene bleibt, die Kopien der Hooks sind weg.
+  lauf = await login("--withdraw");
+  assert(lauf.status === 0 && JSON.stringify(JSON.parse(einstellungen())) === JSON.stringify(eigene), `nach --withdraw sind die Einstellungen nicht wie vorher:\n${einstellungen()}`);
+  assert(kopien.every((k) => !existsSync(k)), "die Kopien der Hooks bleiben nach --withdraw liegen");
+
+  // Kaputte Einstellungen werden nicht überschrieben.
+  writeFileSync(w.settings, "{ nicht json");
+  lauf = await login("--approve", summen[0].slice(0, 16));
+  assert(lauf.status !== 0 && einstellungen() === "{ nicht json", "kaputte Einstellungen werden überschrieben");
+  return "Wurzel und Ebene 2, nichts aus Ebene 1 und 3, je Summe, Kit und Brücke nehmen einander zurück";
+});
+
+check("Der Vorschlag der Wurzel erlaubt apps und die lesende Form von call, und sonst nichts der Brücke", () => {
+  const { root } = wurzel(["--name", "Probehaus", "--language", "de"]);
+  const vorschlag = JSON.parse(readFileSync(join(root, ".claude", "proposal", "proposal.json"), "utf8"));
+  const brueckenRegeln = vorschlag.permissions.allow.filter((regel) => /arasul\.mjs/.test(regel));
+  assert(brueckenRegeln.length === 2 && brueckenRegeln.some((r) => /arasul\.mjs apps:\*/.test(r)) && brueckenRegeln.some((r) => /arasul\.mjs call:\*/.test(r)), `Erlaubnis für apps und call: ${brueckenRegeln}`);
+  assert(!brueckenRegeln.some((r) => /login|sync|status/.test(r)), "der Vorschlag erlaubt login, sync oder status ohne Rückfrage");
+  assert(vorschlag.permissions.ask?.some((r) => /call\*--write\*/.test(r)), "die ändernde Form von call fehlt unter ask");
+  assert(existsSync(join(root, "arasul.mjs")) && existsSync(join(root, ".claude", "skills", "arasul", "SKILL.md")), "arasul.mjs oder sein Skill fehlt in der Wurzel");
+  const skill = readFileSync(join(root, ".claude", "skills", "arasul", "SKILL.md"), "utf8");
+  for (const wort of ["apps", "call", "--write", "APP.md", "login"]) assert(skill.includes(wort), `der Skill nennt ${wort} nicht`);
+  assert(/^---\nname: arasul\ndescription: .+\n---/.test(skill), "der Skill hat keinen Kopf");
+  // Ein Haus darf keinen Ordner der Ebene 1 `apps` nennen: er gehört der Brücke.
+  const laut = tool("root.mjs", ["--path", join(wegwerfordner("ara-root-"), "haus"), "--name", "Probehaus", "--folders", "apps", "--no-git"], "");
+  assert(laut.status !== 0, "ein Ordner der Ebene 1 namens apps wird angelegt");
+  return `${brueckenRegeln.length} Erlaubnisse, ask für --write, Skill da`;
+});
+
+await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede Route im Backend, und was das Gerät dazu sagt", async () => {
+  const name = "selftest-agent";
+  const akte = join(ROOT, "devices", name);
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const merker = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const appDir = join(ROOT, "apps", "selftest-agent-bau");
+  const work = mkdtempSync(join(tmpdir(), "ara-agent-"));
+  const quelle = join(work, "probe");
+  const agent = [
+    { method: "GET", path: "antraege", purpose: "Alle Anträge.", params: [], writes: false },
+    { method: "POST", path: "antraege", purpose: "Einen Antrag stellen.", params: [{ name: "von", type: "string", required: true }], writes: true },
+  ];
+  const manifest = { ...MANIFEST, backend: { image: "arasul-probeapp:1.0.0", bauen: { verzeichnis: "backend" } }, agent };
+  const kennt = JSON.parse(JSON.stringify(KONTRAKT));
+  kennt.app_json.schema.properties.agent = { type: "array" };
+  let kontrakt = kennt;
+  const server = createServer((anfrage, antwort) => {
+    antwort.writeHead(anfrage.url.split("?")[0] === "/api/v1/external/contract" ? 200 : 404, { "Content-Type": "application/json" });
+    antwort.end(JSON.stringify({ data: kontrakt }));
+  });
+  await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST_AGENT: "aras_selbsttest" };
+  const server_mjs = ['const wege = ["/agent", "/antraege"];', 'const verb = ["GET", "POST"];', ""].join("\n");
+  const schreiben = (aenderung = {}, backend = server_mjs) => {
+    mkdirSync(join(quelle, "backend"), { recursive: true });
+    writeFileSync(join(quelle, "app.json"), JSON.stringify({ ...manifest, ...aenderung }, null, 2));
+    writeFileSync(join(quelle, "backend", "server.mjs"), backend);
+  };
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), { name, address: "127.0.0.1:1", api_base: base, verdict: "supported", arasul: "found", api_key_ref: "ARASUL_KEY_SELFTEST_AGENT" });
+  const pruefen = () => toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+
+  try {
+    // Ein App-Ordner, dessen Backend jede genannte Route trägt, und ein Gerät, das das Feld kennt.
+    schreiben();
+    let lauf = await pruefen();
+    assert(lauf.status === 0, `ein wohlgeformtes Feld mit vorhandenen Routen besteht nicht: ${lauf.stdout}${lauf.stderr}`);
+
+    // Eine Route, die das Backend nicht hat, und eine ändernde ohne ihr Verb im Quelltext.
+    schreiben({ agent: [...agent, { method: "GET", path: "gibtsnicht", purpose: "Fehlt im Backend.", params: [], writes: false }] });
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /agent nennt GET gibtsnicht, und das Backend hat sie nicht/.test(lauf.stdout), `eine fehlende Route fällt nicht auf: ${lauf.stdout}`);
+    schreiben({}, 'const wege = ["/agent", "/antraege"];\n');
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /agent nennt POST antraege/.test(lauf.stdout), `ein POST ohne sein Verb im Quelltext fällt nicht auf: ${lauf.stdout}`);
+    schreiben({}, 'const wege = ["/antraege"];\nconst verb = ["GET", "POST"];\n');
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /keine Route agent/.test(lauf.stdout), `eine App ohne Route agent fällt nicht auf: ${lauf.stdout}`);
+
+    // Die Form: jede Regel des Vertrags hat einen Fall, und jeder fällt.
+    const formfehler = [
+      [{ method: "TRACE", path: "antraege", purpose: "x", params: [], writes: false }, /method muss eines von/],
+      [{ method: "GET", path: "../antraege", purpose: "x", params: [], writes: false }, /path muss relativ/],
+      [{ method: "GET", path: "antraege?x=1", purpose: "x", params: [], writes: false }, /path muss relativ/],
+      [{ method: "GET", path: "antraege", purpose: "Zwei\nZeilen", params: [], writes: false }, /purpose muss ein Satz/],
+      [{ method: "GET", path: "antraege", purpose: "x", writes: false }, /params muss eine Liste/],
+      [{ method: "GET", path: "antraege", purpose: "x", params: [{ name: "a", type: "datum", required: true }], writes: false }, /type muss eines von/],
+      [{ method: "GET", path: "antraege", purpose: "x", params: [{ name: "a", type: "string" }], writes: false }, /required muss true oder false/],
+      [{ method: "GET", path: "antraege", purpose: "x", params: [], writes: "nein" }, /writes muss true oder false/],
+      [{ method: "DELETE", path: "antraege", purpose: "x", params: [], writes: false }, /DELETE ändert etwas/],
+      [{ method: "GET", path: "antraege", purpose: "x", params: [], writes: false, extra: 1 }, /unbekanntes Feld extra/],
+    ];
+    for (const [route, muster] of formfehler) {
+      schreiben({ agent: [route] });
+      lauf = await pruefen();
+      assert(lauf.status !== 0 && muster.test(lauf.stdout), `${JSON.stringify(route)} fällt nicht auf (${muster}): ${lauf.stdout}`);
+    }
+    schreiben({ agent: "keine Liste" });
+    assert((await pruefen()).status !== 0, "ein Feld agent, das keine Liste ist, besteht");
+    schreiben({ agent: [agent[0], agent[0]] });
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /steht doppelt da/.test(lauf.stdout), "dieselbe Route zweimal besteht");
+
+    // Fehlt das Feld ganz, beschreibt die App sich nicht, und das ist kein Fehler des Pakets.
+    schreiben();
+    const ohne = JSON.parse(readFileSync(join(quelle, "app.json"), "utf8"));
+    delete ohne.agent;
+    writeFileSync(join(quelle, "app.json"), JSON.stringify(ohne));
+    lauf = await pruefen();
+    assert(lauf.status === 0, `eine App ohne Feld agent besteht nicht: ${lauf.stdout}`);
+
+    // Das Gerät sagt seine eigene Wahrheit: kennt sein Schema das Feld nicht, weist es das Paket ab.
+    schreiben();
+    kontrakt = KONTRAKT;
+    lauf = await pruefen();
+    assert(lauf.status !== 0 && /Gerät würde das abweisen/.test(lauf.stdout) && /agent/.test(lauf.stdout), `ein Gerät, das agent nicht kennt, wird nicht als abweisend gemeldet: ${lauf.stdout}`);
+    kontrakt = kennt;
+
+    // Der Bau legt app.json neben das Backend: die Route agent liest sie dort, und das Dockerfile kopiert sie.
+    mkdirSync(join(appDir, "backend"), { recursive: true });
+    writeFileSync(join(appDir, "app.json"), JSON.stringify({ ...manifest, id: "selftest-agent-bau" }, null, 2));
+    writeFileSync(join(appDir, "backend", "server.mjs"), server_mjs);
+    writeFileSync(join(appDir, "backend", "Dockerfile"), "FROM scratch\nCOPY server.mjs app.json ./\n");
+    lauf = await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build"], env);
+    assert(lauf.status === 0, `der Bau schlägt fehl: ${lauf.stdout}${lauf.stderr}`);
+    const kopie = join(appDir, "build", "backend", "app.json");
+    assert(existsSync(kopie) && readFileSync(kopie, "utf8") === readFileSync(join(appDir, "app.json"), "utf8"), "der Bau legt app.json nicht neben das Backend");
+    lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base], env);
+    assert(lauf.status === 0, `der Bau besteht die Prüfung nicht: ${lauf.stdout}${lauf.stderr}`);
+    rmSync(kopie);
+    lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base], env);
+    assert(lauf.status !== 0 && /kopiert app\.json/.test(lauf.stdout), `ein Paket, dessen Dockerfile app.json kopiert und ohne sie: ${lauf.stdout}`);
+    return "Form in zehn Fällen, Routen im Backend, GET agent, Gerät ohne das Feld, Kopie neben dem Backend";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(appDir, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+    if (merker === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, merker);
+  }
 });
 
 check("Der Kartenstapel einer Wurzel bewegt sich nach seinen Regeln", () => {
@@ -6590,7 +7169,7 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
   // Wörter, die die Muster tragen und trotzdem richtig sind: Fremdnamen,
   // Bezeichner aus Kontrakt und Vorlage, Beispiel-Slugs und Fugen wie zuerst.
   const erlaubt =
-    /^(?:issues?|traefik|bluetooth|due|oem(?:-config)?|mueller(?:-metallbau)?|ohne-schluessel|menue|(?:akt|event|man|individ|virt|vis|punkt)uell\w*|\w*zu(?:ent|erkenn|eign|erst|einander)\w*)$/;
+    /^(?:issues?|true|traefik|bluetooth|due|oem(?:-config)?|mueller(?:-metallbau)?|ohne-schluessel|menue|(?:akt|event|man|individ|virt|vis|punkt)uell\w*|\w*zu(?:ent|erkenn|eign|erst|einander)\w*)$/;
 
   const verdaechtig = (text) => {
     const funde = [];

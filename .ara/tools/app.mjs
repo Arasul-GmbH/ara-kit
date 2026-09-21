@@ -25,6 +25,10 @@
  * `--check` and `--deploy` also take a folder: `--deploy <folder>` deploys a
  * package that does not come out of `apps/`.
  *
+ * `--check` and `--deploy` also hold the field `agent` of `app.json` against the app: its
+ * form, and that every route it names exists in the backend, `GET agent` included. The
+ * build puts a copy of `app.json` next to the backend so that the route can answer.
+ *
  * For a customer device `--customer <customer>` comes along. Address and key stand
  * in the device file, not in the command: that way no device can be addressed with
  * another customer's details.
@@ -59,6 +63,10 @@
  *
  * `--check` und `--deploy` nehmen auch einen Ordner: `--deploy <ordner>` spielt
  * ein Paket ein, das nicht aus `apps/` kommt.
+ *
+ * `--check` und `--deploy` halten auch das Feld `agent` der `app.json` gegen die App: seine
+ * Form, und dass jede Route, die es nennt, im Backend steht, `GET agent` eingeschlossen. Der
+ * Bau legt eine Kopie der `app.json` neben das Backend, damit die Route antworten kann.
  *
  * Bei einem Kundengerät kommt `--customer <kunde>` dazu. Adresse und Schlüssel
  * stehen in der Geräteakte, nicht im Befehl: damit kann kein Gerät mit den Daten
@@ -103,6 +111,7 @@ import {
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { standardFindings } from "./lib/standard.mjs";
+import { agentFindings } from "./lib/agentfield.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
@@ -565,6 +574,13 @@ function buildApp(app) {
     }
     cpSync(dist, target, { recursive: true, filter: noAppleDouble });
     gebaut.push(entry.name);
+  }
+
+  // Die App beschreibt sich selbst, aus ihrem Manifest: die Route `agent` liefert das Feld aus
+  // `app.json`. Im Container liegt nur der Backend-Ordner, also legt der Bau eine Kopie hinein.
+  const backendFolder = app.manifest?.backend?.bauen?.verzeichnis;
+  if (backendFolder && !backendFolder.startsWith("/") && !backendFolder.split("/").includes("..") && existsSync(join(buildDir, backendFolder))) {
+    cpSync(join(app.dir, "app.json"), join(buildDir, backendFolder, "app.json"));
   }
 
   const size = (function messen(path) {
@@ -1246,7 +1262,7 @@ function reportManifest(where, result, delivery) {
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest)];
   if (arg.json) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
@@ -1267,7 +1283,7 @@ if (arg.check !== undefined) {
 if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest)];
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));

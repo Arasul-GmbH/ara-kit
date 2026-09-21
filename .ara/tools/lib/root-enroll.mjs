@@ -14,9 +14,11 @@
  * laeuft, was zugestimmt war, und `status` sagt, dass der Vorschlag sich
  * geaendert hat.
  *
- * Das Anmelden gegen ein Geraet gehoert nicht hierher, das uebernimmt spaeter das
- * CLI der Wurzel. Dieser Schritt ist der lokale Freigabeschritt fuer
- * Vorschlaege und braucht kein Geraet und kein Netz.
+ * Das Anmelden gegen ein Geraet gehoert nicht hierher, das tut `arasul.mjs` in der
+ * Wurzel. Es fuehrt denselben Freigabeschritt in einer eigenen Fassung, weil es mit
+ * Node allein laeuft, und legt dieselben Dateien an: was das eine eintraegt, nimmt
+ * das andere zurueck. Der Selbsttest haelt die beiden zusammen. Dieser Schritt hier
+ * braucht kein Geraet und kein Netz.
  */
 
 import { createHash } from "node:crypto";
@@ -28,7 +30,7 @@ import { t } from "./i18n.mjs";
 import { PROPOSAL } from "./root.mjs";
 
 const HOOK_SOURCE = join(".claude", "proposal", "boundary.mjs");
-const SIDES = ["allow", "deny", "additionalDirectories"];
+const SIDES = ["allow", "deny", "ask", "additionalDirectories"];
 
 /** Die Einstellungen des Nutzers: `--settings`, sonst die des Agenten selbst. */
 export function settingsFile(given) {
@@ -76,12 +78,16 @@ function ledgerDir(root, settings) {
 
 /** `{root}` wird der ausgeschriebene Pfad, in der Schreibweise, die die Regel verlangt. */
 function resolved(proposal, root) {
-  const rule = (text) => text.replaceAll("{root}", `/${absolute(root)}`);
+  // A path rule of Read or Edit takes `//` for an absolute path. A shell rule is matched against
+  // the command as it is typed, so its path stands as it is: `//Users/...` never matches
+  // `/Users/...`.
+  const rule = (text) => text.replaceAll("{root}", text.startsWith("Bash(") ? absolute(root) : `/${absolute(root)}`);
   const dir = (text) => text.replaceAll("{root}", absolute(root));
   const permissions = proposal.permissions || {};
   return {
     allow: (permissions.allow || []).map(rule),
     deny: (permissions.deny || []).map(rule),
+    ask: (permissions.ask || []).map(rule),
     additionalDirectories: (permissions.additionalDirectories || []).map(dir),
   };
 }
@@ -164,7 +170,7 @@ export function enroll(root, settingsPath, consent) {
   // Eine neue Zustimmung ersetzt die alte ganz: erst weg, was sie eintrug.
   if (before) removeRecorded(settings, before.added);
 
-  const added = { allow: [], deny: [], additionalDirectories: [], hook: { event: p.event, command: p.command } };
+  const added = { allow: [], deny: [], ask: [], additionalDirectories: [], hook: { event: p.event, command: p.command } };
   settings.permissions ||= {};
   for (const side of SIDES) {
     const list = (settings.permissions[side] ||= []);

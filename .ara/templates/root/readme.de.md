@@ -21,6 +21,15 @@ Nichts in diesem Ordner läuft von selbst. Die Grenze zu den Orten und die Erlau
 liegen in `.claude/proposal/` als Vorschlag. Sie wirken erst, wenn ein Mensch sie angesehen
 und in seine eigenen Einstellungen angemeldet hat.
 
+## Die Brücke zu den Apps
+
+`arasul.mjs` in diesem Ordner läuft mit Node allein. `node arasul.mjs login <adresse> --user
+<name>` hält einen Ausweis für ein Gerät in `~/.config/arasul/`, zeigt die Vorschläge für
+Hooks und Regeln und lässt dich jeden mit seiner Prüfsumme freigeben. Danach listet `apps`
+die Apps, die dir zugewiesen sind, und `call <app> <route>` fragt eine davon. Was der Agent
+ohne Rückfrage darf, steht im Vorschlag, und der Skill `arasul` in `.claude/skills/` sagt
+ihm, wie er die beiden benutzt.
+
 ## Erste Schritte
 
 1. Den Kommentar oben in `.claude/CLAUDE.md` durch drei Sätze über das Haus ersetzen.
