@@ -13,6 +13,17 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.24.0 (2026-09-21)
+
+Contract: up to 5
+
+- `/root` lays out a scaffold, not a way of working. Without a switch the root holds `.claude/CLAUDE.md` with the rules, `.claude/skills/` (place, where-things-go) and `.claude/agents/` (place-reader, root-checker), the list of places, the check script and the folders of level 1 that the house names with `--folders` or in the interview. The kit brings none of its own. Everything of 0.23.0 that steers work, `company/`, `roadmap/` with the card stack, `experiments/`, `customers/`, `templates/`, `archive/`, the card tool and its skill, is an addition now: `--method` lays it out with the scaffold or into an existing root, appends its rules and overwrites nothing. Its checks run unchanged. The scaffold lies under `.ara/templates/root/`, the addition under `.ara/templates/root-method/`.
+- Nothing in the laid out tree runs by itself. There is no `settings.json` and no active hook. The boundary hook and the permission rules lie in `.claude/proposal/` as a proposal. `--enroll` shows what would go into the user's own settings and a checksum over the proposal and the hook, `--enroll --consent <checksum>` writes it, `--unenroll` takes back exactly that. The hook that runs is a copy next to the settings, so a change in the tree takes effect only after new consent, and `--show` says that the proposal has changed. The hook acts only in a session that started in the root or below it, not in a place and not elsewhere, because enrolled it hangs in front of every session on the computer. Logging in to a device, comparing and querying apps are not part of it, that stays with the CLI of the root.
+- The check script has 17 checks. New: no `settings.json` in the tree (14), confidential things by pattern in the root and in level 1 (15), references only upward, no sibling and no contents of a folder named in a rule of the root (16), no `.git` that the list does not name and no source tree in the tree (17). Single scripts are allowed everywhere and are no finding. A folder that carries the name of a place without a local path counts as its copy (11).
+- An unknown switch of `root.mjs` is reported and stops the tool, and so are a loose argument and an unknown `--language`. `--lang` used to be skipped, and the root came out in the language of the profile.
+- The showcase follows the scaffold: two folders of level 1 and nothing that runs by itself, and it comes with the method.
+- Measured in a real session, `claude -p` 2.1.278 with a settings file through `--settings`: a session one level below the root loads the rules, skills and agents of the root, with and without `.git`. The tilde in `additionalDirectories` is resolved. With consent the hook stops a write into a closed place by tool and by shell, from the level below and from the root, and leaves a session in the place alone. Without consent it does not act. Not measured: the same through `~/.claude/settings.json` itself and in an interactive session.
+
 ## 0.23.0 (2026-09-21)
 
 Contract: up to 5

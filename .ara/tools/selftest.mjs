@@ -71,7 +71,7 @@ import {
   promisedFolders,
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
-import { EXAMPLE as ROOT_EXAMPLE, FOLDERS as ROOT_FOLDERS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE } from "./lib/root.mjs";
+import { EXAMPLE as ROOT_EXAMPLE, METHOD as ROOT_METHOD, METHOD_FOLDERS as ROOT_FOLDERS, METHOD_TARGETS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE } from "./lib/root.mjs";
 import {
   EXTERNAL_PREFIX,
   bareApiPaths,
@@ -5816,12 +5816,24 @@ function inWurzel(root, script, args = [], input) {
   return spawnSync("node", [join(root, ".claude", script), ...args], { cwd: root, encoding: "utf8", input });
 }
 
+/** Alle Dateien eines Baums, relativ, ohne .git. */
+function dateien(dir, base = dir) {
+  const out = [];
+  for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+    if (eintrag.name === ".git") continue;
+    const pfad = join(dir, eintrag.name);
+    if (eintrag.isDirectory()) out.push(...dateien(pfad, base));
+    else out.push(relative(base, pfad));
+  }
+  return out.sort();
+}
+
 for (const lang of ["en", "de"]) {
-  check(`Eine frische Firmenwurzel entsteht und ist ohne Befund (${lang})`, () => {
+  check(`Eine frische Firmenwurzel ist nur das Gerüst und ohne Befund (${lang})`, () => {
     const lokal = wegwerfordner("ara-ort-");
     const start = Date.now();
     const { root, run } = wurzel([
-      "--name", "Probehaus", "--language", lang,
+      "--name", "Probehaus", "--language", lang, "--folders", "sales,product=what we build",
       "--place", "api", "--kind", "github", "--where", "https://github.com/example/api",
       "--local", lokal, "--purpose", "probe",
     ]);
@@ -5834,13 +5846,24 @@ for (const lang of ["en", "de"]) {
 
     const fehlt = [...ROOT_TARGETS].filter((ziel) => !existsSync(join(root, ziel)));
     assert(fehlt.length === 0, `in der frischen Wurzel fehlt: ${fehlt.join(", ")}`);
-    for (const ordner of Object.keys(ROOT_FOLDERS)) {
-      assert(existsSync(join(root, ordner)), `Ordner ${ordner}/ fehlt`);
+    for (const ziel of ["CLAUDE.md", "skills", "agents", "places.json", "scripts/check.mjs"]) {
+      assert(existsSync(join(root, ".claude", ziel)), `.claude/${ziel} fehlt im Gerüst`);
     }
-    for (const spalte of ["new", "ready", "running", "done"]) {
-      assert(existsSync(join(root, "roadmap", "backlog", spalte)), `Spalte ${spalte}/ des Kartenstapels fehlt`);
+    // Die Ebene 1 nennt das Haus, das Gerüst bringt keinen eigenen Ordner mit.
+    const oben = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== ".git" && e.name !== ".claude").map((e) => e.name).sort();
+    assert(oben.join() === "product,sales", `Ordner oben: ${oben.join()}, erwartet sind genau die genannten`);
+    for (const ordner of ROOT_FOLDERS) {
+      assert(!existsSync(join(root, ordner)), `Ordner ${ordner}/ der Methode liegt im Gerüst`);
     }
-    assert(existsSync(join(root, "roadmap", "api.md")), "der Ort hat kein Blatt unter roadmap/ bekommen");
+    assert(!existsSync(join(root, ".claude", "scripts", "cards.mjs")), "das Kartenwerkzeug liegt im Gerüst");
+
+    // Nichts im Baum wirkt von selbst: keine settings.json, kein scharfer Hook.
+    const alle = dateien(root);
+    const scharf = alle.filter((datei) => /(^|\/)settings(\.local)?\.json$/.test(datei) || /^\.claude\/hooks\//.test(datei));
+    assert(scharf.length === 0, `im Baum liegt etwas, das von selbst wirken kann: ${scharf.join(", ")}`);
+    for (const datei of alle.filter((d) => d.endsWith(".json"))) {
+      assert(!/"hooks"\s*:/.test(readFileSync(join(root, datei), "utf8")), `${datei} trägt einen Hook, der von selbst wirken könnte`);
+    }
 
     const regeln = readFileSync(join(root, ".claude", "CLAUDE.md"), "utf8");
     assert(/^# Probehaus$/m.test(regeln), "die Regeln tragen den Namen des Hauses nicht");
@@ -5849,33 +5872,82 @@ for (const lang of ["en", "de"]) {
         : /## Where the truth stands/.test(regeln) && /## Where new things go/.test(regeln),
       "die Wahrheitstabelle oder die Tabelle für Neues fehlt in den Regeln"
     );
+    assert(/\| what we build \| `product\/` \|/.test(regeln) && /`sales\/`/.test(regeln), "die Ordner der Ebene 1 stehen nicht in der Tabelle");
     assert(!/\{\{[a-z_+\-0-9]+\}\}/.test(regeln), "in den Regeln steht ein ungefüllter Platzhalter");
+    assert(!/company\/|roadmap\/|cards\.mjs/.test(regeln), "das Gerüst spricht von der Methode");
 
-    // Rechte je Unterordner, nach dem Vorbild des Kits: ./ordner/**
-    const settings = JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8"));
-    for (const [ordner, recht] of Object.entries(ROOT_FOLDERS)) {
-      assert(settings.permissions.allow.includes(`${recht}(./${ordner}/**)`), `kein Recht für ${ordner}/ in settings.json`);
-    }
-    assert(settings.permissions.deny.includes("Edit(./archive/**)"), "das Archiv ist nicht eingefroren");
-    assert(settings.permissions.deny.includes(`Edit(/${lokal}/**)`), "der Ort ist in settings.json nicht gegen Schreiben gesperrt");
-    assert(settings.permissions.defaultMode === "default", "defaultMode ist nicht default, die Rechte je Ordner sagen dann nichts");
-    assert(
-      settings.hooks.PreToolUse.some((e) => e.hooks.some((h) => /boundary\.mjs/.test(h.command))),
-      "der Grenz-Hook hängt nicht vor den Werkzeugen"
-    );
+    // Der Vorschlag: Regeln mit {root}, kein ./ (eine Regel im Nutzerordner gilt von jedem Ordner aus).
+    const vorschlag = JSON.parse(readFileSync(join(root, ".claude", "proposal", "proposal.json"), "utf8"));
+    const regelListe = [...vorschlag.permissions.allow, ...vorschlag.permissions.deny];
+    assert(!regelListe.some((r) => /\(\.\//.test(r)), "eine Regel des Vorschlags hängt an ./ und gilt nur aus dem Wurzelordner");
+    assert(vorschlag.permissions.deny.includes(`Edit(/${lokal}/**)`), "der Ort ist im Vorschlag nicht gegen Schreiben gesperrt");
+    assert(vorschlag.permissions.additionalDirectories.includes(lokal), "der Ort steht nicht unter additionalDirectories");
+    assert(!vorschlag.permissions.deny.some((r) => /archive/.test(r)), "das Gerüst friert ein Archiv ein, das es nicht hat");
+    assert(vorschlag.hook.script === "boundary.mjs" && /Bash/.test(vorschlag.hook.matcher), "der Hook im Vorschlag hängt nicht vor Shell und Schreiben");
 
     const orte = JSON.parse(readFileSync(join(root, ".claude", "places.json"), "utf8")).places;
     assert(orte.length === 1 && orte[0].name === "api" && orte[0].where.startsWith("https://"), "die Liste der Orte stimmt nicht");
-    // Ein Verweis, nie eine Kopie: vom Ort liegt in der Wurzel nur sein Blatt.
-    assert(!existsSync(join(root, "api")), "der Ort liegt als Ordner in der Wurzel");
+    // Ein Verweis, nie eine Kopie: vom Ort liegt in der Wurzel nichts.
+    assert(!existsSync(join(root, "api")) && !existsSync(join(root, "roadmap")), "der Ort liegt in der Wurzel");
 
     const pruefung = inWurzel(root, "scripts/check.mjs");
     assert(pruefung.status === 0, `das Prüfskript der frischen Wurzel meldet:\n${pruefung.stdout}`);
     assert(
-      (lang === "de" ? /13 Prüfungen, kein Befund/ : /13 checks, no finding/).test(pruefung.stdout),
+      (lang === "de" ? /17 Prüfungen, kein Befund/ : /17 checks, no finding/).test(pruefung.stdout),
       `das Prüfskript spricht nicht ${lang}: ${pruefung.stdout}`
     );
-    return `${ROOT_TARGETS.size} Dateien, ${sekunden.toFixed(1)} s, 13 Prüfungen ohne Befund`;
+    const faelle = inWurzel(root, "proposal/boundary-test.mjs");
+    assert(faelle.status === 0, `die Fälle der Grenze fallen im Gerüst:\n${faelle.stderr || faelle.stdout}`);
+    return `${ROOT_TARGETS.size} Dateien, ${sekunden.toFixed(1)} s, 17 Prüfungen ohne Befund`;
+  });
+}
+
+for (const lang of ["en", "de"]) {
+  check(`Die Methode ist ein Zusatz: mit dem Gerüst oder später, ohne dass etwas bricht (${lang})`, () => {
+    // Angelegt mit --method, und nachgerüstet in ein Gerüst: dieselben Dateien.
+    const fresh = wurzel(["--name", "Probehaus", "--language", lang, "--folders", "sales", "--method"]);
+    assert(fresh.run.status === 0, `mit --method: ${fresh.run.stderr || fresh.run.stdout}`);
+    const fehlt = [...ROOT_TARGETS, ...METHOD_TARGETS].filter((ziel) => !existsSync(join(fresh.root, ziel)));
+    assert(fehlt.length === 0, `mit der Methode fehlt: ${fehlt.join(", ")}`);
+    for (const ordner of ROOT_FOLDERS) assert(existsSync(join(fresh.root, ordner)), `Ordner ${ordner}/ fehlt`);
+    for (const spalte of ["new", "ready", "running", "done"]) {
+      assert(existsSync(join(fresh.root, "roadmap", "backlog", spalte)), `Spalte ${spalte}/ des Kartenstapels fehlt`);
+    }
+    const settings = dateien(fresh.root).filter((d) => /(^|\/)settings(\.local)?\.json$/.test(d));
+    assert(settings.length === 0, `mit der Methode liegt eine settings.json im Baum: ${settings.join(", ")}`);
+    const vorschlag = JSON.parse(readFileSync(join(fresh.root, ".claude", "proposal", "proposal.json"), "utf8"));
+    assert(vorschlag.permissions.deny.includes("Edit({root}/archive/**)"), "das Archiv ist mit der Methode nicht eingefroren");
+    const lauf = inWurzel(fresh.root, "scripts/check.mjs");
+    assert(lauf.status === 0, `das Prüfskript mit der Methode meldet:\n${lauf.stdout}`);
+
+    const spaeter = wurzel(["--name", "Probehaus", "--language", lang, "--folders", "sales"]);
+    assert(spaeter.run.status === 0, `Gerüst: ${spaeter.run.stderr || spaeter.run.stdout}`);
+    const ort = wegwerfordner("ara-ort-");
+    const nach = tool("root.mjs", ["--path", spaeter.root, "--place", "api", "--kind", "folder", "--where", ort, "--local", ort, "--purpose", "probe"], "");
+    assert(nach.status === 0, `Ort ins Gerüst: ${nach.stderr || nach.stdout}`);
+    assert(!existsSync(join(spaeter.root, "roadmap")), "ein Ort im Gerüst legt ein Blatt unter roadmap/ an");
+    const eigen = "Eigener Satz des Hauses in den Regeln.\n";
+    appendFileSync(join(spaeter.root, ".claude", "CLAUDE.md"), eigen);
+    const dazu = tool("root.mjs", ["--path", spaeter.root, "--method"], "");
+    assert(dazu.status === 0, `--method an einer bestehenden Wurzel endet mit ${dazu.status}: ${dazu.stderr || dazu.stdout}`);
+    const regeln = readFileSync(join(spaeter.root, ".claude", "CLAUDE.md"), "utf8");
+    assert(regeln.includes(eigen), "das Nachrüsten hat einen Satz des Hauses in den Regeln überschrieben");
+    assert(/company\//.test(regeln), "die Regeln der Methode sind nicht angehängt");
+    assert(existsSync(join(spaeter.root, "roadmap", "api.md")), "der Ort hat nach dem Nachrüsten kein Blatt");
+    const vorher = [...ROOT_TARGETS, ...METHOD_TARGETS].filter((ziel) => !existsSync(join(spaeter.root, ziel)));
+    assert(vorher.length === 0, `nach dem Nachrüsten fehlt: ${vorher.join(", ")}`);
+    const nachher = inWurzel(spaeter.root, "scripts/check.mjs");
+    assert(nachher.status === 0, `das Prüfskript nach dem Nachrüsten meldet:\n${nachher.stdout}`);
+    assert(tool("root.mjs", ["--path", spaeter.root, "--method"], "").status !== 0, "die Methode lässt sich zweimal anlegen");
+
+    // Ein Ordner des Hauses, der so heißt wie ein Ordner der Methode, wird nicht überschrieben.
+    const belegt = wurzel(["--name", "Probehaus", "--language", lang]);
+    mkdirSync(join(belegt.root, "customers"));
+    writeFileSync(join(belegt.root, "customers", "meins.md"), "bleibt");
+    const kollision = tool("root.mjs", ["--path", belegt.root, "--method"], "");
+    assert(kollision.status !== 0 && !existsSync(join(belegt.root, "roadmap")), "die Methode wird in eine Wurzel gelegt, deren Ordner sie überschriebe");
+    assert(readFileSync(join(belegt.root, "customers", "meins.md"), "utf8") === "bleibt", "ein Ordner des Hauses wurde überschrieben");
+    return "mit --method und später nachgerüstet, dieselben Dateien, Prüfskript ohne Befund";
   });
 }
 
@@ -5886,7 +5958,7 @@ check("Nichts Arasul-Eigenes steckt in einer Firmenwurzel", () => {
   const eigen = /arasul|kolja|schöpe|lissabon|\borin\b|jetson|dresden|unit.?ix|\b\d[\d.]*\s*(euro|eur|€)/i;
   const funde = [];
   for (const lang of ["en", "de"]) {
-    for (const args of [["--name", "Probehaus"], ["--example"]]) {
+    for (const args of [["--name", "Probehaus", "--folders", "sales"], ["--name", "Probehaus", "--method"], ["--example"]]) {
       const { root, run } = wurzel([...args, "--language", lang]);
       assert(run.status === 0, `root.mjs ${args.join(" ")} endet mit ${run.status}: ${run.stderr || run.stdout}`);
       const scan = (dir) => {
@@ -5922,6 +5994,11 @@ for (const lang of ["en", "de"]) {
       const karten = readdirSync(join(root, "roadmap", "backlog", spalte)).filter((n) => n.endsWith(".md"));
       assert(karten.length >= 1, `in ${spalte}/ der Vorzeigefassung liegt keine Karte`);
     }
+    // Die Vorzeigefassung folgt dem Gerüst: Ordner der Ebene 1, nichts, das von selbst wirkt.
+    for (const ordner of ["sales", "quality"]) assert(existsSync(join(root, ordner)), `Ordner ${ordner}/ der Ebene 1 fehlt in der Vorzeigefassung`);
+    const regelnZeigen = readFileSync(join(root, ".claude", "CLAUDE.md"), "utf8");
+    assert(/`sales\/`/.test(regelnZeigen) && /`quality\/`/.test(regelnZeigen), "die Ordner der Ebene 1 stehen nicht in der Tabelle der Vorzeigefassung");
+    assert(!dateien(root).some((d) => /(^|\/)settings(\.local)?\.json$/.test(d)), "in der Vorzeigefassung liegt eine settings.json");
     const orte = JSON.parse(readFileSync(join(root, ".claude", "places.json"), "utf8")).places;
     assert(orte.some((o) => o.kind === "github") && orte.some((o) => o.kind === "folder" && /sharepoint/.test(o.where)),
       "die Vorzeigefassung zeigt nicht beide Arten von Orten");
@@ -5984,7 +6061,25 @@ check("Das Prüfskript einer Wurzel ist scharf: jeder eingebaute Fehler wird ein
       mkdirSync(datei("templates", "kopie"));
     }],
     [12, () => appendFileSync(datei("customers", "lindholm-pumps", "customer.md"), "\n[Protokoll](documents/fehlt.md)\n")],
-    [13, () => ersetze(datei(".claude", "hooks", "boundary.mjs"), "if (place) {", "if (false) {")],
+    [13, () => ersetze(datei(".claude", "proposal", "boundary.mjs"), "if (place) {", "if (false) {")],
+    [14, () => {
+      // Eine settings.json in einem Ordner der Ebene 1, und eine lokale in der Wurzel selbst.
+      mkdirSync(datei("sales", ".claude"), { recursive: true });
+      writeFileSync(datei("sales", ".claude", "settings.json"), "{}\n");
+      writeFileSync(datei(".claude", "settings.local.json"), "{}\n");
+    }],
+    [15, () => writeFileSync(datei("sales", ".env"), "TOKEN=abc\n")],
+    [16, () => {
+      // Ein Ordner der Ebene 1 verweist auf seinen Nachbarn.
+      writeFileSync(datei("sales", "notes.md"), "Siehe [Prüfung](../quality/README.md).\n");
+      writeFileSync(datei("quality", "README.md"), "Prüfungen des Hauses.\n");
+      // Und die Regeln der Wurzel nennen etwas in einem Ordner, statt den Ordner.
+      appendFileSync(datei(".claude", "CLAUDE.md"), "\nDas Verfahren steht in `quality/README.md`.\n");
+    }],
+    [17, () => {
+      mkdirSync(datei("quality", "tool"), { recursive: true });
+      writeFileSync(datei("quality", "tool", "package.json"), "{}\n");
+    }],
   ];
   for (const [nr, fehler] of faelle) {
     const sicherung = mkdtempSync(join(tmpdir(), "ara-root-stand-"));
@@ -6007,37 +6102,69 @@ check("Die Grenze einer Wurzel hält, und ein Ort lässt sich nachtragen", () =>
   const { root, run } = wurzel(["--name", "Probehaus", "--language", "de"]);
   assert(run.status === 0, `root.mjs endet mit ${run.status}: ${run.stderr || run.stdout}`);
 
-  const faelle = inWurzel(root, "scripts/boundary-test.mjs");
+  const faelle = inWurzel(root, "proposal/boundary-test.mjs");
   assert(faelle.status === 0, `die Fälle der Grenze fallen:\n${faelle.stderr || faelle.stdout}`);
+  const anzahl = Number((faelle.stdout.match(/^(\d+) cases/m) || [])[1]);
+  assert(anzahl >= 30, `die Grenze hat nur ${anzahl} Fälle`);
 
-  // Von Hand eingetragene Rechte ueberleben das Nachtragen eines Ortes.
-  const settingsDatei = join(root, ".claude", "settings.json");
-  const settings = JSON.parse(readFileSync(settingsDatei, "utf8"));
-  settings.permissions.allow.push("Bash(make:*)");
-  writeFileSync(settingsDatei, JSON.stringify(settings, null, 2));
+  // Von Hand eingetragene Regeln im Vorschlag ueberleben das Nachtragen eines Ortes.
+  const vorschlagDatei = join(root, ".claude", "proposal", "proposal.json");
+  const vorschlag = JSON.parse(readFileSync(vorschlagDatei, "utf8"));
+  vorschlag.permissions.allow.push("Bash(make:*)");
+  writeFileSync(vorschlagDatei, JSON.stringify(vorschlag, null, 2));
 
   const nach = tool("root.mjs", ["--path", root, "--place", "docs", "--kind", "folder", "--where", lokal, "--local", lokal, "--purpose", "probe"], "");
   assert(nach.status === 0, `--place an einer bestehenden Wurzel endet mit ${nach.status}: ${nach.stderr || nach.stdout}`);
   assert(/Ort 'docs' eingetragen/.test(nach.stdout), `die Wurzel ist deutsch, das Werkzeug antwortet: ${nach.stdout}`);
-  const neu = JSON.parse(readFileSync(settingsDatei, "utf8"));
-  assert(neu.permissions.allow.includes("Bash(make:*)"), "das Nachtragen hat ein von Hand eingetragenes Recht entfernt");
+  const neu = JSON.parse(readFileSync(vorschlagDatei, "utf8"));
+  assert(neu.permissions.allow.includes("Bash(make:*)"), "das Nachtragen hat eine von Hand eingetragene Regel entfernt");
   assert(neu.permissions.deny.includes(`Edit(/${lokal}/**)`), "der nachgetragene Ort ist nicht gesperrt");
-  assert(existsSync(join(root, "roadmap", "docs.md")), "der nachgetragene Ort hat kein Blatt");
+  assert(!existsSync(join(root, ".claude", "settings.json")), "das Nachtragen hat eine settings.json angelegt");
 
   // Und die Grenze kennt ihn sofort, ohne dass jemand den Hook anfasst.
-  const hook = (ereignis) => inWurzel(root, "hooks/boundary.mjs", [], JSON.stringify(ereignis));
+  const hook = (ereignis) => inWurzel(root, "proposal/boundary.mjs", [], JSON.stringify(ereignis));
   const zu = hook({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") } });
   assert(zu.status === 2 && /docs/.test(zu.stderr), `Schreiben in den Ort geht durch: ${zu.status} ${zu.stderr}`);
+  assert(!/roadmap/.test(zu.stderr), "der Hinweis nennt ein Blatt unter roadmap/, das ohne die Methode nicht existiert");
   const shell = hook({ tool_name: "Bash", tool_input: { command: `cd ${lokal} && touch x.md` } });
   assert(shell.status === 2, "cd in den Ort und dann touch geht durch");
   const lesen = hook({ tool_name: "Bash", tool_input: { command: `ls ${lokal} && git -C ${lokal} log` } });
   assert(lesen.status === 0, `Lesen im Ort wird abgewiesen: ${lesen.stderr}`);
-  const hier = hook({ tool_name: "Write", tool_input: { file_path: join(root, "company", "core.md") } });
+  const hier = hook({ tool_name: "Write", tool_input: { file_path: join(root, "README.md") } });
   assert(hier.status === 0, "Schreiben in der Wurzel selbst wird abgewiesen");
+  // Wo die Sitzung gestartet ist, entscheidet: im Ort selbst und anderswo ist der Hook still.
+  const imOrt = hook({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") }, cwd: lokal });
+  assert(imOrt.status === 0, "eine Sitzung im Ort selbst wird an ihrem eigenen Schreiben gehindert");
+  const anderswo = hook({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") }, cwd: tmpdir() });
+  assert(anderswo.status === 0, "eine Sitzung in einem fremden Ordner wird vom Hook der Wurzel angehalten");
+  const eineTiefer = hook({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") }, cwd: join(root, ".claude") });
+  assert(eineTiefer.status === 2, "eine Sitzung eine Ebene tiefer wird nicht angehalten");
 
   const doppelt = tool("root.mjs", ["--path", root, "--place", "docs", "--kind", "folder", "--where", lokal, "--purpose", "probe"], "");
   assert(doppelt.status !== 0, "derselbe Ort lässt sich zweimal eintragen");
-  return "24 Fälle, Ort nachgetragen, Rechte von Hand bleiben";
+  return `${anzahl} Fälle, Ort nachgetragen, Regeln von Hand bleiben`;
+});
+
+check("Skripte sind überall erlaubt und kein Befund, ein Projekt schon", () => {
+  const { root, run } = wurzel(["--name", "Probehaus", "--language", "en", "--folders", "sales,quality"]);
+  assert(run.status === 0, `root.mjs endet mit ${run.status}: ${run.stderr || run.stdout}`);
+  // Einzelne Skripte in jeder Ebene und Sprache, auch tief, auch mit einer Lieferdatei daneben.
+  mkdirSync(join(root, "sales", "tools", "deep"), { recursive: true });
+  writeFileSync(join(root, "sales", "export.py"), "print('x')\n");
+  writeFileSync(join(root, "sales", "run.sh"), "echo x\n");
+  writeFileSync(join(root, "sales", "tools", "deep", "sync.mjs"), "console.log(1);\n");
+  writeFileSync(join(root, "quality", "report.js"), "console.log(2);\n");
+  writeFileSync(join(root, "quality", "notes.md"), "Notizen.\n");
+  writeFileSync(join(root, "quality", ".env.example"), "KEY=\n");
+  const still = inWurzel(root, "scripts/check.mjs");
+  assert(still.status === 0, `Skripte und eine .env.example sind ein Befund:\n${still.stdout}`);
+  // Ein Projekt daneben ist einer.
+  mkdirSync(join(root, "quality", "app", "src"), { recursive: true });
+  writeFileSync(join(root, "quality", "app", "src", "main.py"), "print(3)\n");
+  const laut = inWurzel(root, "scripts/check.mjs");
+  assert(laut.status === 1 && /Prüfung 17|Check 17/.test(laut.stdout), `ein Quelltextbaum ist kein Befund:\n${laut.stdout}`);
+  assert(!/export\.py|run\.sh|sync\.mjs|report\.js/.test(laut.stdout), `ein Skript wird gemeldet:\n${laut.stdout}`);
+  return "vier Skripte in drei Tiefen ohne Befund, ein Quelltextbaum ein Befund";
 });
 
 check("root.mjs legt nichts ins Kit und überschreibt nichts", () => {
@@ -6053,6 +6180,103 @@ check("root.mjs legt nichts ins Kit und überschreibt nichts", () => {
 
   const falsch = tool("root.mjs", ["--path", join(dir, "neu"), "--name", "Probehaus", "--no-git", "--place", "Mit Leerzeichen", "--kind", "cloud", "--where", "x"], "");
   assert(falsch.status !== 0 && !existsSync(join(dir, "neu")), "ein Ort mit falschem Namen und falscher Art geht durch");
+});
+
+check("root.mjs meldet einen unbekannten Schalter, statt ihn zu überlesen", () => {
+  const dir = wegwerfordner("ara-root-schalter-");
+  const ziel = join(dir, "haus");
+  const lang = tool("root.mjs", ["--path", ziel, "--name", "Probehaus", "--lang", "de", "--no-git"], "");
+  assert(lang.status !== 0, "--lang wird stillschweigend überlesen");
+  assert(/--lang/.test(lang.stderr + lang.stdout) && /--language/.test(lang.stderr + lang.stdout), `die Meldung nennt den Schalter und den richtigen nicht: ${lang.stderr}${lang.stdout}`);
+  assert(!existsSync(ziel), "trotz des unbekannten Schalters wurde eine Wurzel angelegt");
+  const sprache = tool("root.mjs", ["--path", ziel, "--name", "Probehaus", "--language", "fr", "--no-git"], "");
+  assert(sprache.status !== 0 && !existsSync(ziel), "eine unbekannte Sprache wird hingenommen");
+  const lose = tool("root.mjs", ["--path", ziel, "--name", "Probehaus", "--folders", "sales", "und", "product", "--no-git"], "");
+  assert(lose.status !== 0 && !existsSync(ziel), "ein loses Argument wird überlesen");
+  for (const falsch of ["Sales", "company", "a b", "sales,sales"]) {
+    const lauf = tool("root.mjs", ["--path", ziel, "--name", "Probehaus", "--folders", falsch, "--no-git"], "");
+    assert(lauf.status !== 0 && !existsSync(ziel), `der Ordner '${falsch}' der Ebene 1 wird angelegt`);
+  }
+  // Auch an einer bestehenden Wurzel: Ordner der Ebene 1 werden beim Anlegen genannt.
+  const { root } = wurzel(["--name", "Probehaus", "--no-git"]);
+  const spaeter = tool("root.mjs", ["--path", root, "--folders", "sales"], "");
+  assert(spaeter.status !== 0 && !existsSync(join(root, "sales")), "--folders an einer bestehenden Wurzel legt Ordner an");
+});
+
+check("Die Anmeldung schreibt nur nach Zustimmung mit Prüfsumme, und eine Änderung verlangt sie neu", () => {
+  const lokal = wegwerfordner("ara-ort-");
+  const { root, run } = wurzel(["--name", "Probehaus", "--language", "de", "--folders", "sales", "--place", "api", "--kind", "folder", "--where", lokal, "--local", lokal, "--purpose", "probe"]);
+  assert(run.status === 0, `root.mjs endet mit ${run.status}: ${run.stderr || run.stdout}`);
+  const einstellungen = join(wegwerfordner("ara-nutzer-"), "settings.json");
+  const eigene = { model: "x", permissions: { allow: ["Bash(ls:*)"], deny: ["Read(./geheim)"] }, hooks: { PreToolUse: [{ matcher: "Bash", hooks: [{ type: "command", command: "echo fremd" }] }] } };
+  writeFileSync(einstellungen, JSON.stringify(eigene, null, 2));
+  const anmelden = (...args) => tool("root.mjs", ["--path", root, "--settings", einstellungen, ...args], "");
+  const inhalt = () => readFileSync(einstellungen, "utf8");
+  const vorher = inhalt();
+
+  // Ansehen schreibt nichts, und nennt die Summe und jede Zeile.
+  const ansehen = anmelden("--enroll");
+  assert(ansehen.status === 0, `--enroll endet mit ${ansehen.status}: ${ansehen.stderr}`);
+  assert(inhalt() === vorher, "--enroll ohne Zustimmung hat die Einstellungen verändert");
+  const summe = (ansehen.stdout.match(/Prüfsumme: ([0-9a-f]{64})/) || [])[1];
+  assert(summe, `--enroll nennt keine Prüfsumme:\n${ansehen.stdout}`);
+  assert(ansehen.stdout.includes("boundary.mjs") && ansehen.stdout.includes(`Edit(/${lokal}/**)`), "--enroll nennt den Hook oder die Regeln nicht");
+  assert(/nicht angemeldet/.test(anmelden("--show").stdout), "--show sagt nicht, dass nichts angemeldet ist");
+
+  // Eine falsche Summe schreibt nichts.
+  const falsch = anmelden("--enroll", "--consent", "0123456789abcdef0123");
+  assert(falsch.status !== 0 && inhalt() === vorher, "eine falsche Prüfsumme wird hingenommen");
+  assert(anmelden("--enroll", "--consent", summe.slice(0, 8)).status !== 0, "eine zu kurze Prüfsumme wird hingenommen");
+
+  // Kaputte Einstellungen werden nicht überschrieben.
+  const kaputt = wegwerfordner("ara-nutzer-");
+  writeFileSync(join(kaputt, "settings.json"), "{ nicht json");
+  const zerstoert = tool("root.mjs", ["--path", root, "--settings", join(kaputt, "settings.json"), "--enroll", "--consent", summe], "");
+  assert(zerstoert.status !== 0 && readFileSync(join(kaputt, "settings.json"), "utf8") === "{ nicht json", "kaputte Einstellungen werden überschrieben");
+
+  // Mit der Summe wird geschrieben, und was dem Nutzer gehört, bleibt.
+  const gut = anmelden("--enroll", "--consent", summe.slice(0, 16));
+  assert(gut.status === 0, `mit der Summe endet --enroll mit ${gut.status}: ${gut.stderr}${gut.stdout}`);
+  const nach = JSON.parse(inhalt());
+  assert(nach.model === "x" && nach.permissions.allow.includes("Bash(ls:*)") && nach.permissions.deny.includes("Read(./geheim)"), "die eigenen Einstellungen des Nutzers sind weg");
+  assert(nach.hooks.PreToolUse.some((e) => e.hooks.some((h) => h.command === "echo fremd")), "der fremde Hook des Nutzers ist weg");
+  const unserer = nach.hooks.PreToolUse.flatMap((e) => e.hooks).filter((h) => /boundary\.mjs/.test(h.command));
+  assert(unserer.length === 1, `der Grenz-Hook hängt ${unserer.length} Mal davor`);
+  assert(nach.permissions.deny.includes(`Edit(/${lokal}/**)`), "der Ort ist in den Einstellungen des Nutzers nicht gesperrt");
+  assert(!inhalt().includes("{root}"), "ein {root} blieb in den Einstellungen stehen");
+  const kopie = unserer[0].command.match(/node "([^"]+)"/)[1];
+  assert(existsSync(kopie), "die Kopie des Hooks neben den Einstellungen fehlt");
+  assert(readFileSync(kopie, "utf8") === readFileSync(join(root, ".claude", "proposal", "boundary.mjs"), "utf8"), "die Kopie ist nicht der Hook, dem zugestimmt wurde");
+  assert(!existsSync(join(root, ".claude", "settings.json")), "das Anmelden hat eine settings.json in den Baum gelegt");
+  assert(inWurzel(root, "scripts/check.mjs").status === 0, "das Prüfskript hat nach dem Anmelden einen Befund");
+  assert(/angemeldet am/.test(anmelden("--show").stdout), "--show sagt nicht, dass angemeldet ist");
+
+  // Der angemeldete Hook wirkt aus jedem Ordner nur da, wo er soll.
+  const wirkt = (ereignis) => spawnSync("node", [kopie, "--root", root], { input: JSON.stringify(ereignis), encoding: "utf8" }).status;
+  assert(wirkt({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") }, cwd: join(root, "sales") }) === 2, "der angemeldete Hook hält eine Sitzung eine Ebene tiefer nicht an");
+  assert(wirkt({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") }, cwd: lokal }) === 0, "der angemeldete Hook hält eine Sitzung im Ort an");
+  assert(wirkt({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") }, cwd: tmpdir() }) === 0, "der angemeldete Hook hält eine fremde Sitzung an");
+
+  // Ändert sich der Vorschlag, gilt die Zustimmung nicht mehr für ihn.
+  appendFileSync(join(root, ".claude", "proposal", "boundary.mjs"), "\n// geändert\n");
+  assert(/geändert seit der Zustimmung|sich seit der Zustimmung geändert/.test(anmelden("--show").stdout), "--show meldet die geänderte Prüfsumme nicht");
+  assert(anmelden("--enroll", "--consent", summe.slice(0, 16)).status !== 0, "die alte Zustimmung gilt für den geänderten Vorschlag");
+  assert(readFileSync(kopie, "utf8") !== readFileSync(join(root, ".claude", "proposal", "boundary.mjs"), "utf8"), "der geänderte Hook liegt schon in den Einstellungen des Nutzers");
+  const neu = (anmelden("--enroll").stdout.match(/Prüfsumme: ([0-9a-f]{64})/) || [])[1];
+  assert(neu && neu !== summe, "die geänderte Datei hat dieselbe Prüfsumme");
+  const erneut = anmelden("--enroll", "--consent", neu.slice(0, 16));
+  assert(erneut.status === 0 && /Neu angemeldet/.test(erneut.stdout), `neue Zustimmung: ${erneut.stderr}${erneut.stdout}`);
+  const dann = JSON.parse(inhalt());
+  assert(dann.hooks.PreToolUse.flatMap((e) => e.hooks).filter((h) => /boundary\.mjs/.test(h.command)).length === 1, "nach der neuen Zustimmung hängt der Hook doppelt davor");
+  assert(dann.permissions.deny.filter((r) => r === `Edit(/${lokal}/**)`).length === 1, "nach der neuen Zustimmung steht eine Regel doppelt");
+
+  // Zurück: genau das Eigene bleibt.
+  const zurueck = anmelden("--unenroll");
+  assert(zurueck.status === 0, `--unenroll endet mit ${zurueck.status}: ${zurueck.stderr}`);
+  assert(JSON.stringify(JSON.parse(inhalt())) === JSON.stringify(eigene), `nach --unenroll sind die Einstellungen nicht wie vorher:\n${inhalt()}`);
+  assert(!existsSync(kopie), "die Kopie des Hooks bleibt nach --unenroll liegen");
+  assert(/nichts zurückzunehmen/.test(anmelden("--unenroll").stdout), "--unenroll an einer nicht angemeldeten Wurzel sagt nichts");
+  return "ansehen schreibt nichts, falsche Summe nichts, Änderung verlangt neu, zurück ist genau zurück";
 });
 
 check("Der Kartenstapel einer Wurzel bewegt sich nach seinen Regeln", () => {
@@ -6110,11 +6334,15 @@ check("Das Gerüst der Firmenwurzel liegt in beiden Sprachen vor", () => {
     }
   };
   scan(ROOT_TEMPLATE);
+  scan(ROOT_METHOD);
   scan(ROOT_EXAMPLE);
   assert(ohne.length === 0, `ohne Gegenstück: ${ohne.join(", ")}`);
   assert(gleich.length === 0, `englisch und deutsch sind dieselbe Datei: ${gleich.join(", ")}`);
   assert(paare >= 30, `nur ${paare} Paare im Gerüst, das kann nicht stimmen`);
-  assert(!existsSync(join(ROOT_TEMPLATE, "CLAUDE.md")), "im Gerüst liegt eine CLAUDE.md, der Agent lädt sie beim Lesen des Ordners mit");
+  for (const wurzel of [ROOT_TEMPLATE, ROOT_METHOD]) {
+    assert(!existsSync(join(wurzel, "CLAUDE.md")), "im Gerüst liegt eine CLAUDE.md, der Agent lädt sie beim Lesen des Ordners mit");
+    assert(!existsSync(join(wurzel, ".claude")), "im Gerüst liegt ein .claude, der Agent lädt daraus beim Lesen des Ordners");
+  }
   return `${paare} Paare`;
 });
 
@@ -6756,6 +6984,7 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   const rootSheet = (file) =>
     /^\.ara\/(knowledge|commands\/all)\/root(\.de)?\.md$/.test(relative(ROOT, file).split("\\").join("/")) ||
     file.startsWith(ROOT_TEMPLATE) ||
+    file.startsWith(ROOT_METHOD) ||
     file.startsWith(ROOT_EXAMPLE);
   const collect = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -6786,7 +7015,7 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
       // Das Wissen zur Firmenwurzel nennt Dateien, die in der WURZEL liegen und
       // nicht im Kit. Gegen die Liste dessen, was das Werkzeug wirklich anlegt,
       // und nur in den Blaettern, die davon handeln: sonst waere es ein Freibrief.
-      if (rootSheet(file) && ROOT_TARGETS.has(target)) continue;
+      if (rootSheet(file) && (ROOT_TARGETS.has(target) || METHOD_TARGETS.has(target))) continue;
       missing.push(`${relative(ROOT, file)} → ${target}`);
     }
   }

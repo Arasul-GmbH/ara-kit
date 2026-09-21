@@ -1,5 +1,15 @@
 {
   "name": "Hafenkante Werkzeugbau GmbH",
+  "folders": [
+    {
+      "name": "sales",
+      "purpose": "Angebote, Anfragen und deren Nachverfolgung"
+    },
+    {
+      "name": "quality",
+      "purpose": "Audits und die Nachweise, die daraus entstehen"
+    }
+  ],
   "places": [
     {
       "name": "shop-floor-app",

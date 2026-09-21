@@ -2,7 +2,9 @@
 /**
  * Cases for .claude/hooks/boundary.mjs. Exit code 0 means: every case holds.
  *
- * The test brings its own list of places, so it says the same in every root. Every case
+ * The test brings its own list of places, so it says the same in every root. The last cases
+ * are about where the session started: the hook is enrolled for the whole computer and must
+ * keep out of every session that is not one in this root. Every case
  * that is allowed stands here because a guard once refused it wrongly somewhere. Whoever
  * changes the hook adds the case first and watches it fail.
  *
@@ -26,7 +28,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const HOOK = join(ROOT, ".claude", "hooks", "boundary.mjs");
+const HOOK = join(ROOT, ".claude", "proposal", "boundary.mjs");
 
 const dir = mkdtempSync(join(tmpdir(), "boundary-"));
 process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
@@ -46,8 +48,10 @@ writeFileSync(list, JSON.stringify({
   ],
 }));
 
-const write = (path) => ({ tool_name: "Write", tool_input: { file_path: path } });
-const bash = (command) => ({ tool_name: "Bash", tool_input: { command } });
+const write = (path, cwd) => ({ tool_name: "Write", tool_input: { file_path: path }, ...(cwd ? { cwd } : {}) });
+const bash = (command, cwd) => ({ tool_name: "Bash", tool_input: { command }, ...(cwd ? { cwd } : {}) });
+// A folder one level below this root, where a session may have started.
+const below = join(ROOT, ".claude");
 
 const BLOCKED = 2;
 const FREE = 0;
@@ -76,11 +80,19 @@ const CASES = [
   ["heredoc with an apostrophe, target in this root", bash(`cat <<EOF > company/note.md\nit's about ${closed}\nEOF`), FREE],
   ["rm in a place with write: yes", bash(`rm "${open}/old.md"`), FREE],
   ["stderr into stdout", bash(`ls ${closed} 2>&1`), FREE],
+  ["session one level down, write into a closed place", write(join(closed, "x.md"), below), BLOCKED],
+  ["session one level down, shell write into a closed place", bash(`touch ${closed}/x.md`, below), BLOCKED],
+  ["session in a closed place, relative operand", bash(`touch x.md`, closed), FREE],
+  ["session in a closed place, write into it", write(join(closed, "x.md"), closed), FREE],
+  ["session in a closed place, shell write into it", bash(`touch ${closed}/x.md`, join(closed)), FREE],
+  ["session in another place", write(join(closed, "x.md"), open), FREE],
+  ["session in another project entirely", write(join(closed, "x.md"), dir), FREE],
+  ["the enrolled copy is told its root", write(join(closed, "x.md"), below), BLOCKED, ["--root", ROOT]],
 ];
 
 let failed = 0;
-for (const [name, event, expected] of CASES) {
-  const run = spawnSync(process.execPath, [HOOK], {
+for (const [name, event, expected, extra = []] of CASES) {
+  const run = spawnSync(process.execPath, [HOOK, ...extra], {
     input: JSON.stringify(event),
     encoding: "utf8",
     cwd: ROOT,

@@ -1,9 +1,9 @@
 # {{name}}
 
-The root of {{name}}: what is true, what is due and where things lie. Laid out on
-{{today}} with the Ara-Kit, version {{kit_version}}.
+The root of {{name}}: what is true and where things lie. Laid out on {{today}} with the
+Ara-Kit, version {{kit_version}}.
 
-Start your agent here, not in the single places:
+Start your agent here, or in one of the folders directly below:
 
 ```
 cd <this folder>
@@ -17,9 +17,12 @@ Whether the root contradicts itself says:
 node .claude/scripts/check.mjs
 ```
 
+Nothing in this folder runs by itself. The boundary to the places and the permission rules
+lie in `.claude/proposal/` as a proposal. They take effect only when a person has looked at
+them and enrolled them into their own settings.
+
 ## First steps
 
-1. Fill `company/core.md` and `company/goal.md`. Everything else refers to them.
-2. Write one goal per place into its sheet under `roadmap/`.
-3. Put the first three undertakings on cards: `node .claude/scripts/cards.mjs new`.
-4. Run the check.
+1. Replace the comment at the top of `.claude/CLAUDE.md` with three sentences about the house.
+2. Name the places that are missing in `.claude/places.json`.
+3. Run the check.
