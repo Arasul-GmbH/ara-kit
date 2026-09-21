@@ -18,7 +18,12 @@ WORKDIR /app
 # Container legt, und ohne die Datei im Image findet das Backend beides nicht.
 # Das Kit schreibt sie beim Einspielen aus dem Kontrakt, im Quelltext steht sie
 # leer.
-COPY server.mjs arasul.mjs arasul.json ./
+#
+# Dazu das Manifest, `app.json`: die Route `agent` liefert aus ihm, was die App
+# Agenten anbietet. Der Bau des Kits legt es neben diese Datei. Im Quelltext
+# liegt es eine Ebene darueber, und ein `docker build` von hier aus findet es
+# nicht: gebaut wird aus dem Paket.
+COPY server.mjs arasul.mjs arasul.json app.json ./
 COPY kern ./kern
 COPY ablage ./ablage
 

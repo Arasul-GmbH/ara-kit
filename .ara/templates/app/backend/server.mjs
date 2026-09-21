@@ -19,12 +19,17 @@
  * Container haengt, schneidet sie ab. Deshalb weiss diese Datei nicht, unter
  * welchem Namen die App laeuft, und muss es auch nicht.
  *
+ * **`GET /agent` sagt, was diese App Agenten anbietet.** Die Antwort ist ihr Manifest, das Feld
+ * `agent` samt Kennung, Name und Version, und sonst nichts. Das CLI in der Wurzel eines Hauses
+ * ruft nur auf, was dort steht. Die Route liest, sie ist kein Weg, etwas zu aendern.
+ *
  * **`api/me` beantwortet diese App nicht.** Wer angemeldet ist, sagt die
  * Plattform selbst, unter genau diesem Weg vor dem Container, damit auch eine
  * App ohne Backend ihren Benutzer anzeigen kann. Was hier ankommt, sind die
  * Kopfzeilen, die sie davor gesetzt hat, und aus ihnen wird `von`.
  */
 
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,6 +51,26 @@ const vereinbarung = vereinbarungLesen();
 const geraet = anschluss(vereinbarung, process.env, { name: NAME, flow: FLOW });
 const { db, angewandt, stand } = oeffnen(join(DATEN, "{{id}}.db"));
 const vorgangsKern = kern({ ablage: vorgangsAblage(db), geraet, name: NAME });
+
+/**
+ * Was die App ueber sich sagt: das Feld `agent` ihres Manifests, mit Kennung, Name und Version.
+ *
+ * Es gibt keine zweite Liste. Im Container liegt `app.json` neben diesem Einstieg, der Bau legt
+ * sie dorthin; beim Entwickeln liegt sie einen Ordner darueber. Findet sich keine, sagt die App
+ * das, statt eine leere Liste zu behaupten: ein Agent, der "nichts anzubieten" liest, sucht
+ * nicht weiter.
+ */
+function beschreibungLesen() {
+  for (const datei of [join(HIER, "app.json"), join(HIER, "..", "app.json")]) {
+    try {
+      const manifest = JSON.parse(readFileSync(datei, "utf8"));
+      return { id: manifest.id, name: manifest.name, version: manifest.version, agent: manifest.agent ?? [] };
+    } catch {
+      // die naechste Stelle
+    }
+  }
+  return null;
+}
 
 /**
  * Ein Kopfzeilenwert, wie die Plattform ihn meint.
@@ -80,6 +105,13 @@ const server = createServer(async (anfrage, antwort) => {
   // Der Gesundheitscheck. Er steht als `backend.gesundheit` im Manifest, und
   // Docker fragt ihn; er darf nichts voraussetzen.
   if (pfad === "/gesund") return json(antwort, 200, { status: "ok" });
+
+  if (pfad === "/agent" && anfrage.method === "GET") {
+    const beschreibung = beschreibungLesen();
+    return beschreibung
+      ? json(antwort, 200, beschreibung)
+      : json(antwort, 503, { fehler: "Neben dem Backend liegt keine app.json: die App kann nicht sagen, was sie anbietet." });
+  }
 
   if (pfad === "/lage") {
     const fehlt = geraet.warumKeinRahmen();

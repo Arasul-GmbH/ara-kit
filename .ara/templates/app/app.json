@@ -28,5 +28,24 @@
   "modelle": [],
   "flows": {
     "verzeichnis": "flows"
-  }
+  },
+  "agent": [
+    {
+      "method": "GET",
+      "path": "vorgaenge",
+      "purpose": "Alle Vorgänge der App, mit dem Stand ihrer Freigabe.",
+      "params": [],
+      "writes": false
+    },
+    {
+      "method": "POST",
+      "path": "vorgaenge",
+      "purpose": "Einen Vorgang einreichen und damit den Flow freigabe starten.",
+      "params": [
+        { "name": "titel", "type": "string", "required": true },
+        { "name": "text", "type": "string", "required": false }
+      ],
+      "writes": true
+    }
+  ]
 }
