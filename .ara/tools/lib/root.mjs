@@ -198,8 +198,11 @@ export function settingsFor(places, root) {
     const rules = placeRules(place);
     allow.push(...rules.allow);
     deny.push(...rules.deny);
+    // Der Pfad bleibt, wie das Haus ihn geschrieben hat: `~/...` gilt auf jedem
+    // Rechner, der ausgeschriebene Pfad traegt einen Benutzernamen in eine
+    // Datei, die das Haus teilt.
     const outside = place.local && relative(root, expandHome(place.local, root)).startsWith("..");
-    if (outside) additional.push(expandHome(place.local, root));
+    if (outside) additional.push(place.local);
   }
   return {
     $schema: "https://json.schemastore.org/claude-code-settings.json",
@@ -325,8 +328,7 @@ export function addPlace(root, place) {
   }
   if (place.local && relative(root, expandHome(place.local, root)).startsWith("..")) {
     const dirs = (settings.permissions.additionalDirectories ||= []);
-    const path = expandHome(place.local, root);
-    if (!dirs.includes(path)) dirs.push(path);
+    if (!dirs.includes(place.local)) dirs.push(place.local);
   }
   writeJson(settingsFile, settings);
   placeSheet(root, place, meta.language);

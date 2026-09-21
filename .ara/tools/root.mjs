@@ -56,7 +56,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
 import { ROOT, fail, headerHelp, helpOnly, parseArgs } from "./lib/kit.mjs";
-import { LANGUAGES, language, t } from "./lib/i18n.mjs";
+import { LANGUAGES, language, setLanguage, t } from "./lib/i18n.mjs";
 import { addPlace, expandHome, layOut, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
 
 helpOnly(import.meta.url);
@@ -76,11 +76,11 @@ const meta = isRoot ? JSON.parse(readFileSync(join(root, ".claude", "root.json")
 const lang = LANGUAGES.includes(args.language)
   ? args.language
   : LANGUAGES.includes(meta?.language) ? meta.language : language();
-const say = (en, de) => t(en, de, lang);
+setLanguage(lang);
 
 const insideKit = relative(ROOT, root);
 if (insideKit === "" || (!insideKit.startsWith("..") && !isAbsolute(insideKit))) {
-  fail(say(
+  fail(t(
     "The root never lies inside the kit. An update of the kit would not know it, and the kit is one of its places, not its home. Choose a folder next to it.",
     "Die Wurzel liegt nie im Kit. Ein Update des Kits kennte sie nicht, und das Kit ist einer ihrer Orte, nicht ihr Zuhause. Wähle einen Ordner daneben."
   ));
@@ -88,7 +88,7 @@ if (insideKit === "" || (!insideKit.startsWith("..") && !isAbsolute(insideKit)))
 
 function checked(raw) {
   const { place, problems } = normalizePlace(raw, lang);
-  if (problems.length) fail(say(`Place '${raw.name || "?"}': ${problems.join(", ")}.`, `Ort '${raw.name || "?"}': ${problems.join(", ")}.`));
+  if (problems.length) fail(t(`Place '${raw.name || "?"}': ${problems.join(", ")}.`, `Ort '${raw.name || "?"}': ${problems.join(", ")}.`));
   return place;
 }
 
@@ -106,24 +106,24 @@ function sayCheck() {
 
 function sayPlaces(places) {
   if (!places.length) {
-    console.log(say("Embedded places: none yet.", "Eingebettete Orte: noch keiner."));
+    console.log(t("Embedded places: none yet.", "Eingebettete Orte: noch keiner."));
     return;
   }
-  console.log(say("Embedded places:", "Eingebettete Orte:"));
+  console.log(t("Embedded places:", "Eingebettete Orte:"));
   for (const place of places) {
     const local = place.local
-      ? `${place.local}${existsSync(expandHome(place.local, root)) ? "" : say(" (not on this computer)", " (nicht auf diesem Rechner)")}`
-      : say("reference only", "nur Verweis");
-    const write = place.write === "yes" ? say("may be written", "darf beschrieben werden") : say("read only", "nur lesen");
+      ? `${place.local}${existsSync(expandHome(place.local, root)) ? "" : t(" (not on this computer)", " (nicht auf diesem Rechner)")}`
+      : t("reference only", "nur Verweis");
+    const write = place.write === "yes" ? t("may be written", "darf beschrieben werden") : t("read only", "nur lesen");
     console.log(`  ${place.name.padEnd(18)} ${place.kind.padEnd(7)} ${place.where}`);
     console.log(`  ${"".padEnd(18)} ${local}, ${write}`);
   }
 }
 
 if (args.check || args.show) {
-  if (!isRoot) fail(say(`${root} is no root: .claude/root.json is missing.`, `${root} ist keine Wurzel: .claude/root.json fehlt.`));
+  if (!isRoot) fail(t(`${root} is no root: .claude/root.json is missing.`, `${root} ist keine Wurzel: .claude/root.json fehlt.`));
   if (args.show) {
-    console.log(`${meta.name}, ${meta.language}, ${say("laid out on", "angelegt am")} ${meta.created}, Kit ${meta.kit}`);
+    console.log(`${meta.name}, ${meta.language}, ${t("laid out on", "angelegt am")} ${meta.created}, Kit ${meta.kit}`);
     sayPlaces(JSON.parse(readFileSync(join(root, ".claude", "places.json"), "utf8")).places || []);
   }
   process.exit(!args.check || sayCheck() ? 0 : 1);
@@ -132,7 +132,7 @@ if (args.check || args.show) {
 if (isRoot) {
   const place = singlePlace();
   if (!place) {
-    fail(say(
+    fail(t(
       `${root} is a root already. Add a place with --place, look at it with --show, check it with --check.`,
       `${root} ist schon eine Wurzel. Trage einen Ort mit --place nach, sieh sie mit --show an, prüfe sie mit --check.`
     ));
@@ -142,7 +142,7 @@ if (isRoot) {
   } catch (error) {
     fail(error.message);
   }
-  console.log(say(
+  console.log(t(
     `Place '${place.name}' entered: .claude/places.json, rights in .claude/settings.json, sheet roadmap/${place.name}.md.`,
     `Ort '${place.name}' eingetragen: .claude/places.json, Rechte in .claude/settings.json, Blatt roadmap/${place.name}.md.`
   ));
@@ -150,7 +150,7 @@ if (isRoot) {
 }
 
 if (existsSync(root) && readdirSync(root).filter((name) => name !== ".DS_Store").length) {
-  fail(say(
+  fail(t(
     `${root} is not empty. A root is laid out into an empty folder, it overwrites nothing.`,
     `${root} ist nicht leer. Eine Wurzel wird in einen leeren Ordner gelegt, sie überschreibt nichts.`
   ));
@@ -158,7 +158,7 @@ if (existsSync(root) && readdirSync(root).filter((name) => name !== ".DS_Store")
 
 const example = args.example ? readExample(lang) : null;
 const name = example ? example.name : args.name;
-if (!name || name === true) fail(say("--name is missing: what the house is called.", "--name fehlt: wie das Haus heißt."));
+if (!name || name === true) fail(t("--name is missing: what the house is called.", "--name fehlt: wie das Haus heißt."));
 
 let places = [];
 if (example) {
@@ -169,7 +169,7 @@ if (example) {
     try {
       list = JSON.parse(readFileSync(expandHome(String(args.places), process.cwd()), "utf8"));
     } catch (error) {
-      fail(say(`--places cannot be read: ${error.message}`, `--places lässt sich nicht lesen: ${error.message}`));
+      fail(t(`--places cannot be read: ${error.message}`, `--places lässt sich nicht lesen: ${error.message}`));
     }
     places = (Array.isArray(list) ? list : list.places || []).map(checked);
   }
@@ -178,15 +178,15 @@ if (example) {
 }
 const names = places.map((place) => place.name);
 const twice = names.find((entry, index) => names.indexOf(entry) !== index);
-if (twice) fail(say(`The place '${twice}' stands there twice.`, `Der Ort '${twice}' steht doppelt da.`));
+if (twice) fail(t(`The place '${twice}' stands there twice.`, `Der Ort '${twice}' steht doppelt da.`));
 
 const kitVersion = readFileSync(join(ROOT, ".ara", "VERSION"), "utf8").trim();
 const written = layOut({ root, name, language: lang, places, example: Boolean(example), kitVersion });
 
-console.log(say(`Root of ${name} laid out: ${root}`, `Wurzel von ${name} angelegt: ${root}`));
-console.log(say(`${written.length} files, language ${lang}.`, `${written.length} Dateien, Sprache ${lang}.`));
+console.log(t(`Root of ${name} laid out: ${root}`, `Wurzel von ${name} angelegt: ${root}`));
+console.log(t(`${written.length} files, language ${lang}.`, `${written.length} Dateien, Sprache ${lang}.`));
 if (example) {
-  console.log(say(
+  console.log(t(
     "This is the showcase. The company is invented, its places do not exist.",
     "Das ist die Vorzeigefassung. Die Firma ist erfunden, ihre Orte gibt es nicht."
   ));
@@ -200,27 +200,27 @@ if (!args["no-git"]) {
   const steps = [["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", `Root laid out with the Ara-Kit ${kitVersion}`]];
   const broken = steps.map((step) => git(...step)).find((run) => run.status !== 0);
   console.log(broken
-    ? say(
+    ? t(
         `Version control: not complete, git says: ${(broken.stderr || broken.error?.message || "").trim().split("\n")[0]}`,
         `Versionsverwaltung: nicht vollständig, git sagt: ${(broken.stderr || broken.error?.message || "").trim().split("\n")[0]}`
       )
-    : say("Version control: repository created, first commit made.", "Versionsverwaltung: Repository angelegt, erster Commit gemacht."));
+    : t("Version control: repository created, first commit made.", "Versionsverwaltung: Repository angelegt, erster Commit gemacht."));
 }
 
-console.log(say(`Took ${((Date.now() - started) / 1000).toFixed(1)} seconds.`, `Dauer: ${((Date.now() - started) / 1000).toFixed(1)} Sekunden.`));
+console.log(t(`Took ${((Date.now() - started) / 1000).toFixed(1)} seconds.`, `Dauer: ${((Date.now() - started) / 1000).toFixed(1)} Sekunden.`));
 console.log("");
-console.log(say("Next steps:", "Nächste Schritte:"));
+console.log(t("Next steps:", "Nächste Schritte:"));
 if (example) {
-  console.log(say(`  Read it, starting with .claude/CLAUDE.md. Or start the agent there: cd "${root}" && claude`, `  Lies sie, angefangen bei .claude/CLAUDE.md. Oder starte den Agenten dort: cd "${root}" && claude`));
+  console.log(t(`  Read it, starting with .claude/CLAUDE.md. Or start the agent there: cd "${root}" && claude`, `  Lies sie, angefangen bei .claude/CLAUDE.md. Oder starte den Agenten dort: cd "${root}" && claude`));
   process.exit(clean ? 0 : 1);
 }
-console.log(say(
+console.log(t(
   "  1. Fill company/core.md and company/goal.md, the rest refers to them.",
   "  1. company/core.md und company/goal.md füllen, der Rest verweist darauf."
 ));
-console.log(say(
+console.log(t(
   "  2. One goal per place into its sheet under roadmap/, the first undertakings on cards.",
   "  2. Je Ort ein Ziel in sein Blatt unter roadmap/, die ersten Vorhaben auf Karten."
 ));
-console.log(say(`  3. Start the agent there: cd "${root}" && claude`, `  3. Den Agenten dort starten: cd "${root}" && claude`));
+console.log(t(`  3. Start the agent there: cd "${root}" && claude`, `  3. Den Agenten dort starten: cd "${root}" && claude`));
 process.exit(clean ? 0 : 1);

@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.23.0 (2026-09-21)
+
+Kontrakt: bis 5
+
+- Das Kit legt den Wurzelordner eines ganzen Hauses an. `/root` und `node .ara/tools/root.mjs --path <ordner> --name "<haus>"` erzeugen außerhalb des Kits einen Baum mit Regeln und Wahrheitstabelle, `company/`, einer Roadmap mit einem Blatt je Ort und einem Kartenstapel, `experiments/`, `customers/`, `templates/`, `archive/`, einem Prüfskript mit 13 Prüfungen, einem Grenz-Hook mit seinen Fällen, einem Kartenwerkzeug und Rechten je Ordner in `settings.json` nach dem Vorbild des Kits. Das Gerüst liegt unter `.ara/templates/root/` in beiden Sprachen. Nach dem Anlegen braucht die Wurzel das Kit nicht mehr, ihre Skripte laufen mit Node allein.
+- Eingebettete Orte sind ein Verweis, nie eine Kopie. Ein Ort ist ein GitHub-Repository oder ein fremder Ordner wie SharePoint, er steht in einer Liste mit dem, wo er lebt, und höchstens mit dem, wo er auf diesem Rechner liegt. Der Hook hält eine Sitzung in der Wurzel davon ab, in einen Ort zu schreiben, über die Werkzeuge und über die Shell, auch über einen Link, denn eine solche Sitzung lädt die Regeln des Ortes nicht. `write: yes` öffnet einen Ort per Beschluss des Hauses. `--place` trägt einen in eine bestehende Wurzel nach und lässt von Hand eingetragene Rechte in Ruhe.
+- Eine erfundene Firma liegt als Vorzeigefassung bei: `--example` legt sie aus, mit gefüllten Blättern, Karten in jeder Spalte, einem Experiment, einem Kunden und vier Orten. Ihre Daten zählen vom Tag des Anlegens an, ihr eigenes Prüfskript findet darin also nichts, heute und in einem Jahr.
+- Das Gerüst trägt seine Regeln als `rules.md` und nicht unter dem Namen, den der Agent lädt: eine Regeldatei in einem Unterordner wird mitgelesen, sobald eine Datei daneben gelesen wird, und wer am Gerüst arbeitete, arbeitete nach den Regeln einer fremden Wurzel.
+- Der Selbsttest legt eine Wurzel in beiden Sprachen an und lässt ihr Prüfskript laufen, baut zwölf Fehler in die Vorzeigefassung und erwartet jeden von seiner eigenen Prüfung, lässt die Fälle der Grenze laufen, bewegt Karten nach ihren Regeln und sucht im Ausgelegten nach Arasul-Eigenem.
+
 ## 0.22.0 (2026-09-15)
 
 Kontrakt: bis 5

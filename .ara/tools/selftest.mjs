@@ -71,6 +71,7 @@ import {
   promisedFolders,
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
+import { EXAMPLE as ROOT_EXAMPLE, FOLDERS as ROOT_FOLDERS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE } from "./lib/root.mjs";
 import {
   EXTERNAL_PREFIX,
   bareApiPaths,
@@ -5789,6 +5790,334 @@ check("PDF-Werkzeug trennt Tabellenzellen nur am unmaskierten Strich", () => {
   }
 });
 
+// --- Die Firmenwurzel ----------------------------------------------------------
+
+/**
+ * Eine Wurzel entsteht ausserhalb des Kits, also in einem Wegwerfordner. Was hier
+ * laeuft, ist das Werkzeug selbst und danach die Skripte der Wurzel, mit ihrem
+ * eigenen Node-Aufruf: genau so, wie ein Mensch sie nach dem Anlegen aufruft.
+ */
+const WURZEL_ORDNER = [];
+process.on("exit", () => WURZEL_ORDNER.forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+function wegwerfordner(vorsilbe) {
+  const dir = mkdtempSync(join(tmpdir(), vorsilbe));
+  WURZEL_ORDNER.push(dir);
+  return dir;
+}
+
+function wurzel(args, { git = false } = {}) {
+  const dir = wegwerfordner("ara-root-");
+  const root = join(dir, "haus");
+  const run = tool("root.mjs", ["--path", root, ...args, ...(git ? [] : ["--no-git"])], "");
+  return { dir, root, run };
+}
+
+function inWurzel(root, script, args = [], input) {
+  return spawnSync("node", [join(root, ".claude", script), ...args], { cwd: root, encoding: "utf8", input });
+}
+
+for (const lang of ["en", "de"]) {
+  check(`Eine frische Firmenwurzel entsteht und ist ohne Befund (${lang})`, () => {
+    const lokal = wegwerfordner("ara-ort-");
+    const start = Date.now();
+    const { root, run } = wurzel([
+      "--name", "Probehaus", "--language", lang,
+      "--place", "api", "--kind", "github", "--where", "https://github.com/example/api",
+      "--local", lokal, "--purpose", "probe",
+    ]);
+    assert(run.status === 0, `root.mjs endet mit ${run.status}: ${run.stderr || run.stdout}`);
+    const sekunden = (Date.now() - start) / 1000;
+    // Die Abnahme sagt "unter 30 Minuten". Das Werkzeug ist davon der kleinste
+    // Teil, der Rest ist das Interview. Braucht es selbst laenger als eine
+    // halbe Minute, stimmt etwas nicht.
+    assert(sekunden < 30, `das Anlegen hat ${sekunden.toFixed(1)} Sekunden gedauert`);
+
+    const fehlt = [...ROOT_TARGETS].filter((ziel) => !existsSync(join(root, ziel)));
+    assert(fehlt.length === 0, `in der frischen Wurzel fehlt: ${fehlt.join(", ")}`);
+    for (const ordner of Object.keys(ROOT_FOLDERS)) {
+      assert(existsSync(join(root, ordner)), `Ordner ${ordner}/ fehlt`);
+    }
+    for (const spalte of ["new", "ready", "running", "done"]) {
+      assert(existsSync(join(root, "roadmap", "backlog", spalte)), `Spalte ${spalte}/ des Kartenstapels fehlt`);
+    }
+    assert(existsSync(join(root, "roadmap", "api.md")), "der Ort hat kein Blatt unter roadmap/ bekommen");
+
+    const regeln = readFileSync(join(root, ".claude", "CLAUDE.md"), "utf8");
+    assert(/^# Probehaus$/m.test(regeln), "die Regeln tragen den Namen des Hauses nicht");
+    assert(
+      lang === "de" ? /## Wo die Wahrheit steht/.test(regeln) && /## Wohin Neues gehört/.test(regeln)
+        : /## Where the truth stands/.test(regeln) && /## Where new things go/.test(regeln),
+      "die Wahrheitstabelle oder die Tabelle für Neues fehlt in den Regeln"
+    );
+    assert(!/\{\{[a-z_+\-0-9]+\}\}/.test(regeln), "in den Regeln steht ein ungefüllter Platzhalter");
+
+    // Rechte je Unterordner, nach dem Vorbild des Kits: ./ordner/**
+    const settings = JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8"));
+    for (const [ordner, recht] of Object.entries(ROOT_FOLDERS)) {
+      assert(settings.permissions.allow.includes(`${recht}(./${ordner}/**)`), `kein Recht für ${ordner}/ in settings.json`);
+    }
+    assert(settings.permissions.deny.includes("Edit(./archive/**)"), "das Archiv ist nicht eingefroren");
+    assert(settings.permissions.deny.includes(`Edit(/${lokal}/**)`), "der Ort ist in settings.json nicht gegen Schreiben gesperrt");
+    assert(settings.permissions.defaultMode === "default", "defaultMode ist nicht default, die Rechte je Ordner sagen dann nichts");
+    assert(
+      settings.hooks.PreToolUse.some((e) => e.hooks.some((h) => /boundary\.mjs/.test(h.command))),
+      "der Grenz-Hook hängt nicht vor den Werkzeugen"
+    );
+
+    const orte = JSON.parse(readFileSync(join(root, ".claude", "places.json"), "utf8")).places;
+    assert(orte.length === 1 && orte[0].name === "api" && orte[0].where.startsWith("https://"), "die Liste der Orte stimmt nicht");
+    // Ein Verweis, nie eine Kopie: vom Ort liegt in der Wurzel nur sein Blatt.
+    assert(!existsSync(join(root, "api")), "der Ort liegt als Ordner in der Wurzel");
+
+    const pruefung = inWurzel(root, "scripts/check.mjs");
+    assert(pruefung.status === 0, `das Prüfskript der frischen Wurzel meldet:\n${pruefung.stdout}`);
+    assert(
+      (lang === "de" ? /13 Prüfungen, kein Befund/ : /13 checks, no finding/).test(pruefung.stdout),
+      `das Prüfskript spricht nicht ${lang}: ${pruefung.stdout}`
+    );
+    return `${ROOT_TARGETS.size} Dateien, ${sekunden.toFixed(1)} s, 13 Prüfungen ohne Befund`;
+  });
+}
+
+check("Nichts Arasul-Eigenes steckt in einer Firmenwurzel", () => {
+  // Die Vorlage soll eine zweite Organisation tragen. Steht in ihr ein Name,
+  // ein Preis oder ein Ziel des Hauses, aus dem sie stammt, traegt sie nur das.
+  // Der Name des Werkzeugs, mit dem sie angelegt wurde, darf in der README stehen.
+  const eigen = /arasul|kolja|schöpe|lissabon|\borin\b|jetson|dresden|unit.?ix|\b\d[\d.]*\s*(euro|eur|€)/i;
+  const funde = [];
+  for (const lang of ["en", "de"]) {
+    for (const args of [["--name", "Probehaus"], ["--example"]]) {
+      const { root, run } = wurzel([...args, "--language", lang]);
+      assert(run.status === 0, `root.mjs ${args.join(" ")} endet mit ${run.status}: ${run.stderr || run.stdout}`);
+      const scan = (dir) => {
+        for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+          const pfad = join(dir, eintrag.name);
+          if (eintrag.isDirectory()) scan(pfad);
+          else {
+            readFileSync(pfad, "utf8").split(/\r?\n/).forEach((zeile, i) => {
+              if (eigen.test(zeile)) funde.push(`${lang} ${relative(root, pfad)}:${i + 1}: ${zeile.trim().slice(0, 80)}`);
+            });
+          }
+        }
+      };
+      scan(root);
+    }
+  }
+  assert(funde.length === 0, `Arasul-Eigenes in der Wurzel:\n    ${funde.slice(0, 8).join("\n    ")}`);
+});
+
+for (const lang of ["en", "de"]) {
+  check(`Die Vorzeigefassung liegt bei, und ihr Prüfskript findet nichts (${lang})`, () => {
+    const { root, run } = wurzel(["--example", "--language", lang], { git: true });
+    assert(run.status === 0, `root.mjs --example endet mit ${run.status}: ${run.stderr || run.stdout}`);
+    const pruefung = inWurzel(root, "scripts/check.mjs");
+    assert(pruefung.status === 0, `das Prüfskript meldet in der Vorzeigefassung:\n${pruefung.stdout}`);
+
+    // Gefuellt, nicht nur angelegt: Meilensteine, Ziele, Karten in jeder
+    // Spalte, ein Experiment, ein Kunde, Orte beider Arten.
+    const ziel = readFileSync(join(root, "company", "goal.md"), "utf8");
+    assert((ziel.match(/^\| M\d+ \|/gm) || []).length >= 3, "die Vorzeigefassung hat keine drei Meilensteine");
+    assert(!/<[^>\n]+>/.test(ziel.replace(/<!--[\s\S]*?-->/g, "")), "im Nordziel der Vorzeigefassung steht noch ein Platzhalter");
+    for (const spalte of ["new", "ready", "running", "done"]) {
+      const karten = readdirSync(join(root, "roadmap", "backlog", spalte)).filter((n) => n.endsWith(".md"));
+      assert(karten.length >= 1, `in ${spalte}/ der Vorzeigefassung liegt keine Karte`);
+    }
+    const orte = JSON.parse(readFileSync(join(root, ".claude", "places.json"), "utf8")).places;
+    assert(orte.some((o) => o.kind === "github") && orte.some((o) => o.kind === "folder" && /sharepoint/.test(o.where)),
+      "die Vorzeigefassung zeigt nicht beide Arten von Orten");
+    assert(orte.some((o) => o.write === "yes") && orte.some((o) => o.local && o.write !== "yes"),
+      "die Vorzeigefassung zeigt nicht beide Fälle des Schreibrechts");
+    // Kein Datum steht fest im Geruest: sonst ist sie in sechzig Tagen ein
+    // Befund ihres eigenen Pruefskripts.
+    const fest = [];
+    const scan = (dir) => {
+      for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+        const pfad = join(dir, eintrag.name);
+        if (eintrag.isDirectory()) scan(pfad);
+        else if (/\b20\d\d-\d\d-\d\d\b/.test(readFileSync(pfad, "utf8"))) fest.push(relative(ROOT, pfad));
+      }
+    };
+    scan(ROOT_EXAMPLE);
+    assert(fest.length === 0, `festes Datum in der Vorzeigefassung: ${fest.join(", ")}`);
+
+    const log = spawnSync("git", ["log", "--oneline"], { cwd: root, encoding: "utf8" });
+    const status = spawnSync("git", ["status", "--porcelain"], { cwd: root, encoding: "utf8" });
+    // Ohne eingerichtetes Git (kein Name, keine Adresse) gibt es keinen Commit,
+    // und das Werkzeug sagt es. Das ist kein Fehler des Geruests.
+    if (log.status === 0 && log.stdout.trim()) {
+      assert(status.stdout.trim() === "", `nach dem ersten Commit ist die Wurzel nicht sauber:\n${status.stdout}`);
+    } else {
+      assert(/git/.test(run.stdout), "kein Commit, und das Werkzeug sagt nichts dazu");
+    }
+    return `${orte.length} Orte, Karten in vier Spalten`;
+  });
+}
+
+check("Das Prüfskript einer Wurzel ist scharf: jeder eingebaute Fehler wird ein Befund", () => {
+  // Ein Pruefskript, das nichts findet, beweist allein nichts: es koennte
+  // auch blind sein. Je Pruefung ein Fehler, wie er in einer Wurzel wirklich
+  // entsteht, und genau diese Pruefung muss ihn melden.
+  const { root, run } = wurzel(["--example", "--language", "de"]);
+  assert(run.status === 0, `root.mjs --example endet mit ${run.status}: ${run.stderr || run.stdout}`);
+  const datei = (...teile) => join(root, ...teile);
+  const ersetze = (pfad, von, nach) => {
+    const text = readFileSync(pfad, "utf8");
+    assert(von instanceof RegExp ? von.test(text) : text.includes(von), `${relative(root, pfad)} enthält ${von} nicht, der Testfall greift ins Leere`);
+    writeFileSync(pfad, text.replace(von, nach));
+  };
+  const faelle = [
+    [1, () => appendFileSync(datei("company", "core.md"), "\nSiehe `company/gibt-es-nicht.md`.\n")],
+    [3, () => ersetze(datei("company", "risks.md"), /Stand: \d{4}-\d\d-\d\d/, "Stand: 2020-01-01")],
+    [4, () => appendFileSync(datei("company", "follow-ups.md"), `| ${day(3)} | Zeile mit falschem Status | x | vielleicht |\n`)],
+    [5, () => appendFileSync(datei("company", "core.md"), "\nPasswort: hunter2-geheim\n")],
+    [6, () => ersetze(datei("roadmap", "shop-floor-app.md"), /\| M2 \| \d{4}-\d\d-\d\d \|/, "| M9 | bald |")],
+    [7, () => ersetze(datei("company", "follow-ups.md"), "H1:", "Ohne Bezug:")],
+    [8, () => cpSync(datei("roadmap", "backlog", "ready", "calculation-by-a-third-person.md"), datei("roadmap", "backlog", "running", "zweite-karte.md"))],
+    [9, () => mkdirSync(datei("experiments", "002-ohne-blatt"))],
+    [10, () => mkdirSync(datei("notizen"))],
+    [11, () => {
+      // Ein Ort, der als Kopie in der Wurzel liegt, und einer, dessen Sperre
+      // jemand aus den Rechten genommen hat.
+      const liste = JSON.parse(readFileSync(datei(".claude", "places.json"), "utf8"));
+      liste.places.push({ name: "kopie", kind: "folder", where: "https://example.sharepoint.com/sites/kopie", local: "templates/kopie", purpose: "probe" });
+      writeFileSync(datei(".claude", "places.json"), JSON.stringify(liste, null, 2));
+      mkdirSync(datei("templates", "kopie"));
+    }],
+    [12, () => appendFileSync(datei("customers", "lindholm-pumps", "customer.md"), "\n[Protokoll](documents/fehlt.md)\n")],
+    [13, () => ersetze(datei(".claude", "hooks", "boundary.mjs"), "if (place) {", "if (false) {")],
+  ];
+  for (const [nr, fehler] of faelle) {
+    const sicherung = mkdtempSync(join(tmpdir(), "ara-root-stand-"));
+    cpSync(root, sicherung, { recursive: true });
+    fehler();
+    const lauf = inWurzel(root, "scripts/check.mjs");
+    rmSync(root, { recursive: true, force: true });
+    cpSync(sicherung, root, { recursive: true });
+    rmSync(sicherung, { recursive: true, force: true });
+    assert(lauf.status === 1, `Fehler für Prüfung ${nr} eingebaut, das Prüfskript endet mit ${lauf.status}`);
+    assert(new RegExp(`Prüfung ${nr}: \\d+ Befund`).test(lauf.stdout), `Fehler für Prüfung ${nr} eingebaut, gemeldet wird:\n${lauf.stdout}`);
+  }
+  const danach = inWurzel(root, "scripts/check.mjs");
+  assert(danach.status === 0, `nach dem Zurücksetzen meldet das Prüfskript:\n${danach.stdout}`);
+  return `${faelle.length} eingebaute Fehler, jeder von seiner Prüfung gemeldet`;
+});
+
+check("Die Grenze einer Wurzel hält, und ein Ort lässt sich nachtragen", () => {
+  const lokal = wegwerfordner("ara-ort-");
+  const { root, run } = wurzel(["--name", "Probehaus", "--language", "de"]);
+  assert(run.status === 0, `root.mjs endet mit ${run.status}: ${run.stderr || run.stdout}`);
+
+  const faelle = inWurzel(root, "scripts/boundary-test.mjs");
+  assert(faelle.status === 0, `die Fälle der Grenze fallen:\n${faelle.stderr || faelle.stdout}`);
+
+  // Von Hand eingetragene Rechte ueberleben das Nachtragen eines Ortes.
+  const settingsDatei = join(root, ".claude", "settings.json");
+  const settings = JSON.parse(readFileSync(settingsDatei, "utf8"));
+  settings.permissions.allow.push("Bash(make:*)");
+  writeFileSync(settingsDatei, JSON.stringify(settings, null, 2));
+
+  const nach = tool("root.mjs", ["--path", root, "--place", "docs", "--kind", "folder", "--where", lokal, "--local", lokal, "--purpose", "probe"], "");
+  assert(nach.status === 0, `--place an einer bestehenden Wurzel endet mit ${nach.status}: ${nach.stderr || nach.stdout}`);
+  assert(/Ort 'docs' eingetragen/.test(nach.stdout), `die Wurzel ist deutsch, das Werkzeug antwortet: ${nach.stdout}`);
+  const neu = JSON.parse(readFileSync(settingsDatei, "utf8"));
+  assert(neu.permissions.allow.includes("Bash(make:*)"), "das Nachtragen hat ein von Hand eingetragenes Recht entfernt");
+  assert(neu.permissions.deny.includes(`Edit(/${lokal}/**)`), "der nachgetragene Ort ist nicht gesperrt");
+  assert(existsSync(join(root, "roadmap", "docs.md")), "der nachgetragene Ort hat kein Blatt");
+
+  // Und die Grenze kennt ihn sofort, ohne dass jemand den Hook anfasst.
+  const hook = (ereignis) => inWurzel(root, "hooks/boundary.mjs", [], JSON.stringify(ereignis));
+  const zu = hook({ tool_name: "Write", tool_input: { file_path: join(lokal, "x.md") } });
+  assert(zu.status === 2 && /docs/.test(zu.stderr), `Schreiben in den Ort geht durch: ${zu.status} ${zu.stderr}`);
+  const shell = hook({ tool_name: "Bash", tool_input: { command: `cd ${lokal} && touch x.md` } });
+  assert(shell.status === 2, "cd in den Ort und dann touch geht durch");
+  const lesen = hook({ tool_name: "Bash", tool_input: { command: `ls ${lokal} && git -C ${lokal} log` } });
+  assert(lesen.status === 0, `Lesen im Ort wird abgewiesen: ${lesen.stderr}`);
+  const hier = hook({ tool_name: "Write", tool_input: { file_path: join(root, "company", "core.md") } });
+  assert(hier.status === 0, "Schreiben in der Wurzel selbst wird abgewiesen");
+
+  const doppelt = tool("root.mjs", ["--path", root, "--place", "docs", "--kind", "folder", "--where", lokal, "--purpose", "probe"], "");
+  assert(doppelt.status !== 0, "derselbe Ort lässt sich zweimal eintragen");
+  return "24 Fälle, Ort nachgetragen, Rechte von Hand bleiben";
+});
+
+check("root.mjs legt nichts ins Kit und überschreibt nichts", () => {
+  const imKit = tool("root.mjs", ["--path", join(ROOT, "apps", "wurzel-probe"), "--name", "Probehaus", "--no-git"], "");
+  assert(imKit.status !== 0, "eine Wurzel im Kit wird angelegt");
+  assert(!existsSync(join(ROOT, "apps", "wurzel-probe")), "root.mjs hat im Kit einen Ordner angelegt");
+
+  const dir = wegwerfordner("ara-root-voll-");
+  writeFileSync(join(dir, "wichtig.txt"), "bleibt");
+  const voll = tool("root.mjs", ["--path", dir, "--name", "Probehaus", "--no-git"], "");
+  assert(voll.status !== 0, "eine Wurzel wird in einen Ordner gelegt, der nicht leer ist");
+  assert(readdirSync(dir).join() === "wichtig.txt", "root.mjs hat in einem vollen Ordner etwas angelegt");
+
+  const falsch = tool("root.mjs", ["--path", join(dir, "neu"), "--name", "Probehaus", "--no-git", "--place", "Mit Leerzeichen", "--kind", "cloud", "--where", "x"], "");
+  assert(falsch.status !== 0 && !existsSync(join(dir, "neu")), "ein Ort mit falschem Namen und falscher Art geht durch");
+});
+
+check("Der Kartenstapel einer Wurzel bewegt sich nach seinen Regeln", () => {
+  const { root, run } = wurzel(["--example", "--language", "de"], { git: true });
+  assert(run.status === 0, `root.mjs --example endet mit ${run.status}: ${run.stderr || run.stdout}`);
+  const karten = (...args) => inWurzel(root, "scripts/cards.mjs", args);
+
+  const neu = karten("new", "--title", "Prüfkarte für den Selbsttest", "--place", "website");
+  assert(neu.status === 0, `new endet mit ${neu.status}: ${neu.stderr}`);
+  const karte = join(root, "roadmap", "backlog", "new", "pruefkarte-fuer-den-selbsttest.md");
+  assert(existsSync(karte), "die Karte liegt nicht in new/, oder ihr Name trägt einen Umlaut");
+
+  assert(karten("new", "--title", "Fremder Ort", "--place", "gibt-es-nicht").status !== 0, "eine Karte für einen unbekannten Ort entsteht");
+  assert(karten("move", "pruefkarte-fuer-den-selbsttest", "ready").status !== 0, "eine Karte ohne Pflichtfelder kommt nach ready/");
+  assert(
+    karten("move", "calculation-by-a-third-person", "running").status !== 0,
+    "eine zweite Karte desselben Ortes kommt nach running/"
+  );
+  assert(karten("move", "table-of-ten-calculations", "done").status !== 0, "eine Karte kommt ohne Ergebnis nach done/");
+  const fertig = karten("move", "table-of-ten-calculations", "done", "--result", "green");
+  assert(fertig.status === 0, `done mit Ergebnis endet mit ${fertig.status}: ${fertig.stderr}`);
+  const text = readFileSync(join(root, "roadmap", "backlog", "done", "table-of-ten-calculations.md"), "utf8");
+  assert(/\nResult: green\n$/.test(text), "die letzte Zeile der erledigten Karte ist nicht ihr Ergebnis");
+  const nach = karten("move", "calculation-by-a-third-person", "running");
+  assert(nach.status === 0, `nach dem Abschluss kommt die nächste Karte nicht nach running/: ${nach.stderr}`);
+
+  const pruefung = inWurzel(root, "scripts/check.mjs");
+  assert(pruefung.status === 0, `nach den Bewegungen meldet das Prüfskript:\n${pruefung.stdout}`);
+});
+
+check("Das Gerüst der Firmenwurzel liegt in beiden Sprachen vor", () => {
+  // Die Paarpruefung weiter unten sieht nur flache Ordner. Das Geruest ist ein
+  // Baum, und eine Wurzel, die halb deutsch und halb englisch ausgelegt wird,
+  // faellt erst dem auf, der sie liest.
+  const ohne = [];
+  const gleich = [];
+  let paare = 0;
+  const scan = (dir) => {
+    for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+      const pfad = join(dir, eintrag.name);
+      if (eintrag.isDirectory()) {
+        scan(pfad);
+        continue;
+      }
+      if (!/\.(md|json)$/.test(eintrag.name)) continue;
+      const englisch = pfad.replace(/\.de\.(md|json)$/, ".$1");
+      const deutsch = englisch.replace(/\.(md|json)$/, ".de.$1");
+      if (!existsSync(englisch) || !existsSync(deutsch)) {
+        ohne.push(relative(ROOT, pfad));
+        continue;
+      }
+      if (pfad !== englisch) continue;
+      paare++;
+      if (readFileSync(englisch, "utf8") === readFileSync(deutsch, "utf8")) gleich.push(relative(ROOT, pfad));
+    }
+  };
+  scan(ROOT_TEMPLATE);
+  scan(ROOT_EXAMPLE);
+  assert(ohne.length === 0, `ohne Gegenstück: ${ohne.join(", ")}`);
+  assert(gleich.length === 0, `englisch und deutsch sind dieselbe Datei: ${gleich.join(", ")}`);
+  assert(paare >= 30, `nur ${paare} Paare im Gerüst, das kann nicht stimmen`);
+  assert(!existsSync(join(ROOT_TEMPLATE, "CLAUDE.md")), "im Gerüst liegt eine CLAUDE.md, der Agent lädt sie beim Lesen des Ordners mit");
+  return `${paare} Paare`;
+});
+
 // --- Schreibweise -----------------------------------------------------------
 
 check("Keine Gedankenstriche im Kit", () => {
@@ -6166,11 +6495,17 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
       .map((n) => join(ROOT, ".ara", "templates", n)),
     ...sammeln(join(ROOT, ".ara", "knowledge"), (n) => n.endsWith(".de.md")),
     ...sammeln(join(ROOT, ".ara", "commands"), (n) => n.endsWith(".de.md")),
+    ...sammeln(ROOT_TEMPLATE, (n) => /\.de\.(md|json)$/.test(n)),
+    ...sammeln(ROOT_EXAMPLE, (n) => /\.de\.(md|json)$/.test(n)),
     join(ROOT, ".ara", "persona", "ara.de.md"),
     join(ROOT, ".ara", "README.de.md"),
     join(ROOT, ".ara", "CHANGELOG.de.md"),
   ];
-  const werkzeuge = sammeln(join(ROOT, ".ara", "tools"), (n) => n.endsWith(".mjs"));
+  const werkzeuge = [
+    ...sammeln(join(ROOT, ".ara", "tools"), (n) => n.endsWith(".mjs")),
+    // Die Skripte einer Firmenwurzel sprechen mit demselben t(en, de).
+    ...sammeln(ROOT_TEMPLATE, (n) => n.endsWith(".mjs")),
+  ];
 
   const funde = [];
   for (const pfad of blaetter) {
@@ -6418,6 +6753,10 @@ check("Der Selbsttest laesst kein customers/ im Kit zurueck", () => {
 
 check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   const files = [];
+  const rootSheet = (file) =>
+    /^\.ara\/(knowledge|commands\/all)\/root(\.de)?\.md$/.test(relative(ROOT, file).split("\\").join("/")) ||
+    file.startsWith(ROOT_TEMPLATE) ||
+    file.startsWith(ROOT_EXAMPLE);
   const collect = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
@@ -6444,6 +6783,10 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
       // denn die sind in beiden Zweigen dieselben Dateien: hier kein Rost.
       if (!PARTNER_MATERIAL && partnerOnly(target)) continue;
       if (existsSync(join(ROOT, target))) continue;
+      // Das Wissen zur Firmenwurzel nennt Dateien, die in der WURZEL liegen und
+      // nicht im Kit. Gegen die Liste dessen, was das Werkzeug wirklich anlegt,
+      // und nur in den Blaettern, die davon handeln: sonst waere es ein Freibrief.
+      if (rootSheet(file) && ROOT_TARGETS.has(target)) continue;
       missing.push(`${relative(ROOT, file)} → ${target}`);
     }
   }

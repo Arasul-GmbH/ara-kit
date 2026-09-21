@@ -52,7 +52,7 @@ sentences. That holds for everything you write, customer documents and offers in
 | `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them. The Orin before it has a Linux is a guide of its own, `.ara/knowledge/flash-orin.md`: a check step per section, documented, not automated |
 | `.ara/vorlagen/` | **The paperwork**: offer, annexes, handover record. The only place for it, see `.ara/vorlagen/README.md`. German. |
 | `.ara/nachweise/` | Evidence on AI classification and data processing. Annexes 4 and 5 to the offer. Mirrored from Arasul's control folder, do not edit here. German. |
-| `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. Its `frontend/src/marken/` is the mirror of the product's design system, watched by `marken.mjs`. |
+| `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. Its `frontend/src/marken/` is the mirror of the product's design system, watched by `marken.mjs`. `root/` is the scaffold of a company root and `root-example/` the invented company laid over it, both drawn by `root.mjs` into a folder outside of the kit. |
 | `.ara/README.de.md`, `.ara/.markdownlint-cli2.jsonc` | German half of the README, rules for the document check. Both here so the root stays small. |
 | `.ara/tools/` | Scripts (Node). You call them instead of rebuilding what they do. |
 | `.ara/mirror/` | The fetched installation artifact, comes into being at `/device --install arasul`. Do not edit. |
@@ -109,6 +109,7 @@ Procedure: `.ara/knowledge/paperwork.md`
 | `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict, next steps. Install Arasul, fetch the kit key. `<customer>/<device>` for a customer device | `.ara/knowledge/device.md` |
 | `/app [<app>]` | Plan an app, build it, roll it into staging, switch it live. Reads the file and offers only the sensible next steps | `.ara/knowledge/app.md` |
 | `/maintain [<device>]` | Look after a running device. Starts with a status line, then you say in free text what is due. When something of Arasul does not run, the self-healing goes first. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/self-healing.md` |
+| `/root [<path>]` | Lay out the root folder of a whole house, outside of the kit: rules with a truth table, company, roadmap with a card stack, check script, boundary hook, rights per folder, embedded places as references. Add a place, check it, show the showcase | `.ara/knowledge/root.md` |
 
 `/kalkulation` was renamed to `/calculation` in phase E10, `/angebot` to `/offer` in phase
 E6. If somebody types the old name, say what it is called today.
@@ -155,6 +156,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 | `pdf.mjs` | Markdown becomes a PDF in the house style (`--check`, `--force`) |
 | `secrets.mjs` | Store secrets and look up what is set |
 | `update.mjs` | Bring the kit up to date (`--check` only looks), does not touch user folders |
+| `root.mjs` | Lay out the root of a whole house in a folder outside of the kit, from the scaffold under `.ara/templates/root/`: tree, rights per folder, list of embedded places, one sheet per place, then the root's own check script (`--path`, `--name`, `--places`, `--place`, `--example`, `--show`, `--check`). Writes nothing into a place and nothing into the kit |
 | `commands.mjs` | Put commands from `.ara/commands/` into `.claude/commands/`, per branch and language (`--apply`, `--role`, `--language`). Remembers the hash of the source and thereby recognises whether a command is newer in the kit or was adapted by hand (`--replace`) |
 | `init.mjs` | `/init` without an interview from an answer file (`--answers`), and the gaps in the profile (`--show`) |
 | `selftest.mjs` | Checks whether the kit works on this computer |
