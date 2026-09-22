@@ -299,7 +299,7 @@ function tool(file, args, input, env = {}) {
  * wo im selben Prozess ein Testserver antworten muss: sonst wartet das Kind auf
  * eine Antwort, die der Elternprozess nicht geben kann.
  */
-function toolAsync(file, args, env = {}) {
+function toolAsync(file, args, env = {}, input = "") {
   return new Promise((done) => {
     const child = spawn("node", [join(ROOT, ".ara", "tools", file), ...args], {
       env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_CUSTOMERS: CUSTOMERS_TMP, ...env },
@@ -308,6 +308,7 @@ function toolAsync(file, args, env = {}) {
     let stderr = "";
     child.stdout.on("data", (d) => (stdout += d));
     child.stderr.on("data", (d) => (stderr += d));
+    child.stdin.end(input);
     child.on("close", (status) => done({ status, stdout, stderr }));
   });
 }
@@ -6318,7 +6319,7 @@ const BRUECKE_AGENT = {
  * Das nachgestellte Gerät. `weiter` ist die Adresse eines echten Backends, an das
  * `/apps/selftest-bruecke/api/…` durchgereicht wird, wie es Traefik hinter der Forward-Auth tut.
  */
-async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [] } = {}) {
+async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null } = {}) {
   const gesehen = [];
   const handler = (anfrage, antwort) => {
     const teile = [];
@@ -6335,7 +6336,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
       if (pfad === "/api/auth/login") {
         const eingabe = JSON.parse(rumpf || "{}");
         return eingabe.username === "anna" && eingabe.password === BRUECKE_PASSWORT
-          ? senden(200, { token: BRUECKE_TOKEN, user: { username: "anna", role: "mitarbeiter" } })
+          ? senden(200, { token: BRUECKE_TOKEN, user: { id: 7, username: "anna", role: rolle } })
           : senden(401, { error: { message: "Anmeldung abgewiesen" } });
       }
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
@@ -6351,12 +6352,43 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
         ausweisNamen.push(name);
         return senden(201, { data: { id: ausweisNamen.length, name, praefix: BRUECKE_AUSWEIS.slice(0, 14), ausweis: BRUECKE_AUSWEIS } });
       }
+      if (pfad === "/api/auth/logout" && anfrage.method === "POST") return senden(200, { success: true });
+      if (pfad === "/api/auth/me") return senden(200, { user: { id: 7, username: "anna", role: rolle } });
       if (pfad === "/api/firmenordner") {
         // 503 heisst „auf diesem Geraet laeuft kein Dateidienst" und ist etwas anderes
         // als eine leere Ordnerliste. Das CLI muss beides auseinanderhalten.
         return firmenordner
-          ? senden(200, { data: { benutzer: "anna", erreichbar: true, ...firmenordner } })
+          ? senden(200, { data: { benutzer: "anna", erreichbar: true, nicht_abgeglichen: [{ art: "symlink", text: "Ein Symlink im Baum wird nicht übertragen." }], ...firmenordner } })
           : senden(503, { error: { message: "Auf diesem Geraet laeuft kein Firmenordner." } });
+      }
+      // Die Sicht eines Menschen, wie das Geraet sie eines Tages liefert. Bis dahin 404.
+      if (pfad === "/api/firmenordner/sicht") {
+        if (!sicht?.text) return senden(404, { error: { message: "Weg nicht bekannt" } });
+        antwort.writeHead(200, { "Content-Type": "text/markdown; charset=utf-8" });
+        return antwort.end(sicht.text);
+      }
+      // Die Verwaltung des Firmenordners: eine Sitzung und die Rolle admin, ein Ausweis oeffnet sie nie.
+      if (pfad === "/api/firmenordner/ordner" || pfad === "/api/firmenordner/rechte") {
+        if (!sitzung) return senden(401, { error: { message: "Ein Ausweis öffnet keine Verwaltung" } });
+        if (rolle !== "admin") return senden(403, { error: { message: "Nur für Administratoren" } });
+        const eingabe = JSON.parse(rumpf || "{}");
+        if (pfad === "/api/firmenordner/ordner" && anfrage.method === "GET") return senden(200, { data: alleOrdner });
+        if (pfad === "/api/firmenordner/ordner" && anfrage.method === "POST") {
+          if (alleOrdner.some((o) => o.kennung === eingabe.kennung)) return senden(409, { error: { message: "Kennung vergeben" } });
+          const neu = { id: 100 + alleOrdner.length, kennung: eingabe.kennung, name: eingabe.name, ebene: eingabe.ebene, art: eingabe.art || "geteilt", eltern_kennung: eingabe.eltern || null, raum_id: `raum-${eingabe.kennung}` };
+          alleOrdner.push(neu);
+          return senden(201, { data: neu });
+        }
+        if (pfad === "/api/firmenordner/rechte" && anfrage.method === "POST") {
+          const ordner = alleOrdner.find((o) => o.id === eingabe.ordner_id);
+          if (!ordner) return senden(404, { error: { message: "Diesen Ordner gibt es nicht" } });
+          if (eingabe.benutzer_id === 7 && firmenordner) {
+            firmenordner.ordner = firmenordner.ordner.filter((o) => o.kennung !== ordner.kennung);
+            firmenordner.ordner.push({ kennung: ordner.kennung, name: ordner.name, ebene: ordner.ebene, eltern: ordner.eltern_kennung, pfad: ordner.ebene === 1 ? ordner.kennung : `${ordner.eltern_kennung}/${ordner.kennung}`, recht: eingabe.recht });
+          }
+          return senden(201, { data: { neu: true, recht: eingabe.recht, ordner: ordner.kennung, benutzer: "anna" } });
+        }
+        return senden(404, { error: { message: "Weg nicht bekannt" } });
       }
       if (pfad === "/api/apps/meine") {
         return senden(200, {
@@ -6576,7 +6608,7 @@ function attrappenKlient() {
   const dir = wegwerfordner("ara-klient-");
   const pfad = join(dir, "opencloudcmd");
   writeFileSync(pfad, `#!/usr/bin/env node
-const { appendFileSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
+const { appendFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
 const { join } = require("node:path");
 const argv = process.argv.slice(2);
 // Die Ausschlussliste liegt in einem Wegwerfordner, den sync danach wegraeumt. Wer sie
@@ -6589,6 +6621,14 @@ writeFileSync(join(ziel, "vom-dienst.txt"), "aus dem Firmenordner\\n");
 if (process.env.ARA_PROBE_FEHLER && argv[1] === process.env.ARA_PROBE_FEHLER) {
   process.stderr.write("Der Dienst antwortet nicht\\n");
   process.exit(3);
+}
+// Mit einem Lager je Raum geht es in beide Richtungen: was hier liegt, geht in den Raum, und was
+// im Raum liegt, kommt hierher. So laesst sich messen, dass das Ausgerollte wieder herunterkommt.
+if (process.env.ARA_PROBE_LAGER) {
+  const raum = join(process.env.ARA_PROBE_LAGER, argv.includes("--remote-folder") ? argv[argv.indexOf("--remote-folder") + 1] : argv[1]);
+  mkdirSync(raum, { recursive: true });
+  cpSync(ziel, raum, { recursive: true });
+  cpSync(raum, ziel, { recursive: true });
 }
 process.exit(0);
 `);
@@ -6608,6 +6648,8 @@ const FO_ORDNER = [
   { kennung: "buchhaltung", name: "Buchhaltung", ebene: 1, eltern: null, pfad: "buchhaltung", recht: "lesen" },
   { kennung: "vicona", name: "Vicona", ebene: 2, eltern: "projekte", pfad: "projekte/vicona", recht: "schreiben" },
 ];
+/** Der Raum der Wurzel: Ebene 1 mit der Kennung wurzel, bis das Gerät die Art wurzel kennt. */
+const FO_WURZEL = { kennung: "wurzel", name: "Probehaus", ebene: 1, eltern: null, pfad: "wurzel", recht: "lesen" };
 /** Zwei, die das CLI abweisen muss: einer zeigt hinaus, einer heißt wie ein Ordner der Wurzel. */
 const FO_UNFUG = [
   { kennung: "../boese", name: "Hinaus", ebene: 1, eltern: null, pfad: "../boese", recht: "schreiben" },
@@ -6778,6 +6820,212 @@ await checkAsync("Die Brücke räumt den Baum nicht leer, wenn das Gerät keinen
   } finally {
     await geraet.schliessen();
   }
+});
+
+await checkAsync("Die Brücke legt den Raum wurzel oben in die Wurzel und schreibt sicht.md, vom Gerät oder aus dem, was es sagt", async () => {
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const sicht = { text: null };
+  const plan = firmenordnerPlan([FO_WURZEL, ...FO_ORDNER]);
+  const geraet = await brueckeGeraet({ firmenordner: plan, sicht });
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll };
+  const abgleichen = () => bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await abgleichen();
+    assert(lauf.status === 0, `sync endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+
+    // Der Raum wurzel zuerst, und sein Ort ist die Wurzel selbst, kein Unterordner darin.
+    const echt = realpathSync(w.root);
+    const rufe = klientRufe(klient.protokoll);
+    assert(rufe.length === 3, `der Klient wurde ${rufe.length} mal gerufen, nicht dreimal`);
+    assert(rufe[0].argv[1] === "wurzel" && rufe[0].argv[2] === echt, `der Raum wurzel liegt nicht oben in der Wurzel: ${JSON.stringify(rufe[0].argv)}`);
+    assert(!rufe[0].argv.includes("--remote-folder"), "der Raum wurzel geht mit --remote-folder");
+    assert(!existsSync(join(w.root, "wurzel")), "der Raum wurzel liegt in einem Unterordner");
+    assert(existsSync(join(w.root, "vom-dienst.txt")), "was im Raum wurzel liegt, kam nicht oben in der Wurzel an");
+    assert(rufe[1].argv[2] === join(echt, "buchhaltung") && rufe[2].argv[2] === join(echt, "projekte", "vicona"), "die Räume darunter liegen nicht an ihrer Stelle");
+
+    // Die Liste der Wurzel: das Allgemeine, dazu die Räume der Ebene 1, apps und sicht.md, als
+    // bloße Namen, weil der Klient kein Muster oben verankert. Die anderen Räume gehen ohne die Namen.
+    const liste = rufe[0].liste.split("\n");
+    for (const muster of [".git", "node_modules", ".claude/hooks", "settings.json", ".DS_Store", "buchhaltung", "projekte", "apps", "sicht.md"]) {
+      assert(liste.includes(muster), `${muster} steht nicht in der Liste der Wurzel:\n${rufe[0].liste}`);
+    }
+    assert(!liste.includes("wurzel") && !liste.includes("vicona"), `die Liste der Wurzel schließt den Raum selbst oder einen Ordner der Ebene 2 aus:\n${rufe[0].liste}`);
+    assert(!rufe[1].liste.split("\n").includes("buchhaltung") && rufe[1].liste.split("\n").includes(".DS_Store"), `die Liste eines Raums der Ebene 1 stimmt nicht:\n${rufe[1].liste}`);
+
+    // sicht.md: aus dem, was das Gerät sagt, solange es keine liefert. Ohne Geheimnis.
+    const sichtDatei = join(w.root, "sicht.md");
+    assert(existsSync(sichtDatei), "sicht.md wurde nicht geschrieben");
+    const text = readFileSync(sichtDatei, "utf8");
+    for (const erwartet of ["wurzel, diese Wurzel, oben", "projekte/vicona", "schreiben", "urlaub", "apps/urlaub/APP.md", "Symlink"]) {
+      assert(text.includes(erwartet), `sicht.md nennt „${erwartet}" nicht:\n${text}`);
+    }
+    assert(!text.includes(BRUECKE_PASSWORT) && !text.includes(BRUECKE_AUSWEIS), "sicht.md trägt das Passwort oder den Ausweis");
+    assert(/sicht\.md: geschrieben aus dem, was das Gerät/.test(lauf.stdout), `sync sagt nicht, woher sicht.md kommt: ${lauf.stdout}`);
+    assert(/Neu auf Ebene 1/.test(lauf.stdout) && /buchhaltung\/, projekte\//.test(lauf.stdout) && !/wurzel\//.test(lauf.stdout), `der Raum wurzel gilt als neuer Ordner der Ebene 1: ${lauf.stdout}`);
+    assert(/wurzel \(diese Wurzel, oben\).*Ebene 1, lesen.*abgeglichen/.test(lauf.stdout), `sync nennt den Raum wurzel nicht als die Wurzel: ${lauf.stdout}`);
+
+    // status kennt die Zeile der Wurzel und sicht.md.
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(lauf.status === 0 && /wurzel \(diese Wurzel, oben\).*abgeglichen.*0 Konflikte/.test(lauf.stdout) && /sicht\.md: da/.test(lauf.stdout), `status zeigt die Wurzel nicht: ${lauf.stdout}${lauf.stderr}`);
+
+    // Liefert das Gerät die Sicht, gilt seine, Wort für Wort.
+    sicht.text = "# Sicht vom Gerät\n\nAlles gut.\n";
+    lauf = await abgleichen();
+    assert(lauf.status === 0 && /das Gerät hat sie geliefert/.test(lauf.stdout), `die Sicht des Geräts wird nicht genommen: ${lauf.stdout}${lauf.stderr}`);
+    assert(readFileSync(sichtDatei, "utf8") === sicht.text, "sicht.md ist nicht die des Geräts");
+
+    // Ein Konflikt, wie dieser Klient ihn benennt (gemessen am 22.09.2026), zählt für die Wurzel.
+    writeFileSync(join(w.root, "README (conflicted copy 2026-09-22 201200).md"), "zweimal\n");
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(lauf.status !== 0 && /wurzel \(diese Wurzel, oben\).*1 Konflikte/.test(lauf.stdout), `ein Konflikt in der Wurzel wird nicht gezählt: ${lauf.stdout}`);
+    assert(!/buchhaltung.*1 Konflikte/.test(lauf.stdout), "ein Konflikt oben in der Wurzel wird einem Raum darunter zugerechnet");
+    return "Raum wurzel oben, Räume darunter an ihrer Stelle, Liste der Wurzel mit den Namen der Räume, sicht.md selbst geschrieben und vom Gerät genommen, Konfliktkopie gezählt";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Ein leerer Ordner mit der Brücke allein wird mit sync eine Wurzel, und die Bootstrap-Datei tritt beiseite", async () => {
+  // Was im Raum liegt: eine Wurzel, wie das Kit sie anlegt, mit einer Brücke, die das Haus ausgerollt hat.
+  const lager = wegwerfordner("ara-lager-");
+  const quelle = wurzel(["--name", "Probehaus", "--language", "de"]);
+  assert(quelle.run.status === 0, `root.mjs endet mit ${quelle.run.status}: ${quelle.run.stderr || quelle.run.stdout}`);
+  cpSync(quelle.root, join(lager, "wurzel"), { recursive: true });
+  const desHauses = `${readFileSync(join(quelle.root, "arasul.mjs"), "utf8")}\n// die Brücke, die das Haus ausgerollt hat\n`;
+  writeFileSync(join(lager, "wurzel", "arasul.mjs"), desHauses);
+
+  const eigen = wegwerfordner("ara-bruecke-");
+  const root = join(wegwerfordner("ara-bootstrap-"), "haus");
+  mkdirSync(root);
+  cpSync(join(ROOT_TEMPLATE, "arasul.mjs"), join(root, "arasul.mjs"));
+  const w = { root, env: { ARASUL_CONFIG_DIR: join(eigen, "ausweis"), CLAUDE_CONFIG_DIR: join(eigen, "claude"), LANG: "de_DE.UTF-8" } };
+  const klient = attrappenKlient();
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_WURZEL, FO_ORDNER[1]]) });
+  try {
+    // Ohne Wurzel gehen login, status und sync, und sonst nichts.
+    let lauf = await bruecke(w, ["apps"]);
+    assert(lauf.status !== 0 && /keine Wurzel/.test(lauf.stderr), `apps läuft in einem Ordner ohne Wurzel: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung im leeren Ordner: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0, `sync im leeren Ordner endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+
+    // Danach ist der Ordner die Wurzel aus dem Raum: oben, mit der Brücke des Hauses und ohne Konfliktkopie.
+    assert(existsSync(join(root, ".claude", "root.json")) && existsSync(join(root, ".claude", "CLAUDE.md")), "die Wurzel kam nicht aus dem Raum herunter");
+    assert(readFileSync(join(root, "arasul.mjs"), "utf8") === desHauses, "die Brücke des Hauses hat nicht gewonnen");
+    assert(!readdirSync(root).some((name) => /conflict/i.test(name)), `eine Konfliktkopie liegt da: ${readdirSync(root).join(", ")}`);
+    assert(existsSync(join(root, "projekte", "vicona")), "der Ordner der Ebene 2 liegt nicht an seiner Stelle");
+    assert(existsSync(join(root, "sicht.md")), "sicht.md fehlt");
+    const rufe = klientRufe(klient.protokoll);
+    assert(rufe[0].argv[1] === "wurzel" && rufe[0].argv[2] === realpathSync(root), `der Raum wurzel ging nicht in den Ordner selbst: ${JSON.stringify(rufe[0].argv)}`);
+
+    // Ein Ordner, in dem anderes liegt, ist keine Wurzel und wird auch keine.
+    const fremd = join(wegwerfordner("ara-fremd-"), "notizen");
+    mkdirSync(fremd);
+    cpSync(join(ROOT_TEMPLATE, "arasul.mjs"), join(fremd, "arasul.mjs"));
+    writeFileSync(join(fremd, "notiz.md"), "meins\n");
+    const vorher = klientRufe(klient.protokoll).length;
+    lauf = await bruecke({ root: fremd, env: w.env }, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status !== 0 && /keine Wurzel/.test(lauf.stderr), `ein Ordner mit fremdem Inhalt wird abgeglichen: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === vorher && !existsSync(join(fremd, ".claude")), "in einen fremden Ordner wurde die Wurzel gelegt");
+    return "leerer Ordner plus Brücke wird die Wurzel aus dem Raum, die Brücke des Hauses gewinnt ohne Konflikt, ein Ordner mit Inhalt bleibt keine";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("root.mjs --deploy legt die Wurzel in den Raum wurzel: Prüfskript zuerst, Raum als Administrator, nichts Rechnereigenes, gegengeprüft", async () => {
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const lager = wegwerfordner("ara-lager-");
+  const plan = firmenordnerPlan([FO_ORDNER[0]]);
+  const alle = [{ id: 1, kennung: "buchhaltung", name: "Buchhaltung", ebene: 1, art: "geteilt", eltern_kennung: null }];
+  const geraet = await brueckeGeraet({ firmenordner: plan, rolle: "admin", alleOrdner: alle });
+  const umgebung = { ...w.env, ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const ausrollen = (...mehr) => toolAsync("root.mjs", ["--path", w.root, "--deploy", "--client", klient.pfad, "--password-stdin", ...mehr], umgebung, `${BRUECKE_PASSWORT}\n`);
+  const echt = realpathSync(w.root);
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+
+    // Ein Befund hält an: nichts geht hinaus, nichts wird angelegt.
+    mkdirSync(join(w.root, "sales", ".claude"), { recursive: true });
+    writeFileSync(join(w.root, "sales", ".claude", "settings.json"), "{}\n");
+    lauf = await ausrollen();
+    assert(lauf.status !== 0 && /Befund/.test(lauf.stderr + lauf.stdout), `ein Befund hält --deploy nicht an: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === 0, "trotz Befund wurde der Klient gerufen");
+    assert(!geraet.gesehen.some((g) => g.pfad === "/api/firmenordner/ordner"), "trotz Befund wurde am Gerät ein Raum angelegt");
+    rmSync(join(w.root, "sales", ".claude"), { recursive: true, force: true });
+
+    // Der Raum fehlt: er wird mit einer Sitzung angelegt, das Recht vergeben, die Sitzung beendet.
+    mkdirSync(join(w.root, ".claude", "hooks"), { recursive: true });
+    writeFileSync(join(w.root, ".claude", "hooks", "eigen.mjs"), "// nur hier\n");
+    lauf = await ausrollen();
+    assert(lauf.status === 0, `--deploy endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    const anlegen = geraet.gesehen.find((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/ordner");
+    assert(anlegen && anlegen.ausweis === `Bearer ${BRUECKE_TOKEN}`, "der Raum wurde nicht mit der Sitzung angelegt");
+    const rumpf = JSON.parse(anlegen.rumpf);
+    assert(rumpf.kennung === "wurzel" && rumpf.ebene === 1 && rumpf.name === "Probehaus", `der Raum wurde falsch angelegt: ${anlegen.rumpf}`);
+    const recht = geraet.gesehen.find((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/rechte");
+    assert(recht && JSON.parse(recht.rumpf).benutzer_id === 7 && JSON.parse(recht.rumpf).recht === "schreiben", `das Recht wurde nicht vergeben: ${recht?.rumpf}`);
+    assert(geraet.gesehen.some((g) => g.pfad === "/api/auth/logout"), "die geliehene Sitzung wurde nicht beendet");
+    assert(!geraet.gesehen.some((g) => g.pfad.startsWith("/api/firmenordner/") && g.ausweis === `Bearer ${BRUECKE_AUSWEIS}`), "der Ausweis ging an die Verwaltung");
+    // Zwei Rufe des Klienten: hinauf in die Wurzel selbst, herunter in einen Wegwerfordner, der danach weg ist.
+    const rufe = klientRufe(klient.protokoll);
+    assert(rufe.length === 2, `der Klient wurde ${rufe.length} mal gerufen, nicht zweimal`);
+    assert(rufe[0].argv[1] === "wurzel" && rufe[0].argv[2] === echt, `hinauf ging es nicht aus der Wurzel: ${JSON.stringify(rufe[0].argv)}`);
+    assert(rufe[1].argv[1] === "wurzel" && rufe[1].argv[2] !== echt && !existsSync(rufe[1].argv[2]), `die Gegenprüfung lief nicht in einen Wegwerfordner, oder er blieb liegen: ${JSON.stringify(rufe[1].argv)}`);
+    const liste = rufe[0].liste.split("\n");
+    for (const muster of [".git", "node_modules", ".claude/hooks", "settings.json", "buchhaltung", "apps", "sicht.md"]) {
+      assert(liste.includes(muster), `${muster} steht nicht in der Liste des Ausrollens:\n${rufe[0].liste}`);
+    }
+    assert(/Prüfskript: kein Befund/.test(lauf.stdout) && /Raum wurzel: auf .* angelegt/.test(lauf.stdout) && /alle \d+ liegen dort/.test(lauf.stdout), `--deploy sagt nicht, was es tat: ${lauf.stdout}`);
+    assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_PASSWORT), "das Passwort steht in der Ausgabe");
+    // Was im Raum liegt, ist das Gerüst, und nichts Rechnereigenes.
+    const imRaum = dateien(join(lager, "wurzel"));
+    assert(imRaum.includes(".claude/CLAUDE.md") && imRaum.includes("arasul.mjs") && imRaum.includes(".claude/scripts/check.mjs"), `das Gerüst liegt nicht im Raum: ${imRaum.join(", ")}`);
+
+    // Ein zweites Mal: der Raum ist da, nichts wird angelegt.
+    const gesehen = geraet.gesehen.length;
+    lauf = await ausrollen();
+    assert(lauf.status === 0 && /Raum wurzel: freigegeben für anna, schreiben/.test(lauf.stdout), `der zweite Lauf: ${lauf.stdout}${lauf.stderr}`);
+    assert(!geraet.gesehen.slice(gesehen).some((g) => g.verb === "POST" && g.pfad.startsWith("/api/firmenordner")), "beim zweiten Lauf wurde wieder angelegt");
+
+    // Nur lesen: Ausrollen geht nicht, und der Klient wird nicht gerufen.
+    const zeile = plan.ordner.find((o) => o.kennung === "wurzel");
+    zeile.recht = "lesen";
+    const vorLesen = klientRufe(klient.protokoll).length;
+    lauf = await ausrollen();
+    assert(lauf.status !== 0 && /schreiben/.test(lauf.stderr) && klientRufe(klient.protokoll).length === vorLesen, `mit lesen wird ausgerollt: ${lauf.stdout}${lauf.stderr}`);
+    zeile.recht = "schreiben";
+
+    // Eine ältere Brücke ohne deploy wird durch die des Kits ersetzt, dann geht es weiter.
+    writeFileSync(join(w.root, "arasul.mjs"), "// eine Brücke von 0.27.0, ohne deploy\n");
+    lauf = await ausrollen();
+    assert(lauf.status === 0 && /ersetzt/.test(lauf.stdout), `eine alte Brücke wird nicht ersetzt: ${lauf.stdout}${lauf.stderr}`);
+    assert(readFileSync(join(w.root, "arasul.mjs"), "utf8") === readFileSync(join(ROOT_TEMPLATE, "arasul.mjs"), "utf8"), "die ersetzte Brücke ist nicht die des Kits");
+  } finally {
+    await geraet.schliessen();
+  }
+
+  // Ein Mitarbeiter, dem der Raum fehlt: es wird gesagt, nichts angelegt, nichts gerufen.
+  const mitarbeiter = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_ORDNER[0]]), rolle: "mitarbeiter", alleOrdner: [] });
+  try {
+    let lauf = await bruecke(w, ["login", mitarbeiter.adresse, "--user", "anna", "--password-stdin", "--name", "zweites"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung als Mitarbeiter: ${lauf.stderr}`);
+    const vorher = klientRufe(klient.protokoll).length;
+    lauf = await ausrollen("--device", "zweites");
+    assert(lauf.status !== 0 && /kein Administrator/.test(lauf.stderr), `ein Mitarbeiter ohne Raum bekommt keinen Satz: ${lauf.stdout}${lauf.stderr}`);
+    assert(!mitarbeiter.gesehen.some((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/ordner") && klientRufe(klient.protokoll).length === vorher, "als Mitarbeiter wurde angelegt oder gerufen");
+    assert(mitarbeiter.gesehen.some((g) => g.pfad === "/api/auth/logout"), "die Sitzung des Mitarbeiters wurde nicht beendet");
+  } finally {
+    await mitarbeiter.schliessen();
+  }
+  return "Befund hält an, Raum mit Sitzung angelegt und Recht vergeben, Sitzung beendet, hinauf aus der Wurzel und herunter zur Probe, alte Brücke ersetzt, Mitarbeiter ohne Raum hört es";
 });
 
 await checkAsync("Die Brücke spricht mit dem Backend der Vorlage: agent kommt aus app.json, call liest und schreibt", async () => {
