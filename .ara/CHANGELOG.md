@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.29.0 (2026-09-22)
+
+Contract: up to 6
+
+- **The bridge knows the root of the device.** Since 2026-09-22 a device carries one root of its own, level 0 with the kind `wurzel`, and names it first in its list of folders for every active person, with an empty path and the right that follows from the role: everybody reads, administrators write, no right per person. `sync` and `status` recognise it by level and kind and by nothing else, take its id out of the answer, `firma` on the device measured, and lay that room at the top of the tree, the rooms of level 1 and 2 below it at their real place. The bridge of 0.28.0 named that root a shape it did not know and synced nothing. A folder of level 1 with the id `wurzel`, which 0.28.0 made as the root, is a folder of level 1 today and lands under its name. Level 0 with another kind is named and not laid down.
+- **`deploy` takes the root the device names and makes one only when the device carries none**: id `firma`, the name of the house, kind `wurzel`, level 0, the shape the device's front end proposes as well, with a session borrowed for exactly those requests. No right per person is given on it. When the device carries a root and does not list it for this person, that is said and nothing is made: 0.28.0 made a second room `wurzel` next to the device's root, this version never does. A device that does not take the kind `wurzel` is named as one from before 2026-09-22, and nothing is deployed in its place.
+- **`Fatal: Authentication` from the client gets one sentence more**, in `deploy` and in `sync`: the file service has no password for this person, because the device mirrors a password into the service when it is set, so an account whose password was set before the company folder was switched on gets in only after a password change. Measured on 2026-09-22 with a password the service did not know.
+- Measured on 2026-09-22 at a device that carries its root `firma`, from a test root with two throwaway accounts: `--deploy` as an administrator took that root, made nothing, all 16 files lay in the room afterwards and the device still carried exactly one root; an employee with `lesen` on the root by role and `schreiben` on one folder of level 2 got, out of an empty folder, the root at the top, the folder at its place, the chain above it made locally and `sicht.md` from the device; Claude Code started two levels below loaded the root's `.claude/CLAUDE.md` and its skills, and the skill `arasul` ran `arasul.mjs apps` against the device.
+
 ## 0.28.0 (2026-09-22)
 
 Contract: up to 6

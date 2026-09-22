@@ -203,9 +203,9 @@ app offers. This file does that, and nothing else.
 | `login <address> --token-stdin` | The same with a credential instead of name and password. It is issued in the device's front end |
 | `login`, `login --approve <checksum>`, `login --withdraw` | Show the proposals, approve one by its checksum, take back everything the approving entered |
 | `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
-| `sync` | Syncs the company folder, the room of the root at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
+| `sync` | Syncs the company folder, the root of the device at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
 | `status` | The device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
-| `deploy` | Puts this root into the room of the root on the device: the check script first, the room made as an administrator when it is missing, a download afterwards as the proof. `root.mjs --deploy` calls it |
+| `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
 
 **The credential** lies in `~/.config/arasul/credentials.json`, mode 0600, one entry per device
@@ -244,16 +244,22 @@ locally even when the person has no right on the parent and cannot see it in the
 folder of level 1 that is named like a folder the root carries itself is not laid down, and one
 whose id is not an id is not either; both are named.
 
-**The room of the root is the root itself.** The device has one folder of level 1 for the root of
-the house: as of 2026-09-22 a shared folder with the id `wurzel`, until the device knows the kind
-`wurzel` and names it on a folder, which the tool takes as well. That room is not laid into a
-folder below the root, it is synced onto the root's own folder: `.claude/`, `arasul.mjs`, the
-README and everything else of the scaffold arrive at the top, and whoever has `lesen` on the
-room gets them read-only. So an employee's tree has the root at the top and their folders below
-it, at their real place, and Claude Code started in any of those folders loads the rules, skills
-and agents of the root. Measured on 2026-09-22 at a device: a session two levels below the
-root, in a folder of level 2 that the person may write, named the root's `.claude/CLAUDE.md` and
-its skills, and a call of the skill `arasul` ran `arasul.mjs apps` against the device.
+**The room of the root is the root itself.** The device carries one root of its own, level 0
+with the kind `wurzel`, exactly one per device, and names it first in its list of folders for
+every active person, with an empty path and the right that follows from the role: everybody
+reads, administrators write, no right per person (as of 2026-09-22, measured at a device whose
+root has the id `firma`). The tool recognises it by level and kind and by nothing else, and
+takes the id out of the answer: the room in the file service is named by that id. That room is
+not laid into a folder below the root, it is synced onto the root's own folder: `.claude/`,
+`arasul.mjs`, the README and everything else of the scaffold arrive at the top, and whoever has
+`lesen` on the root gets them read-only. So an employee's tree has the root at the top and their
+folders below it, at their real place, and Claude Code started in any of those folders loads the
+rules, skills and agents of the root. Measured on 2026-09-22 at a device: a session two levels
+below the root, in a folder of level 2 that the person may write, named the root's
+`.claude/CLAUDE.md` and its skills, and a call of the skill `arasul` ran `arasul.mjs apps`
+against the device. A folder of level 1 with the id `wurzel`, which a kit before 0.29.0 made as
+the root, is a folder of level 1 today and lands under its name. Level 0 with another kind is a
+shape the tool does not know: it names the folder and lays nothing down.
 
 **A root comes down into an empty folder.** Whoever is given the room of the root puts
 `arasul.mjs` alone into an empty folder, logs in and syncs: `login`, `status` and `sync` run in
@@ -387,12 +393,16 @@ After that the root lives on the device. `--deploy` hands over to the bridge of 
 
 1. **The check script runs, and a finding stops everything.** What goes onto the device goes to
    everybody who has the room, so a root with a finding does not go.
-2. **The room of the root has to be shared with this person for writing.** When it is not, the
-   tool logs in with the password, as the credential opens no administration, looks at the
-   device's list of folders, makes the folder `wurzel` of level 1 when it is missing, gives the
-   person the right `schreiben` on it and ends that session. Only an administrator can do that
-   part: an employee without the room is told to ask one. With `lesen` alone nothing is
-   deployed.
+2. **The root of the device has to be one this person writes.** The device names it in its
+   list of folders, level 0 with the kind `wurzel`, and the tool takes that one, under the id
+   the device names. When the device names none, the tool logs in with the password, as the
+   credential opens no administration, looks at the device's list of all folders and makes the
+   root only when the device carries none: id `firma`, the name of the house, kind `wurzel`,
+   level 0, the shape the device's front end proposes as well. Then it ends that session. When
+   the device carries a root and does not list it for this person, that is said and nothing is
+   made: a second root is never made. Only an administrator makes the root: an employee without
+   one is told to ask an administrator. With `lesen` alone nothing is deployed: on the root,
+   writing is the administrators' right, by role, and no right per person is given on it.
 3. **The tree goes up through the client**, with the general list and the root's own list of
    what stays home: `.git`, `node_modules`, `.claude/hooks/`, `settings.json`, `.DS_Store`, the
    journal of the client, `apps/`, `sicht.md` and the rooms the device shares separately.
@@ -403,18 +413,26 @@ After that the root lives on the device. `--deploy` hands over to the bridge of 
 The password is asked for at the terminal or comes with `--password-stdin`; so the human runs
 this command themselves, like `sync`. `deploy` is not in the proposal's allow list.
 
-**Who gets the root:** everybody an administrator shares the room `wurzel` with, in the
-device's front end, with `lesen`. Their next `sync` lays the root at the top of their tree.
-Whoever is to change the root gets `schreiben`, and their `sync` carries their changes up.
+**When the client says `Fatal: Authentication`**, the file service has no password for this
+person, and `deploy` says so in one sentence, `sync` as well: the device mirrors a password into
+the service when the password is set, so an account whose password was set before the company
+folder was switched on gets in only after a password change. Measured on 2026-09-22 with a
+password the service did not know.
 
-**Measured on 2026-09-22 at a device**, from a test root with two throwaway accounts: after
-`--deploy` the scaffold lay in the room `wurzel`, all 16 files, and a download of the room
-without any list showed exactly those 16, no `.DS_Store`, no hook, no `settings.json`, no
-`.git`. A second `--deploy` with the room in place made nothing anew. The second account, with
-`lesen` on the room and `schreiben` on one folder of level 2 only, put `arasul.mjs` into an
-empty folder, logged in and synced: the root lay at the top, the folder of level 2 at its place,
-the chain above it made locally, `sicht.md` written. Claude Code started two levels below loaded
-the root's `.claude/CLAUDE.md` and its skills, and the skill `arasul` ran `arasul.mjs apps`.
+**Who gets the root:** everybody active on the device, with `lesen`, without anybody sharing
+anything. Their next `sync` lays the root at the top of their tree. Administrators have
+`schreiben` by role, and their `sync` carries their changes up.
+
+**Measured on 2026-09-22 at a device that carries its root `firma`**, from a test root with two
+throwaway accounts: `--deploy` as an administrator took the root the device named, made
+nothing, and the scaffold lay in the room `firma`, all 16 files, checked by the download;
+afterwards the device still carried exactly one root. The second account, an employee with
+`lesen` on the root by role and `schreiben` on one folder of level 2 only, put `arasul.mjs` into
+an empty folder, logged in and synced: the root lay at the top, the folder of level 2 at its
+place, the chain above it made locally, and `sicht.md` came from the device. Claude Code started
+two levels below loaded the root's `.claude/CLAUDE.md` and its skills, and the skill `arasul`
+ran `arasul.mjs apps` against the device. Making a root was measured at the kit's own mock
+device only: the device's root was not thrown away for the measurement.
 
 ## The showcase
 

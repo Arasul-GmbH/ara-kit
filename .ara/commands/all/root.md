@@ -55,11 +55,11 @@ and write only what the human said. Then name the step that counts: from now on 
 starts in the root or in a folder of level 1.
 
 **Onto the device** goes the root with `node .ara/tools/root.mjs --path <root> --deploy --client
-<path to opencloudcmd>`, and it lives there afterwards: whoever an administrator shares the room
-`wurzel` with gets it at the top of their own tree with the next `sync`. The command asks for the
+<path to opencloudcmd>`, and it lives there afterwards: everybody active on the device gets it
+at the top of their own tree with the next `sync`, administrators write it. The command asks for the
 password of the device, so the human runs it themselves; you name it, with the path of the
-client, and say what happens: the check script first, and a finding stops it; the room made as
-an administrator when it is missing; nothing of this computer goes along; a download afterwards
+client, and say what happens: the check script first, and a finding stops it; the root of the
+device made as an administrator only when the device carries none; nothing of this computer goes along; a download afterwards
 proves what arrived. Read out what it says. Details in the procedure, "Deploying the root onto
 the device".
 
