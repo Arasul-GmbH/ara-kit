@@ -89,9 +89,11 @@
  *
  * `deploy` legt diese Wurzel aufs Gerät: zuerst läuft das Prüfskript, und ein Befund hält an,
  * dann geht der Baum über denselben Klienten in den Raum der Wurzel, und ein Herunterladen in
- * einen Wegwerfordner beweist, was angekommen ist. Fehlt der Raum, wird er als Administrator
- * angelegt, mit einer Sitzung, die genau für diese Anfragen lebt. settings.json, Hooks, .git und
- * node_modules gehen nie mit, die Ordner, die das Gerät einzeln freigibt, auch nicht.
+ * einen Wegwerfordner beweist, was angekommen ist. Der Raum ist die Wurzel des Geräts, Ebene 0
+ * mit der Art wurzel, unter der Kennung, die das Gerät nennt. Führt das Gerät keine, wird sie als
+ * Administrator angelegt, mit einer Sitzung, die genau für diese Anfragen lebt; führt es eine,
+ * wird nie eine zweite angelegt. settings.json, Hooks, .git und node_modules gehen nie mit, die
+ * Ordner, die das Gerät einzeln freigibt, auch nicht.
  *
  * `call` ruft nur Routen auf, die die App in ihrem Feld `agent` nennt, bei jedem Aufruf frisch
  * von der App geholt. Eine Route, die etwas ändert, verlangt --write. Der Vorschlag dieser Wurzel
@@ -163,14 +165,12 @@ const DEVICE = Object.freeze({
   session: "api/auth/session",
   credentials: "api/ausweise",
   mine: "api/apps/meine",
-  me: "api/auth/me",
   logout: "api/auth/logout",
   folders: "api/firmenordner",
-  // The view of a person, as the device will deliver it one day. A 404 here means: not yet.
+  // The view of a person, as the device delivers it since 2026-09-22. A 404 here means: not yet.
   view: "api/firmenordner/sicht",
   // Administration of the company folder: a session, never a credential.
   rooms: "api/firmenordner/ordner",
-  rights: "api/firmenordner/rechte",
   appBase: (id) => `apps/${id}/api/`,
   agent: "agent",
 });
@@ -1098,27 +1098,31 @@ async function doCall(args) {
 
 /**
  * What this file assumes about the file service, with the date it is from. Measured at a device
- * on 2026-09-22, not read out of a manual: a folder of level 1 is a room named by the folder's
- * id, not by its display name, and a folder of level 2 hangs in the room that holds what is
- * shared with a person. A device that says otherwise wins.
+ * on 2026-09-22, not read out of a manual: the root of the device and a folder of level 1 are
+ * rooms named by the folder's id, not by its display name, and a folder of level 2 hangs in the
+ * room that holds what is shared with a person. A device that says otherwise wins.
  */
 const SERVICE = Object.freeze({
   shared: "Shares",
   client: "opencloudcmd",
   password: "OPENCLOUD_TOKEN",
   /**
-   * The room of the root itself. As of 2026-09-22 the device knows the kinds `geteilt` and
-   * `am_geraet` only, so the root is a shared folder of level 1 with this id, and it is recognised
-   * by the id. A device that names the kind `wurzel` on a folder wins, whatever the folder's id.
+   * The root of the device: level 0 with this kind, exactly one per device, and the device lists
+   * it first for every active person (measured on 2026-09-22). Its id comes out of the device's
+   * answer, `firma` on the device measured, and is the name of its room in the file service. It is
+   * recognised by level and kind and by nothing else: a folder of level 1 with any id is a folder
+   * of level 1. `rootId` is the id the bridge gives a root it makes itself, the same one the
+   * device's front end proposes.
    */
-  root: "wurzel",
+  rootKind: "wurzel",
+  rootId: "firma",
 });
 
 /** The view of this person, written by sync at the top of the root. Per person, never synced. */
 const VIEW_FILE = "sicht.md";
 
-/** Is this folder of the device the root? By its kind where the device names one, else by its id. */
-const isRootRoom = (id, kind) => String(kind ?? "") === SERVICE.root || String(id ?? "") === SERVICE.root;
+/** Is this folder of the device the root? Level 0 with the kind `wurzel`, and nothing else. */
+const isRootRoom = (level, kind) => Number(level) === 0 && String(kind ?? "") === SERVICE.rootKind;
 
 /** Where the vendor's client lies when nobody says otherwise. It runs unpacked, without installing. */
 const CLIENT_PLACES = Object.freeze([
@@ -1241,7 +1245,10 @@ async function askFolders(device) {
     const id = String(raw?.kennung ?? "");
     const parent = raw?.eltern === null || raw?.eltern === undefined ? null : String(raw.eltern);
     const level = Number(raw?.ebene);
-    if (!FOLDER_ID.test(id) || (level !== 1 && level !== 2) || (level === 2 && !FOLDER_ID.test(parent || ""))) {
+    // The root of the device is level 0 with the kind `wurzel`, and it lies at the top of this
+    // folder, not in a folder below it. Level 0 with another kind is a shape this file does not know.
+    const root = isRootRoom(level, raw?.art);
+    if (!FOLDER_ID.test(id) || !(root || level === 1 || level === 2) || (level === 2 && !FOLDER_ID.test(parent || ""))) {
       refusedFolders.push({ line: oneLine(JSON.stringify(raw), 120), why: t("the device names it in a shape this file does not know", "das Gerät nennt ihn in einer Form, die diese Datei nicht kennt") });
       continue;
     }
@@ -1249,10 +1256,6 @@ async function askFolders(device) {
       refusedFolders.push({ line: id, why: t(`a root carries its own ${id} here`, `eine Wurzel trägt hier ihr eigenes ${id}`) });
       continue;
     }
-    // The room of the root lies at the top of this folder, not in a folder below it. A folder of
-    // level 2 that hangs in that room lies at the top as well: its parent is this folder.
-    const root = level === 1 && isRootRoom(id, raw?.art);
-    const inRoot = level === 2 && isRootRoom(parent, null);
     folders.push({
       id,
       level,
@@ -1260,7 +1263,7 @@ async function askFolders(device) {
       parent: level === 2 ? parent : null,
       name: oneLine(raw?.name || id, 80),
       right: oneLine(String(raw?.recht ?? ""), 20),
-      path: root ? "." : level === 1 || inRoot ? id : `${parent}/${id}`,
+      path: root ? "." : level === 1 ? id : `${parent}/${id}`,
     });
   }
   return {
@@ -1355,6 +1358,22 @@ function clientSaid(run) {
 }
 
 /**
+ * Why a run of the client did not work out: its last lines, and one sentence more where the line
+ * is known. `Fatal: Authentication` (measured on 2026-09-22 with a password the service did not
+ * know) means the file service has no password for this person. The device mirrors a password
+ * into the service when the password is set, so an account whose password was set before the
+ * company folder was switched on has none there, and gets in after a password change.
+ */
+function clientFailed(run) {
+  const said = clientSaid(run);
+  if (!/Fatal: Authentication/i.test(`${run.stderr || ""}\n${run.stdout || ""}`)) return said;
+  return `${said} ${t(
+    "The file service does not know this password: the device mirrors a password into the service when it is set, so an account whose password was set before the company folder was switched on gets in only after a password change.",
+    "Der Dateidienst kennt dieses Passwort nicht: das Gerät spiegelt ein Passwort beim Setzen in den Dienst, ein Konto, dessen Passwort vor dem Einschalten des Firmenordners gesetzt wurde, kommt also erst nach einem Passwortwechsel hinein."
+  )}`;
+}
+
+/**
  * The password for the file service. It is the one of the device, because the device mirrors it
  * there: asked for at every run, at the terminal or with --password-stdin, and stored nowhere.
  */
@@ -1389,7 +1408,7 @@ function excludeFiles(plan) {
 function runClient({ client, plan, folder, local, excludes, password }) {
   const call = [
     plan.address,
-    folder.level === 1 ? folder.id : SERVICE.shared,
+    folder.root || folder.level === 1 ? folder.id : SERVICE.shared,
     local,
     "--user", plan.user,
     "--trust",
@@ -1458,7 +1477,7 @@ async function syncFolders(args, device, apps = []) {
       results.push({
         ...folder,
         ok: run.status === 0,
-        message: run.status === 0 ? null : clientSaid(run),
+        message: run.status === 0 ? null : clientFailed(run),
         conflicts: seen.conflicts,
         links: seen.links,
         at: new Date().toISOString(),
@@ -1687,7 +1706,7 @@ async function folderStatus(args, device) {
   }
   for (const path of Object.keys(known).sort()) {
     if (plan.folders.some((folder) => folder.path === path)) continue;
-    say(`  ${path === "." ? SERVICE.root : path}   ${t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen")}`);
+    say(`  ${path === "." ? known[path].id || path : path}   ${t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen")}`);
   }
   const view = join(ROOT, VIEW_FILE);
   say(`  ${VIEW_FILE}: ${existsSync(view) ? t(`there, written ${stamp(statSync(view).mtime.toISOString())}`, `da, geschrieben ${stamp(statSync(view).mtime.toISOString())}`) : t("not written yet, sync writes it", "noch nicht geschrieben, sync schreibt sie")}`);
@@ -1726,13 +1745,15 @@ function reasonOf(answer) {
 }
 
 /**
- * The room of the root, made as an administrator.
+ * The root of the device, made as an administrator.
  *
  * The credential opens no administration, so this is the one place where the bridge logs in with
  * the password: the session lives for these requests and is ended afterwards, and nothing of it is
- * stored. The device knows the kind `wurzel` not yet (as of 2026-09-22): the room is made as a
- * shared folder of level 1 with the id `wurzel`, and the right to write on it goes to the person
- * who makes it. Whoever else is to have the root gets the room shared by an administrator.
+ * stored. The device carries exactly one root, level 0 with the kind `wurzel` (as of 2026-09-22):
+ * every active person reads it, administrators write, by role, and no right per person is given
+ * on it. So a root is made only when the device carries none. When it carries one and does not
+ * list it for this person, that is said and nothing is made: a second root next to the device's
+ * own is what this file must never make, and once it did, on 2026-09-22, before it knew level 0.
  */
 async function makeRootRoom(device, plan, password) {
   const login = await ask(device.entry, { method: "POST", path: DEVICE.login, json: { [DEVICE.userField]: plan.user, [DEVICE.passwordField]: password } });
@@ -1742,36 +1763,33 @@ async function makeRootRoom(device, plan, password) {
   const body = jsonOf(login);
   const session = tokenIn(body);
   if (!session) stop(t(`${device.name} accepted the login, but its answer holds nothing this file can use.`, `${device.name} hat die Anmeldung angenommen, in der Antwort steht aber nichts, das diese Datei brauchen kann.`));
-  let myId = body?.user?.id ?? inner(body)?.user?.id ?? null;
   try {
     const all = await ask(device.entry, { path: DEVICE.rooms, token: session });
     if (all.status === 401 || all.status === 403) {
       stop(t(
-        `The room ${SERVICE.root} is not shared with you, and ${plan.user} is no administrator on ${device.name}: only an administrator makes it. Ask one to make the folder '${SERVICE.root}' of level 1 and to share it with you for writing. Nothing was deployed.`,
-        `Der Raum ${SERVICE.root} ist dir nicht freigegeben, und ${plan.user} ist auf ${device.name} kein Administrator: nur ein Administrator legt ihn an. Bitte einen, den Ordner '${SERVICE.root}' der Ebene 1 anzulegen und ihn dir zum Schreiben freizugeben. Nichts wurde ausgerollt.`
+        `${device.name} lists no root for you, and ${plan.user} is no administrator: only an administrator makes the root of the device. Ask one to make it in the device's front end. Nothing was deployed.`,
+        `${device.name} führt für dich keine Wurzel, und ${plan.user} ist kein Administrator: nur ein Administrator legt die Wurzel des Geräts an. Bitte einen, sie in der Oberfläche des Geräts anzulegen. Nichts wurde ausgerollt.`
       ));
     }
     if (all.status < 200 || all.status >= 300) stop(t(`${device.name} answers ${DEVICE.rooms} with status ${all.status}: ${reasonOf(all)}`, `${device.name} antwortet auf ${DEVICE.rooms} mit Status ${all.status}: ${reasonOf(all)}`));
     const rooms = inner(jsonOf(all));
-    const found = (Array.isArray(rooms) ? rooms : []).find((room) => Number(room?.ebene) === 1 && isRootRoom(room?.kennung, room?.art));
-    let roomId;
+    const found = (Array.isArray(rooms) ? rooms : []).find((room) => isRootRoom(room?.ebene, room?.art));
     if (found) {
-      roomId = found.id;
-      say(t(`Room ${SERVICE.root}: exists on ${device.name}, it was not shared with you yet.`, `Raum ${SERVICE.root}: gibt es auf ${device.name}, er war dir noch nicht freigegeben.`));
-    } else {
-      const made = await ask(device.entry, { method: "POST", path: DEVICE.rooms, token: session, json: { kennung: SERVICE.root, name: oneLine(META?.name || SERVICE.root, 80), ebene: 1 } });
-      if (made.status < 200 || made.status >= 300) stop(t(`${device.name} did not make the room ${SERVICE.root} (status ${made.status}): ${reasonOf(made)}`, `${device.name} hat den Raum ${SERVICE.root} nicht angelegt (Status ${made.status}): ${reasonOf(made)}`));
-      roomId = inner(jsonOf(made))?.id;
-      say(t(`Room ${SERVICE.root}: made on ${device.name}, as a shared folder of level 1.`, `Raum ${SERVICE.root}: auf ${device.name} angelegt, als geteilter Ordner der Ebene 1.`));
+      stop(t(
+        `${device.name} carries the root '${found.kennung}' and does not list it for ${plan.user}. A second root is never made. Nothing was deployed.`,
+        `${device.name} führt die Wurzel '${found.kennung}' und nennt sie für ${plan.user} nicht. Eine zweite Wurzel wird nie angelegt. Nichts wurde ausgerollt.`
+      ));
     }
-    if (myId === null || myId === undefined) {
-      const me = await ask(device.entry, { path: DEVICE.me, token: session });
-      myId = jsonOf(me)?.user?.id ?? inner(jsonOf(me))?.id ?? null;
+    const made = await ask(device.entry, { method: "POST", path: DEVICE.rooms, token: session, json: { kennung: SERVICE.rootId, name: oneLine(META?.name || SERVICE.rootId, 80), ebene: 0, art: SERVICE.rootKind } });
+    if (made.status === 409) stop(t(`${device.name} carries a root already and made no second one: ${reasonOf(made)}. Nothing was deployed.`, `${device.name} führt schon eine Wurzel und hat keine zweite angelegt: ${reasonOf(made)}. Nichts wurde ausgerollt.`));
+    if (made.status === 400) {
+      stop(t(
+        `${device.name} does not take a root of the kind ${SERVICE.rootKind} (400): ${reasonOf(made)}. A device from before 2026-09-22 knows no root of its own, and a shared folder in its place would stand next to the root a newer device carries. Nothing was deployed.`,
+        `${device.name} nimmt keine Wurzel der Art ${SERVICE.rootKind} an (400): ${reasonOf(made)}. Ein Gerät von vor dem 22.09.2026 kennt keine eigene Wurzel, und ein geteilter Ordner an ihrer Stelle stünde neben der Wurzel, die ein neueres Gerät führt. Nichts wurde ausgerollt.`
+      ));
     }
-    if (!roomId || myId === null || myId === undefined) stop(t(`${device.name} names no id for the room or for ${plan.user}. The right could not be given.`, `${device.name} nennt keine Kennung für den Raum oder für ${plan.user}. Das Recht ließ sich nicht vergeben.`));
-    const right = await ask(device.entry, { method: "POST", path: DEVICE.rights, token: session, json: { ordner_id: Number(roomId), benutzer_id: Number(myId), recht: "schreiben" } });
-    if (right.status < 200 || right.status >= 300) stop(t(`${device.name} did not give the right on ${SERVICE.root} (status ${right.status}): ${reasonOf(right)}`, `${device.name} hat das Recht auf ${SERVICE.root} nicht vergeben (Status ${right.status}): ${reasonOf(right)}`));
-    say(t(`Right on ${SERVICE.root}: schreiben, for ${plan.user}.`, `Recht auf ${SERVICE.root}: schreiben, für ${plan.user}.`));
+    if (made.status < 200 || made.status >= 300) stop(t(`${device.name} did not make the root ${SERVICE.rootId} (status ${made.status}): ${reasonOf(made)}`, `${device.name} hat die Wurzel ${SERVICE.rootId} nicht angelegt (Status ${made.status}): ${reasonOf(made)}`));
+    say(t(`Root ${SERVICE.rootId}: made on ${device.name}, level 0. Everybody active reads it, administrators write.`, `Wurzel ${SERVICE.rootId}: auf ${device.name} angelegt, Ebene 0. Jeder Aktive liest sie, Administratoren schreiben.`));
   } finally {
     // The session was borrowed for these requests. It ends here, whatever happened above.
     try {
@@ -1825,17 +1843,18 @@ async function doDeploy(args) {
   const client = clientPath(args);
   const password = await askPassword(args, plan, device);
 
+  // The root the device names, and only when it names none is one made. Its id is the device's.
   let room = plan.folders.find((folder) => folder.root);
   if (!room) {
     await makeRootRoom(device, plan, password);
     plan = await askFolders(device);
     room = plan.folders.find((folder) => folder.root);
-    if (!room) stop(t(`${device.name} made the room ${SERVICE.root} and does not list it for ${plan.user}. Nothing was deployed.`, `${device.name} hat den Raum ${SERVICE.root} angelegt und führt ihn für ${plan.user} nicht auf. Nichts wurde ausgerollt.`));
+    if (!room) stop(t(`${device.name} made the root and does not list it for ${plan.user}. Nothing was deployed.`, `${device.name} hat die Wurzel angelegt und führt sie für ${plan.user} nicht auf. Nichts wurde ausgerollt.`));
   } else {
-    say(t(`Room ${SERVICE.root}: shared with ${plan.user}, ${room.right}.`, `Raum ${SERVICE.root}: freigegeben für ${plan.user}, ${room.right}.`));
+    say(t(`Root ${room.id}: the device carries it, ${plan.user} has ${room.right}.`, `Wurzel ${room.id}: das Gerät führt sie, ${plan.user} hat ${room.right}.`));
   }
   if (room.right !== "schreiben") {
-    stop(t(`${plan.user} has '${room.right}' on ${SERVICE.root}, and deploying needs 'schreiben'. Ask an administrator. Nothing was deployed.`, `${plan.user} hat auf ${SERVICE.root} '${room.right}', und Ausrollen braucht 'schreiben'. Bitte einen Administrator. Nichts wurde ausgerollt.`));
+    stop(t(`${plan.user} has '${room.right}' on the root ${room.id}, and deploying needs 'schreiben': on the root that is the administrators' right, by role. Ask one. Nothing was deployed.`, `${plan.user} hat auf der Wurzel ${room.id} '${room.right}', und Ausrollen braucht 'schreiben': auf der Wurzel ist das das Recht der Administratoren, nach Rolle. Bitte einen. Nichts wurde ausgerollt.`));
   }
 
   const excludes = rootExcludes(plan);
@@ -1846,7 +1865,7 @@ async function doDeploy(args) {
   let up;
   try {
     up = runClient({ client, plan, folder: room, local: ROOT, excludes: lists.root, password });
-    if (up.status !== 0) stop(t(`The client did not sync the root: ${clientSaid(up)}`, `Der Klient hat die Wurzel nicht abgeglichen: ${clientSaid(up)}`));
+    if (up.status !== 0) stop(t(`The client did not sync the root: ${clientFailed(up)}`, `Der Klient hat die Wurzel nicht abgeglichen: ${clientFailed(up)}`));
     // Seen, not believed: the room comes down into a throwaway folder, and what lies there counts.
     probe = mkdtempSync(join(tmpdir(), "ara-wurzel-probe-"));
     const down = runClient({ client, plan, folder: room, local: probe, excludes: lists.root, password });
@@ -1860,7 +1879,7 @@ async function doDeploy(args) {
   const seen = inspectFolder(ROOT, topNames(plan));
   recordSync(device, plan, [{ ...room, ok: !missing.length, message: missing.length ? t(`${missing.length} files did not arrive`, `${missing.length} Dateien kamen nicht an`) : null, conflicts: seen.conflicts, links: seen.links, at: new Date().toISOString() }]);
 
-  say(t(`Deployed: ${expected.length} files of this root into the room ${SERVICE.root} on ${plan.address}.`, `Ausgerollt: ${expected.length} Dateien dieser Wurzel in den Raum ${SERVICE.root} auf ${plan.address}.`));
+  say(t(`Deployed: ${expected.length} files of this root into the root ${room.id} on ${plan.address}.`, `Ausgerollt: ${expected.length} Dateien dieser Wurzel in die Wurzel ${room.id} auf ${plan.address}.`));
   say(missing.length
     ? t(`  Checked against the room: ${missing.length} did not arrive: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`, `  Gegen den Raum geprüft: ${missing.length} kamen nicht an: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`)
     : t(`  Checked against the room: all ${expected.length} lie there, ${arrived.length} files in the room.`, `  Gegen den Raum geprüft: alle ${expected.length} liegen dort, ${arrived.length} Dateien im Raum.`));
@@ -1868,8 +1887,8 @@ async function doDeploy(args) {
   if (seen.conflicts.length) say(`  ${seen.conflicts.length} ${t("conflicts in this root, the client kept both versions", "Konflikte in dieser Wurzel, der Klient hat beide Fassungen behalten")}: ${seen.conflicts.slice(0, 5).join(", ")}`);
   if (seen.links.length) say(`  ${seen.links.length} ${t("symbolic links in this root, the client does not sync them", "Symlinks in dieser Wurzel, die gleicht der Klient nicht ab")}: ${seen.links.slice(0, 5).join(", ")}`);
   say(t(
-    `  Whoever is given the room ${SERVICE.root} by an administrator gets this root with the next sync, at the top of their own tree.`,
-    `  Wem ein Administrator den Raum ${SERVICE.root} freigibt, bekommt diese Wurzel mit dem nächsten Abgleich, oben in seinem eigenen Baum.`
+    `  Everybody active on the device gets this root with the next sync, at the top of their own tree: they read it, administrators write.`,
+    `  Jeder Aktive am Gerät bekommt diese Wurzel mit dem nächsten Abgleich, oben in seinem eigenen Baum: er liest sie, Administratoren schreiben.`
   ));
   return !missing.length && !seen.conflicts.length && !seen.links.length;
 }

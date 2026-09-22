@@ -211,9 +211,9 @@ nichts.
 | `login <adresse> --token-stdin` | Dasselbe mit einem Ausweis statt Name und Passwort. Ausgestellt wird er in der Oberfläche des Geräts |
 | `login`, `login --approve <prüfsumme>`, `login --withdraw` | Die Vorschläge zeigen, einen mit seiner Prüfsumme freigeben, alles zurücknehmen, was das Freigeben eintrug |
 | `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
-| `sync` | Gleicht den Firmenordner ab, den Raum der Wurzel oben in diesem Ordner eingeschlossen, schreibt dieselben Dateien und `sicht.md`, die Sicht dieses Menschen. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
+| `sync` | Gleicht den Firmenordner ab, die Wurzel des Geräts oben in diesem Ordner eingeschlossen, schreibt dieselben Dateien und `sicht.md`, die Sicht dieses Menschen. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
 | `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge |
-| `deploy` | Legt diese Wurzel in den Raum der Wurzel am Gerät: zuerst das Prüfskript, der Raum als Administrator angelegt, wenn er fehlt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
+| `deploy` | Legt diese Wurzel in die Wurzel des Geräts: zuerst das Prüfskript, die Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
 
 **Der Ausweis** liegt in `~/.config/arasul/credentials.json`, Rechte 0600, je Gerät ein Eintrag
@@ -254,17 +254,23 @@ wird lokal angelegt, auch wenn der Mensch auf dem Elternordner kein Recht hat un
 gar nicht sieht. Ein Ordner der Ebene 1, der heißt wie ein Ordner, den die Wurzel selbst trägt,
 wird nicht angelegt, und einer, dessen Kennung keine ist, auch nicht; beide werden benannt.
 
-**Der Raum der Wurzel ist die Wurzel selbst.** Das Gerät hat einen Ordner der Ebene 1 für die
-Wurzel des Hauses: Stand 22.09.2026 ein geteilter Ordner mit der Kennung `wurzel`, bis das Gerät
-die Art `wurzel` kennt und sie an einem Ordner nennt, was das Werkzeug ebenso nimmt. Dieser Raum
-wird nicht in einen Ordner unter der Wurzel gelegt, er wird auf den Ordner der Wurzel selbst
+**Der Raum der Wurzel ist die Wurzel selbst.** Das Gerät führt eine eigene Wurzel, Ebene 0 mit
+der Art `wurzel`, genau eine je Gerät, und nennt sie jedem aktiven Menschen zuerst in seiner
+Ordnerliste, mit leerem Pfad und dem Recht, das aus der Rolle folgt: jeder liest, Administratoren
+schreiben, kein Recht je Person (Stand 22.09.2026, gemessen an einem Gerät, dessen Wurzel die
+Kennung `firma` trägt). Das Werkzeug erkennt sie an Ebene und Art und an nichts anderem und nimmt
+die Kennung aus der Antwort: der Raum im Dateidienst heißt nach dieser Kennung. Dieser Raum wird
+nicht in einen Ordner unter der Wurzel gelegt, er wird auf den Ordner der Wurzel selbst
 abgeglichen: `.claude/`, `arasul.mjs`, die README und alles andere des Gerüsts kommen oben an,
-und wer `lesen` auf dem Raum hat, bekommt sie nur lesbar. Der Baum eines Mitarbeiters hat also
+und wer `lesen` auf der Wurzel hat, bekommt sie nur lesbar. Der Baum eines Mitarbeiters hat also
 die Wurzel oben und seine Ordner darunter, an ihrer echten Stelle, und Claude Code, in einem
 dieser Ordner gestartet, lädt die Regeln, Skills und Agents der Wurzel. Gemessen am 22.09.2026 an
 einem Gerät: eine Sitzung zwei Ebenen unter der Wurzel, in einem Ordner der Ebene 2, den der
 Mensch schreiben darf, nannte die `.claude/CLAUDE.md` der Wurzel und ihre Skills, und ein Aufruf
-des Skills `arasul` ließ `arasul.mjs apps` gegen das Gerät laufen.
+des Skills `arasul` ließ `arasul.mjs apps` gegen das Gerät laufen. Ein Ordner der Ebene 1 mit der
+Kennung `wurzel`, wie ihn ein Kit vor 0.29.0 als Wurzel anlegte, ist heute ein Ordner der Ebene 1
+und landet unter seinem Namen. Ebene 0 mit einer anderen Art ist eine Form, die das Werkzeug
+nicht kennt: es benennt den Ordner und legt nichts an.
 
 **Eine Wurzel kommt in einen leeren Ordner herunter.** Wem der Raum der Wurzel freigegeben ist,
 legt `arasul.mjs` allein in einen leeren Ordner, meldet an und gleicht ab: `login`, `status` und
@@ -403,12 +409,17 @@ kennt: sie ist eine Datei des Kits, nichts vom Haus steht darin. Dann, in dieser
 
 1. **Das Prüfskript läuft, und ein Befund hält alles an.** Was aufs Gerät geht, geht an jeden,
    der den Raum hat, also geht eine Wurzel mit Befund nicht.
-2. **Der Raum der Wurzel muss diesem Menschen zum Schreiben freigegeben sein.** Ist er es nicht,
-   meldet sich das Werkzeug mit dem Passwort an, weil der Ausweis keine Verwaltung öffnet, sieht
-   die Ordnerliste des Geräts an, legt den Ordner `wurzel` der Ebene 1 an, wenn er fehlt, gibt
-   dem Menschen das Recht `schreiben` darauf und beendet diese Sitzung. Diesen Teil kann nur ein
-   Administrator: einem Mitarbeiter ohne den Raum wird gesagt, dass er einen bitten soll. Mit
-   `lesen` allein wird nichts ausgerollt.
+2. **Die Wurzel des Geräts muss eine sein, die dieser Mensch schreibt.** Das Gerät nennt sie in
+   seiner Ordnerliste, Ebene 0 mit der Art `wurzel`, und das Werkzeug nimmt genau die, unter der
+   Kennung, die das Gerät nennt. Nennt das Gerät keine, meldet sich das Werkzeug mit dem Passwort
+   an, weil der Ausweis keine Verwaltung öffnet, sieht die Liste aller Ordner des Geräts an und
+   legt die Wurzel nur an, wenn das Gerät keine führt: Kennung `firma`, der Name des Hauses, Art
+   `wurzel`, Ebene 0, die Form, die auch die Oberfläche des Geräts vorschlägt. Dann beendet es
+   diese Sitzung. Führt das Gerät eine Wurzel und nennt sie diesem Menschen nicht, wird das gesagt
+   und nichts angelegt: eine zweite Wurzel wird nie angelegt. Die Wurzel legt nur ein
+   Administrator an: einem Mitarbeiter ohne Wurzel wird gesagt, dass er einen bitten soll. Mit
+   `lesen` allein wird nichts ausgerollt: auf der Wurzel ist Schreiben das Recht der
+   Administratoren, nach Rolle, und ein Recht je Person gibt es darauf nicht.
 3. **Der Baum geht über den Klienten hinauf**, mit der allgemeinen Liste und der eigenen Liste
    der Wurzel, was zu Hause bleibt: `.git`, `node_modules`, `.claude/hooks/`, `settings.json`,
    `.DS_Store`, die Journaldatei des Klienten, `apps/`, `sicht.md` und die Räume, die das Gerät
@@ -420,19 +431,27 @@ kennt: sie ist eine Datei des Kits, nichts vom Haus steht darin. Dann, in dieser
 Das Passwort wird am Terminal gefragt oder kommt mit `--password-stdin`; den Befehl führt der
 Mensch also selbst aus, wie `sync`. `deploy` steht nicht in der Erlaubnisliste des Vorschlags.
 
-**Wer die Wurzel bekommt:** jeder, dem ein Administrator den Raum `wurzel` in der Oberfläche des
-Geräts freigibt, mit `lesen`. Sein nächster `sync` legt die Wurzel oben in seinen Baum. Wer die
-Wurzel ändern soll, bekommt `schreiben`, und sein `sync` trägt seine Änderungen hinauf.
+**Sagt der Klient `Fatal: Authentication`**, hat der Dateidienst für diesen Menschen kein
+Passwort, und `deploy` sagt das in einem Satz, `sync` ebenso: das Gerät spiegelt ein Passwort
+beim Setzen in den Dienst, ein Konto, dessen Passwort vor dem Einschalten des Firmenordners
+gesetzt wurde, kommt also erst nach einem Passwortwechsel hinein. Gemessen am 22.09.2026 mit
+einem Passwort, das der Dienst nicht kannte.
 
-**Gemessen am 22.09.2026 an einem Gerät**, aus einer Testwurzel mit zwei Wegwerf-Konten: nach
-`--deploy` lag das Gerüst im Raum `wurzel`, alle 16 Dateien, und ein Herunterladen des Raums ohne
-jede Liste zeigte genau diese 16, kein `.DS_Store`, kein Hook, keine `settings.json`, kein
-`.git`. Ein zweites `--deploy` mit vorhandenem Raum legte nichts neu an. Das zweite Konto, mit
-`lesen` auf dem Raum und `schreiben` auf nur einem Ordner der Ebene 2, legte `arasul.mjs` in
-einen leeren Ordner, meldete an und glich ab: die Wurzel lag oben, der Ordner der Ebene 2 an
-seiner Stelle, die Kette darüber lokal angelegt, `sicht.md` geschrieben. Claude Code, zwei Ebenen
-tiefer gestartet, lud die `.claude/CLAUDE.md` der Wurzel und ihre Skills, und der Skill `arasul`
-ließ `arasul.mjs apps` laufen.
+**Wer die Wurzel bekommt:** jeder Aktive am Gerät, mit `lesen`, ohne dass jemand etwas freigibt.
+Sein nächster `sync` legt die Wurzel oben in seinen Baum. Administratoren haben `schreiben` nach
+Rolle, und ihr `sync` trägt ihre Änderungen hinauf.
+
+**Gemessen am 22.09.2026 an einem Gerät, das seine Wurzel `firma` führt**, aus einer Testwurzel
+mit zwei Wegwerf-Konten: `--deploy` als Administrator nahm die Wurzel, die das Gerät nannte,
+legte nichts an, und das Gerüst lag im Raum `firma`, alle 16 Dateien, mit dem Herunterladen
+geprüft; danach führte das Gerät weiter genau eine Wurzel. Das zweite Konto, ein Mitarbeiter mit
+`lesen` auf der Wurzel nach Rolle und `schreiben` auf nur einem Ordner der Ebene 2, legte
+`arasul.mjs` in einen leeren Ordner, meldete an und glich ab: die Wurzel lag oben, der Ordner der
+Ebene 2 an seiner Stelle, die Kette darüber lokal angelegt, und `sicht.md` kam vom Gerät. Claude
+Code, zwei Ebenen tiefer gestartet, lud die `.claude/CLAUDE.md` der Wurzel und ihre Skills, und
+der Skill `arasul` ließ `arasul.mjs apps` gegen das Gerät laufen. Das Anlegen einer Wurzel wurde
+nur an der Attrappe des Kits gemessen: die Wurzel des Geräts wurde für die Messung nicht
+weggeworfen.
 
 ## Die Vorzeigefassung
 

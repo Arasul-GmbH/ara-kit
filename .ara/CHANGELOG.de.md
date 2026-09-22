@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.29.0 (2026-09-22)
+
+Kontrakt: bis 6
+
+- **Die Brücke kennt die Wurzel des Geräts.** Seit dem 22.09.2026 führt ein Gerät eine eigene Wurzel, Ebene 0 mit der Art `wurzel`, und nennt sie jedem aktiven Menschen zuerst in seiner Ordnerliste, mit leerem Pfad und dem Recht, das aus der Rolle folgt: jeder liest, Administratoren schreiben, kein Recht je Person. `sync` und `status` erkennen sie an Ebene und Art und an nichts anderem, nehmen ihre Kennung aus der Antwort, `firma` am gemessenen Gerät, und legen diesen Raum oben in den Baum, die Räume der Ebene 1 und 2 darunter an ihre echte Stelle. Die Brücke von 0.28.0 nannte diese Wurzel eine Form, die sie nicht kennt, und glich nichts ab. Ein Ordner der Ebene 1 mit der Kennung `wurzel`, wie ihn 0.28.0 als Wurzel anlegte, ist heute ein Ordner der Ebene 1 und landet unter seinem Namen. Ebene 0 mit einer anderen Art wird benannt und nicht angelegt.
+- **`deploy` nimmt die Wurzel, die das Gerät nennt, und legt nur dann eine an, wenn das Gerät keine führt**: Kennung `firma`, der Name des Hauses, Art `wurzel`, Ebene 0, die Form, die auch die Oberfläche des Geräts vorschlägt, mit einer Sitzung, die genau für diese Anfragen geliehen ist. Ein Recht je Person wird darauf nicht vergeben. Führt das Gerät eine Wurzel und nennt sie diesem Menschen nicht, wird das gesagt und nichts angelegt: 0.28.0 legte einen zweiten Raum `wurzel` neben die Wurzel des Geräts, diese Fassung nie. Ein Gerät, das die Art `wurzel` nicht annimmt, wird als eines von vor dem 22.09.2026 benannt, und an ihrer Stelle wird nichts ausgerollt.
+- **`Fatal: Authentication` vom Klienten bekommt einen Satz mehr**, in `deploy` und in `sync`: der Dateidienst hat für diesen Menschen kein Passwort, weil das Gerät ein Passwort beim Setzen in den Dienst spiegelt, ein Konto, dessen Passwort vor dem Einschalten des Firmenordners gesetzt wurde, kommt also erst nach einem Passwortwechsel hinein. Gemessen am 22.09.2026 mit einem Passwort, das der Dienst nicht kannte.
+- Gemessen am 22.09.2026 an einem Gerät, das seine Wurzel `firma` führt, aus einer Testwurzel mit zwei Wegwerf-Konten: `--deploy` als Administrator nahm diese Wurzel, legte nichts an, danach lagen alle 16 Dateien im Raum und das Gerät führte weiter genau eine Wurzel; ein Mitarbeiter mit `lesen` auf der Wurzel nach Rolle und `schreiben` auf einem Ordner der Ebene 2 bekam aus einem leeren Ordner die Wurzel oben, den Ordner an seiner Stelle, die Kette darüber lokal angelegt und `sicht.md` vom Gerät; Claude Code, zwei Ebenen tiefer gestartet, lud die `.claude/CLAUDE.md` der Wurzel und ihre Skills, und der Skill `arasul` ließ `arasul.mjs apps` gegen das Gerät laufen.
+
 ## 0.28.0 (2026-09-22)
 
 Kontrakt: bis 6
