@@ -4,23 +4,32 @@
  *
  * One file, runs with Node alone. It comes out of the Ara-Kit, and after laying out it needs the
  * kit no more. It does what an agent in this folder cannot do by itself: hold a credential for a
- * device, ask which apps the person is assigned, read what each app says about itself, and call
- * the routes an app names, and no others.
+ * device, sync the folders the device shares with this person, ask which apps the person is
+ * assigned, read what each app says about itself, and call the routes an app names, and no others.
  *
  *   node arasul.mjs login <address> --user <name>      log in (the password is asked for, never shown)
- *   node arasul.mjs login <address> --token-stdin      a token instead of name and password
+ *   node arasul.mjs login <address> --token-stdin      a credential instead of name and password
  *   node arasul.mjs login                              only the proposals and the places, no new login
  *   node arasul.mjs login --approve <checksum>         approve one proposal, per proposal
  *   node arasul.mjs login --withdraw                   take back what approving entered
- *   node arasul.mjs status                             what can be measured, and what cannot yet
- *   node arasul.mjs sync                               write apps/<id>/APP.md for the assigned apps
+ *   node arasul.mjs status                             device, credential, company folder, proposals
+ *   node arasul.mjs sync                               sync the company folder, write apps/<id>/APP.md
  *   node arasul.mjs apps                               the assigned apps with their routes, writes APP.md
  *   node arasul.mjs call <app> <route> [name=value ...] [--write] [--method <verb>]
  *
  * The credential lies in ~/.config/arasul/credentials.json (0600), one entry per device with its
- * address and token. Never in this folder, never in the keychain. Until the device issues tokens
- * the login takes a name and a password, keeps the session it gets in return, and stores neither
- * the password nor anything of it. ARASUL_CONFIG_DIR names another folder for it.
+ * address and credential. Never in this folder, never in the keychain. The login takes a name and
+ * a password, has the device issue a credential for this computer with it, and keeps only that:
+ * the session of the login has an end and carries everything the human may do, a credential says
+ * who somebody is and opens no administration. Neither the password nor anything of it is stored.
+ * ARASUL_CONFIG_DIR names another folder for it.
+ *
+ * `sync` asks the device where its file service lies and which folders this person has, and lays
+ * each one down at its real place in this tree. The syncing itself is done by the command line
+ * client of the file service, unpacked out of its desktop package; --client names where it lies.
+ * The client logs in with the same password as the device, so `sync` asks for it and stores it
+ * nowhere. What a machine makes, what belongs to this computer and what the client writes itself
+ * stays out. The state of the last sync lies next to the credential, in firmenordner.json.
  *
  * `call` calls only routes that the app names in its field `agent`, fetched fresh from the app
  * with every call. A route that changes something needs --write. The proposal of this root allows
@@ -37,23 +46,34 @@
  *
  * Eine Datei, läuft mit Node allein. Sie kommt aus dem Ara-Kit und braucht es nach dem Anlegen
  * nicht mehr. Sie tut, was ein Agent in diesem Ordner nicht selbst kann: einen Ausweis für ein
- * Gerät halten, fragen, welche Apps dem Menschen zugewiesen sind, lesen, was jede App über sich
- * sagt, und die Routen aufrufen, die eine App nennt, und keine anderen.
+ * Gerät halten, die Ordner abgleichen, die das Gerät diesem Menschen freigibt, fragen, welche
+ * Apps ihm zugewiesen sind, lesen, was jede App über sich sagt, und die Routen aufrufen, die eine
+ * App nennt, und keine anderen.
  *
  *   node arasul.mjs login <adresse> --user <name>      anmelden (das Passwort wird gefragt, nie gezeigt)
- *   node arasul.mjs login <adresse> --token-stdin      ein Token statt Name und Passwort
+ *   node arasul.mjs login <adresse> --token-stdin      einen Ausweis statt Name und Passwort
  *   node arasul.mjs login                              nur Vorschläge und Orte, keine neue Anmeldung
  *   node arasul.mjs login --approve <prüfsumme>        einen Vorschlag freigeben, je Vorschlag
  *   node arasul.mjs login --withdraw                   zurücknehmen, was das Freigeben eintrug
- *   node arasul.mjs status                             was sich messen lässt und was noch nicht
- *   node arasul.mjs sync                               apps/<id>/APP.md für die zugewiesenen Apps schreiben
+ *   node arasul.mjs status                             Gerät, Ausweis, Firmenordner, Vorschläge
+ *   node arasul.mjs sync                               den Firmenordner abgleichen, apps/<id>/APP.md schreiben
  *   node arasul.mjs apps                               die zugewiesenen Apps mit ihren Routen, schreibt APP.md
  *   node arasul.mjs call <app> <route> [name=wert ...] [--write] [--method <verb>]
  *
  * Der Ausweis liegt in ~/.config/arasul/credentials.json (0600), je Gerät ein Eintrag mit Adresse
- * und Token. Nie in diesem Ordner, nie im Schlüsselbund. Solange das Gerät keine Token ausstellt,
- * nimmt die Anmeldung Name und Passwort, hält die Sitzung, die sie dafür bekommt, und legt weder
- * das Passwort noch etwas davon ab. ARASUL_CONFIG_DIR nennt einen anderen Ordner dafür.
+ * und Ausweis. Nie in diesem Ordner, nie im Schlüsselbund. Die Anmeldung nimmt Name und Passwort,
+ * lässt sich damit vom Gerät einen Ausweis für diesen Rechner ausstellen und behält nur den: die
+ * Sitzung der Anmeldung hat ein Ende und trägt alles, was der Mensch darf, ein Ausweis sagt, wer
+ * jemand ist, und öffnet keine Verwaltung. Weder das Passwort noch etwas davon wird abgelegt.
+ * ARASUL_CONFIG_DIR nennt einen anderen Ordner dafür.
+ *
+ * `sync` fragt das Gerät, wo sein Dateidienst liegt und welche Ordner dieser Mensch hat, und legt
+ * jeden an seine echte Stelle in diesem Baum. Das Abgleichen selbst tut der Kommandozeilen-Klient
+ * des Dateidienstes, entpackt aus seinem Desktop-Paket; --client nennt, wo er liegt. Der Klient
+ * meldet sich mit demselben Passwort an wie das Gerät, also fragt `sync` danach und legt es
+ * nirgends ab. Was eine Maschine macht, was zu diesem Rechner gehört und was der Klient selbst
+ * schreibt, bleibt draußen. Der Stand des letzten Abgleichs liegt neben dem Ausweis, in
+ * firmenordner.json.
  *
  * `call` ruft nur Routen auf, die die App in ihrem Feld `agent` nennt, bei jedem Aufruf frisch
  * von der App geholt. Eine Route, die etwas ändert, verlangt --write. Der Vorschlag dieser Wurzel
@@ -65,6 +85,7 @@
  * selbst, `--device <name>` ein anderes Gerät als das zuletzt angemeldete.
  */
 
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
   chmodSync,
@@ -72,6 +93,7 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -82,7 +104,7 @@ import {
 } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { request as httpsRequest } from "node:https";
-import { homedir } from "node:os";
+import { homedir, hostname, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { connect as tlsConnect } from "node:tls";
@@ -111,7 +133,7 @@ export function speak(language) {
 /**
  * What this file assumes about the device. These are statements about the product, and like every
  * one of them they belong checked on a device: the routes are the ones the kit's documentation
- * self-test knocks at (`check-docs.mjs`). As of 2026-09-21, out of the API reference of the
+ * self-test knocks at (`check-docs.mjs`). As of 2026-09-22, out of the API reference of the
  * product. A device that says otherwise wins, and the message of a refusal names the route.
  */
 const DEVICE = Object.freeze({
@@ -119,7 +141,9 @@ const DEVICE = Object.freeze({
   userField: "username",
   passwordField: "password",
   session: "api/auth/session",
+  credentials: "api/ausweise",
   mine: "api/apps/meine",
+  folders: "api/firmenordner",
   appBase: (id) => `apps/${id}/api/`,
   agent: "agent",
 });
@@ -258,7 +282,7 @@ const stop = (message, code = 1) => {
   throw new Stop(message, code);
 };
 
-const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings"];
+const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name"];
 const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help"];
 
 function parseArgs(argv) {
@@ -1040,7 +1064,440 @@ async function doCall(args) {
   return true;
 }
 
+// --- The company folder --------------------------------------------------------------------
+// What the device shares with this person, laid down at its real place in this tree. Two sources
+// and no third: the device says where its file service lies and which folders this person has,
+// and the vendor's command line client does the syncing. This file speaks no WebDAV itself.
+
+/**
+ * What this file assumes about the file service, with the date it is from. Measured at a device
+ * on 2026-09-22, not read out of a manual: a folder of level 1 is a room named by the folder's
+ * id, not by its display name, and a folder of level 2 hangs in the room that holds what is
+ * shared with a person. A device that says otherwise wins.
+ */
+const SERVICE = Object.freeze({
+  shared: "Shares",
+  client: "opencloudcmd",
+  password: "OPENCLOUD_TOKEN",
+});
+
+/** Where the vendor's client lies when nobody says otherwise. It runs unpacked, without installing. */
+const CLIENT_PLACES = Object.freeze([
+  "/Applications/OpenCloud.app/Contents/MacOS/opencloudcmd",
+  join(homedir(), "Applications", "OpenCloud.app", "Contents", "MacOS", "opencloudcmd"),
+]);
+
+/** What the state of the last sync is written to. No secret lies in it. */
+const FOLDER_STATE = join(CONFIG_DIR, "firmenordner.json");
+
+const FOLDER_ID = /^[a-z0-9][a-z0-9-]{0,62}$/;
+
+/** The furniture of a root. A folder of level 1 with one of these ids is not laid down. */
+const ROOT_OWN = Object.freeze(["apps", "scripts", ".claude", ".git"]);
+
+/**
+ * What never goes into the company folder.
+ *
+ * Three kinds, and each one for its own reason. **What a machine makes**: `.git`, `node_modules`
+ * and the build folders are made again out of what is there, and they are the bulk of every
+ * tree. **What belongs to this computer**: the hooks and the settings of an agent say what it
+ * may do here, and that is a decision per computer, not per house. Both patterns hold at every
+ * depth of the tree, not only at its top. **What the client itself writes**: its journal lies in
+ * the synced folder, and without this line it reports conflicts about itself.
+ *
+ * The list goes to the client as a file, in its own format: one pattern per line. Measured
+ * against the client on 2026-09-22 with a folder that carried every one of these: what stands
+ * here stayed out, at the top and three levels down, and `.claude/skills/` went through. The
+ * journal was called `.sync_journal.db`; the two lines next to it are what SQLite writes beside
+ * such a file.
+ */
+const NEVER_SYNCED = Object.freeze([
+  ".git",
+  "node_modules",
+  "dist",
+  "build",
+  ".next",
+  ".claude/hooks",
+  "*/.claude/hooks",
+  "settings.json",
+  ".sync_*.db",
+  ".sync_*.db-*",
+  ".sync_*.db.ctmp",
+]);
+
+/** Folders the walk does not go into: they are not synced, so nothing of ours lies in them. */
+const NOT_WALKED = new Set([".git", "node_modules", "dist", "build", ".next"]);
+
+/** The mark the client puts in the name of a file it could not merge. */
+const CONFLICT_MARK = /_conflict-/;
+
+/** The client of the vendor: named, or where it lies after unpacking, or on the path. */
+function clientPath(args) {
+  const given = one(args, "client") || process.env.ARASUL_OPENCLOUD_CMD;
+  if (given) {
+    const path = resolve(given);
+    if (!existsSync(path)) stop(t(`${path} is not there. --client names the client of the vendor.`, `${path} ist nicht da. --client nennt den Klienten des Herstellers.`), 2);
+    return path;
+  }
+  for (const place of CLIENT_PLACES) if (existsSync(place)) return place;
+  for (const part of (process.env.PATH || "").split(":")) {
+    if (!part) continue;
+    const path = join(part, SERVICE.client);
+    if (existsSync(path)) return path;
+  }
+  stop(t(
+    `The command line client ${SERVICE.client} is not on this computer. It lies in the desktop package of the file service and runs unpacked, without installing. Looked in: ${CLIENT_PLACES.join(", ")} and on the path. --client names another place.`,
+    `Der Kommandozeilen-Klient ${SERVICE.client} ist nicht auf diesem Rechner. Er liegt im Desktop-Paket des Dateidienstes und läuft entpackt, ohne Installation. Gesucht in: ${CLIENT_PLACES.join(", ")} und auf dem Pfad. --client nennt eine andere Stelle.`
+  ));
+}
+
+/**
+ * What the device says about the company folder.
+ *
+ * `503` means there is no file service on this device, and that is not the same answer as an
+ * empty list of folders: the first says nothing about this tree, the second would be a reason to
+ * empty it.
+ */
+async function askFolders(device) {
+  const answer = await ask(device.entry, { path: DEVICE.folders, token: device.entry.token, timeout: 30_000 });
+  if (answer.status === 503) {
+    return { service: false, reason: oneLine(jsonOf(answer)?.error?.message || t("There is no company folder on this device.", "Auf diesem Gerät gibt es keinen Firmenordner."), 300) };
+  }
+  refused(answer, device.name, device.entry);
+  if (answer.status === 404) {
+    stop(t(
+      `${device.name} does not know ${DEVICE.folders}. This file assumes that route as of 2026-09-22, the device says otherwise.`,
+      `${device.name} kennt ${DEVICE.folders} nicht. Diese Datei nimmt den Weg Stand 22.09.2026 an, das Gerät sagt etwas anderes.`
+    ));
+  }
+  if (answer.status < 200 || answer.status >= 300) {
+    stop(t(`${device.name} answers ${DEVICE.folders} with status ${answer.status}.`, `${device.name} antwortet auf ${DEVICE.folders} mit Status ${answer.status}.`));
+  }
+  const data = inner(jsonOf(answer));
+  if (!data || typeof data !== "object") stop(t(`${device.name} answers ${DEVICE.folders} with something this file cannot read.`, `${device.name} antwortet auf ${DEVICE.folders} mit etwas, das diese Datei nicht lesen kann.`));
+  const folders = [];
+  const refusedFolders = [];
+  for (const raw of Array.isArray(data.ordner) ? data.ordner : []) {
+    const id = String(raw?.kennung ?? "");
+    const parent = raw?.eltern === null || raw?.eltern === undefined ? null : String(raw.eltern);
+    const level = Number(raw?.ebene);
+    if (!FOLDER_ID.test(id) || (level !== 1 && level !== 2) || (level === 2 && !FOLDER_ID.test(parent || ""))) {
+      refusedFolders.push({ line: oneLine(JSON.stringify(raw), 120), why: t("the device names it in a shape this file does not know", "das Gerät nennt ihn in einer Form, die diese Datei nicht kennt") });
+      continue;
+    }
+    if (level === 1 && ROOT_OWN.includes(id)) {
+      refusedFolders.push({ line: id, why: t(`a root carries its own ${id} here`, `eine Wurzel trägt hier ihr eigenes ${id}`) });
+      continue;
+    }
+    folders.push({
+      id,
+      level,
+      parent: level === 2 ? parent : null,
+      name: oneLine(raw?.name || id, 80),
+      right: oneLine(String(raw?.recht ?? ""), 20),
+      path: level === 1 ? id : `${parent}/${id}`,
+    });
+  }
+  return {
+    service: true,
+    address: oneLine(String(data.adresse ?? ""), 200),
+    reachable: data.erreichbar !== false,
+    user: oneLine(String(data.benutzer ?? ""), 80),
+    folders,
+    refused: refusedFolders,
+  };
+}
+
+function readFolderState() {
+  const data = readJson(FOLDER_STATE, null);
+  return data && typeof data === "object" && data.roots && typeof data.roots === "object" ? data : { version: 1, roots: {} };
+}
+
+function writeFolderState(data) {
+  mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  const temporary = join(CONFIG_DIR, `.firmenordner-${process.pid}.tmp`);
+  writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
+  renameSync(temporary, FOLDER_STATE);
+}
+
+/**
+ * What lies in a synced folder that a human has to look at: files the client could not merge, and
+ * links it did not follow. Counted out of the tree and not out of the client's report, because
+ * both can also come into being between two syncs.
+ */
+function inspectFolder(dir) {
+  const conflicts = [];
+  const links = [];
+  const walk = (at, deep) => {
+    if (deep > 40) return;
+    let entries;
+    try {
+      entries = readdirSync(at, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const path = join(at, entry.name);
+      if (entry.isSymbolicLink()) {
+        links.push(relative(ROOT, path));
+        continue;
+      }
+      if (entry.isDirectory()) {
+        if (!NOT_WALKED.has(entry.name)) walk(path, deep + 1);
+        continue;
+      }
+      if (CONFLICT_MARK.test(entry.name)) conflicts.push(relative(ROOT, path));
+    }
+  };
+  walk(dir, 0);
+  return { conflicts, links };
+}
+
+/**
+ * Which folders of level 1 the house has written down.
+ *
+ * A folder at the top that stands in no table grows over, and the root's own check script says so
+ * at the next run. `sync` makes such folders: a shared folder of level 1, and the chain above one
+ * of level 2. It does not write the line itself, because the column next to the name says what
+ * belongs in the folder, and that is a sentence of the house and not of a file service.
+ */
+function writtenDown() {
+  const rules = join(ROOT, ".claude", "CLAUDE.md");
+  if (!existsSync(rules)) return null;
+  const section = readFileSync(rules, "utf8").split(/^## (?:Where new things go|Wohin Neues gehört)/m)[1] || "";
+  return (name) => section.includes(`\`${name}/`);
+}
+
+/** Where a folder of the device lies in this tree, and nowhere else. */
+function placeOf(folder) {
+  const local = resolve(join(ROOT, ...folder.path.split("/")));
+  if (local !== ROOT && !local.startsWith(`${ROOT}/`)) {
+    stop(t(`${folder.path} would lie outside of ${ROOT}. Nothing was synced.`, `${folder.path} läge außerhalb von ${ROOT}. Es wurde nichts abgeglichen.`));
+  }
+  return local;
+}
+
+/** The last lines the client wrote, as the reason for a run that did not work out. */
+function clientSaid(run) {
+  const text = `${run.stderr || ""}\n${run.stdout || ""}`
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return oneLine(text.slice(-3).join(" / ") || (run.error ? run.error.message : t("no output", "keine Ausgabe")), 300);
+}
+
+/**
+ * Sync every shared folder to its real place in this tree.
+ *
+ * The password is the one of the device: the file service carries the same one, because the
+ * device mirrors it there. It is asked for at every sync and stored nowhere, and it goes to the
+ * client in the environment variable the client names, never as an argument.
+ */
+async function syncFolders(args, device) {
+  const plan = await askFolders(device);
+  const head = t("Company folder", "Firmenordner");
+  if (!plan.service) {
+    say(`${head}: ${plan.reason}`);
+    return false;
+  }
+  say(`${head}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}${plan.reachable ? "" : t(", the device cannot reach it right now", ", das Gerät erreicht ihn gerade nicht")}`);
+  for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
+  if (!plan.folders.length) {
+    say(`  ${t("No folder is shared with you. Nothing was synced.", "Dir ist kein Ordner freigegeben. Es wurde nichts abgeglichen.")}`);
+    return !plan.refused.length;
+  }
+  if (!plan.address) stop(t("The device names no address of the file service. Nothing was synced.", "Das Gerät nennt keine Adresse des Dateidienstes. Es wurde nichts abgeglichen."));
+  if (!plan.user) stop(t("The device names no user for the file service. Nothing was synced.", "Das Gerät nennt keinen Benutzer für den Dateidienst. Es wurde nichts abgeglichen."));
+  const client = clientPath(args);
+
+  const password = args.flags["password-stdin"]
+    ? (await readAllStdin()).split(/\r?\n/)[0].trim()
+    : await secretLine(t(`Password of ${plan.user} on ${device.name} (the file service takes the same one): `, `Passwort von ${plan.user} auf ${device.name} (der Dateidienst nimmt dasselbe): `));
+  if (!password) {
+    stop(t(
+      "The client of the file service logs in with name and password. The password comes from the terminal, or with --password-stdin from the first line of the input. It is never taken from an argument and never stored.",
+      "Der Klient des Dateidienstes meldet sich mit Name und Passwort an. Das Passwort kommt vom Terminal, oder mit --password-stdin aus der ersten Zeile der Eingabe. Aus einem Argument wird es nie genommen und abgelegt wird es nie."
+    ), 2);
+  }
+
+  const workspace = mkdtempSync(join(tmpdir(), "ara-firmenordner-"));
+  const excludes = join(workspace, "ausschluss.lst");
+  writeFileSync(excludes, `${NEVER_SYNCED.join("\n")}\n`, { mode: 0o600 });
+
+  // Level 1 first: it makes the room that a folder of level 2 hangs under, and the chain above
+  // a folder of level 2 is made here even when the person has no right on it.
+  const order = [...plan.folders].sort((a, b) => a.level - b.level || a.path.localeCompare(b.path));
+  const results = [];
+  try {
+    for (const folder of order) {
+      const local = placeOf(folder);
+      mkdirSync(local, { recursive: true });
+      const call = [
+        plan.address,
+        folder.level === 1 ? folder.id : SERVICE.shared,
+        local,
+        "--user", plan.user,
+        "--trust",
+        "--non-interactive",
+        "--sync-hidden-files",
+        "--exclude", excludes,
+      ];
+      if (folder.level === 2) call.push("--remote-folder", folder.id);
+      const run = spawnSync(client, call, {
+        encoding: "utf8",
+        env: { ...process.env, [SERVICE.password]: password },
+        timeout: 30 * 60_000,
+      });
+      const seen = inspectFolder(local);
+      results.push({
+        ...folder,
+        ok: run.status === 0,
+        message: run.status === 0 ? null : clientSaid(run),
+        conflicts: seen.conflicts,
+        links: seen.links,
+        at: new Date().toISOString(),
+      });
+    }
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+
+  const state = readFolderState();
+  const mine = { device: device.name, address: plan.address, user: plan.user, at: new Date().toISOString(), folders: {} };
+  for (const result of results) {
+    mine.folders[result.path] = {
+      id: result.id,
+      level: result.level,
+      right: result.right,
+      at: result.at,
+      result: result.ok ? "ok" : "error",
+      ...(result.message ? { message: result.message } : {}),
+      conflicts: result.conflicts.length,
+      links: result.links.length,
+    };
+  }
+  state.roots[ROOT] = mine;
+  writeFolderState(state);
+
+  const known = writtenDown();
+  const unwritten = known ? [...new Set(order.map((folder) => folder.path.split("/")[0]))].filter((name) => !known(name)).sort() : [];
+
+  let clean = !plan.refused.length;
+  for (const result of results) {
+    say(`  ${result.path}   ${t("level", "Ebene")} ${result.level}${result.right ? `, ${result.right}` : ""}   ${result.ok ? t("synced", "abgeglichen") : t("not synced", "nicht abgeglichen")}`);
+    if (!result.ok) {
+      say(`      ${result.message}`);
+      clean = false;
+    }
+    if (result.conflicts.length) {
+      say(`      ${result.conflicts.length} ${t("conflicts, the client could not merge them and kept both", "Konflikte, der Klient konnte sie nicht zusammenführen und hat beides behalten")}: ${result.conflicts.slice(0, 5).join(", ")}${result.conflicts.length > 5 ? ", ..." : ""}`);
+      clean = false;
+    }
+    if (result.links.length) {
+      say(`      ${result.links.length} ${t("symbolic links, the client does not sync them", "Symlinks, die gleicht der Klient nicht ab")}: ${result.links.slice(0, 5).join(", ")}${result.links.length > 5 ? ", ..." : ""}`);
+      clean = false;
+    }
+  }
+  if (unwritten.length) {
+    say(`  ${t(
+      `New at level 1 of this root: ${unwritten.map((name) => `${name}/`).join(", ")}. Give each one a line in the table 'Where new things go' of .claude/CLAUDE.md, otherwise the check script of the root reports it at every run.`,
+      `Neu auf Ebene 1 dieser Wurzel: ${unwritten.map((name) => `${name}/`).join(", ")}. Gib jedem eine Zeile in der Tabelle 'Wohin Neues gehört' der .claude/CLAUDE.md, sonst meldet das Prüfskript der Wurzel es bei jedem Lauf.`
+    )}`);
+  }
+  return clean;
+}
+
+/** What status says about the company folder. Reads only, and asks for no password. */
+async function folderStatus(args, device) {
+  const head = t("Company folder", "Firmenordner");
+  let plan;
+  try {
+    plan = await askFolders(device);
+  } catch (error) {
+    if (!(error instanceof Stop)) throw error;
+    say(`${head}: ${error.message}`);
+    return false;
+  }
+  if (!plan.service) {
+    say(`${head}: ${plan.reason}`);
+    return false;
+  }
+  say(`${head}: ${plan.address || t("no address", "keine Adresse")}, ${t("service reachable", "Dienst erreichbar")}: ${plan.reachable ? t("yes", "ja") : t("no, the device says so itself", "nein, das Gerät sagt es selbst")}`);
+  for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
+  const known = readFolderState().roots[ROOT]?.folders || {};
+  let fine = plan.reachable && !plan.refused.length;
+  if (!plan.folders.length) say(`  ${t("No folder is shared with you.", "Dir ist kein Ordner freigegeben.")}`);
+  for (const folder of [...plan.folders].sort((a, b) => a.path.localeCompare(b.path))) {
+    const last = known[folder.path];
+    const local = join(ROOT, ...folder.path.split("/"));
+    const seen = existsSync(local) ? inspectFolder(local) : { conflicts: [], links: [] };
+    const when = last
+      ? `${last.result === "ok" ? t("synced", "abgeglichen") : t("last sync did not work out", "der letzte Abgleich ging nicht durch")} ${last.at.slice(0, 16).replace("T", " ")} UTC`
+      : t("never synced", "noch nie abgeglichen");
+    say(`  ${folder.path}   ${t("level", "Ebene")} ${folder.level}${folder.right ? `, ${folder.right}` : ""}   ${when}, ${seen.conflicts.length} ${t("conflicts", "Konflikte")}${seen.links.length ? `, ${seen.links.length} ${t("symbolic links not synced", "Symlinks nicht abgeglichen")}` : ""}`);
+    if (last && last.result !== "ok" && last.message) say(`      ${last.message}`);
+    if (!last || last.result !== "ok" || seen.conflicts.length || seen.links.length) fine = false;
+  }
+  for (const path of Object.keys(known).sort()) {
+    if (plan.folders.some((folder) => folder.path === path)) continue;
+    say(`  ${path}   ${t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen")}`);
+  }
+  return fine;
+}
+
 // --- login, status, sync -------------------------------------------------------------------
+
+/**
+ * Turn a session into a credential, and keep only the credential.
+ *
+ * The login with a password gives back a session: it has an end, and it carries everything the
+ * human may do, an administrator's session included. A credential says "I am this person" and
+ * opens exactly the ways this file walks. So the session is used for one request, the one that
+ * issues the credential, and is then dropped: it is never written to the file.
+ *
+ * The device shows the value of a credential exactly once, in the answer to this request. Whoever
+ * loses it issues a new one, nobody reads it back.
+ */
+async function issueCredential(target, session, machine) {
+  const label = oneLine(String(machine || "").trim(), 60) || "arasul.mjs";
+  const answer = await ask(target, { method: "POST", path: DEVICE.credentials, token: session, json: { name: label } });
+  if (answer.status === 404) {
+    stop(t(
+      `${target.address} does not know ${DEVICE.credentials} and can issue no credential. This file assumes that route as of 2026-09-22. Nothing was stored, and the session was not kept.`,
+      `${target.address} kennt ${DEVICE.credentials} nicht und kann keinen Ausweis ausstellen. Diese Datei nimmt den Weg Stand 22.09.2026 an. Nichts wurde abgelegt, und die Sitzung wurde nicht behalten.`
+    ));
+  }
+  if (answer.status === 409) {
+    stop(t(
+      `${target.address} already carries a credential named '${label}'. Revoke it in the device's front end, or give this one another name: --credential-name <name>. Nothing was stored.`,
+      `${target.address} trägt schon einen Ausweis mit dem Namen '${label}'. Widerrufe ihn in der Oberfläche des Geräts, oder gib diesem einen anderen Namen: --credential-name <name>. Nichts wurde abgelegt.`
+    ));
+  }
+  if (answer.status < 200 || answer.status >= 300) {
+    stop(t(
+      `${target.address} issued no credential (status ${answer.status}). Nothing was stored, and the session was not kept.`,
+      `${target.address} hat keinen Ausweis ausgestellt (Status ${answer.status}). Nichts wurde abgelegt, und die Sitzung wurde nicht behalten.`
+    ));
+  }
+  const issued = oneLine(String(inner(jsonOf(answer))?.ausweis || ""), 4096).trim();
+  if (!issued) {
+    stop(t(
+      `${target.address} answered ${DEVICE.credentials}, but its answer holds no credential. Nothing was stored.`,
+      `${target.address} hat auf ${DEVICE.credentials} geantwortet, in der Antwort steht aber kein Ausweis. Nichts wurde abgelegt.`
+    ));
+  }
+  // The device has to know what it just issued. Without this question the file would store a
+  // value nobody has ever seen work.
+  const proof = await ask(target, { path: DEVICE.session, token: issued });
+  const body = inner(jsonOf(proof));
+  if (proof.status !== 200 || !(body?.authenticated ?? jsonOf(proof)?.authenticated)) {
+    stop(t(
+      `${target.address} issued a credential and does not accept it (status ${proof.status}). Nothing was stored.`,
+      `${target.address} hat einen Ausweis ausgestellt und nimmt ihn nicht an (Status ${proof.status}). Nichts wurde abgelegt.`
+    ));
+  }
+  return issued;
+}
 
 async function doLogin(args) {
   const given = args._[1];
@@ -1081,13 +1538,13 @@ async function doLogin(args) {
     };
 
     if (args.flags["token-stdin"]) {
-      if (!secret) stop(t("--token-stdin reads the token from the first line of the input, and there is none.", "--token-stdin liest das Token aus der ersten Zeile der Eingabe, und da ist keine."), 2);
-      kind = "token";
+      if (!secret) stop(t("--token-stdin reads the credential from the first line of the input, and there is none.", "--token-stdin liest den Ausweis aus der ersten Zeile der Eingabe, und da ist keiner."), 2);
+      kind = "pasted";
       token = secret;
       const answer = await first({ path: DEVICE.session, token });
       const body = inner(jsonOf(answer));
       if (answer.status !== 200 || !(body?.authenticated ?? jsonOf(answer)?.authenticated)) {
-        stop(t(`${address} does not accept this token (status ${answer.status}). Nothing was stored.`, `${address} nimmt dieses Token nicht an (Status ${answer.status}). Nichts wurde abgelegt.`));
+        stop(t(`${address} does not accept this credential (status ${answer.status}). Nothing was stored.`, `${address} nimmt diesen Ausweis nicht an (Status ${answer.status}). Nichts wurde abgelegt.`));
       }
       user = oneLine((body?.user || jsonOf(answer)?.user)?.username || user || "", 80) || null;
     } else {
@@ -1096,16 +1553,17 @@ async function doLogin(args) {
       if (!user) stop(t("A user name is needed: --user <name>.", "Ein Benutzername wird gebraucht: --user <name>."), 2);
       let password = secret ?? (await secretLine(t(`Password for ${user} on ${address}: `, `Passwort für ${user} auf ${address}: `)));
       if (!password) stop(t("The password comes from the terminal, or from the first line of the input with --password-stdin. It is never taken from an argument.", "Das Passwort kommt vom Terminal, oder mit --password-stdin aus der ersten Zeile der Eingabe. Aus einem Argument wird es nie genommen."), 2);
-      kind = "session";
+      kind = "issued";
       const answer = await first({ method: "POST", path: DEVICE.login, json: { [DEVICE.userField]: user, [DEVICE.passwordField]: password } });
       password = "";
       secret = null;
       if (answer.status === 429) stop(t(`${address} counts the logins and refuses further ones for now (429). Wait, then again.`, `${address} zählt die Anmeldungen und weist weitere vorerst ab (429). Warte, dann noch einmal.`));
       if (answer.status === 401 || answer.status === 403) stop(t(`${address} refuses the login (${answer.status}): name or password do not fit.`, `${address} weist die Anmeldung ab (${answer.status}): Name oder Passwort passen nicht.`));
-      if (answer.status === 404) stop(t(`${address} does not know ${DEVICE.login}. This file assumes that route as of 2026-09-21, the device says otherwise.`, `${address} kennt ${DEVICE.login} nicht. Diese Datei nimmt den Weg Stand 21.09.2026 an, das Gerät sagt etwas anderes.`));
+      if (answer.status === 404) stop(t(`${address} does not know ${DEVICE.login}. This file assumes that route as of 2026-09-22, the device says otherwise.`, `${address} kennt ${DEVICE.login} nicht. Diese Datei nimmt den Weg Stand 22.09.2026 an, das Gerät sagt etwas anderes.`));
       if (answer.status < 200 || answer.status >= 300) stop(t(`${address} did not accept the login (status ${answer.status}).`, `${address} hat die Anmeldung nicht angenommen (Status ${answer.status}).`));
-      token = tokenIn(jsonOf(answer));
-      if (!token) stop(t(`${address} accepted the login, but its answer holds no credential this file can use. Nothing was stored.`, `${address} hat die Anmeldung angenommen, in der Antwort steht aber kein Ausweis, den diese Datei brauchen kann. Nichts wurde abgelegt.`));
+      const session = tokenIn(jsonOf(answer));
+      if (!session) stop(t(`${address} accepted the login, but its answer holds nothing this file can use. Nothing was stored.`, `${address} hat die Anmeldung angenommen, in der Antwort steht aber nichts, das diese Datei brauchen kann. Nichts wurde abgelegt.`));
+      token = await issueCredential(target, session, one(args, "credential-name") || hostname() || name);
     }
 
     const data = readCredentials();
@@ -1113,11 +1571,14 @@ async function doLogin(args) {
     data.default = name;
     writeCredentials(data);
     const expires = expiryOf(token);
-    say(t(`Logged in to ${address} as ${name}${user ? ` (${user})` : ""}. The ${kind === "token" ? "token" : "session"} lies in ${CREDENTIALS}, mode 0600.`, `Angemeldet an ${address} als ${name}${user ? ` (${user})` : ""}. ${kind === "token" ? "Das Token" : "Die Sitzung"} liegt in ${CREDENTIALS}, Rechte 0600.`));
-    if (kind === "session") {
-      say(expires
-        ? t(`The session holds until ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC, then log in again.`, `Die Sitzung hält bis ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC, danach melde dich neu an.`)
-        : t("How long the session holds, the device does not say. If it refuses, log in again.", "Wie lange die Sitzung hält, sagt das Gerät nicht. Weist es sie ab, melde dich neu an."));
+    say(t(`Logged in to ${address} as ${name}${user ? ` (${user})` : ""}. The credential lies in ${CREDENTIALS}, mode 0600.`, `Angemeldet an ${address} als ${name}${user ? ` (${user})` : ""}. Der Ausweis liegt in ${CREDENTIALS}, Rechte 0600.`));
+    if (kind === "issued") {
+      say(t(
+        "The device issued it for this computer and showed its value once. The session of the login was not kept: a credential has no end and opens no administration.",
+        "Das Gerät hat ihn für diesen Rechner ausgestellt und seinen Wert einmal gezeigt. Die Sitzung der Anmeldung wurde nicht behalten: ein Ausweis läuft nicht ab und öffnet keine Verwaltung."
+      ));
+    } else if (expires) {
+      say(t(`What you pasted in is a session, and it holds until ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC. A credential out of the device's front end has no end.`, `Was du eingefügt hast, ist eine Sitzung, und sie hält bis ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC. Ein Ausweis aus der Oberfläche des Geräts läuft nicht ab.`));
     }
     say();
   } else if (!Object.keys(readCredentials().devices).length && !args.flags.withdraw && !args.flags.approve) {
@@ -1141,7 +1602,7 @@ async function doStatus(args) {
     const entry = data.devices[name];
     const expires = expiryOf(entry.token);
     say(`${t("Device", "Gerät")}: ${name}${data.default === name ? ` (${t("last logged in", "zuletzt angemeldet")})` : ""}, ${entry.address}`);
-    say(`  ${t("Credential", "Ausweis")}: ${entry.kind === "token" ? t("token", "Token") : t("session", "Sitzung")}${entry.user ? `, ${entry.user}` : ""}, ${t("since", "seit")} ${entry.since}${expires ? `, ${expires < Date.now() ? t("ended", "zu Ende") : t("holds until", "hält bis")} ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC` : ""}`);
+    say(`  ${t("Credential", "Ausweis")}: ${entry.kind === "pasted" ? t("pasted in", "eingefügt") : t("issued by the device", "vom Gerät ausgestellt")}${entry.user ? `, ${entry.user}` : ""}, ${t("since", "seit")} ${entry.since}${expires ? `, ${expires < Date.now() ? t("ended", "zu Ende") : t("holds until", "hält bis")} ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC` : ""}`);
     try {
       const answer = await send(entry, { path: DEVICE.session, token: entry.token, timeout: 10_000 });
       const body = inner(jsonOf(answer));
@@ -1153,28 +1614,30 @@ async function doStatus(args) {
       fine = false;
     }
   }
+  if (names.length && !(await folderStatus(args, chooseDevice(args)))) fine = false;
   const settingsPath = settingsFile(args);
   const items = proposalFolders().map(loadProposal);
   const counts = { current: 0, none: 0, changed: 0, broken: 0, invalid: 0 };
   for (const item of items) counts[item.problems.length ? "invalid" : stateOf(item, settingsPath).state] += 1;
   say(`${t("Proposals", "Vorschläge")}: ${items.length}, ${t("approved", "freigegeben")} ${counts.current}, ${t("not approved", "nicht freigegeben")} ${counts.none}${counts.changed ? `, ${t("changed since approval", "seit der Freigabe geändert")} ${counts.changed}` : ""}${counts.broken ? `, ${t("broken", "beschädigt")} ${counts.broken}` : ""}${counts.invalid ? `, ${t("cannot be approved", "nicht freigebbar")} ${counts.invalid}` : ""}`);
-  say(t(
-    "Company knowledge: the service that sync is meant to fetch it from is not decided yet. There is no state of it to report.",
-    "Firmenwissen: der Dienst, von dem sync es holen soll, steht noch nicht fest. Einen Stand davon gibt es nicht zu melden."
-  ));
   return fine;
 }
 
+/**
+ * Bring this tree up to date against the device: the shared folders, and what the assigned apps
+ * say about themselves.
+ *
+ * The apps go first, because they cost one request and no password. Whoever has no folder shared
+ * with them is never asked for one.
+ */
 async function doSync(args) {
+  const device = chooseDevice(args);
   const infos = await doApps(args, { write: true, quiet: true });
   const written = infos.filter((info) => info.state === "ok");
   say(t(`APP.md written for ${written.length} of ${infos.length} assigned apps${written.length ? `: ${written.map((info) => `apps/${info.id}/APP.md`).join(", ")}` : ""}.`, `APP.md geschrieben für ${written.length} von ${infos.length} zugewiesenen Apps${written.length ? `: ${written.map((info) => `apps/${info.id}/APP.md`).join(", ")}` : ""}.`));
   for (const info of infos.filter((entry) => entry.state !== "ok")) say(`  ${info.id}: ${info.state === "test-only" ? t("only the test stand is shared", "nur der Teststand ist freigegeben") : info.state === "none" ? t("does not describe itself", "beschreibt sich nicht") : info.message}`);
-  say(t(
-    "Company knowledge: the service that sync is meant to fetch it from is not decided yet. Nothing else was synchronised.",
-    "Firmenwissen: der Dienst, von dem sync es holen soll, steht noch nicht fest. Sonst wurde nichts abgeglichen."
-  ));
-  return true;
+  say();
+  return syncFolders(args, device);
 }
 
 function usage() {
@@ -1184,10 +1647,11 @@ function usage() {
       "",
       "  login [<address>] [--user <name>] [--token-stdin | --password-stdin] [--insecure] [--name <label>]",
       "        log in, then show the proposals for hooks and rules and the places on this computer",
+      "        [--credential-name <name>]     the name the device files the credential under",
       "  login --approve <checksum>     approve one proposal, once per proposal",
       "  login --withdraw               take back what approving entered",
-      "  status                         what can be measured",
-      "  sync                           write apps/<id>/APP.md for the assigned apps",
+      "  status                         device, credential, company folder, proposals",
+      "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md",
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
       "",
@@ -1198,10 +1662,11 @@ function usage() {
       "",
       "  login [<adresse>] [--user <name>] [--token-stdin | --password-stdin] [--insecure] [--name <bezeichnung>]",
       "        anmelden, danach die Vorschläge für Hooks und Regeln und die Orte auf diesem Rechner zeigen",
+      "        [--credential-name <name>]     unter welchem Namen das Gerät den Ausweis führt",
       "  login --approve <prüfsumme>    einen Vorschlag freigeben, einmal je Vorschlag",
       "  login --withdraw               zurücknehmen, was das Freigeben eintrug",
-      "  status                         was sich messen lässt",
-      "  sync                           apps/<id>/APP.md für die zugewiesenen Apps schreiben",
+      "  status                         Gerät, Ausweis, Firmenordner, Vorschläge",
+      "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md schreiben",
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",
       "",

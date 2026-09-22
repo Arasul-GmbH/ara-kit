@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.27.0 (2026-09-22)
+
+Kontrakt: bis 6
+
+- Das CLI der Wurzel gleicht den Firmenordner ab. `node arasul.mjs sync` fragt mit dem Ausweis `GET /api/firmenordner`, bekommt die Adresse des Dateidienstes, den Namen des Menschen dort und je Ordner Kennung, Ebene, Eltern, Pfad und Recht, und legt jeden freigegebenen Ordner an seine echte Stelle im Baum: einen Ordner der Ebene 1 als Raum, der nach seiner Kennung heißt, einen der Ebene 2 über den Raum `Shares` mit `--remote-folder`, und die Kette darüber lokal, auch wo der Mensch auf dem Elternordner kein Recht hat. Das Abgleichen tut der Kommandozeilen-Klient des Dateidienstes aus dem Desktop-Paket des Herstellers, der entpackt läuft; `--client` nennt, wo er liegt. Was eine Maschine macht, was zu diesem Rechner gehört (`.claude/hooks/`, `settings.json`) und was der Klient selbst schreibt, bleibt draußen, seine eigene Journaldatei eingeschlossen, ohne die er Konflikte an sich selbst meldet. `503` vom Gerät heißt, dass dort kein Dateidienst läuft, und wird nie für eine leere Ordnerliste genommen. Konflikte und Symlinks werden aus dem Baum gezählt und benannt, und beide machen `sync` und `status` rot.
+- `node arasul.mjs status` sagt je Ordner, wann zuletzt abgeglichen wurde, ob es durchging und wie viele Konflikte und nicht abgeglichene Symlinks darin liegen, dazu wie bisher Gerät, Ausweis und Vorschläge. Der Stand liegt neben dem Ausweis in `firmenordner.json`, nach Wurzel geschlüsselt, und trägt kein Geheimnis.
+- Die Anmeldung mit Passwort behält keine Sitzung mehr. Sie benutzt die Sitzung für genau eine Anfrage, `POST /api/ausweise`, und legt nur den Ausweis ab, den das Gerät dort ausstellt: eine Sitzung hat ein Ende und trägt alles, was der Mensch darf, ein Ausweis sagt, wer jemand ist, und öffnet keine Verwaltung. `--credential-name` sagt, unter welchem Namen das Gerät ihn führt, sonst der Name dieses Rechners; ein Name, den es schon gibt, wird gesagt, und nichts wird abgelegt. Das Passwort geht dem Klienten des Dateidienstes in dessen Umgebungsvariablen mit und nie als Argument, und abgelegt wird es nirgends.
+
 ## 0.26.0 (2026-09-22)
 
 Kontrakt: bis 6

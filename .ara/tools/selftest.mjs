@@ -43,6 +43,7 @@ import {
   realpathSync,
   rmSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { platform, tmpdir } from "node:os";
@@ -6297,7 +6298,10 @@ check("Die Anmeldung schreibt nur nach Zustimmung mit Prüfsumme, und eine Ände
 const BRUECKE_PASSWORT = "geheim-passwort-42";
 const base64url = (wert) => Buffer.from(JSON.stringify(wert)).toString("base64url");
 const brueckeToken = (exp = Math.floor(Date.now() / 1000) + 3600) => `${base64url({ alg: "none" })}.${base64url({ sub: "anna", exp })}.unterschrift`;
+/** Die Sitzung, die die Anmeldung mit Passwort zurueckgibt. Sie wird nicht abgelegt. */
 const BRUECKE_TOKEN = brueckeToken();
+/** Der Ausweis, den das nachgestellte Geraet auf `POST /api/ausweise` ausstellt. */
+const BRUECKE_AUSWEIS = "ausweis_0123456789abcdef0123456789abcdef";
 
 const BRUECKE_AGENT = {
   id: "urlaub",
@@ -6314,7 +6318,7 @@ const BRUECKE_AGENT = {
  * Das nachgestellte Gerät. `weiter` ist die Adresse eines echten Backends, an das
  * `/apps/selftest-bruecke/api/…` durchgereicht wird, wie es Traefik hinter der Forward-Auth tut.
  */
-async function brueckeGeraet({ tls = null, weiter = null } = {}) {
+async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [] } = {}) {
   const gesehen = [];
   const handler = (anfrage, antwort) => {
     const teile = [];
@@ -6334,9 +6338,26 @@ async function brueckeGeraet({ tls = null, weiter = null } = {}) {
           ? senden(200, { token: BRUECKE_TOKEN, user: { username: "anna", role: "mitarbeiter" } })
           : senden(401, { error: { message: "Anmeldung abgewiesen" } });
       }
-      const gueltig = ausweis === `Bearer ${BRUECKE_TOKEN}`;
+      // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
+      const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
+      const gueltig = sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`;
       if (pfad === "/api/auth/session") return senden(200, gueltig ? { authenticated: true, user: { username: "anna" } } : { authenticated: false, user: null });
       if (!gueltig) return senden(401, { error: { message: "Kein gültiger Ausweis" } });
+      if (pfad === "/api/ausweise" && anfrage.method === "POST") {
+        if (!sitzung) return senden(401, { error: { message: "Ein Ausweis stellt keinen Ausweis aus" } });
+        const name = JSON.parse(rumpf || "{}").name;
+        if (!name || typeof name !== "string") return senden(400, { error: { message: "Name fehlt" } });
+        if (ausweisNamen.includes(name)) return senden(409, { error: { message: `Es gibt schon einen Ausweis mit dem Namen „${name}"` } });
+        ausweisNamen.push(name);
+        return senden(201, { data: { id: ausweisNamen.length, name, praefix: BRUECKE_AUSWEIS.slice(0, 14), ausweis: BRUECKE_AUSWEIS } });
+      }
+      if (pfad === "/api/firmenordner") {
+        // 503 heisst „auf diesem Geraet laeuft kein Dateidienst" und ist etwas anderes
+        // als eine leere Ordnerliste. Das CLI muss beides auseinanderhalten.
+        return firmenordner
+          ? senden(200, { data: { benutzer: "anna", erreichbar: true, ...firmenordner } })
+          : senden(503, { error: { message: "Auf diesem Geraet laeuft kein Firmenordner." } });
+      }
       if (pfad === "/api/apps/meine") {
         return senden(200, {
           data: [
@@ -6415,10 +6436,15 @@ await checkAsync("Die Brücke meldet an, legt den Ausweis mit 0600 ab und zeigt 
     assert((statSync(datei).mode & 0o777) === 0o600, `der Ausweis hat die Rechte ${(statSync(datei).mode & 0o777).toString(8)}`);
     const inhalt = readFileSync(datei, "utf8");
     const eintrag = JSON.parse(inhalt).devices[new URL(geraet.adresse).hostname];
-    assert(eintrag?.address === geraet.adresse && eintrag.token === BRUECKE_TOKEN && eintrag.user === "anna", `der Eintrag ist unvollständig: ${inhalt}`);
+    assert(eintrag?.address === geraet.adresse && eintrag.user === "anna", `der Eintrag ist unvollständig: ${inhalt}`);
+    // Die Anmeldung mit Passwort legt den AUSWEIS ab und nicht die Sitzung.
+    assert(eintrag.token === BRUECKE_AUSWEIS, `abgelegt wurde nicht der ausgestellte Ausweis: ${inhalt}`);
+    assert(!inhalt.includes(BRUECKE_TOKEN), "die Sitzung der Anmeldung liegt in der Ausweisdatei");
+    assert(eintrag.kind === "issued", `die Art des Ausweises steht nicht im Eintrag: ${inhalt}`);
+    assert(geraet.gesehen.some((f) => f.verb === "POST" && f.pfad === "/api/ausweise" && f.ausweis === `Bearer ${BRUECKE_TOKEN}`), "der Ausweis wurde nicht mit der Sitzung ausgestellt");
     assert(!inhalt.includes(BRUECKE_PASSWORT), "das Passwort liegt in der Ausweisdatei");
     const ausgabe = lauf.stdout + lauf.stderr;
-    assert(!ausgabe.includes(BRUECKE_PASSWORT) && !ausgabe.includes(BRUECKE_TOKEN), "das Passwort oder das Token steht in der Ausgabe");
+    assert(!ausgabe.includes(BRUECKE_PASSWORT) && !ausgabe.includes(BRUECKE_TOKEN) && !ausgabe.includes(BRUECKE_AUSWEIS), "das Passwort, die Sitzung oder der Ausweis steht in der Ausgabe");
     assert(!readdirSync(w.root, { recursive: true }).some((eintragName) => /credentials|ausweis/i.test(eintragName)), "im Firmenordner liegt ein Ausweis");
 
     // Eine Datei mit weiteren Rechten wird beim Lesen zugezogen.
@@ -6426,17 +6452,25 @@ await checkAsync("Die Brücke meldet an, legt den Ausweis mit 0600 ab und zeigt 
     lauf = await bruecke(w, ["status"]);
     assert((statSync(datei).mode & 0o777) === 0o600, "eine zu offene Ausweisdatei bleibt offen");
 
-    // status und sync sagen ehrlich, was noch nicht feststeht.
-    assert(lauf.status === 0 && /angenommen/.test(lauf.stdout), `status meldet den Ausweis nicht als angenommen: ${lauf.stdout}`);
-    assert(/steht noch nicht fest/.test(lauf.stdout), `status sagt nicht, dass der Dienst noch nicht feststeht: ${lauf.stdout}`);
+    // status und sync sagen, dass es an diesem Gerät keinen Firmenordner gibt, und das ist
+    // etwas anderes als „du hast keine Ordner".
+    assert(lauf.status !== 0 && /angenommen/.test(lauf.stdout), `status meldet den Ausweis nicht als angenommen: ${lauf.stdout}`);
+    assert(/kein Firmenordner/.test(lauf.stdout), `status sagt nicht, dass es hier keinen Firmenordner gibt: ${lauf.stdout}`);
     lauf = await bruecke(w, ["sync"]);
-    assert(lauf.status === 0 && /steht noch nicht fest/.test(lauf.stdout) && /Sonst wurde nichts abgeglichen/.test(lauf.stdout), `sync sagt nicht, dass der Dienst noch nicht feststeht: ${lauf.stdout}`);
+    assert(lauf.status !== 0 && /kein Firmenordner/.test(lauf.stdout), `sync sagt nicht, dass es hier keinen Firmenordner gibt: ${lauf.stdout}`);
 
-    // Das Token statt Name und Passwort: dieselbe Datei, andere Art.
+    // Ein zweiter Ausweis mit demselben Namen: das Gerät weist ihn ab, und nichts wird abgelegt.
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--credential-name", "probe-rechner"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung mit eigenem Ausweisnamen scheitert: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--credential-name", "probe-rechner", "--name", "zweimal"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status !== 0 && /schon einen Ausweis|--credential-name/.test(lauf.stderr), `ein doppelter Ausweisname wird nicht gesagt: ${lauf.stderr}`);
+    assert(!JSON.parse(readFileSync(datei, "utf8")).devices["zweimal"], "nach einem abgewiesenen Ausweis liegt ein Eintrag da");
+
+    // Ein eingefügter Ausweis statt Name und Passwort: dieselbe Datei, andere Art.
     lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token"], { input: "ein-widerrufenes-token\n" });
-    assert(lauf.status !== 0 && !JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"], "ein Token, das das Gerät nicht kennt, wird abgelegt");
+    assert(lauf.status !== 0 && !JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"], "ein Ausweis, den das Gerät nicht kennt, wird abgelegt");
     lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token"], { input: `${BRUECKE_TOKEN}\n` });
-    assert(lauf.status === 0 && JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"].kind === "token", `die Anmeldung mit Token scheitert: ${lauf.stderr}${lauf.stdout}`);
+    assert(lauf.status === 0 && JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"].kind === "pasted", `die Anmeldung mit einem eingefügten Ausweis scheitert: ${lauf.stderr}${lauf.stdout}`);
 
     // Eine Sitzung, die zu Ende ist, sagt es, ohne das Gerät zu fragen.
     const daten = JSON.parse(readFileSync(datei, "utf8"));
@@ -6445,7 +6479,7 @@ await checkAsync("Die Brücke meldet an, legt den Ausweis mit 0600 ab und zeigt 
     const vorher = geraet.gesehen.length;
     lauf = await bruecke(w, ["apps", "--device", "mit-token"]);
     assert(lauf.status !== 0 && /zu Ende/.test(lauf.stderr) && geraet.gesehen.length === vorher, `eine abgelaufene Sitzung wird nicht vor dem Aufruf erkannt: ${lauf.stderr}`);
-    return "0600, kein Passwort in Datei und Ausgabe, kein Passwort als Argument, Token angenommen, Ablauf erkannt";
+    return "0600, Ausweis statt Sitzung abgelegt, kein Passwort in Datei und Ausgabe, doppelter Name abgewiesen, Ablauf erkannt";
   } finally {
     await geraet.schliessen();
   }
@@ -6476,15 +6510,16 @@ await checkAsync("Die Brücke listet Apps mit Routen, schreibt APP.md nur für z
     assert(readdirSync(join(w.root, "apps")).join() === "urlaub", `apps/ trägt mehr als die zugewiesene App: ${readdirSync(join(w.root, "apps"))}`);
     assert(inWurzel(w.root, "scripts/check.mjs").status === 0, `das Prüfskript der Wurzel meldet nach apps/ einen Befund: ${inWurzel(w.root, "scripts/check.mjs").stdout}`);
 
-    // sync schreibt dieselbe Datei.
+    // sync schreibt dieselbe Datei, auch an einem Gerät ohne Firmenordner.
     rmSync(md);
     lauf = await bruecke(w, ["sync"]);
     assert(existsSync(md) && /APP\.md geschrieben für 1 von 3/.test(lauf.stdout), `sync schreibt APP.md nicht: ${lauf.stdout}`);
+    assert(/kein Firmenordner/.test(lauf.stdout), `sync sagt nicht, warum es keinen Ordner abgleicht: ${lauf.stdout}`);
 
     // Lesen geht, mit einem Parameter, und das Gerät sieht den Ausweis.
     lauf = await bruecke(w, ["call", "urlaub", "antraege", "limit=2"]);
     assert(lauf.status === 0 && JSON.parse(lauf.stdout).data[0].frage === "limit=2", `lesendes call: ${lauf.stdout}${lauf.stderr}`);
-    assert(geraet.gesehen.at(-1).ausweis === `Bearer ${BRUECKE_TOKEN}`, "der Ausweis geht nicht als Bearer mit");
+    assert(geraet.gesehen.at(-1).ausweis === `Bearer ${BRUECKE_AUSWEIS}`, "der ausgestellte Ausweis geht nicht als Bearer mit");
 
     // Was etwas ändert, geht nur mit --write, und ohne es geht nichts hinaus.
     const vorPost = gerufen().filter((z) => z.startsWith("POST")).length;
@@ -6523,6 +6558,223 @@ await checkAsync("Die Brücke listet Apps mit Routen, schreibt APP.md nur für z
     lauf = await bruecke(w, ["call", "urlaub", "antraege"]);
     assert(lauf.status !== 0 && /weist den Ausweis ab/.test(lauf.stderr), `ein widerrufener Ausweis wird nicht gesagt: ${lauf.stderr}`);
     return "apps, APP.md nur zugewiesen, lesen ohne, ändern nur mit --write, neun Aufrufe ohne Weg hinaus";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+/**
+ * Die Attrappe des Kommandozeilen-Klienten.
+ *
+ * Sie schreibt auf, womit sie gerufen wurde, und legt eine Datei in das Ziel, so wie der
+ * echte Klient eine herunterlaedt. Was der echte Klient mit der Ausschlussliste macht,
+ * prueft sie NICHT: das ist sein Verhalten und nicht das dieses Kits. Geprueft wird hier,
+ * was das CLI ihm uebergibt -- die Schalter, die Liste, der Ort, das Passwort in der
+ * Umgebung und nicht im Argument.
+ */
+function attrappenKlient() {
+  const dir = wegwerfordner("ara-klient-");
+  const pfad = join(dir, "opencloudcmd");
+  writeFileSync(pfad, `#!/usr/bin/env node
+const { appendFileSync, mkdirSync, readFileSync, writeFileSync } = require("node:fs");
+const { join } = require("node:path");
+const argv = process.argv.slice(2);
+// Die Ausschlussliste liegt in einem Wegwerfordner, den sync danach wegraeumt. Wer sie
+// pruefen will, muss sie lesen, solange der Klient laeuft -- also hier.
+const liste = argv.includes("--exclude") ? readFileSync(argv[argv.indexOf("--exclude") + 1], "utf8") : null;
+appendFileSync(process.env.ARA_PROBE_PROTOKOLL, JSON.stringify({ argv, liste, token: process.env.OPENCLOUD_TOKEN || null }) + "\\n");
+const ziel = argv[2];
+mkdirSync(ziel, { recursive: true });
+writeFileSync(join(ziel, "vom-dienst.txt"), "aus dem Firmenordner\\n");
+if (process.env.ARA_PROBE_FEHLER && argv[1] === process.env.ARA_PROBE_FEHLER) {
+  process.stderr.write("Der Dienst antwortet nicht\\n");
+  process.exit(3);
+}
+process.exit(0);
+`);
+  chmodSync(pfad, 0o755);
+  return { pfad, protokoll: join(dir, "protokoll.jsonl") };
+}
+
+/** Was die Attrappe des Klienten aufgeschrieben hat, ein Aufruf je Zeile. */
+function klientRufe(protokoll) {
+  if (!existsSync(protokoll)) return [];
+  return readFileSync(protokoll, "utf8").split("\n").filter(Boolean).map((zeile) => JSON.parse(zeile));
+}
+
+const FO_ADRESSE = "https://dateidienst.probe:8443";
+/** Was ein Gerät freigibt: ein Ordner der Ebene 1 und einer der Ebene 2 unter einem fremden Eltern. */
+const FO_ORDNER = [
+  { kennung: "buchhaltung", name: "Buchhaltung", ebene: 1, eltern: null, pfad: "buchhaltung", recht: "lesen" },
+  { kennung: "vicona", name: "Vicona", ebene: 2, eltern: "projekte", pfad: "projekte/vicona", recht: "schreiben" },
+];
+/** Zwei, die das CLI abweisen muss: einer zeigt hinaus, einer heißt wie ein Ordner der Wurzel. */
+const FO_UNFUG = [
+  { kennung: "../boese", name: "Hinaus", ebene: 1, eltern: null, pfad: "../boese", recht: "schreiben" },
+  { kennung: "apps", name: "Apps", ebene: 1, eltern: null, pfad: "apps", recht: "schreiben" },
+];
+const firmenordnerPlan = (ordner = FO_ORDNER) => ({ adresse: FO_ADRESSE, ordner: [...ordner] });
+
+await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Baum ab und meldet Konflikte", async () => {
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const plan = firmenordnerPlan();
+  const geraet = await brueckeGeraet({ firmenordner: plan });
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll };
+  const abgleichen = (args = [], input = `${BRUECKE_PASSWORT}\n`, mehr = {}) =>
+    bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin", ...args], { input, env: { ...umgebung, ...mehr } });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+
+    // Vor dem ersten Abgleich sagt status, dass noch nie abgeglichen wurde.
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(/noch nie abgeglichen/.test(lauf.stdout), `status sagt vor dem ersten Abgleich nichts: ${lauf.stdout}`);
+    assert(lauf.stdout.includes(FO_ADRESSE), `status nennt die Adresse des Dienstes nicht: ${lauf.stdout}`);
+
+    lauf = await abgleichen();
+    assert(lauf.status === 0, `sync endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+
+    // Der Ordner der Ebene 2 liegt an seiner echten Stelle, und die Kette darüber
+    // wurde lokal angelegt, obwohl der Mensch auf dem Elternordner kein Recht hat.
+    assert(existsSync(join(w.root, "projekte", "vicona", "vom-dienst.txt")), "der Ordner der Ebene 2 liegt nicht an seiner echten Stelle");
+    assert(existsSync(join(w.root, "buchhaltung", "vom-dienst.txt")), "der Ordner der Ebene 1 liegt nicht da");
+
+    assert(!/Nicht abgeglichen/.test(lauf.stdout), `ein sauberer Abgleich meldet etwas als nicht abgeglichen: ${lauf.stdout}`);
+
+    // Zwei Aufrufe des Klienten, Ebene 1 zuerst, jeder mit den Schaltern und der Liste.
+    const rufe = klientRufe(klient.protokoll);
+    assert(rufe.length === 2, `der Klient wurde ${rufe.length} mal gerufen, nicht zweimal: ${JSON.stringify(rufe)}`);
+    assert(rufe[0].argv[1] === "buchhaltung" && rufe[1].argv[1] === "Shares", `die Räume stimmen nicht: ${JSON.stringify(rufe.map((r) => r.argv[1]))}`);
+    assert(rufe[0].argv[0] === FO_ADRESSE, `die Adresse des Dienstes geht nicht mit: ${rufe[0].argv[0]}`);
+    // Die Wurzel kennt sich unter ihrem echten Pfad, der Wegwerfordner liegt unter einem Verweis.
+    const echt = realpathSync(w.root);
+    assert(rufe[0].argv[2] === join(echt, "buchhaltung"), `der Ort der Ebene 1 stimmt nicht: ${rufe[0].argv[2]}`);
+    assert(rufe[1].argv[2] === join(echt, "projekte", "vicona"), `der Ort der Ebene 2 stimmt nicht: ${rufe[1].argv[2]}`);
+    const paar = (argv, name) => argv[argv.indexOf(name) + 1];
+    assert(paar(rufe[1].argv, "--remote-folder") === "vicona", `Ebene 2 geht nicht mit --remote-folder auf die Kennung: ${JSON.stringify(rufe[1].argv)}`);
+    assert(!rufe[0].argv.includes("--remote-folder"), "Ebene 1 geht mit --remote-folder");
+    for (const ruf of rufe) {
+      for (const schalter of ["--trust", "--non-interactive", "--sync-hidden-files", "--user", "--exclude"]) {
+        assert(ruf.argv.includes(schalter), `${schalter} fehlt im Aufruf: ${JSON.stringify(ruf.argv)}`);
+      }
+      assert(paar(ruf.argv, "--user") === "anna", `der Benutzer des Geräts geht nicht mit: ${JSON.stringify(ruf.argv)}`);
+      // Das Passwort geht über die Umgebung, nie als Argument: sonst stünde es in der
+      // Prozessliste jedes Menschen an diesem Rechner.
+      assert(ruf.token === BRUECKE_PASSWORT, "das Passwort kommt nicht über die Umgebungsvariable des Klienten an");
+      assert(!ruf.argv.some((teil) => teil.includes(BRUECKE_PASSWORT)), `das Passwort steht in einem Argument: ${JSON.stringify(ruf.argv)}`);
+    }
+
+    // Die Ausschlussliste trägt, was nie in den Firmenordner geht, und die Journaldatei
+    // des Klienten selbst: ohne sie meldet er Konflikte an sich.
+    const liste = rufe[0].liste;
+    for (const muster of [".git", "node_modules", "dist", "build", ".claude/hooks", "settings.json"]) {
+      assert(liste.split("\n").includes(muster), `${muster} steht nicht in der Ausschlussliste:\n${liste}`);
+    }
+    assert(/^\.sync_\*\.db$/m.test(liste), `die Journaldatei des Klienten steht nicht in der Ausschlussliste:\n${liste}`);
+
+    // Weder Passwort noch Ausweis stehen in der Ausgabe oder im abgelegten Stand.
+    const ausgabe = lauf.stdout + lauf.stderr;
+    assert(!ausgabe.includes(BRUECKE_PASSWORT) && !ausgabe.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis steht in der Ausgabe von sync");
+    const stand = readFileSync(join(w.ausweise, "firmenordner.json"), "utf8");
+    assert(!stand.includes(BRUECKE_PASSWORT) && !stand.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis liegt im Stand des Abgleichs");
+    assert(JSON.parse(stand).roots[realpathSync(w.root)].folders["projekte/vicona"].result === "ok", `der Stand des Abgleichs fehlt: ${stand}`);
+
+    // status zeigt danach je Ordner den Stand und null Konflikte.
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(lauf.status === 0, `status endet mit ${lauf.status}: ${lauf.stdout}${lauf.stderr}`);
+    assert(/projekte\/vicona.*abgeglichen.*0 Konflikte/.test(lauf.stdout), `status zeigt den Stand des Ordners nicht: ${lauf.stdout}`);
+    assert(/Dienst erreichbar: ja/.test(lauf.stdout), `status sagt nicht, ob der Dienst erreichbar ist: ${lauf.stdout}`);
+
+    // Ein Ordner der Ebene 1, den es vorher nicht gab, steht in keiner Zeile der Tabelle
+    // der Wurzel. sync schreibt die Zeile nicht selbst, es sagt sie -- und das Prüfskript
+    // der Wurzel meldet genau diese Ordner und keinen anderen.
+    const befund = inWurzel(w.root, "scripts/check.mjs");
+    const gemeldet = [...befund.stdout.matchAll(/^ {2}([^/\s]+)\/: Ordner auf oberster Ebene/gm)].map((treffer) => treffer[1]).sort();
+    assert(JSON.stringify(gemeldet) === JSON.stringify(["buchhaltung", "projekte"]), `das Prüfskript meldet andere Ordner als die abgeglichenen: ${befund.stdout}`);
+    assert(/Neu auf Ebene 1/.test(ausgabe) && /buchhaltung\/, projekte\//.test(ausgabe), `sync sagt nicht, welche Ordner der Ebene 1 neu sind: ${ausgabe}`);
+
+    // Ein Ordner, der aus der Wurzel hinauszeigt, und einer, der heißt wie ein Ordner der
+    // Wurzel selbst: beide werden benannt und nicht angelegt, und sync wird rot.
+    const vorUnfug = klientRufe(klient.protokoll).length;
+    plan.ordner = [...FO_ORDNER, ...FO_UNFUG];
+    lauf = await abgleichen();
+    assert(lauf.status !== 0, "ein Ordner, den das CLI abweist, lässt sync grün");
+    assert(/Nicht abgeglichen/.test(lauf.stdout) && /boese/.test(lauf.stdout) && /apps/.test(lauf.stdout), `sync meldet die abgewiesenen Ordner nicht: ${lauf.stdout}`);
+    assert(!existsSync(join(w.root, "boese")) && !existsSync(join(w.root, "..", "boese")), "eine ungültige Kennung hat außerhalb der Wurzel geschrieben");
+    assert(!existsSync(join(w.root, "apps", "vom-dienst.txt")), "ein Ordner der Ebene 1 hat den eigenen Ordner apps der Wurzel überschrieben");
+    assert(klientRufe(klient.protokoll).length === vorUnfug + 2, "für einen abgewiesenen Ordner wurde der Klient gerufen");
+    plan.ordner = [...FO_ORDNER];
+
+    // Ein Konflikt und ein Symlink: beide werden gemeldet, und status wird rot.
+    writeFileSync(join(w.root, "projekte", "vicona", "plan_conflict-20260922-101500.md"), "zweimal geändert\n");
+    symlinkSync(join(w.root, "buchhaltung"), join(w.root, "projekte", "vicona", "verweis"));
+    lauf = await abgleichen();
+    assert(lauf.status !== 0, "sync bleibt grün, obwohl ein Konflikt und ein Symlink daliegen");
+    assert(/1 Konflikte/.test(lauf.stdout) && /plan_conflict/.test(lauf.stdout), `sync meldet den Konflikt nicht: ${lauf.stdout}`);
+    assert(/1 Symlinks/.test(lauf.stdout) && /verweis/.test(lauf.stdout), `sync meldet den nicht abgeglichenen Symlink nicht: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(lauf.status !== 0 && /1 Konflikte/.test(lauf.stdout) && /1 Symlinks nicht abgeglichen/.test(lauf.stdout), `status meldet Konflikt und Symlink nicht: ${lauf.stdout}`);
+
+    // Ein Ordner, an dem der Klient scheitert: der Grund steht da, und der andere Ordner
+    // wird trotzdem abgeglichen.
+    const vorher = klientRufe(klient.protokoll).length;
+    lauf = await abgleichen([], `${BRUECKE_PASSWORT}\n`, { ARA_PROBE_FEHLER: "buchhaltung" });
+    assert(lauf.status !== 0 && /Der Dienst antwortet nicht/.test(lauf.stdout), `der Grund des gescheiterten Abgleichs fehlt: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === vorher + 2, "nach einem gescheiterten Ordner hört sync auf");
+    assert(JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots[realpathSync(w.root)].folders.buchhaltung.result === "error", "der gescheiterte Abgleich steht nicht im Stand");
+
+    // Ein Klient, den es nicht gibt, und ein Passwort, das von nirgends kommt: beides wird
+    // gesagt, und es geht nichts hinaus.
+    const fehlt = join(wegwerfordner("ara-leer-"), "opencloudcmd");
+    const vorFehler = klientRufe(klient.protokoll).length;
+    lauf = await bruecke(w, ["sync", "--client", fehlt, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status !== 0 && lauf.stderr.includes(fehlt), `ein fehlender Klient wird nicht benannt: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad], { input: "", env: umgebung });
+    assert(lauf.status !== 0 && /--password-stdin/.test(lauf.stderr), `ohne Terminal wird nicht erklärt, woher das Passwort kommt: ${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === vorFehler, "ohne Klient oder ohne Passwort wurde abgeglichen");
+    return "Ebene 1 als Raum, Ebene 2 über Shares mit --remote-folder, Kette lokal angelegt, Liste und Schalter geprüft, Passwort nur in der Umgebung, Konflikt und Symlink gemeldet";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Die Brücke räumt den Baum nicht leer, wenn das Gerät keinen Firmenordner hat", async () => {
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll };
+  let geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan() });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0 && existsSync(join(w.root, "buchhaltung", "vom-dienst.txt")), `der erste Abgleich geht nicht: ${lauf.stdout}${lauf.stderr}`);
+    writeFileSync(join(w.root, "buchhaltung", "eigene-notiz.md"), "von Hand\n");
+
+    // Dasselbe Gerät ohne Dienst: 503. Es wird nichts weggeräumt und nichts gerufen.
+    const port = geraet.port;
+    await geraet.schliessen();
+    geraet = await brueckeGeraet({ firmenordner: null, tls: null });
+    // Ein neuer Port: der Eintrag zeigt auf den alten, also neu anmelden.
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--name", "ohne-dienst"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung am Gerät ohne Dienst: ${lauf.stderr}`);
+    const vorher = klientRufe(klient.protokoll).length;
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--device", "ohne-dienst"], { env: umgebung });
+    assert(lauf.status !== 0 && /kein Firmenordner/.test(lauf.stdout), `503 wird nicht als „kein Dienst" gemeldet: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === vorher, "bei 503 wurde der Klient gerufen");
+    assert(existsSync(join(w.root, "buchhaltung", "eigene-notiz.md")) && existsSync(join(w.root, "projekte", "vicona")), "bei 503 wurde im Baum aufgeräumt");
+
+    // Und ein Gerät, das gar keine Ordner freigibt: auch das räumt nichts weg.
+    await geraet.schliessen();
+    geraet = await brueckeGeraet({ firmenordner: { adresse: FO_ADRESSE, ordner: [] } });
+    lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--name", "ohne-ordner"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung am Gerät ohne Ordner: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--device", "ohne-ordner"], { env: umgebung });
+    assert(lauf.status === 0 && /kein Ordner freigegeben/.test(lauf.stdout), `eine leere Ordnerliste wird nicht gesagt: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === vorher, "ohne Ordner wurde der Klient gerufen");
+    assert(existsSync(join(w.root, "buchhaltung", "eigene-notiz.md")), "ohne Ordner wurde im Baum aufgeräumt");
+    void port;
+    return "503 und leere Liste sind zwei Auskünfte, beide räumen nichts weg und rufen den Klienten nicht";
   } finally {
     await geraet.schliessen();
   }

@@ -1,6 +1,6 @@
 ---
 name: arasul
-description: Die Apps auf dem Arasul-Gerät fragen, die diesem Menschen zugewiesen sind. Nutzen, wenn jemand Daten aus einer App des Hauses braucht, wissen will, was eine App kann, oder etwas in eine eintragen lassen will.
+description: Die Apps auf dem Arasul-Gerät fragen, die diesem Menschen zugewiesen sind, und den Firmenordner abgleichen. Nutzen, wenn jemand Daten aus einer App des Hauses braucht, wissen will, was eine App kann, etwas in eine eintragen lassen will, oder wenn eine gemeinsame Datei fehlt, veraltet ist oder nicht beim anderen ankommt.
 ---
 
 # Die Apps des Hauses, über `arasul.mjs`
@@ -31,21 +31,41 @@ Code fragt also bei jeder Änderung. Sag in der Frage, was eingetragen wird, in 
 dass sich das über `arasul.mjs` nicht zurücknehmen lässt. Häng nie `--write` an, weil ein
 Aufruf mangels dessen abgewiesen wurde: die Abweisung ist die Frage an den Menschen.
 
+## Der Firmenordner
+
+Die Ordner, die das Gerät diesem Menschen freigibt, liegen in dieser Wurzel an ihrer echten
+Stelle im Baum. Sie sind gewöhnliche Ordner: du liest und schreibst darin wie überall sonst.
+Was dort liegt, gehört dem Haus und nicht dir.
+
+`node <wurzel>/arasul.mjs status` sagt je Ordner, wann zuletzt abgeglichen wurde und wie
+viele Konflikte darin liegen. **Das ist dein erster Schritt**, wenn eine gemeinsame Datei
+fehlt, alt aussieht oder beim anderen nicht ankommt: eine Datei, die noch nicht abgeglichen
+ist, liegt nur hier.
+
+`sync` gleicht ab, und den führst **du nicht aus**: er fragt nach dem Passwort des Menschen,
+und das bleibt bei ihm. Sag ihm, er soll `node <wurzel>/arasul.mjs sync` selbst laufen
+lassen.
+
+**Eine Konfliktdatei löst du nicht auf.** Der Klient konnte zwei Fassungen nicht
+zusammenführen und hat beide behalten, die zweite mit `_conflict-` im Namen. Welche gilt,
+weiß der Mensch, nicht du: zeig ihm den Unterschied und lass ihn entscheiden.
+
+`status` sagt außerdem, was sich sonst messen lässt: das Gerät, den Ausweis, die Vorschläge.
+
 ## Was du nicht tust
 
-- **Du meldest nicht an.** `login` fragt nach einem Passwort, und das bleibt beim Menschen.
-  Sagt ein Aufruf, die Sitzung sei zu Ende oder es sei kein Gerät da, sag dem Menschen, er
-  soll `node <wurzel>/arasul.mjs login <adresse> --user <name>` selbst ausführen.
+- **Du meldest nicht an und gleichst nicht ab.** `login` und `sync` fragen nach einem
+  Passwort, und das bleibt beim Menschen. Sagt ein Aufruf, der Ausweis werde abgewiesen oder
+  es sei kein Gerät da, sag dem Menschen, er soll `node <wurzel>/arasul.mjs login <adresse>
+  --user <name>` selbst ausführen.
 - **Du liest `~/.config/arasul/` nicht.** Der Ausweis ist nicht für dich, und nichts in der
   Ausgabe von `arasul.mjs` zeigt ihn.
 - **Du bearbeitest `apps/<id>/APP.md` nicht.** Das nächste `apps` oder `sync` überschreibt sie.
   Was darin steht, kommt von der App, nicht von diesem Haus.
+- **Du löschst im Firmenordner nichts, um einen Konflikt loszuwerden.** Was dort liegt, liegt
+  beim nächsten Abgleich auch bei allen anderen.
 - **Eine App bekommt keinen Dateizugriff.** Der Rückweg in eine Datei geht über dich: du holst
   die Daten mit `call` und schreibst die Datei selbst, dorthin, wo sie hingehört, wenn der
   Mensch es will.
 - **Du rufst nur auf, was eine App nennt.** Eine Route, die nicht in ihrer Liste steht, wird
   nicht aufgerufen, und `arasul.mjs` weist sie ohnehin ab.
-
-`status` sagt, was sich messen lässt: das Gerät, den Ausweis, die Vorschläge. `sync` schreibt
-die `APP.md`-Dateien. **Der Dienst für Firmenwissen steht noch nicht fest:** beide sagen es,
-und du versprichst dem Menschen keinen Abgleich davon.

@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.27.0 (2026-09-22)
+
+Contract: up to 6
+
+- The root's CLI syncs the company folder. `node arasul.mjs sync` asks the device with the credential `GET /api/firmenordner`, gets the address of the file service, the person's name there and, per folder, id, level, parent, path and right, and lays every shared folder at its real place in the tree: a folder of level 1 as a room named by its id, one of level 2 through the room `Shares` with `--remote-folder`, and the chain above it locally, even where the person has no right on the parent. The syncing is done by the command line client of the file service out of the vendor's desktop package, which runs unpacked; `--client` names where it lies. What a machine makes, what belongs to this computer (`.claude/hooks/`, `settings.json`) and what the client writes itself stays out, its own journal included, without which it reports conflicts about itself. `503` from the device means there is no file service on it and is never taken for an empty list of folders. Conflicts and symbolic links are counted out of the tree and named, and both make `sync` and `status` red.
+- `node arasul.mjs status` says per folder when it was last synced, whether it worked out and how many conflicts and unsynced symbolic links lie in it, on top of the device, the credential and the proposals. The state lies next to the credential in `firmenordner.json`, keyed by root, and holds no secret.
+- The login with a password keeps no session any more. It uses the session for exactly one request, `POST /api/ausweise`, and stores only the credential the device issues there: a session has an end and carries everything the human may do, a credential says who somebody is and opens no administration. `--credential-name` says what the device files it under, by default the name of this computer; a name that is taken is said, and nothing is stored. The password goes to the file service's client in its environment variable and never as an argument, and it is stored nowhere.
+
 ## 0.26.0 (2026-09-22)
 
 Contract: up to 6
