@@ -54,5 +54,14 @@ and with the method `company/core.md` and `company/goal.md`, in a second bundle 
 and write only what the human said. Then name the step that counts: from now on the agent
 starts in the root or in a folder of level 1.
 
+**Onto the device** goes the root with `node .ara/tools/root.mjs --path <root> --deploy --client
+<path to opencloudcmd>`, and it lives there afterwards: whoever an administrator shares the room
+`wurzel` with gets it at the top of their own tree with the next `sync`. The command asks for the
+password of the device, so the human runs it themselves; you name it, with the path of the
+client, and say what happens: the check script first, and a finding stops it; the room made as
+an administrator when it is missing; nothing of this computer goes along; a download afterwards
+proves what arrived. Read out what it says. Details in the procedure, "Deploying the root onto
+the device".
+
 **Somebody only wants to see one:** `node .ara/tools/root.mjs --path <folder> --example`
 lays out the showcase, an invented company with the method and filled sheets.

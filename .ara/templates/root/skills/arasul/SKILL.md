@@ -49,6 +49,17 @@ not for you: show them the difference and let them decide.
 
 `status` also says what else can be measured: the device, the credential, the proposals.
 
+## The root on the device
+
+This root may itself come from the device: the room `wurzel` is synced onto this folder, so the
+rules, skills and agents here are the house's and may be read-only for this person. `sicht.md`
+at the top of the root is the view of this person: which folders they have with which right,
+when each was last synced, what passes the sync by, and which apps are assigned to them. **Read
+it first** when somebody asks what they have on the device. `sync` writes it, and you do not edit
+it. `deploy` puts this root into its room on the device and asks for the password, so **you do
+not run it**: it is the human's step, through `root.mjs --deploy` of the kit or `node
+<root>/arasul.mjs deploy`.
+
 ## What you do not do
 
 - **You do not log in and you do not sync.** `login` and `sync` ask for a password, and that

@@ -52,6 +52,17 @@ weiß der Mensch, nicht du: zeig ihm den Unterschied und lass ihn entscheiden.
 
 `status` sagt außerdem, was sich sonst messen lässt: das Gerät, den Ausweis, die Vorschläge.
 
+## Die Wurzel am Gerät
+
+Diese Wurzel kann selbst vom Gerät kommen: der Raum `wurzel` wird auf diesen Ordner abgeglichen,
+die Regeln, Skills und Agents hier sind also die des Hauses und für diesen Menschen vielleicht
+nur lesbar. `sicht.md` oben in der Wurzel ist die Sicht dieses Menschen: welche Ordner er mit
+welchem Recht hat, wann jeder zuletzt abgeglichen wurde, was am Abgleich vorbeigeht und welche
+Apps ihm zugewiesen sind. **Lies sie zuerst**, wenn jemand fragt, was er am Gerät hat. `sync`
+schreibt sie, und du bearbeitest sie nicht. `deploy` legt diese Wurzel in ihren Raum am Gerät und
+fragt nach dem Passwort, also **führst du es nicht aus**: das ist der Schritt des Menschen, über
+`root.mjs --deploy` des Kits oder `node <wurzel>/arasul.mjs deploy`.
+
 ## Was du nicht tust
 
 - **Du meldest nicht an und gleichst nicht ab.** `login` und `sync` fragen nach einem
