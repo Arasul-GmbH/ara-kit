@@ -6375,6 +6375,18 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
         if (pfad === "/api/firmenordner/ordner" && anfrage.method === "GET") return senden(200, { data: alleOrdner });
         if (pfad === "/api/firmenordner/ordner" && anfrage.method === "POST") {
           if (alleOrdner.some((o) => o.kennung === eingabe.kennung)) return senden(409, { error: { message: "Kennung vergeben" } });
+          // Die Wurzel, wie das Gerät sie seit dem 22.09.2026 kennt: Ebene 0, Art wurzel, genau eine,
+          // und jeder Aktive bekommt sie in seine Liste, nach Rolle, ohne Rechte-Zeile.
+          if (eingabe.art === "wurzel") {
+            if (eingabe.ebene !== undefined && eingabe.ebene !== 0) return senden(400, { error: { message: "Die Wurzel ist Ebene 0" } });
+            const vorhanden = alleOrdner.find((o) => o.art === "wurzel");
+            if (vorhanden) return senden(409, { error: { message: `Dieses Geraet hat schon eine Wurzel („${vorhanden.kennung}"). Es gibt genau eine.` } });
+            const neu = { id: 100 + alleOrdner.length, kennung: eingabe.kennung, name: eingabe.name, ebene: 0, art: "wurzel", eltern_kennung: null, raum_id: `raum-${eingabe.kennung}` };
+            alleOrdner.push(neu);
+            if (firmenordner) firmenordner.ordner.unshift({ kennung: neu.kennung, name: neu.name, ebene: 0, art: "wurzel", eltern: null, pfad: "", recht: rolle === "admin" ? "schreiben" : "lesen" });
+            return senden(201, { data: neu });
+          }
+          if (eingabe.ebene === 0) return senden(400, { error: { message: "Ebene 0 ist die Wurzel, und die hat die Art wurzel" } });
           const neu = { id: 100 + alleOrdner.length, kennung: eingabe.kennung, name: eingabe.name, ebene: eingabe.ebene, art: eingabe.art || "geteilt", eltern_kennung: eingabe.eltern || null, raum_id: `raum-${eingabe.kennung}` };
           alleOrdner.push(neu);
           return senden(201, { data: neu });
@@ -6382,6 +6394,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
         if (pfad === "/api/firmenordner/rechte" && anfrage.method === "POST") {
           const ordner = alleOrdner.find((o) => o.id === eingabe.ordner_id);
           if (!ordner) return senden(404, { error: { message: "Diesen Ordner gibt es nicht" } });
+          if (ordner.art === "wurzel") return senden(400, { error: { message: "Auf der Wurzel gibt es kein Recht je Mensch: jeder Aktive liest, Administratoren schreiben" } });
           if (eingabe.benutzer_id === 7 && firmenordner) {
             firmenordner.ordner = firmenordner.ordner.filter((o) => o.kennung !== ordner.kennung);
             firmenordner.ordner.push({ kennung: ordner.kennung, name: ordner.name, ebene: ordner.ebene, eltern: ordner.eltern_kennung, pfad: ordner.ebene === 1 ? ordner.kennung : `${ordner.eltern_kennung}/${ordner.kennung}`, recht: eingabe.recht });
@@ -6622,6 +6635,11 @@ if (process.env.ARA_PROBE_FEHLER && argv[1] === process.env.ARA_PROBE_FEHLER) {
   process.stderr.write("Der Dienst antwortet nicht\\n");
   process.exit(3);
 }
+// Was der echte Klient sagt, wenn der Dienst das Passwort nicht kennt (gemessen am 22.09.2026).
+if (process.env.ARA_PROBE_AUTH && argv[1] === process.env.ARA_PROBE_AUTH) {
+  process.stderr.write("Fatal: Authentication failed please verify your credentials\\n");
+  process.exit(1);
+}
 // Mit einem Lager je Raum geht es in beide Richtungen: was hier liegt, geht in den Raum, und was
 // im Raum liegt, kommt hierher. So laesst sich messen, dass das Ausgerollte wieder herunterkommt.
 if (process.env.ARA_PROBE_LAGER) {
@@ -6648,8 +6666,12 @@ const FO_ORDNER = [
   { kennung: "buchhaltung", name: "Buchhaltung", ebene: 1, eltern: null, pfad: "buchhaltung", recht: "lesen" },
   { kennung: "vicona", name: "Vicona", ebene: 2, eltern: "projekte", pfad: "projekte/vicona", recht: "schreiben" },
 ];
-/** Der Raum der Wurzel: Ebene 1 mit der Kennung wurzel, bis das Gerät die Art wurzel kennt. */
-const FO_WURZEL = { kennung: "wurzel", name: "Probehaus", ebene: 1, eltern: null, pfad: "wurzel", recht: "lesen" };
+/** Die Wurzel des Geräts: Ebene 0 mit der Art wurzel, unter der Kennung, die das Gerät nennt (gemessen am 22.09.2026: firma). */
+const FO_WURZEL = { kennung: "firma", name: "Firma", ebene: 0, art: "wurzel", eltern: null, pfad: "", recht: "lesen" };
+/** Was ein Kit vor 0.29.0 anlegte: ein geteilter Ordner der Ebene 1 mit der Kennung wurzel. Heute ein Ordner wie jeder. */
+const FO_ALTER_RAUM = { kennung: "wurzel", name: "Probehaus", ebene: 1, art: "geteilt", eltern: null, pfad: "wurzel", recht: "lesen" };
+/** Ebene 0 mit einer anderen Art: eine Form, die das CLI nicht kennt und benennt, ohne etwas anzulegen. */
+const FO_UNBEKANNT = { kennung: "haus", name: "Haus", ebene: 0, art: "geteilt", eltern: null, pfad: "", recht: "lesen" };
 /** Zwei, die das CLI abweisen muss: einer zeigt hinaus, einer heißt wie ein Ordner der Wurzel. */
 const FO_UNFUG = [
   { kennung: "../boese", name: "Hinaus", ebene: 1, eltern: null, pfad: "../boese", recht: "schreiben" },
@@ -6822,11 +6844,13 @@ await checkAsync("Die Brücke räumt den Baum nicht leer, wenn das Gerät keinen
   }
 });
 
-await checkAsync("Die Brücke legt den Raum wurzel oben in die Wurzel und schreibt sicht.md, vom Gerät oder aus dem, was es sagt", async () => {
+await checkAsync("Die Brücke legt die Wurzel des Geräts, Ebene 0, oben in die Wurzel und schreibt sicht.md, vom Gerät oder aus dem, was es sagt", async () => {
   const w = brueckeWurzel();
   const klient = attrappenKlient();
   const sicht = { text: null };
-  const plan = firmenordnerPlan([FO_WURZEL, ...FO_ORDNER]);
+  // Die Wurzel des Geräts, zwei Ordner darunter, und der Raum, den ein Kit vor 0.29.0 als Wurzel
+  // anlegte: der ist heute ein Ordner der Ebene 1 wie jeder andere und landet unter seinem Namen.
+  const plan = firmenordnerPlan([FO_WURZEL, ...FO_ORDNER, FO_ALTER_RAUM]);
   const geraet = await brueckeGeraet({ firmenordner: plan, sicht });
   const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll };
   const abgleichen = () => bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
@@ -6839,37 +6863,47 @@ await checkAsync("Die Brücke legt den Raum wurzel oben in die Wurzel und schrei
     // Der Raum wurzel zuerst, und sein Ort ist die Wurzel selbst, kein Unterordner darin.
     const echt = realpathSync(w.root);
     const rufe = klientRufe(klient.protokoll);
-    assert(rufe.length === 3, `der Klient wurde ${rufe.length} mal gerufen, nicht dreimal`);
-    assert(rufe[0].argv[1] === "wurzel" && rufe[0].argv[2] === echt, `der Raum wurzel liegt nicht oben in der Wurzel: ${JSON.stringify(rufe[0].argv)}`);
-    assert(!rufe[0].argv.includes("--remote-folder"), "der Raum wurzel geht mit --remote-folder");
-    assert(!existsSync(join(w.root, "wurzel")), "der Raum wurzel liegt in einem Unterordner");
-    assert(existsSync(join(w.root, "vom-dienst.txt")), "was im Raum wurzel liegt, kam nicht oben in der Wurzel an");
-    assert(rufe[1].argv[2] === join(echt, "buchhaltung") && rufe[2].argv[2] === join(echt, "projekte", "vicona"), "die Räume darunter liegen nicht an ihrer Stelle");
+    assert(rufe.length === 4, `der Klient wurde ${rufe.length} mal gerufen, nicht viermal`);
+    assert(rufe[0].argv[1] === "firma" && rufe[0].argv[2] === echt, `die Wurzel des Geräts liegt nicht oben in der Wurzel, unter ihrer Kennung: ${JSON.stringify(rufe[0].argv)}`);
+    assert(!rufe[0].argv.includes("--remote-folder"), "die Wurzel des Geräts geht mit --remote-folder");
+    assert(!existsSync(join(w.root, "firma")), "die Wurzel des Geräts liegt in einem Unterordner");
+    assert(existsSync(join(w.root, "vom-dienst.txt")), "was in der Wurzel des Geräts liegt, kam nicht oben in der Wurzel an");
+    assert(rufe[1].argv[2] === join(echt, "buchhaltung") && rufe[2].argv[2] === join(echt, "wurzel") && rufe[3].argv[2] === join(echt, "projekte", "vicona"), `die Räume darunter liegen nicht an ihrer Stelle: ${rufe.map((r) => r.argv[2]).join(", ")}`);
+    assert(rufe[2].argv[1] === "wurzel", "der alte Raum wurzel der Ebene 1 wird nicht als Ordner unter seinem Namen abgeglichen");
 
     // Die Liste der Wurzel: das Allgemeine, dazu die Räume der Ebene 1, apps und sicht.md, als
     // bloße Namen, weil der Klient kein Muster oben verankert. Die anderen Räume gehen ohne die Namen.
     const liste = rufe[0].liste.split("\n");
-    for (const muster of [".git", "node_modules", ".claude/hooks", "settings.json", ".DS_Store", "buchhaltung", "projekte", "apps", "sicht.md"]) {
+    for (const muster of [".git", "node_modules", ".claude/hooks", "settings.json", ".DS_Store", "buchhaltung", "projekte", "wurzel", "apps", "sicht.md"]) {
       assert(liste.includes(muster), `${muster} steht nicht in der Liste der Wurzel:\n${rufe[0].liste}`);
     }
-    assert(!liste.includes("wurzel") && !liste.includes("vicona"), `die Liste der Wurzel schließt den Raum selbst oder einen Ordner der Ebene 2 aus:\n${rufe[0].liste}`);
+    assert(!liste.includes("firma") && !liste.includes("vicona"), `die Liste der Wurzel schließt die Wurzel selbst oder einen Ordner der Ebene 2 aus:\n${rufe[0].liste}`);
     assert(!rufe[1].liste.split("\n").includes("buchhaltung") && rufe[1].liste.split("\n").includes(".DS_Store"), `die Liste eines Raums der Ebene 1 stimmt nicht:\n${rufe[1].liste}`);
 
     // sicht.md: aus dem, was das Gerät sagt, solange es keine liefert. Ohne Geheimnis.
     const sichtDatei = join(w.root, "sicht.md");
     assert(existsSync(sichtDatei), "sicht.md wurde nicht geschrieben");
     const text = readFileSync(sichtDatei, "utf8");
-    for (const erwartet of ["wurzel, diese Wurzel, oben", "projekte/vicona", "schreiben", "urlaub", "apps/urlaub/APP.md", "Symlink"]) {
+    for (const erwartet of ["firma, diese Wurzel, oben", "projekte/vicona", "schreiben", "urlaub", "apps/urlaub/APP.md", "Symlink"]) {
       assert(text.includes(erwartet), `sicht.md nennt „${erwartet}" nicht:\n${text}`);
     }
     assert(!text.includes(BRUECKE_PASSWORT) && !text.includes(BRUECKE_AUSWEIS), "sicht.md trägt das Passwort oder den Ausweis");
     assert(/sicht\.md: geschrieben aus dem, was das Gerät/.test(lauf.stdout), `sync sagt nicht, woher sicht.md kommt: ${lauf.stdout}`);
-    assert(/Neu auf Ebene 1/.test(lauf.stdout) && /buchhaltung\/, projekte\//.test(lauf.stdout) && !/wurzel\//.test(lauf.stdout), `der Raum wurzel gilt als neuer Ordner der Ebene 1: ${lauf.stdout}`);
-    assert(/wurzel \(diese Wurzel, oben\).*Ebene 1, lesen.*abgeglichen/.test(lauf.stdout), `sync nennt den Raum wurzel nicht als die Wurzel: ${lauf.stdout}`);
+    assert(/Neu auf Ebene 1/.test(lauf.stdout) && /buchhaltung\/, projekte\/, wurzel\//.test(lauf.stdout) && !/firma\//.test(lauf.stdout), `die Wurzel des Geräts gilt als neuer Ordner der Ebene 1, oder der alte Raum wurzel nicht: ${lauf.stdout}`);
+    assert(/firma \(diese Wurzel, oben\).*Ebene 0, lesen.*abgeglichen/.test(lauf.stdout), `sync nennt die Wurzel des Geräts nicht als die Wurzel: ${lauf.stdout}`);
+    assert(/^  wurzel\s+Ebene 1, lesen\s+abgeglichen/m.test(lauf.stdout), `der alte Raum wurzel gilt nicht als Ordner der Ebene 1: ${lauf.stdout}`);
 
     // status kennt die Zeile der Wurzel und sicht.md.
     lauf = await bruecke(w, ["status"], { env: umgebung });
-    assert(lauf.status === 0 && /wurzel \(diese Wurzel, oben\).*abgeglichen.*0 Konflikte/.test(lauf.stdout) && /sicht\.md: da/.test(lauf.stdout), `status zeigt die Wurzel nicht: ${lauf.stdout}${lauf.stderr}`);
+    assert(lauf.status === 0 && /firma \(diese Wurzel, oben\).*Ebene 0, lesen.*abgeglichen.*0 Konflikte/.test(lauf.stdout) && /sicht\.md: da/.test(lauf.stdout), `status zeigt die Wurzel nicht: ${lauf.stdout}${lauf.stderr}`);
+
+    // Ebene 0 mit einer anderen Art ist eine Form, die diese Datei nicht kennt: benannt, nichts angelegt, nicht grün.
+    plan.ordner.push(FO_UNBEKANNT);
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(lauf.status !== 0 && /Nicht abgeglichen: .*"haus".*Form, die diese Datei nicht kennt/.test(lauf.stdout), `Ebene 0 ohne die Art wurzel wird nicht benannt: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await abgleichen();
+    assert(lauf.status !== 0 && !existsSync(join(w.root, "haus")) && klientRufe(klient.protokoll).length === 8, `Ebene 0 ohne die Art wurzel wurde angelegt oder abgeglichen: ${lauf.stdout}${lauf.stderr}`);
+    plan.ordner.pop();
 
     // Liefert das Gerät die Sicht, gilt seine, Wort für Wort.
     sicht.text = "# Sicht vom Gerät\n\nAlles gut.\n";
@@ -6880,9 +6914,9 @@ await checkAsync("Die Brücke legt den Raum wurzel oben in die Wurzel und schrei
     // Ein Konflikt, wie dieser Klient ihn benennt (gemessen am 22.09.2026), zählt für die Wurzel.
     writeFileSync(join(w.root, "README (conflicted copy 2026-09-22 201200).md"), "zweimal\n");
     lauf = await bruecke(w, ["status"], { env: umgebung });
-    assert(lauf.status !== 0 && /wurzel \(diese Wurzel, oben\).*1 Konflikte/.test(lauf.stdout), `ein Konflikt in der Wurzel wird nicht gezählt: ${lauf.stdout}`);
+    assert(lauf.status !== 0 && /firma \(diese Wurzel, oben\).*1 Konflikte/.test(lauf.stdout), `ein Konflikt in der Wurzel wird nicht gezählt: ${lauf.stdout}`);
     assert(!/buchhaltung.*1 Konflikte/.test(lauf.stdout), "ein Konflikt oben in der Wurzel wird einem Raum darunter zugerechnet");
-    return "Raum wurzel oben, Räume darunter an ihrer Stelle, Liste der Wurzel mit den Namen der Räume, sicht.md selbst geschrieben und vom Gerät genommen, Konfliktkopie gezählt";
+    return "Wurzel firma (Ebene 0) oben, Räume darunter an ihrer Stelle, der alte Raum wurzel ein Ordner der Ebene 1, Ebene 0 anderer Art benannt, Liste der Wurzel mit den Namen der Räume, sicht.md selbst geschrieben und vom Gerät genommen, Konfliktkopie gezählt";
   } finally {
     await geraet.schliessen();
   }
@@ -6893,9 +6927,9 @@ await checkAsync("Ein leerer Ordner mit der Brücke allein wird mit sync eine Wu
   const lager = wegwerfordner("ara-lager-");
   const quelle = wurzel(["--name", "Probehaus", "--language", "de"]);
   assert(quelle.run.status === 0, `root.mjs endet mit ${quelle.run.status}: ${quelle.run.stderr || quelle.run.stdout}`);
-  cpSync(quelle.root, join(lager, "wurzel"), { recursive: true });
+  cpSync(quelle.root, join(lager, "firma"), { recursive: true });
   const desHauses = `${readFileSync(join(quelle.root, "arasul.mjs"), "utf8")}\n// die Brücke, die das Haus ausgerollt hat\n`;
-  writeFileSync(join(lager, "wurzel", "arasul.mjs"), desHauses);
+  writeFileSync(join(lager, "firma", "arasul.mjs"), desHauses);
 
   const eigen = wegwerfordner("ara-bruecke-");
   const root = join(wegwerfordner("ara-bootstrap-"), "haus");
@@ -6921,7 +6955,7 @@ await checkAsync("Ein leerer Ordner mit der Brücke allein wird mit sync eine Wu
     assert(existsSync(join(root, "projekte", "vicona")), "der Ordner der Ebene 2 liegt nicht an seiner Stelle");
     assert(existsSync(join(root, "sicht.md")), "sicht.md fehlt");
     const rufe = klientRufe(klient.protokoll);
-    assert(rufe[0].argv[1] === "wurzel" && rufe[0].argv[2] === realpathSync(root), `der Raum wurzel ging nicht in den Ordner selbst: ${JSON.stringify(rufe[0].argv)}`);
+    assert(rufe[0].argv[1] === "firma" && rufe[0].argv[2] === realpathSync(root), `die Wurzel des Geräts ging nicht in den Ordner selbst: ${JSON.stringify(rufe[0].argv)}`);
 
     // Ein Ordner, in dem anderes liegt, ist keine Wurzel und wird auch keine.
     const fremd = join(wegwerfordner("ara-fremd-"), "notizen");
@@ -6938,7 +6972,7 @@ await checkAsync("Ein leerer Ordner mit der Brücke allein wird mit sync eine Wu
   }
 });
 
-await checkAsync("root.mjs --deploy legt die Wurzel in den Raum wurzel: Prüfskript zuerst, Raum als Administrator, nichts Rechnereigenes, gegengeprüft", async () => {
+await checkAsync("root.mjs --deploy legt die Wurzel in die Wurzel des Geräts: Prüfskript zuerst, Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, nichts Rechnereigenes, gegengeprüft", async () => {
   const w = brueckeWurzel();
   const klient = attrappenKlient();
   const lager = wegwerfordner("ara-lager-");
@@ -6969,34 +7003,33 @@ await checkAsync("root.mjs --deploy legt die Wurzel in den Raum wurzel: Prüfskr
     const anlegen = geraet.gesehen.find((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/ordner");
     assert(anlegen && anlegen.ausweis === `Bearer ${BRUECKE_TOKEN}`, "der Raum wurde nicht mit der Sitzung angelegt");
     const rumpf = JSON.parse(anlegen.rumpf);
-    assert(rumpf.kennung === "wurzel" && rumpf.ebene === 1 && rumpf.name === "Probehaus", `der Raum wurde falsch angelegt: ${anlegen.rumpf}`);
-    const recht = geraet.gesehen.find((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/rechte");
-    assert(recht && JSON.parse(recht.rumpf).benutzer_id === 7 && JSON.parse(recht.rumpf).recht === "schreiben", `das Recht wurde nicht vergeben: ${recht?.rumpf}`);
+    assert(rumpf.kennung === "firma" && rumpf.art === "wurzel" && rumpf.ebene === 0 && rumpf.name === "Probehaus", `die Wurzel wurde falsch angelegt: ${anlegen.rumpf}`);
+    assert(!geraet.gesehen.some((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/rechte"), "auf der Wurzel wurde ein Recht je Mensch vergeben, das gibt es dort nicht");
     assert(geraet.gesehen.some((g) => g.pfad === "/api/auth/logout"), "die geliehene Sitzung wurde nicht beendet");
     assert(!geraet.gesehen.some((g) => g.pfad.startsWith("/api/firmenordner/") && g.ausweis === `Bearer ${BRUECKE_AUSWEIS}`), "der Ausweis ging an die Verwaltung");
     // Zwei Rufe des Klienten: hinauf in die Wurzel selbst, herunter in einen Wegwerfordner, der danach weg ist.
     const rufe = klientRufe(klient.protokoll);
     assert(rufe.length === 2, `der Klient wurde ${rufe.length} mal gerufen, nicht zweimal`);
-    assert(rufe[0].argv[1] === "wurzel" && rufe[0].argv[2] === echt, `hinauf ging es nicht aus der Wurzel: ${JSON.stringify(rufe[0].argv)}`);
-    assert(rufe[1].argv[1] === "wurzel" && rufe[1].argv[2] !== echt && !existsSync(rufe[1].argv[2]), `die Gegenprüfung lief nicht in einen Wegwerfordner, oder er blieb liegen: ${JSON.stringify(rufe[1].argv)}`);
+    assert(rufe[0].argv[1] === "firma" && rufe[0].argv[2] === echt, `hinauf ging es nicht aus der Wurzel in den Raum firma: ${JSON.stringify(rufe[0].argv)}`);
+    assert(rufe[1].argv[1] === "firma" && rufe[1].argv[2] !== echt && !existsSync(rufe[1].argv[2]), `die Gegenprüfung lief nicht in einen Wegwerfordner, oder er blieb liegen: ${JSON.stringify(rufe[1].argv)}`);
     const liste = rufe[0].liste.split("\n");
     for (const muster of [".git", "node_modules", ".claude/hooks", "settings.json", "buchhaltung", "apps", "sicht.md"]) {
       assert(liste.includes(muster), `${muster} steht nicht in der Liste des Ausrollens:\n${rufe[0].liste}`);
     }
-    assert(/Prüfskript: kein Befund/.test(lauf.stdout) && /Raum wurzel: auf .* angelegt/.test(lauf.stdout) && /alle \d+ liegen dort/.test(lauf.stdout), `--deploy sagt nicht, was es tat: ${lauf.stdout}`);
+    assert(/Prüfskript: kein Befund/.test(lauf.stdout) && /Wurzel firma: auf .* angelegt, Ebene 0/.test(lauf.stdout) && /alle \d+ liegen dort/.test(lauf.stdout), `--deploy sagt nicht, was es tat: ${lauf.stdout}`);
     assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_PASSWORT), "das Passwort steht in der Ausgabe");
     // Was im Raum liegt, ist das Gerüst, und nichts Rechnereigenes.
-    const imRaum = dateien(join(lager, "wurzel"));
+    const imRaum = dateien(join(lager, "firma"));
     assert(imRaum.includes(".claude/CLAUDE.md") && imRaum.includes("arasul.mjs") && imRaum.includes(".claude/scripts/check.mjs"), `das Gerüst liegt nicht im Raum: ${imRaum.join(", ")}`);
 
     // Ein zweites Mal: der Raum ist da, nichts wird angelegt.
     const gesehen = geraet.gesehen.length;
     lauf = await ausrollen();
-    assert(lauf.status === 0 && /Raum wurzel: freigegeben für anna, schreiben/.test(lauf.stdout), `der zweite Lauf: ${lauf.stdout}${lauf.stderr}`);
+    assert(lauf.status === 0 && /Wurzel firma: das Gerät führt sie, anna hat schreiben/.test(lauf.stdout), `der zweite Lauf: ${lauf.stdout}${lauf.stderr}`);
     assert(!geraet.gesehen.slice(gesehen).some((g) => g.verb === "POST" && g.pfad.startsWith("/api/firmenordner")), "beim zweiten Lauf wurde wieder angelegt");
 
     // Nur lesen: Ausrollen geht nicht, und der Klient wird nicht gerufen.
-    const zeile = plan.ordner.find((o) => o.kennung === "wurzel");
+    const zeile = plan.ordner.find((o) => o.kennung === "firma");
     zeile.recht = "lesen";
     const vorLesen = klientRufe(klient.protokoll).length;
     lauf = await ausrollen();
@@ -7008,8 +7041,29 @@ await checkAsync("root.mjs --deploy legt die Wurzel in den Raum wurzel: Prüfskr
     lauf = await ausrollen();
     assert(lauf.status === 0 && /ersetzt/.test(lauf.stdout), `eine alte Brücke wird nicht ersetzt: ${lauf.stdout}${lauf.stderr}`);
     assert(readFileSync(join(w.root, "arasul.mjs"), "utf8") === readFileSync(join(ROOT_TEMPLATE, "arasul.mjs"), "utf8"), "die ersetzte Brücke ist nicht die des Kits");
+
+    // Der Dienst kennt das Passwort nicht: der Klient sagt Fatal: Authentication, und deploy sagt in
+    // einem Satz, woran das liegt, ohne dass etwas angelegt wird.
+    const vorAuth = geraet.gesehen.length;
+    lauf = await toolAsync("root.mjs", ["--path", w.root, "--deploy", "--client", klient.pfad, "--password-stdin"], { ...umgebung, ARA_PROBE_AUTH: "firma" }, `${BRUECKE_PASSWORT}\n`);
+    assert(lauf.status !== 0 && /Fatal: Authentication/.test(lauf.stderr) && /Passwortwechsel/.test(lauf.stderr), `ein nicht gespiegeltes Passwort bekommt keinen Satz: ${lauf.stdout}${lauf.stderr}`);
+    assert(!geraet.gesehen.slice(vorAuth).some((g) => g.verb === "POST" && g.pfad.startsWith("/api/firmenordner")), "bei Fatal: Authentication wurde etwas angelegt");
   } finally {
     await geraet.schliessen();
+  }
+
+  // Das Gerät führt eine Wurzel und nennt sie diesem Menschen nicht: es wird nie eine zweite angelegt.
+  const fremd = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_ORDNER[0]]), rolle: "admin", alleOrdner: [{ id: 5, kennung: "firma", name: "Firma", ebene: 0, art: "wurzel", eltern_kennung: null, raum_id: "raum-firma" }] });
+  try {
+    let lauf = await bruecke(w, ["login", fremd.adresse, "--user", "anna", "--password-stdin", "--name", "fremd"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung am Gerät mit Wurzel: ${lauf.stderr}`);
+    const vorher = klientRufe(klient.protokoll).length;
+    lauf = await ausrollen("--device", "fremd");
+    assert(lauf.status !== 0 && /Wurzel 'firma'/.test(lauf.stderr) && /zweite Wurzel/.test(lauf.stderr), `eine Wurzel, die das Gerät führt und nicht nennt, bekommt keinen Satz: ${lauf.stdout}${lauf.stderr}`);
+    assert(!fremd.gesehen.some((g) => g.verb === "POST" && g.pfad === "/api/firmenordner/ordner") && klientRufe(klient.protokoll).length === vorher, "neben der Wurzel des Geräts wurde eine zweite angelegt oder der Klient gerufen");
+    assert(fremd.gesehen.some((g) => g.pfad === "/api/auth/logout"), "die Sitzung wurde nicht beendet");
+  } finally {
+    await fremd.schliessen();
   }
 
   // Ein Mitarbeiter, dem der Raum fehlt: es wird gesagt, nichts angelegt, nichts gerufen.
