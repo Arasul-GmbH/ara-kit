@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.26.0 (2026-09-22)
+
+Contract: up to 6
+
+- The kit understands contract version 6. An app names the routes it offers an agent in the manifest (`agent`): the kit reads the field, passes it to the device unchanged and holds every route it names against the source of the backend. Until now a device with version 6 got the sentence about what the kit is missing, and nothing could be deployed onto it, no matter what the app looked like.
+- **The source of the form is the schema of the device.** What the device has already refused in its own words, `--check` does not say a second time in the words of the kit. What stays is what no schema carries and what decides the call: `writes` on a method that changes something, the same route twice. That reading is the one the CLI of the root uses, and a route it does not accept the CLI does not call.
+- The search for a route in the backend also finds a path that stands in a regular expression (`/^\/journal$/`), not only one in quotes. A backend with a table of patterns used to get the finding that its route does not exist.
+- Measured against a device carrying contract version 6: reading the contract ends with return code 0, the check of an app with the field ends without a finding, and one without the field ends as it did before.
+
 ## 0.25.0 (2026-09-21)
 
 Contract: up to 5

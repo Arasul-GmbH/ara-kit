@@ -48,6 +48,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 5,
     kann: "Die Werte, die das Gerät einer App in den Container legt, liest das Kit in ihrer Rolle (`umgebung.basis`, `umgebung.schluessel`, `umgebung.datenbank`), und es hängt die Wege der App relativ an die Basis (`endpunkte[].relativ`), statt den Vorsatz ein zweites Mal davorzusetzen.",
   },
+  {
+    version: 6,
+    kann: "Eine App nennt im Manifest die Routen, die sie einem Agenten anbietet (`agent`): das Kit liest das Feld, reicht es unverändert an das Gerät weiter und hält jede Route, die es nennt, gegen den Quelltext des Backends. Wie das Feld geformt sein muss, sagt das Schema dieses Geräts.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */

@@ -248,7 +248,9 @@ agent may call, and the backend answers the route `agent` with that field, id, n
 The CLI of a root, `arasul.mjs`, calls only what is named there, and a route that changes
 something needs `--write` from the human. There is no second list: the build puts a copy of
 `app.json` next to the backend, and the route reads it. `--check` and `--deploy` hold the field
-against the app, its form and that every route is in the backend. How the field looks and what
+against the app: over the form the device's schema judges, and the kit does not say its verdict a
+second time; what no schema carries it reads the way the CLI reads it. On top of that, every route
+named there has to stand in the backend, as a string or as a pattern. How the field looks and what
 the CLI does with it stands in `.ara/knowledge/root.md`, "The bridge to the apps". **A device whose
 schema for `app.json` does not know the field refuses the package**, and `--check` says so: then
 take the field out until the device accepts it.
