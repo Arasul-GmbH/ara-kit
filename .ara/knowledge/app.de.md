@@ -263,8 +263,8 @@ der Bau legt eine Kopie der `app.json` neben das Backend, und die Route liest si
 `--deploy` halten das Feld gegen die App: über die Form urteilt das Schema des Geräts, und das Kit
 sagt sein Urteil nicht ein zweites Mal; was kein Schema trägt, liest es so, wie das CLI es liest.
 Dazu muss jede Route, die dort steht, im Backend stehen, als Zeichenkette oder als Muster. Wie das
-Feld aussieht und was das CLI damit tut, steht in `.ara/knowledge/root.de.md`, „Die Brücke zu den
-Apps“. **Ein Gerät, dessen Schema für `app.json` das Feld nicht kennt, weist das Paket ab**, und
+Feld aussieht und was das CLI damit tut, steht in `.ara/knowledge/root.de.md`, „Die Brücke zum
+Gerät“. **Ein Gerät, dessen Schema für `app.json` das Feld nicht kennt, weist das Paket ab**, und
 `--check` sagt es: nimm das Feld dann heraus, bis das Gerät es annimmt.
 
 ## Woraus die Vorlage gebaut ist

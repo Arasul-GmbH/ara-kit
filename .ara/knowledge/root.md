@@ -187,39 +187,94 @@ node .ara/tools/root.mjs --path <root> --unenroll
 
 `--settings <file>` names another settings file than the agent's own. Logging in to a
 device is not part of this: that is the CLI of the root, `arasul.mjs`, see "The bridge to
-the apps" below. It carries the same approval step in a version of its own, because it runs
+the device" below. It carries the same approval step in a version of its own, because it runs
 with Node alone, and it writes the same files: what one enters, the other takes back.
 
-## The bridge to the apps
+## The bridge to the device
 
 `arasul.mjs` lies in every root, next to `.claude/`. It runs with Node alone and comes out of
 the kit like the check script. An agent in the root cannot hold a credential for a device, ask
-which apps a person is assigned to or call what an app offers. This file does that, and
-nothing else.
+which apps a person is assigned to, sync the folders a device shares with them or call what an
+app offers. This file does that, and nothing else.
 
 | Command | What it does |
 | --- | --- |
-| `login <address> --user <name>` | Logs in, then shows the proposals and the places. The password is asked for at the terminal and never shown, `--password-stdin` takes it from the first line of the input, an argument never |
-| `login <address> --token-stdin` | The same with a token instead of name and password. The token is issued in the device's front end |
+| `login <address> --user <name>` | Logs in, has a credential issued, then shows the proposals and the places. The password is asked for at the terminal and never shown, `--password-stdin` takes it from the first line of the input, an argument never. `--credential-name` says what the device files the credential under, by default the name of this computer |
+| `login <address> --token-stdin` | The same with a credential instead of name and password. It is issued in the device's front end |
 | `login`, `login --approve <checksum>`, `login --withdraw` | Show the proposals, approve one by its checksum, take back everything the approving entered |
 | `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
-| `sync` | Writes the same files and says that the service for company knowledge is not decided yet |
-| `status` | The device, the credential, whether the device accepts it, the proposals. States the same about the service |
+| `sync` | Syncs the company folder and writes the same files. `--client` names the command line client of the file service |
+| `status` | The device, the credential, whether the device accepts it, the company folder per folder, the proposals |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
 
 **The credential** lies in `~/.config/arasul/credentials.json`, mode 0600, one entry per device
-with its address and token. Never in the root, never in the keychain. Until the device issues
-tokens the login sends name and password to the login route, keeps the session it gets in
-return and stores neither the password nor anything of it. A session has an end, and the
-tool says so before it calls. A device with a certificate of its own is pinned once with
-`--insecure`, which stores that certificate as the trust anchor for this one device; the check
-is not switched off.
+with its address and credential. Never in the root, never in the keychain. The login sends name
+and password to the login route, and what it gets back is a session: it has an end and carries
+everything the human may do, an administrator's session included. So it is used for exactly one
+request, `POST /api/ausweise`, and then dropped. What is stored is the credential the device
+issues there: it has no end, it says who somebody is, and it opens the three ways this file
+walks and no administration. The device shows its value once, in the answer to that request;
+whoever loses it issues a new one. Neither the password nor anything of it is stored. A device
+with a certificate of its own is pinned once with `--insecure`, which stores that certificate as
+the trust anchor for this one device; the check is not switched off.
 
 **What the tool assumes about the device** stands in one block at its head, with the date it is
-from: `POST /api/auth/login`, `GET /api/auth/session` and `GET /api/apps/meine`, out of the API
-reference of the product. They are statements about the product like any other, and
-`check-docs.mjs` knocks at them. The route each app answers with its description is called
-`agent` and lies in the app's own interface.
+from: `POST /api/auth/login`, `POST /api/ausweise`, `GET /api/auth/session`,
+`GET /api/apps/meine` and `GET /api/firmenordner`, out of the API reference of the product. They
+are statements about the product like any other, and `check-docs.mjs` knocks at them. The route
+each app answers with its description is called `agent` and lies in the app's own interface.
+
+## The company folder
+
+`sync` asks `GET /api/firmenordner` with the credential. The device answers with the address of
+its file service, the person's name there and, per folder, its id, its level, its parent, its
+path and the right on it. **`503` is not an empty list**: the first says there is no file service
+on this device, the second says this person has no folder. A tool that mixes up the two empties
+somebody's tree.
+
+**Every folder lands at its real place in this tree.** A folder of level 1 becomes a folder at
+the top of the root, one of level 2 becomes `<parent>/<id>`, and the chain above it is made
+locally even when the person has no right on the parent and cannot see it in the service. A
+folder of level 1 that is named like a folder the root carries itself is not laid down, and one
+whose id is not an id is not either; both are named.
+
+**The syncing itself is done by the command line client of the file service**, `opencloudcmd`,
+out of the vendor's desktop package for macOS. It runs unpacked, without installing. `sync`
+looks for it in `/Applications/OpenCloud.app/Contents/MacOS/`, below the home folder, and on the
+path; `--client` names another place. Measured as of 2026-09-22: a folder of level 1 is a room
+named by the folder's **id** and not by its display name, and a folder of level 2 hangs in the
+room `Shares` and is reached with `--remote-folder <id>`. The switches are `--trust`,
+`--non-interactive`, `--sync-hidden-files` and `--exclude`.
+
+**The client logs in with the same password as the device**, because the device mirrors it into
+the service. `sync` therefore asks for it at every run, at the terminal or with
+`--password-stdin`, hands it to the client in the environment variable `OPENCLOUD_TOKEN` and
+stores it nowhere. Never as an argument: an argument stands in the process list of every person
+at this computer.
+
+**Not pinned.** The client knows one switch for a certificate, `--trust`, and none that names a
+single one. The connection to the file service is therefore not held to one certificate the way
+the connection to the device's interface is. That is the client's doing and not the kit's, and
+it is written here so that nobody takes it for a decision.
+
+**What never goes into the company folder** stands in one list and goes to the client as a file:
+what a machine makes (`.git`, `node_modules`, `dist`, `build`, `.next`), what belongs to this
+computer (`.claude/hooks/`, `settings.json`) and what the client writes itself. The last one is
+not a nicety: without its journal in the list the client reports conflicts about itself.
+
+**Conflicts and symbolic links** are counted out of the tree and not out of the client's report,
+because both also come into being between two syncs. A file the client could not merge carries
+`_conflict-` in its name, and the client follows no symbolic link. `sync` and `status` name
+both, and both go red on them.
+
+**The state of the last sync** lies next to the credential, in `firmenordner.json`, keyed by the
+root: per folder when it was last synced, whether it worked out and how many conflicts and links
+were lying there. No secret is in it. `status` reads it and counts the conflicts afresh.
+
+**A folder that arrives new at the top of the root wants a line** in the table "Where new things
+go" of its `.claude/CLAUDE.md`, otherwise the root's own check script reports it at every run.
+`sync` says which ones and writes no line itself: the column next to the name says what belongs
+in the folder, and that is a sentence of the house and not of a file service.
 
 **An app describes itself** in the field `agent` of its `app.json`: a list of routes, each with
 `method`, `path` relative to the app's interface, `purpose` as one sentence, `params` (each

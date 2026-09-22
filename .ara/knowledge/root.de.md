@@ -193,40 +193,98 @@ node .ara/tools/root.mjs --path <wurzel> --unenroll
 
 `--settings <datei>` nennt eine andere Einstellungsdatei als die des Agenten selbst. Das
 Einloggen an einem Gerät gehört nicht hierher: das ist das CLI der Wurzel, `arasul.mjs`, siehe
-„Die Brücke zu den Apps“ unten. Es führt denselben Freigabeschritt in einer eigenen Fassung,
+„Die Brücke zum Gerät“ unten. Es führt denselben Freigabeschritt in einer eigenen Fassung,
 weil es mit Node allein läuft, und legt dieselben Dateien an: was das eine einträgt, nimmt
 das andere zurück.
 
-## Die Brücke zu den Apps
+## Die Brücke zum Gerät
 
 `arasul.mjs` liegt in jeder Wurzel, neben `.claude/`. Es läuft mit Node allein und kommt wie
 das Prüfskript aus dem Kit. Ein Agent in der Wurzel kann keinen Ausweis für ein Gerät halten,
-nicht fragen, welche Apps einem Menschen zugewiesen sind, und nicht aufrufen, was eine App
-anbietet. Diese Datei tut das, und sonst nichts.
+nicht fragen, welche Apps einem Menschen zugewiesen sind, nicht die Ordner abgleichen, die ein
+Gerät ihm freigibt, und nicht aufrufen, was eine App anbietet. Diese Datei tut das, und sonst
+nichts.
 
 | Befehl | Was er tut |
 | --- | --- |
-| `login <adresse> --user <name>` | Meldet an, zeigt danach die Vorschläge und die Orte. Das Passwort wird am Terminal gefragt und nie gezeigt, `--password-stdin` nimmt es aus der ersten Zeile der Eingabe, ein Argument nie |
-| `login <adresse> --token-stdin` | Dasselbe mit einem Token statt Name und Passwort. Das Token wird in der Oberfläche des Geräts ausgestellt |
+| `login <adresse> --user <name>` | Meldet an, lässt einen Ausweis ausstellen, zeigt danach die Vorschläge und die Orte. Das Passwort wird am Terminal gefragt und nie gezeigt, `--password-stdin` nimmt es aus der ersten Zeile der Eingabe, ein Argument nie. `--credential-name` sagt, unter welchem Namen das Gerät den Ausweis führt, sonst der Name dieses Rechners |
+| `login <adresse> --token-stdin` | Dasselbe mit einem Ausweis statt Name und Passwort. Ausgestellt wird er in der Oberfläche des Geräts |
 | `login`, `login --approve <prüfsumme>`, `login --withdraw` | Die Vorschläge zeigen, einen mit seiner Prüfsumme freigeben, alles zurücknehmen, was das Freigeben eintrug |
 | `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
-| `sync` | Schreibt dieselben Dateien und sagt, dass der Dienst für Firmenwissen noch nicht feststeht |
-| `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, die Vorschläge. Sagt zum Dienst dasselbe |
+| `sync` | Gleicht den Firmenordner ab und schreibt dieselben Dateien. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
+| `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner, die Vorschläge |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
 
 **Der Ausweis** liegt in `~/.config/arasul/credentials.json`, Rechte 0600, je Gerät ein Eintrag
-mit Adresse und Token. Nie in der Wurzel, nie im Schlüsselbund. Solange das Gerät keine Token
-ausstellt, schickt die Anmeldung Name und Passwort an den Anmeldeweg, hält die Sitzung, die sie
-dafür bekommt, und legt weder das Passwort noch etwas davon ab. Eine Sitzung hat ein Ende, und
-das Werkzeug sagt es, bevor es aufruft. Ein Gerät mit eigenem Zertifikat wird einmal mit
-`--insecure` festgehalten: das Zertifikat wird der Anker des Vertrauens für dieses eine Gerät,
-die Prüfung wird nicht abgeschaltet.
+mit Adresse und Ausweis. Nie in der Wurzel, nie im Schlüsselbund. Die Anmeldung schickt Name und
+Passwort an den Anmeldeweg, und was zurückkommt, ist eine Sitzung: sie hat ein Ende und trägt
+alles, was der Mensch darf, die Sitzung eines Administrators eingeschlossen. Sie wird deshalb für
+genau eine Anfrage benutzt, `POST /api/ausweise`, und danach fallen gelassen. Abgelegt wird der
+Ausweis, den das Gerät dort ausstellt: er läuft nicht ab, er sagt, wer jemand ist, und er öffnet
+die drei Wege, die diese Datei geht, und keine Verwaltung. Seinen Wert zeigt das Gerät einmal, in
+der Antwort auf diese Anfrage; wer ihn verliert, stellt einen neuen aus. Weder das Passwort noch
+etwas davon wird abgelegt. Ein Gerät mit eigenem Zertifikat wird einmal mit `--insecure`
+festgehalten: das Zertifikat wird der Anker des Vertrauens für dieses eine Gerät, die Prüfung
+wird nicht abgeschaltet.
 
 **Was das Werkzeug über das Gerät annimmt**, steht in einem Block an seinem Kopf, mit dem
-Datum, von dem es ist: `POST /api/auth/login`, `GET /api/auth/session` und
-`GET /api/apps/meine`, aus der API-Referenz des Produkts. Das sind Aussagen über das Produkt
-wie jede andere, und `check-docs.mjs` klopft an ihnen an. Die Route, mit der jede App ihre
-Beschreibung liefert, heißt `agent` und liegt in der eigenen Schnittstelle der App.
+Datum, von dem es ist: `POST /api/auth/login`, `POST /api/ausweise`, `GET /api/auth/session`,
+`GET /api/apps/meine` und `GET /api/firmenordner`, aus der API-Referenz des Produkts. Das sind
+Aussagen über das Produkt wie jede andere, und `check-docs.mjs` klopft an ihnen an. Die Route,
+mit der jede App ihre Beschreibung liefert, heißt `agent` und liegt in der eigenen Schnittstelle
+der App.
+
+## Der Firmenordner
+
+`sync` fragt mit dem Ausweis `GET /api/firmenordner`. Das Gerät antwortet mit der Adresse seines
+Dateidienstes, dem Namen des Menschen dort und je Ordner mit Kennung, Ebene, Eltern, Pfad und
+Recht. **`503` ist keine leere Liste**: das erste heißt, auf diesem Gerät läuft kein Dateidienst,
+das zweite heißt, dieser Mensch hat keinen Ordner. Ein Werkzeug, das beides verwechselt, räumt
+jemandem den Baum leer.
+
+**Jeder Ordner landet an seiner echten Stelle in diesem Baum.** Ein Ordner der Ebene 1 wird ein
+Ordner oben in der Wurzel, einer der Ebene 2 wird `<eltern>/<kennung>`, und die Kette darüber
+wird lokal angelegt, auch wenn der Mensch auf dem Elternordner kein Recht hat und ihn im Dienst
+gar nicht sieht. Ein Ordner der Ebene 1, der heißt wie ein Ordner, den die Wurzel selbst trägt,
+wird nicht angelegt, und einer, dessen Kennung keine ist, auch nicht; beide werden benannt.
+
+**Das Abgleichen selbst tut der Kommandozeilen-Klient des Dateidienstes**, `opencloudcmd`, aus
+dem Desktop-Paket des Herstellers für macOS. Er läuft entpackt, ohne Installation. `sync` sucht
+ihn in `/Applications/OpenCloud.app/Contents/MacOS/`, unter dem Heimatordner und auf dem Pfad;
+`--client` nennt eine andere Stelle. Gemessen, Stand 22.09.2026: ein Ordner der Ebene 1 ist ein
+Raum, der nach der **Kennung** des Ordners heißt und nicht nach seinem Anzeigenamen, und ein
+Ordner der Ebene 2 hängt im Raum `Shares` und wird mit `--remote-folder <kennung>` erreicht. Die
+Schalter sind `--trust`, `--non-interactive`, `--sync-hidden-files` und `--exclude`.
+
+**Der Klient meldet sich mit demselben Passwort an wie das Gerät**, weil das Gerät es in den
+Dienst spiegelt. `sync` fragt es deshalb bei jedem Lauf, am Terminal oder mit
+`--password-stdin`, reicht es dem Klienten in der Umgebungsvariablen `OPENCLOUD_TOKEN` und legt
+es nirgends ab. Nie als Argument: ein Argument steht in der Prozessliste jedes Menschen an diesem
+Rechner.
+
+**Nicht festgehalten.** Der Klient kennt einen Schalter für ein Zertifikat, `--trust`, und
+keinen, der eines benennt. Die Verbindung zum Dateidienst ist deshalb nicht auf ein Zertifikat
+festgelegt wie die Verbindung zur Oberfläche des Geräts. Das ist Sache des Klienten und nicht des
+Kits, und es steht hier, damit es niemand für eine Entscheidung hält.
+
+**Was nie in den Firmenordner geht**, steht in einer Liste und geht dem Klienten als Datei mit:
+was eine Maschine macht (`.git`, `node_modules`, `dist`, `build`, `.next`), was zu diesem Rechner
+gehört (`.claude/hooks/`, `settings.json`) und was der Klient selbst schreibt. Das Letzte ist
+keine Feinheit: ohne seine Journaldatei in der Liste meldet der Klient Konflikte an sich selbst.
+
+**Konflikte und Symlinks** werden aus dem Baum gezählt und nicht aus dem Bericht des Klienten,
+weil beide auch zwischen zwei Abgleichen entstehen. Eine Datei, die der Klient nicht
+zusammenführen konnte, trägt `_conflict-` im Namen, und einem Symlink folgt der Klient nicht.
+`sync` und `status` benennen beides, und beide werden davon rot.
+
+**Der Stand des letzten Abgleichs** liegt neben dem Ausweis, in `firmenordner.json`, nach Wurzel
+geschlüsselt: je Ordner, wann zuletzt abgeglichen wurde, ob es durchging und wie viele Konflikte
+und Symlinks dalagen. Kein Geheimnis steht darin. `status` liest ihn und zählt die Konflikte neu.
+
+**Ein Ordner, der neu oben in der Wurzel ankommt, will eine Zeile** in der Tabelle „Wohin Neues
+gehört" seiner `.claude/CLAUDE.md`, sonst meldet das eigene Prüfskript der Wurzel ihn bei jedem
+Lauf. `sync` sagt, welche, und schreibt die Zeile nicht selbst: die Spalte neben dem Namen sagt,
+was in den Ordner gehört, und das ist ein Satz des Hauses und nicht eines Dateidienstes.
 
 **Eine App beschreibt sich** im Feld `agent` ihrer `app.json`: eine Liste von Routen, je mit
 `method`, `path` relativ zur Schnittstelle der App, `purpose` als ein Satz, `params` (je mit
