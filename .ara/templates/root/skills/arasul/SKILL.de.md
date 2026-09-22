@@ -54,7 +54,7 @@ weiß der Mensch, nicht du: zeig ihm den Unterschied und lass ihn entscheiden.
 
 ## Die Wurzel am Gerät
 
-Diese Wurzel kann selbst vom Gerät kommen: der Raum `wurzel` wird auf diesen Ordner abgeglichen,
+Diese Wurzel kann selbst vom Gerät kommen: seine Wurzel, der Raum unter der Kennung, die das Gerät nennt, wird auf diesen Ordner abgeglichen,
 die Regeln, Skills und Agents hier sind also die des Hauses und für diesen Menschen vielleicht
 nur lesbar. `sicht.md` oben in der Wurzel ist die Sicht dieses Menschen: welche Ordner er mit
 welchem Recht hat, wann jeder zuletzt abgeglichen wurde, was am Abgleich vorbeigeht und welche

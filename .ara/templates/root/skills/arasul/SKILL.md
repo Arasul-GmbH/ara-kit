@@ -51,7 +51,7 @@ not for you: show them the difference and let them decide.
 
 ## The root on the device
 
-This root may itself come from the device: the room `wurzel` is synced onto this folder, so the
+This root may itself come from the device: its root, the room named by the id the device names, is synced onto this folder, so the
 rules, skills and agents here are the house's and may be read-only for this person. `sicht.md`
 at the top of the root is the view of this person: which folders they have with which right,
 when each was last synced, what passes the sync by, and which apps are assigned to them. **Read
