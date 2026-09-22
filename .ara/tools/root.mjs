@@ -21,6 +21,7 @@
  *   node .ara/tools/root.mjs --path ~/acme --enroll
  *   node .ara/tools/root.mjs --path ~/acme --enroll --consent <checksum>
  *   node .ara/tools/root.mjs --path ~/acme --unenroll
+ *   node .ara/tools/root.mjs --path ~/acme --deploy [--client <path>] [--password-stdin]
  *   node .ara/tools/root.mjs --path ~/showcase --example
  *   node .ara/tools/root.mjs --path ~/acme --check
  *   node .ara/tools/root.mjs --path ~/acme --show
@@ -35,10 +36,13 @@
  * --enroll shows what would go into the user's settings and writes nothing, --consent
  * with the checksum it printed writes it. A changed proposal has another checksum and
  * needs the consent anew. --settings names another settings file than the agent's own.
- * --unenroll takes back exactly what enrolling entered. --language de|en overrides the
- * profile. --no-git leaves version control out. --example lays out the showcase, an
- * invented company with the method and filled sheets. An unknown switch is reported, not
- * skipped. The target has to be empty or missing, and it never lies inside the kit.
+ * --unenroll takes back exactly what enrolling entered. --deploy puts the root onto the device
+ * it is logged in to, through the root's own bridge: the check script runs first and a finding
+ * stops it, the room of the root is made as an administrator when it is missing, settings.json,
+ * hooks, .git and node_modules never go along. --language de|en overrides the profile.
+ * --no-git leaves version control out. --example lays out the showcase, an invented company
+ * with the method and filled sheets. An unknown switch is reported, not skipped. The target
+ * has to be empty or missing, and it never lies inside the kit.
  *
  * === deutsch ===
  *
@@ -64,6 +68,7 @@
  *   node .ara/tools/root.mjs --path ~/acme --enroll
  *   node .ara/tools/root.mjs --path ~/acme --enroll --consent <Prüfsumme>
  *   node .ara/tools/root.mjs --path ~/acme --unenroll
+ *   node .ara/tools/root.mjs --path ~/acme --deploy [--client <pfad>] [--password-stdin]
  *   node .ara/tools/root.mjs --path ~/vorzeigefassung --example
  *   node .ara/tools/root.mjs --path ~/acme --check
  *   node .ara/tools/root.mjs --path ~/acme --show
@@ -79,18 +84,21 @@
  * Nutzers käme, und schreibt nichts, --consent mit der Prüfsumme, die es nannte, schreibt es.
  * Ein geänderter Vorschlag hat eine andere Prüfsumme und braucht die Zustimmung neu.
  * --settings nennt eine andere Einstellungsdatei als die des Agenten selbst. --unenroll
- * nimmt genau zurück, was das Anmelden eintrug. --language de|en überstimmt das Profil.
+ * nimmt genau zurück, was das Anmelden eintrug. --deploy legt die Wurzel auf das Gerät, an dem
+ * sie angemeldet ist, über die Brücke der Wurzel selbst: zuerst läuft das Prüfskript, und ein
+ * Befund hält an, fehlt der Raum der Wurzel, wird er als Administrator angelegt, settings.json,
+ * Hooks, .git und node_modules gehen nie mit. --language de|en überstimmt das Profil.
  * --no-git lässt die Versionsverwaltung weg. --example legt die Vorzeigefassung aus, eine
  * erfundene Firma mit der Methode und gefüllten Blättern. Ein unbekannter Schalter wird
  * gemeldet, nicht überlesen. Das Ziel muss leer sein oder fehlen, und es liegt nie im Kit.
  */
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { copyFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative } from "node:path";
 import { ROOT, fail, headerHelp, helpOnly, parseArgs } from "./lib/kit.mjs";
 import { LANGUAGES, language, setLanguage, t } from "./lib/i18n.mjs";
-import { addMethod, addPlace, expandHome, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
+import { TEMPLATE, addMethod, addPlace, expandHome, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
 import { enroll, plan, settingsFile, shortSum, status, unenroll } from "./lib/root-enroll.mjs";
 
 // Every switch this tool knows. What is not here is reported: `--lang` used to be skipped, and
@@ -98,6 +106,7 @@ import { enroll, plan, settingsFile, shortSum, status, unenroll } from "./lib/ro
 const SWITCHES = [
   "path", "name", "folders", "method", "places", "place", "kind", "where", "local", "write", "purpose",
   "language", "no-git", "example", "check", "show", "enroll", "consent", "unenroll", "settings",
+  "deploy", "client", "password-stdin", "device",
 ];
 
 helpOnly(import.meta.url);
@@ -261,6 +270,35 @@ function doUnenrol() {
     : t("This root is not enrolled, nothing to take back.", "Diese Wurzel ist nicht angemeldet, nichts zurückzunehmen."));
 }
 
+/**
+ * Deploying is the bridge's business: it holds the credential, speaks with the device and runs
+ * the client. This tool only makes sure the bridge in the root is one that knows the command,
+ * and hands over. A root laid out with an older kit carries an older bridge: it is a file of the
+ * kit, not of the house, so the kit's own replaces it and says so.
+ */
+function doDeploy() {
+  const bridge = join(root, "arasul.mjs");
+  const current = join(TEMPLATE, "arasul.mjs");
+  if (!existsSync(bridge) || !/case "deploy"/.test(readFileSync(bridge, "utf8"))) {
+    copyFileSync(current, bridge);
+    console.log(t(
+      "The bridge arasul.mjs in this root was older than the kit's and knew no deploy: replaced by the kit's. It is a file of the kit, nothing of the house was in it.",
+      "Die Brücke arasul.mjs in dieser Wurzel war älter als die des Kits und kannte kein deploy: durch die des Kits ersetzt. Sie ist eine Datei des Kits, nichts vom Haus stand darin."
+    ));
+  }
+  const pass = [];
+  if (args.client && args.client !== true) pass.push("--client", String(args.client));
+  if (args["password-stdin"]) pass.push("--password-stdin");
+  if (args.device && args.device !== true) pass.push("--device", String(args.device));
+  const run = spawnSync(process.execPath, [bridge, "deploy", ...pass], { cwd: root, stdio: "inherit" });
+  process.exit(run.status ?? 1);
+}
+
+if (args.deploy) {
+  if (!isRoot) fail(t(`${root} is no root: .claude/root.json is missing.`, `${root} ist keine Wurzel: .claude/root.json fehlt.`));
+  doDeploy();
+}
+
 if (args.check || args.show || args.enroll || args.unenroll) {
   if (!isRoot) fail(t(`${root} is no root: .claude/root.json is missing.`, `${root} ist keine Wurzel: .claude/root.json fehlt.`));
   if (args.enroll) doEnrol();
@@ -286,8 +324,8 @@ if (isRoot) {
   const place = singlePlace();
   if (!place && !args.method) {
     fail(t(
-      `${root} is a root already. Add a place with --place, the method with --method, look at it with --show, check it with --check, enrol its proposal with --enroll.`,
-      `${root} ist schon eine Wurzel. Trage einen Ort mit --place nach, die Methode mit --method, sieh sie mit --show an, prüfe sie mit --check, melde ihren Vorschlag mit --enroll an.`
+      `${root} is a root already. Add a place with --place, the method with --method, look at it with --show, check it with --check, enrol its proposal with --enroll, put it onto the device with --deploy.`,
+      `${root} ist schon eine Wurzel. Trage einen Ort mit --place nach, die Methode mit --method, sieh sie mit --show an, prüfe sie mit --check, melde ihren Vorschlag mit --enroll an, lege sie mit --deploy aufs Gerät.`
     ));
   }
   try {
