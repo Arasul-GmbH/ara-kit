@@ -203,8 +203,9 @@ app offers. This file does that, and nothing else.
 | `login <address> --token-stdin` | The same with a credential instead of name and password. It is issued in the device's front end |
 | `login`, `login --approve <checksum>`, `login --withdraw` | Show the proposals, approve one by its checksum, take back everything the approving entered |
 | `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
-| `sync` | Syncs the company folder and writes the same files. `--client` names the command line client of the file service |
-| `status` | The device, the credential, whether the device accepts it, the company folder per folder, the proposals |
+| `sync` | Syncs the company folder, the room of the root at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
+| `status` | The device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
+| `deploy` | Puts this root into the room of the root on the device: the check script first, the room made as an administrator when it is missing, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
 
 **The credential** lies in `~/.config/arasul/credentials.json`, mode 0600, one entry per device
@@ -220,9 +221,14 @@ the trust anchor for this one device; the check is not switched off.
 
 **What the tool assumes about the device** stands in one block at its head, with the date it is
 from: `POST /api/auth/login`, `POST /api/ausweise`, `GET /api/auth/session`,
-`GET /api/apps/meine` and `GET /api/firmenordner`, out of the API reference of the product. They
-are statements about the product like any other, and `check-docs.mjs` knocks at them. The route
-each app answers with its description is called `agent` and lies in the app's own interface.
+`GET /api/apps/meine` and `GET /api/firmenordner`, out of the API reference of the product, and
+for deploying, with a session and never with the credential, `GET /api/auth/me`,
+`POST /api/auth/logout`, `GET /api/firmenordner/ordner`, `POST /api/firmenordner/ordner` and
+`POST /api/firmenordner/rechte`. They are statements about the product like any other, and
+`check-docs.mjs` knocks at them. One more the tool asks and no device knows yet as of
+2026-09-22: the route `sicht` below the company folder's route, the view of a person. A 404
+there means: not yet. The route each app answers with its description is called `agent` and lies
+in the app's own interface.
 
 ## The company folder
 
@@ -237,6 +243,26 @@ the top of the root, one of level 2 becomes `<parent>/<id>`, and the chain above
 locally even when the person has no right on the parent and cannot see it in the service. A
 folder of level 1 that is named like a folder the root carries itself is not laid down, and one
 whose id is not an id is not either; both are named.
+
+**The room of the root is the root itself.** The device has one folder of level 1 for the root of
+the house: as of 2026-09-22 a shared folder with the id `wurzel`, until the device knows the kind
+`wurzel` and names it on a folder, which the tool takes as well. That room is not laid into a
+folder below the root, it is synced onto the root's own folder: `.claude/`, `arasul.mjs`, the
+README and everything else of the scaffold arrive at the top, and whoever has `lesen` on the
+room gets them read-only. So an employee's tree has the root at the top and their folders below
+it, at their real place, and Claude Code started in any of those folders loads the rules, skills
+and agents of the root. Measured on 2026-09-22 at a device: a session two levels below the
+root, in a folder of level 2 that the person may write, named the root's `.claude/CLAUDE.md` and
+its skills, and a call of the skill `arasul` ran `arasul.mjs apps` against the device.
+
+**A root comes down into an empty folder.** Whoever is given the room of the root puts
+`arasul.mjs` alone into an empty folder, logs in and syncs: `login`, `status` and `sync` run in
+a folder that holds nothing but that file and what the file makes, and the root lies there
+afterwards. The bootstrapping file steps aside before the client runs, because the room carries
+the file too, the one the house deployed, and the client cannot merge two versions of it:
+measured on 2026-09-22, it kept both and named the second one a conflicted copy. The house's
+one wins, and should the room carry none, the file is put back. A folder with anything else in
+it is no root and does not become one.
 
 **The syncing itself is done by the command line client of the file service**, `opencloudcmd`,
 out of the vendor's desktop package for macOS. It runs unpacked, without installing. `sync`
@@ -259,16 +285,35 @@ it is written here so that nobody takes it for a decision.
 
 **What never goes into the company folder** stands in one list and goes to the client as a file:
 what a machine makes (`.git`, `node_modules`, `dist`, `build`, `.next`), what belongs to this
-computer (`.claude/hooks/`, `settings.json`) and what the client writes itself. The last one is
-not a nicety: without its journal in the list the client reports conflicts about itself.
-Measured as of 2026-09-22 against the client, with a folder that carried every one of these:
-everything on the list stayed out, at the top of the folder and three levels down, and
+computer (`.claude/hooks/`, `settings.json`, `.DS_Store`) and what the client writes itself. The
+last one is not a nicety: without its journal in the list the client reports conflicts about
+itself. Measured as of 2026-09-22 against the client, with a folder that carried every one of
+these: everything on the list stayed out, at the top of the folder and three levels down, and
 `.claude/skills/` went through. The journal was called `.sync_journal.db`.
+
+**The root's own sync leaves more out**: the folders the device shares separately, which lie in
+the root at their place and are synced on their own, `apps/`, where the tool writes what the
+apps say, and `sicht.md`. They stand in the list as bare names and not as paths, because the
+client anchors no pattern at the top of a tree: a pattern with a slash is matched from the
+beginning of the relative path, and a bare name at the top has no slash to match. Measured on
+2026-09-22, a name with a leading slash in the list kept nothing out, and read in the client's source. So the name
+of a room is kept out of the root's sync at every depth: a folder deep in the root that is named
+like a room stays home, and `sync` names what stayed home.
 
 **Conflicts and symbolic links** are counted out of the tree and not out of the client's report,
 because both also come into being between two syncs. A file the client could not merge carries
-`_conflict-` in its name, and the client follows no symbolic link. `sync` and `status` name
-both, and both go red on them.
+`_conflict-` in its name, or, as this client wrote it on 2026-09-22 at a device, `(conflicted
+copy <date> <time>)` before the ending; the client follows no symbolic link. `sync` and `status`
+name both, and both go red on them. For the root, what lies in a room at its top is not counted
+twice.
+
+**The view, `sicht.md`,** lies at the top of the root and says what this person has on the
+device: the file service, every folder with level, right and last sync, what passes the sync by
+as the device names it, and the assigned apps with their routes. `sync` writes it at every run.
+The device is meant to deliver it one day on the route `sicht` below the company folder's route;
+until it answers there, the tool writes the sheet out of `GET /api/firmenordner` and the apps
+and says so. When the device delivers one, its text is taken as it comes. The sheet is per
+person: it is never synced, and the root's `.gitignore` leaves it out.
 
 **The state of the last sync** lies next to the credential, in `firmenordner.json`, keyed by the
 root: per folder when it was last synced, whether it worked out and how many conflicts and links
@@ -329,6 +374,47 @@ from the level below and from the root, by tool and by shell, and does not stop 
 started in the place itself. Without consent it does not act. **Not measured:** the same
 through `~/.claude/settings.json` itself and in an interactive session, only through
 `--settings`.
+
+## Deploying the root onto the device
+
+```
+node .ara/tools/root.mjs --path <root> --deploy --client <path to opencloudcmd>
+```
+
+After that the root lives on the device. `--deploy` hands over to the bridge of the root,
+`arasul.mjs deploy`, and replaces the bridge first when it is one of an older kit that knows no
+`deploy`: it is a file of the kit, nothing of the house stands in it. Then, in this order:
+
+1. **The check script runs, and a finding stops everything.** What goes onto the device goes to
+   everybody who has the room, so a root with a finding does not go.
+2. **The room of the root has to be shared with this person for writing.** When it is not, the
+   tool logs in with the password, as the credential opens no administration, looks at the
+   device's list of folders, makes the folder `wurzel` of level 1 when it is missing, gives the
+   person the right `schreiben` on it and ends that session. Only an administrator can do that
+   part: an employee without the room is told to ask one. With `lesen` alone nothing is
+   deployed.
+3. **The tree goes up through the client**, with the general list and the root's own list of
+   what stays home: `.git`, `node_modules`, `.claude/hooks/`, `settings.json`, `.DS_Store`, the
+   journal of the client, `apps/`, `sicht.md` and the rooms the device shares separately.
+4. **The room comes down again into a throwaway folder**, and what lies there is compared with
+   what was meant to go: `deploy` says how many files went, how many lie in the room and which
+   ones did not arrive. The folder is removed afterwards.
+
+The password is asked for at the terminal or comes with `--password-stdin`; so the human runs
+this command themselves, like `sync`. `deploy` is not in the proposal's allow list.
+
+**Who gets the root:** everybody an administrator shares the room `wurzel` with, in the
+device's front end, with `lesen`. Their next `sync` lays the root at the top of their tree.
+Whoever is to change the root gets `schreiben`, and their `sync` carries their changes up.
+
+**Measured on 2026-09-22 at a device**, from a test root with two throwaway accounts: after
+`--deploy` the scaffold lay in the room `wurzel`, all 16 files, and a download of the room
+without any list showed exactly those 16, no `.DS_Store`, no hook, no `settings.json`, no
+`.git`. A second `--deploy` with the room in place made nothing anew. The second account, with
+`lesen` on the room and `schreiben` on one folder of level 2 only, put `arasul.mjs` into an
+empty folder, logged in and synced: the root lay at the top, the folder of level 2 at its place,
+the chain above it made locally, `sicht.md` written. Claude Code started two levels below loaded
+the root's `.claude/CLAUDE.md` and its skills, and the skill `arasul` ran `arasul.mjs apps`.
 
 ## The showcase
 

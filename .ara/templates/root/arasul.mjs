@@ -25,11 +25,20 @@
  * ARASUL_CONFIG_DIR names another folder for it.
  *
  * `sync` asks the device where its file service lies and which folders this person has, and lays
- * each one down at its real place in this tree. The syncing itself is done by the command line
- * client of the file service, unpacked out of its desktop package; --client names where it lies.
- * The client logs in with the same password as the device, so `sync` asks for it and stores it
- * nowhere. What a machine makes, what belongs to this computer and what the client writes itself
- * stays out. The state of the last sync lies next to the credential, in firmenordner.json.
+ * each one down at its real place in this tree: the room of the root at the top of this folder,
+ * a folder of level 1 as a folder at the top, one of level 2 below its parent. The syncing itself
+ * is done by the command line client of the file service, unpacked out of its desktop package;
+ * --client names where it lies. The client logs in with the same password as the device, so `sync`
+ * asks for it and stores it nowhere. What a machine makes, what belongs to this computer and what
+ * the client writes itself stays out. `sync` also writes sicht.md, the view of this person: from
+ * the device as soon as it delivers one, until then out of what the device says about folders and
+ * apps. The state of the last sync lies next to the credential, in firmenordner.json.
+ *
+ * `deploy` puts this root onto the device: the check script runs first and a finding stops it,
+ * then the tree goes into the room of the root through the same client, and a download into a
+ * throwaway folder proves what arrived. The room is made as an administrator when it is missing,
+ * with a session that lives for exactly those requests. settings.json, hooks, .git and
+ * node_modules never go along, nor do the folders the device shares separately.
  *
  * `call` calls only routes that the app names in its field `agent`, fetched fresh from the app
  * with every call. A route that changes something needs --write. The proposal of this root allows
@@ -68,12 +77,21 @@
  * ARASUL_CONFIG_DIR nennt einen anderen Ordner dafür.
  *
  * `sync` fragt das Gerät, wo sein Dateidienst liegt und welche Ordner dieser Mensch hat, und legt
- * jeden an seine echte Stelle in diesem Baum. Das Abgleichen selbst tut der Kommandozeilen-Klient
- * des Dateidienstes, entpackt aus seinem Desktop-Paket; --client nennt, wo er liegt. Der Klient
- * meldet sich mit demselben Passwort an wie das Gerät, also fragt `sync` danach und legt es
- * nirgends ab. Was eine Maschine macht, was zu diesem Rechner gehört und was der Klient selbst
- * schreibt, bleibt draußen. Der Stand des letzten Abgleichs liegt neben dem Ausweis, in
+ * jeden an seine echte Stelle in diesem Baum: den Raum der Wurzel oben in diesen Ordner, einen
+ * Ordner der Ebene 1 als Ordner oben, einen der Ebene 2 unter seinen Eltern. Das Abgleichen
+ * selbst tut der Kommandozeilen-Klient des Dateidienstes, entpackt aus seinem Desktop-Paket;
+ * --client nennt, wo er liegt. Der Klient meldet sich mit demselben Passwort an wie das Gerät,
+ * also fragt `sync` danach und legt es nirgends ab. Was eine Maschine macht, was zu diesem Rechner
+ * gehört und was der Klient selbst schreibt, bleibt draußen. `sync` schreibt außerdem sicht.md,
+ * die Sicht dieses Menschen: vom Gerät, sobald es eine liefert, bis dahin aus dem, was das Gerät
+ * über Ordner und Apps sagt. Der Stand des letzten Abgleichs liegt neben dem Ausweis, in
  * firmenordner.json.
+ *
+ * `deploy` legt diese Wurzel aufs Gerät: zuerst läuft das Prüfskript, und ein Befund hält an,
+ * dann geht der Baum über denselben Klienten in den Raum der Wurzel, und ein Herunterladen in
+ * einen Wegwerfordner beweist, was angekommen ist. Fehlt der Raum, wird er als Administrator
+ * angelegt, mit einer Sitzung, die genau für diese Anfragen lebt. settings.json, Hooks, .git und
+ * node_modules gehen nie mit, die Ordner, die das Gerät einzeln freigibt, auch nicht.
  *
  * `call` ruft nur Routen auf, die die App in ihrem Feld `agent` nennt, bei jedem Aufruf frisch
  * von der App geholt. Eine Route, die etwas ändert, verlangt --write. Der Vorschlag dieser Wurzel
@@ -123,7 +141,9 @@ function readJson(path, fallback) {
 }
 
 const META = readJson(join(ROOT, ".claude", "root.json"), null);
-let german = META?.language === "de";
+// Without a root the language of this computer decides: a root that is still to come down from
+// the device has no root.json yet, and the first sync speaks before it arrives.
+let german = META ? META.language === "de" : /^de/i.test(process.env.LANG || "");
 const t = (en, de) => (german ? de : en);
 /** The kit's check reads `readAgent` in the language of its own profile, not of a root. */
 export function speak(language) {
@@ -143,7 +163,14 @@ const DEVICE = Object.freeze({
   session: "api/auth/session",
   credentials: "api/ausweise",
   mine: "api/apps/meine",
+  me: "api/auth/me",
+  logout: "api/auth/logout",
   folders: "api/firmenordner",
+  // The view of a person, as the device will deliver it one day. A 404 here means: not yet.
+  view: "api/firmenordner/sicht",
+  // Administration of the company folder: a session, never a credential.
+  rooms: "api/firmenordner/ordner",
+  rights: "api/firmenordner/rechte",
   appBase: (id) => `apps/${id}/api/`,
   agent: "agent",
 });
@@ -1079,7 +1106,19 @@ const SERVICE = Object.freeze({
   shared: "Shares",
   client: "opencloudcmd",
   password: "OPENCLOUD_TOKEN",
+  /**
+   * The room of the root itself. As of 2026-09-22 the device knows the kinds `geteilt` and
+   * `am_geraet` only, so the root is a shared folder of level 1 with this id, and it is recognised
+   * by the id. A device that names the kind `wurzel` on a folder wins, whatever the folder's id.
+   */
+  root: "wurzel",
 });
+
+/** The view of this person, written by sync at the top of the root. Per person, never synced. */
+const VIEW_FILE = "sicht.md";
+
+/** Is this folder of the device the root? By its kind where the device names one, else by its id. */
+const isRootRoom = (id, kind) => String(kind ?? "") === SERVICE.root || String(id ?? "") === SERVICE.root;
 
 /** Where the vendor's client lies when nobody says otherwise. It runs unpacked, without installing. */
 const CLIENT_PLACES = Object.freeze([
@@ -1123,13 +1162,34 @@ const NEVER_SYNCED = Object.freeze([
   ".sync_*.db",
   ".sync_*.db-*",
   ".sync_*.db.ctmp",
+  ".DS_Store",
 ]);
+
+/**
+ * What the root's own sync leaves out on top of that: the folders the device shares separately,
+ * which lie in this tree at their place and are synced on their own, and what is per person.
+ *
+ * A name and not a path, because the client anchors no pattern at the top of a tree: a pattern
+ * with a slash is matched from the beginning of the relative path, and a bare name at the top has
+ * no slash to match. Measured on 2026-09-22 against the client, a name with a leading slash in
+ * the list kept nothing out, and read in its source, csync_exclude.cpp. So a name stands here and is kept out at every
+ * depth of the root. A folder deep in the root that carries the name of a room stays home.
+ */
+function rootExcludes(plan) {
+  const names = new Set(["apps", VIEW_FILE]);
+  for (const folder of plan.folders) if (!folder.root) names.add(folder.path.split("/")[0]);
+  return [...NEVER_SYNCED, ...[...names].sort()];
+}
 
 /** Folders the walk does not go into: they are not synced, so nothing of ours lies in them. */
 const NOT_WALKED = new Set([".git", "node_modules", "dist", "build", ".next"]);
 
-/** The mark the client puts in the name of a file it could not merge. */
-const CONFLICT_MARK = /_conflict-/;
+/**
+ * The mark the client puts in the name of a file it could not merge. Two spellings: the one of the
+ * client's family, `_conflict-`, and the one this client wrote on 2026-09-22 at a device, measured
+ * with a file that differed on both sides: `name (conflicted copy 2026-09-22 201200).ext`.
+ */
+const CONFLICT_MARK = /_conflict-| \(conflicted copy /;
 
 /** The client of the vendor: named, or where it lies after unpacking, or on the path. */
 function clientPath(args) {
@@ -1189,13 +1249,18 @@ async function askFolders(device) {
       refusedFolders.push({ line: id, why: t(`a root carries its own ${id} here`, `eine Wurzel trägt hier ihr eigenes ${id}`) });
       continue;
     }
+    // The room of the root lies at the top of this folder, not in a folder below it. A folder of
+    // level 2 that hangs in that room lies at the top as well: its parent is this folder.
+    const root = level === 1 && isRootRoom(id, raw?.art);
+    const inRoot = level === 2 && isRootRoom(parent, null);
     folders.push({
       id,
       level,
+      root,
       parent: level === 2 ? parent : null,
       name: oneLine(raw?.name || id, 80),
       right: oneLine(String(raw?.recht ?? ""), 20),
-      path: level === 1 ? id : `${parent}/${id}`,
+      path: root ? "." : level === 1 || inRoot ? id : `${parent}/${id}`,
     });
   }
   return {
@@ -1205,6 +1270,7 @@ async function askFolders(device) {
     user: oneLine(String(data.benutzer ?? ""), 80),
     folders,
     refused: refusedFolders,
+    notes: (Array.isArray(data.nicht_abgeglichen) ? data.nicht_abgeglichen : []).map((note) => oneLine(note?.text, 300)).filter(Boolean),
   };
 }
 
@@ -1225,7 +1291,7 @@ function writeFolderState(data) {
  * links it did not follow. Counted out of the tree and not out of the client's report, because
  * both can also come into being between two syncs.
  */
-function inspectFolder(dir) {
+function inspectFolder(dir, skipAtTop = new Set()) {
   const conflicts = [];
   const links = [];
   const walk = (at, deep) => {
@@ -1237,6 +1303,8 @@ function inspectFolder(dir) {
       return;
     }
     for (const entry of entries) {
+      // For the root: the rooms at its top are folders of their own, counted on their own.
+      if (deep === 0 && skipAtTop.has(entry.name)) continue;
       const path = join(at, entry.name);
       if (entry.isSymbolicLink()) {
         links.push(relative(ROOT, path));
@@ -1287,13 +1355,72 @@ function clientSaid(run) {
 }
 
 /**
+ * The password for the file service. It is the one of the device, because the device mirrors it
+ * there: asked for at every run, at the terminal or with --password-stdin, and stored nowhere.
+ */
+async function askPassword(args, plan, device) {
+  const password = args.flags["password-stdin"]
+    ? (await readAllStdin()).split(/\r?\n/)[0].trim()
+    : await secretLine(t(`Password of ${plan.user} on ${device.name} (the file service takes the same one): `, `Passwort von ${plan.user} auf ${device.name} (der Dateidienst nimmt dasselbe): `));
+  if (!password) {
+    stop(t(
+      "The client of the file service logs in with name and password. The password comes from the terminal, or with --password-stdin from the first line of the input. It is never taken from an argument and never stored.",
+      "Der Klient des Dateidienstes meldet sich mit Name und Passwort an. Das Passwort kommt vom Terminal, oder mit --password-stdin aus der ersten Zeile der Eingabe. Aus einem Argument wird es nie genommen und abgelegt wird es nie."
+    ), 2);
+  }
+  return password;
+}
+
+/** The two lists for the client, as files in a throwaway folder: the general one and the root's. */
+function excludeFiles(plan) {
+  const workspace = mkdtempSync(join(tmpdir(), "ara-firmenordner-"));
+  const general = join(workspace, "ausschluss.lst");
+  const root = join(workspace, "ausschluss-wurzel.lst");
+  writeFileSync(general, `${NEVER_SYNCED.join("\n")}\n`, { mode: 0o600 });
+  writeFileSync(root, `${rootExcludes(plan).join("\n")}\n`, { mode: 0o600 });
+  return { workspace, general, root, remove: () => rmSync(workspace, { recursive: true, force: true }) };
+}
+
+/**
+ * One run of the client for one folder. The room of the root and a folder of level 1 are rooms
+ * named by their id, a folder of level 2 hangs in the room of what is shared and is reached with
+ * --remote-folder. The password goes in the environment, never as an argument.
+ */
+function runClient({ client, plan, folder, local, excludes, password }) {
+  const call = [
+    plan.address,
+    folder.level === 1 ? folder.id : SERVICE.shared,
+    local,
+    "--user", plan.user,
+    "--trust",
+    "--non-interactive",
+    "--sync-hidden-files",
+    "--exclude", excludes,
+  ];
+  if (folder.level === 2) call.push("--remote-folder", folder.id);
+  return spawnSync(client, call, {
+    encoding: "utf8",
+    env: { ...process.env, [SERVICE.password]: password },
+    timeout: 30 * 60_000,
+  });
+}
+
+/** The label of a folder in the output: the root says that it is the root. */
+const labelOf = (folder) => (folder.root ? `${folder.id} (${t("this root, at the top", "diese Wurzel, oben")})` : folder.path);
+
+/** The names at the top of the root that are folders of their own, and not the root's. */
+function topNames(plan) {
+  return new Set(["apps", ...plan.folders.filter((folder) => !folder.root).map((folder) => folder.path.split("/")[0])]);
+}
+
+/**
  * Sync every shared folder to its real place in this tree.
  *
  * The password is the one of the device: the file service carries the same one, because the
  * device mirrors it there. It is asked for at every sync and stored nowhere, and it goes to the
  * client in the environment variable the client names, never as an argument.
  */
-async function syncFolders(args, device) {
+async function syncFolders(args, device, apps = []) {
   const plan = await askFolders(device);
   const head = t("Company folder", "Firmenordner");
   if (!plan.service) {
@@ -1304,51 +1431,30 @@ async function syncFolders(args, device) {
   for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
   if (!plan.folders.length) {
     say(`  ${t("No folder is shared with you. Nothing was synced.", "Dir ist kein Ordner freigegeben. Es wurde nichts abgeglichen.")}`);
+    sayView(await writeView(device, plan, [], apps));
     return !plan.refused.length;
   }
   if (!plan.address) stop(t("The device names no address of the file service. Nothing was synced.", "Das Gerät nennt keine Adresse des Dateidienstes. Es wurde nichts abgeglichen."));
   if (!plan.user) stop(t("The device names no user for the file service. Nothing was synced.", "Das Gerät nennt keinen Benutzer für den Dateidienst. Es wurde nichts abgeglichen."));
   const client = clientPath(args);
+  const password = await askPassword(args, plan, device);
 
-  const password = args.flags["password-stdin"]
-    ? (await readAllStdin()).split(/\r?\n/)[0].trim()
-    : await secretLine(t(`Password of ${plan.user} on ${device.name} (the file service takes the same one): `, `Passwort von ${plan.user} auf ${device.name} (der Dateidienst nimmt dasselbe): `));
-  if (!password) {
-    stop(t(
-      "The client of the file service logs in with name and password. The password comes from the terminal, or with --password-stdin from the first line of the input. It is never taken from an argument and never stored.",
-      "Der Klient des Dateidienstes meldet sich mit Name und Passwort an. Das Passwort kommt vom Terminal, oder mit --password-stdin aus der ersten Zeile der Eingabe. Aus einem Argument wird es nie genommen und abgelegt wird es nie."
-    ), 2);
-  }
-
-  const workspace = mkdtempSync(join(tmpdir(), "ara-firmenordner-"));
-  const excludes = join(workspace, "ausschluss.lst");
-  writeFileSync(excludes, `${NEVER_SYNCED.join("\n")}\n`, { mode: 0o600 });
-
-  // Level 1 first: it makes the room that a folder of level 2 hangs under, and the chain above
-  // a folder of level 2 is made here even when the person has no right on it.
-  const order = [...plan.folders].sort((a, b) => a.level - b.level || a.path.localeCompare(b.path));
+  // The root first, then level 1: the root is the folder everything lies in, and level 1 makes the
+  // room that a folder of level 2 hangs under. The chain above a folder of level 2 is made here
+  // even when the person has no right on it.
+  const rank = (folder) => (folder.root ? 0 : folder.level);
+  const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
+  const tops = topNames(plan);
+  const lists = excludeFiles(plan);
   const results = [];
   try {
     for (const folder of order) {
       const local = placeOf(folder);
       mkdirSync(local, { recursive: true });
-      const call = [
-        plan.address,
-        folder.level === 1 ? folder.id : SERVICE.shared,
-        local,
-        "--user", plan.user,
-        "--trust",
-        "--non-interactive",
-        "--sync-hidden-files",
-        "--exclude", excludes,
-      ];
-      if (folder.level === 2) call.push("--remote-folder", folder.id);
-      const run = spawnSync(client, call, {
-        encoding: "utf8",
-        env: { ...process.env, [SERVICE.password]: password },
-        timeout: 30 * 60_000,
-      });
-      const seen = inspectFolder(local);
+      const bootstrap = folder.root ? bootstrapBridge() : null;
+      const run = runClient({ client, plan, folder, local, excludes: folder.root ? lists.root : lists.general, password });
+      if (bootstrap) bootstrap.settle();
+      const seen = inspectFolder(local, folder.root ? tops : new Set());
       results.push({
         ...folder,
         ok: run.status === 0,
@@ -1359,32 +1465,18 @@ async function syncFolders(args, device) {
       });
     }
   } finally {
-    rmSync(workspace, { recursive: true, force: true });
+    lists.remove();
   }
 
-  const state = readFolderState();
-  const mine = { device: device.name, address: plan.address, user: plan.user, at: new Date().toISOString(), folders: {} };
-  for (const result of results) {
-    mine.folders[result.path] = {
-      id: result.id,
-      level: result.level,
-      right: result.right,
-      at: result.at,
-      result: result.ok ? "ok" : "error",
-      ...(result.message ? { message: result.message } : {}),
-      conflicts: result.conflicts.length,
-      links: result.links.length,
-    };
-  }
-  state.roots[ROOT] = mine;
-  writeFolderState(state);
-
+  recordSync(device, plan, results);
   const known = writtenDown();
-  const unwritten = known ? [...new Set(order.map((folder) => folder.path.split("/")[0]))].filter((name) => !known(name)).sort() : [];
+  const unwritten = known
+    ? [...new Set(order.filter((folder) => !folder.root).map((folder) => folder.path.split("/")[0]))].filter((name) => !known(name)).sort()
+    : [];
 
   let clean = !plan.refused.length;
   for (const result of results) {
-    say(`  ${result.path}   ${t("level", "Ebene")} ${result.level}${result.right ? `, ${result.right}` : ""}   ${result.ok ? t("synced", "abgeglichen") : t("not synced", "nicht abgeglichen")}`);
+    say(`  ${labelOf(result)}   ${t("level", "Ebene")} ${result.level}${result.right ? `, ${result.right}` : ""}   ${result.ok ? t("synced", "abgeglichen") : t("not synced", "nicht abgeglichen")}`);
     if (!result.ok) {
       say(`      ${result.message}`);
       clean = false;
@@ -1404,7 +1496,160 @@ async function syncFolders(args, device) {
       `Neu auf Ebene 1 dieser Wurzel: ${unwritten.map((name) => `${name}/`).join(", ")}. Gib jedem eine Zeile in der Tabelle 'Wohin Neues gehört' der .claude/CLAUDE.md, sonst meldet das Prüfskript der Wurzel es bei jedem Lauf.`
     )}`);
   }
+  sayView(await writeView(device, plan, results, apps));
   return clean;
+}
+
+/**
+ * The one file that bootstraps a root steps aside while the root comes down.
+ *
+ * Whoever is given the room of the root puts this file alone into an empty folder and syncs. The
+ * room carries this file too, the one the house deployed, and the client cannot merge two
+ * versions of it: measured on 2026-09-22, it kept both and named the second one a conflicted
+ * copy. So in a folder that is not a root yet this file goes out of the way before the client
+ * runs: Node holds it in memory already. The one from the room is the house's and wins. Should
+ * the room carry none, the file is put back as it was.
+ */
+function bootstrapBridge() {
+  if (existsSync(join(ROOT, ".claude", "root.json"))) return null;
+  const self = fileURLToPath(import.meta.url);
+  if (dirname(self) !== ROOT) return null;
+  const source = readFileSync(self);
+  rmSync(self, { force: true });
+  return {
+    settle() {
+      if (!existsSync(self)) writeFileSync(self, source);
+    },
+  };
+}
+
+/** The state of one sync, next to the credential. What was known about other folders stays. */
+function recordSync(device, plan, results) {
+  const state = readFolderState();
+  const before = state.roots[ROOT]?.folders || {};
+  const mine = { device: device.name, address: plan.address, user: plan.user, at: new Date().toISOString(), folders: { ...before } };
+  for (const result of results) {
+    mine.folders[result.path] = {
+      id: result.id,
+      level: result.level,
+      ...(result.root ? { root: true } : {}),
+      right: result.right,
+      at: result.at,
+      result: result.ok ? "ok" : "error",
+      ...(result.message ? { message: result.message } : {}),
+      conflicts: result.conflicts.length,
+      links: result.links.length,
+    };
+  }
+  state.roots[ROOT] = mine;
+  writeFolderState(state);
+}
+
+// --- The view: sicht.md ----------------------------------------------------------------------
+// What this person has on the device, as one sheet at the top of the root. The device is meant to
+// deliver it one day; until it does, the sheet is written out of what the device says about
+// folders and apps. Per person, so it never goes into the room of the root.
+
+const stamp = (iso) => `${String(iso).slice(0, 16).replace("T", " ")} UTC`;
+
+/** The view out of what the device says, in the language of the root. */
+function ownView(device, plan, results, apps) {
+  const today = new Date().toISOString().slice(0, 10);
+  const known = readFolderState().roots[ROOT]?.folders || {};
+  const lines = [
+    `# ${t("View", "Sicht")}: ${plan.user || "?"} ${t("on", "auf")} ${device.name}`,
+    "",
+    t(
+      `<!-- Written by arasul.mjs sync on ${today} out of what the device says about folders and apps, because the device delivers no view of its own yet. Do not edit: the next sync overwrites it. Per person: it never goes into the company folder. -->`,
+      `<!-- Geschrieben von arasul.mjs sync am ${today} aus dem, was das Gerät über Ordner und Apps sagt, weil das Gerät noch keine eigene Sicht liefert. Nicht bearbeiten: der nächste Abgleich überschreibt es. Je Mensch: es geht nie in den Firmenordner. -->`
+    ),
+    "",
+    `${t("File service", "Dateidienst")}: ${plan.address || t("no address", "keine Adresse")}, ${t("reachable from the device", "vom Gerät aus erreichbar")}: ${plan.reachable ? t("yes", "ja") : t("no", "nein")}`,
+    "",
+    `## ${t("Folders", "Ordner")}`,
+    "",
+  ];
+  const folders = [...plan.folders].sort((a, b) => (a.root ? 0 : a.level) - (b.root ? 0 : b.level) || a.path.localeCompare(b.path));
+  if (!folders.length) lines.push(t("No folder is shared with you.", "Dir ist kein Ordner freigegeben."), "");
+  else {
+    lines.push(`| ${t("Folder", "Ordner")} | ${t("Level", "Ebene")} | ${t("Right", "Recht")} | ${t("Last sync", "Letzter Abgleich")} |`, "| --- | --- | --- | --- |");
+    for (const folder of folders) {
+      const result = results.find((entry) => entry.path === folder.path);
+      const last = result ? { at: result.at, result: result.ok ? "ok" : "error" } : known[folder.path];
+      const when = last
+        ? `${last.result === "ok" ? t("synced", "abgeglichen") : t("did not work out", "ging nicht durch")} ${stamp(last.at)}`
+        : t("never synced", "noch nie abgeglichen");
+      const where = folder.root ? `${folder.id}, ${t("this root, at the top", "diese Wurzel, oben")}` : folder.path;
+      lines.push(`| ${where} | ${folder.level} | ${folder.right || "?"} | ${when} |`);
+    }
+    lines.push("");
+  }
+  for (const item of plan.refused) lines.push(`${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`, "");
+  if (plan.notes.length) {
+    lines.push(`${t("What passes the sync by, the device says", "Was am Abgleich vorbeigeht, sagt das Gerät")}:`, "");
+    for (const note of plan.notes) lines.push(`- ${note}`);
+    lines.push("");
+  }
+  lines.push(`## ${t("Apps", "Apps")}`, "");
+  if (!apps.length) lines.push(t("No app is assigned to you.", "Dir ist keine App zugewiesen."), "");
+  else {
+    lines.push(`| ${t("App", "App")} | ${t("Version", "Version")} | ${t("State", "Stand")} |`, "| --- | --- | --- |");
+    for (const app of apps) {
+      const state = app.state === "ok"
+        ? `${app.routes.length} ${t("routes", "Routen")}, apps/${app.id}/APP.md`
+        : app.state === "test-only" ? t("only the test stand is shared", "nur der Teststand ist freigegeben")
+        : app.state === "none" ? t("does not describe itself", "beschreibt sich nicht")
+        : app.message || app.state;
+      lines.push(`| ${app.id}${app.name && app.name !== app.id ? ` (${app.name})` : ""} | ${app.version || t("not stated", "nicht genannt")} | ${state} |`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
+/**
+ * Write the view: the device's own where it delivers one, else the one out of what it says.
+ *
+ * The device's answer is taken as it comes when it is text, and out of a field `sicht`, `markdown`
+ * or `text` when it is JSON. The shape is not agreed yet (as of 2026-09-22): a device that answers
+ * in another shape is treated like one that answers not at all, and the sheet says which it was.
+ */
+async function writeView(device, plan, results, apps) {
+  const target = join(ROOT, VIEW_FILE);
+  if (existsSync(target) && lstatSync(target).isSymbolicLink()) {
+    stop(t(`${VIEW_FILE} is a link. Nothing is written through a link.`, `${VIEW_FILE} ist ein Link. Durch einen Link wird nichts geschrieben.`));
+  }
+  let text = null;
+  let from = "own";
+  let status = 0;
+  try {
+    const answer = await send(device.entry, { path: DEVICE.view, token: device.entry.token, timeout: 30_000 });
+    status = answer.status;
+    if (answer.status === 200) {
+      const type = String(answer.headers["content-type"] || "");
+      if (/text\/(markdown|plain)/.test(type)) text = answer.body.toString("utf8");
+      else {
+        const data = inner(jsonOf(answer));
+        const candidate = typeof data === "string" ? data : data?.sicht ?? data?.markdown ?? data?.text;
+        if (typeof candidate === "string") text = candidate;
+      }
+      if (text !== null) from = "device";
+    }
+  } catch {
+    status = 0;
+  }
+  if (text === null) text = ownView(device, plan, results, apps);
+  writeFileSync(target, text.endsWith("\n") ? text : `${text}\n`);
+  return { from, status };
+}
+
+function sayView({ from, status }) {
+  say(from === "device"
+    ? t(`  ${VIEW_FILE}: written, the device delivered it.`, `  ${VIEW_FILE}: geschrieben, das Gerät hat sie geliefert.`)
+    : t(
+        `  ${VIEW_FILE}: written out of what the device says about folders and apps. The device delivers no view of its own yet${status && status !== 404 ? ` (status ${status} on ${DEVICE.view})` : ""}.`,
+        `  ${VIEW_FILE}: geschrieben aus dem, was das Gerät über Ordner und Apps sagt. Das Gerät liefert noch keine eigene Sicht${status && status !== 404 ? ` (Status ${status} auf ${DEVICE.view})` : ""}.`
+      ));
 }
 
 /** What status says about the company folder. Reads only, and asks for no password. */
@@ -1425,24 +1670,208 @@ async function folderStatus(args, device) {
   say(`${head}: ${plan.address || t("no address", "keine Adresse")}, ${t("service reachable", "Dienst erreichbar")}: ${plan.reachable ? t("yes", "ja") : t("no, the device says so itself", "nein, das Gerät sagt es selbst")}`);
   for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
   const known = readFolderState().roots[ROOT]?.folders || {};
+  const tops = topNames(plan);
   let fine = plan.reachable && !plan.refused.length;
   if (!plan.folders.length) say(`  ${t("No folder is shared with you.", "Dir ist kein Ordner freigegeben.")}`);
-  for (const folder of [...plan.folders].sort((a, b) => a.path.localeCompare(b.path))) {
+  const rank = (folder) => (folder.root ? 0 : folder.level);
+  for (const folder of [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path))) {
     const last = known[folder.path];
     const local = join(ROOT, ...folder.path.split("/"));
-    const seen = existsSync(local) ? inspectFolder(local) : { conflicts: [], links: [] };
+    const seen = existsSync(local) ? inspectFolder(local, folder.root ? tops : new Set()) : { conflicts: [], links: [] };
     const when = last
-      ? `${last.result === "ok" ? t("synced", "abgeglichen") : t("last sync did not work out", "der letzte Abgleich ging nicht durch")} ${last.at.slice(0, 16).replace("T", " ")} UTC`
+      ? `${last.result === "ok" ? t("synced", "abgeglichen") : t("last sync did not work out", "der letzte Abgleich ging nicht durch")} ${stamp(last.at)}`
       : t("never synced", "noch nie abgeglichen");
-    say(`  ${folder.path}   ${t("level", "Ebene")} ${folder.level}${folder.right ? `, ${folder.right}` : ""}   ${when}, ${seen.conflicts.length} ${t("conflicts", "Konflikte")}${seen.links.length ? `, ${seen.links.length} ${t("symbolic links not synced", "Symlinks nicht abgeglichen")}` : ""}`);
+    say(`  ${labelOf(folder)}   ${t("level", "Ebene")} ${folder.level}${folder.right ? `, ${folder.right}` : ""}   ${when}, ${seen.conflicts.length} ${t("conflicts", "Konflikte")}${seen.links.length ? `, ${seen.links.length} ${t("symbolic links not synced", "Symlinks nicht abgeglichen")}` : ""}`);
     if (last && last.result !== "ok" && last.message) say(`      ${last.message}`);
     if (!last || last.result !== "ok" || seen.conflicts.length || seen.links.length) fine = false;
   }
   for (const path of Object.keys(known).sort()) {
     if (plan.folders.some((folder) => folder.path === path)) continue;
-    say(`  ${path}   ${t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen")}`);
+    say(`  ${path === "." ? SERVICE.root : path}   ${t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen")}`);
   }
+  const view = join(ROOT, VIEW_FILE);
+  say(`  ${VIEW_FILE}: ${existsSync(view) ? t(`there, written ${stamp(statSync(view).mtime.toISOString())}`, `da, geschrieben ${stamp(statSync(view).mtime.toISOString())}`) : t("not written yet, sync writes it", "noch nicht geschrieben, sync schreibt sie")}`);
   return fine;
+}
+
+// --- deploy: this root onto the device ------------------------------------------------------
+// The root lives on the device afterwards: whoever is given the room of the root gets the rules,
+// the skills, the agents, the list of places, the proposal, the check script and this file with
+// the next sync, at the top of their own tree. What is per computer or made by a machine stays
+// home, and what the check script finds stops the deploy: what goes onto the device goes to
+// everybody.
+
+/** The check script of this root, before anything leaves it. */
+function checkRoot() {
+  const script = join(ROOT, ".claude", "scripts", "check.mjs");
+  if (!existsSync(script)) {
+    stop(t("This root has no check script (.claude/scripts/check.mjs). Nothing was deployed.", "Diese Wurzel hat kein Prüfskript (.claude/scripts/check.mjs). Nichts wurde ausgerollt."));
+  }
+  const run = spawnSync(process.execPath, [script], { cwd: ROOT, encoding: "utf8" });
+  if (run.status !== 0) {
+    if ((run.stdout || "").trim()) say(run.stdout.trimEnd());
+    if ((run.stderr || "").trim()) warn(run.stderr.trimEnd());
+    stop(t(
+      "The check script has a finding. Nothing was deployed: what goes onto the device goes to everybody.",
+      "Das Prüfskript hat einen Befund. Nichts wurde ausgerollt: was aufs Gerät geht, geht an alle."
+    ));
+  }
+  say(t("Check script: no finding.", "Prüfskript: kein Befund."));
+}
+
+/** What the device says about a refusal, in one line and without a secret. */
+function reasonOf(answer) {
+  const body = jsonOf(answer);
+  return oneLine(body?.error?.message || body?.message || answer.body.toString("utf8"), 200) || t(`status ${answer.status}`, `Status ${answer.status}`);
+}
+
+/**
+ * The room of the root, made as an administrator.
+ *
+ * The credential opens no administration, so this is the one place where the bridge logs in with
+ * the password: the session lives for these requests and is ended afterwards, and nothing of it is
+ * stored. The device knows the kind `wurzel` not yet (as of 2026-09-22): the room is made as a
+ * shared folder of level 1 with the id `wurzel`, and the right to write on it goes to the person
+ * who makes it. Whoever else is to have the root gets the room shared by an administrator.
+ */
+async function makeRootRoom(device, plan, password) {
+  const login = await ask(device.entry, { method: "POST", path: DEVICE.login, json: { [DEVICE.userField]: plan.user, [DEVICE.passwordField]: password } });
+  if (login.status === 429) stop(t(`${device.name} counts the logins and refuses further ones for now (429). Wait, then again.`, `${device.name} zählt die Anmeldungen und weist weitere vorerst ab (429). Warte, dann noch einmal.`));
+  if (login.status === 401 || login.status === 403) stop(t(`${device.name} refuses the login of ${plan.user} (${login.status}): the password does not fit. Nothing was deployed.`, `${device.name} weist die Anmeldung von ${plan.user} ab (${login.status}): das Passwort passt nicht. Nichts wurde ausgerollt.`));
+  if (login.status < 200 || login.status >= 300) stop(t(`${device.name} did not accept the login (status ${login.status}). Nothing was deployed.`, `${device.name} hat die Anmeldung nicht angenommen (Status ${login.status}). Nichts wurde ausgerollt.`));
+  const body = jsonOf(login);
+  const session = tokenIn(body);
+  if (!session) stop(t(`${device.name} accepted the login, but its answer holds nothing this file can use.`, `${device.name} hat die Anmeldung angenommen, in der Antwort steht aber nichts, das diese Datei brauchen kann.`));
+  let myId = body?.user?.id ?? inner(body)?.user?.id ?? null;
+  try {
+    const all = await ask(device.entry, { path: DEVICE.rooms, token: session });
+    if (all.status === 401 || all.status === 403) {
+      stop(t(
+        `The room ${SERVICE.root} is not shared with you, and ${plan.user} is no administrator on ${device.name}: only an administrator makes it. Ask one to make the folder '${SERVICE.root}' of level 1 and to share it with you for writing. Nothing was deployed.`,
+        `Der Raum ${SERVICE.root} ist dir nicht freigegeben, und ${plan.user} ist auf ${device.name} kein Administrator: nur ein Administrator legt ihn an. Bitte einen, den Ordner '${SERVICE.root}' der Ebene 1 anzulegen und ihn dir zum Schreiben freizugeben. Nichts wurde ausgerollt.`
+      ));
+    }
+    if (all.status < 200 || all.status >= 300) stop(t(`${device.name} answers ${DEVICE.rooms} with status ${all.status}: ${reasonOf(all)}`, `${device.name} antwortet auf ${DEVICE.rooms} mit Status ${all.status}: ${reasonOf(all)}`));
+    const rooms = inner(jsonOf(all));
+    const found = (Array.isArray(rooms) ? rooms : []).find((room) => Number(room?.ebene) === 1 && isRootRoom(room?.kennung, room?.art));
+    let roomId;
+    if (found) {
+      roomId = found.id;
+      say(t(`Room ${SERVICE.root}: exists on ${device.name}, it was not shared with you yet.`, `Raum ${SERVICE.root}: gibt es auf ${device.name}, er war dir noch nicht freigegeben.`));
+    } else {
+      const made = await ask(device.entry, { method: "POST", path: DEVICE.rooms, token: session, json: { kennung: SERVICE.root, name: oneLine(META?.name || SERVICE.root, 80), ebene: 1 } });
+      if (made.status < 200 || made.status >= 300) stop(t(`${device.name} did not make the room ${SERVICE.root} (status ${made.status}): ${reasonOf(made)}`, `${device.name} hat den Raum ${SERVICE.root} nicht angelegt (Status ${made.status}): ${reasonOf(made)}`));
+      roomId = inner(jsonOf(made))?.id;
+      say(t(`Room ${SERVICE.root}: made on ${device.name}, as a shared folder of level 1.`, `Raum ${SERVICE.root}: auf ${device.name} angelegt, als geteilter Ordner der Ebene 1.`));
+    }
+    if (myId === null || myId === undefined) {
+      const me = await ask(device.entry, { path: DEVICE.me, token: session });
+      myId = jsonOf(me)?.user?.id ?? inner(jsonOf(me))?.id ?? null;
+    }
+    if (!roomId || myId === null || myId === undefined) stop(t(`${device.name} names no id for the room or for ${plan.user}. The right could not be given.`, `${device.name} nennt keine Kennung für den Raum oder für ${plan.user}. Das Recht ließ sich nicht vergeben.`));
+    const right = await ask(device.entry, { method: "POST", path: DEVICE.rights, token: session, json: { ordner_id: Number(roomId), benutzer_id: Number(myId), recht: "schreiben" } });
+    if (right.status < 200 || right.status >= 300) stop(t(`${device.name} did not give the right on ${SERVICE.root} (status ${right.status}): ${reasonOf(right)}`, `${device.name} hat das Recht auf ${SERVICE.root} nicht vergeben (Status ${right.status}): ${reasonOf(right)}`));
+    say(t(`Right on ${SERVICE.root}: schreiben, for ${plan.user}.`, `Recht auf ${SERVICE.root}: schreiben, für ${plan.user}.`));
+  } finally {
+    // The session was borrowed for these requests. It ends here, whatever happened above.
+    try {
+      await send(device.entry, { method: "POST", path: DEVICE.logout, token: session, timeout: 10_000 });
+    } catch {
+      // A session that cannot be ended ends by itself.
+    }
+  }
+}
+
+/** A pattern of the client's list as a test: a name matches a segment, a path matches from the top. */
+function excludeTest(pattern) {
+  const regex = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]");
+  return pattern.includes("/")
+    ? (path) => new RegExp(`^(?:${regex})(?:$|/)`).test(path)
+    : (path) => path.split("/").some((segment) => new RegExp(`^(?:${regex})$`).test(segment));
+}
+
+/** The files below a folder that the list lets through, relative and with `/`. */
+function filesThrough(dir, excludes) {
+  const tests = excludes.map(excludeTest);
+  const out = [];
+  const walk = (at, deep) => {
+    if (deep > 40) return;
+    let entries;
+    try {
+      entries = readdirSync(at, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const path = join(at, entry.name);
+      const rel = relative(dir, path).split("/").join("/");
+      if (entry.isSymbolicLink() || tests.some((test) => test(rel))) continue;
+      if (entry.isDirectory()) walk(path, deep + 1);
+      else out.push(rel);
+    }
+  };
+  walk(dir, 0);
+  return out.sort();
+}
+
+async function doDeploy(args) {
+  checkRoot();
+  const device = chooseDevice(args);
+  let plan = await askFolders(device);
+  if (!plan.service) stop(plan.reason);
+  say(`${t("Company folder", "Firmenordner")}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}`);
+  if (!plan.address) stop(t("The device names no address of the file service. Nothing was deployed.", "Das Gerät nennt keine Adresse des Dateidienstes. Nichts wurde ausgerollt."));
+  if (!plan.user) stop(t("The device names no user for the file service. Nothing was deployed.", "Das Gerät nennt keinen Benutzer für den Dateidienst. Nichts wurde ausgerollt."));
+  const client = clientPath(args);
+  const password = await askPassword(args, plan, device);
+
+  let room = plan.folders.find((folder) => folder.root);
+  if (!room) {
+    await makeRootRoom(device, plan, password);
+    plan = await askFolders(device);
+    room = plan.folders.find((folder) => folder.root);
+    if (!room) stop(t(`${device.name} made the room ${SERVICE.root} and does not list it for ${plan.user}. Nothing was deployed.`, `${device.name} hat den Raum ${SERVICE.root} angelegt und führt ihn für ${plan.user} nicht auf. Nichts wurde ausgerollt.`));
+  } else {
+    say(t(`Room ${SERVICE.root}: shared with ${plan.user}, ${room.right}.`, `Raum ${SERVICE.root}: freigegeben für ${plan.user}, ${room.right}.`));
+  }
+  if (room.right !== "schreiben") {
+    stop(t(`${plan.user} has '${room.right}' on ${SERVICE.root}, and deploying needs 'schreiben'. Ask an administrator. Nothing was deployed.`, `${plan.user} hat auf ${SERVICE.root} '${room.right}', und Ausrollen braucht 'schreiben'. Bitte einen Administrator. Nichts wurde ausgerollt.`));
+  }
+
+  const excludes = rootExcludes(plan);
+  const expected = filesThrough(ROOT, excludes);
+  const lists = excludeFiles(plan);
+  let probe = null;
+  let arrived = [];
+  let up;
+  try {
+    up = runClient({ client, plan, folder: room, local: ROOT, excludes: lists.root, password });
+    if (up.status !== 0) stop(t(`The client did not sync the root: ${clientSaid(up)}`, `Der Klient hat die Wurzel nicht abgeglichen: ${clientSaid(up)}`));
+    // Seen, not believed: the room comes down into a throwaway folder, and what lies there counts.
+    probe = mkdtempSync(join(tmpdir(), "ara-wurzel-probe-"));
+    const down = runClient({ client, plan, folder: room, local: probe, excludes: lists.root, password });
+    if (down.status !== 0) stop(t(`Deployed, but the proof did not come about, the client says: ${clientSaid(down)}`, `Ausgerollt, aber der Beweis kam nicht zustande, der Klient sagt: ${clientSaid(down)}`));
+    arrived = filesThrough(probe, excludes);
+  } finally {
+    lists.remove();
+    if (probe) rmSync(probe, { recursive: true, force: true });
+  }
+  const missing = expected.filter((file) => !arrived.includes(file));
+  const seen = inspectFolder(ROOT, topNames(plan));
+  recordSync(device, plan, [{ ...room, ok: !missing.length, message: missing.length ? t(`${missing.length} files did not arrive`, `${missing.length} Dateien kamen nicht an`) : null, conflicts: seen.conflicts, links: seen.links, at: new Date().toISOString() }]);
+
+  say(t(`Deployed: ${expected.length} files of this root into the room ${SERVICE.root} on ${plan.address}.`, `Ausgerollt: ${expected.length} Dateien dieser Wurzel in den Raum ${SERVICE.root} auf ${plan.address}.`));
+  say(missing.length
+    ? t(`  Checked against the room: ${missing.length} did not arrive: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`, `  Gegen den Raum geprüft: ${missing.length} kamen nicht an: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`)
+    : t(`  Checked against the room: all ${expected.length} lie there, ${arrived.length} files in the room.`, `  Gegen den Raum geprüft: alle ${expected.length} liegen dort, ${arrived.length} Dateien im Raum.`));
+  say(`  ${t("Kept home", "Bleibt zu Hause")}: ${excludes.join(", ")}`);
+  if (seen.conflicts.length) say(`  ${seen.conflicts.length} ${t("conflicts in this root, the client kept both versions", "Konflikte in dieser Wurzel, der Klient hat beide Fassungen behalten")}: ${seen.conflicts.slice(0, 5).join(", ")}`);
+  if (seen.links.length) say(`  ${seen.links.length} ${t("symbolic links in this root, the client does not sync them", "Symlinks in dieser Wurzel, die gleicht der Klient nicht ab")}: ${seen.links.slice(0, 5).join(", ")}`);
+  say(t(
+    `  Whoever is given the room ${SERVICE.root} by an administrator gets this root with the next sync, at the top of their own tree.`,
+    `  Wem ein Administrator den Raum ${SERVICE.root} freigibt, bekommt diese Wurzel mit dem nächsten Abgleich, oben in seinem eigenen Baum.`
+  ));
+  return !missing.length && !seen.conflicts.length && !seen.links.length;
 }
 
 // --- login, status, sync -------------------------------------------------------------------
@@ -1637,7 +2066,7 @@ async function doSync(args) {
   say(t(`APP.md written for ${written.length} of ${infos.length} assigned apps${written.length ? `: ${written.map((info) => `apps/${info.id}/APP.md`).join(", ")}` : ""}.`, `APP.md geschrieben für ${written.length} von ${infos.length} zugewiesenen Apps${written.length ? `: ${written.map((info) => `apps/${info.id}/APP.md`).join(", ")}` : ""}.`));
   for (const info of infos.filter((entry) => entry.state !== "ok")) say(`  ${info.id}: ${info.state === "test-only" ? t("only the test stand is shared", "nur der Teststand ist freigegeben") : info.state === "none" ? t("does not describe itself", "beschreibt sich nicht") : info.message}`);
   say();
-  return syncFolders(args, device);
+  return syncFolders(args, device, infos);
 }
 
 function usage() {
@@ -1651,7 +2080,8 @@ function usage() {
       "  login --approve <checksum>     approve one proposal, once per proposal",
       "  login --withdraw               take back what approving entered",
       "  status                         device, credential, company folder, proposals",
-      "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md",
+      "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md and sicht.md",
+      "  deploy [--client <path>]       put this root into the room of the root on the device, the check script first",
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
       "",
@@ -1666,7 +2096,8 @@ function usage() {
       "  login --approve <prüfsumme>    einen Vorschlag freigeben, einmal je Vorschlag",
       "  login --withdraw               zurücknehmen, was das Freigeben eintrug",
       "  status                         Gerät, Ausweis, Firmenordner, Vorschläge",
-      "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md schreiben",
+      "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md und sicht.md schreiben",
+      "  deploy [--client <pfad>]       diese Wurzel in den Raum der Wurzel am Gerät legen, zuerst das Prüfskript",
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",
       "",
@@ -1683,7 +2114,18 @@ async function main() {
     return command || args.flags.help ? 0 : 2;
   }
   if (!existsSync(join(ROOT, ".claude", "root.json"))) {
-    stop(t(`${ROOT} is not a root: .claude/root.json is missing. This file belongs in the root folder of a house.`, `${ROOT} ist keine Wurzel: .claude/root.json fehlt. Diese Datei gehört in den Wurzelordner eines Hauses.`));
+    // A root can come down from the device: whoever is given its room puts this one file into an
+    // empty folder, logs in and syncs, and the root lies there afterwards. So login, status and sync
+    // run in a folder that holds nothing but this file and what this file makes. Everything else
+    // wants a root, and a folder with other things in it is not one that is still to become one.
+    const own = (name) => name === basename(fileURLToPath(import.meta.url)) || name === "apps" || name === VIEW_FILE || /^\.?_?sync_.*\.db/.test(name) || name === ".DS_Store";
+    const bare = ["login", "status", "sync"].includes(command) && readdirSync(ROOT).every(own);
+    if (!bare) {
+      stop(t(
+        `${ROOT} is not a root: .claude/root.json is missing. This file belongs in the root folder of a house. An empty folder with this file alone becomes one with login and sync, when the device shares the room of the root.`,
+        `${ROOT} ist keine Wurzel: .claude/root.json fehlt. Diese Datei gehört in den Wurzelordner eines Hauses. Ein leerer Ordner mit dieser Datei allein wird mit login und sync eine, wenn das Gerät den Raum der Wurzel freigibt.`
+      ));
+    }
   }
   const extra = args._.length - 1;
   if (command !== "call" && command !== "login" && extra > 0) stop(t(`${command} takes no argument: ${args._.slice(1).join(" ")}`, `${command} nimmt kein Argument: ${args._.slice(1).join(" ")}`), 2);
@@ -1694,13 +2136,15 @@ async function main() {
       return (await doStatus(args)) ? 0 : 1;
     case "sync":
       return (await doSync(args)) ? 0 : 1;
+    case "deploy":
+      return (await doDeploy(args)) ? 0 : 1;
     case "apps":
       await doApps(args);
       return 0;
     case "call":
       return (await doCall(args)) ? 0 : 1;
     default:
-      stop(t(`Unknown command '${command}'. Known: login, status, sync, apps, call.`, `Unbekannter Befehl '${command}'. Bekannt: login, status, sync, apps, call.`), 2);
+      stop(t(`Unknown command '${command}'. Known: login, status, sync, deploy, apps, call.`, `Unbekannter Befehl '${command}'. Bekannt: login, status, sync, deploy, apps, call.`), 2);
   }
   return 0;
 }

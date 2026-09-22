@@ -211,8 +211,9 @@ nichts.
 | `login <adresse> --token-stdin` | Dasselbe mit einem Ausweis statt Name und Passwort. Ausgestellt wird er in der Oberfläche des Geräts |
 | `login`, `login --approve <prüfsumme>`, `login --withdraw` | Die Vorschläge zeigen, einen mit seiner Prüfsumme freigeben, alles zurücknehmen, was das Freigeben eintrug |
 | `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
-| `sync` | Gleicht den Firmenordner ab und schreibt dieselben Dateien. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
-| `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner, die Vorschläge |
+| `sync` | Gleicht den Firmenordner ab, den Raum der Wurzel oben in diesem Ordner eingeschlossen, schreibt dieselben Dateien und `sicht.md`, die Sicht dieses Menschen. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
+| `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge |
+| `deploy` | Legt diese Wurzel in den Raum der Wurzel am Gerät: zuerst das Prüfskript, der Raum als Administrator angelegt, wenn er fehlt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
 
 **Der Ausweis** liegt in `~/.config/arasul/credentials.json`, Rechte 0600, je Gerät ein Eintrag
@@ -229,7 +230,12 @@ wird nicht abgeschaltet.
 
 **Was das Werkzeug über das Gerät annimmt**, steht in einem Block an seinem Kopf, mit dem
 Datum, von dem es ist: `POST /api/auth/login`, `POST /api/ausweise`, `GET /api/auth/session`,
-`GET /api/apps/meine` und `GET /api/firmenordner`, aus der API-Referenz des Produkts. Das sind
+`GET /api/apps/meine` und `GET /api/firmenordner`, aus der API-Referenz des Produkts, und fürs
+Ausrollen, mit einer Sitzung und nie mit dem Ausweis, `GET /api/auth/me`,
+`POST /api/auth/logout`, `GET /api/firmenordner/ordner`, `POST /api/firmenordner/ordner` und
+`POST /api/firmenordner/rechte`. Eine weitere fragt das Werkzeug, und kein Gerät kennt sie am
+22.09.2026: die Route `sicht` unter der Route des Firmenordners, die Sicht eines Menschen. Ein
+404 dort heißt: noch nicht. Das sind
 Aussagen über das Produkt wie jede andere, und `check-docs.mjs` klopft an ihnen an. Die Route,
 mit der jede App ihre Beschreibung liefert, heißt `agent` und liegt in der eigenen Schnittstelle
 der App.
@@ -247,6 +253,27 @@ Ordner oben in der Wurzel, einer der Ebene 2 wird `<eltern>/<kennung>`, und die 
 wird lokal angelegt, auch wenn der Mensch auf dem Elternordner kein Recht hat und ihn im Dienst
 gar nicht sieht. Ein Ordner der Ebene 1, der heißt wie ein Ordner, den die Wurzel selbst trägt,
 wird nicht angelegt, und einer, dessen Kennung keine ist, auch nicht; beide werden benannt.
+
+**Der Raum der Wurzel ist die Wurzel selbst.** Das Gerät hat einen Ordner der Ebene 1 für die
+Wurzel des Hauses: Stand 22.09.2026 ein geteilter Ordner mit der Kennung `wurzel`, bis das Gerät
+die Art `wurzel` kennt und sie an einem Ordner nennt, was das Werkzeug ebenso nimmt. Dieser Raum
+wird nicht in einen Ordner unter der Wurzel gelegt, er wird auf den Ordner der Wurzel selbst
+abgeglichen: `.claude/`, `arasul.mjs`, die README und alles andere des Gerüsts kommen oben an,
+und wer `lesen` auf dem Raum hat, bekommt sie nur lesbar. Der Baum eines Mitarbeiters hat also
+die Wurzel oben und seine Ordner darunter, an ihrer echten Stelle, und Claude Code, in einem
+dieser Ordner gestartet, lädt die Regeln, Skills und Agents der Wurzel. Gemessen am 22.09.2026 an
+einem Gerät: eine Sitzung zwei Ebenen unter der Wurzel, in einem Ordner der Ebene 2, den der
+Mensch schreiben darf, nannte die `.claude/CLAUDE.md` der Wurzel und ihre Skills, und ein Aufruf
+des Skills `arasul` ließ `arasul.mjs apps` gegen das Gerät laufen.
+
+**Eine Wurzel kommt in einen leeren Ordner herunter.** Wem der Raum der Wurzel freigegeben ist,
+legt `arasul.mjs` allein in einen leeren Ordner, meldet an und gleicht ab: `login`, `status` und
+`sync` laufen in einem Ordner, in dem nichts liegt als diese Datei und was die Datei macht, und
+danach liegt die Wurzel darin. Die Datei, die den Anfang macht, tritt beiseite, bevor der Klient
+läuft, weil der Raum die Datei auch trägt, die das Haus ausgerollt hat, und der Klient zwei
+Fassungen davon nicht zusammenführen kann: gemessen am 22.09.2026, er behielt beide und nannte
+die zweite eine Konfliktkopie. Die des Hauses gewinnt, und trüge der Raum keine, wird die Datei
+zurückgelegt. Ein Ordner, in dem anderes liegt, ist keine Wurzel und wird auch keine.
 
 **Das Abgleichen selbst tut der Kommandozeilen-Klient des Dateidienstes**, `opencloudcmd`, aus
 dem Desktop-Paket des Herstellers für macOS. Er läuft entpackt, ohne Installation. `sync` sucht
@@ -269,16 +296,37 @@ Kits, und es steht hier, damit es niemand für eine Entscheidung hält.
 
 **Was nie in den Firmenordner geht**, steht in einer Liste und geht dem Klienten als Datei mit:
 was eine Maschine macht (`.git`, `node_modules`, `dist`, `build`, `.next`), was zu diesem Rechner
-gehört (`.claude/hooks/`, `settings.json`) und was der Klient selbst schreibt. Das Letzte ist
-keine Feinheit: ohne seine Journaldatei in der Liste meldet der Klient Konflikte an sich selbst.
-Gemessen, Stand 22.09.2026, gegen den Klienten, mit einem Ordner, der jedes davon trug: alles auf
-der Liste blieb draußen, oben im Ordner und drei Ebenen tiefer, und `.claude/skills/` ging durch.
-Die Journaldatei hieß `.sync_journal.db`.
+gehört (`.claude/hooks/`, `settings.json`, `.DS_Store`) und was der Klient selbst schreibt. Das
+Letzte ist keine Feinheit: ohne seine Journaldatei in der Liste meldet der Klient Konflikte an
+sich selbst. Gemessen, Stand 22.09.2026, gegen den Klienten, mit einem Ordner, der jedes davon
+trug: alles auf der Liste blieb draußen, oben im Ordner und drei Ebenen tiefer, und
+`.claude/skills/` ging durch. Die Journaldatei hieß `.sync_journal.db`.
+
+**Der Abgleich der Wurzel selbst lässt mehr draußen**: die Ordner, die das Gerät einzeln
+freigibt, die in der Wurzel an ihrer Stelle liegen und für sich abgeglichen werden, `apps/`, wo
+das Werkzeug schreibt, was die Apps sagen, und `sicht.md`. Sie stehen als bloße Namen in der
+Liste und nicht als Pfade, weil der Klient kein Muster oben im Baum verankert: ein Muster mit
+Schrägstrich wird vom Anfang des relativen Pfads an verglichen, und ein bloßer Name oben hat
+keinen Schrägstrich, der passen könnte. Gemessen am 22.09.2026, ein Name mit führendem Schrägstrich in der
+Liste hielt nichts draußen, und im Quelltext des Klienten nachgelesen. Der Name eines Raums bleibt also in jeder
+Tiefe aus dem Abgleich der Wurzel draußen: ein Ordner tief in der Wurzel, der wie ein Raum heißt,
+bleibt zu Hause, und `sync` nennt, was zu Hause blieb.
 
 **Konflikte und Symlinks** werden aus dem Baum gezählt und nicht aus dem Bericht des Klienten,
 weil beide auch zwischen zwei Abgleichen entstehen. Eine Datei, die der Klient nicht
-zusammenführen konnte, trägt `_conflict-` im Namen, und einem Symlink folgt der Klient nicht.
-`sync` und `status` benennen beides, und beide werden davon rot.
+zusammenführen konnte, trägt `_conflict-` im Namen oder, wie dieser Klient es am 22.09.2026 an
+einem Gerät schrieb, `(conflicted copy <datum> <uhrzeit>)` vor der Endung; einem Symlink folgt
+der Klient nicht. `sync` und `status` benennen beides, und beide werden davon rot. Für die
+Wurzel wird nicht doppelt gezählt, was in einem Raum oben in ihr liegt.
+
+**Die Sicht, `sicht.md`,** liegt oben in der Wurzel und sagt, was dieser Mensch am Gerät hat: den
+Dateidienst, jeden Ordner mit Ebene, Recht und letztem Abgleich, was am Abgleich vorbeigeht, wie
+das Gerät es nennt, und die zugewiesenen Apps mit ihren Routen. `sync` schreibt sie bei jedem
+Lauf. Das Gerät soll sie eines Tages selbst liefern, auf der Route `sicht` unter der Route des
+Firmenordners; solange es dort nicht antwortet, schreibt das Werkzeug das Blatt aus
+`GET /api/firmenordner` und den Apps und sagt es. Liefert das Gerät eine, wird sein Text
+genommen, wie er kommt. Das Blatt ist je Mensch: es wird nie abgeglichen, und die `.gitignore`
+der Wurzel lässt es aus.
 
 **Der Stand des letzten Abgleichs** liegt neben dem Ausweis, in `firmenordner.json`, nach Wurzel
 geschlüsselt: je Ordner, wann zuletzt abgeglichen wurde, ob es durchging und wie viele Konflikte
@@ -342,6 +390,49 @@ in einen geschlossenen Ort von der Ebene darunter und aus der Wurzel an, über W
 Shell, und hält eine Sitzung nicht an, die im Ort selbst gestartet ist. Ohne Zustimmung wirkt
 er nicht. **Nicht gemessen:** dasselbe über `~/.claude/settings.json` selbst und in einer
 interaktiven Sitzung, nur über `--settings`.
+
+## Die Wurzel aufs Gerät ausrollen
+
+```
+node .ara/tools/root.mjs --path <wurzel> --deploy --client <pfad zu opencloudcmd>
+```
+
+Danach lebt die Wurzel am Gerät. `--deploy` übergibt an die Brücke der Wurzel, `arasul.mjs
+deploy`, und ersetzt die Brücke vorher, wenn sie die eines älteren Kits ist und kein `deploy`
+kennt: sie ist eine Datei des Kits, nichts vom Haus steht darin. Dann, in dieser Reihenfolge:
+
+1. **Das Prüfskript läuft, und ein Befund hält alles an.** Was aufs Gerät geht, geht an jeden,
+   der den Raum hat, also geht eine Wurzel mit Befund nicht.
+2. **Der Raum der Wurzel muss diesem Menschen zum Schreiben freigegeben sein.** Ist er es nicht,
+   meldet sich das Werkzeug mit dem Passwort an, weil der Ausweis keine Verwaltung öffnet, sieht
+   die Ordnerliste des Geräts an, legt den Ordner `wurzel` der Ebene 1 an, wenn er fehlt, gibt
+   dem Menschen das Recht `schreiben` darauf und beendet diese Sitzung. Diesen Teil kann nur ein
+   Administrator: einem Mitarbeiter ohne den Raum wird gesagt, dass er einen bitten soll. Mit
+   `lesen` allein wird nichts ausgerollt.
+3. **Der Baum geht über den Klienten hinauf**, mit der allgemeinen Liste und der eigenen Liste
+   der Wurzel, was zu Hause bleibt: `.git`, `node_modules`, `.claude/hooks/`, `settings.json`,
+   `.DS_Store`, die Journaldatei des Klienten, `apps/`, `sicht.md` und die Räume, die das Gerät
+   einzeln freigibt.
+4. **Der Raum kommt in einen Wegwerfordner wieder herunter**, und was dort liegt, wird mit dem
+   verglichen, was gehen sollte: `deploy` sagt, wie viele Dateien gingen, wie viele im Raum
+   liegen und welche nicht ankamen. Der Ordner wird danach entfernt.
+
+Das Passwort wird am Terminal gefragt oder kommt mit `--password-stdin`; den Befehl führt der
+Mensch also selbst aus, wie `sync`. `deploy` steht nicht in der Erlaubnisliste des Vorschlags.
+
+**Wer die Wurzel bekommt:** jeder, dem ein Administrator den Raum `wurzel` in der Oberfläche des
+Geräts freigibt, mit `lesen`. Sein nächster `sync` legt die Wurzel oben in seinen Baum. Wer die
+Wurzel ändern soll, bekommt `schreiben`, und sein `sync` trägt seine Änderungen hinauf.
+
+**Gemessen am 22.09.2026 an einem Gerät**, aus einer Testwurzel mit zwei Wegwerf-Konten: nach
+`--deploy` lag das Gerüst im Raum `wurzel`, alle 16 Dateien, und ein Herunterladen des Raums ohne
+jede Liste zeigte genau diese 16, kein `.DS_Store`, kein Hook, keine `settings.json`, kein
+`.git`. Ein zweites `--deploy` mit vorhandenem Raum legte nichts neu an. Das zweite Konto, mit
+`lesen` auf dem Raum und `schreiben` auf nur einem Ordner der Ebene 2, legte `arasul.mjs` in
+einen leeren Ordner, meldete an und glich ab: die Wurzel lag oben, der Ordner der Ebene 2 an
+seiner Stelle, die Kette darüber lokal angelegt, `sicht.md` geschrieben. Claude Code, zwei Ebenen
+tiefer gestartet, lud die `.claude/CLAUDE.md` der Wurzel und ihre Skills, und der Skill `arasul`
+ließ `arasul.mjs apps` laufen.
 
 ## Die Vorzeigefassung
 

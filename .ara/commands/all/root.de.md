@@ -56,5 +56,14 @@ der Methode `company/core.md` und `company/goal.md`, in einem zweiten Bündel vo
 schreib nur, was der Mensch gesagt hat. Dann nenn den Schritt, auf den es ankommt: von jetzt an
 startet der Agent in der Wurzel oder in einem Ordner der Ebene 1.
 
+**Aufs Gerät** geht die Wurzel mit `node .ara/tools/root.mjs --path <wurzel> --deploy --client
+<pfad zu opencloudcmd>`, und danach lebt sie dort: wem ein Administrator den Raum `wurzel`
+freigibt, bekommt sie mit dem nächsten `sync` oben in seinen eigenen Baum. Der Befehl fragt nach
+dem Passwort des Geräts, also führt der Mensch ihn selbst aus; du nennst ihn, mit dem Pfad des
+Klienten, und sagst, was passiert: zuerst das Prüfskript, und ein Befund hält an; der Raum als
+Administrator angelegt, wenn er fehlt; nichts von diesem Rechner geht mit; ein Herunterladen
+danach beweist, was ankam. Lies vor, was er sagt. Einzelheiten im Verfahren, „Die Wurzel aufs
+Gerät ausrollen".
+
 **Jemand will nur eine sehen:** `node .ara/tools/root.mjs --path <ordner> --example` legt die
 Vorzeigefassung aus, eine erfundene Firma mit der Methode und gefüllten Blättern.

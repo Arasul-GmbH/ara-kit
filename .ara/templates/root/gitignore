@@ -5,5 +5,11 @@
 # A clone of an embedded place inside this root is a reference, not content of
 # the root. Enter its folder here, one line per place:
 
+# What the sync with the company folder makes on this computer: the view of this
+# person, and the journal of the client.
+/sicht.md
+.sync_*.db*
+._sync_*.db*
+
 .DS_Store
 node_modules/
