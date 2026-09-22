@@ -271,6 +271,9 @@ Kits, und es steht hier, damit es niemand für eine Entscheidung hält.
 was eine Maschine macht (`.git`, `node_modules`, `dist`, `build`, `.next`), was zu diesem Rechner
 gehört (`.claude/hooks/`, `settings.json`) und was der Klient selbst schreibt. Das Letzte ist
 keine Feinheit: ohne seine Journaldatei in der Liste meldet der Klient Konflikte an sich selbst.
+Gemessen, Stand 22.09.2026, gegen den Klienten, mit einem Ordner, der jedes davon trug: alles auf
+der Liste blieb draußen, oben im Ordner und drei Ebenen tiefer, und `.claude/skills/` ging durch.
+Die Journaldatei hieß `.sync_journal.db`.
 
 **Konflikte und Symlinks** werden aus dem Baum gezählt und nicht aus dem Bericht des Klienten,
 weil beide auch zwischen zwei Abgleichen entstehen. Eine Datei, die der Klient nicht

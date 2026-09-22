@@ -1098,13 +1098,18 @@ const ROOT_OWN = Object.freeze(["apps", "scripts", ".claude", ".git"]);
 /**
  * What never goes into the company folder.
  *
- * Four kinds, and each one for its own reason. **What a machine makes**: `.git`, `node_modules`
+ * Three kinds, and each one for its own reason. **What a machine makes**: `.git`, `node_modules`
  * and the build folders are made again out of what is there, and they are the bulk of every
- * tree. **What belongs to this computer**: `.claude/hooks` and `settings.json` say what an agent
- * may do here, and that is a decision per computer, not per house. **What the client itself
- * writes**: its journal lies in the synced folder, and without this line it reports conflicts
- * about itself. The list goes to the client as a file, in its own format: one pattern per line,
- * matched against every part of a path.
+ * tree. **What belongs to this computer**: the hooks and the settings of an agent say what it
+ * may do here, and that is a decision per computer, not per house. Both patterns hold at every
+ * depth of the tree, not only at its top. **What the client itself writes**: its journal lies in
+ * the synced folder, and without this line it reports conflicts about itself.
+ *
+ * The list goes to the client as a file, in its own format: one pattern per line. Measured
+ * against the client on 2026-09-22 with a folder that carried every one of these: what stands
+ * here stayed out, at the top and three levels down, and `.claude/skills/` went through. The
+ * journal was called `.sync_journal.db`; the two lines next to it are what SQLite writes beside
+ * such a file.
  */
 const NEVER_SYNCED = Object.freeze([
   ".git",
@@ -1115,13 +1120,9 @@ const NEVER_SYNCED = Object.freeze([
   ".claude/hooks",
   "*/.claude/hooks",
   "settings.json",
-  "._sync_*.db",
-  "._sync_*.db-*",
-  "._sync_*.db.ctmp",
   ".sync_*.db",
   ".sync_*.db-*",
-  ".owncloudsync.log",
-  ".opencloudsync.log",
+  ".sync_*.db.ctmp",
 ]);
 
 /** Folders the walk does not go into: they are not synced, so nothing of ours lies in them. */

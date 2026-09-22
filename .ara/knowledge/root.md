@@ -261,6 +261,9 @@ it is written here so that nobody takes it for a decision.
 what a machine makes (`.git`, `node_modules`, `dist`, `build`, `.next`), what belongs to this
 computer (`.claude/hooks/`, `settings.json`) and what the client writes itself. The last one is
 not a nicety: without its journal in the list the client reports conflicts about itself.
+Measured as of 2026-09-22 against the client, with a folder that carried every one of these:
+everything on the list stayed out, at the top of the folder and three levels down, and
+`.claude/skills/` went through. The journal was called `.sync_journal.db`.
 
 **Conflicts and symbolic links** are counted out of the tree and not out of the client's report,
 because both also come into being between two syncs. A file the client could not merge carries

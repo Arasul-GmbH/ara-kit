@@ -6671,7 +6671,7 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     for (const muster of [".git", "node_modules", "dist", "build", ".claude/hooks", "settings.json"]) {
       assert(liste.split("\n").includes(muster), `${muster} steht nicht in der Ausschlussliste:\n${liste}`);
     }
-    assert(/^\._sync_\*\.db$/m.test(liste), `die Journaldatei des Klienten steht nicht in der Ausschlussliste:\n${liste}`);
+    assert(/^\.sync_\*\.db$/m.test(liste), `die Journaldatei des Klienten steht nicht in der Ausschlussliste:\n${liste}`);
 
     // Weder Passwort noch Ausweis stehen in der Ausgabe oder im abgelegten Stand.
     const ausgabe = lauf.stdout + lauf.stderr;
