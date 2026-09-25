@@ -258,7 +258,8 @@ und eine Datenliste eine Kartenliste, und eine Seite, die dort waagerecht rollt,
 Eine Kanzlei, eine Praxis, ein Büro mit Akten: dort reicht der Vorgang der Vorlage nicht. An
 sechs Stellen biegt ein Agent ohne dieses Blatt falsch ab, gefunden in einem Fremdtest am
 25.09.2026, bei dem ein fremder Agent mit dem Kit allein eine App für Belege einer Kanzlei baute.
-Die sechs Abschnitte hier sind die Antworten.
+Die fünf Abschnitte hier sind die Antworten; die sechste Stelle, der Name der
+Benutzerkopfzeile fest im Quelltext, steht unter „Sichtbarkeit innerhalb einer App“.
 
 ### Dauerhafte Daten
 
@@ -312,11 +313,18 @@ den jemand ins Formular tippt. Die Rolle aus der Kopfzeile darf die App auswerte
 nur ein Administrator Zuordnungen pflegt. Was ein Administrator in der App sieht, entscheidet der
 Plan, nicht die Rolle allein.
 
+Welche Werte in der Rollenkopfzeile stehen können, steht in `arasul.json` unter
+`koepfe.rollen`, und welche Rolle eine Regel als Entscheider nennen darf, unter
+`freigaben.rollen`; vergleiche mit diesen Werten, statt einen einzutippen.
+
 **Woher die Namen kommen.** Der Schlüssel einer App kann die Konten des Geräts nicht auflisten.
 Die App merkt sich deshalb jeden Namen, den sie in der Kopfzeile sieht, mit dem ersten und dem
 letzten Mal, und wer Zuordnungen pflegt, wählt aus diesen. Ein Name, den es am Gerät nicht mehr
 gibt, lässt niemanden hinein: er bleibt in der Liste stehen und wird als lange nicht gesehen
-gezeigt.
+gezeigt. Daraus folgt: einen neuen Mitarbeiter kann erst zuordnen, wer ihn einmal in der App
+gesehen hat, er öffnet sie also einmal, bevor er Mandanten bekommt. Endet eine Zuordnung,
+während eine Freigabe läuft, entscheidet das Gerät weiter nach dem Kreis vom Start des Laufs;
+die App prüft beim Nachziehen, ob wer entschieden hat, noch zuständig ist.
 
 **Durchgesetzt wird in der Ablage, bei jeder Abfrage**, nicht in der Oberfläche: die Liste, das
 einzelne Ding, seine Datei, der Export, die Routen im Feld `agent`. Ein fremdes Ding antwortet
@@ -324,6 +332,12 @@ mit 404 und nicht mit 403, sonst verrät die Antwort, dass es existiert. Geprüf
 Konten und zwei Mandanten: jeder Weg einmal als der, der nichts sehen darf. Ein Fremdtest am
 25.09.2026 fand so alle Wege der App dicht und genau eine Lücke außerhalb von ihr, die Karte der
 Freigabe; die schließt der nächste Abschnitt.
+
+**Die Muster kennen keine Mandanten.** Muster 2 und 6 legen Dokumente und Auslesungen ohne
+Mandanten ab und geben sie jedem heraus. In einer Fach-App bekommt ihre Tabelle eine Spalte für
+den Mandanten, und jede Abfrage ihrer Ablage filtert danach, auch das Protokoll einer Auslesung.
+Ihre Migrationen tragen die Nummern 002 und 003; hat die App schon eigene, nummerier die Dateien
+der Muster um, bevor die erste davon an einem Gerät lief.
 
 ### Freigaben in einer Fach-App
 
@@ -409,6 +423,12 @@ Entwicklerdokumentation oder dem Hilfe-Center des Herausgebers, dem Schreiben de
 Bundesfinanzministeriums, der Norm. **Mit Adresse und Abrufdatum**, im Plan und im Kopf der
 Datei, die das Format schreibt. Eine Sekundärquelle, ein Repository auf GitHub, ein Blog, taugt
 zum Gegenlesen und wird als solche genannt.
+
+Liefert eine Primärquelle ohne Browser keinen Inhalt, weil sie ihn erst im Browser lädt, nimm den
+Browser, `.ara/knowledge/browser.de.md`; geht auch das nicht, steht die Quelle mit Adresse als
+Annahme im Plan. **Aufbewahrungspflichten** gehören ebenfalls hierher: muss ein Beleg Jahre
+bleiben, bietet die App kein Löschen an (Muster 2 bringt eines mit, nimm es heraus), und wie
+lange das Gerät seine Sicherungen hält, steht im Admin-Handbuch am Gerät, nicht im Kit.
 
 Was sich so nicht prüfen ließ, steht als Annahme im Plan: ein Prüfprogramm des Herausgebers, das
 nicht zur Hand war, eine Spalte, die zwei Quellen verschieden schreiben. **Vor dem Schalten nach

@@ -42,14 +42,15 @@ gets read out next time.
 **If it is a professional app**, with clients or files, data that has to last for years,
 receipts the device is to read, an approval the submitter does not give, or an export format of
 another vendor: read the section "A professional app" in `.ara/knowledge/app.md` before the plan
-comes into being. It has six parts, and each of them belongs in the plan as an answer or as an
+comes into being. It has five parts, and each of them belongs in the plan as an answer or as an
 assumption.
 
 **If a plan is active**, walk through its assumptions first, then build what it says, then
 `--build`. The build is the package, not the running app: what it does you see on the
 device.
 
-**If it goes to a device**, always `--check` against its contract first, then `--deploy`.
+**If it goes to a device**, and there is no file for it under `devices/` yet, `/device` comes
+first: without a file no contract and no `--check`. Then always `--check` against its contract first, then `--deploy`.
 That rolls into **staging**, and there it stays until a human wanted to see it. `--live`
 is a level 2 intervention: ask beforehand, even if you deployed it yourself a minute ago,
 from that moment on people work with it. After that: plan into `erledigt/`, write on the

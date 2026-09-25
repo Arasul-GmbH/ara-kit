@@ -42,13 +42,14 @@ geblieben ist, steht als Annahme im Plan und wird beim nächsten Mal vorgelesen.
 **Ist es eine Fach-App**, mit Mandanten oder Akten, Daten, die Jahre halten müssen, Belegen,
 die das Gerät lesen soll, einer Freigabe, die nicht der Einreicher gibt, oder einem
 Exportformat eines anderen Herstellers: lies in `.ara/knowledge/app.de.md` den Abschnitt „Eine
-Fach-App“, bevor der Plan entsteht. Er hat sechs Teile, und jeder davon gehört als Antwort oder
+Fach-App“, bevor der Plan entsteht. Er hat fünf Teile, und jeder davon gehört als Antwort oder
 als Annahme in den Plan.
 
 **Ist ein Plan aktiv**, geh zuerst seine Annahmen durch, dann bau, was darin steht, dann
 `--build`. Der Bau ist das Paket, nicht die laufende App: was sie tut, sieht man am Gerät.
 
-**Geht es an ein Gerät**, immer erst `--check` gegen dessen Kontrakt, dann `--deploy`.
+**Geht es an ein Gerät**, und liegt unter `devices/` noch keine Akte dafür, ist zuerst
+`/device` dran: ohne Akte kein Kontrakt und kein `--check`. Dann immer erst `--check` gegen dessen Kontrakt, dann `--deploy`.
 Das rollt in den **Teststand**, und dort bleibt es, bis ein Mensch es sehen wollte.
 `--live` ist ein Eingriff der Stufe 2: frag vorher, auch wenn du gerade selbst eingespielt
 hast, ab dem Moment arbeiten die Leute damit. Danach: Plan nach `erledigt/`, README der

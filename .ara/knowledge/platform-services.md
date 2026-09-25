@@ -84,8 +84,8 @@ in the flow's step chain, with a title, the context and a deadline. The run then
 and without a decision nothing goes further.
 
 That is something other than a question in the conversation: a question goes to whoever is watching
-right now, and without an answer the flow carries on with an assumption. An approval goes to
-everybody the app is shared with, and **without an answer nothing goes further at all**.
+right now, and without an answer the flow carries on with an assumption. An approval goes, as long as
+the app does not draw the circle narrower (see below), to everybody the app is shared with, and **without an answer nothing goes further at all**.
 
 Three outcomes, and they stand on the run: approved, then it carries on from the stopped step.
 Rejected, then it ends, and the reason is its reason. Nobody decides by the deadline, then it ends

@@ -199,7 +199,8 @@ Die Abhängigkeiten der Bibliothek stehen in `frontend/package.json`. Sie wird *
 App übersetzt, ist also kein npm-Paket: was sie braucht, muss die App holen. Der Wächter
 fragt danach.
 
-**Die Wege der App bleiben eine Ebene tief**, also `/vorgaenge` und nicht `/vorgaenge/17`.
+**Die Wege der Oberfläche bleiben eine Ebene tief**, also `/vorgaenge` und nicht `/vorgaenge/17`;
+die Wege des Backends unter `api/` dürfen tiefer gehen.
 Warum, steht im Kopf von `src/rahmen/basis.ts`: die Seite verweist relativ auf ihre Bündel,
 weil sie beim Bauen nicht weiß, ob sie im Teststand oder live hängt. Was ein Verweis auf ein
 einzelnes Ding braucht, gehört in die Suchanfrage.

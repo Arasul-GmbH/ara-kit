@@ -14,7 +14,8 @@
   "kopf": null,
   "koepfe": {
     "benutzer": null,
-    "rolle": null
+    "rolle": null,
+    "rollen": []
   },
   "wege": {
     "flow_starten": null,
@@ -25,7 +26,8 @@
   },
   "freigaben": {
     "einreicher": false,
-    "regel": false
+    "regel": false,
+    "rollen": []
   },
   "daten": null
 }

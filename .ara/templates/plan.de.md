@@ -19,8 +19,15 @@ jemand von Hand tut: wie oft, wie lange, was danach mit dem Ergebnis passiert.
 
 ## Wer es benutzt
 
-Wer die App aufruft, und in welcher Rolle. Wer sie sehen darf, entscheidet der Kunde am
-Gerät, nicht diese Datei.
+Wer die App aufruft, und in welcher Rolle. Wer hineinkommt, entscheidet der Kunde am Gerät,
+nicht diese Datei. Was jemand darin sieht, entscheidet die App: sieht jeder alles, oder nur
+seine Mandanten, Abteilungen, Akten, und wer pflegt die Zuordnung?
+
+## Was bleiben muss
+
+Was eine neue Fassung, das Schalten nach live und ein Jahr überleben muss. Es liegt in der
+Datenbank des Geräts; Test und live haben je eine eigene. Was gelöscht werden darf und was
+aufbewahrt werden muss.
 
 ## Welche Daten
 
@@ -39,7 +46,14 @@ ist ein Programm und kein Flow.
 ## Wo ein Mensch entscheidet
 
 Wo ein Lauf anhalten und auf eine Freigabe warten soll, und was der Mensch dabei sieht,
-um entscheiden zu können. Wer entscheiden darf, steht am Gerät.
+um entscheiden zu können. Wer darüber hinaus entscheiden darf: jeder, dem die App
+freigegeben ist, oder enger, etwa nicht der Einreicher und nur die Zuständigen. Auf die
+Karte kommen Verweise, keine Inhalte.
+
+## Welche Fachstandards gelten
+
+Formate, Kontenrahmen, Aufbewahrungsregeln, jeweils mit Primärquelle und Abrufdatum. Was
+sich nicht prüfen ließ, steht unter Annahmen.
 
 ## Was ausdrücklich nicht dazugehört
 

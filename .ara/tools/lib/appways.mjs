@@ -223,9 +223,13 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
   // Wer angemeldet ist, sagt die Plattform der App in zwei Kopfzeilen. Ihre
   // Namen gehören zum Vertrag wie die übrigen: bis zum 25.09.2026 stand der
   // eine fest im Quelltext der Vorlage.
+  // Dazu die Werte, die in der Rollenkopfzeile stehen können: eine App, die
+  // etwa nur Administratoren Zuordnungen pflegen lässt, vergleicht mit einem
+  // Wert von hier und tippt keinen ein.
   const koepfe = {
     benutzer: typeof contract?.koepfe?.benutzer === "string" ? contract.koepfe.benutzer : null,
     rolle: typeof contract?.koepfe?.rolle === "string" ? contract.koepfe.rolle : null,
+    rollen: Array.isArray(contract?.koepfe?.rollen) ? contract.koepfe.rollen.filter((r) => typeof r === "string") : [],
   };
   if (!koepfe.benutzer) {
     missing.push(
@@ -264,6 +268,8 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
   const freigaben = {
     einreicher: Boolean(start.einreicher),
     regel: Boolean(start.freigabe),
+    // Welche Rolle eine Regel als Entscheider nennen darf, wie der Kontrakt sie nennt.
+    rollen: Array.isArray(contract?.freigaben?.rollen) ? contract.freigaben.rollen.filter((r) => typeof r === "string") : [],
   };
 
   // Was dauerhaft ist. Der Kontrakt sagt es seit dem 25.09.2026 unter `daten`;

@@ -88,7 +88,8 @@ läuft nichts weiter.
 
 Das ist etwas anderes als eine Rückfrage im Gespräch: eine Rückfrage geht an den, der
 gerade zusieht, und ohne Antwort läuft der Flow mit einer Annahme weiter. Eine Freigabe
-geht an jeden, dem die App freigegeben ist, und **ohne Antwort läuft gar nichts weiter**.
+geht, solange die App den Kreis nicht enger zieht (siehe unten), an jeden, dem die App
+freigegeben ist, und **ohne Antwort läuft gar nichts weiter**.
 
 Drei Ausgänge, und sie stehen am Lauf: bestätigt, dann läuft er ab dem angehaltenen
 Schritt weiter. Abgelehnt, dann endet er, und die Begründung ist sein Grund. Niemand

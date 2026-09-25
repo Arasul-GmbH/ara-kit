@@ -248,8 +248,9 @@ list, and a page that scrolls sideways there is broken.
 
 A tax office, a practice, an office with files: there the scaffold's item is not enough. At six
 places an agent without this sheet takes a wrong turn, found in a foreign test on 25.09.2026 in
-which an outside agent built an app for a tax office's receipts with nothing but the kit. The six
-sections here are the answers.
+which an outside agent built an app for a tax office's receipts with nothing but the kit. The five
+sections here are the answers; the sixth place, the name of the user header fixed in the source,
+stands under "Visibility inside an app".
 
 ### Data that stays
 
@@ -301,10 +302,17 @@ password, no account the app creates, no name somebody types into a form. The ap
 the role from the header, for instance so that only an administrator maintains mappings. What an
 administrator sees in the app the plan decides, not the role alone.
 
+Which values can stand in the role header stands in `arasul.json` under `koepfe.rollen`, and
+which role a rule may name as decider under `freigaben.rollen`; compare with those values instead
+of typing one in.
+
 **Where the names come from.** An app's key cannot list the device's accounts. So the app
 remembers every name it sees in the header, with the first and the last time, and whoever
 maintains mappings chooses among those. A name that no longer exists on the device lets nobody
-in: it stays in the list and is shown as not seen for a long time.
+in: it stays in the list and is shown as not seen for a long time. It follows: only a person the app has seen once can be
+mapped, so a new employee opens it once before getting clients. If a mapping ends while an
+approval runs, the device keeps deciding by the circle from the run's start; the app checks when
+catching up whether whoever decided is still responsible.
 
 **Enforced in the store, at every query**, not in the interface: the list, the single thing, its
 file, the export, the routes in the field `agent`. A foreign thing answers with 404 and not with
@@ -312,6 +320,12 @@ file, the export, the routes in the field `agent`. A foreign thing answers with 
 clients: every route once as the one who may see nothing. A foreign test on 25.09.2026 found every
 route of the app tight that way and exactly one gap outside of it, the approval card; the next
 section closes it.
+
+**The patterns know no clients.** Patterns 2 and 6 store documents and readings without a client
+and hand them out to anybody. In a professional app their table gets a column for the client, and
+every query of their store filters by it, the log of a reading included. Their migrations carry
+the numbers 002 and 003; if the app has its own already, renumber the pattern's files before the
+first of them ran on a device.
 
 ### Approvals in a professional app
 
@@ -392,6 +406,12 @@ publisher's developer documentation or help centre, the letter of the Federal Mi
 the standard. **With address and date of retrieval**, in the plan and in the header of the file
 that writes the format. A secondary source, a repository on GitHub, a blog, is good for reading
 against and is named as such.
+
+If a primary source delivers no content without a browser, because it loads it in the browser
+only, take the browser, `.ara/knowledge/browser.md`; if that does not work either, the source
+stands with its address as an assumption in the plan. **Retention duties** belong here too: if a
+receipt has to stay for years, the app offers no deletion (pattern 2 brings one, take it out), and
+how long the device keeps its backups stands in the admin handbook on the device, not in the kit.
 
 What could not be checked that way stands as an assumption in the plan: a check program of the
 publisher that was not at hand, a column two sources spell differently. **Before switching live**
