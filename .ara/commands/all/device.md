@@ -65,8 +65,8 @@ buying it**: the way hangs here. If the verdict is supported, nothing of Arasul 
 token is stored, the tool says so under "Next steps", with the link
 `https://www.arasul.de/kaufen`. You ask through the interview tool whether Arasul should
 be installed, with the link in the question: an account is free and brings one free device
-token for personal use, every further installation is bought, commercial use needs the
-licence at 3,000 euros net. Yes means: the human pastes the token here, you hand it in
+token for personal use, every further installation and commercial use are bought there.
+You name no price, it stands on the page. Yes means: the human pastes the token here, you hand it in
 over the pipe, `printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store`,
 never as an argument and never repeated in text. The tool checks it with the portal,
 stores it and says which file to install on; with several fitting files you ask which
@@ -78,8 +78,19 @@ then do they come into being on the device; the kit rolls the password and puts 
 secret store, the network name is set by `--net-name <name>`, otherwise the name of the
 file applies.
 
-**After that you read out two things**, and both stand at the end of the output: what the
-installer could not do, and that the file now carries `tls: selfsigned`. The installer's
+**Unlocking belongs to the installation.** A bought token is at the same time the licence
+code: after the installer the tool fetches the fingerprint from the device, the licence from
+the portal, plays it in and shows level and limits under "Licence". Say in the confirmation
+that a bought token gets bound to this device in the process. A free one ends on community
+without an error; then you ask through the interview tool whether there is a bought code, and
+hand it in over the pipe,
+`printf '%s' "$CODE" | node .ara/tools/device.mjs --name <device> --license --pipe`. On a
+device where Arasul already runs, `--license` is the same step on its own, level 2. Code and
+licence you never display. Procedure in `.ara/knowledge/device.md`, "The licence".
+
+**After that you read out three things**, and all stand at the end of the output: what the
+installer could not do, that the file now carries `tls: selfsigned`, and the level of the
+licence. The installer's
 refusals are not trimmings: a failed hardening is a footnote to it and an open door for a
 device in a customer network.
 

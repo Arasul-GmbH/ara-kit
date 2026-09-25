@@ -228,22 +228,24 @@ so `/init` needs no token, and it does not ask for one either. **There is no com
 Not one called kaufen, not one called licence. The way hangs on `/device`, at the place where the verdict
 "supported" falls, and the tool takes it by itself.
 
-What holds, as of 2026-08-28, and what you may say:
+What holds, as of 2026-09-25, and what you may say:
 
 - **Account and token come from <https://www.arasul.de/kaufen>.** That is the one address.
 - **An account is free of charge and brings exactly one free device token** for personal use.
-  Every further installation is bought. Commercial use needs the licence, 3,000 euros net.
+  Every further installation and commercial use are bought there. **You name no price**, it
+  stands on the page and nowhere in the kit.
 - The token has the form `ara_` followed by 32 hexadecimal characters. It is a gate in front of
-  the download, not a licence check: on the device Arasul checks no token, and the kit carries
-  none there either.
+  the download, and **a bought token is at the same time the licence code**: after the
+  installation the kit exchanges it at the portal for a licence for exactly this device, see
+  "The licence" further down. The token itself never goes onto the device, only the licence.
 
 **How it runs, in the interview tool, never in running text:**
 
 1. `/device` delivers the verdict **supported**, nothing of Arasul runs, no token is stored. The
    tool then says so under "Next steps", with the link. You ask through the interview tool
    whether Arasul should be installed on this device, with the link in the question and one
-   sentence on what the account brings and what a further device costs. Options: yes, no, and
-   the open one.
+   sentence on what the account brings and that further devices are bought there. Options: yes,
+   no, and the open one.
 2. **Yes:** the human opens the page, creates the account, copies the token and pastes it here.
    That is all they have to do. You do not fetch the token, you do not open the page for them.
 3. **The pasted token goes in over the pipe, never as an argument**, and you never repeat it in
@@ -387,6 +389,57 @@ value that no longer holds on the device is not a secret but a dead access, and 
 call with it would be a 401 whose reason nobody sees. After that the kit rolls nothing onto
 this device until `--deploy-key` creates a new one. A foreign key the kit never touches;
 whoever wants that does it on the device, as the administrator it belongs to.
+
+### The licence
+
+**A device without a licence runs on community**, as of 2026-09-25 (decision in arasul-jet,
+J35): up to **3 accounts and 3 apps**, without an end date. **The bought licence has no
+limits** (level professional), paid once and unlimited in time; only the updates hang on
+maintenance. Those are the levels you may name. Which limits a particular device has right
+now the device says itself, and the tool shows it: where device and this sheet part, the
+device holds.
+
+**After `--install arasul` the tool unlocks the device by itself**, with the stored token:
+
+1. **Fingerprint from the device**, over SSH: `lizenz-geraet.sh fingerabdruck`. The script
+   belongs to the platform, the kit looks for it in the highest version folder and guesses
+   no path.
+2. **Licence from the portal**: `POST https://www.arasul.de/api/license/issue` with token and
+   fingerprint. The first time, the portal binds the token to this fingerprint.
+3. **Played in on the device**: `lizenz-geraet.sh einspielen`, the licence over standard
+   input, never as an argument.
+4. **Read back**: `lizenz-geraet.sh status`, level and limits as the device reports them.
+   The level lands in the file under `license`, the step in the file's log.
+
+**A free token is no error.** The portal answers `nicht_bezahlt`, the device stays on
+community, and the tool says in one sentence what community means, with the limits from the
+device. Then you ask through the interview tool whether there is a bought code. The
+confirmation of the installation includes the unlocking: say beforehand that a bought token
+gets bound to this device in the process.
+
+**On a device where Arasul already runs** it is a call of its own, a level 2 intervention,
+because a bought code gets bound to this device:
+
+```
+node .ara/tools/device.mjs --name <device> --license
+printf '%s' "$CODE" | node .ara/tools/device.mjs --name <device> --license --pipe
+```
+
+Without `--pipe` it takes the stored token, with `--pipe` the pasted code, which holds for
+this call only and is not stored. Without either it only reads the level and changes nothing.
+Without `--name`, `--licence` stays the buying way from above.
+
+**What the portal refuses, the tool says with the way out**, following the website's
+contract: `token_unbekannt` (the code does not exist), `anderes_geraet` (the code is bound to
+another device: in the portal under licences "Gerätewechsel freigeben", or the code that
+belongs to this device), `zu_viele_anfragen` (wait a minute), `dienst_aus` (again later).
+**A partner with several customer devices needs one code per device**: a code binds itself to
+the first device that redeems it. The installation itself still counts as done, the device
+runs on community until the right code is played in.
+
+**The kit never displays code or licence**: not on the screen, not in the file, not in the
+JSON, not as an argument on the device. Removing a licence again is the business of the
+device's administrator, over its interface. The kit does not do it.
 
 ### The evidence
 

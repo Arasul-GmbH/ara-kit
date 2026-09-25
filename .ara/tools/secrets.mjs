@@ -65,8 +65,8 @@ const KNOWN = [
   {
     name: "ARASUL_TOKEN",
     info: t(
-      "device token from https://www.arasul.de/kaufen, one free per account for personal use. Only needed for the installation, /device shows the way",
-      "Geräte-Token von https://www.arasul.de/kaufen, einer je Konto kostenlos für den persönlichen Gebrauch. Erst für die Installation nötig, /device zeigt den Weg"
+      "device token from https://www.arasul.de/kaufen, one free per account for personal use. Needed for the installation, a bought one is also the licence code. /device shows the way",
+      "Geräte-Token von https://www.arasul.de/kaufen, einer je Konto kostenlos für den persönlichen Gebrauch. Nötig für die Installation, ein gekaufter ist zugleich der Lizenzcode. /device zeigt den Weg"
     ),
   },
   {

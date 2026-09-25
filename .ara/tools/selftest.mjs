@@ -155,7 +155,7 @@ import {
 } from "./lib/kit.mjs";
 import { isVariant } from "./lib/i18n.mjs";
 import { compareVersions, contractOf, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
-import { TOKEN_SHAPE, cleanToken, tokenShape } from "./lib/licence.mjs";
+import { ISSUE_PATH, TOKEN_SHAPE, cleanToken, tokenShape, unlock, unlockLines } from "./lib/licence.mjs";
 import { keychainAvailable } from "./lib/secrets.mjs";
 
 helpOnly(import.meta.url);
@@ -892,7 +892,7 @@ check("Ein Rechner ohne passendes Gerät endet hilfreich", () => {
     }
     assert(/Fragen zu Arasul/.test(run.stdout), "Fragen zu Arasul werden nicht angeboten");
     assert(/Apache-Lizenz 2\.0/.test(run.stdout), "die Lizenz des Kits wird nicht genannt");
-    assert(/keine Lizenzprüfung/.test(run.stdout), "der Satz zum Token fehlt");
+    assert(/ein Gerät damit läuft auf community/.test(run.stdout), "der Satz zum Token fehlt");
     // Ruhig heißt: kein zweiter Anlauf. Was Arasul brächte, steht genau einmal da.
     const werbung = run.stdout.split("Mit Arasul bekäme").length - 1;
     assert(werbung === 1, `der Satz über Arasul steht ${werbung} mal da`);
@@ -969,7 +969,10 @@ await checkAsync("Der Kaufweg: eingefügter Token wird geprüft, hinterlegt, und
     assert(/keiner hinterlegt/.test(run.stdout), `es wird nicht gesagt, dass kein Token liegt:\n${run.stdout}`);
     assert(run.stdout.includes("https://www.arasul.de/kaufen"), "der Link zu Konto und Token fehlt");
     assert(/genau einen kostenlosen Geräte-Token/.test(run.stdout), "was das Konto bringt, fehlt");
-    assert(/3\.000 Euro netto/.test(run.stdout), "was die Lizenz kostet, fehlt");
+    // K21: keine Preise im Kit, die stehen auf der Seite.
+    assert(!/Euro netto/.test(run.stdout), `das Kit nennt einen Preis:\n${run.stdout}`);
+    assert(/Was das kostet, steht auf der Seite/.test(run.stdout), "wo der Preis steht, fehlt");
+    assert(/zugleich der Lizenzcode/.test(run.stdout), "dass ein gekaufter Token der Lizenzcode ist, fehlt");
     assert(/Interview-Werkzeug/.test(run.stdout), "die Frage läuft nicht über das Interview-Werkzeug");
     assert(/--licence --store/.test(run.stdout), "der Weg für den eingefügten Token fehlt");
     assert(gesehen.length === 0, "ohne Token wurde das Portal gefragt");
@@ -1027,6 +1030,134 @@ await checkAsync("Der Kaufweg: eingefügter Token wird geprüft, hinterlegt, und
   }
 });
 
+await checkAsync("Die Freischaltung: Fingerabdruck, Portal, einspielen, Stufe, und nie Code oder Lizenz", async () => {
+  // K21, gegen die Verträge aus arasul-website (docs/api-license.md) und
+  // arasul-jet (scripts/util/lizenz-geraet.sh). Das Gerät ist eine Attrappe, die
+  // genau eine Zeile JSON je Aufruf gibt, das Portal ein gespielter Server.
+  const bezahlt = "ara_" + "a".repeat(32);
+  const kostenlos = "ara_" + "b".repeat(32);
+  const gebunden = "ara_" + "c".repeat(32);
+  const lizenz = "eyJ0aWVyIjoicHJvZmVzc2lvbmFsIn0.c2lnbmF0dXJfZ2VoZWlt";
+  const fingerabdruck = "0123456789abcdef0123456789abcdef";
+  const anfragen = [];
+  const server = createServer((request, response) => {
+    let body = "";
+    request.on("data", (d) => (body += d));
+    request.on("end", () => {
+      const daten = JSON.parse(body || "{}");
+      anfragen.push({ method: request.method, path: request.url, ...daten });
+      const antworte = (status, objekt) => {
+        response.writeHead(status, { "Content-Type": "application/json" });
+        response.end(JSON.stringify(objekt));
+      };
+      if (daten.token === bezahlt) return antworte(200, { license: lizenz, tier: "professional", customer: "Muster GmbH" });
+      if (daten.token === kostenlos) return antworte(403, { ok: false, fehler: "nicht_bezahlt", meldung: "Kostenloser Token." });
+      if (daten.token === gebunden) return antworte(409, { ok: false, fehler: "anderes_geraet", meldung: "Anderes Gerät." });
+      return antworte(401, { ok: false, fehler: "token_unbekannt", meldung: "Unbekannt." });
+    });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const geraet = ({ stufe = "community", ablehnen = false, ohneFingerabdruck = false } = {}) => {
+    const aufrufe = [];
+    let jetzt = stufe;
+    const run = (befehl, eingabe) => {
+      aufrufe.push({ befehl, eingabe });
+      const zeile = (o, status = 0) => ({ status, stdout: `Rauschen davor\n${JSON.stringify(o)}\n`, stderr: "" });
+      if (befehl === "fingerabdruck") {
+        return ohneFingerabdruck ? zeile({ fehler: "Der Container dashboard-backend laeuft nicht." }, 1) : zeile({ fingerabdruck });
+      }
+      if (befehl === "einspielen") {
+        if (ablehnen) return zeile({ ok: false, fehler: "Signatur ungueltig" }, 1);
+        jetzt = "professional";
+        return zeile({ ok: true, stufe: "professional" });
+      }
+      const grenze = jetzt === "community" ? 3 : -1;
+      return zeile({ stufe: jetzt, konten: { belegt: 2, grenze }, apps: { belegt: 1, grenze } });
+    };
+    return { run, aufrufe };
+  };
+  const again = "node .ara/tools/device.mjs --name orin --license";
+  const sauber = (text, ...werte) => werte.every((w) => !text.includes(w));
+  try {
+    // Bezahlt: Lizenz über die Standardeingabe ans Gerät, Stufe und Grenzen zurück.
+    let g = geraet();
+    let r = await unlock({ run: g.run, token: bezahlt, again, base });
+    assert(r.ok && r.outcome === "professional", `bezahlt, aber nicht freigeschaltet: ${JSON.stringify(r)}`);
+    const anfrage = anfragen.at(-1);
+    assert(anfrage.method === "POST" && anfrage.path === ISSUE_PATH, `falscher Aufruf am Portal: ${anfrage.method} ${anfrage.path}`);
+    assert(anfrage.fingerprint === fingerabdruck, "der Fingerabdruck des Geräts kam nicht beim Portal an");
+    const einspielen = g.aufrufe.find((a) => a.befehl === "einspielen");
+    assert(einspielen && einspielen.eingabe === lizenz, "die Lizenz ging nicht über die Standardeingabe ans Gerät");
+    assert(g.aufrufe.at(-1).befehl === "status", "nach dem Einspielen wird der Stand nicht gelesen");
+    let zeilen = unlockLines(r, { place: "orin", again }).join("\n");
+    assert(/freigeschaltet, Stufe professional, für Muster GmbH/.test(zeilen), `Stufe fehlt:\n${zeilen}`);
+    assert(/Konten 2 belegt, ohne Grenze, Apps 1 belegt, ohne Grenze/.test(zeilen), `Grenzen fehlen:\n${zeilen}`);
+    assert(sauber(JSON.stringify(r) + zeilen, bezahlt, lizenz), "Code oder Lizenz stehen im Ergebnis");
+
+    // Kostenlos: kein Fehler, community, ein Satz dazu, nichts eingespielt.
+    g = geraet();
+    r = await unlock({ run: g.run, token: kostenlos, again, base });
+    assert(r.ok && r.outcome === "community" && r.reason === "not_paid", `kostenlos endet nicht auf community: ${JSON.stringify(r)}`);
+    assert(!g.aufrufe.some((a) => a.befehl === "einspielen"), "ein kostenloser Token hat etwas eingespielt");
+    zeilen = unlockLines(r, { place: "orin", again }).join("\n");
+    assert(/läuft auf community\. Der Code ist ein kostenloser/.test(zeilen), `kostenlos wird nicht benannt:\n${zeilen}`);
+    assert(/Community heißt: dieses Gerät trägt bis zu 3 Konten und 3 Apps/.test(zeilen), `was community heißt, fehlt:\n${zeilen}`);
+    assert(/Interview-Werkzeug/.test(zeilen) && /--license --pipe/.test(zeilen), "der Weg zum gekauften Code fehlt");
+    assert(sauber(zeilen, kostenlos), "der Code steht in der Ausgabe");
+
+    // Kein Code: das Portal wird nicht gefragt, das Gerät bleibt, was es ist.
+    const vorher = anfragen.length;
+    r = await unlock({ run: geraet().run, token: null, again, base });
+    assert(r.ok && r.outcome === "community" && r.reason === "no_code", "ohne Code nicht community");
+    assert(anfragen.length === vorher, "ohne Code wurde das Portal gefragt");
+
+    // Anderes Gerät: ein Fehler mit dem Weg über das Portal, nichts eingespielt.
+    g = geraet();
+    r = await unlock({ run: g.run, token: gebunden, again, base });
+    assert(!r.ok && r.step === "portal" && r.portal.error === "anderes_geraet", `409 nicht erkannt: ${JSON.stringify(r)}`);
+    assert(/Gerätewechsel freigeben/.test(r.message), "der Weg über das Portal fehlt");
+    assert(!g.aufrufe.some((a) => a.befehl === "einspielen"), "bei 409 wurde eingespielt");
+
+    // Unbekannt: 401 mit Meldung.
+    r = await unlock({ run: geraet().run, token: "ara_" + "d".repeat(32), again, base });
+    assert(!r.ok && r.portal.error === "token_unbekannt", "401 nicht erkannt");
+
+    // Das Gerät lehnt ab: Fehler, und die Lizenz steht nicht in der Meldung.
+    r = await unlock({ run: geraet({ ablehnen: true }).run, token: bezahlt, again, base });
+    assert(!r.ok && r.step === "install" && /Signatur ungueltig/.test(r.message), `Ablehnung am Gerät nicht erkannt: ${JSON.stringify(r)}`);
+    assert(sauber(JSON.stringify(r), lizenz, bezahlt), "Code oder Lizenz stehen in der Ablehnung");
+
+    // Kein Fingerabdruck: das Portal wird nicht gefragt.
+    const davor = anfragen.length;
+    r = await unlock({ run: geraet({ ohneFingerabdruck: true }).run, token: bezahlt, again, base });
+    assert(!r.ok && r.step === "fingerprint" && /laeuft nicht/.test(r.message), "fehlender Fingerabdruck nicht erkannt");
+    assert(anfragen.length === davor, "ohne Fingerabdruck wurde das Portal gefragt");
+
+    // Portal aus: kein abgelehnter Code, sondern keine Antwort.
+    r = await unlock({ run: geraet().run, token: bezahlt, again, base: "http://127.0.0.1:9" });
+    assert(!r.ok && r.portal.reachable === false, "ein schweigendes Portal gilt als Ablehnung");
+    return "bezahlt, kostenlos, ohne Code, 409, 401, Ablehnung, kein Fingerabdruck, Portal aus";
+  } finally {
+    server.close();
+  }
+});
+
+check("--license mit --name gilt dem Gerät, ohne --name bleibt es der Kaufweg", () => {
+  const work = mkdtempSync(join(tmpdir(), "ara-lizenz-"));
+  try {
+    const datei = join(work, "orin.txt");
+    writeFileSync(datei, ATTRAPPEN.orin + "\n");
+    const run = tool("device.mjs", ["--name", "orin", "--probe", datei, "--license"]);
+    assert(run.status !== 0 && /Trockenlauf/.test(run.stderr), `ein Trockenlauf schaltet frei:\n${run.stdout}${run.stderr}`);
+    const hilfe = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+    assert(/--license --pipe/.test(hilfe), "die Hilfe nennt den eingefügten Code nicht");
+    return "Trockenlauf abgewiesen, Hilfe nennt den Weg";
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht mehr", () => {
   // Dort, wo /device ein unterstütztes Gerät erkennt und kein Token liegt, steht
   // der Kaufweg unter den nächsten Schritten: Link, Frage im Interview, und wie
@@ -1064,7 +1195,8 @@ check("Ein unterstütztes Gerät ohne Token zeigt den Kaufweg, mit Token nicht m
     writeFileSync(join(work, "mac.txt"), ATTRAPPEN.mac + "\n");
     run = tool("device.mjs", ["--name", "mac", "--probe", join(work, "mac.txt")], "", { ARA_ENV_FILE: ohne });
     assert(!/Interview-Werkzeug/.test(run.stdout), "ein nicht unterstütztes Gerät bekommt die Kauffrage");
-    assert(/3\.000 Euro netto/.test(run.stdout), "der Satz zur Lizenz nennt den Preis nicht");
+    assert(!/Euro netto/.test(run.stdout), "der Satz zur Lizenz nennt einen Preis");
+    assert(/steht auf der\s+Seite, nicht im Kit/.test(run.stdout), "der Satz zur Lizenz sagt nicht, wo der Preis steht");
     return "ohne Token Kaufweg, mit Token keiner";
   } finally {
     rmSync(work, { recursive: true, force: true });

@@ -15,6 +15,8 @@
  *   node .ara/tools/device.mjs --name orin --admin-login          get a session as administrator
  *   node .ara/tools/device.mjs --name orin --admin-login --token  only the credential, for a script
  *   node .ara/tools/device.mjs --name thor --probe findings.txt   dry run, findings from a file
+ *   node .ara/tools/device.mjs --name orin --license              unlock the device with the stored token
+ *   printf '%s' "$CODE" | node .ara/tools/device.mjs --name orin --license --pipe   unlock with a pasted code
  *   node .ara/tools/device.mjs --licence                          the way to account and token, no device needed
  *   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store   check the pasted token, store it
  *   node .ara/tools/device.mjs                                    which files there are
@@ -50,6 +52,13 @@
  * lists it, and marks the one this kit uses; --revoke-key revokes exactly that one and
  * forgets it. A foreign key it never touches, and the file names none afterwards.
  *
+ * A bought token is at the same time the licence code. After --install arasul the tool
+ * unlocks the device by itself: fingerprint from the device (lizenz-geraet.sh), licence
+ * from the portal (POST /api/license/issue), played in on the device, level and limits
+ * read back. --license --name <device> does the same for a device that already runs, with
+ * the stored token or with a code over the pipe (--pipe). A free token ends on community
+ * without an error. Neither token nor licence ever appear in an output or a file.
+ *
  * For everything an administrator does, --admin-login gives a session: the start password from the installation goes
  * from the secret store straight into the login, back comes a credential, and the
  * password is never displayed. Route and user name come from the artifact when it
@@ -74,6 +83,8 @@
  *   node .ara/tools/device.mjs --name mac                         Akte da: Zustand und nächste Schritte
  *   node .ara/tools/device.mjs --name mac --install docker,ollama Docker und Ollama aufsetzen (Linux)
  *   node .ara/tools/device.mjs --name orin --install arasul       Arasul installieren (Token nötig)
+ *   node .ara/tools/device.mjs --name orin --license              Gerät mit dem hinterlegten Token freischalten
+ *   printf '%s' "$CODE" | node .ara/tools/device.mjs --name orin --license --pipe   mit eingefügtem Code freischalten
  *   node .ara/tools/device.mjs --licence                          der Weg zu Konto und Token, ohne Gerät
  *   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store   eingefügten Token prüfen und hinterlegen
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
@@ -118,6 +129,14 @@
  * Gerät es auflistet, und markiert den, mit dem dieses Kit arbeitet; --revoke-key
  * widerruft genau diesen und vergisst ihn. Einen fremden fasst es nie an, und die Akte
  * nennt danach keinen mehr.
+ *
+ * Ein gekaufter Token ist zugleich der Lizenzcode. Nach --install arasul schaltet das
+ * Werkzeug das Gerät von selbst frei: Fingerabdruck vom Gerät (lizenz-geraet.sh), Lizenz
+ * vom Portal (POST /api/license/issue), am Gerät eingespielt, Stufe und Grenzen
+ * zurückgelesen. --license --name <gerät> tut dasselbe an einem Gerät, das schon läuft,
+ * mit dem hinterlegten Token oder mit einem Code über die Leitung (--pipe). Ein
+ * kostenloser Token endet ohne Fehler auf community. Weder Token noch Lizenz stehen je in
+ * einer Ausgabe oder einer Akte.
  *
  * Für alles, was ein Administrator tut, gibt --admin-login eine Sitzung: das Startpasswort aus der
  * Installation geht dabei aus der Geheimnis-Ablage direkt in die Anmeldung,
@@ -173,13 +192,27 @@ import { forgetSecret, getSecret, hasSecret, otherStore, setSecret } from "./lib
 import { baseUrl, call, certificateKind, reason } from "./lib/arasul.mjs";
 import { CONTRACT_PATH, catchUpLines, checkVersion } from "./lib/contract.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
-import { BUY_URL, STORE_CALL, buyLines, checkToken, cleanToken, installTargets, knownDevices, tokenShape } from "./lib/licence.mjs";
+import {
+  BUY_URL,
+  STORE_CALL,
+  buyLines,
+  checkToken,
+  cleanToken,
+  deviceAnswer,
+  installTargets,
+  knownDevices,
+  tokenShape,
+  unlock,
+  unlockLines,
+} from "./lib/licence.mjs";
 import {
   createKey,
   fetchMirror,
+  findLicenceScript,
   installCommand,
   installTarget,
   installerEntry,
+  licenceRunner,
   listKeys,
   releaseData,
   revokeKey,
@@ -198,9 +231,10 @@ const SERVICES = ["docker", "ollama"];
 /**
  * Die Token-Frage stellt sich genau hier und sonst nirgends: beim Onboarding
  * gibt es nichts zu installieren, und ohne Installation braucht das Kit kein
- * Token. Es ist eine Schranke vor dem Download, keine Lizenzprüfung. Am Gerät
- * prüft Arasul kein Token, und das Kit trägt auch keines dorthin. Woher er
- * kommt und was er kostet, steht in lib/licence.mjs, an einer Stelle.
+ * Token. Er ist eine Schranke vor dem Download, und ein gekaufter ist zugleich
+ * der Lizenzcode: nach der Installation tauscht das Kit ihn beim Portal gegen
+ * eine Lizenz für genau dieses Gerät. Der Token selbst geht nie aufs Gerät, nur
+ * die Lizenz. Woher er kommt, steht in lib/licence.mjs, an einer Stelle.
  */
 const TOKEN_QUESTION =
   t(
@@ -216,6 +250,8 @@ helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 const customer = str(arg.customer);
+/** --licence, --license und --lizenz sind derselbe Schalter. Mit --name gilt er dem Gerät. */
+const wantsLicence = Boolean(arg.licence || arg.license || arg.lizenz);
 
 /**
  * Der Trockenlauf: die Befunde kommen aus einer Datei statt von einem Gerät.
@@ -231,7 +267,7 @@ const customer = str(arg.customer);
  */
 const dryRun = str(arg.probe);
 if (dryRun) {
-  for (const forbidden of ["install", "deploy-key", "admin-login", "keys", "revoke-key"]) {
+  for (const forbidden of ["install", "deploy-key", "admin-login", "keys", "revoke-key", "license", "licence", "lizenz"]) {
     if (arg[forbidden]) {
       fail(
         t(
@@ -369,7 +405,7 @@ async function licencePath() {
   console.log(lines.join("\n"));
 }
 
-if (arg.licence || arg.license || arg.lizenz) {
+if (wantsLicence && (arg.store || !str(arg.name))) {
   await licencePath();
   process.exit(0);
 }
@@ -1103,6 +1139,127 @@ function revokeOwnKey() {
 if (arg.keys) showKeys();
 if (arg["revoke-key"]) revokeOwnKey();
 
+// --- Die Lizenz ---------------------------------------------------------------
+
+const unlockCall = `node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --license`;
+
+/**
+ * Welcher Lizenzcode es ist. Mit --pipe der eingefügte, über die Leitung und nie
+ * als Argument; sonst der hinterlegte Token, denn ein gekaufter Token ist
+ * zugleich der Lizenzcode. Liegt keiner, bleibt das Gerät auf community, und
+ * das ist kein Fehler.
+ */
+async function licenceCode() {
+  if (arg.pipe) {
+    if (process.stdin.isTTY) {
+      fail(
+        t(
+          `--pipe reads the code from the pipe, not from an argument: printf '%s' "$CODE" | ${unlockCall} --pipe`,
+          `--pipe liest den Code aus der Leitung, nicht aus einem Argument: printf '%s' "$CODE" | ${unlockCall} --pipe`
+        )
+      );
+    }
+    let raw = "";
+    process.stdin.setEncoding("utf8");
+    for await (const chunk of process.stdin) raw += chunk;
+    const token = cleanToken(raw);
+    const shape = tokenShape(token);
+    if (!shape.ok) {
+      fail(
+        t(
+          `That is not a licence code: ${shape.reason}. It comes from ${BUY_URL}, or from the portal under licences.`,
+          `Das ist kein Lizenzcode: ${shape.reason}. Er kommt von ${BUY_URL}, oder aus dem Portal unter Lizenzen.`
+        )
+      );
+    }
+    return { token, source: "pipe" };
+  }
+  const stored = getSecret("ARASUL_TOKEN");
+  return stored ? { token: cleanToken(stored), source: "ARASUL_TOKEN" } : { token: null, source: null };
+}
+
+/**
+ * Freischalten, am Gerät über lizenz-geraet.sh und beim Portal. `settle` wartet
+ * nach einer frischen Installation, bis das Backend antwortet: der Installer
+ * ist fertig, bevor jeder Container steht.
+ */
+async function unlockDevice(code, { settle = 0 } = {}) {
+  const located = findLicenceScript(sshArgs, run.transport);
+  if (!located.ok) {
+    return { ok: false, outcome: "failed", step: "script", message: located.message, usage: null, source: code.source, script: null };
+  }
+  const runner = licenceRunner(sshArgs, run.transport, located.script);
+  const until = Date.now() + settle * 1000;
+  while (settle && !deviceAnswer(runner("fingerabdruck"))?.fingerabdruck && Date.now() < until) {
+    await new Promise((weiter) => setTimeout(weiter, 10_000));
+  }
+  const result = await unlock({ run: runner, token: code.token, again: unlockCall });
+  return { ...result, source: code.source, script: located.script };
+}
+
+/** Was die Freischaltung in die Akte schreibt. Deutsch wie jeder Eintrag dort, ohne Code und Lizenz. */
+function licenceNote(result) {
+  const pair = (p) => (p ? `${p.belegt ?? "?"} von ${p.grenze === -1 ? "unbegrenzt" : p.grenze ?? "?"}` : "nicht gelesen");
+  const code = result.source === "pipe" ? "eingefügt" : result.source ? `aus der Ablage ${result.source}` : "keiner";
+  return (
+    `Lizenz: ${result.ok ? `Stufe ${result.outcome}` : `nicht freigeschaltet (${result.step})`}` +
+    `${result.reason === "not_paid" ? ", der Code ist ein kostenloser" : result.reason === "no_code" ? ", kein Code übergeben" : ""}. ` +
+    `Code ${code}, über ${result.script || "kein lizenz-geraet.sh"}. ` +
+    (result.usage ? `Konten ${pair(result.usage.accounts)}, Apps ${pair(result.usage.apps)}. ` : "") +
+    (result.ok ? "" : `${result.message} `) +
+    "Weder Code noch Lizenz stehen hier."
+  );
+}
+
+/**
+ * --license an einem Gerät, auf dem Arasul schon läuft. Ein Eingriff der Stufe 2:
+ * ein gekaufter Code wird dabei an dieses Gerät gebunden.
+ */
+async function unlockOnly() {
+  if (fresh) {
+    fail(t(`There is no file for ${place} yet. First: node .ara/tools/device.mjs --host <address> --name ${name}`,
+      `Für ${place} gibt es noch keine Akte. Erst: node .ara/tools/device.mjs --host <adresse> --name ${name}`));
+  }
+  if (run.transport === "none") {
+    fail(t(`No connection to ${label}, so nothing gets unlocked on ${place}.`, `Keine Verbindung zu ${label}, also wird auf ${place} nichts freigeschaltet.`));
+  }
+  if (!arasulRunning(svc.arasul.state)) {
+    fail(
+      t(
+        `Arasul does not run on ${place} (${svc.arasul.text}). The licence goes into the running platform. First: ${unlockCall.replace(" --license", " --install arasul")}`,
+        `Auf ${place} läuft Arasul nicht (${svc.arasul.text}). Die Lizenz geht in die laufende Plattform. Erst: ${unlockCall.replace(" --license", " --install arasul")}`
+      )
+    );
+  }
+  const code = await licenceCode();
+  const result = await unlockDevice(code);
+  writeFrontmatter(file, { ...(result.ok ? { license: result.outcome } : {}), checked: now() });
+  appendFileSync(file, `\n### ${now()} · SSH ${label}\n${licenceNote(result)}\n`);
+  if (arg.json) {
+    console.log(JSON.stringify({ device: place, licence: licenceJson(result) }, null, 2));
+    process.exit(result.ok ? 0 : 1);
+  }
+  console.log([t(`# Licence on ${place}`, `# Lizenz auf ${place}`), "", ...unlockLines(result, { place, again: unlockCall })].join("\n"));
+  process.exit(result.ok ? 0 : 1);
+}
+
+/** Das Ergebnis für --json: Stufe, Grund, Grenzen, Antwort des Portals. Nie Code oder Lizenz. */
+function licenceJson(result) {
+  return {
+    ok: result.ok,
+    tier: result.ok ? result.outcome : null,
+    reason: result.reason || null,
+    step: result.step || null,
+    customer: result.customer || null,
+    usage: result.usage || null,
+    portal: result.portal || null,
+    code_source: result.source || null,
+    message: result.message || null,
+  };
+}
+
+if (wantsLicence) await unlockOnly();
+
 // --- Optional: Docker und Ollama aufsetzen -----------------------------------
 
 const wanted = str(arg.install)
@@ -1419,6 +1576,22 @@ if (arg["deploy-key"] || (arasul && arasul.ok)) {
   );
 }
 
+// --- Die Lizenz nach der Installation ------------------------------------------
+//
+// Der hinterlegte Token hat die Installation geholt. Ist er gekauft, ist er auch
+// der Lizenzcode, und das Gerät wird gleich hier freigeschaltet. Ist er
+// kostenlos, bleibt es auf community, ohne Fehler.
+let licenceState = null;
+if (arasul && arasul.ok) {
+  console.log(
+    t(
+      "\nUnlocking the device: fingerprint from the device, licence from the portal, played in on the device. Neither code nor licence are displayed.",
+      "\nGerät freischalten: Fingerabdruck vom Gerät, Lizenz vom Portal, am Gerät eingespielt. Weder Code noch Lizenz werden angezeigt."
+    )
+  );
+  licenceState = await unlockDevice(await licenceCode(), { settle: 180 });
+}
+
 // --- Akte -------------------------------------------------------------------
 
 if (!dryRun) ensureDir(dir);
@@ -1454,6 +1627,8 @@ if (known) {
 }
 // Die Geheimnisse liegen in der Ablage, die Akte trägt nur ihre Namen.
 if (deployKey?.ok) changes.api_key_ref = deployKey.ref;
+// Die Stufe, wie das Gerät sie meldet. Nie der Code, nie die Lizenz.
+if (licenceState?.ok) changes.license = licenceState.outcome;
 const pwRef = startPasswordRef({
   noted: existing.start_password_ref,
   installed: arasul?.ok ? arasul.passwordRef : null,
@@ -1603,6 +1778,7 @@ const entry = [
           : `Kit-Schlüssel nicht angelegt: ${scrub(deployKey.message)}`,
       ]
     : []),
+  ...(licenceState ? [licenceNote(licenceState)] : []),
   ...(contractState
     ? [
         contractState.ok
@@ -1648,6 +1824,40 @@ t(
           ` Ja heißt: der Mensch fügt den Token hier ein, du gibst ihn hinein mit ${STORE_CALL}, und das Werkzeug sagt, auf welche Akte installiert wird. Nein heißt: es bleibt hier vermerkt, sonst passiert nichts.`
         )
   );
+}
+
+/**
+ * Die Lizenz als nächster Schritt, an einem Gerät, auf dem Arasul läuft: steht
+ * noch keine Stufe in der Akte, oder läuft es auf community.
+ */
+function licenceStep() {
+  const steps = [];
+  const level = licenceState?.ok ? licenceState.outcome : existing.license || "";
+  if (level === "community") {
+    steps.push(
+      t(
+        `The device runs on community. A bought code lifts the limits, after a confirmation: printf '%s' "$CODE" | ${unlockCall} --pipe`,
+        `Das Gerät läuft auf community. Ein gekaufter Code hebt die Grenzen auf, nach Bestätigung: printf '%s' "$CODE" | ${unlockCall} --pipe`
+      )
+    );
+  } else if (!level) {
+    steps.push(
+      hasSecret("ARASUL_TOKEN")
+        ? t(
+            `The licence level of this device is not in the file yet. Unlock it, after a confirmation, with the stored token: ${unlockCall}. ` +
+              "A free token leaves it on community, a bought one gets bound to this device.",
+            `Die Lizenzstufe dieses Geräts steht noch nicht in der Akte. Freischalten, nach Bestätigung, mit dem hinterlegten Token: ${unlockCall}. ` +
+              "Ein kostenloser Token lässt es auf community, ein gekaufter wird an dieses Gerät gebunden."
+          )
+        : t(
+            `The licence level of this device is not in the file yet. Read it: ${unlockCall}. ` +
+              `With a bought code, after a confirmation, it gets unlocked and bound to this device: printf '%s' "$CODE" | ${unlockCall} --pipe`,
+            `Die Lizenzstufe dieses Geräts steht noch nicht in der Akte. Lesen: ${unlockCall}. ` +
+              `Mit einem gekauften Code wird es, nach Bestätigung, freigeschaltet und an dieses Gerät gebunden: printf '%s' "$CODE" | ${unlockCall} --pipe`
+          )
+    );
+  }
+  return steps;
 }
 
 function nextSteps() {
@@ -1746,6 +1956,7 @@ function nextSteps() {
           "Arasul läuft. Damit das Kit Apps darauf rollen kann, braucht es einen Kit-Schlüssel vom Gerät: "
         ) + `node .ara/tools/device.mjs --name ${name}${customer ? ` --customer ${customer}` : ""} --deploy-key`
       );
+      steps.push(...licenceStep());
     } else {
       // Ob das Kit zu diesem Gerät passt, hat dieser Lauf schon gelesen. Passt
       // es nicht, steht das ganz oben, und die Frage hier noch einmal zu
@@ -1796,6 +2007,7 @@ function nextSteps() {
             `--name ${name}${customer ? ` --customer ${customer}` : ""} --keys`
         )
       );
+      steps.push(...licenceStep());
       steps.push(t(`Running operation: /maintain ${place}.`, `Laufender Betrieb: /maintain ${place}.`));
     }
   } else if (!hasSecret("ARASUL_TOKEN")) {
@@ -1876,15 +2088,15 @@ function closingLines() {
     t(
       "On the licence, calmly: this kit is under the Apache licence 2.0 and stays usable without " +
         "Arasul. Device files, runsheets, calculation and paperwork work on this computer as they " +
-        "are. What Arasul costs: an account at " + BUY_URL + " is free and brings one free device token " +
-        "for personal use, every further installation is bought, commercial use needs the licence at " +
-        "3,000 euros net. The token is a gate in front of the download and no licence check.",
+        "are. An account at " + BUY_URL + " is free and brings one free device token for personal use, " +
+        "a device with it runs on community. Every further installation and commercial use are bought " +
+        "there, and what that costs stands on the page, not in the kit.",
       "Zur Lizenz, ruhig: dieses Kit steht unter der Apache-Lizenz 2.0 und bleibt ohne Arasul " +
         "brauchbar. Geräteakten, Laufzettel, Kalkulation und Papier laufen auf diesem Rechner so, " +
-        "wie sie sind. Was Arasul kostet: ein Konto unter " + BUY_URL + " ist kostenlos und bringt einen " +
-        "kostenlosen Geräte-Token für den persönlichen Gebrauch, jede weitere Installation wird gekauft, " +
-        "kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto. Der Token ist eine Schranke vor dem " +
-        "Download und keine Lizenzprüfung."
+        "wie sie sind. Ein Konto unter " + BUY_URL + " ist kostenlos und bringt einen kostenlosen " +
+        "Geräte-Token für den persönlichen Gebrauch, ein Gerät damit läuft auf community. Jede weitere " +
+        "Installation und der kommerzielle Einsatz werden dort gekauft, und was das kostet, steht auf der " +
+        "Seite, nicht im Kit."
     ),
   ];
 }
@@ -1978,6 +2190,8 @@ if (arg.json) {
             }
           : null,
         deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
+        // Die Freischaltung nach der Installation. Nie Code oder Lizenz.
+        licence_unlock: licenceState ? licenceJson(licenceState) : null,
         // Die Fassung des Geräts, gelesen und nicht behauptet. `null` heißt:
         // nicht gemessen, und das ist etwas anderes als "passt".
         contract: contractState?.ok
@@ -2038,6 +2252,9 @@ if (known) {
   );
 }
 lines.push(...troubleSection());
+if (licenceState) {
+  lines.push("", t("## Licence", "## Lizenz"), "", ...unlockLines(licenceState, { place, again: unlockCall }));
+}
 lines.push("", t("## Next steps", "## Nächste Schritte"), "", ...steps.map((s) => `- ${s}`));
 lines.push(...closingLines());
 console.log(lines.join("\n"));
