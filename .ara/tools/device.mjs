@@ -218,6 +218,7 @@ import {
   revokeKey,
   runInstaller,
   scrub,
+  settleDeployKey,
   ship,
 } from "./lib/install.mjs";
 
@@ -834,9 +835,14 @@ const svc = services(facts);
 // Das Kit füllt die zweite Auskunft nie aus der ersten auf.
 
 const platform = platformOf(found.profile, found.memoryGb);
-const verification = platform.id
-  ? verificationOf(platform.id)
-  : { level: null, reason: platform.reason || t("no catalogue profile", "kein Katalogprofil") };
+const readVerification = () =>
+  platform.id
+    ? verificationOf(platform.id)
+    : { level: null, reason: platform.reason || t("no catalogue profile", "kein Katalogprofil") };
+// `let`, weil eine Installation im selben Lauf den Spiegel erst holt. Bis zum
+// 25.09.2026 meldete der Abschlussbericht danach „es gibt keinen Spiegel", der
+// zehn Zeilen darüber gerade entstanden war: gelesen wurde einmal, vorher.
+let verification = readVerification();
 
 /** Was am Gerät erkannt wurde, jede Angabe mit der Stelle, die sie hergibt. */
 function recognitionLines() {
@@ -1334,6 +1340,9 @@ if (install.length) {
   const again = probe();
   Object.assign(facts, parseProbe(again.output));
   Object.assign(svc, services(facts));
+  // Der Spiegel ist in diesem Lauf entstanden, also wird der Katalog jetzt
+  // gelesen, nicht mit dem Stand von vor der Installation berichtet.
+  verification = readVerification();
 }
 
 // --- Arasul installieren -----------------------------------------------------
@@ -1486,12 +1495,14 @@ async function installArasul() {
         `Network name ${net}, start password ${secret.fresh ? "freshly rolled" : "from the store"} and stored under ${startRef}. ` +
         "Its plain text is not displayed.\n" +
         "The installer's output is read along and masked while doing so: it prints keys and\n" +
-        "passwords into its first output, and neither belongs on the screen.\n",
+        "passwords into its first output, and neither belongs on the screen. The kit key the\n" +
+        "installer creates is replaced afterwards by one in the kit's name and revoked.\n",
       `\nInstaller läuft auf dem Gerät: ${command.shown}. Das dauert und will mitgelesen werden.\n` +
         `Netzname ${net}, Startpasswort ${secret.fresh ? "neu gewürfelt" : "aus der Ablage"} und hinterlegt unter ${startRef}. ` +
         "Sein Klartext wird nicht angezeigt.\n" +
         "Die Ausgabe des Installers wird mitgelesen und dabei maskiert: er druckt Schlüssel und\n" +
-        "Passwort in seine Erstausgabe, und beides gehört nicht auf den Bildschirm.\n"
+        "Passwort in seine Erstausgabe, und beides gehört nicht auf den Bildschirm. Den Kit-Schlüssel,\n" +
+        "den der Installer anlegt, ersetzt das Kit danach durch einen auf seinen Namen und widerruft ihn.\n"
     )
   );
   // Mitgelesen statt durchgereicht. Nur so kann das Kit hinterher sagen, was der
@@ -1507,6 +1518,8 @@ async function installArasul() {
     netName: net,
     passwordRef: startRef,
     troubles: step.troubles,
+    // Nur zum Übergeben an settleDeployKey. Nie gezeigt, nie in die Akte.
+    keys: step.keys || [],
     version: state.version ?? null,
     source: state.source ?? null,
     fetched: state.fetched ?? null,
@@ -1529,6 +1542,9 @@ if (wantsArasul) {
   const again = probe();
   Object.assign(facts, parseProbe(again.output));
   Object.assign(svc, services(facts));
+  // Der Spiegel ist in diesem Lauf entstanden, also wird der Katalog jetzt
+  // gelesen, nicht mit dem Stand von vor der Installation berichtet.
+  verification = readVerification();
 }
 
 // --- Der Kit-Schlüssel für den Deploy ----------------------------------------
@@ -1547,7 +1563,7 @@ function makeDeployKey() {
     readFrontmatter(join(ROOT, "business", "company.md")).fields,
     readFrontmatter(join(ROOT, "business", "profile.md")).fields
   );
-  const made = createKey(sshArgs, run.transport, keyName);
+  const made = settleDeployKey(sshArgs, run.transport, { name: keyName, found: arasul?.keys || [] });
   if (!made.ok) return made;
   const ref = `ARASUL_KEY_${secretSlug}`;
   try {
@@ -1558,20 +1574,75 @@ function makeDeployKey() {
       message: t(`The key could not be stored: ${error.message}`, `Der Schlüssel ließ sich nicht ablegen: ${error.message}`),
     };
   }
-  return { ok: true, ref, label: keyName, script: made.script };
+  return { ...made, key: undefined, ref };
+}
+
+/** Was nach dem Schlüssel gesagt wird. Nie der Klartext, immer das, was am Gerät gilt. */
+function deployKeyLines(made) {
+  const call = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
+  const lines = [];
+  if (made.adopted) {
+    lines.push(
+      t(
+        `\nKit key: the kit could not create its own (${scrub(made.createFailed || "")}), so it took over the installer's ` +
+          `and stored it under ${made.ref}. Its plain text is not displayed and stands in no file of the kit.`,
+        `\nKit-Schlüssel: ein eigener ließ sich nicht anlegen (${scrub(made.createFailed || "")}), also hat das Kit den des ` +
+          `Installers übernommen und unter ${made.ref} hinterlegt. Sein Klartext wird nicht angezeigt und steht in keiner Datei des Kits.`
+      )
+    );
+  } else {
+    lines.push(
+      t(
+        `\nKit key created as "${made.label}" and stored under ${made.ref}. ` +
+          "Its plain text is not displayed and stands in no file of the kit.",
+        `\nKit-Schlüssel angelegt als "${made.label}" und hinterlegt unter ${made.ref}. ` +
+          "Sein Klartext wird nicht angezeigt und steht in keiner Datei des Kits."
+      )
+    );
+  }
+  if (made.revoked) {
+    lines.push(
+      t(
+        `The installer's key ${made.revoked} is revoked. Nobody saw it, and the first output file on the device now holds a dead key.`,
+        `Der Schlüssel des Installers ${made.revoked} ist widerrufen. Gesehen hat ihn niemand, und die Erstausgabe am Gerät trägt jetzt einen toten Schlüssel.`
+      )
+    );
+  }
+  if (made.revokeFailed) {
+    lines.push(
+      t(
+        `The installer's key ${made.revokeFailed.prefix} could not be revoked: ${scrub(made.revokeFailed.message)}\n` +
+          `It is valid and unused. Look: ${call} --keys`,
+        `Der Schlüssel des Installers ${made.revokeFailed.prefix} ließ sich nicht widerrufen: ${scrub(made.revokeFailed.message)}\n` +
+          `Er ist gültig und ungenutzt. Nachsehen: ${call} --keys`
+      )
+    );
+  }
+  if (made.valid) {
+    const count = made.valid.length;
+    if (count === 1 && made.mineValid) {
+      lines.push(t("Counted on the device: exactly one valid kit key, this one.", "Am Gerät nachgezählt: genau ein gültiger Kit-Schlüssel, dieser."));
+    } else {
+      lines.push(
+        t(
+          `Counted on the device: ${count} valid kit keys. Which one is whose: ${call} --keys`,
+          `Am Gerät nachgezählt: ${count} gültige Kit-Schlüssel. Welcher wem gehört: ${call} --keys`
+        )
+      );
+    }
+  }
+  return lines;
 }
 
 let deployKey = null;
 if (arg["deploy-key"] || (arasul && arasul.ok)) {
   deployKey = makeDeployKey();
+  // Der Klartext des Installer-Schlüssels hat seine Arbeit getan und bleibt
+  // nicht länger im Speicher dieses Laufs liegen als nötig.
+  if (arasul) arasul.keys = [];
   console.log(
     deployKey.ok
-      ? t(
-          `\nKit key created as "${deployKey.label}" and stored under ${deployKey.ref}. ` +
-            "Its plain text is not displayed and stands in no file of the kit.",
-          `\nKit-Schlüssel angelegt als "${deployKey.label}" und hinterlegt unter ${deployKey.ref}. ` +
-            "Sein Klartext wird nicht angezeigt und steht in keiner Datei des Kits."
-        )
+      ? deployKeyLines(deployKey).join("\n")
       : t(`\nNo kit key: ${scrub(deployKey.message)}`, `\nKein Kit-Schlüssel: ${scrub(deployKey.message)}`)
   );
 }
@@ -1774,7 +1845,12 @@ const entry = [
   ...(deployKey
     ? [
         deployKey.ok
-          ? `Kit-Schlüssel angelegt (${deployKey.label}), Bereich app:deploy, hinterlegt unter ${deployKey.ref}. Klartext nur am Gerät, einmalig.`
+          ? (deployKey.adopted
+              ? `Kit-Schlüssel des Installers übernommen, ein eigener ließ sich nicht anlegen, hinterlegt unter ${deployKey.ref}.`
+              : `Kit-Schlüssel angelegt (${deployKey.label}), Bereich app:deploy, hinterlegt unter ${deployKey.ref}. Klartext nur am Gerät, einmalig.`) +
+            (deployKey.revoked ? ` Schlüssel des Installers ${deployKey.revoked} widerrufen.` : "") +
+            (deployKey.revokeFailed ? ` Schlüssel des Installers ${deployKey.revokeFailed.prefix} ließ sich nicht widerrufen, er gilt noch.` : "") +
+            (deployKey.valid ? ` Am Gerät gültig danach: ${deployKey.valid.length}.` : "")
           : `Kit-Schlüssel nicht angelegt: ${scrub(deployKey.message)}`,
       ]
     : []),
@@ -2008,6 +2084,21 @@ function nextSteps() {
         )
       );
       steps.push(...licenceStep());
+      // Nach einer Installation fehlt das Sprachmodell, und das ist normal. Bis
+      // zum 25.09.2026 stand dazu nur „Modell vorhanden" im Blatt, ohne Weg und
+      // ohne Zeit. Welches Modell es ist, sagt das Gerät, nicht dieser Satz.
+      if (arasul?.ok) {
+        steps.push(
+          t(
+            "Load the default model: in the interface as the administrator, on the models page, the default of the short list. " +
+              "No model lies on a freshly installed device. On the Orin the download took about 40 minutes, the line decides. " +
+              "Way and time in .ara/knowledge/device.md, \"The default model\".",
+            "Das Standardmodell laden: in der Oberfläche als Administrator, auf der Seite der Modelle, den Standard der Kurzliste. " +
+              "Auf einem frisch installierten Gerät liegt kein Modell. Am Orin dauerte das Herunterladen rund 40 Minuten, die Leitung entscheidet. " +
+              "Weg und Zeit in .ara/knowledge/device.de.md, „Das Standardmodell\"."
+          )
+        );
+      }
       steps.push(t(`Running operation: /maintain ${place}.`, `Laufender Betrieb: /maintain ${place}.`));
     }
   } else if (!hasSecret("ARASUL_TOKEN")) {
@@ -2189,7 +2280,15 @@ if (arg.json) {
               troubles: arasul.troubles || [],
             }
           : null,
-        deploy_key: deployKey ? { ok: deployKey.ok, ref: deployKey.ref || null } : null,
+        deploy_key: deployKey
+          ? {
+              ok: deployKey.ok,
+              ref: deployKey.ref || null,
+              adopted: Boolean(deployKey.adopted),
+              revoked: deployKey.revoked || null,
+              valid_on_device: deployKey.valid ? deployKey.valid.length : null,
+            }
+          : null,
         // Die Freischaltung nach der Installation. Nie Code oder Lizenz.
         licence_unlock: licenceState ? licenceJson(licenceState) : null,
         // Die Fassung des Geräts, gelesen und nicht behauptet. `null` heißt:
@@ -2229,6 +2328,14 @@ if (known) {
     t("## Device profile", "## Geräteprofil"),
     "",
     ...profileLines(),
+    ...(arasul
+      ? [
+          t(
+            `- Mirror: fetched in this run, version ${arasul.version || "unknown"}, from ${arasul.fetched || "unknown"}, source ${arasul.source || "unknown"}`,
+            `- Spiegel: in diesem Lauf geholt, Fassung ${arasul.version || "unbekannt"}, vom ${arasul.fetched || "unbekannt"}, Quelle ${arasul.source || "unbekannt"}`
+          ),
+        ]
+      : []),
     "",
     t("## What is on it", "## Was darauf ist"),
     "",
