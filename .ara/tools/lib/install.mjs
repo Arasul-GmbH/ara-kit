@@ -392,8 +392,8 @@ export function installCommand(entry, { password, netName } = {}) {
  * Ein Befehl am Gerät. `interactive` reicht Ein- und Ausgabe durch, damit der
  * Installer nach dem sudo-Passwort fragen kann und der Mensch mitliest.
  */
-export function runRemote(sshArgs, transport, command, { interactive = false } = {}) {
-  const options = interactive ? { stdio: "inherit" } : { encoding: "utf8" };
+export function runRemote(sshArgs, transport, command, { interactive = false, input } = {}) {
+  const options = interactive ? { stdio: "inherit" } : { encoding: "utf8", ...(input === undefined ? {} : { input }) };
   const run =
     transport === "ssh"
       ? spawnSync("ssh", [...(interactive ? ["-t"] : []), ...sshArgs, command], options)
@@ -649,4 +649,70 @@ export function createKey(sshArgs, transport, name) {
     ? labelled.match(/\baras_[A-Za-z0-9_-]{4,}/)[0]
     : tokens.sort((a, b) => b.length - a.length)[0];
   return { ok: true, key, script };
+}
+
+// --- Die Lizenz am Gerät ------------------------------------------------------
+
+const LICENCE_SCRIPT = "lizenz-geraet.sh";
+
+/** Die Fassung aus einem Pfad wie ~/arasul-0.8.0/..., als Zahlen zum Vergleichen. */
+function folderVersion(path) {
+  const match = String(path).match(/\/arasul-(\d+(?:\.\d+)*)\//);
+  return match ? match[1].split(".").map(Number) : null;
+}
+
+function newer(a, b) {
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) > (b[i] ?? 0);
+  }
+  return false;
+}
+
+/**
+ * Wo `lizenz-geraet.sh` am Gerät liegt.
+ *
+ * Das Skript gehört zur Plattform (seit arasul-jet v0.8.0) und spricht den
+ * Container über seinen Namen an, es läuft also aus jedem Fassungsordner gleich.
+ * Ein Gerät trägt aber oft mehrere, am 25.09.2026 lagen am Orin 0.3.0, 0.4.0
+ * und 0.8.0 nebeneinander. Genommen wird die höchste Fassung, die das Skript
+ * führt: eine ältere Kopie könnte einen Vertrag sprechen, den es nicht mehr gibt.
+ */
+export function findLicenceScript(sshArgs, transport) {
+  const find = runRemote(
+    sshArgs,
+    transport,
+    `for d in "$HOME/arasul" "$HOME"/arasul-* /opt/arasul /arasul; do ` +
+      `[ -d "$d" ] && find "$d" -maxdepth 4 -name ${LICENCE_SCRIPT} -type f 2>/dev/null | head -1; ` +
+      `done`
+  );
+  const found = (find.stdout || "").trim().split("\n").filter(Boolean);
+  let script = found[0] || "";
+  let best = null;
+  for (const path of found) {
+    const version = folderVersion(path);
+    if (version && (!best || newer(version, best))) {
+      best = version;
+      script = path;
+    }
+  }
+  if (script) return { ok: true, script };
+  return {
+    ok: false,
+    message: t(
+      `No ${LICENCE_SCRIPT} can be found on the device. It belongs to the platform: either no Arasul ` +
+        "runs there, or the version is older than the licence over SSH. Which one it carries: /maintain.",
+      `Am Gerät ist kein ${LICENCE_SCRIPT} zu finden. Es gehört zur Plattform: entweder läuft dort ` +
+        "kein Arasul, oder die Fassung ist älter als die Lizenz über SSH. Welche es trägt: /maintain."
+    ),
+  };
+}
+
+/**
+ * Ein Aufruf von `lizenz-geraet.sh` am Gerät, als Funktion für lib/licence.mjs.
+ * Die Lizenz geht über die Standardeingabe hinein, nie als Argument: so steht
+ * sie in keinem `ps` am Gerät und in keiner Befehlszeile hier.
+ */
+export function licenceRunner(sshArgs, transport, script) {
+  return (command, input) =>
+    runRemote(sshArgs, transport, `bash ${JSON.stringify(script)} ${command}`, input === undefined ? {} : { input });
 }
