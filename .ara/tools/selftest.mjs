@@ -88,6 +88,7 @@ import {
 } from "./lib/docroutes.mjs";
 import {
   createMasker,
+  findKeys,
   installCommand,
   installTarget,
   installerEntry,
@@ -95,8 +96,11 @@ import {
   releaseVersion,
   runInstaller,
   scrub,
+  settleDeployKey,
   ship,
+  stripAnsi,
   troubles,
+  validLine,
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, releaseLines } from "./lib/appways.mjs";
@@ -727,6 +731,17 @@ check("Die Spurensuche trennt eine laufende Plattform von liegengebliebenen Rest
 
   const dienst = services(parseProbe("@arasul_units=arasul.service"));
   assert(dienst.arasul.state === "traces", "ein Dienst ohne laufenden Container gilt nicht als Rest");
+
+  // K21, am Orin am 25.09.2026: der Actions-Runner von GitHub heißt nach dem
+  // Repo, für das er baut, und die Installation brauchte seinetwegen
+  // --despite-traces. Er ist kein Rest der Plattform.
+  const runner = services(parseProbe("@arasul_units=actions.runner.koljaschoepe-arasul-jet.jetson-agx.service"));
+  assert(runner.arasul.state === "none", `der Actions-Runner gilt als Rest: ${runner.arasul.text}`);
+  const beide = services(
+    parseProbe("@arasul_units=actions.runner.koljaschoepe-arasul-jet.jetson-agx.service arasul-platform.service")
+  );
+  assert(beide.arasul.state === "traces", "neben dem Runner wird der echte Dienst übersehen");
+  assert(!/actions\.runner/.test(beide.arasul.text), `der Runner steht in den Resten: ${beide.arasul.text}`);
 
   const nichts = services(parseProbe("@docker_bin=/usr/bin/docker\n@docker_names=n8n traefik"));
   assert(nichts.arasul.state === "none", "ein fremder Container gilt als Arasul");
@@ -4390,6 +4405,145 @@ await checkAsync("Aus der Erstausgabe des Installers kommt kein Klartext", async
   assert(/Arasul eingerichtet/.test(bildschirm), `die Ausgabe des Installers fehlt: ${bildschirm}`);
   assert(/werk2\.local/.test(bildschirm), "die Adresse der Oberfläche kam nicht durch");
   return "Schlüssel und Passwort maskiert, der Rest kam durch";
+});
+
+await checkAsync("Ein fett oder farbig gedruckter Schlüssel wird trotzdem maskiert", async () => {
+  // K21, am Orin am 25.09.2026: die Erstausgabe druckt den Kit-Schlüssel mit
+  // ESC[1m davor. Das `m` ist ein Wortzeichen, die Wortgrenze vor aras_ fiel
+  // weg, und der Schlüssel stand im Klartext zwei Zeilen unter dem Satz, dass
+  // sein Klartext nicht angezeigt wird.
+  const schluessel = "aras_Q7fettK2xY9pLm4Nw";
+  const passwort = "Ara-start-8812";
+  const fett = "\x1b[1m";
+  const aus = "\x1b[0m";
+
+  assert(!scrub(`  ${fett}${schluessel}${aus}`).includes(schluessel), "scrub lässt den fetten Schlüssel stehen");
+  assert(!scrub(`\x1b[1;32m${schluessel}\x1b[0m`).includes(schluessel), "scrub lässt den farbigen Schlüssel stehen");
+  assert(stripAnsi(`${fett}x${aus}`) === "x", "die Steuerzeichen bleiben stehen");
+  assert(findKeys(`${fett}${schluessel}${aus}`)[0] === schluessel, "der fette Schlüssel wird nicht gefunden");
+
+  // Über Stücke verteilt, das Steuerzeichen mitten durchgeschnitten.
+  const masker = createMasker([passwort]);
+  let gesehen = "";
+  for (const stueck of ["  Schluessel fuer das Ara-Kit\n  \x1b", "[1m", "ar", "as_Q7fett", `K2xY9pLm4Nw${aus}\n`]) {
+    gesehen += masker.push(stueck);
+  }
+  gesehen += masker.flush();
+  assert(!gesehen.includes(schluessel), `der Schlüssel kam über zerschnittene Steuerzeichen durch: ${JSON.stringify(gesehen)}`);
+  assert(masker.keys().includes(schluessel), "der Masker hat sich den Schlüssel nicht gemerkt");
+
+  // Und der ganze Weg mit einer Installer-Zeile, wie die Erstausgabe sie schreibt.
+  const skript = [
+    `printf '  ${fett}Startpasswort %s${aus}\\n' '${passwort}'`,
+    `printf '  Schluessel fuer das Ara-Kit (Bereich app:deploy)\\n'`,
+    `printf '  ${fett}%s${aus}\\n' '${schluessel}'`,
+    `printf '  Oberflaeche   https://werk2/\\n'`,
+  ].join("; ");
+  const original = process.stdout.write.bind(process.stdout);
+  let bildschirm = "";
+  process.stdout.write = (chunk) => {
+    bildschirm += String(chunk);
+    return true;
+  };
+  let lauf;
+  try {
+    lauf = await runInstaller(null, "local", skript, { secrets: [passwort] });
+  } finally {
+    process.stdout.write = original;
+  }
+  assert(lauf.status === 0, `der gespielte Installer ist mit ${lauf.status} beendet`);
+  assert(!bildschirm.includes(schluessel), `der fette Kit-Schlüssel stand auf dem Bildschirm: ${JSON.stringify(bildschirm)}`);
+  assert(!bildschirm.includes(passwort), "das fette Startpasswort stand auf dem Bildschirm");
+  assert(!lauf.output.includes(schluessel), "der Kit-Schlüssel steht in dem, was das Kit behält");
+  assert(/aras_…/.test(bildschirm), "an der Stelle des Schlüssels steht nicht, dass einer da war");
+  assert(/werk2/.test(bildschirm), "der Rest der Erstausgabe kam nicht durch");
+  assert(lauf.keys.includes(schluessel), "der Schlüssel des Installers wird nicht weitergereicht");
+  return "fett, farbig, zerschnitten";
+});
+
+await checkAsync("Nach einer Installation gilt genau ein Kit-Schlüssel", async () => {
+  // K21: der Installer legt "Ara-Kit (Erstinstallation)" an, das Kit legte
+  // seinen eigenen daneben, und der erste blieb gültig und ungenutzt liegen.
+  const work = mkdtempSync(join(tmpdir(), "ara-ein-schluessel-"));
+  const home = join(work, "home");
+  const skriptOrdner = join(home, "arasul-9.9.9", "scripts", "util");
+  const liste = join(work, "liste.txt");
+  const installer = "aras_inst1234secretsecret";
+  const eigen = "aras_kit5678secretsecret";
+  mkdirSync(skriptOrdner, { recursive: true });
+  // Die Attrappe: liste gibt die Datei aus, widerrufen schreibt die Zeile um.
+  writeFileSync(
+    join(skriptOrdner, "kit-schluessel.sh"),
+    `#!/bin/sh\ncase "$1" in\n  liste) cat ${JSON.stringify(liste)} ;;\n` +
+      `  widerrufen) sed -i.alt "s/^gueltig \\(.*$2 \\)/widerrufen\\1/" ${JSON.stringify(liste)} && echo "widerrufen $2" ;;\n` +
+      `  *) exit 2 ;;\nesac\n`,
+    { mode: 0o755 }
+  );
+  const anfang =
+    "gueltig      41  aras_inst123  Ara-Kit (Erstinstallation)    angelegt 2026-09-25 20:01  nie benutzt\n";
+  writeFileSync(liste, anfang);
+  const anlegen = () => {
+    writeFileSync(liste, `gueltig      42  aras_kit567  Ara-Kit Probe                 angelegt 2026-09-25 20:05  nie benutzt\n${readFileSync(liste, "utf8")}`);
+    return { ok: true, key: eigen, script: "attrappe" };
+  };
+  const gemerkt = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    assert(validLine("gueltig  41 aras_x") && !validLine("widerrufen 41 aras_x"), "gültig und widerrufen werden verwechselt");
+
+    let ergebnis = settleDeployKey(null, "local", { name: "Ara-Kit Probe", found: [installer], create: anlegen });
+    assert(ergebnis.ok && ergebnis.key === eigen, "der eigene Schlüssel ist nicht der, der hinterlegt wird");
+    assert(ergebnis.revoked === "aras_inst123", `der Schlüssel des Installers wurde nicht widerrufen: ${ergebnis.revoked}`);
+    assert(/^widerrufen\s+41/m.test(readFileSync(liste, "utf8")), "am Gerät gilt der des Installers noch");
+    assert(ergebnis.valid.length === 1 && ergebnis.mineValid, `am Gerät gelten ${ergebnis.valid?.length} Kit-Schlüssel`);
+
+    // Kann das Kit keinen eigenen anlegen, übernimmt es den des Installers.
+    writeFileSync(liste, anfang);
+    ergebnis = settleDeployKey(null, "local", {
+      name: "Ara-Kit Probe",
+      found: [installer],
+      create: () => ({ ok: false, message: "kein Administrator" }),
+    });
+    assert(ergebnis.ok && ergebnis.adopted && ergebnis.key === installer, "der Schlüssel des Installers wurde nicht übernommen");
+    assert(!ergebnis.revoked && /^gueltig/m.test(readFileSync(liste, "utf8")), "der übernommene Schlüssel wurde widerrufen");
+    assert(ergebnis.valid.length === 1, "nach dem Übernehmen gilt nicht genau einer");
+
+    // Ohne Schlüssel aus der Installation bleibt es beim Anlegen, und nichts wird widerrufen.
+    writeFileSync(liste, anfang);
+    ergebnis = settleDeployKey(null, "local", { name: "Ara-Kit Probe", found: [], create: anlegen });
+    assert(ergebnis.ok && !ergebnis.revoked, "ohne Schlüssel des Installers wurde trotzdem widerrufen");
+    assert(ergebnis.valid.length === 2, "ein fremder Schlüssel wurde angefasst");
+    return "widerrufen, übernommen, unberührt";
+  } finally {
+    if (gemerkt === undefined) delete process.env.HOME;
+    else process.env.HOME = gemerkt;
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+check("Kein Preis für Arasul steht im Kit", () => {
+  // K21, B2: bis PR 46 nannten lib/licence.mjs, device.mjs und das Blatt einen
+  // Preis, und der war am 25.09.2026 schon falsch. Der Preis steht auf der
+  // Seite, das Kit zeigt dorthin.
+  const dateien = [
+    ".ara/tools/lib/licence.mjs",
+    ".ara/tools/device.mjs",
+    ".ara/tools/mirror.mjs",
+    ".ara/tools/secrets.mjs",
+    ".ara/knowledge/device.md",
+    ".ara/knowledge/device.de.md",
+    ".ara/knowledge/sales.md",
+    ".ara/knowledge/sales.de.md",
+  ];
+  const betrag = /\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?\s*(?:Euro|EUR|€)|(?:Euro|EUR|€)\s*\d/;
+  for (const datei of dateien) {
+    const text = readFileSync(join(ROOT, datei), "utf8");
+    const treffer = text.match(betrag);
+    assert(!treffer, `${datei} nennt einen Betrag: ${treffer?.[0]}`);
+  }
+  const blatt = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
+  assert(/arasul\.de\/kaufen/.test(blatt), "das Blatt zeigt nicht auf die Seite mit dem Preis");
+  return `${dateien.length} Dateien`;
 });
 
 await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", async () => {
