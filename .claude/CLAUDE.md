@@ -13,22 +13,17 @@ Your persona is in `.ara/persona/ara.md`. Read it once at the start of every ses
 applies stands in `business/profile.md` as `language: de|en`. Without a profile, in a fresh
 clone before `/init`, English applies. `/init` asks in the first round with questions.
 
-- **Every document exists as a pair.** `x.md` is English, `x.de.md` is German. That holds
-  for the README, `.ara/persona/`, `.ara/knowledge/`, `.ara/commands/` and the scaffolds
-  directly under `.ara/templates/`. Read the one that matches the profile. The self-test
-  counts the pairs. One pair lies apart: the root holds a single `README.md`, the one
-  GitHub shows, and its German half is `.ara/README.de.md`.
-- **Tool output follows the profile.** Every tool reads `language` and prints in it. In the
-  code the two languages stand next to each other as `t(en, de)`, at the place where the
-  line comes into being.
-- **German is written with real umlauts in content, ASCII only in file and folder names.**
-  ä, ö, ü and ß belong in every German text: documents, templates, the paperwork, the
-  German branches of `t()`. The substitute spellings ae, oe, ue and ss stand only in file
-  and folder names and in identifiers in code. The self-test checks German content for the
-  substitute patterns and goes red on a find.
+- **Every document exists as a pair.** `x.md` is English, `x.de.md` is German: the README,
+  `.ara/persona/`, `.ara/knowledge/`, `.ara/commands/`, the scaffolds directly under
+  `.ara/templates/` and the pattern sheets. Read the one that matches the profile; the
+  self-test counts the pairs. The root's `README.md` has its German half in
+  `.ara/README.de.md`.
+- **Tool output follows the profile.** In the code both languages stand next to each other as
+  `t(en, de)`, where the line comes into being.
+- **German is written with real umlauts in content, ASCII only in file and folder names** and
+  identifiers in code. The self-test goes red on ae, oe, ue or ss standing in German content.
 - **This file and `.claude/commands/init.md` are English only.** They are instructions to
-  you, loaded by the harness under exactly this name, and they exist before any profile
-  does. Whatever you say to the human you say in the language of the profile.
+  you and exist before any profile does. To the human you speak the profile's language.
 - **The paperwork stays German.** `.ara/vorlagen/` and `.ara/nachweise/` are legally binding
   text for the DACH market, mirrored from Arasul's control folder. The procedures around
   them exist in both languages.
@@ -49,10 +44,10 @@ sentences. That holds for everything you write, customer documents and offers in
 | `apps/` | Own apps, independent of customers. Belongs to the user entirely: the clone brings no app. |
 | `.ara/commands/` | Source of the commands: `all/` for every branch, `partner/` for partners only. `/init` puts them into `.claude/commands/`. |
 | `.ara/knowledge/` | **Procedures**: how to go about things. No product values. |
-| `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`. Hardware, not product values. `/device` reads them. The Orin before it has a Linux is a guide of its own, `.ara/knowledge/flash-orin.md`: a check step per section, documented, not automated |
+| `.ara/knowledge/devices/` | **Device profiles**: one sheet per device the kit recognises, with `As of` and `Source`, hardware and no product values. The Orin before it has a Linux: `.ara/knowledge/flash-orin.md` |
 | `.ara/vorlagen/` | **The paperwork**: offer, annexes, handover record. The only place for it, see `.ara/vorlagen/README.md`. German. |
 | `.ara/nachweise/` | Evidence on AI classification and data processing. Annexes 4 and 5 to the offer. Mirrored from Arasul's control folder, do not edit here. German. |
-| `.ara/templates/` | Scaffolds for the work that you fill with real data, plus `app/`: the scaffold of an app that `/app --new` draws from. Its `frontend/src/marken/` is the mirror of the product's design system, watched by `marken.mjs`. `root/` is the scaffold of a company root, `root-method/` its addition and `root-example/` the invented company laid over both, all drawn by `root.mjs` into a folder outside of the kit. |
+| `.ara/templates/` | Scaffolds you fill with real data. `app/` is the scaffold `/app --new` draws from, `app-patterns/` the patterns with their sheets, `root/`, `root-method/` and `root-example/` what `root.mjs` lays out. |
 | `.ara/README.de.md`, `.ara/.markdownlint-cli2.jsonc` | German half of the README, rules for the document check. Both here so the root stays small. |
 | `.ara/tools/` | Scripts (Node). You call them instead of rebuilding what they do. |
 | `.ara/mirror/` | The fetched installation artifact, comes into being at `/device --install arasul`. Do not edit. |
@@ -61,8 +56,7 @@ sentences. That holds for everything you write, customer documents and offers in
 
 `business/`, `customers/`, `devices/`, `apps/`, `.env`, `.ara/mirror/`, `.ara/state.json`
 and the generated commands under `.claude/commands/` are excluded from version control, an
-update of the kit never touches them. The clone brings no app: what an app looks like
-stands in the scaffold under `.ara/templates/app/`, and `/app --new` makes one out of it.
+update of the kit never touches them.
 
 ## The most important rule: claim nothing about the product
 
@@ -83,9 +77,8 @@ These values change in the product all the time. They stand in exactly three pla
 4. **Nowhere else.**
 
 **The device profiles under `.ara/knowledge/devices/` are not a fourth place.** They say
-which hardware the kit recognises and by what, with the date they are from and where their
-knowledge came from. Model, engine, memory budget and verification level are not in them
-and never will be: whoever needs those reads the mirror.
+which hardware the kit recognises; model, engine, memory budget and verification level stand
+in the mirror and never in them.
 
 If you need a value and none of these sources is available: say so. Do not guess, and write
 nothing unchecked into a customer file. Procedures are in the kit, values are not.
@@ -101,27 +94,23 @@ Procedure: `.ara/knowledge/paperwork.md`
 
 | Command | Purpose | Procedure |
 |---|---|---|
-| `/init [answer file]` | First time: onboarding with the language question and the fork between partner and company. After that: bring the kit up to date, offer commands. With an answer file, without an interview | `.ara/knowledge/init.md` |
+| `/init [answer file]` | First time: onboarding, language, partner or company. After that: bring the kit up to date. With an answer file without an interview | `.ara/knowledge/init.md` |
 | `/customer <name>` | Partner only. Create or open a customer | `.ara/knowledge/customer-file.md` |
 | `/calculation` | Partner only. Store prices, keep the calculation sheet | `.ara/knowledge/pricing.md` |
 | `/offer <customer>` | Partner only. Offer with all annexes, calculated from the calculation sheet | `.ara/knowledge/paperwork.md` |
 | `/invoice <customer>` | Partner only, and only with `invoice: yes` in the profile. Invoice as a ZUGFeRD PDF, number from the number range, mandatory details under section 14 UStG | `.ara/knowledge/invoicing.md` |
 | `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict, next steps. Install Arasul, unlock it with the licence code, fetch the kit key. `<customer>/<device>` for a customer device | `.ara/knowledge/device.md` |
 | `/app [<app>]` | Plan an app, build it, roll it into staging, switch it live. Reads the file and offers only the sensible next steps | `.ara/knowledge/app.md` |
-| `/maintain [<device>]` | Look after a running device. Starts with a status line, then you say in free text what is due. When something of Arasul does not run, the self-healing goes first. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/self-healing.md` |
-| `/root [<path>]` | Lay out the root folder of a whole house, outside of the kit, as a scaffold: rules, skills, agents, list of places, check script, the folders of level 1 that the house names. Nothing in the tree runs by itself. The method (company, roadmap with a card stack, experiments) is an addition. Boundary hook and rights are a proposal that a separate step enrols into the user's settings after consent. Add a place or the method, enrol, check, show the showcase, put the root onto the device with `--deploy`, where it lives afterwards | `.ara/knowledge/root.md` |
+| `/maintain [<device>]` | Look after a running device: status line, then what is due in free text, self-healing first when something of Arasul does not run. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/self-healing.md` |
+| `/root [<path>]` | Lay out the root folder of a whole house outside of the kit, with rules, skills, places and a check script, enrol its proposal after consent, check it, put it onto the device | `.ara/knowledge/root.md` |
 
 `/kalkulation` was renamed to `/calculation` in phase E10, `/angebot` to `/offer` in phase
 E6. If somebody types the old name, say what it is called today.
 
 **There is no command for buying Arasul**, no command called kaufen or licence. The way hangs on
-`/device`: a supported device without a token gets the question through the interview tool,
-with the link to account and token, and the pasted token goes in over the pipe,
-`node .ara/tools/device.mjs --licence --store`. Somebody who asks about buying, a licence or a
-token without a device gets the same way, `node .ara/tools/device.mjs --licence`. A bought token is at the same
-time the licence code: after `--install arasul` the tool unlocks the device with it, and
-`--license --name <device>` does the same for a device that already runs. A free token ends on
-community without an error. Procedure and the facts you may state: `.ara/knowledge/device.md`,
+`/device`, which asks a supported device without a token for one; asked without a device, the
+same way starts with `node .ara/tools/device.mjs --licence`. A bought token is also the licence
+code that unlocks the device. Procedure and the facts you may state: `.ara/knowledge/device.md`,
 "The token" and "The licence". No price stands in the kit, it stands on the page.
 
 **Every command says at the start which knowledge files it loads.** Read exactly those, not
@@ -139,40 +128,39 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 
 | Tool | For what |
 |---|---|
-| `mirror.mjs` | Fetch and look at the installation artifact (`--show`, `--refresh`). `/device` calls it itself |
-| `check-environment.mjs` | What this computer can do (`--json` for the evaluation) |
-| `device.mjs` | Create a device file, check SSH, recognise hardware and system, deliver a verdict, install Arasul, fetch the kit key, list the kit keys on the device and revoke its own, unlock the device with the licence code, get a session as administrator with the start password without showing it (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--keys`, `--revoke-key`, `--license`, `--admin-login`, `--json`) |
-| `app.mjs` | Two sides. Without `--device`: create an app from the scaffold, move plans, build, read the situation. With `--device`: read the contract, check `app.json` against it, package into staging, switch live, back, remove, and with `--compose` onto a device without Arasul. `--check` also holds the field `agent` of `app.json` against the backend |
-| `customer.mjs` | Create a customer file (`--new`) and read the picture: status, devices with their state, paperwork, history, what is due |
-| `maintain.mjs` | Read the state of a device: status line and maintenance report, over SSH and over the interface. Reads only, and says what could not be measured (`--line`, `--report`, `--json`) |
-| `heal.mjs` | Self-healing on a running device: start what does not run, only inside the Arasul directory tree, never the bootloader, every step recorded in the device file and taken back one by one (`--plan`, `--list`, `--undo <id>`). Asks only when it gives up |
-| `runsheet.mjs` | Read and write on the state of a setup |
-| `remote.mjs` | Run a command on a customer device (`--check`, `--log`) |
+| `mirror.mjs` | The installation artifact and its manuals, also on a device (`--show`, `--docs`, `--refresh`) |
+| `check-environment.mjs` | What this computer can do |
+| `device.mjs` | Device file, SSH, hardware, verdict, installation, kit key, licence, admin session: `.ara/knowledge/device.md` |
+| `app.mjs` | An app: scaffold, plans, build, and with `--device` contract, check, staging, live, back, remove, Compose: `.ara/knowledge/app.md` |
+| `customer.mjs` | Create a customer file and read its picture |
+| `maintain.mjs` | Read the state of a device, status line and report, reading only |
+| `heal.mjs` | Self-healing inside the Arasul tree, every step recorded and undoable: `.ara/knowledge/self-healing.md` |
+| `runsheet.mjs` | Read and write the state of a setup |
+| `remote.mjs` | Run a command on a customer device |
 | `find-device.mjs` | Is a device reachable, which services answer |
 | `disk.mjs` | Recognise, check and write boot media |
 | `agenda.mjs` | What is due: follow-ups, ends of maintenance, open setups |
-| `calculation.mjs` | Calculation sheet: which number is there, which is missing, what is therefore not possible |
-| `invoice.mjs` | Invoice: assign a number from the number range, create a document from the offer, check the mandatory details under section 14 UStG, print as a ZUGFeRD PDF (`--new`, `--check`, `--pdf`, `--validate`, `--void`) |
-| `evidence.mjs` | Picture evidence per line of the service description (`--plan`, `--record`, `--render`). Runs, but is wired into no procedure, see `.ara/knowledge/leistungsbeschreibung.md` |
-| `service-description.mjs` | Service description with values from the device: software version, contract version, models, apps, every value with its source. What stayed unmeasured stays a placeholder |
-| `marken.mjs` | The guard over the design system: it holds the mirror of `packages/marken` in the app scaffold and in every app against its source, by version and by hash (`--check`, `--sync`, `--source`) |
-| `pdf.mjs` | Markdown becomes a PDF in the house style (`--check`, `--force`) |
-| `secrets.mjs` | Store secrets and look up what is set |
-| `update.mjs` | Bring the kit up to date (`--check` only looks), does not touch user folders |
-| `root.mjs` | Lay out the root of a whole house in a folder outside of the kit, from the scaffold under `.ara/templates/root/`: rules, skills, agents, list of places, the folders of level 1, the root's own check script, and with `--method` the addition under `.ara/templates/root-method/`. Enrols the proposal for boundary and rights into the user's settings after consent and takes it back (`--path`, `--name`, `--folders`, `--method`, `--places`, `--place`, `--example`, `--enroll`, `--consent`, `--unenroll`, `--settings`, `--show`, `--check`, `--deploy`). Writes nothing into a place and nothing into the kit. Puts `arasul.mjs` into the root, the bridge to a device: `login` (the device issues a credential, the session of the login is dropped), `sync` (the room of the root at the top of the tree, the shared folders of the company folder at their real place below it, through the vendor's command line client, and `sicht.md`, the view of this person), `status`, `apps`, `call`, `deploy` (the root into its room on the device, the check script first, what `--deploy` hands over to), runs with Node alone, see `.ara/knowledge/root.md` |
-| `commands.mjs` | Put commands from `.ara/commands/` into `.claude/commands/`, per branch and language (`--apply`, `--role`, `--language`). Remembers the hash of the source and thereby recognises whether a command is newer in the kit or was adapted by hand (`--replace`) |
-| `init.mjs` | `/init` without an interview from an answer file (`--answers`), and the gaps in the profile (`--show`) |
-| `selftest.mjs` | Checks whether the kit works on this computer |
-| `check-docs.mjs` | Documentation self-test: check every route that stands in the knowledge against a device (`--device`). Changes nothing |
+| `calculation.mjs` | Calculation sheet: which number is there, which is missing |
+| `invoice.mjs` | Invoice with number range, section 14 UStG check and ZUGFeRD PDF: `.ara/knowledge/invoicing.md` |
+| `evidence.mjs` | Picture evidence per line of the service description, wired into no procedure yet |
+| `service-description.mjs` | Service description with values measured on the device |
+| `marken.mjs` | Guard of the design system's copies: `.ara/knowledge/design-guard.md` |
+| `pdf.mjs` | Markdown becomes a PDF in the house style |
+| `secrets.mjs` | Store secrets and look up what is set, never showing a value |
+| `update.mjs` | Bring the kit up to date without touching user folders (`--check` only looks) |
+| `root.mjs` | Lay out, enrol, check and deploy the root of a whole house, with its bridge `arasul.mjs`: `.ara/knowledge/root.md` |
+| `commands.mjs` | Put the commands into `.claude/commands/` per branch and language |
+| `init.mjs` | `/init` from an answer file, and the gaps in the profile |
+| `selftest.mjs` | Does the kit work on this computer |
+| `check-docs.mjs` | Hold every route of the knowledge against a device, changing nothing |
 
 Two more tools are not kit scripts:
 
-- **A browser** you operate yourself. For the interface of a customer device, for screenshots
-  for the handover, for customer websites and the partner portal. You may use it without
-  asking. What it **changes** on a customer device is a change nevertheless and needs a
-  confirmation.
-- **`gh`** for everything around repositories: backing up the partner's work, versioning
-  extensions, giving feedback to the kit.
+- **A browser** you operate yourself, for a device's interface, screenshots for the handover,
+  customer websites and the partner portal, without asking. What it **changes** on a customer
+  device needs a confirmation.
+- **`gh`** for repositories: backing up the partner's work, versioning extensions, feedback to
+  the kit.
 
 Details and the order of which tool is the right one when:
 `.ara/knowledge/browser.md`
@@ -193,11 +181,10 @@ itself the first time, because it creates the file in the first place.
 - **Establish first, change second.** No repair without a prior diagnosis, no "just try it".
 - **Prove instead of claiming.** When you have set something up, check that it really works,
   and write down the evidence.
-- **Every question runs through the interview tool.** Also a simple yes or no, also
-  confirmations before a change. Never a question in running text. Several questions at once
-  instead of asking again and again. **Every question comes with an open option** through
-  which the human can answer freely. What they write there holds, even when it overturns your
-  choice. Only when they start themselves do you answer normally.
+- **Every question runs through the interview tool**, a yes or no and a confirmation before a
+  change too, never in running text, several at once instead of again and again. **Every
+  question comes with an open option**, and what the human writes there holds, even against
+  your choice. Only when they start themselves do you answer normally.
 - **Questions serve understanding, not cover.** Clarify beforehand what you have to know, and
   then work through without asking again at every step. Make no silent assumptions: what you
   do not know, you ask. Where you take a shortcut, you say so and write it down.

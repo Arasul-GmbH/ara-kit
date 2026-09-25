@@ -44,16 +44,35 @@ nothing on a point, the report says "dieses Gerät nennt dafür keinen Endpunkt,
 Gerät", and **that is the answer, not a gap you fill.** The last backup is exactly such a point
 today.
 
-**It is measurable nevertheless, just not by the kit.** The device answers the two questions
-about it over a route of its interface, and that demands a session as administrator, no key opens
-it. How you get there anyway and what stands in the answer is in
-`.ara/knowledge/platform-services.md` under "Die Sicherung". If a route with a key ever gets
-added, the tool finds it by itself at the next run.
-
 The same holds for the apps. As long as the device names no endpoint that lists them, the kit
 asks for the ids it knows itself (the folders under `apps/`, or what you pass with `--apps`).
 **The device can carry others nevertheless**, and the report says so. A list it would call
 complete would be guessed.
+
+### The last backup
+
+**It is measurable nevertheless, just not by the kit.** The question a customer asks after half a
+year has two parts: **does the device really back up**, and **when did a copy last lie outside the
+device**. Both are answered by a route of the interface:
+
+```
+GET /api/backup/status
+```
+
+It demands a session as administrator. No kit key opens it, so it does not stand in the contract,
+and the report says "das Gerät nennt dafür keinen Endpunkt". That does not mean no backup happens,
+it means the kit cannot measure it this way. If a route with a key ever gets added, the tool finds
+it by itself at the next run. Two ways, and you say which one you took:
+
+1. **In the browser on the device**, the human is logged in. You see the answer, so do they.
+2. **Over SSH**, with whatever is there on the device for it.
+
+A target outside is a disk or a share in the customer network, not a target in a cloud. If it is
+missing, the answer gives the reason, and that belongs in the conversation: a backup lying next to
+the device is gone too after water damage.
+
+**Into a service description or a handover record goes only what you have seen**, with a date and
+with the way you saw it.
 
 ## The four requests
 

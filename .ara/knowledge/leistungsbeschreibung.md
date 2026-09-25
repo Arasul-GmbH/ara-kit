@@ -3,7 +3,7 @@
 > **When do you need this?** Before every offer, and once more before every handover.
 
 > **As of 27.08.2026: incomplete.** The binding order and the five annexes stand in
-> `.ara/knowledge/paperwork.md`, section "Die Leistungsbeschreibung füllen". This file only goes
+> `.ara/knowledge/paperwork.md`, section "Filling in the Leistungsbeschreibung". This file only goes
 > deeper into the trial level per line. If the two contradict each other, `paperwork.md` applies.
 > What is missing is the picture evidence per line: `node .ara/tools/evidence.mjs` runs, but the
 > steps in the browser are written into no procedure, and that is why `abgenommen` comes about by
@@ -115,7 +115,7 @@ of the contract is not fulfilled.
 ### 6. File it
 
 `customers/<customer>/documents/leistungsbeschreibung-<YYYY-MM-DD>.md`, with the date in the name, as
-in `.ara/knowledge/paperwork.md` under "Wohin es abgelegt wird". The tool already puts it there in
+in `.ara/knowledge/paperwork.md` under "Where it gets filed". The tool already puts it there in
 step 2; for a device without a customer it lies in that device's file. Old versions stay, and a second
 version from the same day replaces the first only with `--force`. In a dispute the version that
 applied at the conclusion of the contract is decisive, and you have to be able to find it again.

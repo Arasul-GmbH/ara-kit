@@ -95,12 +95,9 @@ There is no fourth source. In particular:
 - **Not the internet.** Public guides describe other systems. That holds for product values:
   models, ports, paths, commands, versions of Arasul.
 
-**Professional standards are no product values.** The DATEV booking batch, a chart of accounts
-like SKR03, the GoBD, XRechnung: they stand neither in the contract nor on the device, and they
-come from their primary source, the publisher's documentation, the ministry's letter, the
-standard, cited with address and date of retrieval. A secondary source serves for reading against
-and is named as such. How that goes in an app stands in `.ara/knowledge/app.md` under
-"Professional standards".
+**Professional standards are no product values**, the DATEV booking batch or a chart of accounts
+like SKR03: they come from their primary source, with address and date of retrieval, see
+`.ara/knowledge/app-professional.md`, "Professional standards".
 
 ## When no source is available
 

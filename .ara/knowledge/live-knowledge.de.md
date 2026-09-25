@@ -98,12 +98,9 @@ Es gibt keine vierte Quelle. Insbesondere:
 - **Nicht das Internet.** Öffentliche Anleitungen beschreiben andere Systeme. Das gilt für
   Produktwerte: Modelle, Ports, Pfade, Befehle, Fassungen von Arasul.
 
-**Fachstandards sind keine Produktwerte.** Der DATEV-Buchungsstapel, ein Kontenrahmen wie
-SKR03, die GoBD, XRechnung: sie stehen weder im Kontrakt noch am Gerät, und sie kommen aus
-ihrer Primärquelle, der Dokumentation des Herausgebers, dem Schreiben des Ministeriums, der
-Norm, zitiert mit Adresse und Abrufdatum. Eine Sekundärquelle dient zum Gegenlesen und wird
-als solche genannt. Wie das in einer App geht, steht in `.ara/knowledge/app.de.md` unter
-„Fachstandards“.
+**Fachstandards sind keine Produktwerte**, der DATEV-Buchungsstapel oder ein Kontenrahmen wie
+SKR03: sie kommen aus ihrer Primärquelle, mit Adresse und Abrufdatum, siehe
+`.ara/knowledge/app-professional.de.md`, „Fachstandards“.
 
 ## Wenn keine Quelle verfügbar ist
 

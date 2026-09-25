@@ -1,101 +1,69 @@
 # Verfahren: die Dienste der Plattform, und wie eine App sie benutzt
 
 > **Wann brauchst du das?** Wenn eine App etwas von Arasul will: eine Anmeldung, eine
-> Entscheidung durch einen Menschen, ein Sprachmodell, ein Dokument, einen Flow. Und
-> wenn jemand fragt, was von alldem ohne Arasul übrig bleibt.
+> Entscheidung durch einen Menschen, ein Sprachmodell, ein Dokument, einen Flow. Was ohne Arasul
+> bleibt: `.ara/knowledge/deploy.de.md`, „Auf ein Gerät ohne Arasul".
 
 ## Die Regel zuerst
 
-Dieses Blatt sagt, **wozu** ein Dienst da ist und wie man ihn benutzt. Was er auf einem
-bestimmten Gerät heißt, unter welchem Weg er antwortet und welche Grenzen dort gelten,
-sagt das Gerät:
+Dieses Blatt sagt, **wofür** ein Dienst da ist; Namen, Wege und Grenzen an einem Gerät sagt sein
+Kontrakt (`--contract`). Die Wege hier sind Zeiger, genannt, damit
+`node .ara/tools/check-docs.mjs --device <gerät>` sie gegen Kontrakt und Gerät halten kann, bevor
+ein Partner einen verspricht. Einen Weg, den der Kontrakt nicht nennt, ruft das Kit nicht, meist ist
+das Gerät älter als das Kit (`.ara/knowledge/deploy.de.md`, Kontraktfassung). Ein Weg dieses
+Blattes, der an einem aktuellen Gerät fehlt, ist eine Rückmeldung an das Kit.
 
-```
-node .ara/tools/app.mjs --device <gerät> --contract
-```
-
-Jeder Weg, der hier steht, steht als Verweis darauf, was im Kontrakt nachzuschlagen ist,
-und nicht als Zusage. Genannt wird er trotzdem, denn sonst könnte niemand prüfen, ob
-dieses Blatt noch stimmt. Genau dafür gibt es das Werkzeug:
-
-```
-node .ara/tools/check-docs.mjs --device <gerät>
-```
-
-Es liest jede Route, die im Wissen des Kits steht, hält sie gegen die Endpunktliste des
-Kontrakts und ruft am Gerät an. Was dort nicht mehr existiert, fällt auf, bevor ein
-Partner danach arbeitet oder es einem Kunden zusagt.
-
-**Zwei Arten von Weg, und der Unterschied entscheidet, wer ihn gehen kann:**
-
-| Art | Wer sich ausweist | Steht im Kontrakt |
+| Art des Weges | Wer sich ausweist | Im Kontrakt |
 |---|---|---|
 | Die äußere Schnittstelle | ein Schlüssel in der Kopfzeile, keine Sitzung | ja, mit dem Bereich, den jeder verlangt |
 | Ein Weg der Oberfläche | die Sitzung eines angemeldeten Menschen | nein |
 
-Das Kit hat einen Schlüssel und keine Sitzung. Alles, was eine Sitzung braucht, macht
-also ein Mensch, im Browser am Gerät, und du siehst zu und schreibst mit. Ein Kit, das
-so einen Weg selbst ginge, bräuchte das Passwort eines Administrators.
+Das Kit hat einen Schlüssel und keine Sitzung: was eine braucht, macht ein Mensch im Browser, oder
+das Kit über eine Sitzung aus dem Startpasswort. Die Verwaltung steht in Admin-Handbuch und
+API-Referenz am Gerät, `node .ara/tools/mirror.mjs --docs --device <gerät>`, eines davon mit
+`--read <pfad>`. Der erste Mitarbeiter und die erste Freigabe: `.ara/knowledge/device.de.md`, „Der
+erste Mitarbeiter und die erste Freigabe".
 
-**Ohne Browser ist das kein Ende.** Die Plattform hat für ihre Verwaltung eine eigene
-Schnittstelle, und wie sie geht, steht im Artefakt: Admin-Handbuch und API-Referenz. Beide
-liegen an jedem Gerät mit Arasul, in der Fassung, die dort läuft, und das Kit liest sie dort
-ohne Token: `node .ara/tools/mirror.mjs --docs --device <gerät>`, eine davon mit
-`--read <pfad>`. Mit einem Spiegel stehen sie auch unter `node .ara/tools/mirror.mjs --docs`. Der erste
-Mitarbeiter und die erste Freigabe sind der Fall, der einen sonst hängen lässt, und er
-steht in `.ara/knowledge/device.de.md` unter "Der erste Mitarbeiter und die erste Freigabe".
+## Was eine App bekommt: `backend/arasul.json`
+
+Die Namen der Adresse der Schnittstelle, des Schlüssels und der Adresse der Datenbank im Container,
+die Kopfzeile des Schlüssels, die zwei Kopfzeilen der Anmeldung, die Wege für einen Flow und für das
+Auslesen eines Dokuments, ob ein Lauf Einreicher und Freigaberegel annimmt: das sagt der Kontrakt
+dieses Geräts, und beim Einspielen schreibt `app.mjs` es als `backend/arasul.json` ins Paket.
+`--check` gibt es aus und nennt, was dieses Gerät nicht verspricht.
+
+**Eine App schreibt diese Werte nie in ihren Quelltext.** Eine, die es tut, findet auf einem Gerät,
+das sie anders nennt, nichts, hält das für „hier läuft kein Arasul" und sammelt Vorgänge, über die
+niemand entscheidet: der Vorlage ist das bis zum 29.08.2026 passiert, ihr Freigabe-Schritt wurde
+übersprungen, nicht abgelehnt. Der Selbsttest hält Vorlage und Muster daran. **Modellarbeit einer
+App läuft über einen Flow oder über das Auslesen eines Dokuments**: `arasul.json` trägt keinen
+anderen Weg zu einem Modell.
 
 ## Anmeldung: eine App bekommt keine eigene
 
-Wer an Arasul angemeldet ist und die App freigegeben hat, ist in der App angemeldet. Wer
-nicht, kommt nicht hinein. Es gibt keine Sonderregel für Administratoren.
+Wer bei Arasul angemeldet ist und die App freigegeben hat, ist in der App angemeldet, sonst
+niemand, Administratoren eingeschlossen. Die Plattform setzt das **vor** dem Container durch und
+setzt zwei Kopfzeilen, Benutzername und Rolle, nachdem sie gelöscht hat, was von außen unter diesen
+Namen kam: fälschen lassen sie sich nicht. **Ihre Namen und die Rollen stehen im Kontrakt** unter
+`koepfe`, das Kit legt sie in `arasul.json`, die Vorlage liest sie mit
+`geraet.angemeldet(anfrage.headers)`. Für die Oberfläche hält die Plattform `GET /apps/<id>/api/me`
+frei: Kennung, Stand, Benutzer, Rolle, und der Teststand hat seinen eigenen darunter. Welche Namen
+unter `/apps/<id>/` der Plattform gehören, sagt der Kontrakt unter `apps.vergeben`.
 
-Durchgesetzt wird das **vor** dem Container: die Plattform prüft die Anfrage und setzt
-zwei Kopfzeilen, eine mit dem Benutzernamen und eine mit der Rolle. **Wie sie heißen und
-welche Rollen es gibt, steht im Kontrakt** unter `koepfe`, samt dem Hinweis, wie der Name
-zu lesen ist. Schreib die Namen nicht ab: das Kit legt sie der App beim Einspielen in
-`arasul.json`, und die Vorlage liest sie dort.
-
-Sie sind nicht fälschbar: was von außen in der Anfrage steht, wird gelöscht, bevor die
-Plattform ihre eigenen setzt.
-
-Bequemer als die Kopfzeilen ist der Weg, den die Plattform der App dafür freihält:
-
-```
-GET /apps/<id>/api/me
-```
-
-Er antwortet mit Kennung, Stand, Benutzer und Rolle. Der Teststand hat seinen eigenen
-darunter. Welche Namen unter `/apps/<id>/` der Plattform gehören und welche der App,
-steht im Kontrakt unter `apps.vergeben`.
-
-**Was du daraus nicht baust:** kein Anmeldeformular in der App, kein Feld, in das jemand
-seinen Namen tippt, keine eigenen Konten mit Passwort. Das wäre eine zweite Anmeldung neben
-der echten, und sie würde niemanden abhalten.
-
-**Was du daraus bauen darfst:** eine Zuordnung der Konten des Geräts zu dem, was die App
-kennt, Mandanten, Abteilungen, Akten. Sie hängt am Benutzernamen aus der Kopfzeile und
-entscheidet, was jemand **innerhalb** der App sieht; wer überhaupt hineinkommt, entscheidet
-weiter das Gerät. Wie das geht und wie es geprüft wird, steht in `.ara/knowledge/app.de.md`
-unter „Sichtbarkeit innerhalb einer App“.
+**Nicht daraus gebaut:** ein Anmeldeformular, ein Namensfeld, Konten mit Passwort. Das wäre eine
+zweite Anmeldung, die niemanden aufhält. **Daraus gebaut:** eine Zuordnung von Konten zu Mandanten,
+Abteilungen, Akten nach dem Benutzernamen, die entscheidet, was jemand **innerhalb** sieht:
+`.ara/knowledge/app-professional.de.md`, „Mandanten: wer was sieht".
 
 ## Freigaben: ein Lauf hält an, ein Mensch entscheidet
 
-Ein Flow kann anhalten und um Freigabe bitten. Das Werkzeug dafür heißt
-`freigabe_anfordern` und steht in der Schritt-Kette des Flows, mit einem Titel, dem
-Zusammenhang und einer Frist. Der Lauf steht danach auf wartend, und ohne Entscheidung
-läuft nichts weiter.
+Ein Flow hält mit dem Werkzeug `freigabe_anfordern` an, mit Titel, Kontext und Frist, und der Lauf
+wartet: **ohne Entscheidung geht nichts weiter**. Eine Rückfrage im Gespräch dagegen geht an den,
+der gerade zusieht, und läuft mit einer Annahme weiter. Genehmigt, läuft der Lauf ab dem Schritt
+weiter; abgelehnt, endet er mit dem Grund; keine Entscheidung bis zur Frist, endet er ebenso.
 
-Das ist etwas anderes als eine Rückfrage im Gespräch: eine Rückfrage geht an den, der
-gerade zusieht, und ohne Antwort läuft der Flow mit einer Annahme weiter. Eine Freigabe
-geht, solange die App den Kreis nicht enger zieht (siehe unten), an jeden, dem die App
-freigegeben ist, und **ohne Antwort läuft gar nichts weiter**.
-
-Drei Ausgänge, und sie stehen am Lauf: bestätigt, dann läuft er ab dem angehaltenen
-Schritt weiter. Abgelehnt, dann endet er, und die Begründung ist sein Grund. Niemand
-entscheidet bis zur Frist, dann endet er ebenfalls.
-
-**Entschieden wird über die Sitzung eines Menschen**, nicht über einen Schlüssel:
+**Entschieden wird über die Sitzung eines Menschen**, darum stehen diese Wege in keinem Kontrakt,
+und das Kit ruft sie nicht:
 
 ```
 GET  /api/freigabe-anfragen
@@ -103,63 +71,32 @@ POST /api/freigabe-anfragen/<id>/bestaetigen
 POST /api/freigabe-anfragen/<id>/ablehnen
 ```
 
-Diese drei Wege stehen darum nicht im Kontrakt, und das Kit ruft sie nicht. Wer
-entscheiden will, ist angemeldet, und das ist der Kunde.
+**Die App liest den Stand mit ihrem eigenen Schlüssel und entscheidet nie**:
+`GET /api/v1/external/freigaben`, mit der Laufnummer.
 
-**Die App liest ihren Stand und entscheidet nicht:**
+**Der Kreis.** Ein Flow nennt keine Person und keine Rolle. Ohne Regel entscheidet **jeder, für den
+die App freigegeben ist**, und sieht die Karte mit ihrem Text, auch für einen Mandanten, der nicht
+seiner ist. Seit dem 25.09.2026 nennt der Kontrakt unter `freigaben`, wie eine App den Kreis beim
+Start enger zieht, nie weiter: **`einreicher`**, der Benutzername dessen, der den Lauf auslöst;
+**`freigabe.ohne_einreicher: true`**, vier Augen; **`freigabe.entscheider`**, `{"rolle": "admin"}`
+oder `{"konten": [...]}`. Außerhalb des Kreises sieht niemand die Anfrage, und Entscheiden bekommt
+eine 403; bleibt niemand, lehnt das Gerät den Start ab. `--contract` gibt die Regeln aus,
+`arasul.json` sagt unter `freigaben`, ob ein Gerät sie kennt. Für Mandanten:
+`.ara/knowledge/app-professional.de.md`, „Freigaben in einer Fach-App".
 
-```
-GET /api/v1/external/freigaben
-```
-
-Mit ihrem eigenen Schlüssel, mit der Lauf-Nummer als Frage dahinter. Eine App, die ihre
-eigene Freigabe erteilen könnte, wäre keine.
-
-**Wer entscheiden darf, sagt der Kunde, nicht der Flow.** Ein Flow nennt keine Person und
-keine Rolle, er beschreibt die Sache. Ohne weiteres ist die Zuständigkeit dieselbe Freigabe,
-mit der jemand die App überhaupt benutzen darf, und **jeder davon sieht die Karte mit ihrem
-Text.**
-
-**Die App kann den Kreis beim Start enger ziehen, nie weiter.** Seit dem 25.09.2026 nennt der
-Kontrakt unter `freigaben`, was ein Start dafür mitbringt: den Einreicher, den Ausschluss des
-Einreichers (vier Augen) und die Entscheider, als Rolle oder als Liste von Konten. Wer nicht
-im Kreis steht, sieht die Anfrage nicht und bekommt beim Entscheiden 403; bleibt niemand,
-weist das Gerät den Start ab. Die Regeln stehen dort wörtlich, `--contract` gibt sie aus, und
-ob ein Gerät sie kennt, steht nach dem Einspielen in `arasul.json` unter `freigaben`. Für eine
-Fach-App mit Mandanten heißt das: Entscheider aus der Zuordnung, Einreicher ausgeschlossen,
-siehe `.ara/knowledge/app.de.md`, „Freigaben in einer Fach-App“.
-
-**In den Text der Anfrage gehören Verweise, keine Inhalte.** Titel und Zusammenhang stehen auf
-der Karte jedes Entscheiders und am Lauf im Gerät. Eine Nummer und ein Name, unter denen der
-Entscheider den Vorgang in der App findet, genügen; Beträge, Namen von Mandanten, Texte bleiben
-in der App.
-
-Was du dem Kunden **nicht** ungeprüft zusagst: dass ein wartender Lauf beliebig lange
-steht. Frag das am Gerät nach, bevor ein Ablauf darauf gebaut wird, in dem eine Freigabe
-tagelang offen liegt.
+**Verweise in die Anfrage, keine Inhalte.** Titel und Kontext stehen auf der Karte jedes
+Entscheiders und am Lauf: „Beleg 17, eingereicht von anna", der Entscheider öffnet ihn in der App.
+Beträge, Namen von Mandanten, Texte bleiben in der App und folgen ihrer Sichtbarkeit. **Versprich
+nicht ungeprüft**, dass ein Lauf tagelang warten kann; frag vorher das Gerät.
 
 ## Flows: eine Datei je Flow, das Modell steht im Kopf
 
-Ein Flow ist eine Aufgabe, die ein Sprachmodell mit Werkzeugen erledigt. Als Datei ist er
-Markdown mit einem Kopf: der Kopf sagt, was der Flow braucht und darf, der Text darunter
-ist der Auftrag.
-
-**Ein Flow im Paket ist eine Lieferung.** Das Paket bringt die Dateien mit, das Gerät
-registriert sie je App und Stand. Der Namensraum ist die App: zwei Apps dürfen denselben
-Flow-Namen tragen.
-
-**Das Schema des Kopfes und die Regeln für einen Flow aus einem Paket stehen im
-Kontrakt** unter `flow_frontmatter`: das Schema als Schema, dazu die Regeln als Sätze und
-der Hinweis, dass der Auftrag der Rumpf ist und kein Feld im Kopf. `--contract` gibt
-beides wörtlich aus. Schreib es nicht ab, lies es an dem Gerät, um das es geht.
-
-**Das Modell im Kopf ist der Vorschlag des Partners.** Der Administrator am Gerät darf es
-je Flow überschreiben; seine Entscheidung liegt am Gerät und nicht in der Datei und
-überlebt darum jedes App-Update. Zwei Folgen für dich: schreib in die README einer App
-nicht, mit welchem Modell sie läuft, und such einen Unterschied im Verhalten nicht zuerst
-im Paket.
-
-Von außen angestoßen wird ein Flow über die äußere Schnittstelle:
+Ein Flow ist eine Aufgabe, die ein Sprachmodell mit Werkzeugen ausführt: Markdown, der Kopf sagt,
+was er braucht und darf, der Rumpf ist die Anweisung. **Im Paket ist er eine Lieferung**, je App und
+Stand angemeldet, darum dürfen zwei Apps denselben Namen tragen. Schema des Kopfes und Regeln: der
+Kontrakt unter `flow_frontmatter`. **Das Modell im Kopf ist ein Vorschlag**, den der Administrator
+am Gerät je Flow überschreiben darf, über jedes Update hinweg: darum kein Modellname in der README,
+und einen Unterschied im Verhalten sucht man nicht zuerst im Paket.
 
 ```
 GET  /api/v1/external/flows
@@ -167,18 +104,12 @@ POST /api/v1/external/flows/<name>/run
 GET  /api/v1/external/flows/runs/<id>
 ```
 
-Was ein Schlüssel dabei sieht, entscheidet der Schlüssel: der einer App sieht nur ihre
-eigenen Flows in ihrem Stand. Wiederkehrende Starts löst du von außen über denselben Weg
-aus, aus einem Zeitplan auf einem Rechner, der ohnehin läuft.
-
-**Ein Flow mit Freigabe-Schritt wird gestartet, ohne auf das Ergebnis zu warten.** Er
-hält an, bis ein Mensch entscheidet, und das kann dauern; ein wartender Aufruf läuft
-vorher in sein Zeitlimit. Die Lauf-Nummer kommt sofort, den Rest fragst du nach.
+Der Schlüssel einer App sieht nur ihre eigenen Flows in ihrem Stand. Wiederkehrende Starts kommen
+über denselben Weg aus einem Zeitplan auf einem Rechner, der ohnehin läuft. **Ein Flow mit
+Freigabe-Schritt wird gestartet, ohne zu warten**: ein wartender Aufruf läuft in seine Zeitgrenze;
+die Laufnummer kommt sofort zurück, den Rest fragst du nach.
 
 ## Die KI-Schnittstelle: mit Schlüssel, ohne Sitzung
-
-Ein Sprachmodell fragen, den Stand eines Auftrags lesen, sehen, welche Modelle am Gerät
-sind, Text aus einer Datei holen und sie auswerten lassen:
 
 ```
 POST /api/v1/external/llm/chat
@@ -190,127 +121,14 @@ POST /api/v1/external/document/extract-structured
 POST /api/v1/external/document/analyze
 ```
 
-**Welche davon dieses eine Gerät führt, steht in seinem Kontrakt**, und dort steht auch,
-welchen Bereich ein Schlüssel dafür tragen muss. Die beiden Wege zum Auslesen eines Dokuments
-legt das Kit einer App in `arasul.json` unter `wege`, wie die Wege eines Flows. **Einen Weg zum
-Chat oder zu einem Modell legt es ihr nicht hinein**: Modellarbeit einer App läuft über einen Flow
-oder über das Auslesen. Die übrigen Wege dieser Liste sind für das Kit und für Werkzeuge außerhalb
-einer App.
+**Welche davon ein Gerät trägt, mit welchem Bereich, sagt sein Kontrakt**; ein Schlüssel ohne den
+Bereich wird abgewiesen, eine Entscheidung des Administrators. Die beiden Wege zum Auslesen eines
+Dokuments kommen in `arasul.json` unter `wege`, was sie tun: `.ara/knowledge/app-professional.de.md`,
+„Dokumente und Bilder auslesen". Der Rest ist für das Kit und für Werkzeuge außerhalb einer App, die
+auch die eigenen Aufrufe der Bibliotheken sprechen dürfen: `.ara/knowledge/extensions.de.md`, „Der
+Weg für fremde Werkzeuge". Kopfzeile und Vorsatz des Schlüssels stehen unter `schluessel`, die Namen
+im Container unter `umgebung`. Der Schlüssel des Kits kommt aus `--deploy-key`, den einer App legt
+das Gerät in den Container.
 
-**Ein Dokument in Felder auslesen** heißt: die App schickt die Datei und ein JSON-Schema, das
-Gerät holt den Text heraus, bei einem Foto oder einem gescannten PDF über seine
-Texterkennung, und lässt ein Sprachmodell die Felder füllen. Das Modell sieht Text, kein
-Bild. Die Antwort nennt das Modell und ob die Texterkennung lief. Was das für Fotos,
-Bildmodelle und das Feld `modelle` in `app.json` heißt, steht in `.ara/knowledge/app.de.md`
-unter „Dokumente und Bilder auslesen“, der Code dazu ist Muster 6 in
-`.ara/knowledge/app-patterns.de.md`. Das Kit ruft nichts auf, was das Gerät
-nicht verspricht. Fehlt einem Schlüssel der Bereich, weist das Gerät ab, und das ist kein
-Fehler des Kits, sondern eine Entscheidung des Administrators.
-
-Die Kopfzeile für den Schlüssel und sein Vorsatz stehen ebenfalls im Kontrakt, unter
-`schluessel`. Der Schlüssel des Kits kommt aus `/device` mit `--deploy-key`; den Schlüssel
-einer App legt das Gerät beim Einspielen selbst in den Container, zusammen mit der
-Adresse der Schnittstelle. Welche Namen die beiden Werte tragen, sagt der Kontrakt unter
-`umgebung`.
-
-**Die App erfährt diese Namen vom Kit und nicht aus ihrem eigenen Quelltext.** Beim
-Einspielen liest `app.mjs` sie aus dem Kontrakt des Geräts und legt sie zusammen mit der
-Kopfzeile und den Wegen als `backend/arasul.json` ins Paket. Eine App, die stattdessen
-einen Namen errät, findet auf einem Gerät, das ihn anders nennt, nichts und hält das für
-ein Gerät ohne Arasul.
-
-**Der Chat ist zustandslos.** Jeder Aufruf ist ein eigener Auftrag mit genau der
-Vorgeschichte, die mitgeschickt wird. Wer einen Verlauf will, führt ihn selbst und schickt
-ihn mit. Eine App, die auf ein Gedächtnis am Gerät baut, baut auf etwas, das es nicht
-gibt.
-
-## Der Weg für fremde Werkzeuge
-
-Neben der eigenen Schnittstelle beantwortet das Gerät die Aufrufe, die verbreitete
-KI-Bibliotheken sprechen:
-
-```
-POST /v1/chat/completions
-POST /v1/embeddings
-GET  /v1/models
-```
-
-Angemeldet wird mit demselben Schlüssel, in der Schlüsselkopfzeile oder als
-`Authorization: Bearer`. Wofür das gut ist: ein Werkzeug außerhalb des Geräts nimmt eine
-fertige Bibliothek und richtet sie auf das Gerät, statt einen eigenen Client zu bauen. Eine App
-auf dem Gerät nimmt diesen Weg nicht, ihre Modellarbeit läuft über einen Flow oder über das
-Auslesen.
-
-**Diese Wege stehen nicht im Kontrakt.** Der Kontrakt beschreibt, was zwischen Kit und
-Gerät vereinbart ist, und dieser Weg ist für fremde Werkzeuge da. Daraus folgt zweierlei:
-das Kit ruft ihn nicht von sich aus, und **bevor du ihn einem Kunden zusagst, prüfst du
-ihn an seinem Gerät.** `node .ara/tools/check-docs.mjs --device <gerät>` fragt ohne
-Schlüssel an und sagt, ob es den Weg dort gibt.
-
-## `app.json` und der Flow-Kopf: das Schema liegt am Gerät
-
-Was in ein Manifest gehört, ist keine Sache dieses Blattes. Das Gerät gibt sein Schema
-aus, und daneben die Regeln, die kein Schema tragen kann. Beides prüft das Kit für dich:
-
-```
-node .ara/tools/app.mjs --device <gerät> --check <ordner>
-```
-
-**Die Regeln ohne Schema sind kein Beiwerk.** Ein Manifest kann gegen das Schema gültig
-sein und trotzdem abgewiesen werden. Das Werkzeug gibt sie wörtlich aus, und du gehst sie
-einzeln durch. Der ganze Weg eines Pakets steht in `.ara/knowledge/deploy.de.md`.
-
-## Die Sicherung
-
-Die Frage, die ein Kunde nach einem halben Jahr stellt, hat zwei Teile: **sichert das
-Gerät wirklich**, und **wann lag zuletzt eine Kopie außerhalb des Geräts**. Beide
-beantwortet ein Weg der Oberfläche:
-
-```
-GET /api/backup/status
-```
-
-Er verlangt eine Sitzung als Administrator. Kein Kit-Schlüssel öffnet ihn, er steht darum
-nicht im Kontrakt, und `/maintain` sagt in diesem Fall „das Gerät nennt dafür keinen
-Endpunkt". Das heißt nicht, dass nicht gesichert wird, sondern dass das Kit es auf diesem
-Weg nicht messen kann.
-
-Zwei Wege, und du sagst, welchen du gegangen bist:
-
-1. **Im Browser am Gerät**, der Mensch ist angemeldet. Du siehst die Antwort, er auch.
-2. **Über SSH**, mit dem, was am Gerät dafür da ist.
-
-Ein Ziel außerhalb ist eine Platte oder eine Freigabe im Kundennetz, kein Ziel in einer
-Cloud. Fehlt es, sagt die Antwort den Grund, und der gehört ins Gespräch: eine Sicherung,
-die neben dem Gerät liegt, ist nach einem Wasserschaden auch weg.
-
-**In eine Leistungsbeschreibung oder ein Übergabeprotokoll kommt nur, was du gesehen
-hast**, mit Datum und mit dem Weg, auf dem du es gesehen hast.
-
-## Was ohne Arasul fehlt
-
-Dieselbe App läuft auch auf einem Gerät ohne Arasul, über Compose:
-
-```
-node .ara/tools/app.mjs --device <gerät> --app <name> --compose --port 8080
-```
-
-Dann fällt alles weg, was auf diesem Blatt steht: die Anmeldung, die Flows, die
-Freigaben, der zweite Stand und der Schlüssel, mit dem eine App die Schnittstelle
-erreicht. Das Werkzeug zählt es beim Aufsetzen auf und schreibt es in den Kopf der
-erzeugten Datei. **Sag es vorher und mit denselben Worten**, statt es hinterher in der
-Ausgabe stehen zu lassen.
-
-Das ist ein Weg zum Vorführen und zum Ausprobieren. Für einen Betrieb mit echten Daten
-ist er keiner: wer die Adresse und den Port erreicht, sieht die App.
-
-## Wenn ein Weg fehlt
-
-Nennt der Kontrakt einen Weg nicht, ruft das Kit ihn nicht auf. Das ist kein Fehler des
-Werkzeugs, sondern die Aussage, dass dieses Gerät ihn nicht anbietet, und meistens heißt
-das: es ist älter als das Kit. Was dann gilt, steht in `.ara/knowledge/deploy.de.md` unter
-der Kontraktversion.
-
-Fällt dir auf, dass dieses Blatt einen Weg nennt, den es an einem aktuellen Gerät nicht
-mehr gibt, ist das eine Rückmeldung ans Kit und keine Kleinigkeit. `check-docs.mjs` mit
-`--device` sagt es dir mit einem Satz je Route.
+**Der Chat ist zustandslos**: jeder Aufruf ist ein Auftrag mit genau dem Verlauf, der mitgeschickt
+wird. Eine App, die auf ein Gedächtnis am Gerät baut, baut auf nichts.

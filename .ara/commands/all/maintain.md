@@ -56,7 +56,7 @@ needs doing, and you pull the matching procedure:
 | Something is stuck | `.ara/knowledge/diagnostics.md`. Establish first, change second |
 | Just having a look | The report is the answer. Result into the history, even if everything was fine |
 | An app is stuck | Version from the report, then `/app`: switching back to the previous version is the fastest way back |
-| Deploy an update | `.ara/knowledge/maintenance-flow.md`, section "Update einspielen". Back up first, then check that the backup exists |
+| Deploy an update | `.ara/knowledge/maintenance-flow.md`, section "Deploy an update". Back up first, then check that the backup exists |
 | Extension | `.ara/knowledge/extensions.md` |
 
 For a fault the rule is: no repair without a finding, never two changes at once.

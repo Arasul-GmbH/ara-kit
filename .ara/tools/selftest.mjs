@@ -3171,7 +3171,7 @@ check("Eine App neben der Bibliothek wird rot, ein fremder Container nicht", () 
     run = tool("app.mjs", ["--app", name, "--build", "--no-plan"]);
     assert(run.status !== 0, "trotz Verstoß wurde gebaut");
     assert(/steht nicht auf der Bibliothek/.test(run.stderr), `der Grund fehlt: ${run.stderr}`);
-    assert(/app\.de\.md/.test(run.stderr), "der Weg zur Regel im Wissen fehlt");
+    assert(/design-system\.de\.md/.test(run.stderr), "der Weg zur Regel im Wissen fehlt");
     assert(!existsSync(join(dir, "build")), "trotz Verstoß liegt ein Bau da");
     rmSync(seite);
 
@@ -3697,17 +3697,22 @@ check("Das Wissen kennt sieben Muster jenseits des Formulars, und jeder Verweis 
   // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt sieben Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
-  for (const blatt of [".ara/knowledge/app-patterns.md", ".ara/knowledge/app-patterns.de.md"]) {
+  // Seit 0.37.0 ist das Blatt der Überblick, und das Blatt jedes Musters liegt
+  // neben seinem Code: gelesen wird nur das, das der Plan nimmt.
+  for (const [blatt, endung] of [[".ara/knowledge/app-patterns.md", ".md"], [".ara/knowledge/app-patterns.de.md", ".de.md"]]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
     for (const nummer of [1, 2, 3, 4, 5, 6, 7]) {
-      assert(new RegExp(`^## ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
+      assert(new RegExp(`^\\| ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
-    assert(pfade.length >= 8, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
+    assert(pfade.length >= 7, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
     for (const pfad of pfade) assert(existsSync(join(ROOT, pfad)), `${blatt} nennt ${pfad}, die Datei fehlt`);
-    // Was das Blatt über die Bibliothek sagt, steht so in der Bibliothek.
+    const blaetter = pfade.filter((pfad) => pfad.endsWith(`/README${endung}`));
+    assert(blaetter.length === 6, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind sechs`);
+    // Was das Blatt der Dokumente über die Bibliothek sagt, steht so in der Bibliothek.
+    const dokumente = readFileSync(join(PATTERNS, "documents", `README${endung}`), "utf8");
     for (const wort of ["quelle", "art", "hoehe", "pdf-dateien", "Dokumentanzeige", "Dateiablage"]) {
-      assert(text.includes(wort), `${blatt} nennt ${wort} nicht`);
+      assert(dokumente.includes(wort), `documents/README${endung} nennt ${wort} nicht`);
     }
   }
   // Und /app kennt sie in der Ideenphase: der Befehl lädt das Blatt, die
@@ -5815,8 +5820,9 @@ check("README und Wissen tragen die Saetze zur Freigabe", () => {
   const stellen = [
     ["README.md", /released/],
     [".ara/README.de.md", /freigegeben|Freigabe/],
-    [".ara/knowledge/app.md", /released/],
-    [".ara/knowledge/app.de.md", /freigegeben/],
+    // Die Heimat ist deploy.md; der Befehl sagt, dass es vor dem Einspielen gesagt wird.
+    [".ara/commands/all/app.md", /not yet visible/],
+    [".ara/commands/all/app.de.md", /noch nicht sichtbar/],
     [".ara/knowledge/deploy.md", /released/],
     [".ara/knowledge/deploy.de.md", /freigegeben/],
   ];
@@ -8789,6 +8795,11 @@ const PAIRED = [
   // Nur die Gerueste direkt darin. `app/` ist Quelltext einer App und keine
   // Anleitung, es wird gebaut und nicht gelesen.
   { dir: ".ara/templates", flat: true, extensions: [".md", ".json"] },
+  // Jedes Muster traegt sein Blatt neben dem Code, und das ist eine Anleitung:
+  // sie wird gelesen und nicht gebaut, also gibt es sie in beiden Sprachen.
+  ...["documents", "mail", "foreign-api", "foreign-container", "extract", "clients"].map((muster) => ({
+    dir: `.ara/templates/app-patterns/${muster}`,
+  })),
 ];
 
 check("Jede Datei gibt es in beiden Sprachen", () => {
@@ -8983,6 +8994,7 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
       .map((n) => join(ROOT, ".ara", "templates", n)),
     ...sammeln(join(ROOT, ".ara", "knowledge"), (n) => n.endsWith(".de.md")),
     ...sammeln(join(ROOT, ".ara", "commands"), (n) => n.endsWith(".de.md")),
+    ...sammeln(join(ROOT, ".ara", "templates", "app-patterns"), (n) => n.endsWith(".de.md")),
     ...sammeln(ROOT_TEMPLATE, (n) => /\.de\.(md|json)$/.test(n)),
     ...sammeln(ROOT_EXAMPLE, (n) => /\.de\.(md|json)$/.test(n)),
     join(ROOT, ".ara", "persona", "ara.de.md"),
@@ -9401,6 +9413,127 @@ check("Jeder Befehl nennt sein Wissen", () => {
   });
   assert(silent.length === 0, `ohne Wissensangabe: ${silent.map((f) => relative(ROOT, f)).join(", ")}`);
   return `${files.length} Befehle`;
+});
+
+/**
+ * Was /app fuer eine Fach-App liest, in der Reihenfolge, in der es dazukommt.
+ * Der Befehl nennt jede Wissensdatei selbst; die Blaetter der Muster nennt das
+ * Blatt der Muster, und eine Fach-App mit Belegen und Mandanten nimmt drei davon.
+ */
+const FACH_APP_LADESATZ = {
+  immer: [".claude/CLAUDE.md"],
+  sprache: [
+    ".ara/persona/ara",
+    ".ara/commands/all/app",
+    ".ara/knowledge/app",
+    ".ara/knowledge/app-patterns",
+    ".ara/knowledge/app-professional",
+    ".ara/knowledge/platform-services",
+    ".ara/knowledge/design-system",
+    ".ara/knowledge/deploy",
+    ".ara/templates/app-patterns/documents/README",
+    ".ara/templates/app-patterns/extract/README",
+    ".ara/templates/app-patterns/clients/README",
+  ],
+};
+/** Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. */
+const FACH_APP_GRENZE = 15000;
+
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 15.000 Tokens, in beiden Sprachen", () => {
+  // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
+  // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
+  // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit
+  // `wc -w`: alles zwischen Leerraum ist ein Wort.
+  const woerter = (datei) => readFileSync(join(ROOT, datei), "utf8").split(/\s+/).filter(Boolean).length;
+  const messung = [];
+  for (const [sprache, endung] of [["en", ".md"], ["de", ".de.md"]]) {
+    const dateien = [...FACH_APP_LADESATZ.immer, ...FACH_APP_LADESATZ.sprache.map((d) => d + endung)];
+    for (const datei of dateien) assert(existsSync(join(ROOT, datei)), `${datei} fehlt im Ladesatz`);
+    const summe = dateien.reduce((n, datei) => n + woerter(datei), 0);
+    const tokens = Math.round(summe * 1.4);
+    assert(tokens <= FACH_APP_GRENZE, `${sprache}: ${summe} Wörter, ${tokens} Tokens, erlaubt sind ${FACH_APP_GRENZE}`);
+    messung.push(`${sprache} ${tokens}`);
+  }
+  // Der Satz ist nur so gut wie der Befehl, der ihn nennt: jede Wissensdatei
+  // steht im Befehl, das Blatt der Muster nennt die Blaetter, und extensions.md
+  // gehoert nicht mehr dazu.
+  for (const [befehl, muster, endung] of [
+    [".ara/commands/all/app.md", ".ara/knowledge/app-patterns.md", ".md"],
+    [".ara/commands/all/app.de.md", ".ara/knowledge/app-patterns.de.md", ".de.md"],
+  ]) {
+    const text = readFileSync(join(ROOT, befehl), "utf8");
+    for (const datei of FACH_APP_LADESATZ.sprache.filter((d) => d.startsWith(".ara/knowledge/"))) {
+      assert(text.includes(datei + endung), `${befehl} nennt ${datei + endung} nicht`);
+    }
+    assert(!/knowledge\/extensions/.test(text), `${befehl} lädt extensions noch mit`);
+    const blatt = readFileSync(join(ROOT, muster), "utf8");
+    for (const datei of FACH_APP_LADESATZ.sprache.filter((d) => d.startsWith(".ara/templates/"))) {
+      assert(blatt.includes(datei + endung), `${muster} nennt ${datei + endung} nicht`);
+    }
+  }
+  return messung.join(", ");
+});
+
+check("Verweise auf Abschnitte treffen eine Ueberschrift in der Sprache des Blattes", () => {
+  // Ein englisches Blatt schickte nach „Der Kit-Schlüssel", ein Abschnitt,
+  // den es nur im deutschen Blatt gibt. Wer Englisch liest, sucht ihn dort
+  // vergeblich. Geprueft wird jeder Verweis der Form `datei.md`, "Titel" (auch
+  // mit section, under, unter, Abschnitt dazwischen) gegen die Ueberschriften
+  // des Blattes in der Sprache dessen, der verweist, und jedes „siehe" auf
+  // einen Abschnitt desselben Blattes. Das Aenderungsprotokoll ist Geschichte
+  // und bleibt draussen.
+  const dateien = [];
+  const sammle = (dir, passt) => {
+    for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+      const pfad = join(dir, eintrag.name);
+      if (skipEntry(pfad, eintrag.name) || eintrag.name === "node_modules") continue;
+      if (eintrag.isDirectory()) sammle(pfad, passt);
+      else if (passt.test(eintrag.name)) dateien.push(pfad);
+    }
+  };
+  sammle(join(ROOT, ".ara"), /\.(md|mjs)$/);
+  sammle(join(ROOT, ".claude"), /\.md$/);
+  dateien.push(join(ROOT, "README.md"));
+  const titel = (pfad) =>
+    new Set(
+      readFileSync(pfad, "utf8")
+        .split("\n")
+        .filter((zeile) => /^#{1,6} /.test(zeile))
+        .flatMap((zeile) => {
+          const text = zeile.replace(/^#+ /, "").trim();
+          return [text, text.replace(/^\d+\. /, "")];
+        })
+    );
+  // Deutsch ist, was .de.md heisst, das Papier, und die Vorlage einer App,
+  // deren Quelltext und README deutsch sind.
+  const deutsch = (rel) => /\.de\.md$/.test(rel) || /^\.ara\/(vorlagen|nachweise|templates\/app)\//.test(rel);
+  const verweis = /(\.ara\/knowledge\/[a-z0-9\/-]+?)(\.de)?\.md`?,?\s+(?:(?:section|under|unter|Abschnitt|im Abschnitt)\s+)?["„]([^"“”\n]{2,80})["“”]/g;
+  const siehe = /\b(?:[Ss]ee|[Ss]iehe)\s+["„]([^"“”\n]{2,80})["“”]/g;
+  const falsch = [];
+  let gezaehlt = 0;
+  for (const datei of dateien) {
+    const rel = relative(ROOT, datei).split("\\").join("/");
+    if (/CHANGELOG/.test(rel) || rel === ".ara/tools/selftest.mjs") continue;
+    const text = readFileSync(datei, "utf8").replace(/\\"/g, '"');
+    for (const treffer of text.matchAll(verweis)) {
+      const [, basis, de, gesucht] = treffer;
+      // Im Code steht die Sprache am Pfad, in einem Blatt am Blatt selbst.
+      const sprache = datei.endsWith(".mjs") ? (de ? "de" : "en") : deutsch(rel) ? "de" : "en";
+      const ziel = basis + (sprache === "de" ? ".de.md" : ".md");
+      gezaehlt++;
+      if (!existsSync(join(ROOT, ziel))) falsch.push(`${rel} → ${ziel} gibt es nicht`);
+      else if (!titel(join(ROOT, ziel)).has(gesucht)) falsch.push(`${rel} → ${ziel} hat keinen Abschnitt "${gesucht}"`);
+    }
+    if (!datei.endsWith(".md")) continue;
+    for (const treffer of text.matchAll(siehe)) {
+      if (/\.md`?,?\s*$/.test(text.slice(Math.max(0, treffer.index - 80), treffer.index))) continue;
+      gezaehlt++;
+      if (!titel(datei).has(treffer[1])) falsch.push(`${rel} verweist auf "${treffer[1]}", das Blatt hat keinen solchen Abschnitt`);
+    }
+  }
+  assert(gezaehlt >= 20, `nur ${gezaehlt} Verweise gefunden, das Muster greift nicht`);
+  assert(falsch.length === 0, `Verweise ins Leere:\n    ${falsch.join("\n    ")}`);
+  return `${gezaehlt} Verweise`;
 });
 
 // --- Update und Befehle in einem Fork ----------------------------------------

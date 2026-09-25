@@ -1,380 +1,41 @@
 # Verfahren: sieben Muster einer App jenseits des Formulars
 
-> **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann,
-> wenn jemand Arasul für ein Formularwerkzeug hält. Wer nur den Vorgang der Vorlage mit
-> seinem Freigabe-Schritt kennt, baut Formulare. Eine App kann alles, was ein Programm kann:
-> das Gerät bringt Anmeldung, Freigaben, Flows und Modelle mit, den Rest bringt die App. Hier
-> stehen sieben Muster, die bei fast jedem Kunden vorkommen, jedes mit Code, der läuft.
+> **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann, wenn
+> jemand Arasul für ein Formularwerkzeug hält. Das Gerät bringt Anmeldung, Freigaben, Flows und
+> Modelle mit, die App bringt den Rest, und sie kann alles, was ein Programm kann.
 
-## Die Regel zuerst
+**Arasul ist die Infrastruktur darunter, nicht die App.** Ein PDF zeigen, eine Mail senden, einen
+fremden Dienst rufen, ein fremdes Werkzeug hinter der Anmeldung: das ist das eigene Tun der App,
+und das Produkt stellt dafür keinen Dienst bereit, aus Entscheidung und nicht aus Lücke.
 
-**Arasul ist die Infrastruktur darunter, nicht die App.** Ein PDF zeigen, eine Mail
-schicken, einen fremden Dienst rufen, ein fremdes Werkzeug hinter die Anmeldung stellen:
-das ist Sache der App, gebaut vom Partner. Das Produkt stellt dafür keinen Dienst, und das
-ist eine Entscheidung und keine Lücke. Was eine App auf lange Sicht abdecken soll, deckt sie
-selbst ab.
+Jedes Muster ist Code unter `.ara/templates/app-patterns/`, und **neben dem Code liegt sein Blatt**,
+`README.de.md`: was du klärst, was das Gerät erreichen muss, was geprüft ist. Lies nur das Blatt des
+Musters, das der Plan nimmt. Jede Datei sagt in ihrem Kopf, wohin sie in einer App aus `--new`
+gehört, der Selbsttest lässt sie laufen, und **keine trägt einen Weg, eine Kopfzeile oder einen
+Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage. Was ein fremdes Werkzeug
+braucht, sagt dessen Dokumentation.
 
-Jedes Muster auf diesem Blatt verweist auf Code im Kit unter `.ara/templates/app-patterns/`.
-Die Dateien werden in eine App gelegt, die aus `--new` kam, und jede sagt in ihrem Kopf, wo
-sie hingehört und wie sie eingehängt wird. Geprüft wurden sie am 15.09.2026 gegen die
-Vorlage, und der Selbsttest lässt sie laufen: die Mail geht durch ein lokales Relais, der
-fremde Dienst ist ein lokaler Stellvertreter, die Dokumente gehen in das Backend der Vorlage,
-das Manifest des fremden Containers durch die Manifestprüfung. Was sie von draußen brauchen,
-ein Relais, eine fremde Adresse, eine Registry, muss das **Gerät** erreichen, und das wird
-dort geprüft und nicht angenommen.
-
-**Produktwerte bleiben, wo sie sind.** Keine dieser Dateien trägt eine Route, einen
-Kopfzeilennamen oder einen Umgebungsnamen des Geräts. Was sie davon brauchen, bekommen sie
-wie die Vorlage, aus der Vereinbarung, die das Kit beim Einspielen schreibt. Was ein Muster
-von einem fremden Werkzeug braucht, sagt dessen Dokumentation, nicht dieses Blatt.
-
-| Muster | Was es zeigt | Wo der Code liegt |
+| Muster | Was es zeigt | Blatt |
 | --- | --- | --- |
-| 1. Mehrere Routen mit Seitenleiste | Eine Seite je Bereich, die Bereiche in der Seitenleiste | Die Vorlage selbst, `.ara/templates/app/frontend/src/app.tsx` und `rahmen/seitenleiste.tsx` |
-| 2. Dokument hochladen und zeigen | Datei hinein, Bytes abgelegt, PDF oder Bild in der Dokumentanzeige der Bibliothek | `.ara/templates/app-patterns/documents/` |
-| 3. E-Mail aus dem Backend | Eine Mail an das Relais des Kunden, die Werte aus dem Manifest | `.ara/templates/app-patterns/mail/backend/post.mjs` |
-| 4. Fremde API aus dem Backend | Eine Adresse außerhalb des Geräts, mit Zeitlimit und Sätzen für das, was schiefging | `.ara/templates/app-patterns/foreign-api/backend/fremd.mjs` |
-| 5. Fremder Container als App | Ein fertiges Image hinter der Anmeldung des Geräts, ohne eigenen Code | `.ara/templates/app-patterns/foreign-container/` |
-| 6. Dokument auslesen | Ein Beleg geht an das Gerät, Felder kommen zurück, die App prüft sie, ein Protokoll hält jede Auslesung | `.ara/templates/app-patterns/extract/` |
-| 7. Mandanten | Welches Konto welchen Mandanten sieht, ein Filter in jeder Abfrage, die Entscheider einer Freigabe aus der Zuordnung | `.ara/templates/app-patterns/clients/` |
+| 1. Routen mit Seitenleiste | Eine Seite je Bereich, die Bereiche in der Seitenleiste | Die Vorlage selbst, unten |
+| 2. Dokument hochladen und zeigen | Datei hinein, Bytes abgelegt, PDF oder Bild in der Anzeige der Bibliothek | `.ara/templates/app-patterns/documents/README.de.md` |
+| 3. E-Mail senden | Eine Mail an das Relay des Kunden | `.ara/templates/app-patterns/mail/README.de.md` |
+| 4. Fremde API rufen | Eine Adresse außerhalb des Geräts, mit Zeitgrenze | `.ara/templates/app-patterns/foreign-api/README.de.md` |
+| 5. Fremder Container | Ein fertiges Abbild hinter der Anmeldung des Geräts | `.ara/templates/app-patterns/foreign-container/README.de.md` |
+| 6. Dokument auslesen | Felder aus einem Beleg, geprüft, jede Auslesung protokolliert | `.ara/templates/app-patterns/extract/README.de.md` |
+| 7. Mandanten | Wer welchen Mandanten sieht, wer entscheidet | `.ara/templates/app-patterns/clients/README.de.md` |
 
-## 1. Mehrere Routen mit Seitenleiste
+**Muster 1 ist die Vorlage**: eine `Route` je Seite in `Wege()` von
+`.ara/templates/app/frontend/src/app.tsx`, die `Seitenleiste` der Bibliothek in
+`rahmen/seitenleiste.tsx`, eine Datei je Seite unter `seiten/`. **Ein neuer Bereich sind drei
+Schritte**: eine Seite, eine `Route`, ein Eintrag in der Seitenleiste. Die Routen bleiben eine Ebene
+tief (`dokumente?nr=17`, nicht `dokumente/17`): die Seite lädt ihre Bündel relativ, und ein Verweis
+auf eine gewählte Zeile bleibt ein Verweis. Unter 900 Pixeln wird die Seitenleiste ein Blatt, das
+sich nach dem Klick schließt.
 
-**Das ist die Vorlage schon.** Eine App aus `--new` hat zwei Seiten, die Liste und das
-Formular, und die Seitenleiste links nennt sie. Die Teile:
-
-| Wo | Was |
-| --- | --- |
-| `frontend/src/app.tsx`, `Wege()` | Eine `Route` je Seite. Der Router hängt unter dem Pfad, den das Gerät vergibt, gelesen in `rahmen/basis.ts` |
-| `frontend/src/rahmen/seitenleiste.tsx` | Das Muster `Seitenleiste` der Bibliothek: Gruppen von Einträgen, welcher aktiv ist, sagt die App, denn sie kennt ihren Router |
-| `frontend/src/seiten/` | Eine Datei je Seite. Eine Seite zeichnet, die Daten kommen aus einer Datei daneben (`vorgaenge.ts`) |
-
-**Ein neuer Bereich sind drei Schritte**: eine Datei unter `seiten/`, eine `Route` in
-`Wege()`, ein Eintrag in den Gruppen der Seitenleiste. Die Dokumentenseite aus Muster 2 ist
-genau diese drei Schritte, ausgeführt.
-
-Zwei Regeln gelten dabei, und beide kommen aus der Vorlage:
-
-- **Die Wege bleiben eine Ebene tief.** `/apps/<id>/dokumente`, nicht `/apps/<id>/dokumente/17`.
-  Die Seite verweist relativ auf ihre Bündel, und eine zweite Ebene schickte den Browser
-  einen Ordner zu tief. Was auf ein einzelnes Ding zeigt, gehört in die Suchanfrage:
-  `dokumente?nr=17`.
-  Deshalb steht auch die gewählte Zeile einer Liste in der Adresse und nicht im Zustand der
-  Seite: ein Verweis darauf bleibt einer.
-- **Unter 900 Pixeln wird die Seitenleiste ein Blatt über der Seite**, und ein Eintrag
-  schließt es nach dem Klick. Das tut das Muster; die App nennt nur die Einträge.
-
-## 2. Dokument hochladen und in der Dokumentanzeige zeigen
-
-Seit Fassung 4.1.0 der Bibliothek gibt es das Muster `Dokumentanzeige`: ein PDF mit Seiten,
-Zoom und Vollbild, ein Bild ebenso. Damit wird ein Dokument, das jemand hochgeladen hat, am
-Gerät angesehen statt heruntergeladen. Die Vorlage des Kits trägt diese Fassung, und `--new`
-legt sie hin.
-
-Der Code liegt unter `.ara/templates/app-patterns/documents/`, geteilt wie die Vorlage:
-
-| Datei | Was sie ist |
-| --- | --- |
-| `backend/ablage/migrationen/002-dokumente.sql` | Die Tabelle. Zweite Migration, läuft beim nächsten Start von selbst |
-| `backend/ablage/dokumente.mjs` | Die Ablage: das einzige SQL für Dokumente. Die Liste trägt keine Bytes |
-| `backend/kern/dokumente.mjs` | Was angenommen wird: PDF und Bilder, bis zu einer Grenze. Sätze für das, was nicht |
-| `backend/wege/dokumente.mjs` | Die Wege. Eine Datei geht roh als Rumpf hinein, der Name in einer Kopfzeile, die Bytes kommen mit ihrem Typ zurück |
-| `frontend/src/dokumente.ts` | Typen und Abfragen: Liste, Hochladen, Entfernen, die Adresse der Bytes |
-| `frontend/src/seiten/dokumente.tsx` | Die Seite: `Dateiablage` nimmt die Datei, `Datenliste` zeigt, was da ist, `Dokumentanzeige` zeigt das gewählte |
-
-**Einhängen**: `backend/` und `frontend/` über die Ordner der App kopieren, drei Zeilen in
-`server.mjs` (der Kopf von `wege/dokumente.mjs` zeigt sie), eine `Route` und ein Eintrag in
-der Seitenleiste (der Kopf von `seiten/dokumente.tsx` zeigt sie), dann `--build`.
-
-Was du über die Anzeige wissen musst, in der Bibliothek gelesen am 15.09.2026:
-
-- `Dokumentanzeige` kommt aus `@marken` wie alles andere. Ihre `quelle` ist eine `File`, ein
-  `Blob` oder eine Adresse gleicher Herkunft. Ohne Quelle zeigt sie ihren Leerzustand.
-- **Gib ihr die `art`**, `pdf` oder `bild`, wenn die Quelle eine Adresse ist: die Anzeige
-  liest die Art am Typ einer Datei oder an der Endung einer Adresse ab, und die Adresse der
-  eigenen Bytes der App hat keine. Die Seite nimmt die Art aus dem Typ, den das Backend
-  gespeichert hat.
-- `name` steht im Kopf der Anzeige, `hoehe` ist die Höhe des Kastens als CSS-Wert, und
-  `kennzeichen` ist die Marke für einen Test.
-- **Die PDF-Bibliothek braucht Stützdateien neben dem übersetzten JavaScript**, einen Ordner
-  `pdf-dateien/` mit Worker, Schriften und mehr. Die `vite.config.ts` der Vorlage legt ihn
-  bei jedem Bau dorthin. Ohne ihn zeigt ein Bild weiterhin, und ein PDF endet im
-  Fehlerzustand. Eine App, die vor dieser Fassung entstand, bekommt die Bibliothek mit
-  `marken.mjs --sync` und braucht dazu die Abhängigkeit und dieses Plugin aus der Vorlage;
-  beide stehen in deren `frontend/package.json` und `frontend/vite.config.ts`.
-- `Dateiablage` zeigt seit 4.1.0 eine Vorschau der gewählten Datei (`vorschau`). Die
-  Dokumentenseite schaltet sie ab, weil sie zeigt, was abgelegt ist, und zwei Anzeigen auf
-  einer Seite eine zu viel wären.
-
-**Die Bytes liegen in der Datenbank der App**, neben den Vorgängen, in einer Spalte vom Typ
-`BYTEA`. Am Gerät ist das die Datenbank, die das Gerät der App gibt, und sie ist der eine Ort,
-der das nächste Einspielen überlebt; ein Ordner im Container wäre danach leer. Ohne Gerät ist
-es die SQLite-Datei der Vorlage, und die überlebt das nächste Einspielen nicht. Die Grenze liegt bei zehn Megabyte je
-Datei, gesetzt im Kern und der Seite gesagt; sie hängt am Arbeitsspeicher des Containers im
-Manifest, und wer das eine hebt, hebt das andere.
-
-**Was das Gerät mit einem Dokument tut, ist eine andere Sache.** Text daraus holen, Felder
-auslesen: das bietet die Plattform über den Schlüssel der App, und Muster 6 baut darauf auf.
-Das Muster hier ist der Weg zum Menschen und zurück.
-
-Wenn du es prüfst, prüf es in beiden Themen und beiden Breiten, wie jede Oberfläche.
-
-## 3. E-Mail aus dem Backend senden
-
-**Es gibt keinen Postdienst am Gerät.** Eine App, die jemandem schreiben will, spricht
-selbst mit dem Postausgang des Kunden, wie jedes andere Programm in seinem Netz. Der Code
-liegt unter `.ara/templates/app-patterns/mail/backend/post.mjs`: SMTP in seiner einfachsten
-Form, ohne Paket, genug für eine Textnachricht an ein Relais. Sein Kopf zeigt, wie der Kern
-ihn als dritten Anschluss neben Ablage und Gerät bekommt und wie aus einem entschiedenen
-Vorgang eine Mail wird.
-
-**Die Werte stehen im Manifest**, unter `backend.umgebung`, und das Gerät legt sie in den
-Container: der Host, der Port, ob und wie TLS gesprochen wird, die Absenderadresse. Der Kopf
-der Datei nennt sie.
-
-**Das Passwort nicht.** Das Manifest liegt im Paket und im Repository des Partners, und ein
-Passwort darin läge an zwei Orten, an die es nicht gehört. Der Weg, der heute geht, ist ein
-Relais im Netz des Kunden, das das Gerät ohne Anmeldung annimmt, an seiner Adresse erkannt;
-das ist der übliche Fall mit einem Mailserver im Haus. Verlangt der Postausgang eine
-Anmeldung, hält die App sie in ihrer eigenen Ablage, eingetragen über eine eigene
-Einstellungsseite, und reicht sie dem Modul; das Gerät gibt einer App heute keinen Ort für
-ein Geheimnis. Eine Anmeldung ohne TLS weist das Modul ab, weil sie das Passwort im Klartext
-schickte.
-
-Drei Dinge klärst du im Interview und schreibst sie in den Plan:
-
-- **Wer die Mail bekommt.** Die Anmeldung gibt der App einen Namen und keine Adresse.
-  Entweder hält die App eine Liste aus Namen und Adressen, oder das Formular fragt nach der
-  Adresse, oder die Mail geht an eine feste Adresse. Das entscheidet der Kunde.
-- **Wann sie geht.** Nach einer Entscheidung, nach einer Frist, am Ende eines Laufs. Der Kern
-  kennt den Moment; das Modul sendet nur.
-- **Was passiert, wenn sie nicht geht.** Das Modul wirft nie: eine Mail, die nicht rausging,
-  ist ein Satz am Vorgang und kein Absturz der App. Die Seite zeigt den Satz.
-
-**Was geprüft ist und was nicht.** Der Selbsttest sendet durch ein lokales Relais und liest
-die Mail zurück. TLS und eine Anmeldung liefen hier gegen niemanden: die erste Mail beim
-Kunden geht an dich selbst, bevor ein Ablauf daran hängt. Ob das Gerät das Relais erreicht,
-prüfst du am Gerät, über `remote.mjs`, nicht von deinem eigenen Rechner.
-
-Für Anhänge, HTML oder andere Anmeldeverfahren nimm ein Paket wie `nodemailer`, leg dafür
-ein `npm ci` in das Dockerfile und behalte die Schnittstelle des Moduls bei: `senden` mit
-Empfängern, Betreff und Text, zurück kommt, ob es ging, und sonst der Satz.
-
-## 4. Fremde API aus dem Backend rufen
-
-Eine App schlägt etwas außerhalb des Geräts nach: eine Postleitzahl, einen Wechselkurs,
-einen Auftrag in einem fremden System. Der Code liegt unter
-`.ara/templates/app-patterns/foreign-api/backend/fremd.mjs`, gebaut wie der Anschluss der
-Vorlage an das Gerät: der Kern bekommt ihn hereingereicht, ruft `rufen` mit Verb, Pfad und
-Rumpf und bekommt den Status, den Inhalt als JSON oder einen Satz darüber, was schiefging.
-Er wirft nie, und er wartet höchstens zehn Sekunden.
-
-**Aus dem Backend, nicht aus dem Browser.** Die Oberfläche einer App läuft im Rahmen des
-Geräts, und dessen Sicherheitsrichtlinie lässt keinen Aufruf nach draußen zu. Dazu ist ein
-Schlüssel im Browser ein Schlüssel für jeden, der die Entwicklerwerkzeuge öffnet. Das
-Backend ruft, der Browser fragt das Backend.
-
-**Die Adresse steht im Manifest**, unter `backend.umgebung`; der Kopf der Datei nennt die
-Variable. **Der Schlüssel nicht**, aus demselben Grund wie das Passwort in Muster 3: die App
-hält ihn in ihrer eigenen Ablage, oder der Dienst kommt ohne aus. Was der fremde Dienst in
-welcher Kopfzeile will, sagt seine Dokumentation, und die App baut diese Kopfzeile; das
-Modul trägt sie nur.
-
-Zwei Dinge prüfst du, bevor du es versprichst:
-
-- **Erreicht das Gerät die Adresse.** Ein Gerät im Netz eines Kunden kommt nicht immer ins
-  Internet, und ein Dienst antwortet nicht immer. Beides ist ein Satz am Vorgang. Prüf es am
-  Gerät, über `remote.mjs`.
-- **Was das Gerät verlässt.** Eine Postleitzahl ist nichts, ein Name mit einem Auftrag ist
-  personenbezogen. Das ist die Zeile „Welche Daten" der Prüfliste des Interviews, und es
-  steht im Plan und in der Akte des Kunden.
-
-## 5. Fremder Container als App hinter der Anmeldung
-
-Ein Kunde will ein Werkzeug, das es schon gibt, eine kleine Webanwendung aus einer Registry,
-und er will sie hinter der Anmeldung des Geräts statt offen im Netz. Das ist eine App mit
-Backend und ohne eigene Oberfläche: das Werkzeug ist das Backend. Das Beispiel liegt unter
-`.ara/templates/app-patterns/foreign-container/`, ein Manifest und ein Bauplan aus einer
-Zeile.
-
-**Das Gerät baut, es nimmt kein fertiges Image.** Das steht in den Regeln seines Kontrakts,
-und `--check` druckt sie; das Kit weist ein Manifest mit `backend` und ohne `bauen` ab. Ein
-anderswo gebautes Image wäre für eine Architektur gebaut, und niemand merkte es, bis es am
-Gerät nicht startet. Der Bauplan für ein fremdes Image ist deshalb eine Zeile, `FROM` und das
-Image, und das Gerät zieht es selbst, für seine eigene Architektur. Dafür muss es die
-Registry erreichen, und das prüfst du dort.
-
-**Vor dem Container hängt die Anmeldung des Geräts.** Alles unter dem `api`-Pfad der App
-geht durch sie: wer die App nicht freigegeben hat, kommt nicht durch, und wer sie hat, kommt
-mit Namen und Rolle in zwei Kopfzeilen an, deren Namen im Kontrakt unter `koepfe` stehen.
-Das ist der ganze Sinn des Musters: das Werkzeug bekommt eine Anmeldung, die es nie hatte,
-und der Kunde bekommt eine Anmeldung für alles.
-
-Drei Dinge liest du in der Dokumentation des Werkzeugs und schreibst sie ins Manifest, und
-dieses Blatt kennt sie nicht:
-
-- **Den Port**, auf dem das Werkzeug hört, `ports.backend`.
-- **Einen Weg, der mit 200 antwortet, wenn es läuft**, `backend.gesundheit`. Der
-  Gesundheitscheck des Geräts fragt ihn.
-- **Seine Einstellungen**, `backend.umgebung`. Zwei zählen hier. Der Container sieht seine
-  Pfade ohne den Vorsatz des Geräts: eine Anfrage an `/apps/<id>/api/hallo` kommt als
-  `hallo` an der Wurzel an. Ein Werkzeug, das seinen öffentlichen Pfad kennen muss, bekommt
-  ihn über seine eigene Einstellung. Und ein Werkzeug mit eigener Anmeldung: nimm eines,
-  das einer Kopfzeile vertraut oder keine braucht, sonst meldet sich der Mensch zweimal an.
-
-Dazu der Speicher unter `ressourcen`: das Beispiel kommt mit wenig aus, ein Werkzeug mit
-eigener Datenbank nicht.
-
-**Ohne eigene Oberfläche hat die App keine Seite unter `/apps/<id>/`.** Ihre Adresse ist
-der `api`-Pfad. Was die Übersicht des Geräts für so eine App zeigt und wie der Mensch
-dorthin kommt, prüfst du am Gerät. Der Standard der Bibliothek gilt für sie nicht: sie
-bringt keine Oberfläche mit, die neben der des Geräts stehen könnte. Und für die Lizenz ist
-sie eine App wie jede andere: sie belegt einen Platz, die Regeln des Kontrakts sagen es.
-
-**Was geprüft ist und was nicht.** Das Manifest ging durch die Manifestprüfung des Kits
-gegen ein Schema in der Form des Kontrakts, und der Bauplan ist ein Bauplan. Kein fremder
-Container wurde für dieses Blatt auf ein Gerät gespielt: der erste ist ein Nachweis, der in
-den Laufzettel des Geräts gehört, mit Werkzeug, Fassung und dem, was die Übersicht zeigte.
-
-## 6. Dokument auslesen
-
-Ein Beleg, eine Rechnung, ein Formular kommt als PDF oder Foto herein, und die App soll daraus
-Felder machen: Datum, Betrag, Aussteller. **Das Gerät liest, die App prüft, ein Mensch
-entscheidet.** Das Muster setzt Muster 2 voraus, dessen Tabelle und Wege, und legt sich darüber.
-Der Code liegt unter `.ara/templates/app-patterns/extract/`:
-
-| Datei | Was sie ist |
-| --- | --- |
-| `backend/ablage/migrationen/003-auslesungen.sql` | Das Protokoll: jede Auslesung eine Zeile, nur anhängen |
-| `backend/ablage/auslesungen.mjs` | Die Ablage dazu. Sie kann anlegen und lesen, ändern und löschen kann sie nicht |
-| `backend/kern/auslesen.mjs` | `SCHEMA` und `ANWEISUNG` für das Gerät, `pruefen` gegen das Schema, `fachlich` für eigene Regeln, und der Ablauf |
-| `backend/wege/auslesen.mjs` | Die Wege: kann das Gerät auslesen, eine Auslesung anstoßen, das Protokoll eines Dokuments |
-| `frontend/src/auslesen.ts` | Typen und Abfragen |
-| `frontend/src/seiten/auslesen.tsx` | Die Seite: das Dokument in der Dokumentanzeige, daneben die Felder, darüber die Mängel, darunter das Protokoll |
-
-**Einhängen** wie Muster 2: die Ordner über die der App kopieren, die Zeilen aus dem Kopf von
-`wege/auslesen.mjs` in `server.mjs`, und zwar **vor** den Wegen der Dokumente, eine `Route` und ein
-Eintrag in der Seitenleiste, dann `--build`. Der Aufruf an das Gerät steht schon in der Vorlage,
-`geraet.auslesen` in `backend/arasul.mjs`: er nimmt den Weg aus `arasul.json`, schickt die Datei
-als Formular mit dem Schema und gibt Felder, Modell, Dauer und ob die Texterkennung lief zurück.
-**Kein Weg und kein Modellname steht im Muster**; der Selbsttest hält es daran.
-
-**Ersetze `SCHEMA`, `ANWEISUNG` und `fachlich`** durch das, was dein Kunde liest. Das Beispiel
-liest einen Beleg. Ein flaches Schema mit `required` ist am verlässlichsten; ein Feld, das das
-Modell raten müsste, lässt es besser weg, und die Anweisung sagt ihm das.
-
-Was du darüber wissen musst, gemessen am 25.09.2026 am Orin mit einer Probe aus Vorlage, Muster 2
-und diesem:
-
-- **Ein PDF mit Textschicht** liest das Gerät direkt: ein erfundener Beleg, sechs von sechs
-  Feldern, 35 Sekunden.
-- **Ein Foto oder ein gescanntes PDF** geht durch die Texterkennung des Geräts, und das Modell
-  bekommt den erkannten Text, nicht das Bild: eine erfundene Tankquittung als Foto, sechs von
-  sechs Feldern, 13 Sekunden. Handschrift und schlechte Fotos kosten Felder.
-- **Wie lange es dauert**, hängt am Modell: ist es gerade nicht geladen, dauert die erste
-  Auslesung Minuten. Die Seite sagt, dass das Modell liest, und ein zweiter Klick startet
-  keine zweite Auslesung.
-- **Das Protokoll ist die Nachvollziehbarkeit.** Jede Auslesung bleibt, auch die, die nicht
-  gelang, auch wenn das Dokument geht: wer sie anstieß, welches Modell, wie lange, welche
-  Felder, welche Mängel. Wer eine Auslesung verwirft, stößt eine neue an.
-
-Wofür das Feld `modelle` in `app.json` da ist, ob ein Bildmodell geladen sein muss und was du
-einem Kunden zusagst, steht in `.ara/knowledge/app.de.md` unter „Dokumente und Bilder auslesen“.
-Aus Feldern wird in einer Fach-App ein Vorschlag, und über den entscheidet ein Mensch: dann
-startet die App einen Flow mit Freigabe, mit einem Verweis auf den Beleg und nicht mit seinem
-Inhalt, siehe dort „Freigaben in einer Fach-App“.
-
-**Was geprüft ist und was nicht.** Der Selbsttest lässt das Muster gegen ein gespieltes Gerät
-laufen, das die Datei als Formular nimmt: Felder, ein Mangel am Steuersatz, eine Antwort ohne
-Felder, ein Fehler des Geräts, das Protokoll nach dem Entfernen des Dokuments. Am Orin lief es am
-25.09.2026 wie oben beschrieben. Eine Auslesung mit einem Modell, das der Kunde selbst gewählt
-hat, und seine echten Belege prüfst du an seinem Gerät.
-
-## 7. Mandanten: wer was sieht, und wer entscheidet
-
-Eine Kanzlei, eine Praxis, ein Büro: mehrere Mandanten, und jeder Mitarbeiter sieht nur seine.
-**Wer in die App kommt, entscheidet das Gerät, was jemand darin sieht, die App.** Das Gerät
-kennt keine Mandanten und soll sie nicht kennen. Diese Trennung ist das, was eine solche App
-nicht falsch machen darf, und aus einer Beschreibung gebaut kommt sie jedes Mal anders heraus.
-Deshalb liegt sie hier als Code, und der Plan nimmt sie, statt sie neu zu beschreiben. Der Code
-liegt unter `.ara/templates/app-patterns/clients/`:
-
-| Datei | Was sie ist |
-| --- | --- |
-| `backend/ablage/migrationen/004-mandanten.sql` | Mandanten, gesehene Konten, Zuordnungen, und eine Spalte `mandant` an den Vorgängen |
-| `backend/ablage/mandanten.mjs` | Die Ablage für alle drei, und `nurZugeordnete`, der Filter als SQL für jede andere Ablage |
-| `backend/ablage/vorgaenge.mjs` | Ersetzt die Ablage der Vorgänge aus der Vorlage: dieselben Felder, und jede Abfrage trägt den Filter |
-| `backend/kern/mandanten.mjs` | Wer verwaltet, Anlegen und Zuordnen, die Regel für die Freigabe, ob ein Entscheider noch zuständig ist |
-| `backend/wege/mandanten.mjs` | Die Wege: Mandanten, Zuordnungen, und die Vorgänge mit ihrem Mandanten |
-| `frontend/src/mandanten.ts` | Typen und Abfragen |
-| `frontend/src/seiten/mandanten.tsx` | Die Verwaltungsseite, und `MandantWahl` für das Formular |
-
-**Eingehängt wird es** so: die Ordner über die der App kopieren, die Zeilen aus dem Kopf von
-`wege/mandanten.mjs` in `server.mjs`, **vor** die Wege der Vorgänge, eine `Route` und ein
-Eintrag in der Seitenleiste, den nur die Verwaltung sieht, `MandantWahl` in `seiten/neu.tsx`;
-der Kopf von `seiten/mandanten.tsx` zeigt diese Zeilen. Dann `--build`.
-
-Was das Muster entscheidet, und warum:
-
-- **Eine Zuordnung, keine zweite Anmeldung.** Niemand meldet sich an der App an. Sie merkt
-  sich zu einem Namen aus der Kopfzeile der Anmeldung, welche Mandanten er sieht. Die Namen
-  der Kopfzeilen stehen in `arasul.json` unter `koepfe`.
-- **Zugeordnet wird nur ein Name, den die App gesehen hat.** Der Schlüssel einer App kann die
-  Konten des Geräts nicht auflisten. Die App vermerkt jeden Namen, der vorbeikommt, mit dem
-  ersten und dem letzten Mal, und die Verwaltung wählt daraus. Ein neuer Mitarbeiter öffnet die
-  App einmal, danach lässt er sich zuordnen.
-- **Der Filter steht im WHERE, nicht in einer Prüfung danach.** `nurZugeordnete` gibt die
-  Bedingung als SQL, und die Ablage der Vorgänge wird je Anfrage für einen Namen gebaut. Die
-  Liste, der einzelne Vorgang, die wartenden, das Fortschreiben: was zu einem fremden Mandanten
-  gehört, gibt es in ihr nicht. Ohne Namen sieht sie nichts.
-- **Fremd heißt 404, nicht 403.** Ein 403 sagte, dass es den Vorgang gibt. 403 bekommt nur,
-  wer die Verwaltung aufruft, ohne sie zu haben.
-- **Verwaltung nur für eine Rolle, die der Kontrakt nennt.** `verwaltungsRolle` nimmt die
-  Rolle, die eine Regel als Entscheider nennen darf (`freigaben.rollen`), sofern sie in der
-  Rollenkopfzeile stehen kann (`koepfe.rollen`). Wer eine andere will, nennt sie, und auch die
-  muss in `koepfe.rollen` stehen. Passt keine, verwaltet niemand, und die App sagt das. Das
-  Muster tippt keinen Rollennamen ein.
-- **Die Verwaltung sieht Vorgänge nur der Mandanten, denen sie zugeordnet ist.** Zuordnungen
-  pflegen ist nicht Akten lesen. Will der Plan etwas anderes, sagt er es, und die Ablage ändert
-  sich an einer Stelle.
-- **Die Entscheider kommen aus der Zuordnung.** `regel` gibt dem Gerät vier Augen und die Konten,
-  die dem Mandanten des Vorgangs zugeordnet sind, ohne den Einreicher. Bleibt niemand, startet
-  kein Lauf, und am Vorgang steht, warum. Jedes Konto, das dort steht, muss die App freigegeben
-  haben, sonst weist das Gerät den Start mit 400 ab, und dieser Satz steht am Vorgang.
-- **Eine Entscheidung zählt nur von jemandem, der noch zuständig ist.** Endet eine Zuordnung,
-  während ein Lauf wartet, entscheidet das Gerät weiter nach dem Kreis vom Start. Beim
-  Nachziehen hält die App den Namen dessen, der entschieden hat, gegen die Zuordnung, und eine
-  Entscheidung von außerhalb zählt nicht.
-
-**Die Muster 2 und 6 kennen keine Mandanten.** In einer App mit Mandanten bekommen ihre Tabellen
-eine Spalte `mandant` in einer eigenen Migration, und jede Abfrage ihrer Ablagen nimmt
-`nurZugeordnete`, das Protokoll einer Auslesung eingeschlossen. Der Selbsttest hält die Ablage
-der Vorgänge daran: jede Abfrage, die Vorgänge liest oder schreibt, trägt den Filter.
-
-**Was geprüft ist und was nicht.** Der Selbsttest lässt das Muster im Backend der Vorlage gegen
-ein gespieltes Gerät laufen, dessen Rollen anders heißen als am Orin: zwei Konten, zwei
-Mandanten, der fremde Vorgang 404 in der Liste und einzeln, die Verwaltung 403 für jeden ohne
-die Rolle, die Regel mit den Entscheidern aus der Zuordnung, eine Entscheidung von jemandem,
-der nicht mehr zuständig ist, die nicht zählt.
-
-Am 26.09.2026 lief eine Probe aus der Vorlage und diesem Muster am Orin, im Teststand, in der
-PostgreSQL des Geräts. Gemessen mit zwei echten Kontonamen in den Kopfzeilen, die sonst die
-Plattform setzt, direkt am Container gefragt, weil niemand für die Probe freigegeben war: jeder sah
-nur seinen Mandanten, der fremde Vorgang antwortete 404 in der Liste und einzeln, ein Einreichen
-bei einem fremden Mandanten 404, die Verwaltung 403 für die Rolle `mitarbeiter` und offen für
-`admin`, die das Muster aus dem Kontrakt nahm. Ein Mandant, dem nur der Einreicher zugeordnet war,
-startete keinen Lauf und sagte warum. Ein Start mit einem Entscheider aus der Zuordnung erreichte
-das Gerät, und das Gerät wies ihn mit 400 ab, weil dem Einreicher die App nicht freigegeben war;
-dieser Satz stand am Vorgang. **Ein Lauf, den ein zugeordneter Entscheider bestätigt, ist am Gerät
-nicht gesehen**: dafür braucht es eine Freigabe für zwei Konten und damit eine Sitzung als
-Administrator. Das ist der erste Nachweis am Gerät des Kunden, eingetragen in seinen Laufzettel.
-
-## Was `/app` damit tut
-
-Im Interview ist der Wunsch oft klein: „ein Formular für den Urlaubsantrag". Dann nenn,
-was daneben liegt, einmal und kurz: der Antrag als Dokument, eine Mail, wenn er entschieden
-ist, ein Nachschlagen in der Zeiterfassung, das Werkzeug, das das Büro ohnehin benutzt, ein
-Beleg, den das Gerät ausliest, die Mandanten, die einander nicht sehen dürfen. Der
-Mensch sagt, was er will, und der Plan nennt das Muster, das er benutzt, damit der Nächste,
-der ihn öffnet, weiß, wonach er sucht. Nach `--new` nennt das Werkzeug dieses Blatt aus
-demselben Grund.
+**Was `/app` damit tut.** Der Wunsch ist oft klein, „ein Formular für den Urlaubsantrag". Dann nenne
+einmal, was daneben liegt: der Antrag als Dokument, eine Mail, wenn entschieden ist, ein
+Nachschlagen in der Zeiterfassung, das Werkzeug, das das Büro ohnehin nutzt, ein Beleg, den das
+Gerät ausliest, Mandanten, die einander nicht sehen dürfen. Der Plan nennt das Muster, das er
+benutzt, damit der Nächste weiß, wonach er suchen muss; nach `--new` nennt das Werkzeug dieses
+Blatt.

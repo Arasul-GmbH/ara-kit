@@ -27,7 +27,7 @@ Work from the outside in. Every stage answers one question before you go to the 
    show you.
 2. **Is the device reachable?** `node .ara/tools/find-device.mjs --host <address>`, then
    `node .ara/tools/remote.mjs --customer <c> --check`. If not: procedure in
-   `.ara/knowledge/remote-access.md`, section "Wenn ein Gerät nicht mehr erreichbar ist".
+   `.ara/knowledge/remote-access.md`, section "When a device is no longer reachable".
 3. **Is the device itself alive?** Has it been running since the last boot? Is there disk
    space? Is the system time right? A full file system and a wrong clock are the two causes
    that disguise themselves as anything at all.
@@ -54,6 +54,20 @@ commands from memory.
 | Worked yesterday | Update, restart, change in the customer network |
 
 The table does not replace the chain. It only says where to look first.
+
+## When the kit's calls get no answer
+
+`app.mjs` and `maintain.mjs` speak to the device's interface with the kit key.
+
+- **Certificate cannot be verified**: usually self-signed in a customer network. Sure it is this
+  device: `tls: selfsigned` into the file, or a one-off `--insecure`. A kit that installed it has the
+  entry already.
+- **401**: the key was revoked or belongs to another device. `device.mjs --name <device> --keys`
+  marks the kit's, otherwise `--deploy-key`.
+- **The endpoint is not in the contract**: the kit does not call it, kit and device do not fit.
+- **The interface sits elsewhere than SSH**, tunnel or other certificate name: `api_base` into the
+  file. It beats `address`, `--base <url>` beats both for one attempt.
+- **No answer**: `node .ara/tools/find-device.mjs --host <address>`, then the chain above.
 
 ## Before you change anything
 

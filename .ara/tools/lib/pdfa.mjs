@@ -16,7 +16,7 @@
  * Was es **nicht** tut: die Konformitaet zu PDF/A-3 pruefen. Es setzt die
  * Kennzeichnung und alles, was dafuer noetig ist, aber ob ein Pruefer wie
  * veraPDF zufrieden waere, sagt nur ein Pruefer. Siehe
- * `.ara/knowledge/invoicing.md`, Abschnitt "Was ungeprueft bleibt".
+ * `.ara/knowledge/invoicing.de.md`, Abschnitt „Was ungeprüft bleibt".
  */
 
 import { createHash } from "node:crypto";

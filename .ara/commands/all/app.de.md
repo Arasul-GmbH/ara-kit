@@ -5,21 +5,26 @@ argument-hint: [<app>]
 
 App: **$1**
 
-Lies `.ara/knowledge/app.de.md` und arbeite danach. Wissen, das dieser Befehl lädt:
-`.ara/knowledge/app.de.md`, `.ara/knowledge/security.de.md`, dazu `.ara/knowledge/deploy.de.md`,
-sobald ein Paket an ein Gerät geht, `.ara/knowledge/platform-services.de.md`, sobald die App
-etwas von der Plattform will (Anmeldung, Freigabe, Flow, Sprachmodell),
-`.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst,
-`.ara/knowledge/extensions.de.md` beim ersten Interview mit einem Kunden,
-`.ara/knowledge/app-patterns.de.md`, sobald eine Idee entsteht, damit die App nicht beim
-Formular stehen bleibt, und `.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil
-in `business/profile.md` liest du vorher: Zweig, Erklärtiefe, Sicherheitsstufe, womit das
-Haus arbeitet.
+Lies `.ara/knowledge/app.de.md` und arbeite danach. Wissen, das dieser Befehl lädt: jede Datei erst,
+wenn ihr Moment kommt.
 
-**Das Argument.** `<app>` ist die App unter `apps/<app>/`. Apps liegen
-kundenunabhängig oben: dieselbe App läuft vielleicht bei drei Kunden, und wo sie läuft,
-sagt das Gerät. Fehlt das Argument: erst der Merker `.ara/state.json`, dann die
-vorhandenen Akten. Gibt es genau eine, nimm sie, sonst frag über das Interview-Werkzeug.
+- `.ara/knowledge/app.de.md` immer, der Kern.
+- `.ara/knowledge/app-patterns.de.md`, sobald eine Idee entsteht, und das Blatt des Musters, das
+  der Plan nimmt, der es nennt.
+- `.ara/knowledge/app-professional.de.md` vor dem Plan einer Fach-App: Mandanten oder Akten, Daten,
+  die Jahre halten, Belege, die das Gerät ausliest, eine Freigabe ohne den Einreicher, ein
+  Exportformat eines anderen Herstellers.
+- `.ara/knowledge/platform-services.de.md`, sobald die App etwas von der Plattform will: Anmeldung,
+  Freigabe, Flow, Auslesen eines Dokuments.
+- `.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst.
+- `.ara/knowledge/deploy.de.md`, sobald ein Paket an ein Gerät geht.
+
+Sicherheitsstufen und Produktwerte: `.claude/CLAUDE.md`. Vorher liest du `business/profile.md`:
+Sprache, Zweig, Detailtiefe, Sicherheitsstufe, womit das Haus arbeitet.
+
+**Das Argument.** `<app>` ist die App unter `apps/<app>/`; Apps stehen oben, unabhängig von
+Kunden, und wo eine läuft, sagt das Gerät. Kein Argument: erst der Merker `.ara/state.json`, dann
+die vorhandenen Ordner. Genau einer, nimm ihn, sonst frag über das Interview-Werkzeug.
 
 **Zuerst, immer:**
 
@@ -27,42 +32,14 @@ vorhandenen Akten. Gibt es genau eine, nimm sie, sonst frag über das Interview-
 node .ara/tools/app.mjs --app <app>
 ```
 
-Das Werkzeug liest die Akte und sagt, wo die App steht und was jetzt ansteht, mit dem
-Aufruf zu jedem Schritt. Sag das in drei Zeilen weiter und mach den ersten davon, statt
-alles aufzuzählen, was ginge.
+Es sagt, wo die App steht und was ansteht, mit den Aufrufen. Gib das in drei Zeilen weiter und tu
+das Erste, statt aufzuzählen, was alles ginge.
 
-**Gibt es die App noch nicht**, ist das Interview dran, bevor irgendetwas angelegt wird:
-die Prüfliste steht im Verfahren. Ist der Wunsch klein, ein Formular, nenn einmal, was
-daneben liegt: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden
-ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung,
-Mandanten, die einander nicht sehen. Die sieben Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und
-der Plan nennt das, das er benutzt. Erst danach `--new` und der erste Plan. Was offen
-geblieben ist, steht als Annahme im Plan und wird beim nächsten Mal vorgelesen.
-
-**Ist es eine Fach-App**, mit Mandanten oder Akten, Daten, die Jahre halten müssen, Belegen,
-die das Gerät lesen soll, einer Freigabe, die nicht der Einreicher gibt, oder einem
-Exportformat eines anderen Herstellers: lies in `.ara/knowledge/app.de.md` den Abschnitt „Eine
-Fach-App“, bevor der Plan entsteht. Er hat fünf Teile, und jeder davon gehört als Antwort oder
-als Annahme in den Plan. Mandanten baut Muster 7, nicht eine neue Beschreibung.
-
-**Ist ein Plan aktiv**, geh zuerst seine Annahmen durch, dann bau, was darin steht, dann
-`--build`. Der Bau ist das Paket, nicht die laufende App: was sie tut, sieht man am Gerät.
-
-**Geht es an ein Gerät**, und liegt unter `devices/` noch keine Akte dafür, ist zuerst
-`/device` dran: ohne Akte kein Kontrakt und kein `--check`. Dann immer erst `--check` gegen dessen Kontrakt, dann `--deploy`.
-Das rollt in den **Teststand**, und dort bleibt es, bis ein Mensch es sehen wollte.
-`--live` ist ein Eingriff der Stufe 2: frag vorher, auch wenn du gerade selbst eingespielt
-hast, ab dem Moment arbeiten die Leute damit. Danach: Plan nach `erledigt/`, README der
-App fortschreiben, ein Satz in den Laufzettel oder in den Verlauf des Kunden.
-
-**Eingespielt ist nicht sichtbar, und das sagst du vor dem Einspielen.** Eine App sieht ein
-Mensch am Gerät erst, wenn sie für ihn freigegeben ist; ohne Freigabe antwortet die Adresse
-des Teststands mit einer 403. Freigeben kann das Kit sie nicht, sein Schlüssel trägt
-`app:deploy`. `--deploy` nennt am Ende seiner Ausgabe die zwei Wege zu einem Administrator:
-eine Sitzung aus dem Startpasswort, oder ein Mensch in der Oberfläche des Geräts. Lies vor,
-was dort steht, und nenn keine eigene Seite und keinen eigenen Weg: die stehen im Artefakt,
-und das liest das Kit am Gerät, auch ohne Token: `node .ara/tools/mirror.mjs --docs --device <gerät>`.
-
-**Auf einem Gerät ohne Arasul** geht `--compose` über SSH. Sag vorher, was dabei fehlt,
-mit denselben Worten, die das Werkzeug hinterher ausgibt: keine Anmeldung, kein Flow,
-keine Freigabe. Das ist ein Weg zum Vorführen, keiner für echte Daten.
+**Noch keine App**: das Interview nach der Prüfliste kommt, bevor etwas angelegt wird, dann `--new`
+und der erste Plan. Was offen blieb, kommt als Annahme in den Plan und wird beim nächsten Mal
+vorgelesen. **Ein Plan ist aktiv**: erst seine Annahmen, dann bauen, dann `--build`. **An ein
+Gerät**: ohne Akte unter `devices/` zuerst `/device`; dann `--check`, dann `--deploy` in den
+Teststand. Vor dem Einspielen sagst du, dass die App noch nicht sichtbar ist, und warum, wie
+`.ara/knowledge/deploy.de.md` sagt. `--live` ist ein Eingriff der Stufe 2: frag, auch wenn du vor
+einer Minute eingespielt hast. **Ohne Arasul** geht `--compose` über SSH, und vorher sagst du, was
+dort fehlt.
