@@ -76,7 +76,10 @@ token". The installation itself is level 2 as well, it takes a while, and the in
 output is read along. The installer gets a start password and a network name, because only
 then do they come into being on the device; the kit rolls the password and puts it into the
 secret store, the network name is set by `--net-name <name>`, otherwise the name of the
-file applies.
+file applies. The installer hardens SSH: another port, only a key, a firewall; the tool names
+the port before it starts. In the same confirmation you ask whether other services on the
+device need SSH as it is, port 22, a password login or open ports. If so, the call gets
+`--keep-ssh`, and the installer leaves SSH and firewall alone.
 
 **Unlocking belongs to the installation.** A bought token is at the same time the licence
 code: after the installer the tool fetches the fingerprint from the device, the licence from

@@ -184,12 +184,12 @@ The phases of the runsheet and what applies in each:
   name, port and key name. From now on every command runs through
   `node .ara/tools/remote.mjs --device <device> --command "…"`.
 - **3 Install Arasul.** One call, see "Installing Arasul" further down:
-  `node .ara/tools/device.mjs --name <device> --install arasul`. Read the output along, stop at
-  errors. Evidence: the device's contract can be read and fits the kit,
+  `node .ara/tools/device.mjs --name <device> --install arasul`, with `--keep-ssh` when SSH has
+  to stay as it is. Read the output along, stop at errors. Evidence: the device's contract can be read and fits the kit,
   `node .ara/tools/app.mjs --device <device> --contract`.
 - **4 Follow-up.** First check whether something is missing, the product handles some of it
-  itself. The default model: after an installation it is missing, how it gets on and how long it
-  takes stands under "The default model" below, name resolution, harden access (only once key login demonstrably works,
+  itself. The default model: the installer fetches it in the background, whether it came and how long
+  it takes stands under "The default model" below, name resolution, harden access (only once key login demonstrably works,
   and keep the running session open), network hardening, remote access along
   `.ara/knowledge/remote-access.md`. If port or login name change: pull them into `device.md`
   immediately.
@@ -338,12 +338,22 @@ door for a device in somebody else's network. Go through the list before the dev
 harden access along `.ara/knowledge/remote-access.md`, everything else on the device with root
 rights. What you caught up on and what stays open you write into the runsheet.
 
+**Before the installer runs, the kit says what the hardening does.** With sudo without a password
+the installer moves SSH to another port, lets only a key in afterwards and puts up a firewall. The
+kit names the port from the fetched artifact (`scripts/security/haerten.sh`) and does not know it by
+heart. **Whoever needs port 22, a password login or other open ports on the device leaves the
+hardening out**: `node .ara/tools/device.mjs --name <device> --install arasul --keep-ssh` gives
+the installer `ENABLE_SSH_HARDENING=false` and `ENABLE_FIREWALL=false`. Ask before the
+installation whether other services at the customer depend on SSH as it is, and write the answer
+into the runsheet. With `--keep-ssh` the device has no firewall and still takes a password: that
+is an open point for phase 4, harden later along `.ara/knowledge/remote-access.md`.
+
 **Before the installer runs, the kit checks that login with a key works.** The hardening lets only
 a key in afterwards, so whoever reached the device with a password until now would be locked out.
 The kit tries a connection of its own that allows nothing but the key, not riding on an open
 session, and stops with one sentence if that fails. Set up the key along
 `.ara/knowledge/remote-access.md`, then call the same command again. When the kit runs on the
-device itself, there is nothing to lock out, and the check falls away.
+device itself, there is nothing to lock out, and the check falls away, just as with `--keep-ssh`.
 
 **When the hardening succeeds, SSH lies on another port afterwards.** The installer says so in a
 warning and in a line of its own, `ARASUL_SSH_PORT=<port>`. The kit reads that line, connects over
@@ -474,17 +484,19 @@ device's administrator, over its interface. The kit does not do it.
 
 ### The default model
 
-**After an installation no language model lies on the device, and that is normal.** The installer
-says so in its last lines, and the kit repeats it under "What the installer could not do". The
-flows and the chat need the default model, so it belongs to phase 4 and not to the customer's
-first day.
+**The installer fetches the default model itself, in the background.** It says so in one line,
+which model and where the progress goes, and the kit reads that line and repeats it in the next
+steps. **No second download is needed**: do not start one in the interface while the first one
+runs. The chat answers once the model is there. If the installer said it did not fetch one, or
+said nothing, the kit says that too, and the way below applies. The flows and the chat need the
+default model, so it belongs to phase 4 and not to the customer's first day.
 
 **Which one it is, the device says**, not the kit: in the interface under the models, logged in
 as the administrator, the short list marks the default. The same list stands in the mirror
 (`node .ara/tools/mirror.mjs --docs`, the admin handbook and the API reference, section model
 management). The kit names no model.
 
-**How it gets on:** in the interface, as the administrator, on the models page, load the default
+**How it gets on when the installer did not fetch it:** in the interface, as the administrator, on the models page, load the default
 of the short list. It goes through the platform, so catalogue and installation state stay in
 step, and the progress is visible there. Whoever works without a browser uses the admin session
 (`--admin-login`) and the download route from the API reference in the mirror. **Not with a pull

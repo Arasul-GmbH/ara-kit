@@ -89,12 +89,15 @@ import {
 import {
   createMasker,
   findKeys,
+  hardeningNotice,
+  hardeningPort,
   installCommand,
   installTarget,
   KEY_ONLY,
   installerEntry,
   keyLogin,
   mirrorState,
+  modelFrom,
   movePort,
   releaseVersion,
   runInstaller,
@@ -5081,6 +5084,112 @@ check("Vor der Härtung prüft das Kit, dass der Schlüssel hereinkommt", () => 
   }
 });
 
+await checkAsync("Die Härtung wird angesagt, lässt sich abwählen, und das Modell kommt im Hintergrund", async () => {
+  // Am Orin lag SSH nach einem Durchlauf sieben Minuten auf dem neuen Port,
+  // ohne dass vorher jemand davon gehört hätte, und das Kit hatte keinen Weg,
+  // die Härtung auszulassen. Zwölf Zeilen unter dem Satz des Installers, er
+  // hole das Standardmodell im Hintergrund, empfahl es einen zweiten Download.
+
+  // 1. Der Aufruf: mit --keep-ssh stehen beide Schalter vor dem Einstiegspunkt,
+  // so erbt der Bootstrap sie und mit ihm haerten.sh. Ohne steht keiner da.
+  const entry = { file: "install.sh" };
+  let call = installCommand(entry, { password: "geheim-123", netName: "werk2", keepSsh: true });
+  assert(/^ENABLE_SSH_HARDENING=false ENABLE_FIREWALL=false \.\/install\.sh /.test(call.command), `die Schalter stehen nicht vor dem Einstiegspunkt: ${call.command}`);
+  assert(/ENABLE_FIREWALL=false/.test(call.shown) && !/geheim-123/.test(call.shown), `die Anzeige verschweigt die Schalter oder zeigt das Passwort: ${call.shown}`);
+  call = installCommand(entry, { password: "geheim-123", netName: "werk2" });
+  assert(!/ENABLE_/.test(call.command), `ohne --keep-ssh wird die Härtung trotzdem abgewählt: ${call.command}`);
+
+  // 2. Der Port kommt aus dem Artefakt, nicht aus dem Kit.
+  const work = mkdtempSync(join(tmpdir(), "ara-ansage-"));
+  try {
+    assert(hardeningPort(work) === null, "ohne haerten.sh wird ein Port erfunden");
+    mkdirSync(join(work, "scripts", "security"), { recursive: true });
+    writeFileSync(join(work, "scripts", "security", "haerten.sh"), 'SSH_PORT_SOLL="$(env_wert SSH_PORT 4711)"\n');
+    const port = hardeningPort(work);
+    assert(port?.port === "4711", `der Port aus dem Artefakt wurde nicht gelesen: ${JSON.stringify(port)}`);
+    let satz = hardeningNotice({ port });
+    for (const [muster, was] of [[/Port 4711/, "den Port"], [/Schlüssel/, "den Schlüssel"], [/Firewall/, "die Firewall"], [/--keep-ssh/, "den Weg, sie auszulassen"]]) {
+      assert(muster.test(satz), `die Ansage nennt ${was} nicht: ${satz}`);
+    }
+    assert(/anderen Port/.test(hardeningNotice({ port: null })), "ohne Artefakt wird ein Port behauptet");
+    satz = hardeningNotice({ keepSsh: true, port });
+    assert(/ENABLE_SSH_HARDENING=false/.test(satz) && /keine Firewall/.test(satz), `die Ansage mit --keep-ssh sagt nicht, was bleibt: ${satz}`);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+
+  // 3. Die Zeilen des Installers zum Modell, wörtlich aus `./arasul`, in Farbe.
+  const hinten = "\x1B[0;34m[INFO]\x1B[0m Standardmodell qwen-probe:27b wird im Hintergrund geholt -- Fortschritt: tail -f /home/x/arasul-9.9.9/logs/modell-holen.log\r";
+  let modell = modelFrom(`Fertig.\n${hinten}\n`);
+  assert(modell?.state === "background" && modell.model === "qwen-probe:27b", `die Zeile zum Hintergrund wurde nicht gelesen: ${JSON.stringify(modell)}`);
+  assert(modell.log === "/home/x/arasul-9.9.9/logs/modell-holen.log", `das Protokoll fehlt: ${modell.log}`);
+  modell = modelFrom("[OK] Standardmodell qwen-probe:27b liegt schon am Geraet (Digest stimmt)");
+  assert(modell?.state === "present", `ein vorhandenes Modell gilt nicht: ${JSON.stringify(modell)}`);
+  assert(modelFrom("[INFO] Standardmodell wird nicht geholt (MODELL_HOLEN=false)")?.state === "skipped", "ein ausgelassenes Modell gilt nicht");
+  assert(modelFrom("Fertig.") === null, "ohne Zeile wird ein Modell behauptet");
+  const original = process.stdout.write.bind(process.stdout);
+  process.stdout.write = () => true;
+  let lauf;
+  try {
+    lauf = await runInstaller(null, "local", `printf '%s\\n' ${JSON.stringify(hinten)}`);
+  } finally {
+    process.stdout.write = original;
+  }
+  assert(lauf.model?.state === "background", `der laufende Installer gibt das Modell nicht weiter: ${JSON.stringify(lauf.model)}`);
+
+  // 4. Das Werkzeug: kein Satz mehr, dass kein Modell liege, und --keep-ssh
+  // geht als Schalter an den Installer.
+  const werkzeug = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+  assert(!/Auf einem frisch installierten Gerät liegt kein Modell/.test(werkzeug), "device.mjs sagt noch, auf einem frischen Gerät liege kein Modell");
+  assert(/modelStep\(arasul\.model\)/.test(werkzeug), "device.mjs liest die Zeile des Installers nicht");
+  assert(/installCommand\(entry, \{[^}]*keepSsh/.test(werkzeug), "device.mjs gibt --keep-ssh nicht an den Installer");
+
+  // 5. Am Werkzeug gegen die Attrappe: ein Gerät, das nur ein Passwort nimmt,
+  // hält mit --keep-ssh nicht an der Schlüsselprobe an, sondern erst am
+  // fehlenden Token. Und ohne --install steht die Ansage in den nächsten
+  // Schritten, mit dem Port aus dem Spiegel.
+  const name = "selftest-keepssh";
+  const home = mkdtempSync(join(tmpdir(), "ara-keepssh-"));
+  const fake = join(home, "bin");
+  mkdirSync(fake, { recursive: true });
+  const befund = join(home, "befund.txt");
+  const protokoll = join(home, "ssh.log");
+  writeFileSync(befund, ATTRAPPEN.thor.replace("@done=ja", "@docker_bin=/usr/bin/docker\n@docker_server=27.0\n@done=ja") + "\n");
+  writeFileSync(
+    join(fake, "ssh"),
+    `#!/bin/sh\necho "$*" >> ${JSON.stringify(protokoll)}\n` +
+      `case "$*" in *PreferredAuthentications=publickey*) echo "probe@10.0.0.9: Permission denied (password)." >&2; exit 255 ;; esac\n` +
+      `cat >/dev/null\ncat ${JSON.stringify(befund)}\n`,
+    { mode: 0o755 }
+  );
+  const ohne = join(home, "ohne.env");
+  const mit = join(home, "mit.env");
+  writeFileSync(ohne, "");
+  writeFileSync(mit, `ARASUL_TOKEN=ara_${"1".repeat(32)}\n`);
+  const spiegel = attrappenSpiegel({ "thor-128": "emulation" });
+  mkdirSync(join(spiegel, "scripts", "security"), { recursive: true });
+  writeFileSync(join(spiegel, "scripts", "security", "haerten.sh"), 'SSH_PORT_SOLL="$(env_wert SSH_PORT 4711)"\n');
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  try {
+    const env = { PATH: `${fake}:${process.env.PATH}`, ARA_MIRROR: spiegel };
+    let run = tool("device.mjs", ["--host", "10.0.0.9", "--user", "probe", "--name", name, "--install", "arasul", "--keep-ssh"], "", { ...env, ARA_ENV_FILE: ohne });
+    assert(run.status !== 0, `ohne Token wurde installiert: ${run.stdout}`);
+    assert(!/nur mit Schlüssel/.test(run.stderr) && /Token/.test(run.stderr), `mit --keep-ssh hält es an der falschen Stelle: ${run.stderr}`);
+    assert(!/PreferredAuthentications/.test(readFileSync(protokoll, "utf8")), "mit --keep-ssh wurde die Schlüsselprobe trotzdem gerufen");
+    run = tool("device.mjs", ["--host", "10.0.0.9", "--user", "probe", "--name", name], "", { ...env, ARA_ENV_FILE: mit });
+    assert(run.status === 0, `der Blick aufs Gerät scheitert: ${run.stderr}`);
+    assert(/--install arasul/.test(run.stdout) && /Port 4711/.test(run.stdout) && /--keep-ssh/.test(run.stdout), `die nächsten Schritte sagen die Härtung nicht an: ${run.stdout}`);
+    return "Schalter vor dem Einstiegspunkt, Port aus dem Artefakt, Modell aus der Zeile, keine Schlüsselprobe mit --keep-ssh";
+  } finally {
+    rmSync(join(ROOT, "devices", name), { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+    rmSync(spiegel, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+});
+
 await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {
   // Der Fremdtest am 28.08.2026 stand nach der Installation still: die
   // Plattform lief, aber der erste Mitarbeiter und seine Freigabe entstehen in
@@ -5133,6 +5242,9 @@ await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", asyn
       assert(run.status === 0 && /arasul-0\.8\.0\/docs/.test(run.stdout) && /api\/API_REFERENCE\.md/.test(run.stdout), `die Anleitungen am Gerät fehlen: ${run.stdout}${run.stderr}`);
       run = await toolAsync("mirror.mjs", ["--docs", "--device", geraetName, "--read", "api/API_REFERENCE.md"], { ARA_MIRROR: mirror, HOME: zuhause });
       assert(run.status === 0 && /ENDE\s*$/.test(run.stdout), `eine lange Anleitung kommt nicht ganz an: ${run.stdout.length} Zeichen`);
+      // So wie das Gerät den Pfad nennt, mit docs/ davor.
+      run = await toolAsync("mirror.mjs", ["--docs", "--device", geraetName, "--read", "docs/api/API_REFERENCE.md"], { ARA_MIRROR: mirror, HOME: zuhause });
+      assert(run.status === 0 && /ENDE\s*$/.test(run.stdout), `ein Pfad mit docs/ davor wird nicht gelesen: ${run.stdout}${run.stderr}`);
       run = await toolAsync("mirror.mjs", ["--docs", "--device", geraetName, "--read", "../../geheim.txt"], { ARA_MIRROR: mirror, HOME: zuhause });
       assert(run.status !== 0 && !/nicht lesen/.test(run.stdout), "ein Pfad aus docs/ heraus wurde gelesen");
     } finally {

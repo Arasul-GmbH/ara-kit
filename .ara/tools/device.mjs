@@ -9,6 +9,7 @@
  *   node .ara/tools/device.mjs --name orin --install arasul       install Arasul (token needed)
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
+ *   node .ara/tools/device.mjs --name orin --install arasul --keep-ssh   leave SSH and firewall as they are
  *   node .ara/tools/device.mjs --name orin --deploy-key           create the kit key on the device
  *   node .ara/tools/device.mjs --name orin --keys                 which kit keys lie on the device
  *   node .ara/tools/device.mjs --name orin --revoke-key           revoke this kit's own key
@@ -89,6 +90,7 @@
  *   printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store   eingefügten Token prüfen und hinterlegen
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
+ *   node .ara/tools/device.mjs --name orin --install arasul --keep-ssh   SSH und Firewall lassen, wie sie sind
  *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
  *   node .ara/tools/device.mjs --name orin --keys                 welche Kit-Schlüssel am Gerät liegen
  *   node .ara/tools/device.mjs --name orin --revoke-key           den eigenen Kit-Schlüssel widerrufen
@@ -208,6 +210,8 @@ import {
 import {
   createKey,
   fetchMirror,
+  hardeningNotice,
+  hardeningPort,
   findLicenceScript,
   installCommand,
   installTarget,
@@ -253,6 +257,12 @@ helpOnly(import.meta.url);
 const arg = parseArgs();
 const str = (v) => (typeof v === "string" ? v : null);
 const customer = str(arg.customer);
+/**
+ * --keep-ssh lässt die Härtung des Installers aus: SSH bleibt auf seinem Port,
+ * die Anmeldung mit Passwort bleibt erlaubt, und es kommt keine Firewall dazu.
+ * Für ein Gerät, auf dem andere Dienste genau das brauchen.
+ */
+const keepSsh = Boolean(arg["keep-ssh"]);
 /** --licence, --license und --lizenz sind derselbe Schalter. Mit --name gilt er dem Gerät. */
 const wantsLicence = Boolean(arg.licence || arg.license || arg.lizenz);
 
@@ -1452,12 +1462,13 @@ async function installArasul() {
   }
   // Der Installer härtet SSH, danach geht nur noch der Schlüssel. Wer bisher
   // per Passwort kam, stünde nach der Installation vor der Tür. Lokal läuft
-  // das Kit am Gerät selbst, dort sperrt die Härtung niemanden aus.
-  if (run.transport === "ssh" && !keyLogin(sshArgs).ok) {
+  // das Kit am Gerät selbst, dort sperrt die Härtung niemanden aus, und mit
+  // --keep-ssh bleibt die Anmeldung, wie sie ist.
+  if (run.transport === "ssh" && !keepSsh && !keyLogin(sshArgs).ok) {
     fail(
       t(
-        `The installation hardens SSH to key-only login, and ${label} does not let the kit in with a key, so it stops here: set up a key first (.ara/knowledge/remote-access.md) and call the same command again.`,
-        `Die Installation härtet SSH auf Anmeldung nur mit Schlüssel, und ${label} lässt das Kit nicht mit Schlüssel herein, darum hält es hier an: erst einen Schlüssel einrichten (.ara/knowledge/remote-access.de.md), dann denselben Befehl noch einmal.`
+        `The installation hardens SSH to key-only login, and ${label} does not let the kit in with a key, so it stops here: set up a key first (.ara/knowledge/remote-access.md) and call the same command again, or leave the hardening out with --keep-ssh.`,
+        `Die Installation härtet SSH auf Anmeldung nur mit Schlüssel, und ${label} lässt das Kit nicht mit Schlüssel herein, darum hält es hier an: erst einen Schlüssel einrichten (.ara/knowledge/remote-access.de.md), dann denselben Befehl noch einmal, oder die Härtung mit --keep-ssh auslassen.`
       )
     );
   }
@@ -1501,7 +1512,11 @@ async function installArasul() {
   }
 
   const secret = startPassword(startRef);
-  const command = installCommand(entry, { password: secret.password, netName: net });
+  const command = installCommand(entry, { password: secret.password, netName: net, keepSsh });
+  // Die Härtung wird angesagt, bevor der Installer läuft, mit dem Port aus dem
+  // Artefakt, das gerade geholt wurde. Am Orin lag SSH nach einem Durchlauf
+  // sieben Minuten auf dem neuen Port, und vorher hatte niemand davon gehört.
+  console.log(`\n${hardeningNotice({ keepSsh, port: hardeningPort() })}`);
   console.log(
     t(
       `\nThe installer runs on the device: ${command.shown}. That takes a while and wants reading along.\n` +
@@ -1530,8 +1545,13 @@ async function installArasul() {
     target,
     netName: net,
     passwordRef: startRef,
-    troubles: step.troubles,
+    // Mit --keep-ssh meldet der Installer die Härtung als übersprungen. Das war
+    // bestellt und ist keine Absage, also steht es nicht unter dem, was er
+    // nicht konnte, sondern im Verlauf als Entscheidung.
+    troubles: keepSsh ? step.troubles.filter((line) => !/ENABLE_SSH_HARDENING|ENABLE_FIREWALL/.test(line)) : step.troubles,
     sshPort: step.sshPort,
+    keepSsh,
+    model: step.model,
     // Nur zum Übergeben an settleDeployKey. Nie gezeigt, nie in die Akte.
     keys: step.keys || [],
     version: state.version ?? null,
@@ -1867,7 +1887,9 @@ const entry = [
           (arasul.ok ? " Zertifikat: selbst ausgestellt, aus der Geräte-CA (tls: selfsigned)." : "") +
           (arasul.portMoved
             ? ` SSH-Port vom Installer von ${arasul.portMoved.from} auf ${arasul.portMoved.to} gelegt, ssh_port in der Akte nachgezogen.`
-            : ""),
+            : "") +
+          (arasul.keepSsh ? " Härtung mit --keep-ssh ausgelassen: ENABLE_SSH_HARDENING=false, ENABLE_FIREWALL=false." : "") +
+          (arasul.model ? ` Standardmodell laut Installer: ${arasul.model.line}` : ""),
         ...(arasul.troubles?.length
           ? [
               "Was der Installer nicht konnte, wörtlich aus seiner Ausgabe:",
@@ -1968,6 +1990,51 @@ function licenceStep() {
     );
   }
   return steps;
+}
+
+/**
+ * Der nächste Schritt zum Standardmodell, aus dem, was der Installer dazu
+ * gesagt hat (`modelFrom` in lib/install.mjs). Ohne Zeile rät das Kit nicht,
+ * ob eines kommt: es sagt, wo man nachsieht.
+ */
+function modelStep(model) {
+  const ref = t(
+    "Way and time in .ara/knowledge/device.md, \"The default model\".",
+    "Weg und Zeit in .ara/knowledge/device.de.md, „Das Standardmodell\"."
+  );
+  const call = `node .ara/tools/remote.mjs${customer ? ` --customer ${customer}` : ""} --device ${name} --command "tail -n 5 ${model?.log}"`;
+  const log = model?.log ? t(` Progress on the device: ${call}.`, ` Fortschritt am Gerät: ${call}.`) : "";
+  if (model?.state === "background") {
+    return (
+      t(
+        `The default model ${model.model} is being fetched by the installer in the background, no second download is needed. ` +
+          "The chat answers once it is there; the line decides how long that takes.",
+        `Das Standardmodell ${model.model} holt der Installer im Hintergrund, ein zweiter Download ist nicht nötig. ` +
+          "Der Chat antwortet, sobald es da ist; wie lange das dauert, entscheidet die Leitung."
+      ) +
+      log +
+      " " +
+      ref
+    );
+  }
+  if (model?.state === "present") {
+    return t(
+      `The default model ${model.model} already lies on the device, the installer checked it. ${ref}`,
+      `Das Standardmodell ${model.model} liegt schon am Gerät, der Installer hat es geprüft. ${ref}`
+    );
+  }
+  if (model?.state === "skipped") {
+    return t(
+      `The installer did not fetch the default model: "${model.line}". Load it in the interface as the administrator, on the models page. ${ref}`,
+      `Der Installer hat das Standardmodell nicht geholt: „${model.line}". In der Oberfläche als Administrator laden, auf der Seite der Modelle. ${ref}`
+    );
+  }
+  return t(
+    "The installer said nothing about the default model. Whether it is there the interface shows, as the administrator on the models page; " +
+      `if it is missing, load it there. ${ref}`,
+    "Der Installer hat zum Standardmodell nichts gesagt. Ob es da ist, zeigt die Oberfläche, als Administrator auf der Seite der Modelle; " +
+      `fehlt es, dort laden. ${ref}`
+  );
 }
 
 function nextSteps() {
@@ -2118,21 +2185,12 @@ function nextSteps() {
         )
       );
       steps.push(...licenceStep());
-      // Nach einer Installation fehlt das Sprachmodell, und das ist normal. Bis
-      // zum 25.09.2026 stand dazu nur „Modell vorhanden" im Blatt, ohne Weg und
-      // ohne Zeit. Welches Modell es ist, sagt das Gerät, nicht dieser Satz.
-      if (arasul?.ok) {
-        steps.push(
-          t(
-            "Load the default model: in the interface as the administrator, on the models page, the default of the short list. " +
-              "No model lies on a freshly installed device. On the Orin the download took about 40 minutes, the line decides. " +
-              "Way and time in .ara/knowledge/device.md, \"The default model\".",
-            "Das Standardmodell laden: in der Oberfläche als Administrator, auf der Seite der Modelle, den Standard der Kurzliste. " +
-              "Auf einem frisch installierten Gerät liegt kein Modell. Am Orin dauerte das Herunterladen rund 40 Minuten, die Leitung entscheidet. " +
-              "Weg und Zeit in .ara/knowledge/device.de.md, „Das Standardmodell\"."
-          )
-        );
-      }
+      // Das Standardmodell. Seit dem 25.09.2026 holt der Installer es selbst, im
+      // Hintergrund, und sagt es in einer Zeile. Bis 0.34.0 stand hier, auf
+      // einem frischen Gerät liege kein Modell, und der Mensch sollte es in der
+      // Oberfläche ein zweites Mal anstoßen. Jetzt gilt, was die Zeile sagt;
+      // welches Modell es ist, steht in ihr, nicht in diesem Satz.
+      if (arasul?.ok) steps.push(modelStep(arasul.model));
       steps.push(t(`Running operation: /maintain ${place}.`, `Laufender Betrieb: /maintain ${place}.`));
     }
   } else if (!hasSecret("ARASUL_TOKEN")) {
@@ -2157,7 +2215,9 @@ function nextSteps() {
             "ruft ihn mit Startpasswort und Netzname und legt danach den Kit-Schlüssel an. Vorher Laufzettel anlegen: "
         ) +
         `node .ara/tools/runsheet.mjs --create${customer ? ` --customer ${customer}` : ""} --device ${name}. ` +
-        t("Procedure in .ara/knowledge/device.md.", "Verfahren in .ara/knowledge/device.md.")
+        t("Procedure in .ara/knowledge/device.md.", "Verfahren in .ara/knowledge/device.md.") +
+        " " +
+        hardeningNotice({ keepSsh, port: hardeningPort() })
     );
   }
   const missing = SERVICES.filter((w) => svc[w].state === "missing");
@@ -2316,6 +2376,10 @@ if (arg.json) {
               // ob das Kit deshalb umgezogen ist. `null`: keine Meldung.
               ssh_port: arasul.sshPort || null,
               ssh_port_moved: arasul.portMoved || null,
+              // Mit --keep-ssh: die Härtung wurde ausdrücklich ausgelassen.
+              keep_ssh: Boolean(arasul.keepSsh),
+              // Was der Installer zum Standardmodell gesagt hat. `null`: nichts.
+              model: arasul.model || null,
             }
           : null,
         deploy_key: deployKey

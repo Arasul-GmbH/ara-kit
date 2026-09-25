@@ -79,6 +79,10 @@ Stufe 2, es dauert, und die Ausgabe des
 Installers wird mitgelesen. Der Installer bekommt Startpasswort und Netzname mit, denn
 nur dabei entstehen sie am Gerät; das Passwort würfelt das Kit und legt es in die
 Geheimnis-Ablage, den Netznamen setzt `--net-name <name>`, sonst gilt der Name der Akte.
+Der Installer härtet SSH: anderer Port, nur Schlüssel, Firewall; den Port nennt das Werkzeug,
+bevor es anfängt. In derselben Bestätigung fragst du, ob andere Dienste am Gerät SSH so
+brauchen, wie es ist, Port 22, Anmeldung mit Passwort oder offene Ports. Wenn ja, bekommt
+der Aufruf `--keep-ssh`, und der Installer lässt SSH und Firewall in Ruhe.
 
 **Die Freischaltung gehört zur Installation.** Ein gekaufter Token ist zugleich der
 Lizenzcode: nach dem Installer holt das Werkzeug den Fingerabdruck vom Gerät, die Lizenz vom

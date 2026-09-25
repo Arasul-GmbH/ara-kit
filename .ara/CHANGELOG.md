@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.35.0 (2026-09-26)
+
+Contract: up to 6
+
+- **The kit announces the hardening and lets it be left out.** Before the installer runs, `device.mjs --install arasul` says in one sentence what the hardening does: SSH moves to the port the fetched artifact names in `scripts/security/haerten.sh`, only a key gets in afterwards, a firewall goes up. The next steps say the same before anybody installs. With `--keep-ssh` the installer gets `ENABLE_SSH_HARDENING=false` and `ENABLE_FIREWALL=false`, SSH stays on its port with its login, the key check falls away, and the skipped hardening stands in the history as a decision, not under "What the installer could not do". On the Orin SSH had lain on the new port for seven minutes after a run, without warning; a customer whose other services need port 22, a password login or open ports lost access that way.
+- **The default model comes in the background, and the kit says so.** The installer fetches it itself since 25.09.2026 and says so in one line. Up to 0.34.0 the kit said twelve lines below that no model lay on a fresh device and sent the human into the interface for a second download. Now it reads the line and names model and progress, or says that the installer fetched none or said nothing.
+- **`mirror.mjs --read` takes paths with a leading `docs/`**, the way the device names its manuals, for example `docs/features/FIRMENORDNER.md`.
+
 ## 0.34.0 (2026-09-25)
 
 Contract: up to 6

@@ -303,7 +303,10 @@ function deviceDocs() {
   const call = `node .ara/tools/mirror.mjs --docs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device}`;
 
   if (typeof arg.read === "string") {
-    const rel = arg.read.replace(/^\/+/, "");
+    // Das Gerät nennt seine Anleitungen mit dem Ordner davor, etwa
+    // docs/features/FIRMENORDNER.md in einer Meldung nach dem Deploy. Wer den
+    // Pfad so abschreibt, meint dieselbe Datei.
+    const rel = arg.read.replace(/^\/+/, "").replace(/^(\.\/)?docs\//, "");
     if (!rel || rel.split("/").some((part) => part === ".." || part === "") || /['"\\$`]/.test(rel)) {
       fail(t(`${arg.read} is not a path below docs/.`, `${arg.read} ist kein Pfad unter docs/.`));
     }

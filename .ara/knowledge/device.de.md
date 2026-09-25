@@ -195,12 +195,12 @@ Die Phasen des Laufzettels und was in jeder gilt:
   Anmeldename, Port und Schlüsselname. Ab jetzt läuft jeder Befehl über
   `node .ara/tools/remote.mjs --device <gerät> --command "…"`.
 - **3 Arasul installieren.** Ein Aufruf, siehe „Arasul installieren" weiter unten:
-  `node .ara/tools/device.mjs --name <gerät> --install arasul`. Ausgabe mitlesen, bei
-  Fehlern anhalten. Nachweis: der Kontrakt des Geräts lässt sich lesen und passt zum Kit,
+  `node .ara/tools/device.mjs --name <gerät> --install arasul`, mit `--keep-ssh`, wenn SSH
+  bleiben muss, wie es ist. Ausgabe mitlesen, bei Fehlern anhalten. Nachweis: der Kontrakt des Geräts lässt sich lesen und passt zum Kit,
   `node .ara/tools/app.mjs --device <gerät> --contract`.
 - **4 Nachbereitung.** Erst prüfen, ob etwas fehlt, das Produkt erledigt manches
-  selbst. Das Standardmodell: nach einer Installation fehlt es, wie es draufkommt und wie
-  lange das dauert, steht unten unter „Das Standardmodell", Namensauflösung, Zugang härten (erst wenn die
+  selbst. Das Standardmodell: der Installer holt es im Hintergrund, ob es kam und wie lange
+  das dauert, steht unten unter „Das Standardmodell", Namensauflösung, Zugang härten (erst wenn die
   Schlüsselanmeldung nachweislich läuft, und die laufende Sitzung offen halten),
   Netzabsicherung, Fernzugriff nach `.ara/knowledge/remote-access.de.md`. Ändert sich Port
   oder Anmeldename: sofort in `device.md` nachziehen.
@@ -358,13 +358,25 @@ Liste durch, bevor das Gerät ausgeliefert wird: Zugang härten nach
 `.ara/knowledge/remote-access.de.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
 hast und was offen bleibt, schreibst du in den Laufzettel.
 
+**Bevor der Installer läuft, sagt das Kit, was die Härtung tut.** Mit sudo ohne Passwort
+legt der Installer SSH auf einen anderen Port, lässt danach nur noch den Schlüssel herein und
+richtet eine Firewall ein. Den Port nennt das Kit aus dem geholten Artefakt
+(`scripts/security/haerten.sh`), auswendig kennt es ihn nicht. **Wer am Gerät Port 22, die
+Anmeldung mit Passwort oder andere offene Ports braucht, lässt die Härtung aus**:
+`node .ara/tools/device.mjs --name <gerät> --install arasul --keep-ssh` gibt dem Installer
+`ENABLE_SSH_HARDENING=false` und `ENABLE_FIREWALL=false`. Frag vor der Installation, ob
+andere Dienste beim Kunden auf SSH angewiesen sind, so wie es ist, und schreib die Antwort
+in den Laufzettel. Mit `--keep-ssh` hat das Gerät keine Firewall und nimmt weiter ein
+Passwort an: das ist ein offener Punkt für Phase 4, später härten nach
+`.ara/knowledge/remote-access.de.md`.
+
 **Bevor der Installer läuft, prüft das Kit, dass die Anmeldung mit Schlüssel geht.** Die
 Härtung lässt danach nur noch den Schlüssel herein, wer bisher mit Passwort aufs Gerät kam,
 stünde vor der Tür. Das Kit versucht eine eigene Verbindung, die nichts als den Schlüssel
 zulässt und nicht auf einer offenen Sitzung mitfährt, und hält mit einem Satz an, wenn das
 nicht geht. Den Schlüssel richtest du nach `.ara/knowledge/remote-access.de.md` ein, dann
 denselben Befehl noch einmal. Läuft das Kit am Gerät selbst, gibt es nichts auszusperren,
-und die Prüfung entfällt.
+und die Prüfung entfällt, ebenso mit `--keep-ssh`.
 
 **Gelingt die Härtung, liegt SSH danach auf einem anderen Port.** Der Installer sagt das in
 einer Warnung und in einer eigenen Zeile, `ARASUL_SSH_PORT=<port>`. Das Kit liest diese
@@ -503,17 +515,20 @@ Administrators am Gerät, über dessen Schnittstelle. Das Kit tut es nicht.
 
 ### Das Standardmodell
 
-**Nach einer Installation liegt kein Sprachmodell auf dem Gerät, und das ist normal.** Der
-Installer sagt es in seinen letzten Zeilen, und das Kit wiederholt es unter „Was der
-Installer nicht konnte". Die Flows und der Chat brauchen das Standardmodell, also gehört es
-in Phase 4 und nicht in den ersten Tag beim Kunden.
+**Der Installer holt das Standardmodell selbst, im Hintergrund.** Er sagt es in einer
+Zeile, welches Modell und wohin der Fortschritt geht, und das Kit liest diese Zeile und
+wiederholt sie in den nächsten Schritten. **Ein zweiter Download ist nicht nötig**: stoß in
+der Oberfläche keinen an, solange der erste läuft. Der Chat antwortet, sobald das Modell da
+ist. Sagt der Installer, dass er keines geholt hat, oder sagt er nichts, sagt das Kit auch
+das, und es gilt der Weg unten. Die Flows und der Chat brauchen das Standardmodell, also
+gehört es in Phase 4 und nicht in den ersten Tag beim Kunden.
 
 **Welches es ist, sagt das Gerät**, nicht das Kit: in der Oberfläche unter den Modellen,
 angemeldet als Administrator, markiert die Kurzliste den Standard. Dieselbe Liste steht im
 Spiegel (`node .ara/tools/mirror.mjs --docs`, Admin-Handbuch und API-Referenz, Abschnitt
 Modellverwaltung). Das Kit nennt kein Modell.
 
-**Wie es draufkommt:** in der Oberfläche, als Administrator, auf der Seite der Modelle den
+**Wie es draufkommt, wenn der Installer es nicht geholt hat:** in der Oberfläche, als Administrator, auf der Seite der Modelle den
 Standard der Kurzliste laden. Das geht durch die Plattform, Katalog und Installationsstand
 bleiben so im Gleichschritt, und der Fortschritt ist dort zu sehen. Wer ohne Browser
 arbeitet, nimmt die Sitzung des Administrators (`--admin-login`) und den Weg zum
