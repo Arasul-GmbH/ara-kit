@@ -25,9 +25,17 @@
  * **Wer entscheiden darf, zieht die App enger, nie weiter.** Sie nennt dem
  * Geraet den Einreicher, sobald es ihn annimmt, und auf Wunsch eine Regel:
  * `regel` bekommt den Vorgang und gibt `{ ohne_einreicher, entscheider }`
- * zurueck oder `null`. Die Vorlage gibt `null`, dann entscheidet jeder, dem die
- * App freigegeben ist. Eine Fach-App gibt hier die vier Augen und die Konten,
- * die fuer diesen Vorgang zustaendig sind.
+ * zurueck oder `null`, auch asynchron. Die Vorlage gibt `null`, dann entscheidet
+ * jeder, dem die App freigegeben ist. Eine Fach-App gibt hier die vier Augen und
+ * die Konten, die fuer diesen Vorgang zustaendig sind. Gibt sie einen Satz
+ * zurueck, startet kein Lauf, und der Satz steht am Vorgang: so sagt die App
+ * selbst, dass niemand entscheiden koennte, statt das Geraet fragen zu lassen.
+ *
+ * **Wer entschieden hat, muss es beim Nachziehen noch duerfen.** `zustaendig`
+ * bekommt den Vorgang und den Namen aus der Freigabe. Endet eine Zuordnung,
+ * waehrend ein Lauf wartet, entscheidet das Geraet weiter nach dem Kreis vom
+ * Start; die App zaehlt eine solche Entscheidung nicht. Die Vorlage laesst
+ * jeden gelten. Das Muster Mandanten setzt beides.
  *
  * **Kein stilles null.** Jeder Vorgang, der ohne Lauf bleibt, traegt den Satz,
  * warum. "Ohne Arasul" steht nur dann da, wenn das Geraet der App wirklich
@@ -45,7 +53,7 @@ const STATUS = {
   verfallen: "abgelaufen",
 };
 
-export function vorgaenge({ ablage, geraet, name, regel = () => null }) {
+export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig = () => true }) {
   /**
    * Den Stand eines Vorgangs nachziehen.
    *
@@ -66,6 +74,19 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null }) {
         ...vorgang,
         hinweis: `Das Geraet nennt die Freigabe "${freigabe.status}", und diesen Stand kennt ${name} nicht.`,
       });
+    }
+
+    // Entschieden hat jemand, der fuer diesen Vorgang nicht mehr zustaendig
+    // ist. Das Geraet hat es angenommen, die App zaehlt es nicht.
+    if (freigabe.entschieden_von && (stand === "genehmigt" || stand === "abgelehnt")) {
+      if (!(await zustaendig(vorgang, freigabe.entschieden_von))) {
+        return await ablage.fortschreiben(vorgang.id, {
+          ...vorgang,
+          status: "ohne entscheidung",
+          entschieden_von: freigabe.entschieden_von,
+          hinweis: `${freigabe.entschieden_von} hat entschieden und ist für diesen Vorgang nicht mehr zuständig. Die Entscheidung zählt nicht; der Vorgang muss neu eingereicht werden.`,
+        });
+      }
     }
 
     // Nach der Bestaetigung laeuft der Flow ab dem angehaltenen Schritt weiter
@@ -102,6 +123,11 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null }) {
       return await ablage.alle();
     },
 
+    /** Genau einer, wie die Ablage ihn gibt, oder `null`. */
+    async holen(id) {
+      return await ablage.eines(id);
+    },
+
     /**
      * Einen Vorgang einreichen und den Lauf anfordern.
      *
@@ -110,10 +136,14 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null }) {
      *
      * Erst liegt der Vorgang, dann startet der Lauf: die Anfrage verweist auf
      * seine Nummer, und die gibt es erst, wenn er liegt.
+     *
+     * Was eine Fach-App dazu mitgibt, der Mandant etwa, geht als `zusatz`
+     * unveraendert an die Ablage.
      */
-    async einreichen({ titel, text, von }) {
+    async einreichen({ titel, text, von, ...zusatz }) {
       const fehlt = geraet.warumKeinRahmen();
       const vorgang = await ablage.anlegen({
+        ...zusatz,
         titel,
         text: text || "ohne Angabe",
         von: von || "unbekannt",
@@ -124,11 +154,15 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null }) {
         lauf: null,
         hinweis: fehlt,
       });
-      if (fehlt) return vorgang;
+      if (fehlt || !vorgang) return vorgang;
 
+      const freigabe = await regel(vorgang);
+      if (typeof freigabe === "string") {
+        return await ablage.fortschreiben(vorgang.id, { ...vorgang, status: "ohne lauf", hinweis: freigabe });
+      }
       const { lauf, fehler } = await geraet.flowStarten(
         { vorgang: String(vorgang.id), von: vorgang.von },
-        { einreicher: von || null, freigabe: regel(vorgang) }
+        { einreicher: von || null, freigabe }
       );
       if (lauf !== null) return await ablage.fortschreiben(vorgang.id, { ...vorgang, lauf });
 
