@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.36.0 (2026-09-26)
+
+Contract: up to 6
+
+- **Clients are a pattern with code, not prose.** Pattern 7 under `.ara/templates/app-patterns/clients/` maps accounts to clients by the name from the login header, puts the filter `nurZugeordnete` into every query of the store, answers a foreign item with 404, opens the management page only to the role the contract names under `freigaben.rollen` and `koepfe.rollen`, and hands the device the rule for an approval: four eyes, the deciders out of the mapping. A decision from somebody no longer responsible does not count when catching up. The self-test runs it with two accounts and two clients against a device whose roles are called differently. `app.md` points to it instead of describing it on some 600 words; an agent that designed it from the description built it differently every time.
+- **The scaffold's core carries it**: `regel` may answer asynchronously and with a sentence instead of a rule, then no run starts; `zustaendig` checks a decision when catching up; `einreichen` passes further fields to the store; `holen` reads one item.
+- **Model work of an app runs over a flow or over reading a document.** `app.md` says so in one sentence, `platform-services.md` no longer names the chat as a way for an app's backend.
+
 ## 0.35.0 (2026-09-26)
 
 Contract: up to 6
