@@ -86,11 +86,13 @@ Aufgeführt bleiben deshalb alle Komponenten, die auf dem Gerät liegen.
 
 ## Ebene 2: Basis-Abbilder der selbst gebauten Dienste
 
-Aus den `FROM`-Zeilen der Dockerfiles, Fassungen aus den `ARG`-Vorgaben.
+Aus den `FROM`-Zeilen der Dockerfiles, Fassungen aus den `ARG`-Vorgaben. Eine Fassung ist ein
+Produktwert und gilt für den Stand, an dem sie gelesen wurde; vor dem Versand wird jede Zeile
+gegen das ausgelieferte Artefakt neu gelesen.
 
 | Komponente | Fassung | Verwendet in | Lizenz | Quelle |
 | --- | --- | --- | --- | --- |
-| `ollama/ollama` | 0.32.12 | `services/llm-service` | MIT | github.com/ollama/ollama, belegt |
+| `ollama/ollama` | 0.32.12, Stand 25.09.2026: `ARG OLLAMA_VERSION` in `services/llm-service/Dockerfile` auf `main` des Produktrepos (7a24292), am Orin mit `ollama --version` bestätigt | `services/llm-service` | MIT | github.com/ollama/ollama, belegt |
 | `dustynv/l4t-pytorch` | r36.4.0 | `services/embedding-service` | **offen**, siehe unten | github.com/dusty-nv/jetson-containers, `LICENSE.md` ist MIT, betrifft aber nur die Bauskripte |
 | `node` | 22-alpine, 20-alpine, 22-slim | fünf Dienste | Node.js selbst MIT, Abbild **offen** | github.com/nodejs/node, `LICENSE`, belegt |
 | `python` | 3.11.12-slim | fünf Dienste | CPython PSF License v2, Abbild **offen** | docs.python.org/3/license.html, belegt |

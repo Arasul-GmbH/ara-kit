@@ -4,7 +4,9 @@
  * Liegt in einer App aus der Vorlage unter `backend/kern/dokumente.mjs`, neben
  * `vorgaenge.mjs`, nach derselben Regel: der Kern kennt seine Ablage und sonst
  * nichts von der Welt. Kein HTTP, kein SQL, kein `process.env`. Deshalb lässt
- * sich jeder Fall hier prüfen, ohne einen Server zu starten.
+ * sich jeder Fall hier prüfen, ohne einen Server zu starten. Die Ablage
+ * antwortet asynchron, denn am Gerät liegt sie in einer Datenbank hinter dem
+ * Netz.
  *
  * **Angenommen wird, was die Dokumentanzeige zeigen kann**: PDF und Bilder.
  * Eine Datei, die niemand ansehen kann, wäre ein Download und kein Dokument,
@@ -33,8 +35,8 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
     grenzeBytes,
 
     /** Alle Dokumente, ohne ihre Bytes, das Neueste oben. */
-    auflisten() {
-      return ablage.alle();
+    async auflisten() {
+      return await ablage.alle();
     },
 
     /**
@@ -43,7 +45,7 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
      * Zurück kommt entweder das Dokument oder der Satz, warum nicht. Kein
      * stilles null: wer hochlädt, soll lesen können, woran es lag.
      */
-    ablegen({ name, art, inhalt, von }) {
+    async ablegen({ name, art, inhalt, von }) {
       const sauber = String(name || "").trim().slice(0, 200);
       if (!sauber) return { dokument: null, fehler: "Ohne Dateinamen gibt es kein Dokument." };
       if (!ARTEN[art]) {
@@ -59,7 +61,7 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
           fehler: `${sauber} ist ${inhalt.length} Bytes groß, die Grenze liegt bei ${grenzeBytes}.`,
         };
       }
-      const dokument = ablage.anlegen({
+      const dokument = await ablage.anlegen({
         name: sauber,
         art,
         groesse: inhalt.length,
@@ -71,13 +73,13 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
     },
 
     /** Genau eines, mit Bytes, oder null. */
-    holen(id) {
-      return ablage.eines(id);
+    async holen(id) {
+      return await ablage.eines(id);
     },
 
     /** Weg damit. */
-    entfernen(id) {
-      return ablage.loeschen(id);
+    async entfernen(id) {
+      return await ablage.loeschen(id);
     },
   };
 }

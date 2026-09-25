@@ -112,7 +112,8 @@ dem Klon kam: die Skills `customers`, `sales` und `pricing`, die Vorlagen für A
 Rechnung und Endkundenbedingungen unter `.ara/vorlagen/`, das Wissen zu crm, sales,
 pricing und invoicing, und einen leeren Ordner `customers/`. Die Liste ist `PARTNER_ONLY`
 in `.ara/tools/lib/commands.mjs`, und `update.mjs` liest dieselbe, ein Update bringt sie
-also nicht zurück. Wird aus dem Unternehmen einmal ein Partner: `role` im Profil ändern,
+also nicht zurück. Ist das Kit ein Git-Klon, markiert derselbe Aufruf die weggeräumten Dateien
+mit `skip-worktree`: Git zählt sie als absichtlich abwesend, und `git status` bleibt sauber. Wird aus dem Unternehmen einmal ein Partner: `role` im Profil ändern,
 dann holt `node .ara/tools/update.mjs` sie wieder.
 
 Ab jetzt sprichst du die gewählte Sprache. Ins Frontmatter kommt `language`, und aus dem

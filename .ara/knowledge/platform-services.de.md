@@ -38,8 +38,10 @@ also ein Mensch, im Browser am Gerät, und du siehst zu und schreibst mit. Ein K
 so einen Weg selbst ginge, bräuchte das Passwort eines Administrators.
 
 **Ohne Browser ist das kein Ende.** Die Plattform hat für ihre Verwaltung eine eigene
-Schnittstelle, und wie sie geht, steht im Artefakt: Admin-Handbuch und API-Referenz,
-beide im Spiegel, zu finden mit `node .ara/tools/mirror.mjs --docs`. Der erste
+Schnittstelle, und wie sie geht, steht im Artefakt: Admin-Handbuch und API-Referenz. Beide
+liegen an jedem Gerät mit Arasul, in der Fassung, die dort läuft, und das Kit liest sie dort
+ohne Token: `node .ara/tools/mirror.mjs --docs --device <gerät>`, eine davon mit
+`--read <pfad>`. Mit einem Spiegel stehen sie auch unter `node .ara/tools/mirror.mjs --docs`. Der erste
 Mitarbeiter und die erste Freigabe sind der Fall, der einen sonst hängen lässt, und er
 steht in `.ara/knowledge/device.de.md` unter "Der erste Mitarbeiter und die erste Freigabe".
 
@@ -51,7 +53,8 @@ nicht, kommt nicht hinein. Es gibt keine Sonderregel für Administratoren.
 Durchgesetzt wird das **vor** dem Container: die Plattform prüft die Anfrage und setzt
 zwei Kopfzeilen, eine mit dem Benutzernamen und eine mit der Rolle. **Wie sie heißen und
 welche Rollen es gibt, steht im Kontrakt** unter `koepfe`, samt dem Hinweis, wie der Name
-zu lesen ist. Schreib die Namen nicht ab, lies sie dort.
+zu lesen ist. Schreib die Namen nicht ab: das Kit legt sie der App beim Einspielen in
+`arasul.json`, und die Vorlage liest sie dort.
 
 Sie sind nicht fälschbar: was von außen in der Anfrage steht, wird gelöscht, bevor die
 Plattform ihre eigenen setzt.
@@ -67,8 +70,14 @@ darunter. Welche Namen unter `/apps/<id>/` der Plattform gehören und welche der
 steht im Kontrakt unter `apps.vergeben`.
 
 **Was du daraus nicht baust:** kein Anmeldeformular in der App, kein Feld, in das jemand
-seinen Namen tippt, keine eigene Benutzerliste. Das wäre eine zweite Anmeldung neben der
-echten, und sie würde niemanden abhalten.
+seinen Namen tippt, keine eigenen Konten mit Passwort. Das wäre eine zweite Anmeldung neben
+der echten, und sie würde niemanden abhalten.
+
+**Was du daraus bauen darfst:** eine Zuordnung der Konten des Geräts zu dem, was die App
+kennt, Mandanten, Abteilungen, Akten. Sie hängt am Benutzernamen aus der Kopfzeile und
+entscheidet, was jemand **innerhalb** der App sieht; wer überhaupt hineinkommt, entscheidet
+weiter das Gerät. Wie das geht und wie es geprüft wird, steht in `.ara/knowledge/app.de.md`
+unter „Sichtbarkeit innerhalb einer App“.
 
 ## Freigaben: ein Lauf hält an, ein Mensch entscheidet
 
@@ -79,7 +88,8 @@ läuft nichts weiter.
 
 Das ist etwas anderes als eine Rückfrage im Gespräch: eine Rückfrage geht an den, der
 gerade zusieht, und ohne Antwort läuft der Flow mit einer Annahme weiter. Eine Freigabe
-geht an jeden, dem die App freigegeben ist, und **ohne Antwort läuft gar nichts weiter**.
+geht, solange die App den Kreis nicht enger zieht (siehe unten), an jeden, dem die App
+freigegeben ist, und **ohne Antwort läuft gar nichts weiter**.
 
 Drei Ausgänge, und sie stehen am Lauf: bestätigt, dann läuft er ab dem angehaltenen
 Schritt weiter. Abgelehnt, dann endet er, und die Begründung ist sein Grund. Niemand
@@ -106,8 +116,23 @@ Mit ihrem eigenen Schlüssel, mit der Lauf-Nummer als Frage dahinter. Eine App, 
 eigene Freigabe erteilen könnte, wäre keine.
 
 **Wer entscheiden darf, sagt der Kunde, nicht der Flow.** Ein Flow nennt keine Person und
-keine Rolle, er beschreibt die Sache. Die Zuständigkeit ist dieselbe Freigabe, mit der
-jemand die App überhaupt benutzen darf.
+keine Rolle, er beschreibt die Sache. Ohne weiteres ist die Zuständigkeit dieselbe Freigabe,
+mit der jemand die App überhaupt benutzen darf, und **jeder davon sieht die Karte mit ihrem
+Text.**
+
+**Die App kann den Kreis beim Start enger ziehen, nie weiter.** Seit dem 25.09.2026 nennt der
+Kontrakt unter `freigaben`, was ein Start dafür mitbringt: den Einreicher, den Ausschluss des
+Einreichers (vier Augen) und die Entscheider, als Rolle oder als Liste von Konten. Wer nicht
+im Kreis steht, sieht die Anfrage nicht und bekommt beim Entscheiden 403; bleibt niemand,
+weist das Gerät den Start ab. Die Regeln stehen dort wörtlich, `--contract` gibt sie aus, und
+ob ein Gerät sie kennt, steht nach dem Einspielen in `arasul.json` unter `freigaben`. Für eine
+Fach-App mit Mandanten heißt das: Entscheider aus der Zuordnung, Einreicher ausgeschlossen,
+siehe `.ara/knowledge/app.de.md`, „Freigaben in einer Fach-App“.
+
+**In den Text der Anfrage gehören Verweise, keine Inhalte.** Titel und Zusammenhang stehen auf
+der Karte jedes Entscheiders und am Lauf im Gerät. Eine Nummer und ein Name, unter denen der
+Entscheider den Vorgang in der App findet, genügen; Beträge, Namen von Mandanten, Texte bleiben
+in der App.
 
 Was du dem Kunden **nicht** ungeprüft zusagst: dass ein wartender Lauf beliebig lange
 steht. Frag das am Gerät nach, bevor ein Ablauf darauf gebaut wird, in dem eine Freigabe
@@ -166,7 +191,16 @@ POST /api/v1/external/document/analyze
 ```
 
 **Welche davon dieses eine Gerät führt, steht in seinem Kontrakt**, und dort steht auch,
-welchen Bereich ein Schlüssel dafür tragen muss. Das Kit ruft nichts auf, was das Gerät
+welchen Bereich ein Schlüssel dafür tragen muss. Die beiden Wege zum Auslesen eines Dokuments
+legt das Kit einer App in `arasul.json` unter `wege`, wie die Wege eines Flows.
+
+**Ein Dokument in Felder auslesen** heißt: die App schickt die Datei und ein JSON-Schema, das
+Gerät holt den Text heraus, bei einem Foto oder einem gescannten PDF über seine
+Texterkennung, und lässt ein Sprachmodell die Felder füllen. Das Modell sieht Text, kein
+Bild. Die Antwort nennt das Modell und ob die Texterkennung lief. Was das für Fotos,
+Bildmodelle und das Feld `modelle` in `app.json` heißt, steht in `.ara/knowledge/app.de.md`
+unter „Dokumente und Bilder auslesen“, der Code dazu ist Muster 6 in
+`.ara/knowledge/app-patterns.de.md`. Das Kit ruft nichts auf, was das Gerät
 nicht verspricht. Fehlt einem Schlüssel der Bereich, weist das Gerät ab, und das ist kein
 Fehler des Kits, sondern eine Entscheidung des Administrators.
 

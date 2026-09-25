@@ -106,7 +106,9 @@ For a company the same call clears away what belongs to partners only and came w
 anyway: the skills `customers`, `sales` and `pricing`, the templates for offer, invoice and end
 customer terms under `.ara/vorlagen/`, the knowledge on crm, sales, pricing and invoicing, and an
 empty folder `customers/`. The list is `PARTNER_ONLY` in `.ara/tools/lib/commands.mjs`, and
-`update.mjs` reads the same one, so an update does not bring it back. Should the company become a
+`update.mjs` reads the same one, so an update does not bring it back. If the kit is a git clone,
+the same call marks the removed files with `skip-worktree`: git counts them as absent on purpose,
+and `git status` stays clean. Should the company become a
 partner one day: change `role` in the profile, then `node .ara/tools/update.mjs` fetches it again.
 
 From now on you speak the chosen language. `language` goes into the frontmatter, and out of that

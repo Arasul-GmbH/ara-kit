@@ -12,8 +12,12 @@
  *
  *   const dokumente = dokumentWege({
  *     kern: dokumentKern({ ablage: dokumentAblage(db) }),
- *     von: (anfrage) => ausUtf8(anfrage.headers["x-arasul-user"]),
+ *     von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,
  *   });
+ *
+ * Wer hochlädt, liest `geraet.angemeldet` aus den Kopfzeilen, und deren Namen
+ * stehen in der Vereinbarung mit dem Gerät. Ein Name wie `x-arasul-user` im
+ * Quelltext wäre ein Wert des Geräts, geraten.
  *
  *   // im Server, vor dem 404:
  *   if (await dokumente(anfrage, antwort, pfad)) return;
@@ -100,7 +104,7 @@ export function dokumentWege({ kern, von }) {
     if (teile[0] !== "dokumente") return false;
 
     if (teile.length === 1 && anfrage.method === "GET") {
-      json(antwort, 200, { dokumente: kern.auflisten(), grenze_bytes: kern.grenzeBytes });
+      json(antwort, 200, { dokumente: await kern.auflisten(), grenze_bytes: kern.grenzeBytes });
       return true;
     }
 
@@ -110,7 +114,7 @@ export function dokumentWege({ kern, von }) {
         json(antwort, 413, { fehler: `Mehr als ${kern.grenzeBytes} Bytes nimmt diese App nicht an.` });
         return true;
       }
-      const { dokument, fehler } = kern.ablegen({
+      const { dokument, fehler } = await kern.ablegen({
         name: dateiname(anfrage),
         art: typ(anfrage),
         inhalt,
@@ -128,7 +132,7 @@ export function dokumentWege({ kern, von }) {
     }
 
     if (teile.length === 3 && teile[2] === "datei" && anfrage.method === "GET") {
-      const dokument = kern.holen(id);
+      const dokument = await kern.holen(id);
       if (!dokument) {
         json(antwort, 404, { fehler: `Dokument ${id} gibt es nicht.` });
         return true;
@@ -148,7 +152,7 @@ export function dokumentWege({ kern, von }) {
     }
 
     if (teile.length === 2 && anfrage.method === "DELETE") {
-      if (kern.entfernen(id)) json(antwort, 200, { entfernt: id });
+      if (await kern.entfernen(id)) json(antwort, 200, { entfernt: id });
       else json(antwort, 404, { fehler: `Dokument ${id} gibt es nicht.` });
       return true;
     }

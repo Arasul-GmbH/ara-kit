@@ -19,8 +19,14 @@ today: how often, how long, what happens to the result afterwards.
 
 ## Who uses it
 
-Who opens the app, and in which role. Who may see it the customer decides on the device,
-not this file.
+Who opens the app, and in which role. Who gets in the customer decides on the device, not
+this file. What somebody sees inside the app decides: does everybody see everything, or only
+their clients, departments, files, and who maintains the mapping?
+
+## What has to stay
+
+What has to survive a new version, the switch to live and a year. It lies in the device's
+database; staging and live each have their own. What may be deleted and what has to be kept.
 
 ## Which data
 
@@ -40,7 +46,14 @@ forth is a program and not a flow.
 ## Where a human decides
 
 Where a run should stop and wait for an approval, and what the human sees while doing it in
-order to be able to decide. Who may decide stands on the device.
+order to be able to decide. Who may decide beyond that: everybody the app is released for, or
+narrower, for instance not the submitter and only those responsible. References go onto the
+card, no content.
+
+## Which professional standards apply
+
+Formats, charts of accounts, retention rules, each with primary source and date of retrieval.
+What could not be checked stands under assumptions.
 
 ## What expressly does not belong to it
 

@@ -12,9 +12,22 @@
     "laut_kontrakt": null
   },
   "kopf": null,
+  "koepfe": {
+    "benutzer": null,
+    "rolle": null,
+    "rollen": []
+  },
   "wege": {
     "flow_starten": null,
     "lauf_lesen": null,
-    "freigaben_lesen": null
-  }
+    "freigaben_lesen": null,
+    "dokument_auslesen": null,
+    "dokument_text": null
+  },
+  "freigaben": {
+    "einreicher": false,
+    "regel": false,
+    "rollen": []
+  },
+  "daten": null
 }

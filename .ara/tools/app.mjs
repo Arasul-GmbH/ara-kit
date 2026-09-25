@@ -99,7 +99,7 @@ import { localized, t } from "./lib/i18n.mjs";
 import { reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { catchUpLines, checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
-import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
+import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, redeployLines, releaseLines } from "./lib/appways.mjs";
 import {
   NOT_IN_PACKAGE,
   appPath,
@@ -142,7 +142,8 @@ if (process.argv.length <= 2) {
         '  --plan "<title>"         new plan file under plans/offen/',
         "  --plan-aktiv <file>      plan from open to active, at most one",
         "  --plan-erledigt <file>   plan from active to done",
-        "  --build                  build the package, result under build/",
+        "  --build                  build the package, result under build/. Needs an active plan",
+        "  --no-plan                with --build: build without an active plan, on purpose",
         "",
         "On the device:",
         "  --device <name>          which device (only needed when there are several)",
@@ -171,7 +172,8 @@ if (process.argv.length <= 2) {
         '  --plan "<titel>"         neue Plandatei unter plans/offen/',
         "  --plan-aktiv <datei>     Plan von offen nach aktiv, höchstens einer",
         "  --plan-erledigt <datei>  Plan von aktiv nach erledigt",
-        "  --build                  Paket bauen, Ergebnis unter build/",
+        "  --build                  Paket bauen, Ergebnis unter build/. Braucht einen aktiven Plan",
+        "  --no-plan                mit --build: ohne aktiven Plan bauen, bewusst",
         "",
         "Am Gerät:",
         "  --device <name>          welches Gerät (nur nötig, wenn es mehrere gibt)",
@@ -498,6 +500,27 @@ function buildApp(app) {
     fail(t(`The app ${app.name} does not exist yet. First --new.`, `Die App ${app.name} gibt es noch nicht. Zuerst --new.`));
   }
   if (app.manifestProblem) fail(app.manifestProblem);
+  // Gebaut wird, was ein Plan sagt. Das Wissen verlangt es (`app.md`, der
+  // Lebenslauf), und bis 0.31.0 ließ das Werkzeug den Bau trotzdem zu: ein
+  // Fremdtest am 25.09.2026 baute, spielte ein und setzte den Plan erst danach
+  // aktiv. `--no-plan` bleibt für den bewussten Bau ohne, etwa zum Vorführen.
+  if (!app.plans.aktiv.length && !arg["no-plan"]) {
+    const offen = app.plans.offen[0];
+    fail(
+      t(
+        `No plan of ${app.name} is active, and a build builds what a plan says.\n` +
+          (offen
+            ? `The plan "${offen.titel}" lies open. Go through its assumptions, then:\n  node .ara/tools/app.mjs --app ${app.name} --plan-aktiv ${offen.file}\n`
+            : `Write one first:\n  node .ara/tools/app.mjs --app ${app.name} --plan "<title>"\n`) +
+          "A build without a plan, on purpose, for a demonstration: --no-plan",
+        `Kein Plan von ${app.name} ist aktiv, und ein Bau baut, was ein Plan sagt.\n` +
+          (offen
+            ? `Der Plan "${offen.titel}" liegt offen. Geh seine Annahmen durch, dann:\n  node .ara/tools/app.mjs --app ${app.name} --plan-aktiv ${offen.file}\n`
+            : `Schreib zuerst einen:\n  node .ara/tools/app.mjs --app ${app.name} --plan "<titel>"\n`) +
+          "Ein Bau ohne Plan, bewusst, zum Vorführen: --no-plan"
+      )
+    );
+  }
   failOnStandard(app);
 
   const buildDir = join(app.dir, "build");
@@ -965,6 +988,43 @@ function flowSection() {
 }
 
 /**
+ * Was eine App behält und wer ihre Freigaben entscheidet, wörtlich aus dem
+ * Kontrakt (`daten` und `freigaben`, seit dem 25.09.2026).
+ *
+ * Beides trägt kein Schema des Manifests, und beides entscheidet den Bau einer
+ * Fach-App: wo die Daten liegen, die ein Update überleben müssen, und wie der
+ * Kreis der Entscheider enger wird. Das Wissen sagt, `--contract` gebe es
+ * wörtlich aus, und das tut es hier. Ein Gerät, das die Abschnitte nicht
+ * kennt, bekommt hier auch keinen.
+ */
+function contractRuleSections() {
+  const sections = [];
+  const daten = contract?.daten?.regeln || [];
+  if (daten.length) {
+    sections.push(
+      "",
+      t("## What an app keeps", "## Was eine App behält"),
+      "",
+      t("They stand word for word in the contract, under `daten`:", "Sie stehen wörtlich im Kontrakt, unter `daten`:"),
+      "",
+      ...daten.map((r) => `- ${r}`)
+    );
+  }
+  const freigaben = contract?.freigaben?.regeln || [];
+  if (freigaben.length) {
+    sections.push(
+      "",
+      t("## Who decides the approvals of a run", "## Wer die Freigaben eines Laufs entscheidet"),
+      "",
+      t("They stand word for word in the contract, under `freigaben`:", "Sie stehen wörtlich im Kontrakt, unter `freigaben`:"),
+      "",
+      ...freigaben.map((r) => `- ${r}`)
+    );
+  }
+  return sections;
+}
+
+/**
  * Warum dieser Lauf mit 1 endet, wenn das Manifest in Ordnung war.
  *
  * `--check` gab bis 0.19.1 den Rückgabecode 1 aus, ohne dass die Ursache am
@@ -1025,6 +1085,7 @@ if (arg.contract) {
         )
       )
       .concat(flowSection())
+      .concat(contractRuleSections())
       .concat(versionSection())
       .join("\n")
   );
@@ -1258,7 +1319,7 @@ function reportManifest(where, result, delivery) {
       ...result.rules.map((r) => `- ${r}`)
     );
   }
-  lines.push(...flowSection());
+  lines.push(...flowSection(), ...contractRuleSections());
   return lines.join("\n");
 }
 
@@ -1369,6 +1430,14 @@ if (arg.deploy !== undefined) {
       );
     }
 
+    // War diese App schon einmal hier? Dann steht die Freigabe womöglich
+    // längst: sie gilt der App und ihrem Stand, nicht der Fassung. Das Kit weiß
+    // es aus seinem Merker oder aus der Antwort des Geräts, das eine vorige
+    // Fassung nennt. Am 25.09.2026 sagte es nach der zweiten Fassung wieder
+    // „Gesehen hat es noch niemand", während die Tester sie längst sahen.
+    const vorher = readState().apps?.[sent.data?.app_id ?? manifest.id]?.[place]?.deployed || null;
+    const frueher = vorher?.version || sent.data?.vorige_version || null;
+
     noteStand(sent.data?.app_id ?? manifest.id, {
       deployed: {
         version: sent.data?.version ?? manifest.version ?? null,
@@ -1394,15 +1463,18 @@ if (arg.deploy !== undefined) {
           ),
           "",
           "",
-          ...releaseLines({
-            place,
-            base,
-            testUrl: `${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`,
-            deviceCall: `node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device}`,
-            startRef,
-            startPassword: hasSecret(startRef),
-            docs: Boolean(mirrorState()),
-          }),
+          ...(frueher
+            ? redeployLines({ place, previous: frueher, database: Boolean(contract?.umgebung?.datenbank) })
+            : releaseLines({
+                place,
+                base,
+                testUrl: `${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`,
+                deviceCall: `node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device}`,
+                startRef,
+                startPassword: hasSecret(startRef),
+                docs: Boolean(mirrorState()),
+                docsCall: `node .ara/tools/mirror.mjs --docs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device}`,
+              })),
           "",
           t("A human switches live. When staging convinces:", "Live schaltet ein Mensch. Wenn der Teststand überzeugt:"),
           `  node .ara/tools/app.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device} --app ${stand.app_id ?? manifest.id} --live`,
@@ -1427,16 +1499,91 @@ if (!app) {
   );
 }
 
+/**
+ * Was das Gerät über eine App weiß, in Sätzen.
+ *
+ * Bis 0.31.0 stand hier jedes Feld der Antwort als Zeile, die Stände als
+ * rohes JSON darin: ein Fremdtest am 25.09.2026 las darin nichts. Jetzt je
+ * Stand die Fassung, seit wann, ob das Backend läuft, ob das Gerät einen Mangel
+ * nennt, und die Flows. Was die Antwort sonst trägt, gibt `--json` ganz aus.
+ */
+function standLines(name, stand) {
+  if (!stand) return [t(`## ${name}: empty`, `## ${name}: leer`)];
+  const backend = stand.backend;
+  const lines = [
+    t(
+      `## ${name}: version ${stand.version ?? "?"}${stand.vorige_version ? `, before that ${stand.vorige_version}` : ""}`,
+      `## ${name}: Fassung ${stand.version ?? "?"}${stand.vorige_version ? `, davor ${stand.vorige_version}` : ""}`
+    ),
+    "",
+    t(`- Deployed: ${stand.eingespielt_am ?? "?"}`, `- Eingespielt: ${stand.eingespielt_am ?? "?"}`),
+    ...(stand.pfad ? [t(`- Address: ${base}${stand.pfad}`, `- Adresse: ${base}${stand.pfad}`)] : []),
+  ];
+  if (backend) {
+    lines.push(
+      backend.laeuft
+        ? t(
+            `- Backend: runs${backend.gesundheit ? `, health ${backend.gesundheit}` : ""}${backend.seit ? `, since ${backend.seit}` : ""}`,
+            `- Backend: läuft${backend.gesundheit ? `, Gesundheit ${backend.gesundheit}` : ""}${backend.seit ? `, seit ${backend.seit}` : ""}`
+          )
+        : t(`- Backend: does not run (${backend.status ?? "no status"})`, `- Backend: läuft nicht (${backend.status ?? "ohne Status"})`)
+    );
+  }
+  if (stand.mangel) lines.push(t(`- The device names a defect: ${stand.mangel}`, `- Das Gerät nennt einen Mangel: ${stand.mangel}`));
+  else if (stand.lieferbar === false) lines.push(t("- The device does not deliver it.", "- Das Gerät liefert sie nicht aus."));
+  if (Array.isArray(stand.modelle) && stand.modelle.length) {
+    lines.push(t(`- Models it asks for: ${stand.modelle.join(", ")}`, `- Modelle, die sie verlangt: ${stand.modelle.join(", ")}`));
+  }
+  for (const flow of stand.flows || []) {
+    lines.push(
+      t(
+        `- Flow ${flow.name}${flow.modell ? `, model ${flow.modell}` : ", the device's default model"}${flow.modell_ueberschrieben ? " (overridden by the administrator)" : ""}`,
+        `- Flow ${flow.name}${flow.modell ? `, Modell ${flow.modell}` : ", Vorgabemodell des Geräts"}${flow.modell_ueberschrieben ? " (vom Administrator überschrieben)" : ""}`
+      )
+    );
+  }
+  if (stand.marken) lines.push(t(`- Design system: ${stand.marken}`, `- Designsystem: ${stand.marken}`));
+  return lines;
+}
+
 function showStand(data) {
   if (arg.json) {
     console.log(JSON.stringify({ device: place, app: data }, null, 2));
     return;
   }
+  const staende = data?.staende;
+  if (!staende || typeof staende !== "object") {
+    // Eine Antwort ohne Stände, etwa nach dem Schalten: was da ist, schlicht.
+    console.log(
+      [
+        t(`# ${app} on ${place}`, `# ${app} auf ${place}`),
+        "",
+        ...Object.entries(data || {}).map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`),
+      ].join("\n")
+    );
+    return;
+  }
   console.log(
     [
-      t(`# ${app} on ${place}`, `# ${app} auf ${place}`),
+      t(`# ${data.name ?? app} on ${place}`, `# ${data.name ?? app} auf ${place}`),
       "",
-      ...Object.entries(data || {}).map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`),
+      ...(Array.isArray(data.versionen) && data.versionen.length
+        ? [t(`Versions the device keeps: ${data.versionen.join(", ")}`, `Fassungen, die das Gerät hält: ${data.versionen.join(", ")}`), ""]
+        : []),
+      ...standLines(t("Staging", "Teststand"), staende.test),
+      "",
+      ...standLines("Live", staende.live),
+      "",
+      t("Who is released for it, the kit's key does not see.", "Wer dafür freigegeben ist, sieht der Schlüssel des Kits nicht."),
+      ...(contract?.umgebung?.datenbank && (staende.test?.backend || staende.live?.backend)
+        ? [
+            t(
+              "Staging and live each have their own database: switching live does not take the data of staging along.",
+              "Teststand und live haben je eine eigene Datenbank: wer live schaltet, nimmt die Daten des Teststands nicht mit."
+            ),
+          ]
+        : []),
+      t(`Everything the device answered: --json`, `Alles, was das Gerät geantwortet hat: --json`),
     ].join("\n")
   );
 }
@@ -1489,10 +1636,12 @@ if (arg.remove) {
     fail(
       t(
         `That removes ${app} from ${place}: both containers with their volumes, both slots,\n` +
-          "all permissions and the app's keys. There is no way back.\n" +
+          "all permissions, the app's keys and its databases. The device's backups of them stay,\n" +
+          "an administrator can bring them back; from the kit there is no way back.\n" +
           `If that is what you want, append it: --confirm ${app}`,
         `Das entfernt ${app} von ${place}: beide Container mitsamt ihren Volumen, beide Stände,\n` +
-          "alle Freigaben und die Schlüssel der App. Es gibt keinen Rückweg.\n" +
+          "alle Freigaben, die Schlüssel der App und ihre Datenbanken. Die Sicherungen des Geräts davon\n" +
+          "bleiben, ein Administrator kann sie zurückholen; vom Kit aus gibt es keinen Rückweg.\n" +
           `Wenn das so gewollt ist, hängs an: --confirm ${app}`
       )
     );

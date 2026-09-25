@@ -2,28 +2,39 @@
  * Was eine App vom Gerät bekommt, und wie sie es erfährt.
  *
  * Eine App im Container weiß von sich aus nichts über das Gerät, auf dem sie
- * läuft. Sie braucht fünf Dinge, und alle fünf sind zwischen Kit und Produkt
- * vereinbart, stehen also im Kontrakt und nirgends sonst:
+ * läuft. Was sie braucht, ist zwischen Kit und Produkt vereinbart, steht also
+ * im Kontrakt und nirgends sonst:
  *
  *   1. Unter welchem Namen das Gerät ihr die **Adresse** der Schnittstelle in
  *      den Container legt.
  *   2. Unter welchem Namen es ihr den **Schlüssel** hineinlegt.
- *   3. Wie die **Kopfzeile** heißt, in der dieser Schlüssel mitgeht.
- *   4. Welche **Wege** es dafür gibt: einen Flow starten, einen Lauf lesen,
- *      Freigaben lesen.
- *   5. Was von diesen Wegen an die Adresse **angehängt** wird. Die Adresse
+ *   3. Unter welchem Namen die Adresse ihrer **Datenbank** ankommt, der einzige
+ *      Ort, den sie über das nächste Einspielen hinaus behält.
+ *   4. Wie die **Kopfzeile** heißt, in der dieser Schlüssel mitgeht, und wie die
+ *      beiden **Kopfzeilen der Anmeldung** heißen, Benutzer und Rolle.
+ *   5. Welche **Wege** es dafür gibt: einen Flow starten, einen Lauf lesen,
+ *      Freigaben lesen, und wo das Gerät es anbietet, ein Dokument auslesen.
+ *   6. Was von diesen Wegen an die Adresse **angehängt** wird. Die Adresse
  *      endet auf dem Vorsatz der äußeren Schnittstelle, und die Pfade der
  *      Endpunkte fangen damit an: wer beides aneinanderhängt, ruft den Vorsatz
  *      zweimal und bekommt einen 404. Seit Kontrakt 5 sagt das Gerät den
  *      relativen Weg je Endpunkt selbst (`endpunkte[].relativ`), und das Kit
  *      schreibt ihn der App daneben, statt ihn auszurechnen.
+ *   7. Ob der Start eines Laufs den **Einreicher** und eine **Regel für die
+ *      Freigabe** annimmt (`freigaben` im Kontrakt, seit dem 25.09.2026). Ein
+ *      Gerät davor weist einen Start mit diesen Feldern ab, denn sein Schema
+ *      nimmt kein unbekanntes Feld an. Die App schickt sie deshalb nur, wenn
+ *      hier `true` steht.
  *
  * Bis zum 29.08.2026 stand nichts davon im Kontrakt, sondern in der Vorlage:
  * `ARASUL_API_URL`, `ARASUL_API_SCHLUESSEL`, `x-api-key` und drei Pfade ohne
  * den Vorsatz der äußeren Schnittstelle, alle aus dem Kopf. Trifft eine solche
  * Vorlage auf ein Gerät, das seine Werte anders nennt, findet sie nichts, hält
  * das für „kein Arasul da" und legt den Vorgang ohne Lauf ab. Genau das war der
- * übersprungene Freigabe-Schritt.
+ * übersprungene Freigabe-Schritt. Am 25.09.2026 fand ein Fremdtest dasselbe an
+ * zwei Stellen, die bis dahin fehlten: der Name der Benutzerkopfzeile stand
+ * fest im Quelltext der Vorlage, und der Weg zum Auslesen eines Dokuments als
+ * Zeichenkette im Quelltext der App.
  *
  * Deshalb steht hier die Mechanik und in der Vorlage kein einziger dieser
  * Werte. Das Kit liest sie beim Einspielen aus dem Kontrakt des Geräts und legt
@@ -31,7 +42,7 @@
  * und schreibt es nicht hin: eine App, die eine Vereinbarung errät, hält an
  * einer Stelle an, an der niemand nachsieht.
  *
- * Die drei Wege nennt das Kit selbst, so wie es die Wege für Pakete und Stände
+ * Die Wege nennt das Kit selbst, so wie es die Wege für Pakete und Stände
  * selbst nennt, und ruft sie nur, wenn das Gerät sie in seinem Kontrakt führt.
  * `findEndpoint` entscheidet das, nicht diese Datei.
  *
@@ -53,25 +64,49 @@ export const ARRANGEMENT_FILE = "arasul.json";
  * wandert mit ihm. In geschweiften Klammern steht, was die App zur Laufzeit
  * einsetzt; für den Abgleich mit dem Kontrakt tritt eine Probe an ihre Stelle,
  * denn der Kontrakt schreibt dort seinen eigenen Platzhalter.
+ *
+ * `pflicht` sagt, ob der Weg fehlt, wenn das Gerät ihn nicht nennt. Die drei
+ * Wege der Freigabe braucht jede App aus der Vorlage; ohne sie hält kein Lauf
+ * an. Die beiden Wege zu einem Dokument braucht nur eine App, die Dokumente
+ * auslesen lässt, und ein Gerät ohne sie ist kein Mangel, sondern eines, das
+ * das nicht anbietet. Beides steht in der Datei als `null`, gesagt wird es
+ * verschieden.
  */
 export const APP_WAYS = Object.freeze([
   {
     key: "flow_starten",
     verb: "POST",
     pfad: `${EXTERNAL_PREFIX}/flows/{flow}/run`,
+    pflicht: true,
     was: t("start a flow", "einen Flow starten"),
   },
   {
     key: "lauf_lesen",
     verb: "GET",
     pfad: `${EXTERNAL_PREFIX}/flows/runs/{lauf}`,
+    pflicht: true,
     was: t("read a run", "einen Lauf lesen"),
   },
   {
     key: "freigaben_lesen",
     verb: "GET",
     pfad: `${EXTERNAL_PREFIX}/freigaben`,
+    pflicht: true,
     was: t("read the approvals of this app", "die Freigaben dieser App lesen"),
+  },
+  {
+    key: "dokument_auslesen",
+    verb: "POST",
+    pfad: `${EXTERNAL_PREFIX}/document/extract-structured`,
+    pflicht: false,
+    was: t("read a document into fields", "ein Dokument in Felder auslesen"),
+  },
+  {
+    key: "dokument_text",
+    verb: "POST",
+    pfad: `${EXTERNAL_PREFIX}/document/extract`,
+    pflicht: false,
+    was: t("take the text out of a document", "den Text aus einem Dokument holen"),
   },
 ]);
 
@@ -139,9 +174,12 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
   const umgebung = contract?.umgebung ?? null;
   const basis = envName(umgebung?.basis);
   const schluessel = envName(umgebung?.schluessel);
-  // Die Datenbank kommt erst mit Kontrakt 5 und nur für eine App mit Backend.
-  // Sie fehlt deshalb nicht, wenn sie fehlt: hier steht dann `null`, und die
-  // App hat ihren Speicher bei sich.
+  // Die Datenbank kommt mit Kontrakt 5 und nur für eine App mit Backend. Fehlt
+  // sie im Kontrakt, steht hier `null`: dann hat dieses Gerät keinen Ort, den
+  // die App über das nächste Einspielen hinaus behält, und die Vorlage legt
+  // ihre Daten in eine Datei im Container, die das nächste Einspielen nicht
+  // überlebt. Das ist kein Widerspruch zum Wissen, es sind zwei Orte: was
+  // dauerhaft ist, sagt der Kontrakt unter `daten`.
   const datenbank = envName(umgebung?.datenbank);
 
   if (!umgebung || typeof umgebung !== "object") {
@@ -182,11 +220,36 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     );
   }
 
+  // Wer angemeldet ist, sagt die Plattform der App in zwei Kopfzeilen. Ihre
+  // Namen gehören zum Vertrag wie die übrigen: bis zum 25.09.2026 stand der
+  // eine fest im Quelltext der Vorlage.
+  // Dazu die Werte, die in der Rollenkopfzeile stehen können: eine App, die
+  // etwa nur Administratoren Zuordnungen pflegen lässt, vergleicht mit einem
+  // Wert von hier und tippt keinen ein.
+  const koepfe = {
+    benutzer: typeof contract?.koepfe?.benutzer === "string" ? contract.koepfe.benutzer : null,
+    rolle: typeof contract?.koepfe?.rolle === "string" ? contract.koepfe.rolle : null,
+    rollen: Array.isArray(contract?.koepfe?.rollen) ? contract.koepfe.rollen.filter((r) => typeof r === "string") : [],
+  };
+  if (!koepfe.benutzer) {
+    missing.push(
+      t(
+        "`koepfe.benutzer` is missing in the contract. Without it an app does not know who is logged in.",
+        "`koepfe.benutzer` fehlt im Kontrakt. Ohne ihn weiß eine App nicht, wer angemeldet ist."
+      )
+    );
+  }
+
   const wege = {};
+  const unangeboten = [];
   for (const way of APP_WAYS) {
     const entry = findEndpoint(contract, way.verb, probed(way.pfad));
     if (!entry) {
       wege[way.key] = null;
+      if (!way.pflicht) {
+        unangeboten.push(way.key);
+        continue;
+      }
       missing.push(
         t(
           `This device does not name ${way.verb} ${way.pfad} in its contract, the way to ${way.was}.`,
@@ -197,6 +260,24 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     }
     wege[way.key] = { verb: way.verb, pfad: way.pfad, relativ: relativeWay(contract, entry, way.pfad) };
   }
+
+  // Ob ein Lauf seinen Einreicher und eine Regel für die Freigabe mitbringen
+  // darf. Gelesen am Schema, das der Kontrakt für den Start eines Laufs
+  // ausgibt: steht das Feld dort, nimmt das Gerät es an.
+  const start = contract?.freigaben?.start?.properties || {};
+  const freigaben = {
+    einreicher: Boolean(start.einreicher),
+    regel: Boolean(start.freigabe),
+    // Welche Rolle eine Regel als Entscheider nennen darf, wie der Kontrakt sie nennt.
+    rollen: Array.isArray(contract?.freigaben?.rollen) ? contract.freigaben.rollen.filter((r) => typeof r === "string") : [],
+  };
+
+  // Was dauerhaft ist. Der Kontrakt sagt es seit dem 25.09.2026 unter `daten`;
+  // ein Gerät davor sagt es nicht, und dann steht hier `null`.
+  const daten =
+    contract?.daten && typeof contract.daten === "object"
+      ? { ort: contract.daten.ort ?? null, je_stand: contract.daten.je_stand === true }
+      : null;
 
   return {
     hinweis:
@@ -214,8 +295,12 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
       laut_kontrakt: umgebung ?? null,
     },
     kopf,
+    koepfe,
     wege,
+    freigaben,
+    daten,
     missing,
+    unangeboten,
   };
 }
 
@@ -224,9 +309,10 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
  *
  * Die Liste gehört dem Menschen vor dem Einspielen, nicht der App im Container.
  * Was fehlt, steht dort ohnehin als `null`, und die App sagt es dann selbst.
+ * Dasselbe gilt für die Wege, die dieses Gerät nicht anbietet.
  */
 export function arrangementFile(arrangement) {
-  const { missing, ...rest } = arrangement;
+  const { missing, unangeboten, ...rest } = arrangement;
   return JSON.stringify(rest, null, 2) + "\n";
 }
 
@@ -240,11 +326,38 @@ export function arrangementLines(arrangement) {
         `den Schlüssel als \`${arrangement.umgebung.schluessel ?? "?"}\`, und der Schlüssel geht in \`${arrangement.kopf ?? "?"}\` mit.`
     ),
   ];
+  if (arrangement.koepfe?.benutzer) {
+    lines.push(
+      t(
+        `- Who is logged in arrives in \`${arrangement.koepfe.benutzer}\`, the role in \`${arrangement.koepfe.rolle ?? "?"}\`.`,
+        `- Wer angemeldet ist, kommt in \`${arrangement.koepfe.benutzer}\` an, die Rolle in \`${arrangement.koepfe.rolle ?? "?"}\`.`
+      )
+    );
+  }
   if (arrangement.umgebung.datenbank) {
     lines.push(
       t(
-        `- A database of its own comes along, its address as \`${arrangement.umgebung.datenbank}\`.`,
-        `- Eine eigene Datenbank kommt mit, ihre Adresse als \`${arrangement.umgebung.datenbank}\`.`
+        `- A database of its own comes along, its address as \`${arrangement.umgebung.datenbank}\`. It is the one place the app keeps ` +
+          "beyond the next deploy" +
+          (arrangement.daten?.je_stand ? ", one for staging and one for live." : "."),
+        `- Eine eigene Datenbank kommt mit, ihre Adresse als \`${arrangement.umgebung.datenbank}\`. Sie ist der eine Ort, den die App ` +
+          "über das nächste Einspielen hinaus behält" +
+          (arrangement.daten?.je_stand ? ", eine für den Teststand und eine für live." : ".")
+      )
+    );
+  } else {
+    lines.push(
+      t(
+        "- No database comes along. What the app writes lies in the container and is gone after the next deploy.",
+        "- Keine Datenbank kommt mit. Was die App schreibt, liegt im Container und ist nach dem nächsten Einspielen weg."
+      )
+    );
+  }
+  if (arrangement.freigaben?.einreicher) {
+    lines.push(
+      t(
+        "- A run takes its submitter and a rule for its approval: four eyes, or named deciders.",
+        "- Ein Lauf nimmt seinen Einreicher und eine Regel für seine Freigabe an: vier Augen, oder benannte Entscheider."
       )
     );
   }
@@ -256,7 +369,9 @@ export function arrangementLines(arrangement) {
             (found.relativ
               ? t(" (relative to the address)", " (relativ zur Adresse)")
               : t(" (the whole path, this device names no relative one)", " (der ganze Pfad, dieses Gerät nennt keinen relativen)"))
-        : t(`- missing: the way to ${way.was}`, `- fehlt: der Weg, um ${way.was}`)
+        : way.pflicht
+          ? t(`- missing: the way to ${way.was}`, `- fehlt: der Weg, um ${way.was}`)
+          : t(`- not offered by this device: the way to ${way.was}`, `- bietet dieses Gerät nicht an: der Weg, um ${way.was}`)
     );
   }
   return lines;
@@ -279,12 +394,13 @@ export function arrangementLines(arrangement) {
  *
  * **Kein Weg und keine Seite wird hier benannt.** Wie die Freigabe im Produkt
  * heisst, steht im Admin-Handbuch und in der API-Referenz des Artefakts, und
- * die liegen im Spiegel. Ein Pfad aus dem Gedaechtnis waere genau die Sorte
- * Zusage, die dieses Kit nicht macht. Liegt kein Spiegel da, sagt der Text das,
- * statt auf eine Anleitung zu zeigen, die es hier nicht gibt: der Fremdtest am
- * 29.08.2026 lief von der Ausgabe ueber `mirror.mjs --docs` bis zu
- * `--refresh` und stand dann vor der Tokenfrage, drei Spruenge fuer eine
- * Auskunft, die es nicht gab.
+ * die liegen im Spiegel und am Geraet selbst. Ein Pfad aus dem Gedaechtnis
+ * waere genau die Sorte Zusage, die dieses Kit nicht macht. Liegt kein Spiegel
+ * da, zeigt der Text auf die Anleitungen am Geraet (`mirror.mjs --docs
+ * --device`): der Fremdtest am 29.08.2026 lief von der Ausgabe ueber
+ * `mirror.mjs --docs` bis zu `--refresh` und stand dann vor der Tokenfrage,
+ * und am 25.09.2026 las ein Fremder die Doku am Geraet, weil das Kit diesen
+ * Weg nicht nannte.
  *
  * **Eine Freigabe gilt einem Stand.** Das Geraet fuehrt je App zwei, und ein
  * frisch eingespieltes Paket liegt nur im Teststand. Wer allein fuer den
@@ -302,6 +418,7 @@ export function releaseLines({
   startRef,
   startPassword = false,
   docs = false,
+  docsCall = null,
 } = {}) {
   const lines = [
     t(
@@ -331,15 +448,15 @@ export function releaseLines({
             `- The start password lies under ${startRef}. A session comes out of it, and the password`,
             "  stays unseen while it does:",
             `      ${deviceCall} --admin-login`,
-            `  Which route the release goes stands in the API reference of the artifact, ${docs ? "not in the kit:" : "which is not here:"}`,
-            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : "node .ara/tools/mirror.mjs --refresh   (needs a token)"}`,
+            "  Which route the release goes stands in the API reference of the artifact, not in the kit:",
+            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <device>"}`,
           ],
           [
             `- Das Startpasswort liegt unter ${startRef}. Daraus wird eine Sitzung, und das Passwort`,
             "  bleibt dabei ungesehen:",
             `      ${deviceCall} --admin-login`,
-            `  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, ${docs ? "nicht im Kit:" : "und die liegt hier nicht:"}`,
-            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : "node .ara/tools/mirror.mjs --refresh   (braucht einen Token)"}`,
+            "  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, nicht im Kit:",
+            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <gerät>"}`,
           ]
         )
       : t(
@@ -360,16 +477,12 @@ export function releaseLines({
       [
         `- Or a human does it in the interface: ${base}, logged in as administrator. For that the kit`,
         "  is not needed. Which page carries the release stands in the admin handbook of the",
-        docs
-          ? "  artifact:\n      node .ara/tools/mirror.mjs --docs"
-          : "  artifact, and there is no mirror here that would hold it.",
+        `  artifact:\n      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <device>"}`,
       ],
       [
         `- Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Dafür`,
         "  braucht es das Kit nicht. Welche Seite die Freigabe trägt, steht im Admin-Handbuch des",
-        docs
-          ? "  Artefakts:\n      node .ara/tools/mirror.mjs --docs"
-          : "  Artefakts, und einen Spiegel, der es führt, gibt es hier nicht.",
+        `  Artefakts:\n      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <gerät>"}`,
       ]
     )
   );
@@ -392,4 +505,33 @@ export function releaseLines({
     )
   );
   return lines;
+}
+
+/**
+ * Was nach dem zweiten Einspielen derselben App zu sagen ist.
+ *
+ * Eine Freigabe gilt der App und ihrem Stand, nicht einer Fassung: wer den
+ * Teststand schon sah, sieht die neue Fassung jetzt. Ob jemand freigegeben
+ * ist, sieht das Kit mit seinem Schlüssel nicht, also sagt es das nicht als
+ * Tatsache. Die Daten des Teststands bleiben, wenn das Gerät eine Datenbank
+ * gibt: die neue Fassung findet sie vor.
+ */
+export function redeployLines({ place, previous, database = false }) {
+  return [
+    t(
+      `Before this, version ${previous} lay here. Releases stay: they belong to the app and its slot, not to a version, ` +
+        "so whoever saw staging sees the new version now. Whether anybody is released, the kit's key cannot see.",
+      `Davor lag hier Fassung ${previous}. Freigaben bleiben stehen: sie gelten der App und ihrem Stand, nicht einer Fassung, ` +
+        "wer den Teststand schon sah, sieht also jetzt die neue. Ob jemand freigegeben ist, sieht der Schlüssel des Kits nicht."
+    ),
+    ...(database
+      ? [
+          "",
+          t(
+            `The data of staging stays: the new version finds the database of the old one on ${place}.`,
+            `Die Daten des Teststands bleiben: die neue Fassung findet die Datenbank der alten auf ${place} vor.`
+          ),
+        ]
+      : []),
+  ];
 }

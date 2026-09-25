@@ -10,11 +10,15 @@
  *   node .ara/tools/mirror.mjs             fetch it if it is missing or too old
  *   node .ara/tools/mirror.mjs --show      only look, fetch nothing
  *   node .ara/tools/mirror.mjs --docs      which manuals lie in the artifact
+ *   node .ara/tools/mirror.mjs --docs --device orin                  the manuals on the device
+ *   node .ara/tools/mirror.mjs --docs --device orin --read api/API_REFERENCE.md
  *   node .ara/tools/mirror.mjs --refresh   fetch again in any case
  *
  * `--docs` is the way to everything the kit does not know itself: admin handbook,
  * API reference, delivery. The kit copies nothing out of them, it says where they
- * stand.
+ * stand. With `--device` it reads them where Arasul runs, over SSH, from the folder
+ * the running platform was started from: that works without a token and without a
+ * mirror, also on a device somebody else installed, and it is the version that runs.
  *
  * The token comes from the chosen secret store and is never printed or passed as an
  * argument to another process.
@@ -31,22 +35,27 @@
  *   node .ara/tools/mirror.mjs             holen, wenn er fehlt oder zu alt ist
  *   node .ara/tools/mirror.mjs --show      nur nachsehen, nichts holen
  *   node .ara/tools/mirror.mjs --docs      welche Anleitungen liegen im Artefakt
+ *   node .ara/tools/mirror.mjs --docs --device orin                  die Anleitungen am Gerät
+ *   node .ara/tools/mirror.mjs --docs --device orin --read api/API_REFERENCE.md
  *   node .ara/tools/mirror.mjs --refresh   in jedem Fall neu holen
  *
  * `--docs` ist der Weg zu allem, was das Kit selbst nicht weiß: Admin-Handbuch,
  * API-Referenz, Auslieferung. Das Kit schreibt daraus nichts ab, es sagt, wo es
- * steht.
+ * steht. Mit `--device` liest es sie dort, wo Arasul läuft, über SSH, aus dem
+ * Ordner, aus dem die laufende Plattform gestartet wurde: das geht ohne Token und
+ * ohne Spiegel, auch an einem Gerät, das jemand anders installiert hat, und es ist
+ * die Fassung, die dort läuft.
  *
  * Das Token kommt aus der gewählten Geheimnis-Ablage und wird niemals ausgegeben
  * oder als Argument an einen anderen Prozess übergeben.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { t } from "./lib/i18n.mjs";
-import { ROOT, helpOnly, parseArgs } from "./lib/kit.mjs";
+import { ROOT, fail, helpOnly, parseArgs, readDevice, sshArgs } from "./lib/kit.mjs";
 import { APPLEDOUBLE, packEnv, releaseVersion } from "./lib/install.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 import { STORE_CALL, buyLines, portalBase } from "./lib/licence.mjs";
@@ -229,16 +238,138 @@ function docs(dir, depth = 0) {
   return found;
 }
 
+/**
+ * Die Anleitungen am Gerät, gelesen über SSH.
+ *
+ * Gesucht wird der Ordner, aus dem die laufende Plattform gestartet wurde: die
+ * Container eines Compose-Projekts tragen ihn als Etikett, und der Ordner, den
+ * die meisten laufenden Container nennen und der `docs/` trägt, ist er. Liegt
+ * kein laufender Container vor, der höchste Fassungsordner unter den Orten, an
+ * denen das Kit auch sonst sucht. Am 25.09.2026 lagen am Orin 0.3.0, 0.4.0 und
+ * 0.8.0 nebeneinander, und nur einer davon lief.
+ *
+ * Ein Fremdtest am 25.09.2026 kam ohne Token an ein Gerät, das jemand anders
+ * installiert hatte, und `--docs` sagte „Es gibt keinen Spiegel". Die Doku lag
+ * die ganze Zeit am Gerät; er fand sie auf eigene Faust.
+ */
+const FIND_DOCS =
+  `best=$(docker ps --format '{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null | ` +
+  `grep -v '^$' | sort | uniq -c | sort -rn | while read n d; do [ -d "$d/docs" ] && echo "$d" && break; done); ` +
+  `if [ -z "$best" ]; then for d in "$HOME/arasul" "$HOME"/arasul-* /opt/arasul /arasul; do ` +
+  `[ -d "$d/docs" ] && best="$d"; done; fi; echo "@dir=$best"`;
+
+function deviceDocs() {
+  let device;
+  try {
+    device = readDevice(typeof arg.customer === "string" ? arg.customer : null, arg.device);
+  } catch (error) {
+    fail(error.message);
+  }
+  // Ist das Gerät dieser Rechner selbst, geht es ohne SSH, wie bei device.mjs.
+  const local = ["localhost", "127.0.0.1", "::1"].includes(String(device.fields.address || device.fields.hostname || ""));
+  let ssh = [];
+  if (!local) {
+    try {
+      ssh = sshArgs(device.fields, { batch: true }).args;
+    } catch (error) {
+      fail(error.message);
+    }
+  }
+  const remote = (command, options = {}) =>
+    local
+      ? spawnSync("sh", ["-c", command], { encoding: "utf8", ...options })
+      : spawnSync("ssh", [...ssh, command], { encoding: "utf8", ...options });
+  const place = device.customer ? `${device.customer}/${device.device}` : device.device;
+  const found = remote(FIND_DOCS);
+  const dir = ((found.stdout || "").match(/^@dir=(.*)$/m) || [])[1]?.trim();
+  if (found.status !== 0 && !dir) {
+    fail(
+      t(
+        `No connection to ${place}: ${(found.stderr || "").trim().split("\n")[0]}\nnode .ara/tools/remote.mjs --device ${device.device} --check says more.`,
+        `Keine Verbindung zu ${place}: ${(found.stderr || "").trim().split("\n")[0]}\nnode .ara/tools/remote.mjs --device ${device.device} --check sagt mehr.`
+      )
+    );
+  }
+  if (!dir) {
+    fail(
+      t(
+        `On ${place} there is no folder of Arasul with manuals: neither a running platform names one, nor does one lie ` +
+          "where the kit looks. Either no Arasul runs there, or it was installed from somewhere else.",
+        `Auf ${place} gibt es keinen Ordner von Arasul mit Anleitungen: weder nennt eine laufende Plattform einen, noch liegt ` +
+          "einer dort, wo das Kit sucht. Entweder läuft dort kein Arasul, oder es wurde von anderswo installiert."
+      )
+    );
+  }
+  const call = `node .ara/tools/mirror.mjs --docs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device}`;
+
+  if (typeof arg.read === "string") {
+    const rel = arg.read.replace(/^\/+/, "");
+    if (!rel || rel.split("/").some((part) => part === ".." || part === "") || /['"\\$`]/.test(rel)) {
+      fail(t(`${arg.read} is not a path below docs/.`, `${arg.read} ist kein Pfad unter docs/.`));
+    }
+    const read = remote(`cat '${dir}/docs/${rel}'`, { maxBuffer: 32 * 1024 * 1024 });
+    if (read.status !== 0) {
+      fail(
+        t(
+          `${rel} does not lie under ${dir}/docs on ${place}. Which ones do: ${call}`,
+          `${rel} liegt auf ${place} nicht unter ${dir}/docs. Welche dort liegen: ${call}`
+        )
+      );
+    }
+    // Erst beenden, wenn alles draußen ist: in eine Pipe schreibt Node
+    // asynchron, und ein `exit` gleich danach schnitt die API-Referenz am Orin
+    // nach 64 KB ab.
+    process.stdout.write(read.stdout, () => process.exit(0));
+    return;
+  }
+
+  const list = remote(
+    `cd '${dir}/docs' && find . -maxdepth 4 -type f \\( -name '*.md' -o -name '*.pdf' -o -name '*.txt' -o -name '*.html' \\) | sed 's|^\\./||' | sort`
+  );
+  const files = (list.stdout || "").split("\n").filter(Boolean);
+  console.log(
+    [
+      t(`# Manuals on ${place}, from ${dir}/docs`, `# Anleitungen auf ${place}, aus ${dir}/docs`),
+      "",
+      t(
+        "This is the version that runs there: the folder the running platform was started from.",
+        "Das ist die Fassung, die dort läuft: der Ordner, aus dem die laufende Plattform gestartet wurde."
+      ),
+      "",
+      ...(files.length ? files.map((file) => `- ${file}`) : [t("None found.", "Keine gefunden.")]),
+      "",
+      t("Read one:", "Eine lesen:"),
+      `  ${call} --read <${t("path", "pfad")}>`,
+      "",
+      t(
+        "The kit copies nothing out of them. What stands there holds for this device and this version.",
+        "Das Kit schreibt daraus nichts ab. Was dort steht, gilt für dieses Gerät und diese Fassung."
+      ),
+    ].join("\n")
+  );
+  process.exit(0);
+}
+
+if (arg.docs && typeof arg.device === "string") {
+  deviceDocs();
+  // Beim Lesen endet der Prozess, sobald die Ausgabe draußen ist.
+  await new Promise(() => {});
+}
+
 if (arg.docs) {
   if (!state) {
     console.log(
       t(
-        "There is no mirror, so there are no manuals either. It comes into being at the installation:\n" +
-          "  node .ara/tools/device.mjs --name <device> --install arasul\n" +
-          "Just to read up, this is enough: node .ara/tools/mirror.mjs --refresh",
-        "Es gibt keinen Spiegel, also auch keine Anleitungen. Er entsteht bei der Installation:\n" +
-          "  node .ara/tools/device.mjs --name <gerät> --install arasul\n" +
-          "Nur zum Nachlesen reicht: node .ara/tools/mirror.mjs --refresh"
+        "There is no mirror here. The manuals lie on every device with Arasul as well, in the version that runs\n" +
+          "there, and the kit reads them over SSH, without a token:\n" +
+          "  node .ara/tools/mirror.mjs --docs --device <device>\n" +
+          "The mirror itself comes into being at the installation (device.mjs --install arasul) or with a token:\n" +
+          "  node .ara/tools/mirror.mjs --refresh",
+        "Hier gibt es keinen Spiegel. Die Anleitungen liegen auch an jedem Gerät mit Arasul, in der Fassung, die\n" +
+          "dort läuft, und das Kit liest sie über SSH, ohne Token:\n" +
+          "  node .ara/tools/mirror.mjs --docs --device <gerät>\n" +
+          "Der Spiegel selbst entsteht bei der Installation (device.mjs --install arasul) oder mit einem Token:\n" +
+          "  node .ara/tools/mirror.mjs --refresh"
       )
     );
     process.exit(1);

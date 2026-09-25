@@ -119,10 +119,11 @@ it has a key with `app:deploy` and no session as administrator.
 The usual way is the interface, in the browser on the device. **Without a browser it goes through
 the platform's admin interface**, with a credential in the header (`Authorization: Bearer`). Route,
 body and the way to the token stand in the artifact, not in the kit: admin handbook and API
-reference, both in the mirror.
+reference, both in the mirror and on the device itself.
 
 ```
 node .ara/tools/mirror.mjs --docs
+node .ara/tools/mirror.mjs --docs --device <device>
 ```
 
 The whole sequence with the shape of the call stands in `.ara/knowledge/device.md` under "Der

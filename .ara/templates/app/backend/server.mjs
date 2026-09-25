@@ -7,13 +7,21 @@
  *
  *   `server.mjs`            Wege, Kopfzeilen, Statuscodes
  *   `kern/vorgaenge.mjs`    was mit einem Vorgang passiert
- *   `ablage/vorgaenge.mjs`  wo er liegt. Die eine Naht zu SQLite
- *   `ablage/db.mjs`         die Datei und ihre Migrationen
+ *   `ablage/vorgaenge.mjs`  wo er liegt. Die eine Naht zur Datenbank
+ *   `ablage/db.mjs`         die Datenbank und ihre Migrationen
  *   `arasul.mjs`            die Naht zum Geraet
  *
- * Ohne Abhaengigkeiten, mit dem eingebauten `http`-Modul und dem eingebauten
- * SQLite: eine App, die zum Start einen zweiten Paketbaum mitbringt, ist eine,
- * die in einem Jahr niemand mehr bauen kann.
+ * Mit dem eingebauten `http`-Modul und einer einzigen Abhaengigkeit, `pg`, fuer
+ * die Datenbank, die das Geraet der App gibt. Ohne Geraet laeuft sie auf dem
+ * eingebauten SQLite und braucht gar kein Paket.
+ *
+ * **Wo die Daten liegen, sagt die Vereinbarung.** Nennt sie unter
+ * `umgebung.datenbank` einen Namen, liegt in diesem Umgebungswert die Adresse
+ * der Datenbank dieser App und dieses Standes, und nur sie ueberlebt das
+ * naechste Einspielen. Nennt sie einen und der Wert ist leer, startet die App
+ * nicht: sie schriebe sonst still in eine Datei, die das naechste Einspielen
+ * loescht. Nennt sie keinen, ist kein Geraet da, und `/lage` sagt, dass nichts
+ * davon bleibt.
  *
  * Es sieht seine Pfade **ohne** das Praefix der Plattform: was vor dem
  * Container haengt, schneidet sie ab. Deshalb weiss diese Datei nicht, unter
@@ -26,7 +34,8 @@
  * **`api/me` beantwortet diese App nicht.** Wer angemeldet ist, sagt die
  * Plattform selbst, unter genau diesem Weg vor dem Container, damit auch eine
  * App ohne Backend ihren Benutzer anzeigen kann. Was hier ankommt, sind die
- * Kopfzeilen, die sie davor gesetzt hat, und aus ihnen wird `von`.
+ * Kopfzeilen, die sie davor gesetzt hat, und aus ihnen wird `von`. Ihre Namen
+ * stehen in der Vereinbarung, gelesen werden sie in `arasul.mjs`.
  */
 
 import { readFileSync } from "node:fs";
@@ -42,15 +51,35 @@ const HIER = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8080);
 const NAME = process.env.ARASUL_APP_NAME || "{{name}}";
 const FLOW = "freigabe";
-// Wo die Datenbank liegt. Ohne Angabe neben dem Quelltext, und das ist im
-// Container die schreibbare Schicht: sie ueberlebt einen Neustart und nicht das
-// naechste Einspielen. Steht so in der README der App.
+// Ohne Geraet: wo die SQLite-Datei liegt. Ohne Angabe neben dem Quelltext, und
+// das ist im Container die schreibbare Schicht: sie ueberlebt einen Neustart
+// und nicht das naechste Einspielen.
 const DATEN = process.env.APP_DATEN || join(HIER, "daten");
+// Vier Augen: wer einen Vorgang einreicht, entscheidet ihn nicht. Das Geraet
+// setzt das durch, sobald es die Regel annimmt; die Vorlage laesst es aus, weil
+// ein Geraet mit einem einzigen Konto sonst keinen Vorgang starten koennte.
+// Eine Fach-App setzt es, und `regel` unten nennt dann auch die Entscheider.
+const VIER_AUGEN = false;
 
 const vereinbarung = vereinbarungLesen();
 const geraet = anschluss(vereinbarung, process.env, { name: NAME, flow: FLOW });
-const { db, angewandt, stand } = oeffnen(join(DATEN, "{{id}}.db"));
-const vorgangsKern = kern({ ablage: vorgangsAblage(db), geraet, name: NAME });
+
+const datenbankName = vereinbarung.umgebung?.datenbank || null;
+const adresse = datenbankName ? process.env[datenbankName] || "" : null;
+if (datenbankName && !adresse) {
+  process.stderr.write(
+    `${NAME} startet nicht: die Vereinbarung nennt ${datenbankName}, und das Geraet hat den Wert nicht in den Container gelegt. ` +
+      "Ohne ihn schriebe die App in eine Datei, die das naechste Einspielen loescht.\n"
+  );
+  process.exit(1);
+}
+const { db, angewandt, stand } = await oeffnen({ adresse, datei: join(DATEN, "{{id}}.db") });
+const vorgangsKern = kern({
+  ablage: vorgangsAblage(db),
+  geraet,
+  name: NAME,
+  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),
+});
 
 /**
  * Was die App ueber sich sagt: das Feld `agent` ihres Manifests, mit Kennung, Name und Version.
@@ -70,17 +99,6 @@ function beschreibungLesen() {
     }
   }
   return null;
-}
-
-/**
- * Ein Kopfzeilenwert, wie die Plattform ihn meint.
- *
- * Node liest Kopfzeilen als Latin-1, die Plattform legt Namen als UTF-8 ab.
- * Ohne diesen Umweg stuende "JÃ¼rgen" auf dem Bildschirm. Bei reinem ASCII ist
- * er folgenlos, deshalb steht er ohne Bedingung da.
- */
-function ausUtf8(wert) {
-  return wert ? Buffer.from(wert, "latin1").toString("utf8") : null;
 }
 
 function json(antwort, status, daten) {
@@ -123,6 +141,8 @@ const server = createServer(async (anfrage, antwort) => {
       arasul: !fehlt,
       hinweis: fehlt,
       geraet: geraet.geraetename(),
+      // Und ob bleibt, was sie ablegt. Nur die Datenbank des Geraets bleibt.
+      ablage: { art: db.art, dauerhaft: db.dauerhaft },
     });
   }
 
@@ -138,7 +158,7 @@ const server = createServer(async (anfrage, antwort) => {
     const vorgang = await vorgangsKern.einreichen({
       titel,
       text: String(rumpf.text || "").trim().slice(0, 2000),
-      von: ausUtf8(anfrage.headers["x-arasul-user"]),
+      von: geraet.angemeldet(anfrage.headers).benutzer,
     });
     return json(antwort, 201, { vorgang });
   }
@@ -152,9 +172,12 @@ server.listen(PORT, "0.0.0.0", () => {
   // Stelle, an der sie ueberhaupt steht.
   process.stdout.write(`${NAME} hört auf ${server.address().port}\n`);
   process.stdout.write(
-    angewandt.length
-      ? `Ablage auf Stand ${stand}, angewandt: ${angewandt.join(", ")}.\n`
-      : `Ablage auf Stand ${stand}, nichts anzuwenden.\n`
+    (angewandt.length
+      ? `Ablage auf Stand ${stand}, angewandt: ${angewandt.join(", ")}.`
+      : `Ablage auf Stand ${stand}, nichts anzuwenden.`) +
+      (db.dauerhaft
+        ? ` Sie liegt in der Datenbank des Geraets aus ${datenbankName}.\n`
+        : " Sie liegt in einer Datei im Container und ueberlebt das naechste Einspielen nicht.\n")
   );
   // Beim Start einmal sagen, woran diese App haengt. Wer im Protokoll des
   // Containers nachsieht, soll die Antwort dort finden und nicht raten.
@@ -166,8 +189,8 @@ server.listen(PORT, "0.0.0.0", () => {
 // schiesst dann, bei jedem Einspielen aufs Neue.
 for (const signal of ["SIGTERM", "SIGINT"]) {
   process.on(signal, () =>
-    server.close(() => {
-      db.close();
+    server.close(async () => {
+      await db.schliessen();
       process.exit(0);
     })
   );

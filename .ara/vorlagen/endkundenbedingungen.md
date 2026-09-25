@@ -55,9 +55,13 @@ Vertragspartner des Kunden ist allein der Anbieter. Der Anbieter schuldet
 Lieferung, Einrichtung, Einweisung und Betreuung. Zwischen dem Kunden und dem
 Hersteller kommt kein Vertragsverhältnis zustande.
 
-Das Gerät wird mit **einem** Administratorzugang betrieben. Eine Trennung mehrerer
-Nutzer oder Mandanten innerhalb eines Gerätes besteht nicht und wird nicht
-zugesagt. Wer mehrere Mandanten getrennt halten muss, benötigt mehrere Geräte.
+Jede Person arbeitet am Gerät mit einem eigenen Konto, und welche App sie sieht,
+gibt ein Administrator je App frei. Eine Trennung nach Mandanten innerhalb einer
+App wird nur geschuldet, wenn die Leistungsbeschreibung dieser App sie ausdrücklich
+nennt; das Gerät selbst trennt nicht nach Mandanten. Wer als Administrator oder
+über den Wartungszugang auf das Gerät zugreift, kann die Daten aller Apps
+erreichen. Wer Mandanten auch gegenüber diesem Personenkreis getrennt halten muss,
+benötigt mehrere Geräte.
 
 ## 3 Betrieb und Mitwirkung
 

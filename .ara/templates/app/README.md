@@ -34,17 +34,22 @@ bei jedem Aufruf dieser Seite mit. Wer es ist, sagt `api/me`: dieser eine Weg li
 Benutzer anzeigen kann. Die Oberfläche liest ihn einmal und hält ihn als Kontext, das
 Backend liest denselben Menschen aus den Kopfzeilen vor dem Container.
 
-Die Rolle steht dabei und wird nicht ausgewertet: **was ein Mensch darf, entscheidet das
-Gerät.** Es liefert eine App nur dem aus, dem sie freigegeben ist. Eine Prüfung in der App
-wäre keine zweite Sicherung, sondern nur eine bessere Meldung.
+**Wer hineinkommt, entscheidet das Gerät**: es liefert die App nur dem aus, dem sie
+freigegeben ist. **Was jemand darin sieht, entscheidet die App.** Sie darf dafür den Namen
+und die Rolle aus den Kopfzeilen auswerten, denn die setzt die Plattform und fälschen kann
+sie niemand: eine Zuordnung von Konten zu Mandanten, Abteilungen oder Akten ist Sache der
+App und keine zweite Anmeldung. Diese Vorlage zeigt jedem, der hineinkommt, alle Vorgänge.
+Wie eine App nach Mandanten trennt, steht in `.ara/knowledge/app.de.md` unter
+„Sichtbarkeit innerhalb einer App“.
 
 ## Woher sie weiß, wie sie das Gerät erreicht
 
 **Nicht aus ihrem eigenen Quelltext.** Unter welchem Namen das Gerät ihr die Adresse der
 Schnittstelle und den Schlüssel in den Container legt, wie die Kopfzeile für den Schlüssel
 heißt und welche Wege es dafür gibt, ist zwischen Kit und Produkt vereinbart und steht im
-Kontrakt des einen Geräts. Das Kit liest das beim Einspielen dort aus und legt es als
-`backend/arasul.json` ins Paket.
+Kontrakt des einen Geräts. Dasselbe gilt für die Namen der beiden Kopfzeilen, in denen
+Benutzer und Rolle ankommen, und für den Umgebungswert mit der Adresse der Datenbank. Das
+Kit liest das beim Einspielen dort aus und legt es als `backend/arasul.json` ins Paket.
 
 Steht in dieser Datei nichts, hat die App keinen Rahmen. Dann nimmt sie den Vorgang an, legt
 ihn ohne Lauf ab und schreibt an ihn, woran es liegt. `GET /lage` sagt dasselbe, und beim
@@ -59,18 +64,27 @@ entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert.
 
 **Nicht in dieser App.** Sie liest ihre Freigaben und erteilt keine. Entschieden wird in
 der Oberfläche von Arasul, unter den offenen Freigaben, und zwar von jedem, dem diese App
-freigegeben ist. Der Flow nennt dafür keine Person und keine Rolle: wer entscheiden darf,
-ist eine Sache des Kunden.
+freigegeben ist. Der Flow nennt dafür keine Person und keine Rolle. Den Kreis enger ziehen
+kann die App beim Start des Laufs: `VIER_AUGEN` in `backend/server.mjs` schließt den
+Einreicher aus, und eine Regel im Kern kann die Konten nennen, die für einen Vorgang
+zuständig sind. Das Gerät setzt beides durch, sobald sein Kontrakt `freigaben` führt.
+
+**Auf der Karte der Freigabe steht die Nummer des Vorgangs, nicht sein Inhalt.** Was ein
+Lauf bekommt, liegt am Gerät bei jedem Lauf und auf der Karte; was im Vorgang steht, liegt
+in dieser App. Wer entscheidet, liest den Vorgang hier unter seiner Nummer.
 
 Eine Ablehnung braucht eine Begründung. Entscheidet niemand innerhalb der Frist, endet der
 Lauf ohne Entscheidung, und der Vorgang steht auf abgelaufen. Das ist kein Fehler.
 
 ## Was sie nicht kann
 
-- **Die Vorgänge überleben das nächste Einspielen nicht.** Sie liegen in einer
-  SQLite-Datei unter `daten/` im Container. Die überlebt einen Neustart des Containers und
-  nicht die nächste Fassung: ein Gerät gibt einer App heute keinen eigenen Datenordner.
-  Sag das dem Kunden, bevor er es merkt.
+- **Test und live haben getrennte Daten.** Am Gerät liegen die Vorgänge in der Datenbank,
+  die das Gerät der App je Stand gibt, und die überlebt jedes Einspielen und jedes Schalten.
+  Wer live schaltet, nimmt die Vorgänge des Teststands nicht mit: der Livestand beginnt mit
+  seinen eigenen, beim ersten Mal also leer.
+- **Ohne Gerät bleibt nichts.** Über `--compose` oder auf dem eigenen Rechner liegen die
+  Vorgänge in einer SQLite-Datei unter `daten/` im Container, und die überlebt das nächste
+  Einspielen nicht. `GET /lage` sagt, welcher der beiden Fälle gilt.
 - Ohne Arasul entscheidet niemand: der Vorgang wird angenommen und bleibt liegen. Die Seite
   sagt das dann selbst.
 - Ein Satz an dieser Stelle erspart später eine Enttäuschung. Trag hier ein, was
@@ -109,9 +123,10 @@ Das Backend, von außen nach innen:
 | --- | --- |
 | `server.mjs` | Wege, Kopfzeilen, Statuscodes. Sonst nichts |
 | `kern/vorgaenge.mjs` | Was mit einem Vorgang passiert. Kennt zwei Anschlüsse und die Welt sonst nicht |
-| `ablage/vorgaenge.mjs` | Die eine Naht zu SQLite. Hier steht das einzige SQL der App |
-| `ablage/db.mjs` | Die Datei und ihre Migrationen. Der Stand steht in der Datenbank selbst |
+| `ablage/vorgaenge.mjs` | Die eine Naht zur Datenbank. Hier steht das SQL der Vorgänge |
+| `ablage/db.mjs` | Die Datenbank und ihre Migrationen: am Gerät PostgreSQL, ohne Gerät SQLite, dasselbe SQL. Der Stand steht in der Datenbank selbst |
 | `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst |
+| `package.json` | Die eine Abhängigkeit, `pg`. Das Gerät holt sie beim Bau |
 | `arasul.mjs` | Die Naht zum Gerät. Kein Wert darin, den das Gerät vergibt |
 | `arasul.json` | Die Vereinbarung mit dem Gerät. Im Quelltext leer, gefüllt wird sie beim Einspielen |
 
@@ -119,7 +134,7 @@ Die Schnittstelle des Backends, hinter `/apps/{{id}}/api/`:
 
 | Weg | Was er tut |
 | --- | --- |
-| `GET /lage` | Name der App und ob das Gerät ihr eine Schnittstelle gegeben hat |
+| `GET /lage` | Name der App, ob das Gerät ihr eine Schnittstelle gegeben hat, und ob bleibt, was sie ablegt |
 | `GET /vorgaenge` | Alle Vorgänge, vorher am Gerät nachgezogen |
 | `POST /vorgaenge` | Vorgang einreichen und den Flow starten |
 | `GET /gesund` | Für den Gesundheitscheck des Containers |
@@ -184,7 +199,8 @@ Die Abhängigkeiten der Bibliothek stehen in `frontend/package.json`. Sie wird *
 App übersetzt, ist also kein npm-Paket: was sie braucht, muss die App holen. Der Wächter
 fragt danach.
 
-**Die Wege der App bleiben eine Ebene tief**, also `/vorgaenge` und nicht `/vorgaenge/17`.
+**Die Wege der Oberfläche bleiben eine Ebene tief**, also `/vorgaenge` und nicht `/vorgaenge/17`;
+die Wege des Backends unter `api/` dürfen tiefer gehen.
 Warum, steht im Kopf von `src/rahmen/basis.ts`: die Seite verweist relativ auf ihre Bündel,
 weil sie beim Bauen nicht weiß, ob sie im Teststand oder live hängt. Was ein Verweis auf ein
 einzelnes Ding braucht, gehört in die Suchanfrage.

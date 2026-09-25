@@ -37,8 +37,10 @@ the browser on the device, and you watch and write along. A kit that walked such
 would need an administrator's password.
 
 **Without a browser that is not the end.** The platform has an interface of its own for its
-administration, and how it works stands in the artifact: admin handbook and API reference, both in
-the mirror, to be found with `node .ara/tools/mirror.mjs --docs`. The first employee and the first
+administration, and how it works stands in the artifact: admin handbook and API reference. Both lie
+on every device with Arasul, in the version that runs there, and the kit reads them there without a
+token: `node .ara/tools/mirror.mjs --docs --device <device>`, one of them with `--read <path>`. With a
+mirror they also stand under `node .ara/tools/mirror.mjs --docs`. The first employee and the first
 permission are the case that otherwise leaves you stuck, and it stands in
 `.ara/knowledge/device.md` under "Der erste Mitarbeiter und die erste Freigabe".
 
@@ -50,7 +52,8 @@ not does not get in. There is no special rule for administrators.
 That is enforced **in front of** the container: the platform checks the request and sets two
 headers, one with the user name and one with the role. **What they are called and which roles
 there are stands in the contract** under `koepfe`, together with the note on how the name is to be
-read. Do not copy the names down, read them there.
+read. Do not copy the names down: the kit puts them into the app's `arasul.json` at the deploy, and
+the scaffold reads them there.
 
 They cannot be forged: whatever comes in from outside in the request gets deleted before the
 platform sets its own.
@@ -66,8 +69,13 @@ names under `/apps/<id>/` belong to the platform and which to the app stands in 
 `apps.vergeben`.
 
 **What you do not build out of that:** no login form in the app, no field somebody types their name
-into, no user list of your own. That would be a second login next to the real one, and it would
-hold nobody back.
+into, no accounts of your own with a password. That would be a second login next to the real one,
+and it would hold nobody back.
+
+**What you may build out of that:** a mapping of the device's accounts to what the app knows,
+clients, departments, files. It hangs on the user name from the header and decides what somebody
+sees **inside** the app; who gets in at all the device keeps deciding. How that works and how it
+gets checked stands in `.ara/knowledge/app.md` under "Visibility inside an app".
 
 ## Permissions: a run stops, a human decides
 
@@ -76,8 +84,8 @@ in the flow's step chain, with a title, the context and a deadline. The run then
 and without a decision nothing goes further.
 
 That is something other than a question in the conversation: a question goes to whoever is watching
-right now, and without an answer the flow carries on with an assumption. An approval goes to
-everybody the app is shared with, and **without an answer nothing goes further at all**.
+right now, and without an answer the flow carries on with an assumption. An approval goes, as long as
+the app does not draw the circle narrower (see below), to everybody the app is shared with, and **without an answer nothing goes further at all**.
 
 Three outcomes, and they stand on the run: approved, then it carries on from the stopped step.
 Rejected, then it ends, and the reason is its reason. Nobody decides by the deadline, then it ends
@@ -104,8 +112,21 @@ With its own key, with the run number as the question behind it. An app that cou
 approval would not be one.
 
 **Who may decide the customer says, not the flow.** A flow names no person and no role, it
-describes the matter. The responsibility is the same permission with which somebody may use the app
-at all.
+describes the matter. By default the responsibility is the same permission with which somebody may
+use the app at all, and **every one of them sees the card with its text.**
+
+**The app can draw the circle narrower at the start, never wider.** Since 25.09.2026 the contract
+names under `freigaben` what a start brings along for that: the submitter, the exclusion of the
+submitter (four eyes) and the deciders, as a role or as a list of accounts. Whoever does not stand
+in the circle does not see the request and gets a 403 when deciding; if nobody remains, the device
+refuses the start. The rules stand there word for word, `--contract` prints them, and whether a
+device knows them stands in `arasul.json` under `freigaben` after the deploy. For a professional
+app with clients that means: deciders from the mapping, submitter excluded, see
+`.ara/knowledge/app.md`, "Approvals in a professional app".
+
+**References belong in the request's text, no content.** Title and context stand on the card of
+every decider and at the run on the device. A number and a name under which the decider finds the
+item in the app are enough; amounts, names of clients, texts stay in the app.
 
 What you do **not** promise the customer unchecked: that a waiting run stands for an arbitrarily
 long time. Ask that on the device before a process is built on it in which an approval lies open
@@ -161,7 +182,15 @@ POST /api/v1/external/document/analyze
 ```
 
 **Which of those this one device carries stands in its contract**, and there stands too which scope
-a key has to carry for it. The kit calls nothing the device does not promise. If a key lacks the
+a key has to carry for it. The two ways to read a document the kit puts into an app's `arasul.json`
+under `wege`, like the ways of a flow.
+
+**Reading a document into fields** means: the app sends the file and a JSON schema, the device
+takes the text out, for a photo or a scanned PDF through its text recognition, and lets a language
+model fill the fields. The model sees text, not an image. The answer names the model and whether
+the text recognition ran. What that means for photos, image models and the field `modelle` in
+`app.json` stands in `.ara/knowledge/app.md` under "Reading documents and images", the code for it
+is pattern 6 in `.ara/knowledge/app-patterns.md`. The kit calls nothing the device does not promise. If a key lacks the
 scope, the device rejects it, and that is not a fault of the kit but a decision of the
 administrator.
 

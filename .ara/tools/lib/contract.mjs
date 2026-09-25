@@ -75,6 +75,8 @@ const READ_FIELDS = new Set([
   "apps",
   "schluessel",
   "endpunkte",
+  "daten",
+  "freigaben",
 ]);
 
 /** Was dieses Gerät im Kontrakt nennt und dieses Kit nicht liest. */
