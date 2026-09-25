@@ -34,8 +34,8 @@ alles aufzuzählen, was ginge.
 **Gibt es die App noch nicht**, ist das Interview dran, bevor irgendetwas angelegt wird:
 die Prüfliste steht im Verfahren. Ist der Wunsch klein, ein Formular, nenn einmal, was
 daneben liegt: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden
-ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung.
-Die sechs Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und
+ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung,
+Mandanten, die einander nicht sehen. Die sieben Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und
 der Plan nennt das, das er benutzt. Erst danach `--new` und der erste Plan. Was offen
 geblieben ist, steht als Annahme im Plan und wird beim nächsten Mal vorgelesen.
 
@@ -43,7 +43,7 @@ geblieben ist, steht als Annahme im Plan und wird beim nächsten Mal vorgelesen.
 die das Gerät lesen soll, einer Freigabe, die nicht der Einreicher gibt, oder einem
 Exportformat eines anderen Herstellers: lies in `.ara/knowledge/app.de.md` den Abschnitt „Eine
 Fach-App“, bevor der Plan entsteht. Er hat fünf Teile, und jeder davon gehört als Antwort oder
-als Annahme in den Plan.
+als Annahme in den Plan. Mandanten baut Muster 7, nicht eine neue Beschreibung.
 
 **Ist ein Plan aktiv**, geh zuerst seine Annahmen durch, dann bau, was darin steht, dann
 `--build`. Der Bau ist das Paket, nicht die laufende App: was sie tut, sieht man am Gerät.

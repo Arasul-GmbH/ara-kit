@@ -1,10 +1,10 @@
-# Verfahren: sechs Muster einer App jenseits des Formulars
+# Verfahren: sieben Muster einer App jenseits des Formulars
 
 > **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann,
 > wenn jemand Arasul für ein Formularwerkzeug hält. Wer nur den Vorgang der Vorlage mit
 > seinem Freigabe-Schritt kennt, baut Formulare. Eine App kann alles, was ein Programm kann:
 > das Gerät bringt Anmeldung, Freigaben, Flows und Modelle mit, den Rest bringt die App. Hier
-> stehen sechs Muster, die bei fast jedem Kunden vorkommen, jedes mit Code, der läuft.
+> stehen sieben Muster, die bei fast jedem Kunden vorkommen, jedes mit Code, der läuft.
 
 ## Die Regel zuerst
 
@@ -36,6 +36,7 @@ von einem fremden Werkzeug braucht, sagt dessen Dokumentation, nicht dieses Blat
 | 4. Fremde API aus dem Backend | Eine Adresse außerhalb des Geräts, mit Zeitlimit und Sätzen für das, was schiefging | `.ara/templates/app-patterns/foreign-api/backend/fremd.mjs` |
 | 5. Fremder Container als App | Ein fertiges Image hinter der Anmeldung des Geräts, ohne eigenen Code | `.ara/templates/app-patterns/foreign-container/` |
 | 6. Dokument auslesen | Ein Beleg geht an das Gerät, Felder kommen zurück, die App prüft sie, ein Protokoll hält jede Auslesung | `.ara/templates/app-patterns/extract/` |
+| 7. Mandanten | Welches Konto welchen Mandanten sieht, ein Filter in jeder Abfrage, die Entscheider einer Freigabe aus der Zuordnung | `.ara/templates/app-patterns/clients/` |
 
 ## 1. Mehrere Routen mit Seitenleiste
 
@@ -289,12 +290,91 @@ Felder, ein Fehler des Geräts, das Protokoll nach dem Entfernen des Dokuments. 
 25.09.2026 wie oben beschrieben. Eine Auslesung mit einem Modell, das der Kunde selbst gewählt
 hat, und seine echten Belege prüfst du an seinem Gerät.
 
+## 7. Mandanten: wer was sieht, und wer entscheidet
+
+Eine Kanzlei, eine Praxis, ein Büro: mehrere Mandanten, und jeder Mitarbeiter sieht nur seine.
+**Wer in die App kommt, entscheidet das Gerät, was jemand darin sieht, die App.** Das Gerät
+kennt keine Mandanten und soll sie nicht kennen. Diese Trennung ist das, was eine solche App
+nicht falsch machen darf, und aus einer Beschreibung gebaut kommt sie jedes Mal anders heraus.
+Deshalb liegt sie hier als Code, und der Plan nimmt sie, statt sie neu zu beschreiben. Der Code
+liegt unter `.ara/templates/app-patterns/clients/`:
+
+| Datei | Was sie ist |
+| --- | --- |
+| `backend/ablage/migrationen/004-mandanten.sql` | Mandanten, gesehene Konten, Zuordnungen, und eine Spalte `mandant` an den Vorgängen |
+| `backend/ablage/mandanten.mjs` | Die Ablage für alle drei, und `nurZugeordnete`, der Filter als SQL für jede andere Ablage |
+| `backend/ablage/vorgaenge.mjs` | Ersetzt die Ablage der Vorgänge aus der Vorlage: dieselben Felder, und jede Abfrage trägt den Filter |
+| `backend/kern/mandanten.mjs` | Wer verwaltet, Anlegen und Zuordnen, die Regel für die Freigabe, ob ein Entscheider noch zuständig ist |
+| `backend/wege/mandanten.mjs` | Die Wege: Mandanten, Zuordnungen, und die Vorgänge mit ihrem Mandanten |
+| `frontend/src/mandanten.ts` | Typen und Abfragen |
+| `frontend/src/seiten/mandanten.tsx` | Die Verwaltungsseite, und `MandantWahl` für das Formular |
+
+**Eingehängt wird es** so: die Ordner über die der App kopieren, die Zeilen aus dem Kopf von
+`wege/mandanten.mjs` in `server.mjs`, **vor** die Wege der Vorgänge, eine `Route` und ein
+Eintrag in der Seitenleiste, den nur die Verwaltung sieht, `MandantWahl` in `seiten/neu.tsx`;
+der Kopf von `seiten/mandanten.tsx` zeigt diese Zeilen. Dann `--build`.
+
+Was das Muster entscheidet, und warum:
+
+- **Eine Zuordnung, keine zweite Anmeldung.** Niemand meldet sich an der App an. Sie merkt
+  sich zu einem Namen aus der Kopfzeile der Anmeldung, welche Mandanten er sieht. Die Namen
+  der Kopfzeilen stehen in `arasul.json` unter `koepfe`.
+- **Zugeordnet wird nur ein Name, den die App gesehen hat.** Der Schlüssel einer App kann die
+  Konten des Geräts nicht auflisten. Die App vermerkt jeden Namen, der vorbeikommt, mit dem
+  ersten und dem letzten Mal, und die Verwaltung wählt daraus. Ein neuer Mitarbeiter öffnet die
+  App einmal, danach lässt er sich zuordnen.
+- **Der Filter steht im WHERE, nicht in einer Prüfung danach.** `nurZugeordnete` gibt die
+  Bedingung als SQL, und die Ablage der Vorgänge wird je Anfrage für einen Namen gebaut. Die
+  Liste, der einzelne Vorgang, die wartenden, das Fortschreiben: was zu einem fremden Mandanten
+  gehört, gibt es in ihr nicht. Ohne Namen sieht sie nichts.
+- **Fremd heißt 404, nicht 403.** Ein 403 sagte, dass es den Vorgang gibt. 403 bekommt nur,
+  wer die Verwaltung aufruft, ohne sie zu haben.
+- **Verwaltung nur für eine Rolle, die der Kontrakt nennt.** `verwaltungsRolle` nimmt die
+  Rolle, die eine Regel als Entscheider nennen darf (`freigaben.rollen`), sofern sie in der
+  Rollenkopfzeile stehen kann (`koepfe.rollen`). Wer eine andere will, nennt sie, und auch die
+  muss in `koepfe.rollen` stehen. Passt keine, verwaltet niemand, und die App sagt das. Das
+  Muster tippt keinen Rollennamen ein.
+- **Die Verwaltung sieht Vorgänge nur der Mandanten, denen sie zugeordnet ist.** Zuordnungen
+  pflegen ist nicht Akten lesen. Will der Plan etwas anderes, sagt er es, und die Ablage ändert
+  sich an einer Stelle.
+- **Die Entscheider kommen aus der Zuordnung.** `regel` gibt dem Gerät vier Augen und die Konten,
+  die dem Mandanten des Vorgangs zugeordnet sind, ohne den Einreicher. Bleibt niemand, startet
+  kein Lauf, und am Vorgang steht, warum. Jedes Konto, das dort steht, muss die App freigegeben
+  haben, sonst weist das Gerät den Start mit 400 ab, und dieser Satz steht am Vorgang.
+- **Eine Entscheidung zählt nur von jemandem, der noch zuständig ist.** Endet eine Zuordnung,
+  während ein Lauf wartet, entscheidet das Gerät weiter nach dem Kreis vom Start. Beim
+  Nachziehen hält die App den Namen dessen, der entschieden hat, gegen die Zuordnung, und eine
+  Entscheidung von außerhalb zählt nicht.
+
+**Die Muster 2 und 6 kennen keine Mandanten.** In einer App mit Mandanten bekommen ihre Tabellen
+eine Spalte `mandant` in einer eigenen Migration, und jede Abfrage ihrer Ablagen nimmt
+`nurZugeordnete`, das Protokoll einer Auslesung eingeschlossen. Der Selbsttest hält die Ablage
+der Vorgänge daran: jede Abfrage, die Vorgänge liest oder schreibt, trägt den Filter.
+
+**Was geprüft ist und was nicht.** Der Selbsttest lässt das Muster im Backend der Vorlage gegen
+ein gespieltes Gerät laufen, dessen Rollen anders heißen als am Orin: zwei Konten, zwei
+Mandanten, der fremde Vorgang 404 in der Liste und einzeln, die Verwaltung 403 für jeden ohne
+die Rolle, die Regel mit den Entscheidern aus der Zuordnung, eine Entscheidung von jemandem,
+der nicht mehr zuständig ist, die nicht zählt.
+
+Am 26.09.2026 lief eine Probe aus der Vorlage und diesem Muster am Orin, im Teststand, in der
+PostgreSQL des Geräts. Gemessen mit zwei echten Kontonamen in den Kopfzeilen, die sonst die
+Plattform setzt, direkt am Container gefragt, weil niemand für die Probe freigegeben war: jeder sah
+nur seinen Mandanten, der fremde Vorgang antwortete 404 in der Liste und einzeln, ein Einreichen
+bei einem fremden Mandanten 404, die Verwaltung 403 für die Rolle `mitarbeiter` und offen für
+`admin`, die das Muster aus dem Kontrakt nahm. Ein Mandant, dem nur der Einreicher zugeordnet war,
+startete keinen Lauf und sagte warum. Ein Start mit einem Entscheider aus der Zuordnung erreichte
+das Gerät, und das Gerät wies ihn mit 400 ab, weil dem Einreicher die App nicht freigegeben war;
+dieser Satz stand am Vorgang. **Ein Lauf, den ein zugeordneter Entscheider bestätigt, ist am Gerät
+nicht gesehen**: dafür braucht es eine Freigabe für zwei Konten und damit eine Sitzung als
+Administrator. Das ist der erste Nachweis am Gerät des Kunden, eingetragen in seinen Laufzettel.
+
 ## Was `/app` damit tut
 
 Im Interview ist der Wunsch oft klein: „ein Formular für den Urlaubsantrag". Dann nenn,
 was daneben liegt, einmal und kurz: der Antrag als Dokument, eine Mail, wenn er entschieden
 ist, ein Nachschlagen in der Zeiterfassung, das Werkzeug, das das Büro ohnehin benutzt, ein
-Beleg, den das Gerät ausliest. Der
+Beleg, den das Gerät ausliest, die Mandanten, die einander nicht sehen dürfen. Der
 Mensch sagt, was er will, und der Plan nennt das Muster, das er benutzt, damit der Nächste,
 der ihn öffnet, weiß, wonach er sucht. Nach `--new` nennt das Werkzeug dieses Blatt aus
 demselben Grund.

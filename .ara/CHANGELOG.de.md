@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.36.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Mandanten sind ein Muster mit Code, keine Prosa.** Muster 7 unter `.ara/templates/app-patterns/clients/` ordnet Konten Mandanten zu, am Namen aus der Kopfzeile der Anmeldung, setzt den Filter `nurZugeordnete` in jede Abfrage der Ablage, beantwortet einen fremden Vorgang mit 404, öffnet die Verwaltungsseite nur der Rolle, die der Kontrakt unter `freigaben.rollen` und `koepfe.rollen` nennt, und gibt dem Gerät die Regel für eine Freigabe: vier Augen, die Entscheider aus der Zuordnung. Eine Entscheidung von jemandem, der nicht mehr zuständig ist, zählt beim Nachziehen nicht. Der Selbsttest lässt es mit zwei Konten und zwei Mandanten gegen ein Gerät laufen, dessen Rollen anders heißen. `app.md` verweist darauf, statt es auf rund 600 Wörtern zu beschreiben; ein Agent, der es aus der Beschreibung entwarf, baute es jedes Mal anders.
+- **Der Kern der Vorlage trägt es**: `regel` darf asynchron antworten und mit einem Satz statt einer Regel, dann startet kein Lauf; `zustaendig` prüft eine Entscheidung beim Nachziehen; `einreichen` gibt weitere Felder an die Ablage weiter; `holen` liest einen Vorgang.
+- **Modellarbeit einer App läuft über einen Flow oder über das Auslesen eines Dokuments.** `app.md` sagt das in einem Satz, `platform-services.md` nennt den Chat nicht mehr als Weg für das Backend einer App.
+
 ## 0.35.0 (2026-09-26)
 
 Kontrakt: bis 6

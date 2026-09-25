@@ -183,7 +183,9 @@ POST /api/v1/external/document/analyze
 
 **Which of those this one device carries stands in its contract**, and there stands too which scope
 a key has to carry for it. The two ways to read a document the kit puts into an app's `arasul.json`
-under `wege`, like the ways of a flow.
+under `wege`, like the ways of a flow. **A way to the chat or to a model it does not put there**: model
+work of an app runs over a flow or over reading a document. The other ways of this list are for the
+kit and for tools outside an app.
 
 **Reading a document into fields** means: the app sends the file and a JSON schema, the device
 takes the text out, for a photo or a scanned PDF through its text recognition, and lets a language
@@ -219,8 +221,9 @@ GET  /v1/models
 ```
 
 Authentication is with the same key, in the key header or as `Authorization: Bearer`. What that is
-good for: an app's backend takes a ready-made library and points it at the device instead of
-building a client of its own.
+good for: a tool outside the device takes a ready-made library and points it at the device instead
+of building a client of its own. An app on the device does not take this route, its model work runs
+over a flow or over reading a document.
 
 **These routes do not stand in the contract.** The contract describes what is agreed between kit
 and device, and this route is there for outside tools. Two things follow from that: the kit does not

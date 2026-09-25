@@ -56,7 +56,7 @@ Asking goes on until every point is answered or explicitly left open. What stays
 | **Who may see what** | Who gets into the app the device decides. Whether everybody inside sees everything or only their clients, departments, files, the app decides, and that stands in the plan. See "Visibility inside an app" |
 | **What has to stay** | What has to survive a new version, a switch and a year, and what of it gets checked or proven. See "Data that stays" |
 | **Which professional standards apply** | An export format, a chart of accounts, a retention rule. They come from their primary source, with the date of retrieval, see "Professional standards" |
-| **Which shape it takes** | A form is rarely all of it: a document shown on the device, a mail when something is decided, a lookup in a foreign system, a foreign tool behind the login. The six patterns with code that runs stand in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
+| **Which shape it takes** | A form is rarely all of it: a document shown on the device, a mail when something is decided, a lookup in a foreign system, a foreign tool behind the login, clients kept apart. The seven patterns with code that runs stand in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | That decides the construction. Something that gets checked is an afternoon. Something that may never be wrong is a project |
@@ -136,6 +136,9 @@ beforehand and names what this device does not promise. **An app never writes th
 own source.** One that does finds nothing on a device that names them differently, takes that for
 "no Arasul here" and collects items nobody decides on. That is what happened to the scaffold up to
 29.08.2026: the approval step was not refused, it was skipped.
+
+**Model work of an app runs over a flow or over reading a document**, because `arasul.json` carries
+no other way to a model, and the app writes none into its source.
 
 **Deployed is not visible.** An app on a device is visible to a person only once it has been
 released for them, and the kit cannot release it: its key carries `app:deploy` and nothing else.
@@ -296,36 +299,14 @@ and role, and deletes whatever came from outside. **Their names stand in `arasul
 `koepfe`**, and the scaffold reads them with `geraet.angemeldet(anfrage.headers)`. Write no header
 name into the source; the self-test holds scaffold and patterns to that.
 
-**A mapping in the app is allowed**: a table of which account sees which client, keyed by the user
-name from the header. That is not a second login, because nobody logs in to the app: there is no
-password, no account the app creates, no name somebody types into a form. The app may evaluate
-the role from the header, for instance so that only an administrator maintains mappings. What an
-administrator sees in the app the plan decides, not the role alone.
-
-Which values can stand in the role header stands in `arasul.json` under `koepfe.rollen`, and
-which role a rule may name as decider under `freigaben.rollen`; compare with those values instead
-of typing one in.
-
-**Where the names come from.** An app's key cannot list the device's accounts. So the app
-remembers every name it sees in the header, with the first and the last time, and whoever
-maintains mappings chooses among those. A name that no longer exists on the device lets nobody
-in: it stays in the list and is shown as not seen for a long time. It follows: only a person the app has seen once can be
-mapped, so a new employee opens it once before getting clients. If a mapping ends while an
-approval runs, the device keeps deciding by the circle from the run's start; the app checks when
-catching up whether whoever decided is still responsible.
-
-**Enforced in the store, at every query**, not in the interface: the list, the single thing, its
-file, the export, the routes in the field `agent`. A foreign thing answers with 404 and not with
-403, otherwise the answer gives away that it exists. It is checked with two accounts and two
-clients: every route once as the one who may see nothing. A foreign test on 25.09.2026 found every
-route of the app tight that way and exactly one gap outside of it, the approval card; the next
-section closes it.
-
-**The patterns know no clients.** Patterns 2 and 6 store documents and readings without a client
-and hand them out to anybody. In a professional app their table gets a column for the client, and
-every query of their store filters by it, the log of a reading included. Their migrations carry
-the numbers 002 and 003; if the app has its own already, renumber the pattern's files before the
-first of them ran on a device.
+**Clients are pattern 7**, with code under `.ara/templates/app-patterns/clients/` and described in
+`.ara/knowledge/app-patterns.md`: a mapping of accounts to clients by the name from the header, a
+filter in every query of the store, 404 for a foreign thing, a management page only for a role out of
+`koepfe.rollen`, the deciders of an approval out of the mapping. **Take the pattern, do not design it
+anew from this sheet**: built from a description, the separation comes out different every time. A
+mapping is allowed and no second login. It is checked with two accounts and two clients: every
+route once as the one who may see nothing. The plan says what the management sees; the pattern shows
+it only the clients it is mapped to.
 
 ### Approvals in a professional app
 
@@ -339,11 +320,11 @@ wider:
 - **`freigabe.entscheider`**: either `{"rolle": "admin"}` or `{"konten": [...]}`. Only these people
   see and decide the request, everybody else does not see it and gets a 403 when deciding.
 
-The exact rules stand in the contract, `--contract` prints them word for word. **For a
-professional app that means:** the deciders come from the mapping, the accounts mapped to this
-item's client, and the submitter is excluded. If nobody remains, the device refuses the start with
-400 instead of creating a request that runs into its deadline, and the app shows that sentence at
-the item. That is a case for the plan: who decides when only one person is mapped to a client?
+The exact rules stand in the contract, `--contract` prints them word for word. **For a professional
+app pattern 7 returns the rule**: four eyes, the deciders are the accounts mapped to the item's
+client, without the submitter, and whoever decided has to be responsible still when the app catches
+up. If nobody remains, no run starts and the item says why. Who decides when only one person is
+mapped to a client is a case for the plan.
 
 **References belong in the request's text, no content**: "receipt 17, submitted by anna", not the
 amount, the client's name and the booking text. What a run gets lies on the device with every
@@ -354,8 +335,9 @@ number and the submitter, nothing else.
 **How the scaffold carries it.** `arasul.json` says under `freigaben` whether this device takes
 submitter and rule; a device from before refuses a start with a field it does not know, so the
 scaffold sends them only then. The submitter it always sends when the device knows it. The rule is
-returned by `regel` in the core, out of the item; `VIER_AUGEN` in `server.mjs` switches the
-exclusion of the submitter on. If an item demands a rule and the device takes none, no run starts,
+returned by `regel` in the core, out of the item, also asynchronously, and a sentence instead of a rule
+starts no run; `zustaendig` checks a decision when catching up. `VIER_AUGEN` in `server.mjs` switches
+the exclusion of the submitter on. If an item demands a rule and the device takes none, no run starts,
 and the item says why: an approval anybody could see would be worse than none.
 
 ### Reading documents and images

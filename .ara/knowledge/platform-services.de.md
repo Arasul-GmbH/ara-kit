@@ -192,7 +192,10 @@ POST /api/v1/external/document/analyze
 
 **Welche davon dieses eine Gerät führt, steht in seinem Kontrakt**, und dort steht auch,
 welchen Bereich ein Schlüssel dafür tragen muss. Die beiden Wege zum Auslesen eines Dokuments
-legt das Kit einer App in `arasul.json` unter `wege`, wie die Wege eines Flows.
+legt das Kit einer App in `arasul.json` unter `wege`, wie die Wege eines Flows. **Einen Weg zum
+Chat oder zu einem Modell legt es ihr nicht hinein**: Modellarbeit einer App läuft über einen Flow
+oder über das Auslesen. Die übrigen Wege dieser Liste sind für das Kit und für Werkzeuge außerhalb
+einer App.
 
 **Ein Dokument in Felder auslesen** heißt: die App schickt die Datei und ein JSON-Schema, das
 Gerät holt den Text heraus, bei einem Foto oder einem gescannten PDF über seine
@@ -233,8 +236,10 @@ GET  /v1/models
 ```
 
 Angemeldet wird mit demselben Schlüssel, in der Schlüsselkopfzeile oder als
-`Authorization: Bearer`. Wofür das gut ist: das Backend einer App nimmt eine fertige
-Bibliothek und richtet sie auf das Gerät, statt einen eigenen Client zu bauen.
+`Authorization: Bearer`. Wofür das gut ist: ein Werkzeug außerhalb des Geräts nimmt eine
+fertige Bibliothek und richtet sie auf das Gerät, statt einen eigenen Client zu bauen. Eine App
+auf dem Gerät nimmt diesen Weg nicht, ihre Modellarbeit läuft über einen Flow oder über das
+Auslesen.
 
 **Diese Wege stehen nicht im Kontrakt.** Der Kontrakt beschreibt, was zwischen Kit und
 Gerät vereinbart ist, und dieser Weg ist für fremde Werkzeuge da. Daraus folgt zweierlei:

@@ -3692,14 +3692,14 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
 /** Der Ordner der Muster, und die Vorlage daneben. */
 const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
 
-check("Das Wissen kennt sechs Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+check("Das Wissen kennt sieben Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
-  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt sechs Muster, und
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt sieben Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
   for (const blatt of [".ara/knowledge/app-patterns.md", ".ara/knowledge/app-patterns.de.md"]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
-    for (const nummer of [1, 2, 3, 4, 5, 6]) {
+    for (const nummer of [1, 2, 3, 4, 5, 6, 7]) {
       assert(new RegExp(`^## ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
@@ -3721,7 +3721,7 @@ check("Das Wissen kennt sechs Muster jenseits des Formulars, und jeder Verweis t
   ]) {
     assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
   }
-  return "sechs Muster, beide Fassungen, Befehl, Prüfliste und --new";
+  return "sieben Muster, beide Fassungen, Befehl, Prüfliste und --new";
 });
 
 check("Die Vorlage trägt die Dokumentanzeige, und das Muster Dokumente benutzt sie richtig", () => {
@@ -4046,6 +4046,225 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
     const ohne = auslesen({ dokumente: {}, auslesungen: {}, geraet: { warumKeinRahmen: () => null, kannAuslesen: () => false } }).lage();
     assert(!ohne.kann && /nicht an/.test(ohne.grund), `ohne den Weg: ${JSON.stringify(ohne)}`);
     return "Formular am Gerät, Felder, Mangel am Steuersatz, Modell und Texterkennung im Protokoll, rohe Antwort und Fehler benannt, Protokoll bleibt";
+  } finally {
+    app?.kill("SIGTERM");
+    geraet.close();
+    rmSync(paket, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, und die Entscheider kommen aus der Zuordnung", async () => {
+  // So, wie das Blatt es sagt: die Vorlage, darüber das Muster, die Zeilen aus
+  // dem Kopf von wege/mandanten.mjs in server.mjs. Das Gerät ist gespielt, und
+  // seine Rollen heißen nicht so wie am Orin: ein Muster, das eine Rolle fest
+  // im Quelltext trägt, findet hier keine Verwaltung.
+  const kontrakt = {
+    ...VORLAGE_KONTRAKT,
+    koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["leitung", "team"] },
+    freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["leitung"] },
+  };
+  const paket = mkdtempSync(join(tmpdir(), "ara-mandanten-"));
+  let app = null;
+  const starts = [];
+  let freigaben = [];
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (anfrage.headers["x-arasul-app-key"] !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/flows/freigabe/run") {
+        starts.push(JSON.parse(Buffer.concat(teile).toString("utf8")));
+        return json(202, { data: { run_id: starts.length } });
+      }
+      if (url.pathname === "/api/v1/external/freigaben") return json(200, { data: { freigaben } });
+      if (url.pathname.startsWith("/api/v1/external/flows/runs/")) return json(200, { data: { status: "fertig", result: "genehmigt" } });
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
+    cpSync(join(PATTERNS, "clients", "backend"), paket, { recursive: true });
+    // Die Zeilen, die der Kopf der Wege nennt, genau so eingesetzt.
+    const kopfDerWege = readFileSync(join(PATTERNS, "clients", "backend", "wege", "mandanten.mjs"), "utf8");
+    const zeilen = kopfDerWege
+      .split("\n")
+      .filter((zeile) => zeile.startsWith(" *   "))
+      .map((zeile) => zeile.slice(5));
+    const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
+    const beginn = zeilen.findIndex((zeile) => zeile.startsWith("const mandantenFall"));
+    const ende = zeilen.findIndex((zeile, i) => i > beginn && zeile === "});");
+    const aufbau = zeilen.slice(beginn, ende + 1).join("\n") + "\n";
+    assert(importe.includes("mandantenWege") && aufbau.includes("regel: mandantenFall.regel"), `der Kopf von wege/mandanten.mjs nennt die Zeilen nicht mehr: ${aufbau}`);
+    const server = join(paket, "server.mjs");
+    let quelle = readFileSync(server, "utf8");
+    for (const [alt, neu] of [
+      [
+        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
+        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + importe,
+      ],
+      ["  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n", "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" + aufbau],
+      ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
+    ]) {
+      assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
+      quelle = quelle.replace(alt, neu);
+    }
+    writeFileSync(server, quelle);
+    writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
+
+    app = spawn("node", [server], {
+      env: {
+        ...process.env,
+        PORT: "0",
+        ARASUL_APP_NAME: "Probe",
+        APP_DATEN: join(paket, "daten"),
+        ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`,
+        ARASUL_APP_KEY: "aras_selbsttest",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let ausgabe = "";
+    let fehlerausgabe = "";
+    app.stderr.on("data", (stueck) => (fehlerausgabe += String(stueck)));
+    const basis = await new Promise((fertig, gescheitert) => {
+      const zeit = setTimeout(() => gescheitert(new Error(`die App hat nicht gestartet: ${fehlerausgabe}`)), 10_000);
+      app.stdout.on("data", (stueck) => {
+        ausgabe += String(stueck);
+        const treffer = ausgabe.match(/auf (\d+)/);
+        if (treffer) {
+          clearTimeout(zeit);
+          fertig(`http://127.0.0.1:${treffer[1]}`);
+        }
+      });
+    });
+    await new Promise((fertig) => setTimeout(fertig, 300));
+    assert(/004-mandanten\.sql/.test(ausgabe), `die Migration der Mandanten lief nicht: ${ausgabe} ${fehlerausgabe}`);
+
+    // Wer fragt, steht in den Kopfzeilen, als UTF-8 wie am Gerät.
+    const ruf = async (wer, rolle, pfad, optionen = {}) => {
+      const kopf = { "content-type": "application/json" };
+      if (wer) kopf[kontrakt.koepfe.benutzer] = Buffer.from(wer, "utf8").toString("latin1");
+      if (rolle) kopf[kontrakt.koepfe.rolle] = rolle;
+      const antwort = await fetch(`${basis}${pfad}`, { ...optionen, headers: kopf });
+      return { code: antwort.status, daten: await antwort.json() };
+    };
+    const post = (wer, rolle, pfad, rumpf) => ruf(wer, rolle, pfad, { method: "POST", body: JSON.stringify(rumpf) });
+
+    // Jeder öffnet die App einmal, sonst kann ihn niemand zuordnen.
+    for (const wer of ["Änne", "bernd", "carla"]) {
+      const r = await ruf(wer, "team", "/mandanten");
+      assert(r.code === 200 && r.daten.mandanten.length === 0 && r.daten.verwaltung === false, `${wer} sieht vor jeder Zuordnung etwas: ${JSON.stringify(r.daten)}`);
+    }
+    let r = await ruf("chefin", "leitung", "/mandanten");
+    assert(r.daten.verwaltung === true, "die Rolle aus dem Kontrakt verwaltet nicht");
+    r = await post("Änne", "team", "/mandanten", { name: "Eigenmächtig" });
+    assert(r.code === 403, `ein Konto ohne die Rolle legt Mandanten an: ${r.code}`);
+    r = await ruf("Änne", "team", "/zuordnungen");
+    assert(r.code === 403, `ein Konto ohne die Rolle sieht die Zuordnungen: ${r.code}`);
+
+    r = await post("chefin", "leitung", "/mandanten", { name: "Müller GmbH" });
+    assert(r.code === 201, `Mandant A: ${JSON.stringify(r.daten)}`);
+    const a = r.daten.mandant.id;
+    r = await post("chefin", "leitung", "/mandanten", { name: "Schmidt KG" });
+    const b = r.daten.mandant.id;
+    r = await post("chefin", "leitung", "/mandanten", { name: "Schmidt KG" });
+    assert(r.code === 409, "ein Mandant ließ sich zweimal anlegen");
+    r = await post("chefin", "leitung", "/zuordnungen", { benutzer: "dora", mandant: a });
+    assert(r.code === 400 && /noch nie/.test(r.daten.fehler), `ein nie gesehener Name wurde zugeordnet: ${JSON.stringify(r.daten)}`);
+    for (const [wer, mandant] of [["Änne", a], ["carla", a], ["bernd", b]]) {
+      r = await post("chefin", "leitung", "/zuordnungen", { benutzer: wer, mandant });
+      assert(r.code === 201, `Zuordnung ${wer}: ${JSON.stringify(r.daten)}`);
+    }
+    r = await ruf("chefin", "leitung", "/zuordnungen");
+    assert(r.daten.zuordnungen.length === 3 && r.daten.konten.some((k) => k.benutzer === "Änne"), `die Verwaltung sieht nicht alles: ${JSON.stringify(r.daten)}`);
+
+    r = await ruf("Änne", "team", "/mandanten");
+    assert(r.daten.mandanten.length === 1 && r.daten.mandanten[0].id === a, `Änne sieht mehr als ihren Mandanten: ${JSON.stringify(r.daten)}`);
+
+    // Einreichen: vier Augen, und entscheiden darf, wer dem Mandanten sonst zugeordnet ist.
+    r = await post("Änne", "team", "/vorgaenge", { titel: "Beleg Müller", text: "Tankquittung", mandant: a });
+    assert(r.code === 201 && r.daten.vorgang.mandant === a && String(r.daten.vorgang.lauf) === "1", `Vorgang in A: ${JSON.stringify(r.daten)}`);
+    const va = r.daten.vorgang.id;
+    const start = starts[0];
+    assert(start?.einreicher === "Änne", `der Einreicher fehlt am Start: ${JSON.stringify(start)}`);
+    assert(
+      JSON.stringify(start.freigabe) === JSON.stringify({ ohne_einreicher: true, entscheider: { konten: ["carla"] } }),
+      `die Regel kommt nicht aus der Zuordnung: ${JSON.stringify(start.freigabe)}`
+    );
+    assert(!/Müller|Tankquittung/.test(JSON.stringify(start)), "Inhalt des Vorgangs steht im Lauf");
+
+    r = await post("Änne", "team", "/vorgaenge", { titel: "Fremd", mandant: b });
+    assert(r.code === 404, `Änne reicht bei einem fremden Mandanten ein: ${r.code}`);
+
+    // Der fremde Mandant: nichts in der Liste, 404 am einzelnen Vorgang.
+    r = await ruf("bernd", "team", "/vorgaenge");
+    assert(r.code === 200 && r.daten.vorgaenge.length === 0, `bernd sieht Vorgänge von A: ${JSON.stringify(r.daten)}`);
+    r = await ruf("bernd", "team", `/vorgaenge/${va}`);
+    assert(r.code === 404 && !/Müller/.test(JSON.stringify(r.daten)), `bernd bekommt den Vorgang von A: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await ruf("chefin", "leitung", `/vorgaenge/${va}`);
+    assert(r.code === 404, "die Verwaltung sieht Vorgänge eines Mandanten, dem sie nicht zugeordnet ist");
+    r = await ruf(null, null, "/vorgaenge");
+    assert(r.code === 200 && r.daten.vorgaenge.length === 0, "ohne Anmeldung ist die Liste nicht leer");
+    r = await ruf("carla", "team", `/vorgaenge/${va}`);
+    assert(r.code === 200 && r.daten.vorgang.titel === "Beleg Müller", "carla sieht den Vorgang ihres Mandanten nicht");
+
+    // Allein zugeordnet: kein Lauf, und der Satz sagt, warum.
+    r = await post("bernd", "team", "/vorgaenge", { titel: "Beleg Schmidt", mandant: b });
+    assert(r.code === 201 && r.daten.vorgang.status === "ohne lauf" && /niemand/.test(r.daten.vorgang.hinweis), `allein zugeordnet: ${JSON.stringify(r.daten)}`);
+    assert(starts.length === 1, "für einen Vorgang ohne Entscheider wurde ein Lauf angefordert");
+
+    // Entscheidet jemand, der nicht zuständig ist, zählt es nicht.
+    freigaben = [{ run_id: 1, status: "bestaetigt", entschieden_von: "bernd" }];
+    r = await ruf("Änne", "team", "/vorgaenge");
+    let vorgang = r.daten.vorgaenge.find((v) => v.id === va);
+    assert(vorgang.status === "ohne entscheidung" && /nicht mehr zuständig|nicht mehr zustaendig/.test(vorgang.hinweis), `eine fremde Entscheidung zählt: ${JSON.stringify(vorgang)}`);
+    r = await post("Änne", "team", "/vorgaenge", { titel: "Beleg Müller 2", mandant: a });
+    freigaben = [{ run_id: 2, status: "bestaetigt", entschieden_von: "carla" }];
+    r = await ruf("Änne", "team", "/vorgaenge");
+    vorgang = r.daten.vorgaenge.find((v) => String(v.lauf) === "2");
+    assert(vorgang?.status === "genehmigt" && vorgang.entschieden_von === "carla", `die zuständige Entscheidung zählt nicht: ${JSON.stringify(vorgang)}`);
+
+    // Eine Zuordnung lösen: danach entscheidet niemand mehr über Ännes Vorgänge in A.
+    r = await ruf("chefin", "leitung", `/zuordnungen?benutzer=carla&mandant=${a}`, { method: "DELETE" });
+    assert(r.code === 200, "die Zuordnung ließ sich nicht lösen");
+    r = await ruf("chefin", "leitung", `/zuordnungen?benutzer=carla&mandant=${a}`, { method: "DELETE" });
+    assert(r.code === 404, "eine gelöste Zuordnung ließ sich noch einmal lösen");
+    r = await ruf("carla", "team", `/vorgaenge/${va}`);
+    assert(r.code === 404, "nach dem Lösen sieht carla den Vorgang noch");
+
+    // Die Rolle kommt aus dem Kontrakt, nicht aus dem Quelltext.
+    const { verwaltungsRolle } = await import(join(PATTERNS, "clients", "backend", "kern", "mandanten.mjs"));
+    assert(verwaltungsRolle(kontrakt) === "leitung", "die Rolle wird nicht aus freigaben.rollen und koepfe.rollen gelesen");
+    assert(verwaltungsRolle(kontrakt, "team") === "team", "eine gewählte Rolle aus koepfe.rollen gilt nicht");
+    assert(verwaltungsRolle(kontrakt, "admin") === null, "eine Rolle, die der Kontrakt nicht nennt, verwaltet");
+    assert(verwaltungsRolle({ koepfe: kontrakt.koepfe }) === null, "ohne freigaben.rollen verwaltet trotzdem jemand");
+
+    // Jede Abfrage der Ablage trägt den Filter. Gezählt am Quelltext: eine
+    // Abfrage über die Vorgänge ohne die Bedingung ist eine, die alle zeigt.
+    const ablage = readFileSync(join(PATTERNS, "clients", "backend", "ablage", "vorgaenge.mjs"), "utf8");
+    const abfragen = [...ablage.matchAll(/`((?:SELECT|UPDATE)[^`]*vorgaenge[^`]*)`/g)].map((m) => m[1]);
+    assert(abfragen.length >= 4, `die Ablage der Vorgänge fragt nur ${abfragen.length} Mal`);
+    for (const sql of abfragen) assert(/nurZugeordnete/.test(sql), `eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+    // Und sie hält die Felder der Vorlage: sie ersetzt deren Ablage.
+    const vorlageFelder = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "ablage", "vorgaenge.mjs"), "utf8").match(/const FELDER = "([^"]+)"/)[1];
+    for (const feld of vorlageFelder.split(", ")) assert(ablage.includes(feld), `die Ablage des Musters kennt ${feld} der Vorlage nicht`);
+
+    // In eine App aus der Vorlage gelegt, hält die Oberfläche den Standard.
+    const kopie = mkdtempSync(join(tmpdir(), "ara-muster-"));
+    try {
+      cpSync(join(ROOT, ".ara", "templates", "app"), kopie, { recursive: true });
+      cpSync(join(PATTERNS, "clients"), kopie, { recursive: true });
+      const befunde = standardFindings(kopie, { scaffold: true });
+      assert(befunde.length === 0, `das Muster Mandanten steht neben der Bibliothek: ${befunde.join(" | ")}`);
+    } finally {
+      rmSync(kopie, { recursive: true, force: true });
+    }
+    return "zwei Konten, zwei Mandanten, fremder Vorgang 404, Verwaltung nur für die Rolle aus dem Kontrakt, Entscheider aus der Zuordnung ohne Einreicher, fremde Entscheidung zählt nicht, jede Abfrage gefiltert";
   } finally {
     app?.kill("SIGTERM");
     geraet.close();
