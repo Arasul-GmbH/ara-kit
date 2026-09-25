@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.30.0 (2026-09-25)
+
+Contract: up to 6
+
+- **The kit unlocks the device.** A bought token is at the same time the licence code. After `--install arasul` the tool fetches the fingerprint from the device with `lizenz-geraet.sh fingerabdruck`, exchanges token and fingerprint at `POST https://www.arasul.de/api/license/issue` for a licence bound to this device, plays it in with `lizenz-geraet.sh einspielen` over standard input and reads level and limits back with `status`. The level lands in the file under `license`, the step in its log. Neither token nor licence appear on the screen, in the file, in the JSON or as an argument on the device.
+- **A free token ends on community without an error**, with one sentence on what community means and the limits the device reports, and the way to a bought code. The portal's refusals (`token_unbekannt`, `anderes_geraet`, `zu_viele_anfragen`, `dienst_aus`) come back with the way out the website's contract names.
+- **`--license --name <device>` unlocks a device that already runs**, with the stored token or with a code over the pipe (`--pipe`), which is not stored. Without `--name`, `--licence` stays the buying way. `/device` names the step when Arasul runs and the file carries no level or community.
+- **No price in the kit any more.** What further devices and commercial use cost stands on the page at arasul.de, not in the tool, the knowledge or the commands. The knowledge says what community allows (3 accounts, 3 apps) and that the bought licence has no limits.
+
 ## 0.29.0 (2026-09-22)
 
 Contract: up to 6

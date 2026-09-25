@@ -84,9 +84,11 @@ der Partner sie selbst.
 
 **Wer kaufen will, braucht keinen Befehl.** Konto und Token kommen von
 <https://www.arasul.de/kaufen>: ein Konto ist kostenlos und bringt genau einen kostenlosen
-Geräte-Token für den persönlichen Gebrauch, jede weitere Installation wird gekauft,
-kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto. Das ist Stand 2026-08-28 und
-steht in `.ara/knowledge/device.de.md`, „Das Token", zusammen mit dem Weg: über das
-Interview-Werkzeug fragen, der Mensch fügt den Token ein, das Kit prüft und hinterlegt ihn und
-fragt nach dem Gerät, wenn es mehrere gibt. Sag diese drei Dinge und nichts darüber hinaus; was
-die Seite heute sagt, schlägt, was hier steht.
+Geräte-Token für den persönlichen Gebrauch, ein Gerät damit läuft auf community (bis zu 3
+Konten und 3 Apps). Jede weitere Installation und der kommerzielle Einsatz werden dort gekauft,
+und ein gekaufter Token ist zugleich der Lizenzcode: das Kit schaltet das Gerät damit frei,
+ohne Grenzen. **Einen Preis nennst du nicht**, er steht auf der Seite. Das ist Stand
+2026-09-25 und steht in `.ara/knowledge/device.de.md`, „Das Token" und „Die Lizenz", zusammen
+mit dem Weg: über das Interview-Werkzeug fragen, der Mensch fügt den Token ein, das Kit prüft
+und hinterlegt ihn und fragt nach dem Gerät, wenn es mehrere gibt. Sag diese Dinge und nichts
+darüber hinaus; was die Seite heute sagt, schlägt, was hier steht.

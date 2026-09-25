@@ -67,7 +67,8 @@ von Arasul und ist kein Token hinterlegt, sagt das Werkzeug das unter „Nächst
 mit dem Link `https://www.arasul.de/kaufen`. Du fragst über das Interview-Werkzeug, ob
 Arasul installiert werden soll, mit dem Link in der Frage: ein Konto ist kostenlos und
 bringt einen kostenlosen Geräte-Token für den persönlichen Gebrauch, jede weitere
-Installation wird gekauft, kommerzieller Einsatz braucht die Lizenz zu 3.000 Euro netto.
+Installation und der kommerzielle Einsatz werden dort gekauft. Einen Preis nennst du nicht,
+er steht auf der Seite.
 Ja heißt: der Mensch fügt den Token hier ein, du gibst ihn über die Leitung hinein,
 `printf '%s' "$TOKEN" | node .ara/tools/device.mjs --licence --store`, nie als Argument
 und nie im Text wiederholt. Das Werkzeug prüft ihn beim Portal, hinterlegt ihn und sagt,
@@ -79,8 +80,18 @@ Installers wird mitgelesen. Der Installer bekommt Startpasswort und Netzname mit
 nur dabei entstehen sie am Gerät; das Passwort würfelt das Kit und legt es in die
 Geheimnis-Ablage, den Netznamen setzt `--net-name <name>`, sonst gilt der Name der Akte.
 
-**Danach liest du zwei Dinge vor**, und beide stehen am Ende der Ausgabe: was der
-Installer nicht konnte, und dass die Akte jetzt `tls: selfsigned` trägt. Die Absagen des
+**Die Freischaltung gehört zur Installation.** Ein gekaufter Token ist zugleich der
+Lizenzcode: nach dem Installer holt das Werkzeug den Fingerabdruck vom Gerät, die Lizenz vom
+Portal, spielt sie ein und zeigt Stufe und Grenzen unter „Lizenz". Sag in der Bestätigung,
+dass ein gekaufter Token dabei an dieses Gerät gebunden wird. Ein kostenloser endet ohne
+Fehler auf community; dann fragst du über das Interview-Werkzeug, ob es einen gekauften Code
+gibt, und gibst ihn über die Leitung hinein,
+`printf '%s' "$CODE" | node .ara/tools/device.mjs --name <gerät> --license --pipe`. Auf einem
+Gerät, auf dem Arasul schon läuft, ist `--license` derselbe Schritt für sich, Stufe 2. Code
+und Lizenz zeigst du nie an. Verfahren in `.ara/knowledge/device.de.md`, „Die Lizenz".
+
+**Danach liest du drei Dinge vor**, und alle stehen am Ende der Ausgabe: was der
+Installer nicht konnte, dass die Akte jetzt `tls: selfsigned` trägt, und die Stufe der Lizenz. Die Absagen des
 Installers sind kein Beiwerk: eine fehlgeschlagene Härtung ist für ihn eine Randnotiz und
 für ein Gerät im Kundennetz eine offene Tür.
 

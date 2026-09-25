@@ -241,23 +241,24 @@ Befehl zum Kaufen gibt es nicht.** Keinen, der kaufen heißt, keinen, der lizenz
 `/device`, an der Stelle, an der das Urteil „unterstützt" fällt, und das Werkzeug geht ihn
 von selbst.
 
-Was gilt, Stand 2026-08-28, und was du sagen darfst:
+Was gilt, Stand 2026-09-25, und was du sagen darfst:
 
 - **Konto und Token kommen von <https://www.arasul.de/kaufen>.** Das ist die eine Adresse.
 - **Ein Konto ist kostenlos und bringt genau einen kostenlosen Geräte-Token** für den
-  persönlichen Gebrauch. Jede weitere Installation wird gekauft. Kommerzieller Einsatz
-  braucht die Lizenz, 3.000 Euro netto.
+  persönlichen Gebrauch. Jede weitere Installation und der kommerzielle Einsatz werden dort
+  gekauft. **Einen Preis nennst du nicht**, er steht auf der Seite und nirgends im Kit.
 - Der Token hat die Form `ara_` und 32 Hexzeichen dahinter. Er ist eine Schranke vor dem
-  Download, keine Lizenzprüfung: am Gerät prüft Arasul kein Token, und das Kit trägt auch
-  keines dorthin.
+  Download, und **ein gekaufter Token ist zugleich der Lizenzcode**: nach der Installation
+  tauscht das Kit ihn beim Portal gegen eine Lizenz für genau dieses Gerät, siehe „Die
+  Lizenz" weiter unten. Der Token selbst geht nie aufs Gerät, nur die Lizenz.
 
 **Wie es läuft, im Interview-Werkzeug, nie im Fließtext:**
 
 1. `/device` liefert das Urteil **unterstützt**, nichts von Arasul läuft, kein Token ist
    hinterlegt. Das Werkzeug sagt das dann unter „Nächste Schritte", mit dem Link. Du fragst
    über das Interview-Werkzeug, ob Arasul auf diesem Gerät installiert werden soll, mit dem
-   Link in der Frage und einem Satz dazu, was das Konto bringt und was ein weiteres Gerät
-   kostet. Optionen: ja, nein, und die offene.
+   Link in der Frage und einem Satz dazu, was das Konto bringt und dass weitere Geräte dort
+   gekauft werden. Optionen: ja, nein, und die offene.
 2. **Ja:** der Mensch öffnet die Seite, legt das Konto an, kopiert den Token und fügt ihn
    hier ein. Mehr muss er nicht tun. Du holst den Token nicht, du öffnest die Seite nicht
    für ihn.
@@ -413,6 +414,57 @@ ein toter Zugang, und der nächste Aufruf damit wäre eine 401, deren Grund niem
 Danach rollt das Kit nichts mehr auf dieses Gerät, bis `--deploy-key` einen neuen anlegt.
 Einen fremden Schlüssel fasst das Kit nie an; wer das will, tut es am Gerät, als der
 Administrator, dem er gehört.
+
+### Die Lizenz
+
+**Ein Gerät ohne Lizenz läuft auf community**, Stand 2026-09-25 (Beschluss in arasul-jet,
+J35): bis zu **3 Konten und 3 Apps**, ohne Ablauf. **Die gekaufte Lizenz ist ohne
+Grenzen** (Stufe professional), einmal bezahlt und unbefristet; an der Wartung hängen nur
+die Updates. Das sind die Stufen, die du nennen darfst. Welche Grenzen ein bestimmtes Gerät
+gerade hat, sagt das Gerät selbst, und das Werkzeug zeigt es an: wo Gerät und dieses Blatt
+auseinandergehen, gilt das Gerät.
+
+**Nach `--install arasul` schaltet das Werkzeug das Gerät von selbst frei**, mit dem
+hinterlegten Token:
+
+1. **Fingerabdruck vom Gerät**, über SSH: `lizenz-geraet.sh fingerabdruck`. Das Skript
+   gehört zur Plattform, das Kit sucht es im höchsten Fassungsordner und rät keinen Pfad.
+2. **Lizenz vom Portal**: `POST https://www.arasul.de/api/license/issue` mit Token und
+   Fingerabdruck. Beim ersten Mal bindet das Portal den Token an diesen Fingerabdruck.
+3. **Eingespielt am Gerät**: `lizenz-geraet.sh einspielen`, die Lizenz über die
+   Standardeingabe, nie als Argument.
+4. **Zurückgelesen**: `lizenz-geraet.sh status`, Stufe und Grenzen, wie das Gerät sie meldet.
+   Die Stufe landet in der Akte unter `license`, der Vorgang im Protokoll der Akte.
+
+**Ein kostenloser Token ist kein Fehler.** Das Portal antwortet `nicht_bezahlt`, das Gerät
+bleibt auf community, und das Werkzeug sagt in einem Satz, was community heißt, mit den
+Grenzen vom Gerät. Dann fragst du über das Interview-Werkzeug, ob es einen gekauften Code
+gibt. Die Bestätigung der Installation schließt die Freischaltung ein: sag vorher, dass ein
+gekaufter Token dabei an dieses Gerät gebunden wird.
+
+**An einem Gerät, auf dem Arasul schon läuft**, ist es ein eigener Aufruf, ein Eingriff der
+Stufe 2, weil ein gekaufter Code dabei an dieses Gerät gebunden wird:
+
+```
+node .ara/tools/device.mjs --name <gerät> --license
+printf '%s' "$CODE" | node .ara/tools/device.mjs --name <gerät> --license --pipe
+```
+
+Ohne `--pipe` nimmt er den hinterlegten Token, mit `--pipe` den eingefügten Code, der nur für
+diesen Aufruf gilt und nicht abgelegt wird. Ohne beides liest er nur die Stufe und ändert
+nichts. Ohne `--name` ist `--licence` weiter der Kaufweg von oben.
+
+**Was das Portal ablehnt, sagt das Werkzeug mit dem Weg heraus**, nach dem Kontrakt der
+Website: `token_unbekannt` (den Code gibt es nicht), `anderes_geraet` (der Code ist an ein
+anderes Gerät gebunden: im Portal unter Lizenzen „Gerätewechsel freigeben", oder der Code,
+der zu diesem Gerät gehört), `zu_viele_anfragen` (eine Minute warten), `dienst_aus` (später
+noch einmal). **Ein Partner mit mehreren Kundengeräten braucht je Gerät einen Code**: ein
+Code bindet sich an das erste Gerät, das ihn einlöst. Die Installation selbst gilt auch dann
+als gelungen, das Gerät läuft auf community, bis der richtige Code eingespielt ist.
+
+**Nie gibt das Kit Code oder Lizenz aus**: nicht auf dem Bildschirm, nicht in der Akte,
+nicht im JSON, nicht als Argument am Gerät. Eine Lizenz wieder zu entfernen ist Sache des
+Administrators am Gerät, über dessen Schnittstelle. Das Kit tut es nicht.
 
 ### Der Nachweis
 

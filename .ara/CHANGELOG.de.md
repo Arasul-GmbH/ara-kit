@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.30.0 (2026-09-25)
+
+Kontrakt: bis 6
+
+- **Das Kit schaltet das Gerät frei.** Ein gekaufter Token ist zugleich der Lizenzcode. Nach `--install arasul` holt das Werkzeug den Fingerabdruck vom Gerät mit `lizenz-geraet.sh fingerabdruck`, tauscht Token und Fingerabdruck bei `POST https://www.arasul.de/api/license/issue` gegen eine an dieses Gerät gebundene Lizenz, spielt sie mit `lizenz-geraet.sh einspielen` über die Standardeingabe ein und liest Stufe und Grenzen mit `status` zurück. Die Stufe landet in der Akte unter `license`, der Vorgang in ihrem Protokoll. Weder Token noch Lizenz stehen auf dem Bildschirm, in der Akte, im JSON oder als Argument am Gerät.
+- **Ein kostenloser Token endet ohne Fehler auf community**, mit einem Satz dazu, was community heißt, den Grenzen, die das Gerät meldet, und dem Weg zu einem gekauften Code. Was das Portal ablehnt (`token_unbekannt`, `anderes_geraet`, `zu_viele_anfragen`, `dienst_aus`), kommt mit dem Weg heraus zurück, den der Kontrakt der Website nennt.
+- **`--license --name <gerät>` schaltet ein Gerät frei, das schon läuft**, mit dem hinterlegten Token oder mit einem Code über die Leitung (`--pipe`), der nicht abgelegt wird. Ohne `--name` bleibt `--licence` der Kaufweg. `/device` nennt den Schritt, wenn Arasul läuft und die Akte keine Stufe oder community trägt.
+- **Kein Preis mehr im Kit.** Was weitere Geräte und der kommerzielle Einsatz kosten, steht auf der Seite unter arasul.de, nicht im Werkzeug, im Wissen oder in den Befehlen. Das Wissen sagt, was community darf (3 Konten, 3 Apps) und dass die gekaufte Lizenz ohne Grenzen ist.
+
 ## 0.29.0 (2026-09-22)
 
 Kontrakt: bis 6

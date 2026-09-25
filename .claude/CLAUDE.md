@@ -106,7 +106,7 @@ Procedure: `.ara/knowledge/paperwork.md`
 | `/calculation` | Partner only. Store prices, keep the calculation sheet | `.ara/knowledge/pricing.md` |
 | `/offer <customer>` | Partner only. Offer with all annexes, calculated from the calculation sheet | `.ara/knowledge/paperwork.md` |
 | `/invoice <customer>` | Partner only, and only with `invoice: yes` in the profile. Invoice as a ZUGFeRD PDF, number from the number range, mandatory details under section 14 UStG | `.ara/knowledge/invoicing.md` |
-| `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict, next steps. Install Arasul, fetch the kit key. `<customer>/<device>` for a customer device | `.ara/knowledge/device.md` |
+| `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict, next steps. Install Arasul, unlock it with the licence code, fetch the kit key. `<customer>/<device>` for a customer device | `.ara/knowledge/device.md` |
 | `/app [<app>]` | Plan an app, build it, roll it into staging, switch it live. Reads the file and offers only the sensible next steps | `.ara/knowledge/app.md` |
 | `/maintain [<device>]` | Look after a running device. Starts with a status line, then you say in free text what is due. When something of Arasul does not run, the self-healing goes first. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/self-healing.md` |
 | `/root [<path>]` | Lay out the root folder of a whole house, outside of the kit, as a scaffold: rules, skills, agents, list of places, check script, the folders of level 1 that the house names. Nothing in the tree runs by itself. The method (company, roadmap with a card stack, experiments) is an addition. Boundary hook and rights are a proposal that a separate step enrols into the user's settings after consent. Add a place or the method, enrol, check, show the showcase, put the root onto the device with `--deploy`, where it lives afterwards | `.ara/knowledge/root.md` |
@@ -118,8 +118,11 @@ E6. If somebody types the old name, say what it is called today.
 `/device`: a supported device without a token gets the question through the interview tool,
 with the link to account and token, and the pasted token goes in over the pipe,
 `node .ara/tools/device.mjs --licence --store`. Somebody who asks about buying, a licence or a
-token without a device gets the same way, `node .ara/tools/device.mjs --licence`. Procedure
-and the facts you may state: `.ara/knowledge/device.md`, "The token".
+token without a device gets the same way, `node .ara/tools/device.mjs --licence`. A bought token is at the same
+time the licence code: after `--install arasul` the tool unlocks the device with it, and
+`--license --name <device>` does the same for a device that already runs. A free token ends on
+community without an error. Procedure and the facts you may state: `.ara/knowledge/device.md`,
+"The token" and "The licence". No price stands in the kit, it stands on the page.
 
 **Every command says at the start which knowledge files it loads.** Read exactly those, not
 the whole folder. Every command reads `business/profile.md` beforehand: language, branch,
@@ -138,7 +141,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 |---|---|
 | `mirror.mjs` | Fetch and look at the installation artifact (`--show`, `--refresh`). `/device` calls it itself |
 | `check-environment.mjs` | What this computer can do (`--json` for the evaluation) |
-| `device.mjs` | Create a device file, check SSH, recognise hardware and system, deliver a verdict, install Arasul, fetch the kit key, list the kit keys on the device and revoke its own, get a session as administrator with the start password without showing it (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--keys`, `--revoke-key`, `--admin-login`, `--json`) |
+| `device.mjs` | Create a device file, check SSH, recognise hardware and system, deliver a verdict, install Arasul, fetch the kit key, list the kit keys on the device and revoke its own, unlock the device with the licence code, get a session as administrator with the start password without showing it (`--host`, `--name`, `--install docker,ollama,arasul`, `--deploy-key`, `--keys`, `--revoke-key`, `--license`, `--admin-login`, `--json`) |
 | `app.mjs` | Two sides. Without `--device`: create an app from the scaffold, move plans, build, read the situation. With `--device`: read the contract, check `app.json` against it, package into staging, switch live, back, remove, and with `--compose` onto a device without Arasul. `--check` also holds the field `agent` of `app.json` against the backend |
 | `customer.mjs` | Create a customer file (`--new`) and read the picture: status, devices with their state, paperwork, history, what is due |
 | `maintain.mjs` | Read the state of a device: status line and maintenance report, over SSH and over the interface. Reads only, and says what could not be measured (`--line`, `--report`, `--json`) |
