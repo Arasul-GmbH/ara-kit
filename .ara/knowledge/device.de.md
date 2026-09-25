@@ -199,7 +199,8 @@ Die Phasen des Laufzettels und was in jeder gilt:
   Fehlern anhalten. Nachweis: der Kontrakt des Geräts lässt sich lesen und passt zum Kit,
   `node .ara/tools/app.mjs --device <gerät> --contract`.
 - **4 Nachbereitung.** Erst prüfen, ob etwas fehlt, das Produkt erledigt manches
-  selbst. Modell vorhanden, Namensauflösung, Zugang härten (erst wenn die
+  selbst. Das Standardmodell: nach einer Installation fehlt es, wie es draufkommt und wie
+  lange das dauert, steht unten unter „Das Standardmodell", Namensauflösung, Zugang härten (erst wenn die
   Schlüsselanmeldung nachweislich läuft, und die laufende Sitzung offen halten),
   Netzabsicherung, Fernzugriff nach `.ara/knowledge/remote-access.de.md`. Ändert sich Port
   oder Anmeldename: sofort in `device.md` nachziehen.
@@ -317,9 +318,13 @@ Plattform, kein Docker, kein Token. Dann geht es los:
    Fassung. Gerufen wird er mit Startpasswort und Netzname, denn **nur dabei entstehen
    Netzname, Fassung, Startpasswort und die Erstausgabe am Gerät**. Seine Ausgabe läuft
    über den Bildschirm, du liest mit, und das Kit liest mit: es maskiert dabei, was wie
-   ein Schlüssel oder ein Passwort aussieht. Bricht er ab, wird nichts schöngeredet:
-   Ursache lesen, beheben, denselben Befehl noch einmal.
-4. **Der Kit-Schlüssel wird angelegt**, siehe unten.
+   ein Schlüssel oder ein Passwort aussieht, auch wenn der Installer es fett oder farbig
+   druckt. Bricht er ab, wird nichts schöngeredet: Ursache lesen, beheben, denselben
+   Befehl noch einmal.
+4. **Der Kit-Schlüssel wird angelegt**, und der, den der Installer angelegt hat, wird
+   widerrufen, siehe unten.
+5. **Der Bericht nennt den Spiegel**, der in diesem Lauf entstanden ist, mit Fassung, Datum
+   und Quelle, und liest den Verifikationsstand daraus.
 
 **`tls: selfsigned` trägt die Akte danach von selbst.** Ein frisch installiertes Gerät
 stellt sein Zertifikat aus einer eigenen Geräte-CA aus. Ohne diesen Eintrag scheitert der
@@ -364,6 +369,10 @@ geht:
 | `traces` | Ordner oder Dienste da, aber nichts läuft | Installieren geht, ausdrücklich: `--install arasul --despite-traces` |
 | `none` | nichts gefunden | der normale Weg |
 
+**Der Actions-Runner von GitHub ist kein Rest.** Sein Dienst trägt den Namen des Repos, für
+das er baut, `actions.runner.<besitzer>-arasul-jet.<gerät>.service`, und bis zum 25.09.2026
+hielt das Kit ihn für einen Rest der Plattform. Er zählt nicht mehr.
+
 `traces` ist der Zustand nach einem abgebrochenen Versuch oder nach einem Werksreset, bei
 dem etwas stehen geblieben ist. **Sieh vorher nach, was da liegt** (`node
 .ara/tools/remote.mjs --device <gerät> --command "ls -la ~"`), sag dem Menschen, was du
@@ -382,6 +391,17 @@ node .ara/tools/device.mjs --name <gerät> --deploy-key
 
 Auf einem Gerät, das schon läuft, ist das der einzige Schritt. Nach `--install arasul`
 passiert es von selbst.
+
+**Nach einer Installation gilt genau ein Kit-Schlüssel, der des Kits.** Der Installer legt
+einen eigenen an (er nennt ihn „Ara-Kit (Erstinstallation)"), druckt ihn in seine
+Erstausgabe und schreibt ihn am Gerät in eine Datei. Das Kit maskiert ihn auf dem
+Bildschirm, merkt ihn sich, ohne ihn zu zeigen, legt seinen eigenen auf den Namen des
+Partners an und widerruft danach den des Installers über dessen Präfix. Den hat niemand
+gesehen, und die Datei am Gerät trägt danach einen toten Schlüssel statt eines lebenden.
+Kann das Kit keinen eigenen anlegen, übernimmt es den des Installers, statt ohne
+dazustehen. Am Ende zählt es am Gerät nach und sagt, wie viele gültige Kit-Schlüssel es
+gibt; sind es mehr als einer (eine Installation über Reste kann einen älteren finden),
+zeigt `--keys`, welcher wem gehört.
 
 **Der Klartext erscheint genau einmal.** Das Werkzeug legt ihn in die Geheimnis-Ablage
 und schreibt nur den Namen des Eintrags in die Akte, unter `api_key_ref`. Er steht in
@@ -465,6 +485,42 @@ als gelungen, das Gerät läuft auf community, bis der richtige Code eingespielt
 **Nie gibt das Kit Code oder Lizenz aus**: nicht auf dem Bildschirm, nicht in der Akte,
 nicht im JSON, nicht als Argument am Gerät. Eine Lizenz wieder zu entfernen ist Sache des
 Administrators am Gerät, über dessen Schnittstelle. Das Kit tut es nicht.
+
+### Das Standardmodell
+
+**Nach einer Installation liegt kein Sprachmodell auf dem Gerät, und das ist normal.** Der
+Installer sagt es in seinen letzten Zeilen, und das Kit wiederholt es unter „Was der
+Installer nicht konnte". Die Flows und der Chat brauchen das Standardmodell, also gehört es
+in Phase 4 und nicht in den ersten Tag beim Kunden.
+
+**Welches es ist, sagt das Gerät**, nicht das Kit: in der Oberfläche unter den Modellen,
+angemeldet als Administrator, markiert die Kurzliste den Standard. Dieselbe Liste steht im
+Spiegel (`node .ara/tools/mirror.mjs --docs`, Admin-Handbuch und API-Referenz, Abschnitt
+Modellverwaltung). Das Kit nennt kein Modell.
+
+**Wie es draufkommt:** in der Oberfläche, als Administrator, auf der Seite der Modelle den
+Standard der Kurzliste laden. Das geht durch die Plattform, Katalog und Installationsstand
+bleiben so im Gleichschritt, und der Fortschritt ist dort zu sehen. Wer ohne Browser
+arbeitet, nimmt die Sitzung des Administrators (`--admin-login`) und den Weg zum
+Herunterladen aus der API-Referenz im Spiegel. **Nicht mit einem Pull auf der
+Befehlszeile des Containers**: ein so geholtes Modell bleibt für die Plattform unsichtbar,
+bis jemand abgleicht, das sagt die API-Referenz selbst.
+
+**Wie lange es dauert**, gemessen am Orin am 25.09.2026:
+
+| Schritt | Gemessen | Wie |
+| --- | --- | --- |
+| Herunterladen | rund 40 Minuten für 14,25 GB | 2 GB von der Quelle des Modells nach `/dev/null` geholt: 5,8 MB/s über eine Verbindung, 6,1 MB/s über vier. Die Leitung war die Grenze, nicht das Gerät |
+| Erste Antwort | 12 Sekunden | die erste Anfrage nach dem Start des Sprachmodell-Dienstes, aus seinem Protokoll: Laden in den Speicher plus Antwort |
+
+Das Herunterladen wächst mit der Größe und der Leitung. Die Größe steht im Katalog des
+Geräts neben dem Modell; die Leitung beim Kunden ist eine andere als in unserer Werkstatt.
+Schätze die Zeit als Größe durch Bandbreite und plane sie vor der Übergabe ein, nicht
+währenddessen. Danach bleibt das Modell nach jeder Nutzung eine Weile im Speicher und lädt
+bei der nächsten wieder, dann wieder in Sekunden.
+
+**Nachweis** ist Phase 5: die Oberfläche zeigt das Modell als vorhanden, und eine echte
+Frage im Chat bekommt eine sinnvolle Antwort.
 
 ### Der Nachweis
 

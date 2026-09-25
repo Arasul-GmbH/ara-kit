@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.31.0 (2026-09-25)
+
+Contract: up to 6
+
+- **No key on the screen during an installation, also not a bold one.** The installer prints the kit key with a bold escape code directly in front of it, and the mask did not catch it: the key stood in plain text two lines below the sentence that its plain text is not displayed. Colour and cursor codes now come out before masking, also when a code arrives cut in two pieces of the stream. Measured on 2026-09-25 on the Orin with the product's own first output script and a stamped fake key: 0.30.0 showed it, 0.31.0 shows `aras_…`.
+- **After an installation exactly one kit key is valid.** The installer creates its own key, and the kit used to create a second one next to it and leave the first valid and unused. Now the kit remembers the installer's key without showing it, creates its own under the partner's name, revokes the installer's by its prefix and counts on the device afterwards. If it cannot create its own, it takes over the installer's. Measured on 2026-09-25 on the Orin with two stamped keys: the installer's revoked, the kit's valid, both revoked again afterwards.
+- **The GitHub Actions runner is no trace of Arasul any more.** Its service carries the repository's name, and an installation needed `--despite-traces` because of it.
+- **The report names the mirror fetched in the same run** and reads the verification level from it, instead of saying there is no mirror.
+- **The knowledge says how the default model gets onto the device and how long that takes**: in the interface, on the models page, the default of the short list; not with a pull on the container's command line. Measured on the Orin on 2026-09-25: about 40 minutes for 14.25 GB at about 6 MB/s, the first answer after 12 seconds. `/device` names the step after an installation.
+
 ## 0.30.0 (2026-09-25)
 
 Contract: up to 6

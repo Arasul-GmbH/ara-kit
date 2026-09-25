@@ -188,7 +188,8 @@ The phases of the runsheet and what applies in each:
   errors. Evidence: the device's contract can be read and fits the kit,
   `node .ara/tools/app.mjs --device <device> --contract`.
 - **4 Follow-up.** First check whether something is missing, the product handles some of it
-  itself. Model present, name resolution, harden access (only once key login demonstrably works,
+  itself. The default model: after an installation it is missing, how it gets on and how long it
+  takes stands under "The default model" below, name resolution, harden access (only once key login demonstrably works,
   and keep the running session open), network hardening, remote access along
   `.ara/knowledge/remote-access.md`. If port or login name change: pull them into `device.md`
   immediately.
@@ -301,8 +302,11 @@ starts:
    too. It is called with a start password and a network name, because **only then do network name,
    version, start password and the first output come into being on the device**. Its output runs
    across the screen, you read along, and the kit reads along: it masks whatever looks like a key or
-   a password. If it aborts, nothing gets talked up: read the cause, fix it, the same command again.
-4. **The kit key is created**, see below.
+   a password, also when the installer prints it bold or in colour. If it aborts, nothing gets
+   talked up: read the cause, fix it, the same command again.
+4. **The kit key is created**, and the one the installer created is revoked, see below.
+5. **The report names the mirror** that came into being in this run, with version, date and
+   source, and it reads the verification level from it.
 
 **`tls: selfsigned` the file carries afterwards by itself.** A freshly installed device issues its
 certificate from a device CA of its own. Without that entry the first call against the interface
@@ -344,6 +348,10 @@ The trace search knows three answers, and the difference decides what goes next:
 | `traces` | folders or services there, but nothing runs | installing works, explicitly: `--install arasul --despite-traces` |
 | `none` | nothing found | the normal way |
 
+**The GitHub Actions runner is no trace.** Its service carries the name of the repository it
+builds for, `actions.runner.<owner>-arasul-jet.<device>.service`, and until 25.09.2026 the kit took
+it for a remnant of the platform. It no longer counts.
+
 `traces` is the state after an aborted attempt or after a factory reset where something stayed
 behind. **Look first at what lies there** (`node .ara/tools/remote.mjs --device <device> --command
 "ls -la ~"`), tell the human what you found, and have going ahead confirmed. An installation over
@@ -360,6 +368,15 @@ node .ara/tools/device.mjs --name <device> --deploy-key
 ```
 
 On a device that already runs, that is the only step. After `--install arasul` it happens by itself.
+
+**After an installation exactly one kit key is valid, the kit's.** The installer creates one of
+its own (it calls it "Ara-Kit (Erstinstallation)"), prints it into its first output and writes it
+into a file on the device. The kit masks it on the screen, remembers it without showing it,
+creates its own under the partner's name and then revokes the installer's by its prefix. Nobody
+saw that one, and the file on the device afterwards holds a dead key instead of a live one. If
+the kit cannot create its own, it takes over the installer's instead of standing there without
+one. At the end it counts on the device and says how many valid kit keys there are; if that is
+more than one (an installation over traces can find an older one), `--keys` shows which is whose.
 
 **The plain text appears exactly once.** The tool puts it into the secret store and writes only the
 name of the entry into the file, under `api_key_ref`. It stands in no file of the kit, in no log and
@@ -440,6 +457,41 @@ runs on community until the right code is played in.
 **The kit never displays code or licence**: not on the screen, not in the file, not in the
 JSON, not as an argument on the device. Removing a licence again is the business of the
 device's administrator, over its interface. The kit does not do it.
+
+### The default model
+
+**After an installation no language model lies on the device, and that is normal.** The installer
+says so in its last lines, and the kit repeats it under "What the installer could not do". The
+flows and the chat need the default model, so it belongs to phase 4 and not to the customer's
+first day.
+
+**Which one it is, the device says**, not the kit: in the interface under the models, logged in
+as the administrator, the short list marks the default. The same list stands in the mirror
+(`node .ara/tools/mirror.mjs --docs`, the admin handbook and the API reference, section model
+management). The kit names no model.
+
+**How it gets on:** in the interface, as the administrator, on the models page, load the default
+of the short list. It goes through the platform, so catalogue and installation state stay in
+step, and the progress is visible there. Whoever works without a browser uses the admin session
+(`--admin-login`) and the download route from the API reference in the mirror. **Not with a pull
+on the command line of the container**: a model fetched that way stays invisible to the platform
+until someone syncs, the API reference says so itself.
+
+**How long it takes**, measured on the Orin on 25.09.2026:
+
+| Step | Measured | How |
+| --- | --- | --- |
+| Download | about 40 minutes for 14.25 GB | 2 GB taken from the model's source to `/dev/null`: 5.8 MB/s over one connection, 6.1 MB/s over four. The line was the limit, not the device |
+| First answer | 12 seconds | the first request after the language model service started, from its log: loading into memory plus the answer |
+
+The download scales with the size and the line. The size stands in the device's catalogue next to
+the model; the line at the customer is another one than in our workshop. Estimate time as size
+divided by bandwidth, and schedule it before the handover, not during it. After that the model
+stays in memory for a while after each use and loads again at the next one, then again in
+seconds.
+
+**Evidence** is phase 5: the interface shows the model as present, and a real question in the chat
+gets a sensible answer.
 
 ### The evidence
 

@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.31.0 (2026-09-25)
+
+Kontrakt: bis 6
+
+- **Kein Schlüssel auf dem Bildschirm während einer Installation, auch kein fetter.** Der Installer druckt den Kit-Schlüssel mit einem Steuerzeichen für Fettdruck direkt davor, und die Maske griff nicht: der Schlüssel stand im Klartext zwei Zeilen unter dem Satz, dass sein Klartext nicht angezeigt wird. Farb- und Cursorzeichen kommen jetzt vor dem Maskieren heraus, auch wenn ein Zeichen in zwei Stücken des Stroms ankommt. Gemessen am 25.09.2026 am Orin mit dem Erstausgabe-Skript des Produkts und einem gestempelten Scheinschlüssel: 0.30.0 zeigte ihn, 0.31.0 zeigt `aras_…`.
+- **Nach einer Installation gilt genau ein Kit-Schlüssel.** Der Installer legt einen eigenen an, und das Kit legte bisher einen zweiten daneben und ließ den ersten gültig und ungenutzt liegen. Jetzt merkt sich das Kit den des Installers, ohne ihn zu zeigen, legt seinen eigenen auf den Namen des Partners an, widerruft den des Installers über dessen Präfix und zählt danach am Gerät nach. Kann es keinen eigenen anlegen, übernimmt es den des Installers. Gemessen am 25.09.2026 am Orin mit zwei gestempelten Schlüsseln: der des Installers widerrufen, der des Kits gültig, danach beide wieder widerrufen.
+- **Der Actions-Runner von GitHub gilt nicht mehr als Rest von Arasul.** Sein Dienst trägt den Namen des Repos, und eine Installation brauchte seinetwegen `--despite-traces`.
+- **Der Bericht nennt den Spiegel, der im selben Lauf geholt wurde**, und liest den Verifikationsstand daraus, statt zu sagen, es gebe keinen Spiegel.
+- **Das Wissen sagt, wie das Standardmodell aufs Gerät kommt und wie lange das dauert**: in der Oberfläche, auf der Seite der Modelle, den Standard der Kurzliste; nicht mit einem Pull auf der Befehlszeile des Containers. Gemessen am Orin am 25.09.2026: rund 40 Minuten für 14,25 GB bei rund 6 MB/s, die erste Antwort nach 12 Sekunden. `/device` nennt den Schritt nach einer Installation.
+
 ## 0.30.0 (2026-09-25)
 
 Kontrakt: bis 6
