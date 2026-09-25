@@ -988,6 +988,43 @@ function flowSection() {
 }
 
 /**
+ * Was eine App behält und wer ihre Freigaben entscheidet, wörtlich aus dem
+ * Kontrakt (`daten` und `freigaben`, seit dem 25.09.2026).
+ *
+ * Beides trägt kein Schema des Manifests, und beides entscheidet den Bau einer
+ * Fach-App: wo die Daten liegen, die ein Update überleben müssen, und wie der
+ * Kreis der Entscheider enger wird. Das Wissen sagt, `--contract` gebe es
+ * wörtlich aus, und das tut es hier. Ein Gerät, das die Abschnitte nicht
+ * kennt, bekommt hier auch keinen.
+ */
+function contractRuleSections() {
+  const sections = [];
+  const daten = contract?.daten?.regeln || [];
+  if (daten.length) {
+    sections.push(
+      "",
+      t("## What an app keeps", "## Was eine App behält"),
+      "",
+      t("They stand word for word in the contract, under `daten`:", "Sie stehen wörtlich im Kontrakt, unter `daten`:"),
+      "",
+      ...daten.map((r) => `- ${r}`)
+    );
+  }
+  const freigaben = contract?.freigaben?.regeln || [];
+  if (freigaben.length) {
+    sections.push(
+      "",
+      t("## Who decides the approvals of a run", "## Wer die Freigaben eines Laufs entscheidet"),
+      "",
+      t("They stand word for word in the contract, under `freigaben`:", "Sie stehen wörtlich im Kontrakt, unter `freigaben`:"),
+      "",
+      ...freigaben.map((r) => `- ${r}`)
+    );
+  }
+  return sections;
+}
+
+/**
  * Warum dieser Lauf mit 1 endet, wenn das Manifest in Ordnung war.
  *
  * `--check` gab bis 0.19.1 den Rückgabecode 1 aus, ohne dass die Ursache am
@@ -1048,6 +1085,7 @@ if (arg.contract) {
         )
       )
       .concat(flowSection())
+      .concat(contractRuleSections())
       .concat(versionSection())
       .join("\n")
   );
@@ -1281,7 +1319,7 @@ function reportManifest(where, result, delivery) {
       ...result.rules.map((r) => `- ${r}`)
     );
   }
-  lines.push(...flowSection());
+  lines.push(...flowSection(), ...contractRuleSections());
   return lines.join("\n");
 }
 

@@ -269,7 +269,7 @@ documents pattern. Removing the app throws its databases away, the backups of th
 **The scaffold does this already.** `backend/ablage/db.mjs` reads the name from the arrangement
 and opens the device's database; if the arrangement names one and the value is empty, the app
 does not start, instead of writing into a file silently. Without a device it takes SQLite, and
-`GET /lage` then says `dauerhaft: false`. How you see on the device that it holds: `--check` says
+the backend route `lage` then says `dauerhaft: false`. How you see on the device that it holds: `--check` says
 "A database of its own comes along", and at start the container's log says it lies in the
 device's database.
 
@@ -362,8 +362,8 @@ photo, text recognition ran, six of six fields in 13 seconds.
 
 **Whether an image model is loaded does not matter for this way**, because it gives no image to a
 model. Read on 25.09.2026 in the contract of version 6: none of its endpoints gives an image to a
-model, and `GET /models` names the models on the device, but not which one understands images.
-Whether that still holds, `--contract` says on the device in question. Which models lie there and
+model, and `GET /api/v1/external/models` names the models on the device, but not which one
+understands images. Whether that still holds, `--contract` says on the device in question. Which models lie there and
 what they are meant for the models page in the device's interface shows, and the admin handbook
 says where; over SSH you ask with `remote.mjs`. **Promise a customer no image understanding**, no
 handwriting, no photo of goods, before you have seen it on their device.

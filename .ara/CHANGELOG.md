@@ -13,6 +13,19 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.32.0 (2026-09-25)
+
+Contract: up to 6
+
+- **The scaffold puts its data into the device's database.** Since contract 5 the device gives every app with a backend its own PostgreSQL per slot, and since 25.09.2026 the contract says under `daten` that it is the only place that survives a deploy. Up to 0.31.0 the scaffold wrote into a SQLite file in the container that the next deploy deleted, and the knowledge advised against inventing another store. Now `backend/ablage/db.mjs` reads the name from `arasul.json` and opens the device's database through `pg`; without a device it takes SQLite, with the same SQL, and the backend route `lage` says whether what it stores stays. The documents pattern puts the bytes into the same database. Measured on 25.09.2026 on the Orin: after deploying the next version receipts and log were still there, a file in the container was gone, the live slot started with a database of its own, empty.
+- **`arasul.json` carries what a professional app lacked**: the names of the headers for user and role, the way to read a document, whether a run takes submitter and rule, and what the contract says under `daten`. No header name and no document route stands in the source of the scaffold or a pattern any more; the self-test holds both to that.
+- **Approvals with four eyes and named deciders.** The scaffold sends the submitter along as soon as the device takes it, and its core can set a rule (`ohne_einreicher`, `entscheider`), but only on a device whose contract names `freigaben`; an older device does not get the fields. Only references go into the approval request now, the item's number and the submitter, no title and no text.
+- **New pattern 6, reading a document**, under `.ara/templates/app-patterns/extract/`: a receipt goes to the device, fields come back, the app checks them against the schema and rules of its own, every reading is a row in a log that only grows. Measured on 25.09.2026 on the Orin: an invented receipt as a PDF six of six fields in 35 seconds, an invented fuel receipt as a photo through the device's text recognition six of six fields in 13 seconds.
+- **The knowledge guides through a professional app.** `app.md` has a section on data that stays, on visibility inside an app (a mapping of accounts to clients by the header name is allowed and no second login), on approvals in a professional app, on photos, scanned PDFs, image models and the field `modelle`, and on professional standards like DATEV EXTF, SKR03 and GoBD, which come from their primary source with a date of retrieval. Service description and end customer terms now say: one account per person, release per app, a separation by clients only where the app's description names it.
+- **The manuals on the device, without a token.** `node .ara/tools/mirror.mjs --docs --device <device>` lists them from the folder the running platform was started from, `--read <path>` prints one of them. The note after `--deploy` and the knowledge point there instead of at a mirror that does not exist.
+- **Smaller findings from the foreign test on 25.09.2026:** `--status` prints the slots readably instead of raw JSON; after the second deploy `--deploy` says that releases stay instead of "Nobody sees it yet" again; `--build` asks for an active plan (`--no-plan` for building without one on purpose); the company branch marks the removed files with `skip-worktree`, and the clone stays clean; the self-test can be narrowed to single checks with `ARA_SELFTEST_ONLY`, and the README says how long the whole run takes.
+- `drittlizenzen.md` carries the version of ollama with its date and source.
+
 ## 0.31.0 (2026-09-25)
 
 Contract: up to 6

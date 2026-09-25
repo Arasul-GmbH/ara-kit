@@ -29,4 +29,3 @@ grenzen:
 Über den Vorgang {{vorgang}} von {{von}} ist entschieden worden. Schreibe genau
 einen Satz darüber, wer entschieden hat und wie; der Schritt „entscheiden" nennt
 beides. Keine Anrede, keine Erfindungen, keine Empfehlung.
-

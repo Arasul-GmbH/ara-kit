@@ -279,7 +279,7 @@ wirft ihre Datenbanken weg, die Sicherungen davon bleiben.
 **Die Vorlage tut das schon.** `backend/ablage/db.mjs` liest den Namen aus der Vereinbarung und
 öffnet die Datenbank des Geräts; nennt die Vereinbarung einen Namen und der Wert ist leer,
 startet die App nicht, statt still in eine Datei zu schreiben. Ohne Gerät nimmt sie SQLite, und
-`GET /lage` sagt dann `dauerhaft: false`. Woran du am Gerät siehst, dass es stimmt: `--check`
+die Route `lage` des Backends sagt dann `dauerhaft: false`. Woran du am Gerät siehst, dass es stimmt: `--check`
 sagt „Eine eigene Datenbank kommt mit“, und im Protokoll des Containers steht beim Start „Sie
 liegt in der Datenbank des Geräts“.
 
@@ -377,8 +377,8 @@ Texterkennung lief, sechs von sechs Feldern in 13 Sekunden.
 
 **Ob ein Bildmodell geladen ist, spielt für diesen Weg keine Rolle**, denn er gibt kein Bild an
 ein Modell. Gelesen am 25.09.2026 im Kontrakt der Fassung 6: keiner seiner Endpunkte gibt ein
-Bild an ein Modell, und `GET /models` nennt die Modelle am Gerät, aber nicht, welches Bilder
-versteht. Ob das noch gilt, sagt `--contract` an dem Gerät, um das es geht.
+Bild an ein Modell, und `GET /api/v1/external/models` nennt die Modelle am Gerät, aber nicht,
+welches Bilder versteht. Ob das noch gilt, sagt `--contract` an dem Gerät, um das es geht.
 Welche Modelle dort liegen und wofür sie vorgesehen sind, zeigt die Modellseite in der Oberfläche
 des Geräts, und das Admin-Handbuch sagt, wo; über SSH fragst du es mit `remote.mjs`. **Sag einem
 Kunden kein Bildverständnis zu**, keine Handschrift, kein Foto einer Ware, bevor du es an seinem
