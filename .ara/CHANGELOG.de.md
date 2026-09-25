@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.35.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Das Kit sagt die Härtung an und lässt sie abwählen.** Bevor der Installer läuft, sagt `device.mjs --install arasul` in einem Satz, was die Härtung tut: SSH wandert auf den Port, den das geholte Artefakt in `scripts/security/haerten.sh` nennt, danach kommt nur noch ein Schlüssel herein, eine Firewall geht hoch. Die nächsten Schritte sagen dasselbe, bevor jemand installiert. Mit `--keep-ssh` bekommt der Installer `ENABLE_SSH_HARDENING=false` und `ENABLE_FIREWALL=false`, SSH bleibt auf seinem Port mit seiner Anmeldung, die Schlüsselprobe entfällt, und die ausgelassene Härtung steht als Entscheidung im Verlauf, nicht unter „Was der Installer nicht konnte". Am Orin lag SSH nach einem Durchlauf sieben Minuten auf dem neuen Port, ohne Vorwarnung; ein Kunde, dessen andere Dienste Port 22, die Anmeldung mit Passwort oder offene Ports brauchen, verlor so den Zugang.
+- **Das Standardmodell kommt im Hintergrund, und das Kit sagt es.** Der Installer holt es seit dem 25.09.2026 selbst und sagt es in einer Zeile. Bis 0.34.0 sagte das Kit zwölf Zeilen darunter, auf einem frischen Gerät liege kein Modell, und schickte den Menschen für einen zweiten Download in die Oberfläche. Jetzt liest es die Zeile und nennt Modell und Fortschritt, oder sagt, dass der Installer keines geholt oder nichts gesagt hat.
+- **`mirror.mjs --read` nimmt Pfade mit `docs/` davor**, so wie das Gerät seine Anleitungen nennt, etwa `docs/features/FIRMENORDNER.md`.
+
 ## 0.34.0 (2026-09-25)
 
 Kontrakt: bis 6

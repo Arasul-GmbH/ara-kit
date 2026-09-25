@@ -359,6 +359,100 @@ export function keyLogin(sshArgs, { run = spawnSync } = {}) {
   return { ok: probe.status === 0, message };
 }
 
+/**
+ * Die zwei Schalter, mit denen die Härtung ausbleibt.
+ *
+ * `scripts/security/haerten.sh` liest `ENABLE_SSH_HARDENING` und
+ * `ENABLE_FIREWALL` aus der Umgebung vor der `.env`, und der Einstiegspunkt
+ * reicht seine Umgebung an den Bootstrap weiter. Bis 0.34.0 hatte das Kit keinen
+ * Weg dorthin: am Orin lag SSH nach einem Durchlauf sieben Minuten auf dem neuen
+ * Port, ohne dass vorher jemand gefragt worden wäre. Ein Kunde, dessen andere
+ * Dienste Port 22, die Anmeldung mit Passwort oder offene Ports brauchen, verlor
+ * so ohne Vorwarnung den Zugang. `--keep-ssh` setzt beide auf false.
+ */
+export const KEEP_SSH_ENV = ["ENABLE_SSH_HARDENING=false", "ENABLE_FIREWALL=false"];
+
+/** Wo das Artefakt die Härtung beschreibt, relativ zum Spiegel. */
+const HARDENING_FILE = "scripts/security/haerten.sh";
+
+/**
+ * Auf welchen Port die Härtung SSH legt, gelesen aus dem Artefakt.
+ *
+ * Die Zahl steht im Kit nicht: sie ist ein Wert des Produkts und wandert mit
+ * ihm. Gelesen wird die Vorgabe in `haerten.sh`, `env_wert SSH_PORT <zahl>`.
+ * Steht sie dort nicht, gibt es keine Zahl, und die Ansage sagt „ein anderer
+ * Port" statt einer geratenen.
+ */
+export function hardeningPort(dir = mirrorDir()) {
+  const file = join(dir, HARDENING_FILE);
+  if (!existsSync(file)) return null;
+  const found = readFileSync(file, "utf8").match(/env_wert\s+SSH_PORT\s+(\d{1,5})\b/);
+  return found ? { port: found[1], source: HARDENING_FILE } : null;
+}
+
+/**
+ * Der Satz vor der Installation: was die Härtung tut, und wie sie ausbleibt.
+ *
+ * `port` ist die Auskunft aus `hardeningPort`, oder `null`. Mit `keepSsh` sagt
+ * der Satz, was stattdessen bleibt, denn auch das ist eine Entscheidung mit
+ * Folgen: kein Schlüsselzwang und keine Firewall am Gerät.
+ */
+export function hardeningNotice({ keepSsh = false, port = null } = {}) {
+  if (keepSsh) {
+    return t(
+      "SSH stays as it is (--keep-ssh): the installer gets ENABLE_SSH_HARDENING=false and ENABLE_FIREWALL=false, " +
+        "so port, password login and open ports stay unchanged, and the device gets no firewall. " +
+        "Harden later along .ara/knowledge/remote-access.md.",
+      "SSH bleibt, wie es ist (--keep-ssh): der Installer bekommt ENABLE_SSH_HARDENING=false und ENABLE_FIREWALL=false, " +
+        "Port, Anmeldung mit Passwort und offene Ports bleiben unverändert, und das Gerät bekommt keine Firewall. " +
+        "Härten später nach .ara/knowledge/remote-access.de.md."
+    );
+  }
+  const where = port
+    ? t(`to port ${port.port} (${port.source})`, `auf Port ${port.port} (${port.source})`)
+    : t("to another port", "auf einen anderen Port");
+  return t(
+    `The installer hardens the device when it has sudo without a password: SSH moves ${where}, only a key gets in ` +
+      "afterwards, and a firewall closes every port but SSH, web and the device's own services. " +
+      "Whoever needs port 22, a password login or other open ports on the device leaves it out with --keep-ssh.",
+    `Der Installer härtet das Gerät, wenn er sudo ohne Passwort hat: SSH wandert ${where}, danach kommt nur noch ` +
+      "ein Schlüssel herein, und eine Firewall schließt jeden Port außer SSH, Web und den Diensten des Geräts. " +
+      "Wer am Gerät Port 22, die Anmeldung mit Passwort oder andere offene Ports braucht, lässt sie mit --keep-ssh aus."
+  );
+}
+
+/**
+ * Was der Installer über das Standardmodell sagt.
+ *
+ * Seit dem 25.09.2026 holt der Bootstrap das Standardmodell selbst, im
+ * Hintergrund, und schreibt eine Zeile dazu (`standardmodell_holen` in
+ * `./arasul`). Bis 0.34.0 sagte das Kit zwölf Zeilen darunter, auf einem frisch
+ * installierten Gerät liege kein Modell, und schickte den Menschen in die
+ * Oberfläche, einen zweiten Download anzustoßen. Jetzt liest es die Zeile.
+ * Welches Modell es ist, steht in ihr, nicht im Kit.
+ *
+ * Zurück: `{ state: "background" | "present" | "skipped", model, log, line }`,
+ * oder `null`, wenn der Installer nichts dazu gesagt hat.
+ */
+export function modelFrom(text) {
+  let found = null;
+  for (const raw of stripAnsi(text).split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, " ").trim();
+    let match = line.match(/Standardmodell (\S+) wird im Hintergrund geholt\b(?:.*?tail -f (\S+))?/);
+    if (match) {
+      found = { state: "background", model: match[1], log: match[2] || null, line };
+      continue;
+    }
+    match = line.match(/Standardmodell (\S+) liegt schon am Ger(?:ae|ä)t/);
+    if (match) {
+      found = { state: "present", model: match[1], log: null, line };
+      continue;
+    }
+    if (/Standardmodell wird nicht geholt/.test(line)) found = { state: "skipped", model: null, log: null, line };
+  }
+  return found;
+}
+
 // --- Der Spiegel -------------------------------------------------------------
 
 export function mirrorState() {
@@ -483,8 +577,8 @@ function quote(value) {
  * zum Anzeigen. Der Mensch soll mitlesen können, ohne dass das Startpasswort
  * über den Bildschirm und in die Geräteakte wandert.
  */
-export function installCommand(entry, { password, netName } = {}) {
-  const parts = [`./${entry.file}`];
+export function installCommand(entry, { password, netName, keepSsh = false } = {}) {
+  const parts = [...(keepSsh ? KEEP_SSH_ENV : []), `./${entry.file}`];
   if (password) parts.push(OPTION_PASSWORD, quote(password));
   if (netName) parts.push(OPTION_NAME, quote(netName));
   const command = parts.join(" ");
@@ -522,7 +616,8 @@ export function runRemote(sshArgs, transport, command, { interactive = false, in
  *
  * Zurück kommen auch die Kit-Schlüssel, die im Klartext vorbeikamen (`keys`),
  * für `settleDeployKey` und für nichts sonst, und der SSH-Port, den der
- * Installer nach der Härtung meldet (`sshPort`), oder `null`.
+ * Installer nach der Härtung meldet (`sshPort`), oder `null`, und was er zum
+ * Standardmodell sagt (`model`), oder `null`.
  */
 export function runInstaller(sshArgs, transport, command, { secrets = [] } = {}) {
   return new Promise((done) => {
@@ -557,6 +652,7 @@ export function runInstaller(sshArgs, transport, command, { secrets = [] } = {})
         output,
         troubles: troubles(output),
         sshPort: sshPortFrom(output),
+        model: modelFrom(output),
         keys: maskers.flatMap((masker) => masker.keys()),
       });
     };
