@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.33.0 (2026-09-25)
+
+Kontrakt: bis 6
+
+- **Das Kit folgt einem geänderten SSH-Port.** Seit dem 25.09.2026 härtet der Installer SSH mit `sudo -n`, und gelingt das, liegt SSH danach auf einem anderen Port. Der Installer sagt es in der Zeile `ARASUL_SSH_PORT=<port>`. Bis 0.32.0 legte das Kit nur seine Warnung unter „Was der Installer nicht konnte" ab, klopfte für die zweite Prüfung, den Kit-Schlüssel und die Freischaltung auf den alten Port und schrieb den alten Port in die Akte: der nächste Befehl stand vor einer Wand. Jetzt liest `device.mjs --install arasul` die Zeile, verbindet sich ab da über den neuen Port, schreibt ihn als `ssh_port` in die Akte und nennt alten und neuen Port im Verlauf. Der Selbsttest schickt genau diese Zeile durch die Ausgabe des Installers und eine Geräteakte.
+
 ## 0.32.0 (2026-09-25)
 
 Kontrakt: bis 6

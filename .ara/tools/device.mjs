@@ -214,6 +214,7 @@ import {
   installerEntry,
   licenceRunner,
   listKeys,
+  movePort,
   releaseData,
   revokeKey,
   runInstaller,
@@ -788,7 +789,7 @@ if (arg["admin-login"]) await adminLogin();
 const isLocal = LOCAL_HOSTS.has(host);
 const user = str(arg.user) || existing.ssh_user || (isLocal ? userInfo().username : null) || (dryRun ? "" : null);
 if (user === null) fail(t("I need the login name on the device: --user <name>.", "Ich brauche den Anmeldenamen auf dem Gerät: --user <name>."));
-const port = str(arg.port) || existing.ssh_port || "22";
+let port = str(arg.port) || existing.ssh_port || "22";
 const key = str(arg.key) || existing.ssh_key || "";
 
 const sshArgs = ["-o", "ConnectTimeout=8", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-p", port];
@@ -798,7 +799,7 @@ if (key) {
   sshArgs.push("-i", keyPath);
 }
 sshArgs.push(`${user}@${host}`);
-const label = `${user}@${host}:${port}`;
+let label = `${user}@${host}:${port}`;
 
 /**
  * Führt das Prüfskript aus: über SSH, oder lokal, wenn das Ziel dieser Rechner
@@ -1518,6 +1519,7 @@ async function installArasul() {
     netName: net,
     passwordRef: startRef,
     troubles: step.troubles,
+    sshPort: step.sshPort,
     // Nur zum Übergeben an settleDeployKey. Nie gezeigt, nie in die Akte.
     keys: step.keys || [],
     version: state.version ?? null,
@@ -1536,6 +1538,23 @@ if (wantsArasul) {
           "read the last output, fix the cause and call the same command again.",
         `\nDer Installer ist mit Rückgabecode ${arasul.status} ausgestiegen. Nichts wird schöngeredet:\n` +
           "lies die letzte Ausgabe, behebe die Ursache und ruf denselben Befehl noch einmal auf."
+      )
+    );
+  }
+  // Die Härtung kann SSH auf einen anderen Port gelegt haben. Der Installer
+  // meldet ihn in `ARASUL_SSH_PORT=`, und ab hier geht alles darüber: die
+  // zweite Prüfung, der Kit-Schlüssel, die Freischaltung und die Akte. Ohne
+  // diesen Schritt klopft das Kit auf den alten Port und verliert den Zugang,
+  // ohne dass jemand erfährt, warum.
+  const before = movePort(sshArgs, arasul.sshPort);
+  if (before) {
+    port = arasul.sshPort;
+    label = `${user}@${host}:${port}`;
+    arasul.portMoved = { from: before, to: port };
+    console.log(
+      t(
+        `\nThe installer moved SSH from port ${before} to ${port}. The kit connects over ${port} from now on and writes it into the file.`,
+        `\nDer Installer hat SSH von Port ${before} auf ${port} gelegt. Das Kit verbindet sich ab jetzt über ${port} und schreibt ihn in die Akte.`
       )
     );
   }
@@ -1833,7 +1852,10 @@ const entry = [
           `Fassung ${arasul.version || "unbekannt"}, ausgepackt nach ${arasul.target}. ` +
           `Aufruf am Gerät: ${arasul.entry}. Netzname ${arasul.netName}, ` +
           `Startpasswort hinterlegt unter ${arasul.passwordRef}, hier steht es nicht.` +
-          (arasul.ok ? " Zertifikat: selbst ausgestellt, aus der Geräte-CA (tls: selfsigned)." : ""),
+          (arasul.ok ? " Zertifikat: selbst ausgestellt, aus der Geräte-CA (tls: selfsigned)." : "") +
+          (arasul.portMoved
+            ? ` SSH-Port vom Installer von ${arasul.portMoved.from} auf ${arasul.portMoved.to} gelegt, ssh_port in der Akte nachgezogen.`
+            : ""),
         ...(arasul.troubles?.length
           ? [
               "Was der Installer nicht konnte, wörtlich aus seiner Ausgabe:",
@@ -2278,6 +2300,10 @@ if (arg.json) {
               entry: arasul.entry,
               // Was der Installer nicht konnte. Leer heißt: er hat nichts gemeldet.
               troubles: arasul.troubles || [],
+              // Der Port, den der Installer nach der Härtung gemeldet hat, und
+              // ob das Kit deshalb umgezogen ist. `null`: keine Meldung.
+              ssh_port: arasul.sshPort || null,
+              ssh_port_moved: arasul.portMoved || null,
             }
           : null,
         deploy_key: deployKey
@@ -2342,6 +2368,14 @@ if (known) {
     `- Docker: ${svc.docker.text}`,
     `- Ollama: ${svc.ollama.text}`,
     `- Arasul: ${svc.arasul.text}`,
+    ...(arasul?.portMoved
+      ? [
+          t(
+            `- SSH: moved by the installer from port ${arasul.portMoved.from} to ${arasul.portMoved.to}, the file carries ssh_port ${arasul.portMoved.to}`,
+            `- SSH: vom Installer von Port ${arasul.portMoved.from} auf ${arasul.portMoved.to} gelegt, die Akte trägt ssh_port ${arasul.portMoved.to}`
+          ),
+        ]
+      : []),
     t(
       `- Kit key: ${keyRef ? `stored under ${keyRef}` : "none"}`,
       `- Kit-Schlüssel: ${keyRef ? `hinterlegt unter ${keyRef}` : "keiner"}`

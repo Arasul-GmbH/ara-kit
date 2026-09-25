@@ -358,6 +358,13 @@ Liste durch, bevor das Gerät ausgeliefert wird: Zugang härten nach
 `.ara/knowledge/remote-access.de.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
 hast und was offen bleibt, schreibst du in den Laufzettel.
 
+**Gelingt die Härtung, liegt SSH danach auf einem anderen Port.** Der Installer sagt das in
+einer Warnung und in einer eigenen Zeile, `ARASUL_SSH_PORT=<port>`. Das Kit liest diese
+Zeile, verbindet sich für alles Weitere im selben Lauf über den neuen Port und schreibt ihn
+als `ssh_port` in die Akte. Jeder spätere Befehl, `remote.mjs`, `maintain.mjs` und
+`device.mjs` selbst, nimmt ihn von dort. Der Eintrag der Installation im Verlauf nennt alten
+und neuen Port. Ohne die Zeile bleibt der Port, wie er war: das Kit rät keinen Port.
+
 ### Reste, aber nichts läuft
 
 Die Spurensuche kennt drei Antworten, und der Unterschied entscheidet, was als Nächstes

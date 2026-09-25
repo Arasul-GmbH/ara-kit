@@ -296,6 +296,43 @@ export function troubles(text, { limit = 12 } = {}) {
   ];
 }
 
+/**
+ * Der SSH-Port, den der Installer nach seiner Härtung meldet.
+ *
+ * Gelingt die Härtung, liegt SSH danach auf einem anderen Port, und das Kit
+ * klopft beim nächsten Befehl auf den alten und steht vor einer Wand. Der
+ * Installer sagt es in einer Zeile für eine Maschine, `ARASUL_SSH_PORT=<port>`,
+ * gelesen bei `sshd -T` nach der Härtung (`scripts/security/haerten.sh`, J35).
+ * Die Zeile steht auch da, wenn sich nichts geändert hat. Gilt die letzte,
+ * falls sie mehrfach kommt. Was kein Port ist, ist keine Auskunft: `null`.
+ */
+const SSH_PORT_LINE = /^\s*ARASUL_SSH_PORT=(\d{1,5})\s*$/;
+
+export function sshPortFrom(text) {
+  let port = null;
+  for (const raw of String(text || "").split(/\r?\n/)) {
+    const found = raw.replace(/\x1B\[[0-9;]*m/g, "").match(SSH_PORT_LINE);
+    if (!found) continue;
+    const number = Number(found[1]);
+    if (number >= 1 && number <= 65535) port = String(number);
+  }
+  return port;
+}
+
+/**
+ * Legt eine laufende SSH-Aufrufzeile auf den neuen Port um, an Ort und Stelle.
+ * Alles, was danach mit derselben Zeile ans Gerät geht, die zweite Prüfung, der
+ * Kit-Schlüssel, die Freischaltung, geht über den Port, den das Gerät gemeldet
+ * hat. Zurück kommt der alte Port, wenn umgelegt wurde, sonst `null`.
+ */
+export function movePort(sshArgs, port) {
+  const at = sshArgs.indexOf("-p");
+  if (!port || at < 0 || sshArgs[at + 1] === String(port)) return null;
+  const before = sshArgs[at + 1];
+  sshArgs[at + 1] = String(port);
+  return before;
+}
+
 // --- Der Spiegel -------------------------------------------------------------
 
 export function mirrorState() {
@@ -458,7 +495,8 @@ export function runRemote(sshArgs, transport, command, { interactive = false, in
  * gemeinsamer Zwischenspeicher würde ihre halben Zeilen ineinander schieben.
  *
  * Zurück kommen auch die Kit-Schlüssel, die im Klartext vorbeikamen (`keys`),
- * für `settleDeployKey` und für nichts sonst.
+ * für `settleDeployKey` und für nichts sonst, und der SSH-Port, den der
+ * Installer nach der Härtung meldet (`sshPort`), oder `null`.
  */
 export function runInstaller(sshArgs, transport, command, { secrets = [] } = {}) {
   return new Promise((done) => {
@@ -488,7 +526,13 @@ export function runInstaller(sshArgs, transport, command, { secrets = [] } = {})
         output += rest;
         process.stdout.write(rest);
       }
-      done({ status, output, troubles: troubles(output), keys: maskers.flatMap((masker) => masker.keys()) });
+      done({
+        status,
+        output,
+        troubles: troubles(output),
+        sshPort: sshPortFrom(output),
+        keys: maskers.flatMap((masker) => masker.keys()),
+      });
     };
     child.on("close", finish);
     child.on("error", (error) => {
