@@ -210,10 +210,10 @@ export function services(facts) {
   // Reste für eine Plattform. Seitdem gibt es drei Antworten, und "Reste da,
   // nichts läuft" ist eine davon.
   const containers = (facts.docker_names || "").split(/\s+/).filter((n) => PLATFORM_CONTAINERS.some((p) => p.test(n)));
-  const units = (facts.arasul_units || "").split(/\s+/).filter(Boolean);
+  const units = (facts.arasul_units || "").split(/\s+/).filter((unit) => unit && !FOREIGN_UNITS.some((p) => p.test(unit)));
   const dirs = facts.arasul_dir || [];
   const traces = [
-    ...(units.length ? [`Dienst ${units.join(", ")}`] : []),
+    ...(units.length ? [t(`service ${units.join(", ")}`, `Dienst ${units.join(", ")}`)] : []),
     ...dirs.map((dir) => t(`folder ${dir}`, `Ordner ${dir}`)),
   ];
   const arasul = containers.length
@@ -232,6 +232,18 @@ export function services(facts) {
 
   return { docker, ollama, arasul, sudo: facts.sudo === "ohne Passwort" };
 }
+
+/**
+ * Dienste, die das Wort arasul im Namen tragen und trotzdem nicht zur Plattform
+ * gehören.
+ *
+ * Der Actions-Runner von GitHub heißt nach dem Repo, für das er baut, am Orin
+ * `actions.runner.<besitzer>-arasul-jet.<gerät>.service`. Am 25.09.2026 hielt
+ * das Kit ihn für einen Rest der Plattform, und die Installation ging nur mit
+ * --despite-traces weiter: ein Schalter, der für echte Reste gedacht ist, wurde
+ * für einen Dienst gebraucht, der mit dem Gerät als Produkt nichts zu tun hat.
+ */
+export const FOREIGN_UNITS = [/^actions\.runner\./i];
 
 /**
  * Läuft die Plattform auf diesem Gerät?

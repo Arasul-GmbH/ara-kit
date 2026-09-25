@@ -114,6 +114,30 @@ export const APPLEDOUBLE = "._*";
 export const packEnv = () => ({ ...process.env, COPYFILE_DISABLE: "1" });
 
 /**
+ * Steuerzeichen des Terminals: Farbe, Fettdruck, Cursor, Fenstertitel.
+ *
+ * Sie kommen vor dem Maskieren heraus. Der Installer druckt den Kit-Schlüssel
+ * fett, als `ESC[1m` direkt davor, und das `m` davor ist ein Wortzeichen: die
+ * Wortgrenze vor `aras_` fiel weg, die Maske griff nicht, und am 25.09.2026 stand
+ * der Schlüssel am Orin im Klartext zwei Zeilen unter dem Satz, dass sein
+ * Klartext nicht angezeigt wird. Die Farbe ist dabei das Einzige, was verloren
+ * geht, und die trägt nichts, was der Mensch lesen muss.
+ */
+const ANSI = /\x1B(?:\[[0-9;?]*[ -\/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\)|[@-Z\\-_])/g;
+
+export function stripAnsi(text) {
+  return String(text || "").replace(ANSI, "");
+}
+
+/** Ein Kit-Schlüssel, so wie das Gerät ihn schreibt. Nach dem Entfernen der Steuerzeichen. */
+const KEY_PATTERN = /\baras_[A-Za-z0-9_-]{4,}/g;
+
+/** Alle Kit-Schlüssel in einem Text, auch fett oder farbig gedruckte. Nur zum Weiterreichen, nie zum Zeigen. */
+export function findKeys(text) {
+  return [...new Set(stripAnsi(text).match(KEY_PATTERN) || [])];
+}
+
+/**
  * Nichts, was wie ein Schlüssel oder ein Passwort aussieht, geht in eine
  * Ausgabe oder ein Protokoll. `--passwort` steht im Aufruf des Installers, und
  * der Aufruf wird angezeigt, damit der Mensch mitliest.
@@ -124,8 +148,8 @@ export const packEnv = () => ({ ...process.env, COPYFILE_DISABLE: "1" });
  * Installer es allein auf eine Zeile schreibt.
  */
 export function scrub(text, secrets = []) {
-  let out = String(text || "")
-    .replace(/\baras_[A-Za-z0-9_-]{4,}/g, "aras_…")
+  let out = stripAnsi(text)
+    .replace(KEY_PATTERN, "aras_…")
     .replace(new RegExp(`(${OPTION_PASSWORD}\\s+)('[^']*'|"[^"]*"|\\S+)`, "g"), "$1…");
   for (const secret of secrets) {
     if (typeof secret !== "string" || secret.length < 4) continue;
@@ -146,13 +170,22 @@ export function scrub(text, secrets = []) {
  * verteilt ankommen. Ein angefangenes Stück wird trotzdem sofort gezeigt, solange
  * daraus kein Geheimnis mehr werden kann: sonst bliebe die Frage des Installers
  * nach dem sudo-Passwort unsichtbar, bis jemand blind Enter drückt.
+ *
+ * Was an Kit-Schlüsseln vorbeikam, merkt sich der Masker (`keys()`). Der
+ * Installer legt einen an, und das Kit übernimmt ihn, statt einen zweiten
+ * danebenzulegen.
  */
 export function createMasker(secrets = []) {
   const known = secrets.filter((value) => typeof value === "string" && value.length >= 4);
+  const seen = new Set();
   let carry = "";
 
   /** Kann aus diesem Rest noch ein Geheimnis werden? Dann wartet er auf mehr. */
-  const growing = (tail) => {
+  const growing = (raw) => {
+    // Ein halbes Steuerzeichen am Ende: erst wenn es ganz ist, weiß man, ob ein
+    // Schlüssel dahinter beginnt.
+    if (/\x1B(\[[0-9;?]*[ -\/]*|\][^\x07\x1B]*)?$/.test(raw)) return true;
+    const tail = stripAnsi(raw);
     if (/(^|[^A-Za-z0-9_-])a(r(a(s(_[A-Za-z0-9_-]*)?)?)?)?$/.test(tail)) return true;
     return known.some((secret) => {
       for (let length = 1; length < secret.length; length++) {
@@ -162,6 +195,11 @@ export function createMasker(secrets = []) {
     });
   };
 
+  const mask = (text) => {
+    for (const key of findKeys(text)) seen.add(key);
+    return scrub(text, known);
+  };
+
   return {
     /** Was von diesem Stück jetzt schon gezeigt werden darf, maskiert. */
     push(chunk) {
@@ -169,20 +207,24 @@ export function createMasker(secrets = []) {
       let out = "";
       const cut = carry.lastIndexOf("\n");
       if (cut >= 0) {
-        out = scrub(carry.slice(0, cut + 1), known);
+        out = mask(carry.slice(0, cut + 1));
         carry = carry.slice(cut + 1);
       }
       if (carry && !growing(carry)) {
-        out += scrub(carry, known);
+        out += mask(carry);
         carry = "";
       }
       return out;
     },
     /** Der Rest am Ende. Danach ist nichts mehr zurückgehalten. */
     flush() {
-      const rest = carry ? scrub(carry, known) : "";
+      const rest = carry ? mask(carry) : "";
       carry = "";
       return rest;
+    },
+    /** Die Kit-Schlüssel, die im Klartext vorbeikamen. Nie gezeigt, nur weitergereicht. */
+    keys() {
+      return [...seen];
     },
   };
 }
@@ -414,6 +456,9 @@ export function runRemote(sshArgs, transport, command, { interactive = false, in
  *
  * Je Strom ein eigener Masker: stdout und stderr kommen unabhängig an, und ein
  * gemeinsamer Zwischenspeicher würde ihre halben Zeilen ineinander schieben.
+ *
+ * Zurück kommen auch die Kit-Schlüssel, die im Klartext vorbeikamen (`keys`),
+ * für `settleDeployKey` und für nichts sonst.
  */
 export function runInstaller(sshArgs, transport, command, { secrets = [] } = {}) {
   return new Promise((done) => {
@@ -443,7 +488,7 @@ export function runInstaller(sshArgs, transport, command, { secrets = [] } = {})
         output += rest;
         process.stdout.write(rest);
       }
-      done({ status, output, troubles: troubles(output) });
+      done({ status, output, troubles: troubles(output), keys: maskers.flatMap((masker) => masker.keys()) });
     };
     child.on("close", finish);
     child.on("error", (error) => {
@@ -635,20 +680,81 @@ export function createKey(sshArgs, transport, name) {
   // Der Klartext steht auf der Zeile mit dem Wort Schlüssel, der Präfix auf der
   // darunter. Ohne die Beschriftung gilt der längere von beiden: ein Präfix ist
   // per Bauart kürzer als der Schlüssel, zu dem er gehört.
-  const tokens = [...String(run.stdout).matchAll(/\baras_[A-Za-z0-9_-]{4,}/g)].map((m) => m[0]);
+  const answer = stripAnsi(run.stdout);
+  const tokens = findKeys(answer);
   if (!tokens.length) {
     return {
       ok: false,
       message: t("The device's answer contains no key.", "Die Antwort des Geräts enthält keinen Schlüssel."),
     };
   }
-  const labelled = String(run.stdout)
+  const labelled = answer
     .split("\n")
     .find((line) => /schl(ü|ue)ssel/i.test(line) && /\baras_/.test(line));
   const key = labelled
     ? labelled.match(/\baras_[A-Za-z0-9_-]{4,}/)[0]
     : tokens.sort((a, b) => b.length - a.length)[0];
   return { ok: true, key, script };
+}
+
+/** Gilt diese Zeile der Liste als gültiger Schlüssel? Gelesen wird das erste Wort, wie das Gerät es schreibt. */
+export function validLine(line) {
+  return /^\s*(gueltig|gültig|valid|active)\b/i.test(String(line || ""));
+}
+
+/**
+ * Der Kit-Schlüssel nach einer Installation: genau einer, und zwar der des Kits.
+ *
+ * Der Installer legt selbst einen an („Ara-Kit (Erstinstallation)"), druckt ihn
+ * in seine Erstausgabe und schreibt ihn am Gerät in eine Datei. Das Kit legte
+ * danach seinen eigenen an, mit dem Namen des Partners, und ließ den ersten
+ * liegen: gültig, ungenutzt, im Klartext auf der Platte des Geräts. So am Orin
+ * bis zum 25.09.2026, nach jeder Installation.
+ *
+ * Jetzt gilt: `found` sind die Schlüssel, die der Masker in der Ausgabe des
+ * Installers gesehen hat. Ist einer davon am Gerät gültig, legt das Kit seinen
+ * eigenen an und widerruft den des Installers, über dessen Präfix. Den hat nie
+ * jemand gesehen, das Kit hat ihn maskiert, und die Datei am Gerät trägt danach
+ * einen toten Schlüssel statt eines lebenden. Scheitert das Anlegen, übernimmt
+ * das Kit den des Installers, statt ohne dazustehen. Gibt es keinen, bleibt es
+ * beim Anlegen wie bisher.
+ *
+ * `create` ist der Aufruf, der am Gerät einen Schlüssel ausstellt. Er kommt
+ * herein, damit der Selbsttest dieselbe Entscheidung gegen eine Attrappe prüft.
+ */
+export function settleDeployKey(sshArgs, transport, { name, found = [], create = createKey } = {}) {
+  let installer = null;
+  for (const key of [...found].sort((a, b) => b.length - a.length)) {
+    const list = listKeys(sshArgs, transport, key);
+    if (list.ok && list.mine && validLine(list.mine.line)) {
+      installer = { key, prefix: list.mine.prefix };
+      break;
+    }
+  }
+
+  const made = create(sshArgs, transport, name);
+  let result;
+  if (made.ok) {
+    result = { ok: true, key: made.key, script: made.script, label: name, adopted: false, revoked: null, revokeFailed: null };
+    if (installer && installer.key !== made.key) {
+      const gone = revokeKey(sshArgs, transport, installer.prefix);
+      if (gone.ok) result.revoked = installer.prefix;
+      else result.revokeFailed = { prefix: installer.prefix, message: gone.message };
+    }
+  } else if (installer) {
+    result = { ok: true, key: installer.key, label: null, adopted: true, revoked: null, revokeFailed: null, createFailed: made.message };
+  } else {
+    return made;
+  }
+
+  // Nachgezählt, nicht angenommen: was gilt am Gerät jetzt?
+  const after = listKeys(sshArgs, transport, result.key);
+  if (after.ok) {
+    result.valid = after.keys.filter((entry) => validLine(entry.line));
+    result.mineValid = Boolean(after.mine && validLine(after.mine.line));
+    result.line = after.mine ? after.mine.line : null;
+  }
+  return result;
 }
 
 // --- Die Lizenz am Gerät ------------------------------------------------------
