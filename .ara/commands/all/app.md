@@ -34,7 +34,7 @@ everything that would be possible.
 **If the app does not exist yet**, the interview comes before anything is created: the
 checklist is in the procedure. When the wish is small, a form, name once what lies next to
 it: a document shown on the device, a mail when something is decided, a lookup in a foreign
-system, a foreign tool behind the login. The six patterns with code that runs stand in
+system, a foreign tool behind the login, clients kept apart. The seven patterns with code that runs stand in
 `.ara/knowledge/app-patterns.md`, and the plan names the one it uses. Only after that
 `--new` and the first plan. Whatever stayed open goes into the plan as an assumption and
 gets read out next time.
@@ -43,7 +43,7 @@ gets read out next time.
 receipts the device is to read, an approval the submitter does not give, or an export format of
 another vendor: read the section "A professional app" in `.ara/knowledge/app.md` before the plan
 comes into being. It has five parts, and each of them belongs in the plan as an answer or as an
-assumption.
+assumption. Clients are built by pattern 7, not by a new description.
 
 **If a plan is active**, walk through its assumptions first, then build what it says, then
 `--build`. The build is the package, not the running app: what it does you see on the

@@ -57,7 +57,7 @@ lies vorher `business/profile.md`: womit das Haus arbeitet, gehört in den erste
 | **Wer was sehen darf** | Wer in die App kommt, entscheidet das Gerät. Ob darin jeder alles sieht oder nur seine Mandanten, Abteilungen, Akten, entscheidet die App, und das steht im Plan. Siehe „Sichtbarkeit innerhalb einer App“ |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überleben muss, und was davon geprüft oder nachgewiesen wird. Siehe „Dauerhafte Daten“ |
 | **Welche Fachstandards gelten** | Ein Exportformat, ein Kontenrahmen, eine Aufbewahrungsregel. Sie kommen aus ihrer Primärquelle, mit Abrufdatum, siehe „Fachstandards“ |
-| **Welche Gestalt sie annimmt** | Ein Formular ist selten alles: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung. Die sechs Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
+| **Welche Gestalt sie annimmt** | Ein Formular ist selten alles: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung, Mandanten, die einander nicht sehen. Die sieben Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Das entscheidet die Bauweise. Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |
@@ -138,6 +138,10 @@ schreibt diese Werte nie in ihren eigenen Quelltext.** Eine, die es tut, findet 
 das sie anders nennt, nichts, hält das für „hier läuft kein Arasul" und sammelt Vorgänge, über die
 niemand entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert: der Freigabe-Schritt
 wurde nicht abgelehnt, er wurde übersprungen.
+
+**Modellarbeit einer App läuft über einen Flow oder über das Auslesen eines Dokuments**, denn
+`arasul.json` trägt keinen anderen Weg zu einem Modell, und die App schreibt keinen in ihren
+Quelltext.
 
 **Eingespielt ist nicht sichtbar.** Eine App an einem Gerät sieht ein Mensch erst, wenn sie für
 ihn freigegeben ist, und freigeben kann das Kit sie nicht: sein Schlüssel trägt `app:deploy` und
@@ -306,38 +310,14 @@ Rolle, und löscht, was von außen kam. **Ihre Namen stehen in `arasul.json` unt
 die Vorlage liest sie mit `geraet.angemeldet(anfrage.headers)`. Schreib keinen Kopfzeilennamen in
 den Quelltext; der Selbsttest hält Vorlage und Muster daran.
 
-**Erlaubt ist eine Zuordnung in der App**: eine Tabelle, welches Konto welchen Mandanten sieht,
-geschlüsselt am Benutzernamen aus der Kopfzeile. Das ist keine zweite Anmeldung, denn niemand
-meldet sich bei der App an: es gibt kein Passwort, kein Konto, das die App anlegt, keinen Namen,
-den jemand ins Formular tippt. Die Rolle aus der Kopfzeile darf die App auswerten, etwa so, dass
-nur ein Administrator Zuordnungen pflegt. Was ein Administrator in der App sieht, entscheidet der
-Plan, nicht die Rolle allein.
-
-Welche Werte in der Rollenkopfzeile stehen können, steht in `arasul.json` unter
-`koepfe.rollen`, und welche Rolle eine Regel als Entscheider nennen darf, unter
-`freigaben.rollen`; vergleiche mit diesen Werten, statt einen einzutippen.
-
-**Woher die Namen kommen.** Der Schlüssel einer App kann die Konten des Geräts nicht auflisten.
-Die App merkt sich deshalb jeden Namen, den sie in der Kopfzeile sieht, mit dem ersten und dem
-letzten Mal, und wer Zuordnungen pflegt, wählt aus diesen. Ein Name, den es am Gerät nicht mehr
-gibt, lässt niemanden hinein: er bleibt in der Liste stehen und wird als lange nicht gesehen
-gezeigt. Daraus folgt: einen neuen Mitarbeiter kann erst zuordnen, wer ihn einmal in der App
-gesehen hat, er öffnet sie also einmal, bevor er Mandanten bekommt. Endet eine Zuordnung,
-während eine Freigabe läuft, entscheidet das Gerät weiter nach dem Kreis vom Start des Laufs;
-die App prüft beim Nachziehen, ob wer entschieden hat, noch zuständig ist.
-
-**Durchgesetzt wird in der Ablage, bei jeder Abfrage**, nicht in der Oberfläche: die Liste, das
-einzelne Ding, seine Datei, der Export, die Routen im Feld `agent`. Ein fremdes Ding antwortet
-mit 404 und nicht mit 403, sonst verrät die Antwort, dass es existiert. Geprüft wird mit zwei
-Konten und zwei Mandanten: jeder Weg einmal als der, der nichts sehen darf. Ein Fremdtest am
-25.09.2026 fand so alle Wege der App dicht und genau eine Lücke außerhalb von ihr, die Karte der
-Freigabe; die schließt der nächste Abschnitt.
-
-**Die Muster kennen keine Mandanten.** Muster 2 und 6 legen Dokumente und Auslesungen ohne
-Mandanten ab und geben sie jedem heraus. In einer Fach-App bekommt ihre Tabelle eine Spalte für
-den Mandanten, und jede Abfrage ihrer Ablage filtert danach, auch das Protokoll einer Auslesung.
-Ihre Migrationen tragen die Nummern 002 und 003; hat die App schon eigene, nummerier die Dateien
-der Muster um, bevor die erste davon an einem Gerät lief.
+**Mandanten sind Muster 7**, mit Code unter `.ara/templates/app-patterns/clients/` und beschrieben
+in `.ara/knowledge/app-patterns.de.md`: eine Zuordnung von Konten zu Mandanten am Namen aus der
+Kopfzeile, ein Filter in jeder Abfrage der Ablage, 404 für ein fremdes Ding, eine Verwaltungsseite
+nur für eine Rolle aus `koepfe.rollen`, die Entscheider einer Freigabe aus der Zuordnung. **Nimm das
+Muster, entwirf es nicht neu aus diesem Blatt**: aus einer Beschreibung gebaut, kommt die Trennung
+jedes Mal anders heraus. Eine Zuordnung ist erlaubt und keine zweite Anmeldung. Geprüft wird mit
+zwei Konten und zwei Mandanten: jeder Weg einmal als der, der nichts sehen darf. Was die Verwaltung
+sieht, sagt der Plan; das Muster zeigt ihr nur die Mandanten, denen sie zugeordnet ist.
 
 ### Freigaben in einer Fach-App
 
@@ -352,12 +332,11 @@ enger zieht, nie weiter:
   Menschen sehen und entscheiden die Anfrage, jeder andere sieht sie nicht und bekommt beim
   Entscheiden 403.
 
-Die genauen Regeln stehen im Kontrakt, `--contract` gibt sie wörtlich aus. **Für eine Fach-App
-heißt das:** die Entscheider kommen aus der Zuordnung, die Konten, die dem Mandanten dieses
-Vorgangs zugeordnet sind, und der Einreicher ist ausgeschlossen. Bleibt danach niemand, weist das
-Gerät den Start mit 400 ab, statt eine Anfrage anzulegen, die in ihre Frist läuft, und die App
-zeigt diesen Satz am Vorgang. Das ist ein Fall für den Plan: wer entscheidet, wenn einem Mandanten
-nur eine Person zugeordnet ist?
+Die genauen Regeln stehen im Kontrakt, `--contract` gibt sie wörtlich aus. **Für eine Fach-App gibt
+Muster 7 die Regel zurück**: vier Augen, die Entscheider sind die Konten, die dem Mandanten des
+Vorgangs zugeordnet sind, ohne den Einreicher, und wer entschieden hat, muss beim Nachziehen noch
+zuständig sein. Bleibt niemand, startet kein Lauf, und am Vorgang steht, warum. Wer entscheidet,
+wenn einem Mandanten nur eine Person zugeordnet ist, ist ein Fall für den Plan.
 
 **In den Text der Anfrage gehören Verweise, keine Inhalte**: „Beleg 17, eingereicht von anna“,
 nicht Betrag, Name des Mandanten und Buchungstext. Was ein Lauf bekommt, liegt am Gerät bei jedem
@@ -368,8 +347,9 @@ des Vorgangs und den Einreicher, sonst nichts.
 **Wie die Vorlage es trägt.** `arasul.json` sagt unter `freigaben`, ob dieses Gerät Einreicher
 und Regel annimmt; ein Gerät davor weist einen Start mit einem Feld, das es nicht kennt, ab, und
 die Vorlage schickt sie deshalb nur dann. Den Einreicher schickt sie immer mit, wenn das Gerät ihn
-kennt. Die Regel gibt `regel` im Kern zurück, aus dem Vorgang; `VIER_AUGEN` in `server.mjs`
-schaltet den Ausschluss des Einreichers ein. Verlangt ein Vorgang eine Regel und das Gerät nimmt
+kennt. Die Regel gibt `regel` im Kern zurück, aus dem Vorgang, auch asynchron, und ein Satz statt
+einer Regel startet keinen Lauf; `zustaendig` prüft eine Entscheidung beim Nachziehen.
+`VIER_AUGEN` in `server.mjs` schaltet den Ausschluss des Einreichers ein. Verlangt ein Vorgang eine Regel und das Gerät nimmt
 keine an, startet kein Lauf, und der Vorgang sagt warum: eine Freigabe, die jeder sehen könnte,
 wäre schlimmer als keine.
 

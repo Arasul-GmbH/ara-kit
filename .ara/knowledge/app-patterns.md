@@ -1,10 +1,10 @@
-# Procedure: six shapes of an app beyond the form
+# Procedure: seven shapes of an app beyond the form
 
 > **When do you need this?** In the interview, while the idea is still forming, and whenever
 > somebody takes Arasul for a form tool. Whoever knows only the scaffold's item with its
 > approval step builds forms. An app can do everything a program can do: the device brings
 > the login, the permissions, the flows and the models, and the app brings the rest. Here are
-> six shapes that come up at almost every customer, each with code that runs.
+> seven shapes that come up at almost every customer, each with code that runs.
 
 ## The rule first
 
@@ -34,6 +34,7 @@ tool, its documentation says, not this sheet.
 | 4. Call a foreign API from the backend | An address outside the device, with timeout and sentences for what went wrong | `.ara/templates/app-patterns/foreign-api/backend/fremd.mjs` |
 | 5. A foreign container as an app | A finished image behind the device's login, no code of your own | `.ara/templates/app-patterns/foreign-container/` |
 | 6. Read a document | A receipt goes to the device, fields come back, the app checks them, a log keeps every reading | `.ara/templates/app-patterns/extract/` |
+| 7. Clients | Which account sees which client, a filter in every query, the deciders of an approval out of the mapping | `.ara/templates/app-patterns/clients/` |
 
 ## 1. Several routes with a sidebar
 
@@ -282,10 +283,88 @@ the device, the log after the document was removed. On the Orin it ran on 25.09.
 above. A reading with a model the customer chose themselves, and their real receipts, you check on
 their device.
 
+## 7. Clients: who sees what, and who decides
+
+A tax office, a practice, an agency: several clients, and every employee sees only their own.
+**The device decides who gets into the app, the app decides what somebody sees inside.** The
+device knows no clients and should not know them. That separation is the one thing such an app
+must not get wrong, and built from a description it comes out different every time. So it lies
+here as code, and the plan takes it instead of describing it anew. The code lies under
+`.ara/templates/app-patterns/clients/`:
+
+| File | What it is |
+| --- | --- |
+| `backend/ablage/migrationen/004-mandanten.sql` | Clients, seen accounts, mappings, and a column `mandant` at the items |
+| `backend/ablage/mandanten.mjs` | The store for all three, and `nurZugeordnete`, the filter as SQL for every other store |
+| `backend/ablage/vorgaenge.mjs` | Replaces the scaffold's store of items: the same fields, and every query carries the filter |
+| `backend/kern/mandanten.mjs` | Who manages, creating and mapping, the rule for the approval, whether a decider is still responsible |
+| `backend/wege/mandanten.mjs` | The routes: clients, mappings, and the items with their client |
+| `frontend/src/mandanten.ts` | Types and queries |
+| `frontend/src/seiten/mandanten.tsx` | The management page, and `MandantWahl` for the form |
+
+**Wiring it in**: copy the folders over the app's, the lines from the head of
+`wege/mandanten.mjs` into `server.mjs`, **before** the routes of the items, a `Route` and an
+entry in the sidebar that only the management sees, `MandantWahl` into `seiten/neu.tsx`; the
+head of `seiten/mandanten.tsx` shows those lines. Then `--build`.
+
+What the pattern decides, and why:
+
+- **A mapping, not a second login.** Nobody logs in to the app. It keeps, for a name from the
+  login header, which clients it sees. The header names stand in `arasul.json` under `koepfe`.
+- **Only a name the app has seen can be mapped.** An app's key cannot list the device's accounts.
+  The app notes every name that comes by, with the first and the last time, and the management
+  chooses among those. A new employee opens the app once, then they can be mapped.
+- **The filter stands in the WHERE, not in a check afterwards.** `nurZugeordnete` gives the
+  condition as SQL, and the store of the items is built per request for one name. The list, the
+  single item, the waiting ones, the writing: what belongs to a foreign client does not exist in
+  it. Without a name it sees nothing.
+- **Foreign means 404, not 403.** A 403 would say that the item exists. A 403 goes only to
+  whoever calls the management without having it.
+- **Management only for a role the contract names.** `verwaltungsRolle` takes the role that a
+  rule may name as decider (`freigaben.rollen`), provided it can stand in the role header
+  (`koepfe.rollen`). Whoever wants another names it, and that one too has to stand in
+  `koepfe.rollen`. If none fits, nobody manages, and the app says so. The pattern types no role
+  name.
+- **The management sees items only of clients it is mapped to.** Maintaining mappings is not
+  reading files. If the plan wants something else, it says so, and the store changes in one
+  place.
+- **The deciders come from the mapping.** `regel` gives the device four eyes and the accounts
+  mapped to the item's client, without the submitter. If nobody remains, no run starts, and the
+  item says why. Every account named there has to have the app released, otherwise the device
+  refuses the start with 400, and that sentence stands at the item.
+- **A decision counts only from somebody still responsible.** If a mapping ends while a run
+  waits, the device keeps deciding by the circle from the start. When catching up, the app
+  checks the name of the decider against the mapping, and a decision from outside it does not
+  count.
+
+**Patterns 2 and 6 know no clients.** In an app with clients their tables get a column
+`mandant` in a migration of their own, and every query of their stores takes
+`nurZugeordnete`, the log of a reading included. The self-test holds the store of the items to
+that: every query that reads or writes items carries the filter.
+
+**What was checked and what was not.** The self-test runs the pattern in the scaffold's backend
+against a played device whose roles are called differently from the Orin's: two accounts, two
+clients, the foreign item 404 in the list and alone, the management 403 for everybody without
+the role, the rule with the deciders from the mapping, a decision from somebody no longer
+responsible that does not count.
+
+On 26.09.2026 a probe out of the scaffold and this pattern ran on the Orin, in staging, in the
+device's PostgreSQL. Measured with two real account names in the headers the platform sets, asked
+directly at the container, because nobody was released for the probe: each saw only their client,
+the foreign item answered 404 in the list and alone, a submission for a foreign client 404, the
+management 403 for the role `mitarbeiter` and open for `admin`, which the pattern took from the
+contract. A client with only the submitter mapped started no run and said why. A start with a
+decider from the mapping reached the device, and the device refused it with 400, because the
+submitter did not have the app released; that sentence stood at the item. **A run that a mapped
+decider approves was not seen on the device**: it needs a release for two accounts, and so a
+session as administrator. That is the first proof on the customer's device, written into its
+runsheet.
+
 ## What `/app` does with this
 
 In the interview the wish is often small: "a form for the holiday request". Then name what
 lies next to it, once and briefly: the request as a document, a mail when it is decided, a
-lookup in the time-keeping, the tool the office uses anyway, a receipt the device reads. The human says what they want,
+lookup in the time-keeping, the tool the office uses anyway, a receipt the device reads, the
+clients that must not see each other. The human says what they want,
 and the plan names the pattern it uses, so the next one who opens it knows what to look for.
 After `--new` the tool names this sheet for the same reason.
