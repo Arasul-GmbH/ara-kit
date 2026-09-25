@@ -333,6 +333,32 @@ export function movePort(sshArgs, port) {
   return before;
 }
 
+/**
+ * Kommt man per Schlüssel aufs Gerät? Gefragt, bevor der Installer härtet.
+ *
+ * Die Härtung (`scripts/security/haerten.sh`) lässt danach nur noch die
+ * Anmeldung mit Schlüssel zu. Wer bisher per Passwort aufs Gerät kam, sperrt
+ * sich mit der Installation aus. Dass das Kit selbst verbunden ist, beweist das
+ * nicht: `BatchMode` verbietet zwar die Passwortfrage, aber eine offene, mit
+ * Passwort angemeldete Master-Sitzung (`ControlMaster` in `~/.ssh/config`)
+ * trägt jede weitere Verbindung mit. Der Versuch hier lässt darum nur den
+ * Schlüssel zu und öffnet eine eigene Verbindung. SSH nimmt je Option den
+ * ersten Wert, also stehen diese vor der Aufrufzeile des Kits.
+ */
+export const KEY_ONLY = [
+  "-o", "PreferredAuthentications=publickey",
+  "-o", "PasswordAuthentication=no",
+  "-o", "KbdInteractiveAuthentication=no",
+  "-o", "ControlMaster=no",
+  "-o", "ControlPath=none",
+];
+
+export function keyLogin(sshArgs, { run = spawnSync } = {}) {
+  const probe = run("ssh", [...KEY_ONLY, ...sshArgs, "true"], { encoding: "utf8" });
+  const message = String(probe.stderr || "").trim().split("\n").slice(-1)[0] || "";
+  return { ok: probe.status === 0, message };
+}
+
 // --- Der Spiegel -------------------------------------------------------------
 
 export function mirrorState() {
