@@ -338,6 +338,13 @@ door for a device in somebody else's network. Go through the list before the dev
 harden access along `.ara/knowledge/remote-access.md`, everything else on the device with root
 rights. What you caught up on and what stays open you write into the runsheet.
 
+**Before the installer runs, the kit checks that login with a key works.** The hardening lets only
+a key in afterwards, so whoever reached the device with a password until now would be locked out.
+The kit tries a connection of its own that allows nothing but the key, not riding on an open
+session, and stops with one sentence if that fails. Set up the key along
+`.ara/knowledge/remote-access.md`, then call the same command again. When the kit runs on the
+device itself, there is nothing to lock out, and the check falls away.
+
 **When the hardening succeeds, SSH lies on another port afterwards.** The installer says so in a
 warning and in a line of its own, `ARASUL_SSH_PORT=<port>`. The kit reads that line, connects over
 the new port for everything that follows in the same run, and writes it into the file as

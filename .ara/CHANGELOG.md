@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.34.0 (2026-09-25)
+
+Contract: up to 6
+
+- **Before the hardening the kit checks that a key gets in.** The installer hardens SSH so that only a key is let in afterwards. Whoever reached the device with a password until now locked themselves out with the installation. Now `device.mjs --install arasul` first tries a connection of its own that allows nothing but the key and does not ride on an open session, and if that fails it stops with one sentence, before anything goes onto the device. When the kit runs on the device itself, the check falls away. The self-test runs it against a device that only takes a password.
+- **The README names one free token per account**, no longer five per partner, as decided on 28.08.2026.
+
 ## 0.33.0 (2026-09-25)
 
 Contract: up to 6

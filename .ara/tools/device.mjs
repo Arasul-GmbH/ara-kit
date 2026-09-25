@@ -212,6 +212,7 @@ import {
   installCommand,
   installTarget,
   installerEntry,
+  keyLogin,
   licenceRunner,
   listKeys,
   movePort,
@@ -1393,11 +1394,11 @@ function startPassword(ref) {
 /**
  * Der zweite Weg zu einem Gerät mit Arasul: die Plattform ist noch nicht drauf.
  *
- * Fünf Halte, bevor irgendetwas passiert: eine Verbindung, ein unterstütztes
- * Gerät, keine laufende Plattform, Docker, ein Token. Fehlt eines davon, hört
- * das Werkzeug auf und sagt warum, statt eine halbe Installation zu
- * hinterlassen. Reste ohne laufende Plattform sind ein sechster Halt, aber
- * einer mit Weg: --despite-traces geht darüber hinweg.
+ * Sechs Halte, bevor irgendetwas passiert: eine Verbindung, ein unterstütztes
+ * Gerät, keine laufende Plattform, Docker, eine Anmeldung per Schlüssel, ein
+ * Token. Fehlt eines davon, hört das Werkzeug auf und sagt warum, statt eine
+ * halbe Installation zu hinterlassen. Reste ohne laufende Plattform sind ein
+ * siebter Halt, aber einer mit Weg: --despite-traces geht darüber hinweg.
  */
 async function installArasul() {
   if (run.transport === "none") fail(t("Without a connection nothing gets installed.", "Ohne Verbindung wird nichts installiert."));
@@ -1446,6 +1447,17 @@ async function installArasul() {
       t(
         `No Arasul without Docker, the platform runs in containers.\nFirst: ${where} --install docker`,
         `Ohne Docker kein Arasul, die Plattform läuft in Containern.\nErst: ${where} --install docker`
+      )
+    );
+  }
+  // Der Installer härtet SSH, danach geht nur noch der Schlüssel. Wer bisher
+  // per Passwort kam, stünde nach der Installation vor der Tür. Lokal läuft
+  // das Kit am Gerät selbst, dort sperrt die Härtung niemanden aus.
+  if (run.transport === "ssh" && !keyLogin(sshArgs).ok) {
+    fail(
+      t(
+        `The installation hardens SSH to key-only login, and ${label} does not let the kit in with a key, so it stops here: set up a key first (.ara/knowledge/remote-access.md) and call the same command again.`,
+        `Die Installation härtet SSH auf Anmeldung nur mit Schlüssel, und ${label} lässt das Kit nicht mit Schlüssel herein, darum hält es hier an: erst einen Schlüssel einrichten (.ara/knowledge/remote-access.de.md), dann denselben Befehl noch einmal.`
       )
     );
   }

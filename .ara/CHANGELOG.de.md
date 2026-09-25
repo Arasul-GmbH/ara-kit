@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.34.0 (2026-09-25)
+
+Kontrakt: bis 6
+
+- **Vor der Härtung prüft das Kit, dass ein Schlüssel hereinkommt.** Der Installer härtet SSH so, dass danach nur noch ein Schlüssel hereinkommt. Wer bisher mit Passwort aufs Gerät kam, sperrte sich mit der Installation aus. Jetzt versucht `device.mjs --install arasul` zuerst eine eigene Verbindung, die nichts als den Schlüssel zulässt und nicht auf einer offenen Sitzung mitfährt, und hält mit einem Satz an, wenn das nicht geht, bevor irgendetwas aufs Gerät geht. Läuft das Kit am Gerät selbst, entfällt die Prüfung. Der Selbsttest spielt das an einem Gerät durch, das nur ein Passwort annimmt.
+- **Das README nennt einen kostenlosen Token je Konto**, nicht mehr fünf je Partner, wie am 28.08.2026 beschlossen.
+
 ## 0.33.0 (2026-09-25)
 
 Kontrakt: bis 6

@@ -358,6 +358,14 @@ Liste durch, bevor das Gerät ausgeliefert wird: Zugang härten nach
 `.ara/knowledge/remote-access.de.md`, alles andere am Gerät mit Root-Rechten. Was du geholt
 hast und was offen bleibt, schreibst du in den Laufzettel.
 
+**Bevor der Installer läuft, prüft das Kit, dass die Anmeldung mit Schlüssel geht.** Die
+Härtung lässt danach nur noch den Schlüssel herein, wer bisher mit Passwort aufs Gerät kam,
+stünde vor der Tür. Das Kit versucht eine eigene Verbindung, die nichts als den Schlüssel
+zulässt und nicht auf einer offenen Sitzung mitfährt, und hält mit einem Satz an, wenn das
+nicht geht. Den Schlüssel richtest du nach `.ara/knowledge/remote-access.de.md` ein, dann
+denselben Befehl noch einmal. Läuft das Kit am Gerät selbst, gibt es nichts auszusperren,
+und die Prüfung entfällt.
+
 **Gelingt die Härtung, liegt SSH danach auf einem anderen Port.** Der Installer sagt das in
 einer Warnung und in einer eigenen Zeile, `ARASUL_SSH_PORT=<port>`. Das Kit liest diese
 Zeile, verbindet sich für alles Weitere im selben Lauf über den neuen Port und schreibt ihn

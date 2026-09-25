@@ -91,7 +91,9 @@ import {
   findKeys,
   installCommand,
   installTarget,
+  KEY_ONLY,
   installerEntry,
+  keyLogin,
   mirrorState,
   movePort,
   releaseVersion,
@@ -5018,6 +5020,65 @@ await checkAsync("Ein geänderter SSH-Port landet in der Akte, der nächste Befe
     assert(/ARASUL_SSH_PORT=/.test(wissen), `.ara/knowledge/${blatt} sagt nichts über den Portwechsel`);
   }
   return "ARASUL_SSH_PORT=2222 aus dem Installer, ssh_port 2222 in der Akte, remote.mjs verbindet über 2222";
+});
+
+check("Vor der Härtung prüft das Kit, dass der Schlüssel hereinkommt", () => {
+  // Der Installer härtet SSH, danach geht nur noch der Schlüssel. Wer bisher mit
+  // Passwort aufs Gerät kam, sperrte sich mit der Installation aus. Die Prüfung
+  // muss eine eigene Verbindung sein: eine offene Master-Sitzung, mit Passwort
+  // angemeldet, trüge sonst auch die Probe des Kits.
+
+  // 1. Die Probe selbst: nur der Schlüssel, keine geteilte Sitzung, und die
+  // Optionen vor der Zeile des Kits, weil SSH je Option den ersten Wert nimmt.
+  let gerufen;
+  const zeile = ["-o", "BatchMode=yes", "-p", "22", "probe@10.0.0.9"];
+  let probe = keyLogin(zeile, { run: (bin, args) => ((gerufen = args), { status: 0, stderr: "" }) });
+  assert(probe.ok, "eine gelungene Anmeldung gilt nicht");
+  for (const option of ["PreferredAuthentications=publickey", "PasswordAuthentication=no", "ControlPath=none"]) {
+    assert(gerufen.indexOf(option) > -1 && gerufen.indexOf(option) < gerufen.indexOf("BatchMode=yes"), `${option} fehlt oder steht hinter der Zeile des Kits`);
+  }
+  assert(gerufen.at(-1) === "true" && gerufen.at(-2) === "probe@10.0.0.9", `die Probe tut mehr als sich anmelden: ${gerufen.slice(-2)}`);
+  probe = keyLogin(zeile, { run: () => ({ status: 255, stderr: "probe@10.0.0.9: Permission denied (password).\n" }) });
+  assert(!probe.ok && /Permission denied/.test(probe.message), "eine abgelehnte Anmeldung gilt");
+
+  // 2. Am Werkzeug: ein unterstütztes Gerät, das nur ein Passwort annimmt. Die
+  // Attrappe von ssh lässt jede Verbindung durch, außer der, die nur den
+  // Schlüssel zulässt, und schreibt mit, was gerufen wurde.
+  const name = "selftest-haertung";
+  const home = mkdtempSync(join(tmpdir(), "ara-haertung-"));
+  const fake = join(home, "bin");
+  mkdirSync(fake, { recursive: true });
+  const befund = join(home, "befund.txt");
+  const protokoll = join(home, "ssh.log");
+  writeFileSync(befund, ATTRAPPEN.thor.replace("@done=ja", "@docker_bin=/usr/bin/docker\n@docker_server=27.0\n@done=ja") + "\n");
+  writeFileSync(
+    join(fake, "ssh"),
+    `#!/bin/sh\necho "$*" >> ${JSON.stringify(protokoll)}\n` +
+      `case "$*" in *PreferredAuthentications=publickey*) echo "probe@10.0.0.9: Permission denied (password)." >&2; exit 255 ;; esac\n` +
+      `cat >/dev/null\ncat ${JSON.stringify(befund)}\n`,
+    { mode: 0o755 }
+  );
+  const spiegel = attrappenSpiegel({ "thor-128": "emulation" });
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  try {
+    const env = { PATH: `${fake}:${process.env.PATH}`, ARA_MIRROR: spiegel };
+    const run = tool("device.mjs", ["--host", "10.0.0.9", "--user", "probe", "--name", name, "--install", "arasul"], "", env);
+    assert(run.status !== 0, `trotz Passwort-Zugang wurde installiert: ${run.stdout}`);
+    const satz = run.stderr.trim();
+    assert(/nur mit Schlüssel/.test(satz) && /hält es hier an/.test(satz), `unerwartete Begründung: ${satz}`);
+    assert(satz.split("\n").length === 1, `mehr als ein Satz: ${satz}`);
+    const aufrufe = readFileSync(protokoll, "utf8").trim().split("\n");
+    assert(aufrufe.some((a) => /sh -s$/.test(a)), "das Gerät wurde gar nicht geprüft, das Urteil stammt woanders her");
+    assert(aufrufe.length === 2, `nach der abgelehnten Probe ging noch etwas ans Gerät: ${aufrufe.join(" | ")}`);
+    return "Probe nur mit Schlüssel, ein Satz, nichts ans Gerät";
+  } finally {
+    rmSync(join(ROOT, "devices", name), { recursive: true, force: true });
+    rmSync(home, { recursive: true, force: true });
+    rmSync(spiegel, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
 });
 
 await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {
