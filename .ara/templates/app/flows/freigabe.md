@@ -2,34 +2,31 @@
 name: freigabe
 beschreibung: Holt zu einem Vorgang von {{name}} die Entscheidung eines Menschen ein und schreibt sie in einem Satz auf.
 argumente:
-  - name: sache
+  - name: vorgang
     typ: freitext
     pflicht: true
-    beschreibung: Worum es geht, der Titel des Vorgangs
+    beschreibung: Die Nummer des Vorgangs in {{name}}
   - name: von
     typ: freitext
     pflicht: true
-    beschreibung: Wer den Vorgang eingereicht hat
-  - name: text
-    typ: freitext
-    beschreibung: Was dazu geschrieben wurde
-    standard: ohne Angabe
+    beschreibung: Das Konto, das den Vorgang eingereicht hat
 werkzeuge: [freigabe_anfordern]
 schritte:
   - name: entscheiden
     typ: werkzeug
     werkzeug: freigabe_anfordern
     parameter:
-      titel: "{{name}}: {{sache}} von {{von}}"
+      titel: "{{name}}: Vorgang {{vorgang}} von {{von}}"
       zusammenhang: >-
-        {{von}} hat in {{name}} den Vorgang "{{sache}}" eingereicht. Dazu steht:
-        {{text}}. Bitte bestätigen oder mit einer Begründung ablehnen. Wer
-        entscheiden darf, steht am Gerät und nicht in dieser Datei.
+        {{von}} hat in {{name}} den Vorgang {{vorgang}} eingereicht. Was darin
+        steht, liest du in {{name}} unter dieser Nummer, bevor du entscheidest.
+        Bitte bestätigen oder mit einer Begründung ablehnen.
       frist_minuten: 1440
 grenzen:
   zeitlimit_s: 300
 ---
 
-Über den Vorgang "{{sache}}" von {{von}} ist entschieden worden. Schreibe genau
+Über den Vorgang {{vorgang}} von {{von}} ist entschieden worden. Schreibe genau
 einen Satz darüber, wer entschieden hat und wie; der Schritt „entscheiden" nennt
 beides. Keine Anrede, keine Erfindungen, keine Empfehlung.
+
