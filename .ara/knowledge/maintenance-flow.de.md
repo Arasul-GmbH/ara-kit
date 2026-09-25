@@ -118,10 +118,11 @@ Befehl hat: es hat einen Schlüssel mit `app:deploy` und keine Sitzung als Admin
 Der übliche Weg ist die Oberfläche, im Browser am Gerät. **Ohne Browser geht es über die
 Verwaltungsschnittstelle der Plattform**, mit einem Ausweis in der Kopfzeile
 (`Authorization: Bearer`). Weg, Rumpf und der Weg zum Token stehen im Artefakt, nicht im
-Kit: Admin-Handbuch und API-Referenz, beide im Spiegel.
+Kit: Admin-Handbuch und API-Referenz, beide im Spiegel und am Gerät selbst.
 
 ```
 node .ara/tools/mirror.mjs --docs
+node .ara/tools/mirror.mjs --docs --device <gerät>
 ```
 
 Der ganze Ablauf mit der Form des Aufrufs steht in `.ara/knowledge/device.de.md` unter

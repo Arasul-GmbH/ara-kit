@@ -52,8 +52,11 @@ Asking goes on until every point is answered or explicitly left open. What stays
 | **Which data** | What goes in, what stays, what goes out. Name personal data explicitly |
 | **The steps** | The sequence from the point of view of the human in front of it, one step per line |
 | **Where a flow is needed** | Where a language model really does the work. What only shifts data back and forth is a program and not a flow |
-| **Where a human decides** | Every place where a run should stop and wait for an approval, and what the human has to see while doing it |
-| **Which shape it takes** | A form is rarely all of it: a document shown on the device, a mail when something is decided, a lookup in a foreign system, a foreign tool behind the login. The five patterns with code that runs stand in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
+| **Where a human decides** | Every place where a run should stop and wait for an approval, who decides there and who explicitly does not, the submitter for instance |
+| **Who may see what** | Who gets into the app the device decides. Whether everybody inside sees everything or only their clients, departments, files, the app decides, and that stands in the plan. See "Visibility inside an app" |
+| **What has to stay** | What has to survive a new version, a switch and a year, and what of it gets checked or proven. See "Data that stays" |
+| **Which professional standards apply** | An export format, a chart of accounts, a retention rule. They come from their primary source, with the date of retrieval, see "Professional standards" |
+| **Which shape it takes** | A form is rarely all of it: a document shown on the device, a mail when something is decided, a lookup in a foreign system, a foreign tool behind the login. The six patterns with code that runs stand in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | That decides the construction. Something that gets checked is an afternoon. Something that may never be wrong is a project |
@@ -124,9 +127,11 @@ asking, even if you deployed it yourself a minute ago. The procedure with everyt
 to it stands in `.ara/knowledge/deploy.md`.
 
 **What the app gets from the device the kit hands over at deploy.** Under which names the device
-puts the address of the interface and the key into the container, in which header the key travels,
-which ways it carries for a flow: all of that is agreed between kit and product, stands in this one
-device's contract, and goes into the package as `backend/arasul.json`. `--check` prints it
+puts the address of the interface, the key and the address of its database into the container, in
+which header the key travels, what the two login headers are called, which ways it carries for a
+flow and for reading a document, and whether a run takes its submitter and a rule for its approval:
+all of that is agreed between kit and product, stands in this one device's contract, and goes into
+the package as `backend/arasul.json`. `--check` prints it
 beforehand and names what this device does not promise. **An app never writes those values into its
 own source.** One that does finds nothing on a device that names them differently, takes that for
 "no Arasul here" and collects items nobody decides on. That is what happened to the scaffold up to
@@ -138,7 +143,12 @@ Whoever calls up the staging slot without a release gets a 403, and that is the 
 and not the app. `--deploy` says so at the end and names the two ways to an administrator: a
 session out of the start password, if one lies in the store (`--admin-login`), otherwise a human in
 the device's interface. Which route or which page the release goes stands in the artifact's API
-reference and admin handbook, `node .ara/tools/mirror.mjs --docs`, and never in the kit.
+reference and admin handbook, and never in the kit. Both lie on every device with Arasul, in the
+version that runs there, and the kit reads them there, without a token and without a mirror:
+`node .ara/tools/mirror.mjs --docs --device <device>`, one of them with `--read <path>`. With a
+mirror, `node .ara/tools/mirror.mjs --docs` works as well. If manual and contract contradict each
+other, the contract holds: it comes from the running backend, the manual from the artifact the
+device was installed with.
 
 **Say that before the deploy, not after it.** Somebody who is shown a screen with a 403 on it takes
 the kit for broken. Somebody who knows beforehand that a release is still to come waits for it.
@@ -148,6 +158,12 @@ lies in staging only. Somebody released for the live version alone does not see 
 stands and the overview stays empty, which is the most confusing of all states. So the release has
 to mean staging. What it is called there stands in the admin handbook and not here. A foreign test
 on 29.08.2026 got stuck at exactly that point, with the tick set.
+
+**Staging and live each have their own database.** Whoever switches live does not take the data
+of staging along: the live version starts empty the first time and afterwards keeps its own over
+every version. Say that before the first switch, or the person from the business side wonders
+about an empty app. What has to be there live from the start, clients for instance, somebody
+creates there, or the app brings it along as a migration.
 
 After the switch: one line into the customer's history or into the device's runsheet, and write on
 the app's README. It is the state as it is, in the words of whoever uses the app: what it can do
@@ -228,12 +244,169 @@ When you check that, check it in both themes and in both widths: 390 for the pho
 desk. Below 900 pixels the sidebar becomes a sheet over the page and a data list becomes a card
 list, and a page that scrolls sideways there is broken.
 
+## A professional app: data that stays, clients, four eyes, receipts
+
+A tax office, a practice, an office with files: there the scaffold's item is not enough. At six
+places an agent without this sheet takes a wrong turn, found in a foreign test on 25.09.2026 in
+which an outside agent built an app for a tax office's receipts with nothing but the kit. The six
+sections here are the answers.
+
+### Data that stays
+
+**Exactly one place lasts: the database the device gives the app.** The contract says so under
+`daten`, and `--contract` prints it word for word. An app with a backend gets its own PostgreSQL
+per slot, its address stands in the environment value the contract names under
+`umgebung.datenbank`, and the kit writes that name into `arasul.json`. It survives every deploy,
+every switch and every restart, and the device backs it up every night, per app and slot. How the
+data of a single app comes back the contract names under `daten.wiederherstellen`; an
+administrator does that.
+
+**What does not stay:** the container's file system, a `VOLUME` from the Dockerfile included. The
+device replaces the container at every deploy. A SQLite file, a folder of uploaded files, a log on
+disk: gone after the next update. An uploaded file belongs in a column (`BYTEA`), as in the
+documents pattern. Removing the app throws its databases away, the backups of them stay.
+
+**The scaffold does this already.** `backend/ablage/db.mjs` reads the name from the arrangement
+and opens the device's database; if the arrangement names one and the value is empty, the app
+does not start, instead of writing into a file silently. Without a device it takes SQLite, and
+`GET /lage` then says `dauerhaft: false`. How you see on the device that it holds: `--check` says
+"A database of its own comes along", and at start the container's log says it lies in the
+device's database.
+
+**The database starts empty**, and the app creates the schema itself, with its migrations.
+Staging and live each have their own, see above under "Onto a device with Arasul".
+
+Measured on 25.09.2026 on the Orin with a probe out of the scaffold and the patterns documents and
+reading a document: three migrations ran in the device's PostgreSQL; after deploying the next
+version the receipts and the log were still there, a file in the container was gone; the live
+slot started with a database of its own, empty.
+
+### Visibility inside an app
+
+Two questions, and they have two answers:
+
+1. **Who gets in?** The device decides that. It delivers an app only to the one it is released
+   for, per app and slot. A check in the app does not replace that.
+2. **What does somebody see inside?** The app decides that. The device knows no clients,
+   departments or files, and it should not know them.
+
+The app knows who is there: in front of the container the platform sets two headers, user name
+and role, and deletes whatever came from outside. **Their names stand in `arasul.json` under
+`koepfe`**, and the scaffold reads them with `geraet.angemeldet(anfrage.headers)`. Write no header
+name into the source; the self-test holds scaffold and patterns to that.
+
+**A mapping in the app is allowed**: a table of which account sees which client, keyed by the user
+name from the header. That is not a second login, because nobody logs in to the app: there is no
+password, no account the app creates, no name somebody types into a form. The app may evaluate
+the role from the header, for instance so that only an administrator maintains mappings. What an
+administrator sees in the app the plan decides, not the role alone.
+
+**Where the names come from.** An app's key cannot list the device's accounts. So the app
+remembers every name it sees in the header, with the first and the last time, and whoever
+maintains mappings chooses among those. A name that no longer exists on the device lets nobody
+in: it stays in the list and is shown as not seen for a long time.
+
+**Enforced in the store, at every query**, not in the interface: the list, the single thing, its
+file, the export, the routes in the field `agent`. A foreign thing answers with 404 and not with
+403, otherwise the answer gives away that it exists. It is checked with two accounts and two
+clients: every route once as the one who may see nothing. A foreign test on 25.09.2026 found every
+route of the app tight that way and exactly one gap outside of it, the approval card; the next
+section closes it.
+
+### Approvals in a professional app
+
+Without a rule **everybody the app is released for** decides about an approval, and every one of
+them sees the card with its text, also for a client who is not theirs. Since 25.09.2026 the
+contract names under `freigaben` how an app draws the circle narrower when it starts a run, never
+wider:
+
+- **`einreicher`**: the user name from the header, who triggers the run.
+- **`freigabe.ohne_einreicher: true`**: four eyes, the submitter does not decide.
+- **`freigabe.entscheider`**: either `{"rolle": "admin"}` or `{"konten": [...]}`. Only these people
+  see and decide the request, everybody else does not see it and gets a 403 when deciding.
+
+The exact rules stand in the contract, `--contract` prints them word for word. **For a
+professional app that means:** the deciders come from the mapping, the accounts mapped to this
+item's client, and the submitter is excluded. If nobody remains, the device refuses the start with
+400 instead of creating a request that runs into its deadline, and the app shows that sentence at
+the item. That is a case for the plan: who decides when only one person is mapped to a client?
+
+**References belong in the request's text, no content**: "receipt 17, submitted by anna", not the
+amount, the client's name and the booking text. What a run gets lies on the device with every
+run; what stands in the receipt lies in the app and follows its visibility. Whoever decides reads
+the receipt in the app under its number. The scaffold does this already: its flow gets the item's
+number and the submitter, nothing else.
+
+**How the scaffold carries it.** `arasul.json` says under `freigaben` whether this device takes
+submitter and rule; a device from before refuses a start with a field it does not know, so the
+scaffold sends them only then. The submitter it always sends when the device knows it. The rule is
+returned by `regel` in the core, out of the item; `VIER_AUGEN` in `server.mjs` switches the
+exclusion of the submitter on. If an item demands a rule and the device takes none, no run starts,
+and the item says why: an approval anybody could see would be worse than none.
+
+### Reading documents and images
+
+The device reads a document into fields: the app sends the file and a JSON schema, the device takes
+the text out and lets a language model fill the fields. **The way stands in `arasul.json` under
+`wege.dokument_auslesen`**, written from the contract; the app never writes it into its source. The
+pattern with code that ran on the Orin is number 6 in `.ara/knowledge/app-patterns.md`, under
+`.ara/templates/app-patterns/extract/`.
+
+**Photos and scanned PDFs.** If a PDF has a text layer, the device reads it directly. A photo or a
+scanned PDF goes through the device's text recognition, and the answer says whether it ran; the
+pattern writes that into the log. **The model then sees the recognised text, not the image.** How
+good a field becomes is therefore decided by the text recognition: a crooked, blurred photo,
+handwriting, a stamp over the figure cost fields. Measured on 25.09.2026 on the Orin: an invented
+receipt as a PDF with a text layer, six of six fields in 35 seconds; an invented fuel receipt as a
+photo, text recognition ran, six of six fields in 13 seconds.
+
+**Whether an image model is loaded does not matter for this way**, because it gives no image to a
+model. Read on 25.09.2026 in the contract of version 6: none of its endpoints gives an image to a
+model, and `GET /models` names the models on the device, but not which one understands images.
+Whether that still holds, `--contract` says on the device in question. Which models lie there and
+what they are meant for the models page in the device's interface shows, and the admin handbook
+says where; over SSH you ask with `remote.mjs`. **Promise a customer no image understanding**, no
+handwriting, no photo of goods, before you have seen it on their device.
+
+**Which model reads, the answer says** (`model`), and that belongs in the log. The app names none
+and takes the device's default. **The field `modelle` in `app.json` is a demand, not a delivery**:
+the device installs no model, at the deploy it says which one is missing. Empty, as in the
+scaffold, means: the app needs none by name. Enter there only what the app or a flow calls by name
+explicitly.
+
+**The model suggests, the app checks, a human decides.** What comes back the app holds against the
+schema and against its professional rules, an account that does not exist in the chart of
+accounts, a tax rate that does not fit, and writes every finding onto the reading. Every reading is
+a new row in the log, with model, duration, text recognition and who triggered it; none gets
+changed. Reading waits until the model has answered, half a minute is normal, several minutes it
+is when the model gets loaded first. The app's key needs the scope the contract names at the
+endpoint; if it is missing, the device answers 403, and that is a decision of the administrator.
+
+### Professional standards
+
+An export format like the DATEV booking batch (EXTF), a chart of accounts like SKR03, the GoBD,
+XRechnung: **those are not product values**, and the rule "not the internet" from
+`.ara/knowledge/live-knowledge.md` does not hold for them. They stand neither in the contract nor
+on the device, and the kit does not carry them. They come from their **primary source**: the
+publisher's developer documentation or help centre, the letter of the Federal Ministry of Finance,
+the standard. **With address and date of retrieval**, in the plan and in the header of the file
+that writes the format. A secondary source, a repository on GitHub, a blog, is good for reading
+against and is named as such.
+
+What could not be checked that way stands as an assumption in the plan: a check program of the
+publisher that was not at hand, a column two sources spell differently. **Before switching live**
+a sample file goes to whoever processes it, the tax adviser with their import for instance, and
+their answer is the proof. A check script for the format belongs in the app and runs at every
+export in staging. What is promised to a customer is not "GoBD compliant" and not "DATEV
+certified", but what the app does: which format, which version, traceable by what.
+
 ## What the scaffold already is
 
 The clone brings no app. What an app looks like stands in the scaffold under
 `.ara/templates/app/`, and what `--new` makes out of it runs from the first minute: an item is
-filed, the backend starts the flow `freigabe`, the flow stops at its approval step, a human decides
-in Arasul, and afterwards the item stands as approved or rejected, with the name of the one who
+filed and lies in the device's database, the backend starts the flow `freigabe` with the item's
+number and its submitter, the flow stops at its approval step, a human decides in Arasul, and
+afterwards the item stands as approved or rejected, with the name of the one who
 decided and the sentence the flow wrote. Without Arasul the item is accepted and stays without a
 decision, and the page says so.
 
@@ -276,10 +449,16 @@ every case can be checked without having a database and a device. One store per 
 the only SQL for it. A second entity gets a second such file and not a second way to call the
 database.
 
-The store is SQLite out of Node itself, without a package next to it, and its state stands inside it:
-a migration that has run does not run again. Under `backend/ablage/migrationen/` lies one file per
-step, and **what has run once never gets touched again**: whoever changes it changes the past of
-databases that already exist.
+The store is **on the device the database the device gives the app**, PostgreSQL, reached through
+`pg`, the backend's one dependency. **Without a device it is SQLite out of Node itself**: in the
+self-test, on your own computer, over `--compose`. There is one SQL and not two: it is written the
+way PostgreSQL speaks it, with `$1` as placeholder, and `ablage/db.mjs` translates exactly two
+things for SQLite, the placeholders and a table's running number. Three rules follow from that:
+times stand as text in ISO format, JSON stands as text and the store converts it, bytes stand as
+`BYTEA`. The database's state stands inside it, in the table `migrationen`: a migration that has
+run does not run again. Under `backend/ablage/migrationen/` lies one file per step, and **what has
+run once never gets touched again**: whoever changes it changes the past of databases that already
+exist.
 
 ## What you do not do while doing this
 
@@ -287,15 +466,17 @@ databases that already exist.
   contract. That holds for an app too: ask `--contract`, do not guess. In the source of an app that
   holds twice over: what it needs of them it gets in `backend/arasul.json`, and what is not in there
   it does not have. A value it guesses turns into a silent nothing at runtime.
-- **Do not invent a second store.** A data folder of its own per app is not provided for on the
-  device yet. That is why the scaffold's database lies in the container's writable layer: it
-  survives a restart and **not the next deploy**. That belongs in the README and in the
-  conversation, before somebody notices it. An app that puts a database of its own next to it would
-  have a second store beside the one the product will provide later.
+- **Do not invent a second store.** Exactly one place lasts, the database the device gives the
+  app. No file in the container, no upload folder, no `VOLUME` in the Dockerfile, no database the
+  app puts next to it: all of that is gone after the next deploy. See "Data that stays".
 - **No login of your own.** Who is logged in, the platform says: to the interface under `api/me`, to
   the backend over the headers in front of the container. A field in a form somebody types a name
-  into is not a login. The role stands there and decides nothing: **what a human may do the device
-  decides**, it delivers an app only to the one it is shared with.
+  into is not a login, and a password in the app is a second one. **Who gets in, the device
+  decides. What somebody sees inside, the app decides**, by the name and the role from the
+  headers; a mapping of accounts to clients is allowed and no second login. See "Visibility inside
+  an app".
+- **No content in the approval request.** Everybody in the circle of deciders sees the card, and
+  the run lies on the device. References belong in the request, the content stays in the app.
 - **No approval the app grants itself.** It reads its state and does not decide. Deciding happens
   in Arasul, by a human to whom the app is shared.
 - **Deploy nothing you have not checked.** First `--check`, then `--deploy`.

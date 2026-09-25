@@ -107,8 +107,9 @@ through. Read it instead of repeating the call.
 released for; without a release the address answers with a 403. The kit cannot give it: its key
 carries `app:deploy`. An administrator does, in the interface or over a session out of the start
 password (`node .ara/tools/device.mjs --name <device> --admin-login`). Which route or which page
-that is stands in the artifact's API reference and admin handbook, `node .ara/tools/mirror.mjs
---docs`. `--deploy` names both ways at the end of its output.
+that is stands in the artifact's API reference and admin handbook, read on the device with
+`node .ara/tools/mirror.mjs --docs --device <device>`. `--deploy` names both ways at the end of its
+output.
 
 ## Going live and back
 
@@ -121,6 +122,12 @@ node .ara/tools/app.mjs --device <device> --app <id> --back     the version befo
 **A human switches live.** Ask beforehand, even if you deployed it yourself a minute ago: from
 that moment on people work with it. That is a level 2 intervention, see
 `.ara/knowledge/security.md`.
+
+**Staging and live each have their own database.** Switching takes the version along, not the
+data: the live slot starts with an empty database the first time and afterwards keeps its own over
+every version, also over `--back`. What was entered in staging stays there. Say that before the
+first switch, and plan what has to be there live from the start: somebody creates it there, or the
+app brings it along as a migration. Measured on 25.09.2026 on the Orin. `--status` says so as well.
 
 `--back` is a **swap**, not a one-way street: what was live becomes the previous version, a
 second `--back` stands at the start again. Exactly in the case where somebody switches back in a
@@ -136,7 +143,8 @@ node .ara/tools/app.mjs --device <device> --app <id> --remove --confirm <id>
 ```
 
 **Level 3, irreversible.** Both containers fall together with their volumes, both slots, all
-permissions and the app's keys. Without the id typed out nothing happens, and the tool says
+permissions, the app's keys and its two databases; the nightly backups of them stay on the device,
+and an administrator brings them back, as the contract says under `daten`. Without the id typed out nothing happens, and the tool says
 beforehand exactly what falls. Say it to the human in the same words and get an explicit yes
 before you type it.
 

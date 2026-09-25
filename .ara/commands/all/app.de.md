@@ -35,9 +35,15 @@ alles aufzuzählen, was ginge.
 die Prüfliste steht im Verfahren. Ist der Wunsch klein, ein Formular, nenn einmal, was
 daneben liegt: ein Dokument, das am Gerät angesehen wird, eine Mail, wenn etwas entschieden
 ist, ein Nachschlagen in einem fremden System, ein fremdes Werkzeug hinter der Anmeldung.
-Die fünf Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und
+Die sechs Muster mit Code, der läuft, stehen in `.ara/knowledge/app-patterns.de.md`, und
 der Plan nennt das, das er benutzt. Erst danach `--new` und der erste Plan. Was offen
 geblieben ist, steht als Annahme im Plan und wird beim nächsten Mal vorgelesen.
+
+**Ist es eine Fach-App**, mit Mandanten oder Akten, Daten, die Jahre halten müssen, Belegen,
+die das Gerät lesen soll, einer Freigabe, die nicht der Einreicher gibt, oder einem
+Exportformat eines anderen Herstellers: lies in `.ara/knowledge/app.de.md` den Abschnitt „Eine
+Fach-App“, bevor der Plan entsteht. Er hat sechs Teile, und jeder davon gehört als Antwort oder
+als Annahme in den Plan.
 
 **Ist ein Plan aktiv**, geh zuerst seine Annahmen durch, dann bau, was darin steht, dann
 `--build`. Der Bau ist das Paket, nicht die laufende App: was sie tut, sieht man am Gerät.
@@ -54,7 +60,7 @@ des Teststands mit einer 403. Freigeben kann das Kit sie nicht, sein Schlüssel 
 `app:deploy`. `--deploy` nennt am Ende seiner Ausgabe die zwei Wege zu einem Administrator:
 eine Sitzung aus dem Startpasswort, oder ein Mensch in der Oberfläche des Geräts. Lies vor,
 was dort steht, und nenn keine eigene Seite und keinen eigenen Weg: die stehen im Artefakt,
-`node .ara/tools/mirror.mjs --docs`.
+und das liest das Kit am Gerät, auch ohne Token: `node .ara/tools/mirror.mjs --docs --device <gerät>`.
 
 **Auf einem Gerät ohne Arasul** geht `--compose` über SSH. Sag vorher, was dabei fehlt,
 mit denselben Worten, die das Werkzeug hinterher ausgibt: keine Anmeldung, kein Flow,

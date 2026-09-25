@@ -89,7 +89,7 @@ abgeschrieben.** Drei Stufen, und sie bedeuten Verschiedenes:
 
 | Funktionsbereich | Reifegrad | Anmerkung |
 | --- | --- | --- |
-| Anmeldung, Nutzer und Rollen | {Stufe} | ein Administratorzugang je Gerät, siehe Abschnitt 4 |
+| Anmeldung, Nutzer und Rollen | {Stufe} | ein Konto je Person, Rollen Administrator und Mitarbeiter, Freigabe je App, siehe Abschnitt 4 |
 | Chat mit lokalen Sprachmodellen | {Stufe} | Modell, Antwortzeit und Ausgabequalität siehe Abschnitt 5 |
 | Modellkatalog, Modelle laden und entfernen | {Stufe} | Bezug über huggingface.co, siehe Abschnitt 7 |
 | Dokumentenablage und Dokumentensuche | {Stufe} | |
@@ -109,9 +109,13 @@ abgeschrieben.** Drei Stufen, und sie bedeuten Verschiedenes:
 Diese Liste ist Teil der Beschaffenheitsvereinbarung. Was hier steht, ist nicht
 geschuldet, auch wenn es technisch vorhanden erscheint.
 
-- **Mandantentrennung innerhalb eines Gerätes.** Das Gerät wird mit einem
-  Administratorzugang betrieben. Wer mehrere Mandanten getrennt halten muss,
-  benötigt mehrere Geräte
+- **Eine Mandantentrennung durch das Gerät.** Jede Person arbeitet mit einem
+  eigenen Konto, und welche App sie sieht, gibt ein Administrator je App frei.
+  Innerhalb einer App trennt das Gerät nicht nach Mandanten; eine solche Trennung
+  ist nur geschuldet, wenn die Beschreibung dieser App sie ausdrücklich nennt.
+  Wer als Administrator oder über den Wartungszugang auf das Gerät zugreift,
+  kann die Daten aller Apps erreichen. Wer Mandanten auch gegenüber diesem
+  Personenkreis getrennt halten muss, benötigt mehrere Geräte
 - **Eine bestimmte Verfügbarkeit**, Reaktionszeit, Wiederherstellungszeit oder
   Antwortzeit
 - **Eine bestimmte Ausgabequalität** oder die inhaltliche Richtigkeit einer

@@ -577,13 +577,17 @@ with the start password too, with the device next to it. Values never stand ther
 ### Route and body stand in the artifact
 
 What you then call with the session does not stand in the kit but in the artifact. The mirror brings
-the manuals that belong to exactly this version:
+the manuals that belong to exactly this version, and the device itself carries them too, in the
+version that runs there. On the device the kit reads them without a token, also when somebody
+else installed it:
 
 ```
 node .ara/tools/mirror.mjs --docs
+node .ara/tools/mirror.mjs --docs --device <device>
+node .ara/tools/mirror.mjs --docs --device <device> --read <path>
 ```
 
-Two of them you need here, and both lie under `.ara/mirror/`:
+Two of them you need here, under `.ara/mirror/docs/` or under `docs/` on the device:
 
 - **The admin handbook**, chapters on employees and on permissions. It says what an employee is,
   what a permission allows and in which order both are created.

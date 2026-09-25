@@ -3684,14 +3684,14 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
 /** Der Ordner der Muster, und die Vorlage daneben. */
 const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
 
-check("Das Wissen kennt fünf Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+check("Das Wissen kennt sechs Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
-  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt fünf Muster, und
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt sechs Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
   for (const blatt of [".ara/knowledge/app-patterns.md", ".ara/knowledge/app-patterns.de.md"]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
-    for (const nummer of [1, 2, 3, 4, 5]) {
+    for (const nummer of [1, 2, 3, 4, 5, 6]) {
       assert(new RegExp(`^## ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
@@ -3713,7 +3713,7 @@ check("Das Wissen kennt fünf Muster jenseits des Formulars, und jeder Verweis t
   ]) {
     assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
   }
-  return "fünf Muster, beide Fassungen, Befehl, Prüfliste und --new";
+  return "sechs Muster, beide Fassungen, Befehl, Prüfliste und --new";
 });
 
 check("Die Vorlage trägt die Dokumentanzeige, und das Muster Dokumente benutzt sie richtig", () => {

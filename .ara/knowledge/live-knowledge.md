@@ -59,6 +59,15 @@ node .ara/tools/mirror.mjs --refresh   # fetch again
 **It comes into being at the installation** (`/device` with `--install arasul`) and not
 otherwise. Without a token no artifact, then you say so and carry on without product statements.
 
+**The manuals are on the device too.** A device with Arasul carries the folder it was installed
+from, `docs/` included, in the version that runs there. The kit reads them over SSH, without a
+token and without a mirror, also on a device somebody else installed:
+
+```
+node .ara/tools/mirror.mjs --docs --device <device>                  # which manuals lie there
+node .ara/tools/mirror.mjs --docs --device <device> --read <path>    # one of them
+```
+
 What you look up there:
 
 | Question | Where in the artifact |
@@ -66,7 +75,7 @@ What you look up there:
 | Which devices does the product know, with what key data? | `config/platforms/*.json` |
 | What is used to install, and what is the entry point called? | `arasul-release.json` |
 | How does the setup run, which steps are there? | `scripts/` and the command line tools in the root directory |
-| What does the product documentation say? | `docs/`, listed by `mirror.mjs --docs` |
+| What does the product documentation say? | `docs/`, listed by `mirror.mjs --docs`, on the device by `mirror.mjs --docs --device <device>` |
 | How do you create an employee, how do you share an app? | Admin handbook and API reference, both under `docs/` |
 | Which version is this, where does it come from? | `.ara/mirror/STATE.json` |
 
@@ -83,7 +92,15 @@ There is no fourth source. In particular:
 
 - **Not your memory.** Even when you are sure.
 - **Not an older note in the kit** or in a customer folder. Notes record what was the case then.
-- **Not the internet.** Public guides describe other systems.
+- **Not the internet.** Public guides describe other systems. That holds for product values:
+  models, ports, paths, commands, versions of Arasul.
+
+**Professional standards are no product values.** The DATEV booking batch, a chart of accounts
+like SKR03, the GoBD, XRechnung: they stand neither in the contract nor on the device, and they
+come from their primary source, the publisher's documentation, the ministry's letter, the
+standard, cited with address and date of retrieval. A secondary source serves for reading against
+and is named as such. How that goes in an app stands in `.ara/knowledge/app.md` under
+"Professional standards".
 
 ## When no source is available
 

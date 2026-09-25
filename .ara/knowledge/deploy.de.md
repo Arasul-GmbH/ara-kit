@@ -112,7 +112,7 @@ freigegeben wurde; ohne Freigabe antwortet die Adresse mit einer 403. Das Kit ka
 erteilen: sein Schlüssel trägt `app:deploy`. Das tut ein Administrator, in der Oberfläche oder
 über eine Sitzung aus dem Startpasswort (`node .ara/tools/device.mjs --name <gerät>
 --admin-login`). Welcher Weg oder welche Seite das ist, steht in der API-Referenz und im
-Admin-Handbuch des Artefakts, `node .ara/tools/mirror.mjs --docs`. `--deploy` nennt beide Wege am
+Admin-Handbuch des Artefakts, am Gerät gelesen mit `node .ara/tools/mirror.mjs --docs --device <gerät>`. `--deploy` nennt beide Wege am
 Ende seiner Ausgabe.
 
 ## Live schalten und zurück
@@ -126,6 +126,13 @@ node .ara/tools/app.mjs --device <gerät> --app <id> --back     die Version davo
 **Live schaltet ein Mensch.** Frag vorher, auch wenn du gerade selbst eingespielt hast:
 ab diesem Moment arbeiten die Leute damit. Das ist ein Eingriff der Stufe 2, siehe
 `.ara/knowledge/security.de.md`.
+
+**Test und live haben je eine eigene Datenbank.** Schalten nimmt die Fassung mit, nicht die
+Daten: der Livestand beginnt beim ersten Mal mit einer leeren Datenbank und behält danach seine
+eigenen über jede Fassung, auch über `--back`. Was im Teststand eingegeben wurde, bleibt dort.
+Sag das vor dem ersten Schalten, und plane, was live von Anfang an da sein muss: jemand legt es
+dort an, oder die App bringt es als Migration mit. Gemessen am 25.09.2026 am Orin. `--status`
+sagt es ebenfalls.
 
 `--back` ist ein **Tausch**, keine Einbahnstraße: was live war, wird die vorige Version,
 ein zweites `--back` steht wieder am Anfang. Genau in dem Fall, in dem jemand hastig
@@ -141,7 +148,9 @@ node .ara/tools/app.mjs --device <gerät> --app <id> --remove --confirm <id>
 ```
 
 **Stufe 3, unumkehrbar.** Es fallen beide Container mitsamt ihren Volumen, beide Stände,
-alle Freigaben und die Schlüssel der App. Ohne die abgetippte Kennung passiert nichts,
+alle Freigaben, die Schlüssel der App und ihre beiden Datenbanken; die nächtlichen
+Sicherungen davon bleiben am Gerät liegen, und ein Administrator holt sie zurück, wie der
+Kontrakt unter `daten` sagt. Ohne die abgetippte Kennung passiert nichts,
 und das Werkzeug sagt vorher genau, was fällt. Sag es dem Menschen mit denselben Worten
 und hol ein ausdrückliches Ja, bevor du es tippst.
 

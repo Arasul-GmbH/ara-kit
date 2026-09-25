@@ -1,10 +1,10 @@
-# Verfahren: fünf Muster einer App jenseits des Formulars
+# Verfahren: sechs Muster einer App jenseits des Formulars
 
 > **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann,
 > wenn jemand Arasul für ein Formularwerkzeug hält. Wer nur den Vorgang der Vorlage mit
 > seinem Freigabe-Schritt kennt, baut Formulare. Eine App kann alles, was ein Programm kann:
 > das Gerät bringt Anmeldung, Freigaben, Flows und Modelle mit, den Rest bringt die App. Hier
-> stehen fünf Muster, die bei fast jedem Kunden vorkommen, jedes mit Code, der läuft.
+> stehen sechs Muster, die bei fast jedem Kunden vorkommen, jedes mit Code, der läuft.
 
 ## Die Regel zuerst
 
@@ -35,6 +35,7 @@ von einem fremden Werkzeug braucht, sagt dessen Dokumentation, nicht dieses Blat
 | 3. E-Mail aus dem Backend | Eine Mail an das Relais des Kunden, die Werte aus dem Manifest | `.ara/templates/app-patterns/mail/backend/post.mjs` |
 | 4. Fremde API aus dem Backend | Eine Adresse außerhalb des Geräts, mit Zeitlimit und Sätzen für das, was schiefging | `.ara/templates/app-patterns/foreign-api/backend/fremd.mjs` |
 | 5. Fremder Container als App | Ein fertiges Image hinter der Anmeldung des Geräts, ohne eigenen Code | `.ara/templates/app-patterns/foreign-container/` |
+| 6. Dokument auslesen | Ein Beleg geht an das Gerät, Felder kommen zurück, die App prüft sie, ein Protokoll hält jede Auslesung | `.ara/templates/app-patterns/extract/` |
 
 ## 1. Mehrere Routen mit Seitenleiste
 
@@ -104,17 +105,16 @@ Was du über die Anzeige wissen musst, in der Bibliothek gelesen am 15.09.2026:
   Dokumentenseite schaltet sie ab, weil sie zeigt, was abgelegt ist, und zwei Anzeigen auf
   einer Seite eine zu viel wären.
 
-**Die Bytes liegen in der SQLite der App**, neben den Vorgängen. Das ist der eine Ort, den
-die App hat: ein Gerät gibt einer App keinen eigenen Datenordner. Sie überleben einen
-Neustart des Containers und **nicht das nächste Einspielen**, und das gehört in die README
-der App und ins Gespräch, bevor der Kunde es merkt. Die Grenze liegt bei zehn Megabyte je
+**Die Bytes liegen in der Datenbank der App**, neben den Vorgängen, in einer Spalte vom Typ
+`BYTEA`. Am Gerät ist das die Datenbank, die das Gerät der App gibt, und sie ist der eine Ort,
+der das nächste Einspielen überlebt; ein Ordner im Container wäre danach leer. Ohne Gerät ist
+es die SQLite-Datei der Vorlage, und die überlebt das nächste Einspielen nicht. Die Grenze liegt bei zehn Megabyte je
 Datei, gesetzt im Kern und der Seite gesagt; sie hängt am Arbeitsspeicher des Containers im
 Manifest, und wer das eine hebt, hebt das andere.
 
-**Was das Gerät mit einem Dokument tut, ist eine andere Sache.** Text daraus holen, ein
-Modell danach fragen: das bietet die Plattform, über den Schlüssel der App, siehe
-`.ara/knowledge/platform-services.de.md`. Das Muster hier ist der Weg zum Menschen und
-zurück.
+**Was das Gerät mit einem Dokument tut, ist eine andere Sache.** Text daraus holen, Felder
+auslesen: das bietet die Plattform über den Schlüssel der App, und Muster 6 baut darauf auf.
+Das Muster hier ist der Weg zum Menschen und zurück.
 
 Wenn du es prüfst, prüf es in beiden Themen und beiden Breiten, wie jede Oberfläche.
 
@@ -235,11 +235,66 @@ gegen ein Schema in der Form des Kontrakts, und der Bauplan ist ein Bauplan. Kei
 Container wurde für dieses Blatt auf ein Gerät gespielt: der erste ist ein Nachweis, der in
 den Laufzettel des Geräts gehört, mit Werkzeug, Fassung und dem, was die Übersicht zeigte.
 
+## 6. Dokument auslesen
+
+Ein Beleg, eine Rechnung, ein Formular kommt als PDF oder Foto herein, und die App soll daraus
+Felder machen: Datum, Betrag, Aussteller. **Das Gerät liest, die App prüft, ein Mensch
+entscheidet.** Das Muster setzt Muster 2 voraus, dessen Tabelle und Wege, und legt sich darüber.
+Der Code liegt unter `.ara/templates/app-patterns/extract/`:
+
+| Datei | Was sie ist |
+| --- | --- |
+| `backend/ablage/migrationen/003-auslesungen.sql` | Das Protokoll: jede Auslesung eine Zeile, nur anhängen |
+| `backend/ablage/auslesungen.mjs` | Die Ablage dazu. Sie kann anlegen und lesen, ändern und löschen kann sie nicht |
+| `backend/kern/auslesen.mjs` | `SCHEMA` und `ANWEISUNG` für das Gerät, `pruefen` gegen das Schema, `fachlich` für eigene Regeln, und der Ablauf |
+| `backend/wege/auslesen.mjs` | Die Wege: kann das Gerät auslesen, eine Auslesung anstoßen, das Protokoll eines Dokuments |
+| `frontend/src/auslesen.ts` | Typen und Abfragen |
+| `frontend/src/seiten/auslesen.tsx` | Die Seite: das Dokument in der Dokumentanzeige, daneben die Felder, darüber die Mängel, darunter das Protokoll |
+
+**Einhängen** wie Muster 2: die Ordner über die der App kopieren, die Zeilen aus dem Kopf von
+`wege/auslesen.mjs` in `server.mjs`, und zwar **vor** den Wegen der Dokumente, eine `Route` und ein
+Eintrag in der Seitenleiste, dann `--build`. Der Aufruf an das Gerät steht schon in der Vorlage,
+`geraet.auslesen` in `backend/arasul.mjs`: er nimmt den Weg aus `arasul.json`, schickt die Datei
+als Formular mit dem Schema und gibt Felder, Modell, Dauer und ob die Texterkennung lief zurück.
+**Kein Weg und kein Modellname steht im Muster**; der Selbsttest hält es daran.
+
+**Ersetze `SCHEMA`, `ANWEISUNG` und `fachlich`** durch das, was dein Kunde liest. Das Beispiel
+liest einen Beleg. Ein flaches Schema mit `required` ist am verlässlichsten; ein Feld, das das
+Modell raten müsste, lässt es besser weg, und die Anweisung sagt ihm das.
+
+Was du darüber wissen musst, gemessen am 25.09.2026 am Orin mit einer Probe aus Vorlage, Muster 2
+und diesem:
+
+- **Ein PDF mit Textschicht** liest das Gerät direkt: ein erfundener Beleg, sechs von sechs
+  Feldern, 35 Sekunden.
+- **Ein Foto oder ein gescanntes PDF** geht durch die Texterkennung des Geräts, und das Modell
+  bekommt den erkannten Text, nicht das Bild: eine erfundene Tankquittung als Foto, sechs von
+  sechs Feldern, 13 Sekunden. Handschrift und schlechte Fotos kosten Felder.
+- **Wie lange es dauert**, hängt am Modell: ist es gerade nicht geladen, dauert die erste
+  Auslesung Minuten. Die Seite sagt, dass das Modell liest, und ein zweiter Klick startet
+  keine zweite Auslesung.
+- **Das Protokoll ist die Nachvollziehbarkeit.** Jede Auslesung bleibt, auch die, die nicht
+  gelang, auch wenn das Dokument geht: wer sie anstieß, welches Modell, wie lange, welche
+  Felder, welche Mängel. Wer eine Auslesung verwirft, stößt eine neue an.
+
+Wofür das Feld `modelle` in `app.json` da ist, ob ein Bildmodell geladen sein muss und was du
+einem Kunden zusagst, steht in `.ara/knowledge/app.de.md` unter „Dokumente und Bilder auslesen“.
+Aus Feldern wird in einer Fach-App ein Vorschlag, und über den entscheidet ein Mensch: dann
+startet die App einen Flow mit Freigabe, mit einem Verweis auf den Beleg und nicht mit seinem
+Inhalt, siehe dort „Freigaben in einer Fach-App“.
+
+**Was geprüft ist und was nicht.** Der Selbsttest lässt das Muster gegen ein gespieltes Gerät
+laufen, das die Datei als Formular nimmt: Felder, ein Mangel am Steuersatz, eine Antwort ohne
+Felder, ein Fehler des Geräts, das Protokoll nach dem Entfernen des Dokuments. Am Orin lief es am
+25.09.2026 wie oben beschrieben. Eine Auslesung mit einem Modell, das der Kunde selbst gewählt
+hat, und seine echten Belege prüfst du an seinem Gerät.
+
 ## Was `/app` damit tut
 
 Im Interview ist der Wunsch oft klein: „ein Formular für den Urlaubsantrag". Dann nenn,
 was daneben liegt, einmal und kurz: der Antrag als Dokument, eine Mail, wenn er entschieden
-ist, ein Nachschlagen in der Zeiterfassung, das Werkzeug, das das Büro ohnehin benutzt. Der
+ist, ein Nachschlagen in der Zeiterfassung, das Werkzeug, das das Büro ohnehin benutzt, ein
+Beleg, den das Gerät ausliest. Der
 Mensch sagt, was er will, und der Plan nennt das Muster, das er benutzt, damit der Nächste,
 der ihn öffnet, weiß, wonach er sucht. Nach `--new` nennt das Werkzeug dieses Blatt aus
 demselben Grund.

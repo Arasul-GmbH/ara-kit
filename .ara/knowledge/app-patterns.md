@@ -1,10 +1,10 @@
-# Procedure: five shapes of an app beyond the form
+# Procedure: six shapes of an app beyond the form
 
 > **When do you need this?** In the interview, while the idea is still forming, and whenever
 > somebody takes Arasul for a form tool. Whoever knows only the scaffold's item with its
 > approval step builds forms. An app can do everything a program can do: the device brings
 > the login, the permissions, the flows and the models, and the app brings the rest. Here are
-> five shapes that come up at almost every customer, each with code that runs.
+> six shapes that come up at almost every customer, each with code that runs.
 
 ## The rule first
 
@@ -33,6 +33,7 @@ tool, its documentation says, not this sheet.
 | 3. Send a mail from the backend | A mail to the customer's relay, values from the manifest | `.ara/templates/app-patterns/mail/backend/post.mjs` |
 | 4. Call a foreign API from the backend | An address outside the device, with timeout and sentences for what went wrong | `.ara/templates/app-patterns/foreign-api/backend/fremd.mjs` |
 | 5. A foreign container as an app | A finished image behind the device's login, no code of your own | `.ara/templates/app-patterns/foreign-container/` |
+| 6. Read a document | A receipt goes to the device, fields come back, the app checks them, a log keeps every reading | `.ara/templates/app-patterns/extract/` |
 
 ## 1. Several routes with a sidebar
 
@@ -100,16 +101,16 @@ What you have to know about the viewer, read in the library on 15.09.2026:
   page switches it off, because it shows what is stored, and two viewers on one page would
   be one too many.
 
-**The bytes lie in the app's SQLite**, next to the items. That is the one store the app
-has: a device gives an app no data folder of its own. They survive a restart of the container
-and **not the next deploy**, and that belongs in the app's README and in the conversation
-before the customer notices. The limit is ten megabytes per file, set in the core and told to
+**The bytes lie in the app's database**, next to the items, in a column of type `BYTEA`. On
+the device that is the database the device gives the app, and it is the one place that
+survives the next deploy; a folder in the container would be empty afterwards. Without a
+device it is the scaffold's SQLite file, and that does not survive the next deploy. The limit is ten megabytes per file, set in the core and told to
 the page; it hangs on the memory of the container in the manifest, and whoever raises the one
 raises the other.
 
 **What the device does with a document is a different matter.** Pulling text out of it,
-asking a model about it: that the platform offers, over the app's key, see
-`.ara/knowledge/platform-services.md`. The pattern here is the way to and from the human.
+reading it into fields: that the platform offers over the app's key, and pattern 6 builds on
+it. The pattern here is the way to and from the human.
 
 When you check it, check it in both themes and both widths, like every interface.
 
@@ -228,10 +229,63 @@ against a contract-shaped schema, and the build plan is a build plan. No foreign
 was deployed to a device for this sheet: the first one is a proof to write down in the
 device's runsheet, with the tool, the version and what the overview showed.
 
+## 6. Read a document
+
+A receipt, an invoice, a form comes in as a PDF or a photo, and the app is to make fields out of
+it: date, amount, issuer. **The device reads, the app checks, a human decides.** The pattern
+presupposes pattern 2, its table and routes, and lays itself on top. The code lies under
+`.ara/templates/app-patterns/extract/`:
+
+| File | What it is |
+| --- | --- |
+| `backend/ablage/migrationen/003-auslesungen.sql` | The log: every reading one row, append only |
+| `backend/ablage/auslesungen.mjs` | The store for it. It can create and read, it cannot change or delete |
+| `backend/kern/auslesen.mjs` | `SCHEMA` and `ANWEISUNG` for the device, `pruefen` against the schema, `fachlich` for your own rules, and the sequence |
+| `backend/wege/auslesen.mjs` | The routes: can the device read, trigger a reading, the log of a document |
+| `frontend/src/auslesen.ts` | Types and queries |
+| `frontend/src/seiten/auslesen.tsx` | The page: the document in the viewer, the fields next to it, the defects above, the log below |
+
+**Wiring it in** works like pattern 2: copy the folders over the app's, the lines from the head of
+`wege/auslesen.mjs` into `server.mjs`, **before** the routes of the documents, a `Route` and an
+entry in the sidebar, then `--build`. The call to the device stands in the scaffold already,
+`geraet.auslesen` in `backend/arasul.mjs`: it takes the way from `arasul.json`, sends the file as a
+form with the schema and returns fields, model, duration and whether the text recognition ran.
+**No route and no model name stands in the pattern**; the self-test holds it to that.
+
+**Replace `SCHEMA`, `ANWEISUNG` and `fachlich`** with what your customer reads. The example reads a
+receipt. A flat schema with `required` is the most reliable; a field the model would have to
+guess is better left out, and the instruction tells it so.
+
+What you need to know about it, measured on 25.09.2026 on the Orin with a probe out of the
+scaffold, pattern 2 and this one:
+
+- **A PDF with a text layer** the device reads directly: an invented receipt, six of six fields,
+  35 seconds.
+- **A photo or a scanned PDF** goes through the device's text recognition, and the model gets the
+  recognised text, not the image: an invented fuel receipt as a photo, six of six fields,
+  13 seconds. Handwriting and bad photos cost fields.
+- **How long it takes** hangs on the model: if it is not loaded right now, the first reading takes
+  minutes. The page says that the model is reading, and a second click starts no second reading.
+- **The log is the traceability.** Every reading stays, also the one that did not succeed, also when
+  the document goes: who triggered it, which model, how long, which fields, which defects. Whoever
+  discards a reading triggers a new one.
+
+What the field `modelle` in `app.json` is for, whether an image model has to be loaded and what you
+promise a customer stands in `.ara/knowledge/app.md` under "Reading documents and images". In a
+professional app fields become a suggestion, and a human decides about it: then the app starts a
+flow with an approval, with a reference to the receipt and not with its content, see
+"Approvals in a professional app" there.
+
+**What was checked and what was not.** The self-test runs the pattern against a played device that
+takes the file as a form: fields, a defect at the tax rate, an answer without fields, an error of
+the device, the log after the document was removed. On the Orin it ran on 25.09.2026 as described
+above. A reading with a model the customer chose themselves, and their real receipts, you check on
+their device.
+
 ## What `/app` does with this
 
 In the interview the wish is often small: "a form for the holiday request". Then name what
 lies next to it, once and briefly: the request as a document, a mail when it is decided, a
-lookup in the time-keeping, the tool the office uses anyway. The human says what they want,
+lookup in the time-keeping, the tool the office uses anyway, a receipt the device reads. The human says what they want,
 and the plan names the pattern it uses, so the next one who opens it knows what to look for.
 After `--new` the tool names this sheet for the same reason.

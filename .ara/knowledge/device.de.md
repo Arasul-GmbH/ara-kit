@@ -610,13 +610,17 @@ auch der Eintrag mit dem Startpasswort, mit dem Gerät daneben. Werte stehen dor
 ### Weg und Rumpf stehen im Artefakt
 
 Was du mit der Sitzung dann aufrufst, steht nicht im Kit, sondern im Artefakt. Der Spiegel
-bringt die Anleitungen mit, die zu genau dieser Fassung gehören:
+bringt die Anleitungen mit, die zu genau dieser Fassung gehören, und das Gerät selbst trägt
+sie auch, in der Fassung, die dort läuft. Am Gerät liest das Kit sie ohne Token, auch wenn
+jemand anders installiert hat:
 
 ```
 node .ara/tools/mirror.mjs --docs
+node .ara/tools/mirror.mjs --docs --device <gerät>
+node .ara/tools/mirror.mjs --docs --device <gerät> --read <pfad>
 ```
 
-Zwei davon brauchst du hier, und beide liegen unter `.ara/mirror/`:
+Zwei davon brauchst du hier, unter `.ara/mirror/docs/` oder unter `docs/` am Gerät:
 
 - **Das Admin-Handbuch**, Kapitel zu Mitarbeitern und zu Freigaben. Es sagt, was ein
   Mitarbeiter ist, was eine Freigabe erlaubt und in welcher Reihenfolge beides angelegt

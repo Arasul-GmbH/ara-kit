@@ -34,10 +34,16 @@ everything that would be possible.
 **If the app does not exist yet**, the interview comes before anything is created: the
 checklist is in the procedure. When the wish is small, a form, name once what lies next to
 it: a document shown on the device, a mail when something is decided, a lookup in a foreign
-system, a foreign tool behind the login. The five patterns with code that runs stand in
+system, a foreign tool behind the login. The six patterns with code that runs stand in
 `.ara/knowledge/app-patterns.md`, and the plan names the one it uses. Only after that
 `--new` and the first plan. Whatever stayed open goes into the plan as an assumption and
 gets read out next time.
+
+**If it is a professional app**, with clients or files, data that has to last for years,
+receipts the device is to read, an approval the submitter does not give, or an export format of
+another vendor: read the section "A professional app" in `.ara/knowledge/app.md` before the plan
+comes into being. It has six parts, and each of them belongs in the plan as an answer or as an
+assumption.
 
 **If a plan is active**, walk through its assumptions first, then build what it says, then
 `--build`. The build is the package, not the running app: what it does you see on the
@@ -54,7 +60,8 @@ on the device only once it has been released for them; without a release the sta
 answers with a 403. The kit cannot release it, its key carries `app:deploy`. `--deploy` names
 the two ways to an administrator at the end of its output: a session out of the start
 password, or a human in the device's interface. Read out what stands there and name no page
-and no route of your own: they stand in the artifact, `node .ara/tools/mirror.mjs --docs`.
+and no route of your own: they stand in the artifact, and the kit reads that on the device, also
+without a token: `node .ara/tools/mirror.mjs --docs --device <device>`.
 
 **On a device without Arasul** `--compose` goes over SSH. Say beforehand what is missing
 there, in the same words the tool prints afterwards: no login, no flow, no permission.

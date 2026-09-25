@@ -61,6 +61,15 @@ node .ara/tools/mirror.mjs --refresh   # neu holen
 **Er entsteht bei der Installation** (`/device` mit `--install arasul`) und sonst nicht.
 Ohne Token kein Artefakt, dann sagst du das und arbeitest ohne Produktaussagen weiter.
 
+**Die Anleitungen liegen auch am Gerät.** Ein Gerät mit Arasul trägt den Ordner, aus dem es
+installiert wurde, samt `docs/`, in der Fassung, die dort läuft. Das Kit liest sie über SSH,
+ohne Token und ohne Spiegel, auch an einem Gerät, das jemand anders installiert hat:
+
+```
+node .ara/tools/mirror.mjs --docs --device <gerät>                 # welche Anleitungen dort liegen
+node .ara/tools/mirror.mjs --docs --device <gerät> --read <pfad>   # eine davon
+```
+
 Was du dort nachschlägst:
 
 | Frage | Wo im Artefakt |
@@ -68,7 +77,7 @@ Was du dort nachschlägst:
 | Welche Geräte kennt das Produkt, mit welchen Eckdaten? | `config/platforms/*.json` |
 | Womit wird installiert, und wie heißt der Einstiegspunkt? | `arasul-release.json` |
 | Wie läuft die Einrichtung ab, welche Schritte gibt es? | `scripts/` und die Kommandozeilenwerkzeuge im Wurzelverzeichnis |
-| Was sagt die Produktdokumentation? | `docs/`, aufgelistet von `mirror.mjs --docs` |
+| Was sagt die Produktdokumentation? | `docs/`, aufgelistet von `mirror.mjs --docs`, am Gerät von `mirror.mjs --docs --device <gerät>` |
 | Wie legt man einen Mitarbeiter an, wie gibt man eine App frei? | Admin-Handbuch und API-Referenz, beide unter `docs/` |
 | Welcher Stand ist das, woher kommt er? | `.ara/mirror/STATE.json` |
 
@@ -86,7 +95,15 @@ Es gibt keine vierte Quelle. Insbesondere:
 - **Nicht dein Gedächtnis.** Auch wenn du sicher bist.
 - **Nicht eine ältere Notiz im Kit** oder in einem Kundenordner. Notizen halten fest, was
   damals war.
-- **Nicht das Internet.** Öffentliche Anleitungen beschreiben andere Systeme.
+- **Nicht das Internet.** Öffentliche Anleitungen beschreiben andere Systeme. Das gilt für
+  Produktwerte: Modelle, Ports, Pfade, Befehle, Fassungen von Arasul.
+
+**Fachstandards sind keine Produktwerte.** Der DATEV-Buchungsstapel, ein Kontenrahmen wie
+SKR03, die GoBD, XRechnung: sie stehen weder im Kontrakt noch am Gerät, und sie kommen aus
+ihrer Primärquelle, der Dokumentation des Herausgebers, dem Schreiben des Ministeriums, der
+Norm, zitiert mit Adresse und Abrufdatum. Eine Sekundärquelle dient zum Gegenlesen und wird
+als solche genannt. Wie das in einer App geht, steht in `.ara/knowledge/app.de.md` unter
+„Fachstandards“.
 
 ## Wenn keine Quelle verfügbar ist
 

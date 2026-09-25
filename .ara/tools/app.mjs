@@ -1598,10 +1598,12 @@ if (arg.remove) {
     fail(
       t(
         `That removes ${app} from ${place}: both containers with their volumes, both slots,\n` +
-          "all permissions and the app's keys. There is no way back.\n" +
+          "all permissions, the app's keys and its databases. The device's backups of them stay,\n" +
+          "an administrator can bring them back; from the kit there is no way back.\n" +
           `If that is what you want, append it: --confirm ${app}`,
         `Das entfernt ${app} von ${place}: beide Container mitsamt ihren Volumen, beide Stände,\n` +
-          "alle Freigaben und die Schlüssel der App. Es gibt keinen Rückweg.\n" +
+          "alle Freigaben, die Schlüssel der App und ihre Datenbanken. Die Sicherungen des Geräts davon\n" +
+          "bleiben, ein Administrator kann sie zurückholen; vom Kit aus gibt es keinen Rückweg.\n" +
           `Wenn das so gewollt ist, hängs an: --confirm ${app}`
       )
     );
