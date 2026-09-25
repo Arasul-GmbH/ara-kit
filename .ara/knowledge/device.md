@@ -338,6 +338,13 @@ door for a device in somebody else's network. Go through the list before the dev
 harden access along `.ara/knowledge/remote-access.md`, everything else on the device with root
 rights. What you caught up on and what stays open you write into the runsheet.
 
+**When the hardening succeeds, SSH lies on another port afterwards.** The installer says so in a
+warning and in a line of its own, `ARASUL_SSH_PORT=<port>`. The kit reads that line, connects over
+the new port for everything that follows in the same run, and writes it into the file as
+`ssh_port`. Every later command, `remote.mjs`, `maintain.mjs` and `device.mjs` itself, takes it from
+there. The history entry of the installation names the old and the new port. Without the line the
+port stays as it was: the kit does not guess a port.
+
 ### Traces, but nothing runs
 
 The trace search knows three answers, and the difference decides what goes next:

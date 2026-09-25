@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.33.0 (2026-09-25)
+
+Contract: up to 6
+
+- **The kit follows a changed SSH port.** Since 25.09.2026 the installer hardens SSH with `sudo -n`, and when that succeeds SSH lies on another port afterwards. The installer says so in the line `ARASUL_SSH_PORT=<port>`. Up to 0.32.0 the kit only put its warning under "What the installer could not do", knocked on the old port for the second check, the kit key and the unlocking, and wrote the old port into the file: the next command stood in front of a wall. Now `device.mjs --install arasul` reads the line, connects over the new port from there on, writes it into the file as `ssh_port` and names old and new port in the history. The self-test runs exactly this line through the installer's output and a device file.
+
 ## 0.32.0 (2026-09-25)
 
 Contract: up to 6

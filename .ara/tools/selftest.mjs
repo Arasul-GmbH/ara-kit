@@ -93,11 +93,13 @@ import {
   installTarget,
   installerEntry,
   mirrorState,
+  movePort,
   releaseVersion,
   runInstaller,
   scrub,
   settleDeployKey,
   ship,
+  sshPortFrom,
   stripAnsi,
   troubles,
   validLine,
@@ -153,6 +155,7 @@ import {
   now,
   ownFolders,
   readFrontmatter,
+  sshArgs as sshArgsFrom,
   today,
   tracked,
   writeFrontmatter,
@@ -4937,6 +4940,84 @@ await checkAsync("Was der Installer nicht konnte, sagt das Kit noch einmal", asy
   const wissen = readFileSync(join(ROOT, ".ara", "knowledge", "device.md"), "utf8");
   assert(/Was der Installer nicht konnte/.test(wissen), "das Verfahren sagt nichts über die Absagen des Installers");
   return `${gefunden.length} Absagen aus ${ausgabe.split("\n").length} Zeilen, und aus ${laut.split("\n").length} lauten Zeilen die drei, auf die es ankommt`;
+});
+
+await checkAsync("Ein geänderter SSH-Port landet in der Akte, der nächste Befehl nimmt ihn", async () => {
+  // Seit dem 25.09.2026 härtet der Installer SSH mit `sudo -n` (J35). Gelingt
+  // das, liegt SSH auf einem anderen Port, und bis 0.32.0 legte das Kit nur die
+  // Warnung ab und klopfte weiter auf 22: die zweite Prüfung, der Kit-Schlüssel
+  // und jeder spätere Befehl standen vor einer Wand. Die Zeilen hier sind die
+  // von `scripts/security/haerten.sh`, wörtlich.
+  const ausgabe = [
+    "[INFO] SSH-Haertung (Port 2222, nur Schluessel, fail2ban)...",
+    "[OK] SSH gehaertet",
+    "[WARNUNG] SSH-Port geaendert: 22 -> 2222. Das Ara-Kit erreicht dieses Geraet ab jetzt nur noch mit --port 2222.",
+    "[WARNUNG]   Von Hand: ssh -p 2222 arasul@<geraet>. Die laufende Sitzung bleibt bestehen.",
+    "ARASUL_SSH_PORT=2222",
+    "[INFO] Firewall (ufw: SSH 2222, 80, 443, mDNS, Tailscale)...",
+    "[OK] Firewall aktiv",
+  ].join("\n");
+
+  // 1. Am laufenden Installer, nicht nur am Text.
+  const original = process.stdout.write.bind(process.stdout);
+  process.stdout.write = () => true;
+  let lauf;
+  try {
+    lauf = await runInstaller(null, "local", ausgabe.split("\n").map((z) => `echo ${JSON.stringify(z)}`).join("; "));
+  } finally {
+    process.stdout.write = original;
+  }
+  assert(lauf.sshPort === "2222", `der Port kam nicht an: ${lauf.sshPort}`);
+  assert(lauf.troubles.some((z) => /SSH-Port geaendert/.test(z)), "die Warnung fehlt in der Liste");
+
+  // 2. Nur die Zeile selbst zählt, so wie der Installer sie schreibt. Über SSH
+  // mit -t kommt sie mit \r und manchmal in Farbe an.
+  assert(sshPortFrom("ARASUL_SSH_PORT=2222\r\n") === "2222", "\\r stört das Lesen");
+  assert(sshPortFrom("\x1B[0mARASUL_SSH_PORT=2222\x1B[0m") === "2222", "Farbcodes stören das Lesen");
+  assert(sshPortFrom("ARASUL_SSH_PORT=22\nARASUL_SSH_PORT=2222") === "2222", "es gilt nicht die letzte Zeile");
+  assert(sshPortFrom("Fertig.") === null, "ohne Zeile wird ein Port erfunden");
+  assert(sshPortFrom("ARASUL_SSH_PORT=99999") === null, "ein Port außerhalb des Bereichs gilt");
+  assert(sshPortFrom("ARASUL_SSH_PORT=") === null, "eine leere Zeile gilt als Port");
+  assert(sshPortFrom("echo ARASUL_SSH_PORT=2222 in einem Satz") === null, "ein Satz gilt als Zeile");
+
+  // 3. Die laufende Aufrufzeile zieht um, so wie device.mjs sie nach dem
+  // Installer weiterbenutzt.
+  const felder = { address: "127.0.0.1", ssh_user: "probe", ssh_port: "22" };
+  const { args } = sshArgsFrom(felder);
+  assert(movePort(args, lauf.sshPort) === "22", "umgelegt wird nicht, oder der alte Port geht verloren");
+  assert(args[args.indexOf("-p") + 1] === "2222", `die Zeile zeigt auf ${args[args.indexOf("-p") + 1]}`);
+  assert(movePort(args, "2222") === null, "ein Umzug auf denselben Port gilt als Umzug");
+  assert(movePort(args, null) === null, "ohne Meldung wird umgelegt");
+
+  // 4. Die Akte trägt ihn, und der nächste Befehl verbindet sich darüber.
+  const name = "selftest-sshport";
+  const dir = join(ROOT, "devices", name);
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(dir, "device.md"));
+  try {
+    writeFrontmatter(join(dir, "device.md"), { name, ...felder, ssh_port: lauf.sshPort });
+    const { fields } = readFrontmatter(join(dir, "device.md"));
+    assert(String(fields.ssh_port) === "2222", `in der Akte steht ssh_port ${fields.ssh_port}`);
+    const run = await toolAsync("remote.mjs", ["--device", name, "--check"]);
+    const text = `${run.stdout}${run.stderr}`;
+    assert(/probe@127\.0\.0\.1:2222\b/.test(text), `remote.mjs nimmt nicht den neuen Port: ${text}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // 5. device.mjs legt um, bevor es noch einmal ans Gerät geht, und schreibt
+  // den Port in die Akte, den es dann benutzt.
+  const werkzeug = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+  const umzug = werkzeug.indexOf("movePort(sshArgs, arasul.sshPort)");
+  const zweitePruefung = werkzeug.indexOf("const again = probe();", umzug);
+  assert(umzug > 0 && zweitePruefung > umzug, "device.mjs prüft nach der Installation über den alten Port");
+  assert(/ssh_port: port,/.test(werkzeug), "device.mjs schreibt den benutzten Port nicht in die Akte");
+  for (const blatt of ["device.md", "device.de.md"]) {
+    const wissen = readFileSync(join(ROOT, ".ara", "knowledge", blatt), "utf8");
+    assert(/ARASUL_SSH_PORT=/.test(wissen), `.ara/knowledge/${blatt} sagt nichts über den Portwechsel`);
+  }
+  return "ARASUL_SSH_PORT=2222 aus dem Installer, ssh_port 2222 in der Akte, remote.mjs verbindet über 2222";
 });
 
 await checkAsync("Ohne Browser führt ein Weg zu Mitarbeiter und Freigabe", async () => {
