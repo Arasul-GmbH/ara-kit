@@ -1,145 +1,94 @@
 # Verfahren: Apps auf ein Gerät bringen
 
-> **Wann brauchst du das?** Wenn auf einem Gerät mit Arasul eine App landen soll: prüfen,
-> ob Kit und Gerät zusammenpassen, einspielen, live schalten, zurückschalten, entfernen.
+> **Wann brauchst du das?** Wenn eine App auf einem Gerät landen soll: prüfen, dass Kit und Gerät
+> zusammenpassen, einspielen, freigeben, live schalten und zurück, entfernen, oder auf ein Gerät
+> ohne Arasul bringen. Was die App dort benutzt: `.ara/knowledge/platform-services.de.md`.
 
 ## Der Kontrakt ist die Quelle, nicht dieses Blatt
-
-Ein Gerät sagt selbst, was es verspricht. Ein Aufruf, und du weißt es:
 
 ```
 node .ara/tools/app.mjs --device <gerät> --contract
 ```
 
-Was dabei herauskommt, ist die **einzige** Quelle für: das Schema von `app.json`, die
-Regeln, die kein Schema trägt, den Kopf einer Flow-Datei, die Namen der Kopfzeilen, die
-Grenzen eines Pakets, die Pfade unter `/apps/` und die Liste der Endpunkte mit dem
-Bereich, den jeder verlangt. **Schreib nichts davon ab.** Es steht deshalb auch hier
-nicht: was heute gilt, sagt das Gerät, das vor dir steht.
+Die **einzige** Quelle für das Schema von `app.json`, die Regeln, die kein Schema trägt, den Kopf
+einer Flow-Datei, die Namen der Kopfzeilen, die Grenzen eines Pakets, die Pfade unter `/apps/` und
+die Endpunkte mit ihren Bereichen. **Schreib nichts davon ab**, auch hier nicht. Ohne den
+Kit-Schlüssel geht kein Aufruf: er steht in der Akte des Geräts unter `api_key_ref`, sein Wert in
+der Ablage für Geheimnisse, woher er kommt, steht in `.ara/knowledge/device.de.md`, „Der
+Kit-Schlüssel".
 
-Der Kontrakt trägt eine **Kontraktversion**. Das Kit kennt nicht eine Zahl, für die es
-gebaut wäre, sondern die höchste Fassung, die es versteht. Daraus folgen drei Lagen:
+Der Kontrakt trägt eine **Kontraktversion**, und das Kit kennt die höchste, die es versteht:
 
-- **Das Gerät führt dieselbe oder eine kleinere Zahl.** Es geht weiter. Geprüft wird
-  ohnehin gegen das Schema dieses Geräts, und gerufen wird nur, was in dessen Kontrakt
-  steht. Ein Gerät, das seit einem halben Jahr niemand angefasst hat, ist kein Fehlerfall,
-  sondern der Normalfall in einem Bestand.
-- **Das Gerät führt eine größere Zahl.** Das Kit hört auf und sagt, was ihm fehlt: welche
-  Fassungen es nicht kennt, und welche Felder das Gerät nennt, die es nicht liest. Der Weg
-  heraus ist ein Aufruf, und er liegt nicht in der App:
+- **Dieselbe oder eine kleinere Zahl.** Es geht weiter, gegen das Schema dieses Geräts, und gerufen
+  wird nur, was sein Kontrakt nennt. Ein Gerät, das ein halbes Jahr niemand angefasst hat, ist der
+  Normalfall.
+- **Eine größere Zahl.** Das Kit hält an und nennt die Fassungen und Felder, die es nicht kennt. Der
+  Ausweg ist `node .ara/tools/update.mjs` oder `/init`: **der Fehler liegt nicht in der App**, und
+  `/device`, `/init`, `--check` und `--deploy` sagen es. Am 30.08.2026 stand eine Werkstatt auf
+  Kontraktfassung 3, der Orin führte 5, und drei Stunden gingen in eine App, die in Ordnung war.
+- **Gar keine.** Das Gerät ist älter als der Kontrakt.
 
-  ```
-  node .ara/tools/update.mjs
-  ```
-
-  `/init` geht denselben Weg. **Der Fehler liegt nicht in der App**, und jede Stelle, die
-  hineinläuft, sagt es: `/device` beim ersten Kontakt mit dem Gerät, `/init` aus der
-  Geräteakte, und `--check` und `--deploy` am Ende ihrer Ausgabe. Am 30.08.2026 stand eine
-  Werkstatt auf Kontraktfassung 3, der Orin führte 5, und drei Stunden gingen in eine App,
-  der nichts fehlte.
-- **Das Gerät nennt gar keine.** Dann ist es älter als der Kontrakt selbst.
-
-Eingespielt wird nur in den ersten beiden Lagen. Ein Paket auf gut Glück zu schicken
-heißt, den Fehler am Gerät zu suchen statt vorher.
-
-Was die App danach am Gerät benutzen kann, ist eine andere Frage und steht in
-`.ara/knowledge/platform-services.de.md`: Anmeldung, Freigaben, Flows, Sprachmodell,
-Dokumente. Hier geht es nur darum, wie sie dorthin kommt.
-
-**Ohne Kit-Schlüssel geht keiner dieser Aufrufe.** Er steht in der Geräteakte unter
-`api_key_ref`, sein Wert in der Geheimnis-Ablage. Woher er kommt:
-`.ara/knowledge/device.de.md`, Abschnitt „Der Kit-Schlüssel".
-
-## Was in ein Paket gehört
-
-In der Wurzel liegt `app.json`, daneben die Ordner, die das Manifest selbst benennt.
-**Welche Felder einen Ordner benennen, sagt der Kontrakt** in der Wurzel seines Pakets: er
-schreibt sie als Platzhalter, und jeder Platzhalter zeigt auf das Feld im Manifest, das
-den Ordnernamen trägt. Das Kit liest sie dort und zählt sie nicht selbst auf. Kommt im
-Produkt einer dazu, steht er beim nächsten Aufruf mit im Kontrakt.
-
-**Flows sind eine Lieferung, keine Forderung.** Verspricht das Manifest einen Ordner für
-Flows, bringt das Paket die Dateien mit: eine Datei je Flow, mit einem Kopf im Frontmatter
-und dem Auftrag als Text darunter. Was in den Kopf gehört und was für einen Flow aus einem
-Paket gilt, steht im Kontrakt, und `--contract` gibt beides aus: das Schema des Kopfes und
-die Regeln wörtlich. Schreib sie nicht ab, lies sie an dem Gerät, um das es geht.
-
-Was das Manifest verspricht, prüft das Kit vor dem Packen: dass es den Ordner gibt und
-dass er nicht leer ist. Das ersetzt die Regeln des Kontrakts nicht, es spart den Weg
-über ein abgewiesenes Paket.
+Eingespielt wird nur in den ersten beiden Fällen.
 
 ## Ein Paket prüfen, bevor es fliegt
 
 ```
-node .ara/tools/app.mjs --device <gerät> --check <ordner>
+node .ara/tools/app.mjs --device <gerät> --app <name> --check
 ```
 
-Das Werkzeug liest `app.json` aus dem Ordner und hält es gegen das Schema **dieses**
-Geräts. Es meldet jede Abweichung mit dem Feld, um das es geht, und es sagt dazu, was es
-nicht prüfen konnte. Es prüft außerdem, dass die Oberfläche im Paket ein **Bau** ist und
-nicht der Quelltext, aus dem er entsteht: das steht in jedem Kontrakt als Regel, und eine
-ungebaute Oberfläche kommt am Gerät als leere Seite an, ohne einen Hinweis darauf, woran es
-liegt. Zwei Dinge musst du dabei selbst tun:
+`app.json` liegt an der Wurzel des Pakets, daneben die Ordner, die das Manifest nennt; welche Felder
+einen Ordner nennen, sagt der Kontrakt als Platzhalter. **Flows sind eine Lieferung**: ein
+versprochener Flow-Ordner bringt eine Datei je Flow, und das Kit prüft, dass ein versprochener
+Ordner da und nicht leer ist. Das Werkzeug hält das Manifest gegen das Schema **dieses** Geräts,
+nennt jede Abweichung und was es nicht prüfen konnte, prüft, dass die Oberfläche ein **Bau** ist,
+und gibt `arasul.json` aus. Selbst liest du, Wort für Wort, wie das Werkzeug sie ausgibt, **die
+Regeln, die kein Schema trägt**, „mindestens eines von frontend und backend", „mit einem Backend ein
+Port": ein Manifest, das eine davon bricht, lehnt das Gerät ab, auch wenn das Schema hält. Und **was
+der Kontrakt über das Paket sagt**: Packen, was draußen bleibt, Größe, Flows.
 
-1. **Die Regeln lesen, die kein Schema trägt.** Das Werkzeug gibt sie aus, wörtlich aus
-   dem Kontrakt. Sie sind keine Fußnote: „mindestens eines von Frontend und Backend",
-   „mit Backend braucht es einen Port" und was sonst dort steht, weist das Gerät ab,
-   auch wenn das Schema zufrieden war. Geh sie einzeln durch.
-2. **Nachsehen, was der Kontrakt zum Paket sagt.** Wie gepackt wird, was nicht
-   hineingehört, wie groß es sein darf, und was für einen Flow aus dem Paket gilt. Auch
-   diese Regeln gibt das Werkzeug wörtlich aus, sobald das Gerät welche nennt.
-
-## Einspielen
+## Einspielen, und warum es noch nicht sichtbar ist
 
 ```
-node .ara/tools/app.mjs --device <gerät> --deploy <ordner>
+node .ara/tools/app.mjs --device <gerät> --app <name> --deploy
 ```
 
-Das Werkzeug prüft erst das Manifest, packt dann den **Inhalt** des Ordners so, wie der
-Kontrakt es vorschreibt, vergleicht die Größe mit der Grenze des Geräts und schickt es.
-Passt das Manifest nicht, wird nichts geschickt.
+Prüfen, den **Inhalt** des Ordners packen, wie der Kontrakt es vorschreibt, mit der Größengrenze
+vergleichen, schicken; eine Ablehnung kommt mit dem Grund des Geräts, lies ihn, statt zu
+wiederholen. Das Gerät baut das Backend selbst, Warten ist kein Fehler. **Ein Deploy rollt immer in
+den Teststand**, ohne Schalter: live ist das, womit die Belegschaft arbeitet.
 
-**Ein Deploy rollt immer in den Teststand.** Einen Schalter dafür gibt es nicht, und das
-ist keine Bequemlichkeitsfrage: der Livestand ist das, womit die Belegschaft arbeitet.
-Das Gerät baut das Backend selbst aus dem Bauplan im Paket, und das dauert. Wartezeit ist
-kein Fehler.
+**Eingespielt ist nicht sichtbar, und das sagst du vor dem Einspielen.** Ein Mensch sieht die App
+erst, wenn sie für ihn freigegeben ist; ohne das antwortet die Adresse des Teststands mit 403, die
+fehlende Freigabe und nicht die App. Hinterher gesagt, hält ein Mensch das Kit für kaputt; vorher
+gesagt, wartet er. Freigeben kann das Kit nicht, sein Schlüssel trägt `app:deploy` und sonst
+nichts. `--deploy` nennt an seinem Ende die zwei Wege: eine Sitzung aus dem Startpasswort, wenn es
+in der Ablage liegt (`node .ara/tools/device.mjs --name <gerät> --admin-login`), oder ein Mensch in
+der Oberfläche des Geräts. Weg und Seite stehen in Admin-Handbuch und API-Referenz, nie im Kit:
+`node .ara/tools/mirror.mjs --docs --device <gerät>`. Widersprechen sich Anleitung und Kontrakt,
+gilt der Kontrakt, er kommt aus dem laufenden Backend.
 
-Weist das Gerät ab, begründet es das im Klartext und das Werkzeug reicht die Begründung
-durch. Lies sie, statt den Aufruf zu wiederholen.
-
-**Eingespielt ist nicht freigegeben.** Das Gerät liefert den Teststand nur dem aus, für den er
-freigegeben wurde; ohne Freigabe antwortet die Adresse mit einer 403. Das Kit kann sie nicht
-erteilen: sein Schlüssel trägt `app:deploy`. Das tut ein Administrator, in der Oberfläche oder
-über eine Sitzung aus dem Startpasswort (`node .ara/tools/device.mjs --name <gerät>
---admin-login`). Welcher Weg oder welche Seite das ist, steht in der API-Referenz und im
-Admin-Handbuch des Artefakts, am Gerät gelesen mit `node .ara/tools/mirror.mjs --docs --device <gerät>`. `--deploy` nennt beide Wege am
-Ende seiner Ausgabe.
+**Eine Freigabe gilt einem Stand.** Wer allein für den Livestand freigegeben ist, sieht eine leere
+Übersicht, obwohl die Freigabe steht, der verwirrendste Zustand: die Freigabe muss den Teststand
+meinen, wie auch immer das Admin-Handbuch ihn nennt. Ein Fremdtest am 29.08.2026 ist genau dort
+hängen geblieben, mit gesetztem Häkchen.
 
 ## Live schalten und zurück
 
 ```
-node .ara/tools/app.mjs --device <gerät> --app <id> --status   welche Version steht wo
-node .ara/tools/app.mjs --device <gerät> --app <id> --live     Teststand wird Livestand
-node .ara/tools/app.mjs --device <gerät> --app <id> --back     die Version davor
+node .ara/tools/app.mjs --device <gerät> --app <id> --status   welche Fassung wo steht
+node .ara/tools/app.mjs --device <gerät> --app <id> --live     Teststand wird live
+node .ara/tools/app.mjs --device <gerät> --app <id> --back     die Fassung davor
 ```
 
-**Live schaltet ein Mensch.** Frag vorher, auch wenn du gerade selbst eingespielt hast:
-ab diesem Moment arbeiten die Leute damit. Das ist ein Eingriff der Stufe 2, siehe
-`.ara/knowledge/security.de.md`.
-
-**Test und live haben je eine eigene Datenbank.** Schalten nimmt die Fassung mit, nicht die
-Daten: der Livestand beginnt beim ersten Mal mit einer leeren Datenbank und behält danach seine
-eigenen über jede Fassung, auch über `--back`. Was im Teststand eingegeben wurde, bleibt dort.
-Sag das vor dem ersten Schalten, und plane, was live von Anfang an da sein muss: jemand legt es
-dort an, oder die App bringt es als Migration mit. Gemessen am 25.09.2026 am Orin. `--status`
-sagt es ebenfalls.
-
-`--back` ist ein **Tausch**, keine Einbahnstraße: was live war, wird die vorige Version,
-ein zweites `--back` steht wieder am Anfang. Genau in dem Fall, in dem jemand hastig
-zurückschaltet, ist das die Rettung.
-
-Nach jedem Schalten: ein Satz in den Verlauf des Kunden oder in den Laufzettel des
-Geräts. Welche App, welche Version, wer es wollte, was danach geprüft wurde.
+**Live schaltet ein Mensch**, Stufe 2: frag vorher, auch wenn du vor einer Minute eingespielt hast,
+ab dann arbeiten Leute damit. **Test und live haben je eine eigene Datenbank**: die Fassung geht
+mit, die Daten nicht. Live beginnt beim ersten Mal leer und behält seine eigenen über jede Fassung
+und `--back`. Sag das vor dem ersten Schalten, und plan, was live von Anfang an da sein muss,
+Mandanten etwa: jemand legt es dort an, oder eine Migration bringt es mit. Gemessen am 25.09.2026 am
+Orin, `--status` sagt es auch. `--back` ist ein **Tausch**: ein zweites `--back` steht wieder am
+Anfang, die Rettung für den, der in Eile zurückgeschaltet hat. Nach jedem Schalten ein Satz in den
+Verlauf des Kunden oder den Laufzettel des Geräts: App, Fassung, wer es wollte, was danach geprüft
+wurde.
 
 ## Entfernen
 
@@ -147,29 +96,27 @@ Geräts. Welche App, welche Version, wer es wollte, was danach geprüft wurde.
 node .ara/tools/app.mjs --device <gerät> --app <id> --remove --confirm <id>
 ```
 
-**Stufe 3, unumkehrbar.** Es fallen beide Container mitsamt ihren Volumen, beide Stände,
-alle Freigaben, die Schlüssel der App und ihre beiden Datenbanken; die nächtlichen
-Sicherungen davon bleiben am Gerät liegen, und ein Administrator holt sie zurück, wie der
-Kontrakt unter `daten` sagt. Ohne die abgetippte Kennung passiert nichts,
-und das Werkzeug sagt vorher genau, was fällt. Sag es dem Menschen mit denselben Worten
-und hol ein ausdrückliches Ja, bevor du es tippst.
+**Stufe 3, unumkehrbar.** Beide Container mit ihren Volumes, beide Stände, alle Freigaben, die
+Schlüssel der App und ihre zwei Datenbanken fallen; ihre nächtlichen Sicherungen bleiben, ein
+Administrator holt sie zurück, wie der Kontrakt unter `daten` sagt. Ohne ausgeschriebene Kennung
+passiert nichts, und das Werkzeug sagt vorher, was fällt: sag es in denselben Worten und hol ein
+ausdrückliches Ja.
 
-## Wenn das Gerät nicht antwortet
+## Auf ein Gerät ohne Arasul
 
-- **Zertifikat nicht überprüfbar.** Ein Gerät im Kundennetz trägt meist ein selbst
-  ausgestelltes. Wenn du sicher bist, dass es dieses Gerät ist: `tls: selfsigned` in die
-  Akte, oder einmalig `--insecure`. Nicht ungefragt und nicht dauerhaft aus Bequemlichkeit.
-  Hat das Kit selbst installiert, steht der Eintrag schon da: dann weiß es, welches
-  Zertifikat dort liegt, es hat zugesehen, wie es entstanden ist.
-- **401.** Der Schlüssel wurde am Gerät widerrufen oder gehört zu einem anderen Gerät.
-  Nachsehen mit `node .ara/tools/device.mjs --name <gerät> --keys`: es listet, was dort liegt, und
-  markiert den, mit dem dieses Kit arbeitet. Sonst einen neuen anlegen (`--deploy-key`).
-- **Der Endpunkt steht nicht im Kontrakt.** Dann ruft das Kit ihn auch nicht. Das ist kein
-  Fehler des Werkzeugs, sondern die Aussage, dass Kit und Gerät nicht zusammenpassen.
-- **Die Schnittstelle liegt woanders als der SSH-Zugang.** Ein Gerät, das nur über einen
-  Tunnel erreichbar ist oder sein Zertifikat unter einem anderen Namen führt, bekommt
-  `api_base` in die Akte: die Adresse, unter der die Schnittstelle antwortet, mit Vorsatz.
-  Sie sticht `address`, und `--base <url>` sticht beide, für den einen Versuch, der nicht
-  in die Akte gehört. Was dauerhaft gilt, gehört in die Akte, nicht in den Aufruf.
-- **Gar keine Antwort.** Erst `node .ara/tools/find-device.mjs --host <adresse>`, dann
-  `.ara/knowledge/diagnostics.de.md`.
+```
+node .ara/tools/app.mjs --device <gerät> --app <name> --compose --port 8080
+```
+
+Über SSH stellt Compose einen Webserver für die Oberfläche und das Backend auf, gebaut aus dem
+Paket; die Ablage ist das SQLite des Backends, und das überlebt das nächste Einspielen nicht. **Sag
+vorher, was fehlt**, in den Worten, die das Werkzeug ausgibt und in den Kopf der erzeugten Datei
+schreibt: keine Anmeldung, kein Flow, keine Freigabe, ein Stand statt zwei, kein Schlüssel und damit
+keine Schnittstelle von Arasul. Wer Adresse und Port erreicht, sieht die App: ein Weg zum Vorführen,
+keiner für echte Daten. Stufe 2, mit Absicht, Ziel und Rückweg, der am Ende der Ausgabe steht. Der
+Merker vermerkt es als `compose`, sonst sagte die Lage, die App sei nirgends hingegangen, während
+sie am Gerät antwortet.
+
+Ein Zertifikat, das sich nicht prüfen lässt, eine 401, ein Endpunkt, der im Kontrakt fehlt, eine
+Schnittstelle woanders als SSH, gar keine Antwort: `.ara/knowledge/diagnostics.de.md`, „Wenn die
+Aufrufe des Kits keine Antwort bekommen".

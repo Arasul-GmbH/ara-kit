@@ -67,6 +67,20 @@ wie man sie benutzt, wie man sieht, dass sie läuft, was zu tun ist, wenn sie ni
 Das gehört in den Verlauf des Kunden, was gebaut wurde, warum, und wo es liegt. In einem
 Jahr fragt jemand danach.
 
+## Der Weg für fremde Werkzeuge
+
+```
+POST /v1/chat/completions
+POST /v1/embeddings
+GET  /v1/models
+```
+
+Die Aufrufe, die verbreitete KI-Bibliotheken sprechen, mit demselben Schlüssel, in der
+Schlüsselkopfzeile oder als `Authorization: Bearer`: ein Werkzeug außerhalb des Geräts richtet
+eine fertige Bibliothek darauf. Eine App auf dem Gerät nimmt ihn nicht. **Sie stehen in keinem
+Kontrakt**, das Kit ruft sie nicht von sich aus, und **bevor du sie zusagst, prüf sie am Gerät des
+Kunden** mit `check-docs.mjs --device`, das ohne Schlüssel anfragt.
+
 ## Wer die Erweiterung lizenziert
 
 **Erweiterungen sind nicht Bestandteil der Lieferung.** Auch dann nicht, wenn die

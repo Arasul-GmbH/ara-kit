@@ -15,6 +15,18 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.37.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **`/app` lädt für eine Fach-App halb so viel.** Befehl, `CLAUDE.md`, Persona und das Wissen, das eine Fach-App mit Belegen und Mandanten liest, kamen auf rund 31.000 Tokens, ein Zehntel davon doppelt. Jetzt sind es unter 15.000 in beiden Sprachen, gemessen wie `wc -w` mal 1,4, und der Selbsttest hält diese Linie. Der Befehl sagt für jede Datei, wann ihr Moment kommt; `extensions.md`, `security.md` und `live-knowledge.md` gehören nicht mehr dazu, `CLAUDE.md` trägt die Regeln, die sie beigetragen hätten.
+- **`app.md` ist geteilt in Kern und Fachteil.** `app-professional.md` hält Mandanten, Freigaben mit vier Augen, das Auslesen von Dokumenten und Fachstandards und wird nur bei Mandanten, Belegen oder einem Exportformat gelesen.
+- **Jedes Thema hat eine Heimat.** Eingespielt ist nicht sichtbar, die Freigabe je Stand, die getrennten Datenbanken von Test und live und Compose ohne Arasul stehen in `deploy.md`; die Anmeldung mit ihren Kopfzeilen, der Kreis der Entscheider und `arasul.json` in `platform-services.md`; dauerhafte Daten und der Lebenslauf in `app.md`; das Auslesen mit den Messwerten vom 25.09.2026 und die Entscheidungen des Mandantenmusters in `app-professional.md`; das Aussehen in `design-system.md`, die Geschichte der `design.css` einmal. Die Sicherung ist nach `maintenance-flow.md` gezogen, der Weg für fremde Werkzeuge nach `extensions.md`, die Fehler der Schnittstelle nach `diagnostics.md`.
+- **Die Muster tragen ihr Blatt neben ihrem Code.** `.ara/templates/app-patterns/<muster>/README.de.md` sagt, was du klärst, was das Gerät erreichen muss und was geprüft ist; `app-patterns.md` ist der Überblick, und gelesen wird nur das Blatt des Musters, das der Plan nimmt.
+- **`design-system.md` nennt keine Zahlen mehr.** Seine Zahlen zu Dateien, Primitiven, Mustern und Abhängigkeiten waren veraltet, der Spiegel von 0.36.0 trägt 71 Dateien und 15 Abhängigkeiten; was die aktuelle Fassung trägt, sagt `marken.json`. Der Wächter und seine Befunde stehen in `design-guard.md`.
+- **Die Werkzeugtabelle in `CLAUDE.md` hat eine Zeile je Werkzeug**, die Schalter stehen in den Verfahren.
+- **Englische Verweise zeigen auf englische Abschnittstitel**, und der Selbsttest prüft jeden Verweis der Form `datei.md`, „Titel" gegen die Überschriften in der Sprache des Blattes, das verweist.
+
 ## 0.36.0 (2026-09-26)
 
 Kontrakt: bis 6

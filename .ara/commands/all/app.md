@@ -5,21 +5,26 @@ argument-hint: [<app>]
 
 App: **$1**
 
-Read `.ara/knowledge/app.md` and work along it. Knowledge this command loads:
-`.ara/knowledge/app.md`, `.ara/knowledge/security.md`, plus `.ara/knowledge/deploy.md`
-as soon as a package goes to a device, `.ara/knowledge/platform-services.md` as soon as
-the app wants something from the platform (login, permission, flow, language model),
-`.ara/knowledge/design-system.md` as soon as you touch an interface,
-`.ara/knowledge/extensions.md` for the first interview with a customer,
-`.ara/knowledge/app-patterns.md` as soon as an idea is being formed, so that the app does
-not stop at a form, and `.ara/knowledge/live-knowledge.md` for every product value. You
-read the profile in `business/profile.md` beforehand: language, branch, detail level,
-security level, what the house works with.
+Read `.ara/knowledge/app.md` and work along it. Knowledge this command loads: each file only when
+its moment comes.
 
-**The argument.** `<app>` is the app under `apps/<app>/`. Apps sit at the
-top, independent of customers: the same app may run at three customers, and where it runs
-the device says. No argument: first the marker `.ara/state.json`, then the existing files.
-If there is exactly one, take it, otherwise ask through the interview tool.
+- `.ara/knowledge/app.md` always, the core.
+- `.ara/knowledge/app-patterns.md` as soon as an idea is being formed, and the sheet of the pattern
+  the plan takes, which it names.
+- `.ara/knowledge/app-professional.md` before the plan of a professional app: clients or files,
+  data that lasts for years, receipts the device reads, an approval without the submitter, an
+  export format of another vendor.
+- `.ara/knowledge/platform-services.md` as soon as the app wants something from the platform:
+  login, approval, flow, reading a document.
+- `.ara/knowledge/design-system.md` as soon as you touch an interface.
+- `.ara/knowledge/deploy.md` as soon as a package goes to a device.
+
+Security levels and product values: `.claude/CLAUDE.md`. Beforehand you read
+`business/profile.md`: language, branch, detail level, security level, what the house works with.
+
+**The argument.** `<app>` is the app under `apps/<app>/`; apps sit at the top, independent of
+customers, and where one runs the device says. No argument: first the marker `.ara/state.json`,
+then the existing folders. Exactly one, take it, otherwise ask through the interview tool.
 
 **First, always:**
 
@@ -27,43 +32,13 @@ If there is exactly one, take it, otherwise ask through the interview tool.
 node .ara/tools/app.mjs --app <app>
 ```
 
-The tool reads the file and says where the app stands and what is due now, with the call
-for every step. Pass that on in three lines and do the first of them, instead of listing
-everything that would be possible.
+It says where the app stands and what is due, with the calls. Pass that on in three lines and do the
+first, instead of listing everything possible.
 
-**If the app does not exist yet**, the interview comes before anything is created: the
-checklist is in the procedure. When the wish is small, a form, name once what lies next to
-it: a document shown on the device, a mail when something is decided, a lookup in a foreign
-system, a foreign tool behind the login, clients kept apart. The seven patterns with code that runs stand in
-`.ara/knowledge/app-patterns.md`, and the plan names the one it uses. Only after that
-`--new` and the first plan. Whatever stayed open goes into the plan as an assumption and
-gets read out next time.
-
-**If it is a professional app**, with clients or files, data that has to last for years,
-receipts the device is to read, an approval the submitter does not give, or an export format of
-another vendor: read the section "A professional app" in `.ara/knowledge/app.md` before the plan
-comes into being. It has five parts, and each of them belongs in the plan as an answer or as an
-assumption. Clients are built by pattern 7, not by a new description.
-
-**If a plan is active**, walk through its assumptions first, then build what it says, then
-`--build`. The build is the package, not the running app: what it does you see on the
-device.
-
-**If it goes to a device**, and there is no file for it under `devices/` yet, `/device` comes
-first: without a file no contract and no `--check`. Then always `--check` against its contract first, then `--deploy`.
-That rolls into **staging**, and there it stays until a human wanted to see it. `--live`
-is a level 2 intervention: ask beforehand, even if you deployed it yourself a minute ago,
-from that moment on people work with it. After that: plan into `erledigt/`, write on the
-app's README, one line into the runsheet or into the customer's history.
-
-**Deployed is not visible, and you say so before the deploy.** An app is visible to a person
-on the device only once it has been released for them; without a release the staging address
-answers with a 403. The kit cannot release it, its key carries `app:deploy`. `--deploy` names
-the two ways to an administrator at the end of its output: a session out of the start
-password, or a human in the device's interface. Read out what stands there and name no page
-and no route of your own: they stand in the artifact, and the kit reads that on the device, also
-without a token: `node .ara/tools/mirror.mjs --docs --device <device>`.
-
-**On a device without Arasul** `--compose` goes over SSH. Say beforehand what is missing
-there, in the same words the tool prints afterwards: no login, no flow, no permission.
-That is a way to demonstrate something, not one for real data.
+**No app yet**: the interview along the checklist comes before anything is created, then `--new`
+and the first plan. Whatever stayed open goes into the plan as an assumption and gets read out next
+time. **A plan is active**: its assumptions first, then build, then `--build`. **To a device**:
+without a file under `devices/`, `/device` first; then `--check`, then `--deploy` into staging.
+Before the deploy you say that the app is not yet visible, and why, as `.ara/knowledge/deploy.md`
+says. `--live` is a level 2 intervention: ask, even if you deployed a minute ago. **Without Arasul**
+`--compose` goes over SSH, and beforehand you say what is missing there.

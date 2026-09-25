@@ -475,8 +475,8 @@ function failOnStandard(app) {
       ...findings.map((line) => `- ${line}`),
       "",
       t(
-        'The rule with examples stands in .ara/knowledge/app.md under "The appearance".',
-        'Die Regel mit Beispielen steht in .ara/knowledge/app.de.md unter "Das Aussehen".'
+        'The rule with examples stands in .ara/knowledge/design-system.md under "What stops the kit, and what else is forbidden".',
+        'Die Regel mit Beispielen steht in .ara/knowledge/design-system.de.md unter „Was das Kit anhält, und was sonst verboten ist".'
       ),
     ].join("\n")
   );

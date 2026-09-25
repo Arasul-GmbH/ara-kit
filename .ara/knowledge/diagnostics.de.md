@@ -57,6 +57,21 @@ dem Gedächtnis zu verwenden.
 
 Die Tabelle ersetzt die Kette nicht. Sie sagt nur, wo man zuerst hinschaut.
 
+## Wenn die Aufrufe des Kits keine Antwort bekommen
+
+`app.mjs` und `maintain.mjs` sprechen mit dem Kit-Schlüssel die Schnittstelle des Geräts an.
+
+- **Zertifikat lässt sich nicht prüfen**: im Kundennetz meist selbst ausgestellt. Sicher, dass es
+  dieses Gerät ist: `tls: selfsigned` in die Akte, oder einmalig `--insecure`. Hat das Kit es selbst
+  installiert, steht der Eintrag schon da.
+- **401**: der Schlüssel wurde widerrufen oder gehört zu einem anderen Gerät.
+  `device.mjs --name <gerät> --keys` markiert den des Kits, sonst `--deploy-key`.
+- **Der Endpunkt steht nicht im Kontrakt**: das Kit ruft ihn nicht, Kit und Gerät passen nicht
+  zusammen.
+- **Die Schnittstelle sitzt woanders als SSH**, Tunnel oder anderer Zertifikatsname: `api_base` in
+  die Akte. Es schlägt `address`, `--base <url>` schlägt beide für einen Versuch.
+- **Keine Antwort**: `node .ara/tools/find-device.mjs --host <adresse>`, dann die Kette oben.
+
 ## Bevor du etwas änderst
 
 Sag den Befund in zwei Sätzen: was du festgestellt hast und was du daraus schließt. Dann

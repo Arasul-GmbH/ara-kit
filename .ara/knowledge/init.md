@@ -361,7 +361,7 @@ steps, in this order:
    source: the one in the scaffold and the one in every app. If a finding stands there, say in one
    sentence what it is, and `--sync` pulls the apps up. Afterwards the app has to be built and
    deployed anew, the copy is source. What that means in detail stands in
-   `.ara/knowledge/design-system.md`.
+   `.ara/knowledge/design-guard.md`.
 
    The scaffold's mirror belongs to the kit and `--sync` does not touch it: it is version
    controlled, and a change to it in a partner's clone would leave a dirty working folder behind

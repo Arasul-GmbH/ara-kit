@@ -39,8 +39,8 @@ freigegeben ist. **Was jemand darin sieht, entscheidet die App.** Sie darf dafü
 und die Rolle aus den Kopfzeilen auswerten, denn die setzt die Plattform und fälschen kann
 sie niemand: eine Zuordnung von Konten zu Mandanten, Abteilungen oder Akten ist Sache der
 App und keine zweite Anmeldung. Diese Vorlage zeigt jedem, der hineinkommt, alle Vorgänge.
-Wie eine App nach Mandanten trennt, steht in `.ara/knowledge/app.de.md` unter
-„Sichtbarkeit innerhalb einer App“.
+Wie eine App nach Mandanten trennt, steht in `.ara/knowledge/app-professional.de.md` unter
+„Mandanten: wer was sieht“.
 
 ## Woher sie weiß, wie sie das Gerät erreicht
 

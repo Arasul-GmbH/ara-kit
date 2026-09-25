@@ -69,7 +69,7 @@ from which the margin can be worked back.
    what is owed, and the offer only refers to it. Without it no offer. It comes into being
    on the device and against the mirror, not at the desk, and never copied out of an old
    offer: an old trial level is a false promise at the next product version. The six steps
-   are in `.ara/knowledge/paperwork.md` under "Die Leistungsbeschreibung füllen". Scaffold:
+   are in `.ara/knowledge/paperwork.md` under "Filling in the Leistungsbeschreibung". Scaffold:
    `.ara/vorlagen/leistungsbeschreibung.md`.
 
 5. **Calculate.** Along `.ara/knowledge/pricing.md`, with the numbers from step 1 and in the

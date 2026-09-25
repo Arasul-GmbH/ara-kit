@@ -66,6 +66,20 @@ it, how to see that it runs, what to do when it does not run.
 That belongs into the customer's history, what was built, why, and where it lies. In a year
 somebody will ask about it.
 
+## The route for outside tools
+
+```
+POST /v1/chat/completions
+POST /v1/embeddings
+GET  /v1/models
+```
+
+The calls widespread AI libraries speak, with the same key, in the key header or as
+`Authorization: Bearer`: a tool outside the device points a ready library at it. An app on the device
+does not take it. **They stand in no contract**, the kit does not call them unasked, and **before you
+promise them, check them on the customer's device** with `check-docs.mjs --device`, which asks
+without a key.
+
 ## Who licenses the extension
 
 **Extensions are not part of the delivery.** Not even when the platform provides for or eases

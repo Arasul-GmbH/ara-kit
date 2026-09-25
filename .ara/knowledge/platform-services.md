@@ -1,97 +1,66 @@
 # Procedure: the platform's services, and how an app uses them
 
 > **When do you need this?** When an app wants something from Arasul: a login, a decision by a
-> human, a language model, a document, a flow. And when somebody asks what of all that is left
-> without Arasul.
+> human, a language model, a document, a flow. What is left without Arasul:
+> `.ara/knowledge/deploy.md`, "Onto a device without Arasul".
 
 ## The rule first
 
-This sheet says **what** a service is for and how it is used. What it is called on a particular
-device, at which route it answers and which limits apply there, the device says:
+This sheet says **what** a service is for; names, routes and limits on a device its contract says
+(`--contract`). The routes here are pointers, named so that
+`node .ara/tools/check-docs.mjs --device <device>` can hold them against contract and device before
+a partner promises one. A route the contract does not name the kit does not call, usually the device
+is older than the kit (`.ara/knowledge/deploy.md`, contract version). A route of this sheet missing
+on a current device is feedback for the kit.
 
-```
-node .ara/tools/app.mjs --device <device> --contract
-```
-
-Every route standing here stands as a pointer to what has to be looked up in the contract, not as
-a promise. It is named nevertheless, because otherwise nobody could check whether this sheet is
-still right. That is exactly what the tool is for:
-
-```
-node .ara/tools/check-docs.mjs --device <device>
-```
-
-It reads every route that stands in the kit's knowledge, holds it against the contract's endpoint
-list and calls on the device. What no longer exists there shows up before a partner works along
-it or promises it to a customer.
-
-**Two kinds of route, and the difference decides who can walk it:**
-
-| Kind | Who identifies themselves | Stands in the contract |
+| Kind of route | Who identifies themselves | In the contract |
 |---|---|---|
-| The outer interface | a key in the header, no session | yes, with the scope each one demands |
+| The outer interface | a key in the header, no session | yes, with the scope each demands |
 | A route of the interface | the session of a logged-in human | no |
 
-The kit has a key and no session. Everything that needs a session is therefore done by a human, in
-the browser on the device, and you watch and write along. A kit that walked such a route itself
-would need an administrator's password.
+The kit has a key and no session: what needs one a human does in the browser, or the kit over a
+session out of the start password. The administration stands in admin handbook and API reference on
+the device, `node .ara/tools/mirror.mjs --docs --device <device>`, one with `--read <path>`. The first
+employee and permission: `.ara/knowledge/device.md`, "The first employee and the first permission".
 
-**Without a browser that is not the end.** The platform has an interface of its own for its
-administration, and how it works stands in the artifact: admin handbook and API reference. Both lie
-on every device with Arasul, in the version that runs there, and the kit reads them there without a
-token: `node .ara/tools/mirror.mjs --docs --device <device>`, one of them with `--read <path>`. With a
-mirror they also stand under `node .ara/tools/mirror.mjs --docs`. The first employee and the first
-permission are the case that otherwise leaves you stuck, and it stands in
-`.ara/knowledge/device.md` under "Der erste Mitarbeiter und die erste Freigabe".
+## What an app gets: `backend/arasul.json`
+
+The names of the interface's address, the key and the database address in the container, the key's
+header, the two login headers, the ways for a flow and for reading a document, whether a run takes
+submitter and approval rule: this device's contract says them, and at deploy `app.mjs` writes them
+into the package as `backend/arasul.json`. `--check` prints it and what this device does not promise.
+
+**An app never writes those values into its source.** One that does finds nothing on a device that
+names them differently, takes that for "no Arasul here" and collects items nobody decides on: the
+scaffold did so up to 29.08.2026, its approval step was skipped, not refused. The self-test holds
+scaffold and patterns to that. **Model work of an app runs over a flow or over reading a document**:
+`arasul.json` carries no other way to a model.
 
 ## Login: an app gets none of its own
 
-Whoever is logged in to Arasul and has the app shared with them is logged in to the app. Whoever is
-not does not get in. There is no special rule for administrators.
-
-That is enforced **in front of** the container: the platform checks the request and sets two
-headers, one with the user name and one with the role. **What they are called and which roles
-there are stands in the contract** under `koepfe`, together with the note on how the name is to be
-read. Do not copy the names down: the kit puts them into the app's `arasul.json` at the deploy, and
-the scaffold reads them there.
-
-They cannot be forged: whatever comes in from outside in the request gets deleted before the
-platform sets its own.
-
-More convenient than the headers is the route the platform keeps free for the app:
-
-```
-GET /apps/<id>/api/me
-```
-
-It answers with the id, the slot, the user and the role. Staging has its own one underneath. Which
-names under `/apps/<id>/` belong to the platform and which to the app stands in the contract under
+Whoever is logged in to Arasul and has the app shared with them is logged in to the app, nobody
+else, administrators included. The platform enforces that **in front of** the container and sets two
+headers, user name and role, after deleting whatever came from outside under those names: they
+cannot be forged. **Their names and the roles stand in the contract** under `koepfe`, the kit puts
+them into `arasul.json`, the scaffold reads them with `geraet.angemeldet(anfrage.headers)`. For the
+interface the platform keeps `GET /apps/<id>/api/me` free: id, slot, user, role, and staging has its
+own underneath. Which names under `/apps/<id>/` are the platform's, the contract says under
 `apps.vergeben`.
 
-**What you do not build out of that:** no login form in the app, no field somebody types their name
-into, no accounts of your own with a password. That would be a second login next to the real one,
-and it would hold nobody back.
-
-**What you may build out of that:** a mapping of the device's accounts to what the app knows,
-clients, departments, files. It hangs on the user name from the header and decides what somebody
-sees **inside** the app; who gets in at all the device keeps deciding. How that works and how it
-gets checked stands in `.ara/knowledge/app.md` under "Visibility inside an app".
+**Not built out of that:** a login form, a name field, accounts with a password. That would be a
+second login that holds nobody back. **Built out of that:** a mapping of accounts to clients,
+departments, files by the user name, deciding what somebody sees **inside**:
+`.ara/knowledge/app-professional.md`, "Clients: who sees what".
 
 ## Permissions: a run stops, a human decides
 
-A flow can stop and ask for approval. The tool for that is called `freigabe_anfordern` and stands
-in the flow's step chain, with a title, the context and a deadline. The run then stands as waiting,
-and without a decision nothing goes further.
+A flow stops with the tool `freigabe_anfordern`, with title, context and deadline, and the run waits:
+**without a decision nothing goes further**. A question in the conversation, by contrast, goes to
+whoever watches and carries on with an assumption. Approved, the run carries on from the step;
+rejected, it ends with the reason; no decision by the deadline, it ends as well.
 
-That is something other than a question in the conversation: a question goes to whoever is watching
-right now, and without an answer the flow carries on with an assumption. An approval goes, as long as
-the app does not draw the circle narrower (see below), to everybody the app is shared with, and **without an answer nothing goes further at all**.
-
-Three outcomes, and they stand on the run: approved, then it carries on from the stopped step.
-Rejected, then it ends, and the reason is its reason. Nobody decides by the deadline, then it ends
-as well.
-
-**Deciding happens over a human's session**, not over a key:
+**Deciding runs over a human's session**, so these routes stand in no contract and the kit does not
+call them:
 
 ```
 GET  /api/freigabe-anfragen
@@ -99,58 +68,30 @@ POST /api/freigabe-anfragen/<id>/bestaetigen
 POST /api/freigabe-anfragen/<id>/ablehnen
 ```
 
-Those three routes therefore do not stand in the contract, and the kit does not call them. Whoever
-wants to decide is logged in, and that is the customer.
+**The app reads the state with its own key and never decides**: `GET /api/v1/external/freigaben`,
+with the run number.
 
-**The app reads its state and does not decide:**
+**The circle.** A flow names no person and no role. Without a rule **everybody the app is shared
+with** decides and sees the card with its text, also for a client not theirs. Since 25.09.2026 the
+contract names under `freigaben` how an app draws the circle narrower at the start, never wider:
+**`einreicher`**, the user name who triggers the run; **`freigabe.ohne_einreicher: true`**, four
+eyes; **`freigabe.entscheider`**, `{"rolle": "admin"}` or `{"konten": [...]}`. Outside the circle
+nobody sees the request, and deciding gets a 403; if nobody remains, the device refuses the start.
+`--contract` prints the rules, `arasul.json` says under `freigaben` whether a device knows them. For
+clients: `.ara/knowledge/app-professional.md`, "Approvals in a professional app".
 
-```
-GET /api/v1/external/freigaben
-```
-
-With its own key, with the run number as the question behind it. An app that could grant its own
-approval would not be one.
-
-**Who may decide the customer says, not the flow.** A flow names no person and no role, it
-describes the matter. By default the responsibility is the same permission with which somebody may
-use the app at all, and **every one of them sees the card with its text.**
-
-**The app can draw the circle narrower at the start, never wider.** Since 25.09.2026 the contract
-names under `freigaben` what a start brings along for that: the submitter, the exclusion of the
-submitter (four eyes) and the deciders, as a role or as a list of accounts. Whoever does not stand
-in the circle does not see the request and gets a 403 when deciding; if nobody remains, the device
-refuses the start. The rules stand there word for word, `--contract` prints them, and whether a
-device knows them stands in `arasul.json` under `freigaben` after the deploy. For a professional
-app with clients that means: deciders from the mapping, submitter excluded, see
-`.ara/knowledge/app.md`, "Approvals in a professional app".
-
-**References belong in the request's text, no content.** Title and context stand on the card of
-every decider and at the run on the device. A number and a name under which the decider finds the
-item in the app are enough; amounts, names of clients, texts stay in the app.
-
-What you do **not** promise the customer unchecked: that a waiting run stands for an arbitrarily
-long time. Ask that on the device before a process is built on it in which an approval lies open
-for days.
+**References in the request, no content.** Title and context stand on every decider's card and at
+the run: "receipt 17, submitted by anna", the decider opens it in the app. Amounts, client names,
+texts stay in the app and follow its visibility. **Do not promise unchecked** that a run can wait
+for days; ask the device first.
 
 ## Flows: one file per flow, the model stands in the header
 
-A flow is a task a language model carries out with tools. As a file it is Markdown with a header:
-the header says what the flow needs and may do, the text below is the instruction.
-
-**A flow in a package is a delivery.** The package brings the files along, the device registers
-them per app and slot. The namespace is the app: two apps may carry the same flow name.
-
-**The schema of the header and the rules for a flow out of a package stand in the contract** under
-`flow_frontmatter`: the schema as a schema, plus the rules as sentences and the note that the
-instruction is the body and not a field in the header. `--contract` prints both word for word. Do
-not copy it down, read it on the device in question.
-
-**The model in the header is the partner's suggestion.** The administrator on the device may
-override it per flow; their decision lies on the device and not in the file and therefore survives
-every app update. Two consequences for you: do not write in an app's README which model it runs on,
-and do not look for a difference in behaviour in the package first.
-
-A flow is triggered from outside over the outer interface:
+A flow is a task a language model carries out with tools: Markdown, the header says what it needs
+and may do, the body is the instruction. **In a package it is a delivery**, registered per app and
+slot, so two apps may carry the same name. Header schema and rules: the contract under `flow_frontmatter`. **The model in the header is a
+suggestion** the administrator may override per flow on the device, over every update: so no model
+name in the README, and a difference in behaviour is not looked for in the package first.
 
 ```
 GET  /api/v1/external/flows
@@ -158,18 +99,11 @@ POST /api/v1/external/flows/<name>/run
 GET  /api/v1/external/flows/runs/<id>
 ```
 
-What a key sees in doing so the key decides: an app's key sees only its own flows in its own slot.
-Recurring starts you trigger from outside over the same route, from a schedule on a computer that
-runs anyway.
-
-**A flow with an approval step is started without waiting for the result.** It stops until a human
-decides, and that can take a while; a waiting call runs into its time limit before that. The run
-number comes back immediately, the rest you ask for.
+An app's key sees only its own flows in its slot. Recurring starts come over the same route from a
+schedule on a computer that runs anyway. **A flow with an approval step is started without waiting**:
+a waiting call runs into its time limit; the run number comes back at once, the rest you ask.
 
 ## The AI interface: with a key, without a session
-
-Ask a language model, read the state of a job, see which models are on the device, get text out of a
-file and have it evaluated:
 
 ```
 POST /api/v1/external/llm/chat
@@ -181,116 +115,13 @@ POST /api/v1/external/document/extract-structured
 POST /api/v1/external/document/analyze
 ```
 
-**Which of those this one device carries stands in its contract**, and there stands too which scope
-a key has to carry for it. The two ways to read a document the kit puts into an app's `arasul.json`
-under `wege`, like the ways of a flow. **A way to the chat or to a model it does not put there**: model
-work of an app runs over a flow or over reading a document. The other ways of this list are for the
-kit and for tools outside an app.
+**Which of them a device carries, with which scope, its contract says**; a key without the scope is
+refused, a decision of the administrator. The two ways to read a document go into `arasul.json`
+under `wege`, what they do: `.ara/knowledge/app-professional.md`, "Reading documents and images".
+The rest is for the kit and for tools outside an app, which may also speak the libraries' own calls:
+`.ara/knowledge/extensions.md`, "The route for outside tools". Key header and prefix stand under `schluessel`, the
+names in the container under `umgebung`. The kit's key comes from `--deploy-key`, an app's key the
+device puts into the container.
 
-**Reading a document into fields** means: the app sends the file and a JSON schema, the device
-takes the text out, for a photo or a scanned PDF through its text recognition, and lets a language
-model fill the fields. The model sees text, not an image. The answer names the model and whether
-the text recognition ran. What that means for photos, image models and the field `modelle` in
-`app.json` stands in `.ara/knowledge/app.md` under "Reading documents and images", the code for it
-is pattern 6 in `.ara/knowledge/app-patterns.md`. The kit calls nothing the device does not promise. If a key lacks the
-scope, the device rejects it, and that is not a fault of the kit but a decision of the
-administrator.
-
-The header for the key and its prefix likewise stand in the contract, under `schluessel`. The kit's
-key comes from `/device` with `--deploy-key`; an app's key the device puts into the container
-itself at deployment, together with the address of the interface. Which names the two values carry
-the contract says under `umgebung`.
-
-**An app learns those names from the kit and not from its own source.** At deployment `app.mjs`
-reads them out of the device's contract and puts them, together with the header and the ways, into
-the package as `backend/arasul.json`. An app that guesses a name instead finds nothing on a device
-that names it differently and takes that for a device without Arasul.
-
-**The chat is stateless.** Every call is a job of its own with exactly the history that is sent
-along. Whoever wants a conversation keeps it themselves and sends it along. An app that builds on a
-memory on the device builds on something that does not exist.
-
-## The route for outside tools
-
-Next to its own interface the device answers the calls that widespread AI libraries speak:
-
-```
-POST /v1/chat/completions
-POST /v1/embeddings
-GET  /v1/models
-```
-
-Authentication is with the same key, in the key header or as `Authorization: Bearer`. What that is
-good for: a tool outside the device takes a ready-made library and points it at the device instead
-of building a client of its own. An app on the device does not take this route, its model work runs
-over a flow or over reading a document.
-
-**These routes do not stand in the contract.** The contract describes what is agreed between kit
-and device, and this route is there for outside tools. Two things follow from that: the kit does not
-call it of its own accord, and **before you promise it to a customer, you check it on their
-device.** `node .ara/tools/check-docs.mjs --device <device>` asks without a key and says whether the
-route exists there.
-
-## `app.json` and the flow header: the schema lies on the device
-
-What belongs in a manifest is not a matter for this sheet. The device prints its schema, and next to
-it the rules no schema can carry. The kit checks both for you:
-
-```
-node .ara/tools/app.mjs --device <device> --check <folder>
-```
-
-**The rules without a schema are not trimmings.** A manifest can be valid against the schema and
-still be rejected. The tool prints them word for word, and you go through them one by one. The whole
-way of a package stands in `.ara/knowledge/deploy.md`.
-
-## The backup
-
-The question a customer asks after half a year has two parts: **does the device really back up**,
-and **when did a copy last lie outside the device**. Both are answered by a route of the interface:
-
-```
-GET /api/backup/status
-```
-
-It demands a session as administrator. No kit key opens it, so it does not stand in the contract,
-and `/maintain` in that case says "das Gerät nennt dafür keinen Endpunkt". That does not mean no
-backup happens, it means the kit cannot measure it this way.
-
-Two ways, and you say which one you took:
-
-1. **In the browser on the device**, the human is logged in. You see the answer, so do they.
-2. **Over SSH**, with whatever is there on the device for it.
-
-A target outside is a disk or a share in the customer network, not a target in a cloud. If it is
-missing, the answer gives the reason, and that belongs in the conversation: a backup lying next to
-the device is gone too after water damage.
-
-**Into a service description or a handover record goes only what you have seen**, with a date and
-with the way you saw it.
-
-## What is missing without Arasul
-
-The same app also runs on a device without Arasul, over Compose:
-
-```
-node .ara/tools/app.mjs --device <device> --app <name> --compose --port 8080
-```
-
-Then everything on this sheet falls away: the login, the flows, the permissions, the second slot and
-the key with which an app reaches the interface. The tool lists it at setup and writes it into the
-header of the generated file. **Say it beforehand and in the same words**, instead of leaving it
-standing in the output afterwards.
-
-That is a way to demonstrate and to try out. For an operation with real data it is not: whoever
-reaches the address and the port sees the app.
-
-## When a route is missing
-
-If the contract does not name a route, the kit does not call it. That is not a fault of the tool but
-the statement that this device does not offer it, and usually that means: it is older than the kit.
-What applies then stands in `.ara/knowledge/deploy.md` under the contract version.
-
-If you notice that this sheet names a route that no longer exists on a current device, that is
-feedback for the kit and not a trifle. `check-docs.mjs` with `--device` tells you with one sentence
-per route.
+**The chat is stateless**: every call is a job with exactly the history sent along. An app that
+builds on a memory on the device builds on nothing.

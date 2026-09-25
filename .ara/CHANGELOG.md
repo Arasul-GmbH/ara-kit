@@ -13,6 +13,18 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.37.0 (2026-09-26)
+
+Contract: up to 6
+
+- **`/app` loads half as much for a professional app.** Command, `CLAUDE.md`, persona and the knowledge a professional app with receipts and clients reads came to some 31,000 tokens, a tenth of it twice. Now it is under 15,000 in both languages, measured like `wc -w` times 1.4, and the self-test holds that line. The command says for every file when its moment comes; `extensions.md`, `security.md` and `live-knowledge.md` are no longer part of it, `CLAUDE.md` carries the rules they would have added.
+- **`app.md` is split into a core and a professional part.** `app-professional.md` holds clients, approvals with four eyes, reading documents and professional standards, and is read only for clients, receipts or an export format.
+- **Every topic has one home.** Deployed is not visible, the release per slot, the separate databases of staging and live and Compose without Arasul stand in `deploy.md`; login with its headers, the circle of deciders and `arasul.json` in `platform-services.md`; data that stays and the life cycle in `app.md`; reading documents with the measurements of 25.09.2026 and the decisions of the clients pattern in `app-professional.md`; the appearance in `design-system.md`, the history of `design.css` once. The backup moved to `maintenance-flow.md`, the route for outside tools to `extensions.md`, the errors of the interface to `diagnostics.md`.
+- **The patterns carry their sheets next to their code.** `.ara/templates/app-patterns/<pattern>/README.md` says what you settle, what the device has to reach and what was checked; `app-patterns.md` is the overview, and you read only the sheet of the pattern the plan takes.
+- **`design-system.md` names no counts any more.** Its counts of files, primitives, patterns and dependencies had gone stale, the mirror of 0.36.0 carries 71 files and 15 dependencies; `marken.json` says what the current version carries. The guard and its findings stand in `design-guard.md`.
+- **The tool table in `CLAUDE.md` has one line per tool**, the flags stand in the procedures.
+- **English references point to English section titles**, and the self-test checks every reference of the form `file.md`, "Title" against the headings in the language of the sheet that refers.
+
 ## 0.36.0 (2026-09-26)
 
 Contract: up to 6

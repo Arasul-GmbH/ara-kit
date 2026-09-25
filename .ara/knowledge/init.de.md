@@ -380,7 +380,7 @@ Stand des Kits. Acht Schritte, in dieser Reihenfolge:
    Designsystems an seiner Quelle: den in der Vorlage und den in jeder App. Steht ein
    Befund da, sagt er in einem Satz, was ist, und `--sync` zieht die Apps nach. Danach
    muss die App neu gebaut und eingespielt werden, die Kopie ist Quelltext. Was das im
-   Einzelnen heißt, steht in `.ara/knowledge/design-system.md`.
+   Einzelnen heißt, steht in `.ara/knowledge/design-guard.de.md`.
 
    Der Spiegel der Vorlage gehört dem Kit und wird von `--sync` nicht angefasst: er liegt
    in der Versionsverwaltung, und eine Änderung daran im Klon eines Partners hinterließe

@@ -44,16 +44,36 @@ Findet es zu einem Punkt nichts, steht im Bericht "dieses Gerät nennt dafür ke
 Endpunkt, noch nicht am Gerät", und **das ist die Antwort, nicht eine Lücke, die du
 füllst.** Die letzte Sicherung ist heute genau so ein Punkt.
 
-**Sie ist trotzdem messbar, nur nicht vom Kit.** Das Gerät beantwortet die zwei Fragen
-dazu über einen Weg seiner Oberfläche, und der verlangt eine Sitzung als Administrator,
-kein Schlüssel öffnet ihn. Wie du trotzdem herankommst und was in der Antwort steht,
-steht in `.ara/knowledge/platform-services.de.md` unter "Die Sicherung". Kommt einmal ein
-Weg mit Schlüssel dazu, findet ihn das Werkzeug beim nächsten Lauf von selbst.
-
 Dasselbe gilt für die Apps. Solange das Gerät keinen Endpunkt nennt, der sie aufzählt,
 fragt das Kit nach den Kennungen, die es selbst kennt (die Ordner unter `apps/`, oder was
 du mit `--apps` angibst). **Andere kann das Gerät trotzdem tragen**, und der Bericht sagt
 das. Eine Liste, die er vollständig nennen würde, wäre geraten.
+
+### Die letzte Sicherung
+
+**Sie ist trotzdem messbar, nur nicht vom Kit.** Die Frage, die ein Kunde nach einem halben
+Jahr stellt, hat zwei Teile: **sichert das Gerät wirklich**, und **wann lag zuletzt eine Kopie
+außerhalb des Geräts**. Beide beantwortet ein Weg der Oberfläche:
+
+```
+GET /api/backup/status
+```
+
+Er verlangt eine Sitzung als Administrator. Kein Kit-Schlüssel öffnet ihn, er steht darum
+nicht im Kontrakt, und der Bericht sagt „das Gerät nennt dafür keinen Endpunkt". Das heißt
+nicht, dass nicht gesichert wird, sondern dass das Kit es auf diesem Weg nicht messen kann.
+Kommt einmal ein Weg mit Schlüssel dazu, findet ihn das Werkzeug beim nächsten Lauf von
+selbst. Zwei Wege, und du sagst, welchen du gegangen bist:
+
+1. **Im Browser am Gerät**, der Mensch ist angemeldet. Du siehst die Antwort, er auch.
+2. **Über SSH**, mit dem, was am Gerät dafür da ist.
+
+Ein Ziel außerhalb ist eine Platte oder eine Freigabe im Kundennetz, kein Ziel in einer
+Cloud. Fehlt es, sagt die Antwort den Grund, und der gehört ins Gespräch: eine Sicherung,
+die neben dem Gerät liegt, ist nach einem Wasserschaden auch weg.
+
+**In eine Leistungsbeschreibung oder ein Übergabeprotokoll kommt nur, was du gesehen
+hast**, mit Datum und mit dem Weg, auf dem du es gesehen hast.
 
 ## Die vier Anliegen
 
