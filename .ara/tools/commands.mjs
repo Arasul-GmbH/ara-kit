@@ -83,6 +83,7 @@
  * mitschleppt. Was ein Nutzer dort selbst dazulegt, bleibt unangetastet.
  */
 
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -303,8 +304,31 @@ if (arg.apply && branch === "company") {
   }
 }
 
+/**
+ * Was ein Unternehmen nicht hat, zählt Git nicht als gelöscht.
+ *
+ * Die Dateien aus PARTNER_ONLY sind im Kit-Repository verfolgt. Weggeräumt
+ * zeigte `git status` danach 14 Löschungen, und der Klon war schmutzig, ohne
+ * dass jemand etwas getan hätte: gefunden am 25.09.2026 in einem Fremdtest.
+ * `skip-worktree` ist Gits eigenes Mittel für eine Datei, die im Arbeitsbaum
+ * absichtlich fehlt; ein `git pull` zieht sie im Index weiter nach und legt sie
+ * nicht wieder hin. Der Zweig Partner nimmt die Marke wieder ab, damit seine
+ * Dateien wieder als das zählen, was sie sind. Ohne Git geschieht nichts.
+ */
+function markForGit(branchName) {
+  const inside = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: ROOT, encoding: "utf8" });
+  if (inside.status !== 0 || inside.stdout.trim() !== "true") return 0;
+  const tracked = spawnSync("git", ["ls-files", "-z", "--", ...PARTNER_ONLY], { cwd: ROOT, encoding: "utf8" });
+  const files = (tracked.stdout || "").split("\0").filter(Boolean);
+  if (!files.length) return 0;
+  const flag = branchName === "company" ? "--skip-worktree" : "--no-skip-worktree";
+  const marked = spawnSync("git", ["update-index", flag, "--", ...files], { cwd: ROOT, encoding: "utf8" });
+  return marked.status === 0 ? files.length : 0;
+}
+const gitMarked = arg.apply ? markForGit(branch) : 0;
+
 if (arg.json) {
-  console.log(JSON.stringify({ ...lage, applied: Boolean(arg.apply), replaced: replace, cut }, null, 2));
+  console.log(JSON.stringify({ ...lage, applied: Boolean(arg.apply), replaced: replace, cut, git_marked: gitMarked }, null, 2));
   process.exit(0);
 }
 
@@ -378,6 +402,14 @@ if (arg.apply || replace.length) {
           "Should this become a partner one day: set role in the profile, then node .ara/tools/update.mjs brings it back.",
         `\nZweig Unternehmen, weggeräumt, weil es nur Partnern gehört: ${cut.join(", ")}. ` +
           "Wird daraus einmal ein Partner: role im Profil ändern, dann holt node .ara/tools/update.mjs es zurück."
+      )
+    );
+  }
+  if (gitMarked && branch === "company") {
+    console.log(
+      t(
+        `Git counts these ${gitMarked} files as absent on purpose (skip-worktree): the clone stays clean.`,
+        `Git zählt diese ${gitMarked} Dateien als absichtlich abwesend (skip-worktree): der Klon bleibt sauber.`
       )
     );
   }

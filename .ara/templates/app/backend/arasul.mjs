@@ -69,6 +69,11 @@ export function gelungen(code) {
   return typeof code === "number" && code >= 200 && code < 300;
 }
 
+/** Ein Satz des Geraets ohne seinen Schlusspunkt: der Satz der App setzt ihn. */
+function satz(text) {
+  return String(text).trim().replace(/\.+$/, "");
+}
+
 /** Die Nummer eines Laufs aus einer Antwort, unter welchem der ueblichen Namen sie auch steht. */
 export function laufnummer(daten) {
   const feld = inhalt(daten);
@@ -180,7 +185,7 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
         fehler: antwort.ok
           ? null
           : `${ziel.verb} ${ziel.pfad} wurde mit Status ${antwort.status} beantwortet${
-              daten?.error?.message ? `: ${daten.error.message}` : ""
+              daten?.error?.message ? `: ${satz(daten.error.message)}` : ""
             }.`,
       };
     } catch (fehler) {
@@ -224,7 +229,7 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
         fehler: antwort.ok
           ? null
           : `${ziel.verb} ${ziel.pfad} wurde mit Status ${antwort.status} beantwortet${
-              daten?.error?.message ? `: ${daten.error.message}` : typeof daten?.error === "string" ? `: ${daten.error}` : ""
+              daten?.error?.message ? `: ${satz(daten.error.message)}` : typeof daten?.error === "string" ? `: ${satz(daten.error)}` : ""
             }.`,
       };
     } catch (fehler) {
