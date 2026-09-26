@@ -14,8 +14,11 @@ viewer, the fields beside it, the defects above, the log below.
 into `server.mjs` **before** the routes of the documents, a `Route` and a sidebar entry, then
 `--build`. The call to the device stands in the scaffold, `geraet.auslesen` in `backend/arasul.mjs`:
 the way out of `arasul.json`, the file as a form with the schema, back come fields, model, duration
-and whether the text recognition ran, and the human goes along for the device's log. **No route and
-no model name stands in the pattern**, the self-test holds it to that. A photo can also go to an
+and whether the text recognition ran, and the human goes along for the device's log. **A long
+reading is fetched, not lost**: if the model still computes after the device's wait, the scaffold
+fetches the result on `wege.dokument_abholen`, and it sends at most as many readings at a time as
+`warten.gleichzeitig` allows, one without a number. **No route and no model name stands in the
+pattern**, the self-test holds it to that. A photo can also go to an
 image model itself: `geraet.fragen` with `bilder`, how stands in `--contract` under `bilder`.
 
 **Replace `SCHEMA`, `ANWEISUNG` and `fachlich`** with what your customer reads. A flat schema with
@@ -25,5 +28,6 @@ Whoever discards a reading triggers a new one: the log keeps every one, and for 
 does not exist and has no log it answers 404.
 
 **Checked**: the self-test against a played device, fields, a defect at the tax rate, no fields, a
-device error, the log after the document went; the Orin on 25.09.2026 with a probe out of the
-scaffold, pattern 2 and this one. The customer's model and real receipts you check on their device.
+device error, the log after the document went, a reading fetched after a 202, six at once; the Orin
+on 26.09.2026 with a probe out of the scaffold, pattern 2 and this one: six photos at once, all six
+read, one after the other. The customer's model and real receipts you check on their device.

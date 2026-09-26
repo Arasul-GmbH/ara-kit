@@ -68,6 +68,7 @@ import {
   verificationOf,
 } from "./lib/platform.mjs";
 import {
+  CONTRACT_PATH,
   KIT_CONTRACT_VERSION,
   checkManifest,
   checkVersion,
@@ -111,6 +112,7 @@ import {
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
+import { contractRows, fillPath, routeRows, shareWays } from "./lib/adminways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -2747,6 +2749,134 @@ await checkAsync("Ein selbst installiertes Gerät kennt sein eigenes Zertifikat"
     rmSync(akte, { recursive: true, force: true });
     rmSync(work, { recursive: true, force: true });
   }
+});
+
+await checkAsync("Eine App wird einem Konto im Teststand freigegeben und wieder entzogen, Weg und Felder aus der API-Referenz, die Sitzung aus einem genannten Eintrag", async () => {
+  // Die App-Bau-Probe am 26.09.2026: kein Befehl zum Freigeben, ein Fremder
+  // fand die Wege in der API-Referenz und ließ den Stand weg, und die Freigabe
+  // fiel auf live. Das gespielte Gerät nennt seine Wege anders als der Orin:
+  // ein Kit, das `/api/freigaben` auswendig kennt, findet hier nichts.
+  const name = "selftest-teilen";
+  const akte = join(ROOT, "devices", name);
+  const spiegel = mkdtempSync(join(tmpdir(), "ara-teilen-"));
+  mkdirSync(join(spiegel, "docs", "api"), { recursive: true });
+  writeFileSync(
+    join(spiegel, "docs", "api", "REFERENZ.md"),
+    [
+      "| Method | Endpoint | Description |",
+      "| ------ | -------- | ----------- |",
+      "| GET    | `/api/konto` | Alle Konten: `id, username, role` |",
+      "| POST   | `/api/konto` | Konto anlegen: `{ username, password }` |",
+      "| GET    | `/api/teilen` | Alle Freigaben; mit `app_name`, `username` |",
+      "| POST   | `/api/teilen` | Freigeben: `{ app, konto_id, stand? }`; 201 neu |",
+      "| DELETE | `/api/teilen/:app/:kontoId` | Zurücknehmen; 404, wenn es sie nicht gibt |",
+    ].join("\n")
+  );
+  const gesehen = [];
+  let geteilt = new Map();
+  const server = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const rumpf = teile.length ? JSON.parse(Buffer.concat(teile).toString("utf8")) : null;
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      gesehen.push({ verb: anfrage.method, weg: url.pathname, rumpf, ausweis: anfrage.headers.authorization ?? null });
+      if (url.pathname === CONTRACT_PATH) return json(200, { data: KONTRAKT });
+      if (anfrage.method === "POST" && url.pathname === "/api/auth/login") {
+        return rumpf?.username === "anna" && rumpf?.password === "geheim-anna" ? json(200, { token: "sitzung-anna" }) : json(401, { error: "nein" });
+      }
+      if (anfrage.headers.authorization !== "Bearer sitzung-anna") return json(401, { error: "ohne Sitzung" });
+      if (anfrage.method === "GET" && url.pathname === "/api/konto") return json(200, { data: [{ id: 3, username: "anna" }, { id: 7, username: "bernd" }] });
+      if (anfrage.method === "POST" && url.pathname === "/api/teilen") {
+        geteilt.set(`${rumpf.app}/${rumpf.konto_id}`, rumpf.stand ?? "live");
+        return json(201, { data: rumpf, neu: true });
+      }
+      const weg = url.pathname.match(/^\/api\/teilen\/([^/]+)\/([^/]+)$/);
+      if (anfrage.method === "DELETE" && weg) {
+        const schluessel = `${weg[1]}/${weg[2]}`;
+        if (!geteilt.has(schluessel)) return json(404, { error: "keine" });
+        geteilt.delete(schluessel);
+        return json(200, { data: { entfernt: true } });
+      }
+      json(404, { error: url.pathname });
+    });
+  });
+  await new Promise((fertig) => server.listen(0, "127.0.0.1", fertig));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST_TEILEN: "aras_selbsttest", ANNA_PASSWORT: "geheim-anna", ARA_MIRROR: spiegel };
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST_TEILEN",
+  });
+  try {
+    const anna = ["--password-ref", "ANNA_PASSWORT", "--login-user", "anna"];
+    let run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", ...anna], env);
+    assert(run.status === 0, `freigeben scheiterte: ${run.stdout}${run.stderr}`);
+    const post = gesehen.find((g) => g.verb === "POST" && g.weg === "/api/teilen");
+    assert(post && post.rumpf.app === "probe" && post.rumpf.konto_id === 7 && post.rumpf.stand === "test", `der Rumpf kam anders an: ${JSON.stringify(post)}`);
+    assert(/REFERENZ\.md/.test(run.stdout) && /--unshare bernd/.test(run.stdout), `Quelle oder Rückweg fehlen: ${run.stdout}`);
+    assert(!/geheim-anna|sitzung-anna/.test(run.stdout + run.stderr), "Passwort oder Ausweis stehen in der Ausgabe");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", "--stand", "live", ...anna], env);
+    assert(run.status === 0 && geteilt.get("probe/7") === "live", `mit --stand live: ${geteilt.get("probe/7")} ${run.stderr}`);
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--unshare", "bernd", ...anna], env);
+    assert(run.status === 0 && !geteilt.has("probe/7") && gesehen.some((g) => g.verb === "DELETE" && g.weg === "/api/teilen/probe/7"), `zurücknehmen: ${run.stdout}${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--unshare", "bernd", ...anna], env);
+    assert(run.status === 0 && /Nichts zurückzunehmen|Nothing to take back/.test(run.stdout), `ein zweites Zurücknehmen: ${run.stdout}${run.stderr}`);
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "carla", ...anna], env);
+    assert(run.status !== 0 && /carla/.test(run.stderr) && /bernd/.test(run.stderr), `ein Konto, das es nicht gibt: ${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", "--stand", "irgendwo", ...anna], env);
+    assert(run.status !== 0 && /test.*live/.test(run.stderr), `ein Stand, den es nicht gibt: ${run.stderr}`);
+
+    // Ohne den Stand im Rumpf fiele die Freigabe auf live: dann gibt das Kit nicht still frei.
+    writeFileSync(join(spiegel, "docs", "api", "REFERENZ.md"), readFileSync(join(spiegel, "docs", "api", "REFERENZ.md"), "utf8").replace("konto_id, stand?", "konto_id"));
+    const vorher = gesehen.length;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", ...anna], env);
+    assert(run.status !== 0 && /live/.test(run.stderr) && !gesehen.slice(vorher).some((g) => g.verb === "POST" && g.weg === "/api/teilen"), `ohne Stand im Rumpf: ${run.stderr}`);
+
+    // Und ohne Wege in der Referenz sagt es, wo es gesucht hat.
+    writeFileSync(join(spiegel, "docs", "api", "REFERENZ.md"), "Nichts.\n");
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", ...anna], env);
+    assert(run.status !== 0 && /Kontrakt|contract/.test(run.stderr) && /Spiegel|mirror/.test(run.stderr), `ohne Wege: ${run.stderr}`);
+    return "Konto nach Namen, Stand test als Vorgabe, live auf Wunsch, zurückgenommen, zweimal ohne Fehler, fremdes Konto, ohne Stand im Rumpf keine Freigabe, ohne Wege benannt";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(spiegel, { recursive: true, force: true });
+  }
+});
+
+check("Die Wege zum Freigeben werden aus einer API-Referenz gelesen, nach dem, was sie tun", () => {
+  const rows = routeRows(
+    [
+      "| GET    | `/api/benutzer` | Alle Benutzer: `id, username, email, role` |",
+      "| POST   | `/api/benutzer` | Benutzer anlegen: `{ username, password, email?, rolle: \"admin\" \\| \"mitarbeiter\" }` |",
+      "| GET    | `/api/freigaben` | Alle Freigaben; Filter `?app_id=` und `?benutzer_id=`; mit `app_name`, `username` |",
+      "| POST   | `/api/freigaben` | Freigeben: `{ app_id, benutzer_id, stand? }`; 201 neu |",
+      "| DELETE | `/api/freigaben/:appId/:benutzerId` | Freigabe zurücknehmen |",
+      "| POST   | `/api/andere/:id/freigeben` | Etwas anderes: `{ app_id, lauf_id }` |",
+    ].join("\n")
+  );
+  const { ways, missing } = shareWays(rows);
+  assert(missing.length === 0, `es fehlt: ${missing.join("; ")}`);
+  assert(ways.share.path === "/api/freigaben" && ways.share.app === "app_id" && ways.share.account === "benutzer_id" && ways.share.slot === "stand", `freigeben: ${JSON.stringify(ways.share)}`);
+  assert(ways.accounts.path === "/api/benutzer" && ways.accounts.name === "username", `Konten: ${JSON.stringify(ways.accounts)}`);
+  assert(ways.revoke.app === "appId" && ways.revoke.account === "benutzerId", `zurücknehmen: ${JSON.stringify(ways.revoke)}`);
+  assert(fillPath(ways.revoke.path, { appId: "a b", benutzerId: 7 }) === "/api/freigaben/a%20b/7", "Platzhalter werden nicht gefüllt");
+  assert(shareWays(contractRows(KONTRAKT)).missing.length > 0, "im Kontrakt ohne Verwaltung wurde ein Weg erfunden");
+  return "freigeben, Konten und zurücknehmen gefunden, der Kontrakt ohne sie leer";
 });
 
 // --- Doku-Selbsttest ---------------------------------------------------------
@@ -6448,7 +6578,7 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
   assert(/app:deploy/.test(ohne), "es steht nicht da, warum das Kit sie nicht erteilen kann");
   assert(/403/.test(ohne), "die 403 am Teststand wird nicht erklaert");
   assert(/secrets\.mjs --set ARASUL_START_ORIN/.test(ohne), `ohne Startpasswort fehlt der Weg dorthin: ${ohne}`);
-  assert(!/--admin-login/.test(ohne), "ohne Startpasswort wird eine Sitzung angeboten, die es nicht gibt");
+  assert(/--password-ref <NAME>/.test(ohne), `ohne Startpasswort fehlt der Weg über einen Eintrag, der schon liegt: ${ohne}`);
   assert(/https:\/\/192\.0\.2\.10/.test(ohne), "die Oberflaeche wird nicht genannt");
 
   const mit = releaseLines({
@@ -6458,7 +6588,7 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
     startRef: "ARASUL_START_ORIN",
     startPassword: true,
   }).join("\n");
-  assert(/--admin-login/.test(mit), `mit Startpasswort fehlt die Sitzung: ${mit}`);
+  assert(/--share <konto>|--share <account>/.test(mit) && /Startpasswort unter ARASUL_START_ORIN|start password under ARASUL_START_ORIN/.test(mit), `mit Startpasswort fehlt der Befehl zum Freigeben: ${mit}`);
   // Ohne Spiegel liegen die Anleitungen trotzdem am Gerät, und das Kit liest
   // sie dort. Bis 0.31.0 stand hier --refresh, und das verlangt einen Token.
   assert(/mirror\.mjs --docs --device/.test(mit), `ohne Spiegel fehlt der Weg zu den Anleitungen am Gerät: ${mit}`);
@@ -6468,6 +6598,7 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
   // Kein Produktwert: die Seite und der Weg der Freigabe stehen im Artefakt.
   for (const text of [ohne, mit]) {
     assert(!/\/api\/(freigaben|permissions)/.test(text), "das Kit nennt einen Weg, den es nicht wissen kann");
+    assert(/--share/.test(text), `der Befehl zum Freigeben fehlt: ${text}`);
     assert(/Admin-Handbuch|admin handbook/.test(text), "das Artefakt wird nicht als Quelle genannt");
     // Fund 1 des Fremdtests am 29.08.2026: das Haekchen allein gibt den
     // Livestand frei, und eine frisch eingespielte App hat keinen.

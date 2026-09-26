@@ -437,11 +437,17 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
         technisch: null,
       };
     }
+    // Eine Zeile für den, der die App betreut: das Gerät hat nicht zu Ende
+    // gewartet, und das ist kein Fehler.
+    protokollieren(`Auftrag ${auftrag} rechnet nach der Wartezeit des Geräts noch, die App holt ihn ab.`);
     const ende = Date.now() + (warten.aufbewahrt_sekunden || 3600) * 1000;
     for (;;) {
       await new Promise((weiter) => setTimeout(weiter, abholenAlleMs));
       const antwort = await rufen("dokument_abholen", { auftrag }, null, { frist: 60_000, tun: "auslesen", modell: true });
-      if (!laeuftNoch(antwort.code, antwort.daten) && antwort.code !== 0) return antwort;
+      if (!laeuftNoch(antwort.code, antwort.daten) && antwort.code !== 0) {
+        if (gelungen(antwort.code)) protokollieren(`Auftrag ${auftrag} abgeholt.`);
+        return antwort;
+      }
       if (Date.now() > ende) {
         protokollieren(`Auftrag ${auftrag} war nach der Aufbewahrungszeit des Geräts nicht fertig.`);
         return { ...antwort, code: 0, fehler: menschensatz(0, { tun: "auslesen", modell: true, abgelaufen: true }) };

@@ -599,6 +599,11 @@ Für ein Skript gibt `--token` nur den Ausweis:
 SITZUNG=$(node .ara/tools/device.mjs --name <gerät> --admin-login --token)
 ```
 
+Wer das Passwort eines Administrators schon unter eigenem Namen hält, nennt diesen Eintrag, statt
+eine zweite Kopie abzulegen: `--admin-login --password-ref <NAME> --login-user <name>`. Eine App
+einem Konto freigeben geht über dieselbe Sitzung, `app.mjs --share`, siehe
+`.ara/knowledge/deploy.de.md`.
+
 Der Weg dorthin ist `POST /api/auth/login`, und das ist eine Angabe über das Produkt wie
 jede andere: **sie gehört an einem Gerät geprüft.** Das tut der Doku-Selbsttest:
 

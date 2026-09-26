@@ -59,16 +59,19 @@ den Teststand**, ohne Schalter: live ist das, womit die Belegschaft arbeitet.
 **Eingespielt ist nicht sichtbar, und das sagst du vor dem Einspielen.** Ein Mensch sieht die App
 erst, wenn sie für ihn freigegeben ist; ohne das antwortet die Adresse des Teststands mit 403, die
 fehlende Freigabe und nicht die App. Hinterher gesagt, hält ein Mensch das Kit für kaputt; vorher
-gesagt, wartet er. Freigeben kann das Kit nicht, sein Schlüssel trägt `app:deploy` und sonst
-nichts. `--deploy` nennt an seinem Ende die zwei Wege: eine Sitzung aus dem Startpasswort, wenn es
-in der Ablage liegt (`node .ara/tools/device.mjs --name <gerät> --admin-login`), oder ein Mensch in
-der Oberfläche des Geräts. Weg und Seite stehen in Admin-Handbuch und API-Referenz, nie im Kit:
-`node .ara/tools/mirror.mjs --docs --device <gerät>`. Widersprechen sich Anleitung und Kontrakt,
-gilt der Kontrakt, er kommt aus dem laufenden Backend.
+gesagt, wartet er. Der Schlüssel des Kits kann nicht freigeben, er trägt nur `app:deploy`; das Kit
+gibt mit der Sitzung eines Administrators frei:
 
-**Eine Freigabe gilt einem Stand.** Wer allein für den Livestand freigegeben ist, sieht eine leere
-Übersicht, obwohl die Freigabe steht, der verwirrendste Zustand: die Freigabe muss den Teststand
-meinen, wie auch immer das Admin-Handbuch ihn nennt.
+```
+node .ara/tools/app.mjs --device <gerät> --app <id> --share <konto>     Teststand, die Vorgabe
+node .ara/tools/app.mjs --device <gerät> --app <id> --unshare <konto>
+```
+
+Die Sitzung kommt aus dem Startpasswort oder aus einem Eintrag, der schon liegt: `--password-ref
+<NAME> --login-user <name>`. Weg und Felder liest es aus der API-Referenz, das Kit kennt keine.
+**Eine Freigabe gilt einem Stand**: wer allein für live freigegeben ist, sieht eine leere Übersicht;
+`--stand live` nur, wenn das gemeint ist. Ohne Sitzung gibt ein Mensch in der Oberfläche frei, die
+Seite steht im Admin-Handbuch: `node .ara/tools/mirror.mjs --docs --device <gerät>`.
 
 ## Live schalten und zurück
 

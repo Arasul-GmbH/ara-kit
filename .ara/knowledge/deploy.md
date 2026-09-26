@@ -55,17 +55,19 @@ live is what the workforce works with.
 
 **Deployed is not visible, and you say so before the deploy.** A person sees the app only once it is
 released for them; without that the staging address answers 403, the permission missing and not the
-app. Told afterwards, a human takes the kit for broken; told before, they wait. The kit cannot
-release, its key carries `app:deploy` and nothing else. `--deploy` names the two ways at its end: a
-session out of the start password, if it lies in the store
-(`node .ara/tools/device.mjs --name <device> --admin-login`), or a human in the device's interface.
-Route and page stand in the admin handbook and API reference, never in the kit:
-`node .ara/tools/mirror.mjs --docs --device <device>`. If manual and contract disagree, the contract
-holds, it comes from the running backend.
+app. Told afterwards, a human takes the kit for broken; told before, they wait. The kit's key
+cannot release, it carries `app:deploy` only; the kit releases with an administrator's session:
 
-**A release means a slot.** Released for live alone, somebody sees an empty overview although the
-release stands, the most confusing state: the release has to mean staging, whatever the admin
-handbook calls it.
+```
+node .ara/tools/app.mjs --device <device> --app <id> --share <account>     staging, the default
+node .ara/tools/app.mjs --device <device> --app <id> --unshare <account>
+```
+
+The session comes from the start password, or from an entry already stored: `--password-ref <NAME>
+--login-user <name>`. Route and fields it reads from the API reference, the kit knows none. **A
+release means a slot**: released for live alone, somebody sees an empty overview; `--stand live`
+only when that is meant. Without a session a human releases in the interface, the page stands in
+the admin handbook: `node .ara/tools/mirror.mjs --docs --device <device>`.
 
 ## Going live and back
 
