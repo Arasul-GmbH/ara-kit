@@ -1,8 +1,8 @@
 /**
- * Die Vorgaenge: was diese App verwaltet, und wie sie an sie herankommt.
+ * Die Vorgänge: was diese App verwaltet, und wie sie an sie herankommt.
  *
  * Typen und Abfragen an einer Stelle, damit die Seiten daneben nur noch
- * zeichnen. Wer eine zweite Entitaet dazunimmt, legt eine zweite solche Datei
+ * zeichnen. Wer eine zweite Entität dazunimmt, legt eine zweite solche Datei
  * an und nicht eine zweite Art, `fetch` zu rufen.
  */
 
@@ -23,11 +23,11 @@ export interface Vorgang {
   begruendung: string | null;
   bemerkung: string | null;
   hinweis: string | null;
-  /** Nur solange er wartet: wer entscheidet, aus der Regel des Backends. `konten: null` heisst jeder mit Zugang. */
+  /** Nur solange er wartet: wer entscheidet, aus der Regel des Backends. `konten: null` heißt jeder mit Zugang. */
   entscheidet?: { konten: string[] | null; ohne: string | null };
 }
 
-/** Was das Backend ueber seinen Rahmen sagt: erreicht es ein Arasul, und wenn nicht, warum nicht. */
+/** Was das Backend über seinen Rahmen sagt: erreicht es ein Arasul, und wenn nicht, warum nicht. */
 export interface Lage {
   app: string;
   arasul: boolean;
@@ -44,7 +44,7 @@ export function useVorgaenge(): UseQueryResult<Vorgang[]> {
     queryKey: ["vorgaenge"],
     queryFn: async () => (await hole<{ vorgaenge: Vorgang[] }>("api/vorgaenge")).vorgaenge,
     // Nachfragen nur, solange wirklich etwas offen ist. Eine Seite, die im
-    // Leerlauf im Sekundentakt fragt, haelt das Geraet ohne Grund wach.
+    // Leerlauf im Sekundentakt fragt, hält das Gerät ohne Grund wach.
     refetchInterval: (abfrage) =>
       (abfrage.state.data ?? []).some((vorgang) => vorgang.status === "wartet") ? 5000 : false,
   });
@@ -60,7 +60,7 @@ export function useEinreichen() {
 }
 
 /**
- * Wie ein Stand heisst und welches Zeichen dazu gehoert. Das Zeichen folgt dem Wort.
+ * Wie ein Stand heißt und welches Zeichen dazu gehört. Das Zeichen folgt dem Wort.
  *
  * `wartet` hat eine eigene Art: es ist der Stand, auf den jemand etwas tun
  * muss. Bis zum 26.09.2026 war er als `warnung` das blasseste Grau der Liste.

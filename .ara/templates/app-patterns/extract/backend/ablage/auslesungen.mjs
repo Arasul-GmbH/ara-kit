@@ -14,7 +14,7 @@
  * Richtungen: der Kern sieht Felder als Objekt und Mängel als Liste.
  */
 
-const FELDER = "id, dokument_id, von, zeit, modell, dauer_ms, texterkennung, zeichen, felder, maengel, fehler, roh";
+const FELDER = "id, dokument_id, von, zeit, modell, dauer_ms, texterkennung, zeichen, auftrag, felder, maengel, fehler, roh";
 
 function json(text) {
   if (text === null || text === undefined) return null;
@@ -45,8 +45,8 @@ export function auslesungsAblage(db) {
     async anlegen(a) {
       return alsAuslesung(
         await db.eine(
-          `INSERT INTO auslesungen (dokument_id, von, zeit, modell, dauer_ms, texterkennung, zeichen, felder, maengel, fehler, roh)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING ${FELDER}`,
+          `INSERT INTO auslesungen (dokument_id, von, zeit, modell, dauer_ms, texterkennung, zeichen, auftrag, felder, maengel, fehler, roh)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING ${FELDER}`,
           [
             a.dokument_id,
             a.von,
@@ -55,6 +55,7 @@ export function auslesungsAblage(db) {
             a.dauer_ms ?? null,
             a.texterkennung === null || a.texterkennung === undefined ? null : a.texterkennung ? 1 : 0,
             a.zeichen ?? null,
+            a.auftrag ?? null,
             a.felder ? JSON.stringify(a.felder) : null,
             JSON.stringify(a.maengel ?? []),
             a.fehler ?? null,

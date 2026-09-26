@@ -108,6 +108,17 @@ function sourceFiles(front) {
   return out;
 }
 
+/**
+ * Was die Prüfung am Standard bei dieser App misst: wie viele Quelldateien der
+ * Oberfläche, und ob sie ganz ausgenommen ist. Damit sagt `--build`, dass sie
+ * lief und worüber, statt still nichts zu finden.
+ */
+export function standardScope(dir, { manifest = undefined } = {}) {
+  const found = manifest === undefined ? readManifest(dir) : manifest;
+  if (standardExempt(found)) return { exempt: true, files: 0 };
+  return { exempt: false, files: sourceFiles(join(dir, "frontend")).length };
+}
+
 /** Das Manifest neben dem Ordner, oder `null`. Unlesbares meldet eine andere Stelle. */
 function readManifest(dir) {
   const path = join(dir, "app.json");

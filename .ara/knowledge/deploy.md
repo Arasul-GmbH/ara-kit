@@ -22,8 +22,7 @@ The contract carries a **contract version**, and the kit knows the highest it un
   contract names. An untouched device of half a year is the normal case.
 - **A higher number.** The kit stops and names the versions and fields it does not know. The way out
   is `node .ara/tools/update.mjs` or `/init`: **the mistake is not in the app**, and `/device`,
-  `/init`, `--check` and `--deploy` say so. On 30.08.2026 a workshop stood on version 3, the Orin
-  carried 5, and three hours went into an app that was fine.
+  `/init`, `--check` and `--deploy` say so.
 - **None at all.** The device is older than the contract.
 
 Deployment happens only in the first two cases.
@@ -66,7 +65,7 @@ holds, it comes from the running backend.
 
 **A release means a slot.** Released for live alone, somebody sees an empty overview although the
 release stands, the most confusing state: the release has to mean staging, whatever the admin
-handbook calls it. A foreign test on 29.08.2026 got stuck exactly there, with the tick set.
+handbook calls it.
 
 ## Going live and back
 
@@ -80,7 +79,7 @@ node .ara/tools/app.mjs --device <device> --app <id> --back     the version befo
 people work with it. **Staging and live each have their own database**: the version goes along, the
 data does not. Live starts empty the first time and keeps its own over every version and `--back`.
 Say so before the first switch, and plan what has to be there live from the start, clients for
-instance: somebody creates it there, or a migration brings it. Measured on 25.09.2026 on the Orin,
+instance: somebody creates it there, or a migration brings it.
 `--status` says it too. `--back` is a **swap**: a second `--back` stands at the start again, the
 rescue for whoever switched back in a hurry. After every switch one line into the customer's history
 or the device's runsheet: app, version, who wanted it, what was checked afterwards.

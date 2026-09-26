@@ -4,10 +4,6 @@
 > files, reads receipts, needs an approval the submitter does not give, or writes an export format
 > of another vendor. Each section belongs in the plan as an answer or as an assumption.
 
-In a foreign test on 25.09.2026 an outside agent built an app for a tax office's receipts with
-nothing but the kit and took a wrong turn at six places: data that stays, the header names fixed in
-the source, and the four sections here.
-
 ## Clients: who sees what
 
 **Who gets in** the device decides, **what somebody sees inside** the app: the device knows no
@@ -25,9 +21,8 @@ What it decides:
   (`freigaben.rollen`) and the role header can carry (`koepfe.rollen`). If none fits, nobody
   manages, and the app says so.
 - **The management sees items only of clients it is mapped to**, unless the plan says otherwise.
-- **Every table with client data carries the filter.** Patterns 2 and 6 know no clients: in an app
-  with clients their tables, the log of a reading included, get a column `mandant` in a migration
-  of their own.
+- **Every table with client data carries the filter**, the log of a reading included: for patterns
+  2 and 6 pattern 8 does it.
 
 Checked with two accounts and two clients: every route once as the one who may see nothing.
 
@@ -57,15 +52,14 @@ fill the fields. The way stands in `arasul.json` under `wege.dokument_auslesen`,
 
 **The model sees text, not the image.** A PDF with a text layer the device reads directly, a photo
 or a scanned PDF goes through its text recognition, and the answer says whether that ran. A
-crooked, blurred photo, handwriting, a stamp over the figure cost fields. Measured on 25.09.2026 on
-the Orin: an invented receipt as a PDF with a text layer, six of six fields in 35 seconds; an
-invented fuel receipt as a photo, text recognition ran, six of six fields in 13 seconds.
+crooked, blurred photo, handwriting, a stamp over the figure cost fields. Measured on 25.09.2026
+on the Orin, invented receipts as a PDF with a text layer and as a photo: six of six fields each.
 
 **The form of the answer and the way for an image stand in the contract.** `--contract` lists
 under "What `document/extract-structured` answers" every field with its type; `data` is an object
 or null, not checked against your schema. "An image to a model" says how the app hands a photo to
-an image model itself. On 26.09.2026 on the Orin, a fuel receipt as a photo: one image model six of
-six fields, text recognition five, another image model two. For photos the app names the model and
+an image model itself, in the scaffold `geraet.fragen` with `bilder`. On 26.09.2026 on the Orin, a
+fuel receipt as a photo: one image model six of six fields, text recognition five, another two. For photos the app names the model and
 measures both ways. **Promise no image understanding**, no handwriting, no photo of goods, before
 you have seen it on the customer's device.
 
@@ -77,7 +71,10 @@ one is missing. Empty, as in the scaffold, means none by name.
 schema and its professional rules, an account missing from the chart, a tax rate that does not fit,
 writes every finding onto the reading, and starts a flow with an approval about it. Every reading is
 a new row in the log, with model, duration, text recognition and who triggered it, never changed,
-also when the document goes. Half a minute is normal, minutes when the model loads first. Without the
+also when the document goes. **The device logs every model call as well, with the human only if
+the app names them**: `geraet.auslesen` and `geraet.fragen` take `nutzer`, the name from
+`angemeldet`, and pass it on as `--contract` says under "Who triggered a model call"; `auftrag`
+ties a reading to that line. Half a minute is normal, minutes when the model loads first. Without the
 scope the contract names the key gets a 403, a decision of the administrator.
 
 ## Professional standards

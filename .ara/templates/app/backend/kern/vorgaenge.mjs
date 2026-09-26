@@ -1,56 +1,56 @@
 /**
  * Was mit einem Vorgang passiert. Der Kern der App.
  *
- * Er kennt **zwei Anschluesse** und sonst nichts von der Welt: eine Ablage, in
- * der Vorgaenge liegen, und ein Geraet, an dem ein Mensch entscheidet. Beide
+ * Er kennt **zwei Anschlüsse** und sonst nichts von der Welt: eine Ablage, in
+ * der Vorgänge liegen, und ein Gerät, an dem ein Mensch entscheidet. Beide
  * kommen als Argument herein. Deshalb steht hier kein `fetch`, kein SQL und
- * kein `process.env`, und deshalb laesst sich jeder Fall dieser App pruefen,
- * ohne eine Datenbank oder ein Geraet zu haben.
+ * kein `process.env`, und deshalb lässt sich jeder Fall dieser App prüfen,
+ * ohne eine Datenbank oder ein Gerät zu haben.
  *
- * Was ein Anschluss koennen muss:
+ * Was ein Anschluss können muss:
  *
  *   `ablage`  anlegen, alle, wartende, fortschreiben  (`ablage/vorgaenge.mjs`)
  *   `geraet`  warumKeinRahmen, flowStarten, freigaben, lauf  (`arasul.mjs`)
  *
- * Beide antworten asynchron: die Ablage liegt am Geraet in einer Datenbank
+ * Beide antworten asynchron: die Ablage liegt am Gerät in einer Datenbank
  * hinter dem Netz.
  *
  * **In die Freigabeanfrage gehen Verweise, keine Inhalte.** Der Lauf bekommt
  * die Nummer des Vorgangs und den Namen dessen, der ihn eingereicht hat, nicht
- * seinen Titel und nicht seinen Text. Was im Lauf steht, liegt am Geraet bei
+ * seinen Titel und nicht seinen Text. Was im Lauf steht, liegt am Gerät bei
  * jedem Lauf und auf jeder Karte, die ein Entscheider sieht; was im Vorgang
  * steht, liegt in dieser App und folgt ihren Regeln, wer was sieht. Der
  * Entscheider liest den Vorgang hier, unter seiner Nummer.
  *
  * **Wer entscheiden darf, zieht die App enger, nie weiter.** Sie nennt dem
- * Geraet den Einreicher, sobald es ihn annimmt, und auf Wunsch eine Regel:
+ * Gerät den Einreicher, sobald es ihn annimmt, und auf Wunsch eine Regel:
  * `regel` bekommt den Vorgang und gibt `{ ohne_einreicher, entscheider }`
- * zurueck oder `null`, auch asynchron. Die Vorlage gibt `null`, dann entscheidet
+ * zurück oder `null`, auch asynchron. Die Vorlage gibt `null`, dann entscheidet
  * jeder, dem die App freigegeben ist. Eine Fach-App gibt hier die vier Augen und
- * die Konten, die fuer diesen Vorgang zustaendig sind. Gibt sie einen Satz
- * zurueck, startet kein Lauf, und der Satz steht am Vorgang: so sagt die App
- * selbst, dass niemand entscheiden koennte, statt das Geraet fragen zu lassen.
+ * die Konten, die für diesen Vorgang zuständig sind. Gibt sie einen Satz
+ * zurück, startet kein Lauf, und der Satz steht am Vorgang: so sagt die App
+ * selbst, dass niemand entscheiden könnte, statt das Gerät fragen zu lassen.
  *
- * **Wer entschieden hat, muss es beim Nachziehen noch duerfen.** `zustaendig`
+ * **Wer entschieden hat, muss es beim Nachziehen noch dürfen.** `zustaendig`
  * bekommt den Vorgang und den Namen aus der Freigabe. Endet eine Zuordnung,
- * waehrend ein Lauf wartet, entscheidet das Geraet weiter nach dem Kreis vom
- * Start; die App zaehlt eine solche Entscheidung nicht. Die Vorlage laesst
+ * während ein Lauf wartet, entscheidet das Gerät weiter nach dem Kreis vom
+ * Start; die App zählt eine solche Entscheidung nicht. Die Vorlage lässt
  * jeden gelten. Das Muster Mandanten setzt beides.
  *
- * **Wer wartet, erfaehrt, auf wen.** Jeder wartende Vorgang in der Liste
- * traegt `entscheidet`: `{ konten, ohne }` aus derselben `regel`, mit der der
+ * **Wer wartet, erfährt, auf wen.** Jeder wartende Vorgang in der Liste
+ * trägt `entscheidet`: `{ konten, ohne }` aus derselben `regel`, mit der der
  * Lauf startete. `konten` ist `null`, wenn jeder entscheidet, dem die App
  * freigegeben ist, und leer, wenn nach der Regel niemand bleibt; `ohne` nennt
  * den Einreicher, wenn vier Augen gelten. Die Regel gilt heute und nicht beim
- * Start: eine Entscheidung aus dem alten Kreis zaehlt die App ohnehin nicht,
+ * Start: eine Entscheidung aus dem alten Kreis zählt die App ohnehin nicht,
  * siehe `zustaendig`.
  *
- * **Kein stilles null.** Jeder Vorgang, der ohne Lauf bleibt, traegt den Satz,
- * warum. "Ohne Arasul" steht nur dann da, wenn das Geraet der App wirklich
+ * **Kein stilles null.** Jeder Vorgang, der ohne Lauf bleibt, trägt den Satz,
+ * warum. "Ohne Arasul" steht nur dann da, wenn das Gerät der App wirklich
  * nichts gegeben hat; alles andere wird benannt, mit Status und Antwort.
  */
 
-/** Wie die Freigabe steht, so steht der Vorgang. Die Namen links kommen vom Geraet. */
+/** Wie die Freigabe steht, so steht der Vorgang. Die Namen links kommen vom Gerät. */
 const STATUS = {
   offen: "wartet",
   wartet: "wartet",
@@ -67,7 +67,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
    *
    * Gesucht wird die Freigabe zu genau diesem Lauf. Ist keine dabei, bleibt der
    * Vorgang, wie er ist: eine Freigabe, die noch nicht in der Liste steht, ist
-   * keine Aussage darueber, dass niemand entschieden hat.
+   * keine Aussage darüber, dass niemand entschieden hat.
    */
   async function nachziehen(vorgang, freigaben) {
     if (freigaben.fehler) {
@@ -80,12 +80,12 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
     if (!stand) {
       return await ablage.fortschreiben(vorgang.id, {
         ...vorgang,
-        hinweis: `Das Geraet nennt die Freigabe "${freigabe.status}", und diesen Stand kennt ${name} nicht.`,
+        hinweis: `Das Gerät nennt die Freigabe "${freigabe.status}", und diesen Stand kennt ${name} nicht.`,
       });
     }
 
-    // Entschieden hat jemand, der fuer diesen Vorgang nicht mehr zustaendig
-    // ist. Das Geraet hat es angenommen, die App zaehlt es nicht.
+    // Entschieden hat jemand, der für diesen Vorgang nicht mehr zuständig
+    // ist. Das Gerät hat es angenommen, die App zählt es nicht.
     if (freigabe.entschieden_von && (stand === "genehmigt" || stand === "abgelehnt")) {
       if (!(await zustaendig(vorgang, freigabe.entschieden_von))) {
         return await ablage.fortschreiben(vorgang.id, {
@@ -97,8 +97,8 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
       }
     }
 
-    // Nach der Bestaetigung laeuft der Flow ab dem angehaltenen Schritt weiter
-    // und schreibt einen Satz. Der gehoert an den Vorgang, sobald er da ist.
+    // Nach der Bestätigung läuft der Flow ab dem angehaltenen Schritt weiter
+    // und schreibt einen Satz. Der gehört an den Vorgang, sobald er da ist.
     let bemerkung = vorgang.bemerkung;
     if (stand === "genehmigt" && !bemerkung) {
       const lauf = await geraet.lauf(vorgang.lauf);
@@ -117,7 +117,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
   /** Wer einen wartenden Vorgang entscheidet, aus der Regel der App. */
   async function wer(vorgang) {
     const freigabe = await regel(vorgang);
-    // Ein Satz heisst: nach heutiger Regel koennte niemand entscheiden.
+    // Ein Satz heißt: nach heutiger Regel könnte niemand entscheiden.
     if (typeof freigabe === "string") return { konten: [], ohne: null };
     if (!freigabe || typeof freigabe !== "object") return { konten: null, ohne: null };
     const konten = Array.isArray(freigabe.entscheider?.konten) ? freigabe.entscheider.konten : null;
@@ -126,10 +126,10 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
 
   return {
     /**
-     * Alle Vorgaenge, vorher am Geraet nachgezogen.
+     * Alle Vorgänge, vorher am Gerät nachgezogen.
      *
-     * Vor jeder Auskunft der Stand vom Geraet: ein Vorgang, der hier auf
-     * "wartet" steht, waehrend der Mensch laengst entschieden hat, waere eine
+     * Vor jeder Auskunft der Stand vom Gerät: ein Vorgang, der hier auf
+     * "wartet" steht, während der Mensch längst entschieden hat, wäre eine
      * Auskunft, die nicht stimmt. Gefragt wird einmal und nicht je Vorgang.
      */
     async auflisten() {
@@ -153,14 +153,14 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
     /**
      * Einen Vorgang einreichen und den Lauf anfordern.
      *
-     * Wer einreicht, steht in `von` und kommt aus der Anmeldung: staende es im
-     * Rumpf, koennte jeder fuer jeden einreichen.
+     * Wer einreicht, steht in `von` und kommt aus der Anmeldung: stände es im
+     * Rumpf, könnte jeder für jeden einreichen.
      *
      * Erst liegt der Vorgang, dann startet der Lauf: die Anfrage verweist auf
      * seine Nummer, und die gibt es erst, wenn er liegt.
      *
      * Was eine Fach-App dazu mitgibt, der Mandant etwa, geht als `zusatz`
-     * unveraendert an die Ablage.
+     * unverändert an die Ablage.
      */
     async einreichen({ titel, text, von, ...zusatz }) {
       const fehlt = geraet.warumKeinRahmen();
@@ -171,7 +171,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
         von: von || "unbekannt",
         gestellt: new Date().toISOString(),
         // Ohne Rahmen gibt es keinen Lauf und damit keine Freigabe. Der Vorgang
-        // bleibt liegen, und es steht dran, warum: erfinden waere schlimmer.
+        // bleibt liegen, und es steht dran, warum: erfinden wäre schlimmer.
         status: fehlt ? "ohne entscheidung" : "wartet",
         lauf: null,
         hinweis: fehlt,
@@ -190,7 +190,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
 
       // Der Rahmen steht, der Lauf kam trotzdem nicht zustande. Das ist etwas
       // anderes als "ohne Arasul", und es wird auch anders benannt: sonst sucht
-      // der Naechste den Fehler dort, wo keiner ist.
+      // der Nächste den Fehler dort, wo keiner ist.
       return await ablage.fortschreiben(vorgang.id, { ...vorgang, status: "ohne lauf", hinweis: fehler });
     },
   };

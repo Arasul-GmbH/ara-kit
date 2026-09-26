@@ -172,7 +172,7 @@ export function lastStand(record, device = null) {
 /** Die Schalter, mit denen genau dieses Gerät gemeint ist. */
 function deviceFlags(device, stand) {
   const place = device || stand?.place || null;
-  if (!place) return " --device <gerät>";
+  if (!place) return t(" --device <device>", " --device <gerät>");
   const [first, second] = place.split("/");
   return second ? ` --customer ${first} --device ${second}` : ` --device ${first}`;
 }

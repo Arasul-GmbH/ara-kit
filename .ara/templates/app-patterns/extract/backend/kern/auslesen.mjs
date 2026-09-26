@@ -110,16 +110,23 @@ export function auslesen({ dokumente, auslesungen, geraet, schema = SCHEMA, anwe
         art: dokument.art,
         schema,
         anweisung,
+        // Für wen gelesen wird: das Gerät schreibt den Namen zum Aufruf in
+        // sein Protokoll. Ohne ihn stünde dort nur die App.
+        nutzer: von || null,
       });
       const maengel = ergebnis.felder ? [...pruefen(schema, ergebnis.felder), ...fachlich(ergebnis.felder)] : [];
       return await auslesungen.anlegen({
         dokument_id: dokument.id,
+        // Nur mit dem Muster Belege: dessen Ablage legt die Auslesung unter den
+        // Mandanten des Dokuments. Die Ablage dieses Musters kennt das Feld nicht.
+        mandant: dokument.mandant ?? null,
         von: von || "unbekannt",
         zeit: new Date().toISOString(),
         modell: ergebnis.modell ?? null,
         dauer_ms: ergebnis.dauer_ms ?? null,
         texterkennung: ergebnis.texterkennung ?? null,
         zeichen: ergebnis.zeichen ?? null,
+        auftrag: ergebnis.auftrag ?? null,
         felder: ergebnis.felder,
         maengel,
         fehler: ergebnis.fehler,

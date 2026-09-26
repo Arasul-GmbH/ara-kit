@@ -24,8 +24,7 @@ Der Kontrakt trägt eine **Kontraktversion**, und das Kit kennt die höchste, di
   Normalfall.
 - **Eine größere Zahl.** Das Kit hält an und nennt die Fassungen und Felder, die es nicht kennt. Der
   Ausweg ist `node .ara/tools/update.mjs` oder `/init`: **der Fehler liegt nicht in der App**, und
-  `/device`, `/init`, `--check` und `--deploy` sagen es. Am 30.08.2026 stand eine Werkstatt auf
-  Kontraktfassung 3, der Orin führte 5, und drei Stunden gingen in eine App, die in Ordnung war.
+  `/device`, `/init`, `--check` und `--deploy` sagen es.
 - **Gar keine.** Das Gerät ist älter als der Kontrakt.
 
 Eingespielt wird nur in den ersten beiden Fällen.
@@ -69,8 +68,7 @@ gilt der Kontrakt, er kommt aus dem laufenden Backend.
 
 **Eine Freigabe gilt einem Stand.** Wer allein für den Livestand freigegeben ist, sieht eine leere
 Übersicht, obwohl die Freigabe steht, der verwirrendste Zustand: die Freigabe muss den Teststand
-meinen, wie auch immer das Admin-Handbuch ihn nennt. Ein Fremdtest am 29.08.2026 ist genau dort
-hängen geblieben, mit gesetztem Häkchen.
+meinen, wie auch immer das Admin-Handbuch ihn nennt.
 
 ## Live schalten und zurück
 
@@ -84,8 +82,8 @@ node .ara/tools/app.mjs --device <gerät> --app <id> --back     die Fassung davo
 ab dann arbeiten Leute damit. **Test und live haben je eine eigene Datenbank**: die Fassung geht
 mit, die Daten nicht. Live beginnt beim ersten Mal leer und behält seine eigenen über jede Fassung
 und `--back`. Sag das vor dem ersten Schalten, und plan, was live von Anfang an da sein muss,
-Mandanten etwa: jemand legt es dort an, oder eine Migration bringt es mit. Gemessen am 25.09.2026 am
-Orin, `--status` sagt es auch. `--back` ist ein **Tausch**: ein zweites `--back` steht wieder am
+Mandanten etwa: jemand legt es dort an, oder eine Migration bringt es mit.
+`--status` sagt es auch. `--back` ist ein **Tausch**: ein zweites `--back` steht wieder am
 Anfang, die Rettung für den, der in Eile zurückgeschaltet hat. Nach jedem Schalten ein Satz in den
 Verlauf des Kunden oder den Laufzettel des Geräts: App, Fassung, wer es wollte, was danach geprüft
 wurde.

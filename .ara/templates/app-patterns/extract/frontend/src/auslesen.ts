@@ -21,6 +21,8 @@ export interface Auslesung {
   /** Ob das Gerät den Text über seine Texterkennung holen musste: Foto oder Scan. */
   texterkennung: boolean | null;
   zeichen: number | null;
+  /** Der Auftrag am Gerät: unter dieser Nummer steht der Aufruf in dessen Protokoll. */
+  auftrag: string | null;
   felder: Record<string, unknown> | null;
   /** Was die App an den Feldern auszusetzen hat. Leer heißt: nichts. */
   maengel: string[];

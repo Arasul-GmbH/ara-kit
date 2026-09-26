@@ -25,6 +25,10 @@
  *      Gerät davor weist einen Start mit diesen Feldern ab, denn sein Schema
  *      nimmt kein unbekanntes Feld an. Die App schickt sie deshalb nur, wenn
  *      hier `true` steht.
+ *   8. Welche Wege das Gerät als **Modellaufruf protokolliert** und wie die App
+ *      den Menschen nennt, für den sie fragt (`protokoll` im Kontrakt, seit dem
+ *      26.09.2026): eine Kopfzeile, ein Feld, und an `/v1` ein anderes Feld.
+ *      Ohne sie steht der Aufruf ohne Menschen im Protokoll.
  *
  * Bis zum 29.08.2026 stand nichts davon im Kontrakt, sondern in der Vorlage:
  * `ARASUL_API_URL`, `ARASUL_API_SCHLUESSEL`, `x-api-key` und drei Pfade ohne
@@ -108,7 +112,34 @@ export const APP_WAYS = Object.freeze([
     pflicht: false,
     was: t("take the text out of a document", "den Text aus einem Dokument holen"),
   },
+  {
+    key: "modell_fragen",
+    verb: "POST",
+    pfad: `${EXTERNAL_PREFIX}/llm/chat`,
+    pflicht: false,
+    was: t("ask a model, with an image too", "ein Modell fragen, auch mit einem Bild"),
+  },
 ]);
+
+/**
+ * Wie die App den Menschen nennt, für den sie ein Modell fragt, aus `protokoll`.
+ *
+ * Nur was der Kontrakt nennt, und nur als Name: `wege` sind die Wege, die das
+ * Gerät als Modellaufruf protokolliert, relativ zum Vorsatz, so wie er sie
+ * schreibt. Ein Gerät vor dem 26.09.2026 nennt nichts, dann steht hier `null`,
+ * und die App schickt keine Kopfzeile, die das Gerät nicht erwartet.
+ */
+function logArrangement(contract) {
+  const protokoll = contract?.protokoll;
+  const wer = protokoll?.einreicher;
+  if (!wer || typeof wer.kopf !== "string") return null;
+  return {
+    wege: Array.isArray(protokoll.wege) ? protokoll.wege.filter((w) => typeof w === "string") : [],
+    kopf: wer.kopf,
+    feld: typeof wer.feld === "string" ? wer.feld : null,
+    feld_openai: typeof wer.feld_openai === "string" ? wer.feld_openai : null,
+  };
+}
 
 /** Ein Weg mit Werten statt Platzhaltern, für den Abgleich mit dem Kontrakt. */
 function probed(pfad) {
@@ -299,6 +330,7 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     wege,
     freigaben,
     daten,
+    protokoll: logArrangement(contract),
     missing,
     unangeboten,
   };
@@ -361,6 +393,17 @@ export function arrangementLines(arrangement) {
       )
     );
   }
+  lines.push(
+    arrangement.protokoll
+      ? t(
+          `- A model call carries the human it is made for in \`${arrangement.protokoll.kopf}\`, and the device logs it with them.`,
+          `- Ein Modellaufruf trägt den Menschen, für den er geschieht, in \`${arrangement.protokoll.kopf}\`, und das Gerät protokolliert ihn mit ihm.`
+        )
+      : t(
+          "- This device does not say how a model call names its human. Its log shows the app, not the person.",
+          "- Dieses Gerät sagt nicht, wie ein Modellaufruf seinen Menschen nennt. Sein Protokoll zeigt die App, nicht die Person."
+        )
+  );
   for (const way of APP_WAYS) {
     const found = arrangement.wege[way.key];
     lines.push(

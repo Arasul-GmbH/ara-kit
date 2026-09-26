@@ -4,12 +4,12 @@
  * Sie ist das Muster `Seitenleiste` der Bibliothek und sonst nichts. Bis zum
  * 29.08.2026 baute die Vorlage sie sich aus `Liste`, `ListenEintrag` und
  * `Menue` selbst zusammen, weil der Spiegel nur die sechs Bausteine kannte.
- * Das waren rund hundert Zeilen fuer etwas, das die Bibliothek fertig
+ * Das waren rund hundert Zeilen für etwas, das die Bibliothek fertig
  * mitbringt -- samt dem, was man an einer Navigation sonst vergisst: unter
- * 900 Pixeln wird sie ein Blatt ueber der Seite, sie klappt auf Symbolbreite
- * zu, `aria-current="page"` steht am aktiven Eintrag, und Escape schliesst.
+ * 900 Pixeln wird sie ein Blatt über der Seite, sie klappt auf Symbolbreite
+ * zu, `aria-current="page"` steht am aktiven Eintrag, und Escape schließt.
  *
- * **Hier stehen nur die Eintraege.** Welcher aktiv ist, sagt diese App, denn
+ * **Hier stehen nur die Einträge.** Welcher aktiv ist, sagt diese App, denn
  * sie kennt ihren Router; das Muster kennt keinen.
  *
  * Die Ansichten stehen in der Suchanfrage und nicht im Zustand dieser
@@ -44,9 +44,9 @@ export function AppSeitenleiste({ name }: { name: string }) {
   const ansicht = ansichtAus(suche);
   const aufListe = ort.pathname === "/";
 
-  // Auf einem schmalen Bildschirm liegt die Leiste ueber der Seite. Eine, die
-  // nach der Auswahl offen bleibt, verdeckt genau das, wofuer man sie
-  // geoeffnet hat.
+  // Auf einem schmalen Bildschirm liegt die Leiste über der Seite. Eine, die
+  // nach der Auswahl offen bleibt, verdeckt genau das, wofür man sie
+  // geöffnet hat.
   const gehe = (ziel: string) => {
     weiter(ziel);
     if (schmal) setzeBlattOffen(false);

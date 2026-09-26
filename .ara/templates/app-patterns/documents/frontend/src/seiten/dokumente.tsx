@@ -25,12 +25,26 @@
  * Zustand dieser Seite: die Wege der App bleiben eine Ebene tief, und ein
  * Verweis auf ein Dokument bleibt einer.
  *
+ * **Liste und Dokument stehen ab 900 px nebeneinander**, das Dokument
+ * mitlaufend, und darunter als Blatt von unten. So hält es die Liste der
+ * Vorlage auch (`seiten/liste.tsx`): stünde das Dokument unter der Liste, sähe
+ * bei 200 Dateien niemand, dass sich nach dem Klick etwas getan hat. Die
+ * Schwelle ist die eine des Produkts, `useSchmalesFenster`. Das Hochladen
+ * steht über beidem, es gehört zu keiner Zeile.
+ *
+ * **Jede Zeile ist per Tastatur wählbar.** Die `Datenliste` kennt nur den
+ * Klick auf die Zeile; der Dateiname ist deshalb ein Knopf, Tab führt hin,
+ * Eingabe wählt, die Pfeile gehen eine Zeile weiter. Gewählt ist, wo
+ * `aria-current` steht, und `stil.css` zeichnet die Zeile danach
+ * (`zeile-wahl`). Unter 900 px ist die ganze Karte der Knopf, dort trägt der
+ * Name nur die Markierung.
+ *
  * **Die Vorschau der Dateiablage ist hier aus.** Sie zeigte die gewählte Datei
  * schon vor dem Hochladen, und dann stünden zwei Anzeigen auf einer Seite.
  * Gezeigt wird, was abgelegt ist.
  */
 
-import { useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Button,
@@ -39,7 +53,14 @@ import {
   Dokumentanzeige,
   Karte,
   Kopf,
+  Leerzustand,
   Meldung,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  useSchmalesFenster,
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
@@ -54,25 +75,80 @@ import {
 } from "../dokumente";
 import { zeitpunkt } from "../vorgaenge";
 
-const SPALTEN: ReadonlyArray<Spalte<Dokument>> = [
-  { schluessel: "name", titel: "Datei", zelle: (d) => d.name, wert: (d) => d.name },
-  { schluessel: "groesse", titel: "Größe", zelle: (d) => groesseInWorten(d.groesse), wert: (d) => d.groesse },
-  { schluessel: "von", titel: "Abgelegt von", zelle: (d) => d.von, wert: (d) => d.von },
-  { schluessel: "abgelegt", titel: "Wann", zelle: (d) => zeitpunkt(d.abgelegt), wert: (d) => d.abgelegt },
-];
+/** Mit den Pfeilen zum Namen der Zeile darüber oder darunter. */
+function wandern(ereignis: KeyboardEvent<HTMLButtonElement>) {
+  if (ereignis.key !== "ArrowDown" && ereignis.key !== "ArrowUp") return;
+  const zeile = ereignis.currentTarget.closest("tr");
+  const nachbar = ereignis.key === "ArrowDown" ? zeile?.nextElementSibling : zeile?.previousElementSibling;
+  const ziel = nachbar?.querySelector<HTMLButtonElement>(".zeile-wahl");
+  if (!ziel) return;
+  ereignis.preventDefault();
+  ziel.focus();
+}
 
-function Ansicht({ dokument, aufEntfernen, entfernt }: { dokument: Dokument; aufEntfernen: () => void; entfernt: boolean }) {
+function useSpalten(gewaehlt: number | null, waehlen: (id: number) => void, schmal: boolean) {
+  return useMemo<ReadonlyArray<Spalte<Dokument>>>(
+    () => [
+      {
+        schluessel: "name",
+        titel: "Datei",
+        zelle: (d) => {
+          const aktuell = gewaehlt === d.id ? "true" : undefined;
+          // Ein Dateiname ist oft ein langes Wort ohne Leerzeichen:
+          // `anywhere` bricht es, sonst rollte die Tabelle neben dem Dokument.
+          const name = <span className="line-clamp-2 whitespace-normal [overflow-wrap:anywhere]">{d.name}</span>;
+          if (schmal) {
+            return (
+              <span className="zeile-wahl" aria-current={aktuell}>
+                {name}
+              </span>
+            );
+          }
+          return (
+            <button
+              type="button"
+              className="zeile-wahl w-full rounded-sm text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              aria-current={aktuell}
+              onClick={(ereignis) => {
+                ereignis.stopPropagation();
+                waehlen(d.id);
+              }}
+              onKeyDown={wandern}
+            >
+              {name}
+            </button>
+          );
+        },
+        wert: (d) => d.name,
+      },
+      { schluessel: "groesse", titel: "Größe", zelle: (d) => groesseInWorten(d.groesse), wert: (d) => d.groesse },
+      {
+        schluessel: "von",
+        titel: "Abgelegt von",
+        zelle: (d) => <span className="whitespace-normal [overflow-wrap:anywhere]">{d.von}</span>,
+        wert: (d) => d.von,
+      },
+      { schluessel: "abgelegt", titel: "Wann", zelle: (d) => zeitpunkt(d.abgelegt), wert: (d) => d.abgelegt },
+    ],
+    [gewaehlt, waehlen, schmal]
+  );
+}
+
+interface AnsichtProps {
+  dokument: Dokument;
+  aufEntfernen: () => void;
+  entfernt: boolean;
+}
+
+/** Das Dokument selbst und der Weg, es loszuwerden: in der Karte wie im Blatt dasselbe. */
+function Anzeige({ dokument, aufEntfernen, entfernt, hoehe }: AnsichtProps & { hoehe: string }) {
   return (
-    <Karte
-      titel={dokument.name}
-      hinweis={`${dokument.von}, ${zeitpunkt(dokument.abgelegt)}`}
-      kennzeichen="dokument"
-    >
+    <>
       <Dokumentanzeige
         quelle={dokumentAdresse(dokument.id)}
         art={anzeigeArt(dokument.art)}
         name={dokument.name}
-        hoehe="32rem"
+        hoehe={hoehe}
         kennzeichen="dokument-anzeige"
       />
       <div className="flex justify-end pt-ui-2">
@@ -80,6 +156,24 @@ function Ansicht({ dokument, aufEntfernen, entfernt }: { dokument: Dokument; auf
           Entfernen
         </Button>
       </div>
+    </>
+  );
+}
+
+/**
+ * Das Dokument neben der Liste. Der Name steht ganz da: der Titel der Karte
+ * kürzte ihn in der schmalen Spalte auf eine Zeile, und ein Dateiname ist oft
+ * lang.
+ */
+function Ansicht(props: AnsichtProps) {
+  const { dokument } = props;
+  return (
+    <Karte kennzeichen="dokument">
+      <h2 className="text-ui-lg font-semibold break-words text-foreground">{dokument.name}</h2>
+      <p className="mb-3 text-ui-sm text-muted-foreground">
+        {dokument.von}, {zeitpunkt(dokument.abgelegt)}
+      </p>
+      <Anzeige {...props} hoehe="32rem" />
     </Karte>
   );
 }
@@ -91,13 +185,15 @@ export function Dokumente() {
   const liste = useDokumente();
   const hochladen = useHochladen();
   const entfernen = useEntfernen();
+  const schmal = useSchmalesFenster();
 
   const waehlen = (id: number | null) => {
     const naechste = new URLSearchParams(suche);
-    if (id === null || gewaehlt === id) naechste.delete("nr");
+    if (id === null) naechste.delete("nr");
     else naechste.set("nr", String(id));
     setSuche(naechste);
   };
+  const spalten = useSpalten(gewaehlt, waehlen, schmal);
 
   const absenden = () => {
     const datei = dateien[0];
@@ -123,6 +219,23 @@ export function Dokumente() {
       <AsyncBoundary abfrage={liste} laedt="Dokumente werden geholt">
         {({ dokumente, grenze_bytes }) => {
           const offen = dokumente.find((dokument) => dokument.id === gewaehlt);
+          const ansicht = (dokument: Dokument): AnsichtProps => ({
+            dokument,
+            entfernt: entfernen.isPending,
+            aufEntfernen: () => entfernen.mutate(dokument.id, { onSuccess: () => waehlen(null) }),
+          });
+          const tabelle = (
+            <Datenliste
+              daten={dokumente}
+              spalten={spalten}
+              kennung={(dokument) => String(dokument.id)}
+              beschriftung={`Dokumente: ${dokumente.length}`}
+              filter
+              filterPlatzhalter="In den Dokumenten suchen …"
+              leer={{ titel: "Noch kein Dokument abgelegt." }}
+              aufZeile={(dokument) => waehlen(dokument.id)}
+            />
+          );
           return (
             <>
               <Karte titel="Hochladen" kennzeichen="hochladen">
@@ -147,23 +260,41 @@ export function Dokumente() {
                 </div>
               </Karte>
 
-              <Datenliste
-                daten={dokumente}
-                spalten={SPALTEN}
-                kennung={(dokument) => String(dokument.id)}
-                beschriftung={`Dokumente: ${dokumente.length}`}
-                filter
-                filterPlatzhalter="In den Dokumenten suchen …"
-                leer={{ titel: "Noch kein Dokument abgelegt." }}
-                aufZeile={(dokument) => waehlen(dokument.id)}
-              />
-
-              {offen && (
-                <Ansicht
-                  dokument={offen}
-                  entfernt={entfernen.isPending}
-                  aufEntfernen={() => entfernen.mutate(offen.id, { onSuccess: () => waehlen(null) })}
-                />
+              {schmal ? (
+                <>
+                  {tabelle}
+                  <Sheet open={Boolean(offen)} onOpenChange={(auf) => !auf && waehlen(null)}>
+                    <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto">
+                      {offen && (
+                        <>
+                          <SheetHeader>
+                            <SheetTitle className="pr-8 leading-snug break-words">{offen.name}</SheetTitle>
+                            <SheetDescription>
+                              {offen.von}, {zeitpunkt(offen.abgelegt)}
+                            </SheetDescription>
+                          </SheetHeader>
+                          <div data-testid="dokument">
+                            <Anzeige {...ansicht(offen)} hoehe="60dvh" />
+                          </div>
+                        </>
+                      )}
+                    </SheetContent>
+                  </Sheet>
+                </>
+              ) : (
+                <div data-teilung className="grid grid-cols-[minmax(0,3fr)_minmax(14rem,2fr)] items-start gap-4">
+                  {tabelle}
+                  <aside aria-label="Einzelheiten" className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                    {offen ? (
+                      <Ansicht {...ansicht(offen)} />
+                    ) : (
+                      <Leerzustand
+                        titel="Kein Dokument gewählt"
+                        beschreibung="Eine Zeile anklicken, oder mit Tab zum Dateinamen gehen und Eingabe drücken."
+                      />
+                    )}
+                  </aside>
+                </div>
               )}
             </>
           );

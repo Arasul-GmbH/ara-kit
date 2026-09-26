@@ -13,6 +13,18 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.40.0 (2026-09-26)
+
+Contract: up to 6
+
+- **Every model call of the scaffold names its human.** A device from 26.09.2026 logs every model call of an app and names the human only if the app does; how, it says under `protokoll`. The kit writes that into `arasul.json`, and `backend/arasul.mjs` passes the logged-in name in the same bytes to `document/extract-structured` and `llm/chat`, never to another way. `geraet.fragen` asks a model, with images too, `geraet.fuer` gives header and field for an own call to `/v1`. A device without the section gets no header. `--contract` prints the section.
+- **Pattern 8, receipts per client at an item**, shows patterns 2, 6 and 7 together: a column `mandant` at documents and readings, a receipt hangs at an item and takes its client, every reading query carries the filter, the log stays separated after the document goes. `BelegeAmVorgang` puts the receipts into the details of an item.
+- **Pattern 6 keeps the device's job** (`auftrag`) at every reading, the same number stands in the device's log, and points to `bilder` for a photo.
+- **The pages of patterns 2 and 6 split like the list**: side by side from 900 pixels, below as a sheet, every row selectable by keyboard.
+- **German content of the scaffold carries real umlauts**, in comments, sentences and JSX text; names in code stay ASCII. The self-test checks the scaffold and the patterns too.
+- **`--build` says that the design check ran**, over how many files, also without a finding. English output shows `<device>` instead of `<gerät>`.
+- On the Orin on 26.09.2026 a probe out of the scaffold with patterns 2 and 6, in staging: released for one account, a reading as that human stood in the device's log with their name and the same job as at the reading, six of six fields in 11 seconds. Without a name the call stood there without a human; a name the app is not released for was refused with 400 and left no line.
+
 ## 0.39.0 (2026-09-26)
 
 Contract: up to 6

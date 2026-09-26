@@ -5,10 +5,6 @@
 > Exportformat eines anderen Herstellers schreibt. Jeder Abschnitt gehört als Antwort oder als
 > Annahme in den Plan.
 
-In einem Fremdtest am 25.09.2026 hat ein fremder Agent mit nichts als dem Kit eine App für die
-Belege einer Steuerkanzlei gebaut und ist an sechs Stellen falsch abgebogen: dauerhafte Daten, die
-im Quelltext festgeschriebenen Namen der Kopfzeilen, und die vier Abschnitte hier.
-
 ## Mandanten: wer was sieht
 
 **Wer hineinkommt**, entscheidet das Gerät, **was jemand darin sieht**, die App: das Gerät kennt
@@ -30,9 +26,8 @@ anders heraus. Was es entscheidet:
   keine, verwaltet niemand, und die App sagt es.
 - **Die Verwaltung sieht Vorgänge nur der Mandanten, denen sie zugeordnet ist**, außer der Plan sagt
   anderes.
-- **Jede Tabelle mit Daten eines Mandanten trägt den Filter.** Die Muster 2 und 6 kennen keine
-  Mandanten: in einer App mit Mandanten bekommen ihre Tabellen, das Protokoll einer Auslesung
-  eingeschlossen, eine Spalte `mandant` in einer eigenen Migration.
+- **Jede Tabelle mit Daten eines Mandanten trägt den Filter**, das Protokoll einer Auslesung
+  eingeschlossen: für die Muster 2 und 6 tut es Muster 8.
 
 Geprüft mit zwei Konten und zwei Mandanten: jeder Weg einmal als der, der nichts sehen darf.
 
@@ -64,16 +59,15 @@ Code ist Muster 6 unter `.ara/templates/app-patterns/extract/`.
 **Das Modell sieht Text, nicht das Bild.** Ein PDF mit Textschicht liest das Gerät direkt, ein Foto
 oder ein gescanntes PDF geht durch seine Texterkennung, und die Antwort sagt, ob sie lief. Ein
 schiefes, unscharfes Foto, Handschrift, ein Stempel über der Zahl kosten Felder. Gemessen am
-25.09.2026 am Orin: ein erfundener Beleg als PDF mit Textschicht, sechs von sechs Feldern in 35
-Sekunden; ein erfundener Tankbeleg als Foto, Texterkennung lief, sechs von sechs Feldern in 13
-Sekunden.
+25.09.2026 am Orin, erfundene Belege als PDF mit Textschicht und als Foto: je sechs von sechs
+Feldern.
 
 **Form der Antwort und Weg für ein Bild stehen im Kontrakt.** `--contract` nennt unter „Was
 `document/extract-structured` antwortet" jedes Feld mit Typ; `data` ist ein Objekt oder null, nicht
 gegen dein Schema geprüft. „Ein Bild an ein Modell" sagt, wie die App ein Foto selbst einem
-Bildmodell gibt. Am 26.09.2026 am Orin, ein Tankbeleg als Foto: ein Bildmodell sechs von sechs
-Feldern, die Texterkennung fünf, ein anderes Bildmodell zwei. Für Fotos nennt die App das Modell
-und misst beide Wege. **Versprich kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor
+Bildmodell gibt, in der Vorlage `geraet.fragen` mit `bilder`. Am 26.09.2026 am Orin, ein
+Tankbeleg als Foto: ein Bildmodell sechs von sechs Feldern, die Texterkennung fünf, ein anderes
+zwei. Für Fotos nennt die App das Modell und misst beide Wege. **Versprich kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor
 du es am Gerät des Kunden gesehen hast.
 
 **Welches Modell liest, sagt die Antwort** (`model`), und beim Auslesen nennt die App keines. **Das Feld
@@ -84,8 +78,11 @@ beim Einspielen sagt es, welches fehlt. Leer, wie in der Vorlage, heißt keines 
 das Schema und ihre fachlichen Regeln, ein Konto, das im Kontenrahmen fehlt, ein Steuersatz, der
 nicht passt, schreibt jeden Befund an die Auslesung und startet einen Flow mit Freigabe darüber.
 Jede Auslesung ist eine neue Zeile im Protokoll, mit Modell, Dauer, Texterkennung und wer sie
-ausgelöst hat, nie geändert, auch wenn das Dokument geht. Eine halbe Minute ist normal, Minuten,
-wenn das Modell erst geladen wird. Ohne den Bereich, den der Kontrakt nennt, bekommt der Schlüssel
+ausgelöst hat, nie geändert, auch wenn das Dokument geht. **Auch das Gerät protokolliert jeden
+Modellaufruf, mit dem Menschen nur, wenn die App ihn nennt**: `geraet.auslesen` und
+`geraet.fragen` nehmen `nutzer`, den Namen aus `angemeldet`, und reichen ihn weiter, wie
+`--contract` unter „Wer einen Modellaufruf ausgelöst hat" sagt; `auftrag` ordnet eine Auslesung
+dieser Zeile zu. Eine halbe Minute ist normal, Minuten, wenn das Modell erst geladen wird. Ohne den Bereich, den der Kontrakt nennt, bekommt der Schlüssel
 eine 403, eine Entscheidung des Administrators.
 
 ## Fachstandards

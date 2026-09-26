@@ -45,7 +45,7 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
      * Zurück kommt entweder das Dokument oder der Satz, warum nicht. Kein
      * stilles null: wer hochlädt, soll lesen können, woran es lag.
      */
-    async ablegen({ name, art, inhalt, von }) {
+    async ablegen({ name, art, inhalt, von, vorgang = null }) {
       const sauber = String(name || "").trim().slice(0, 200);
       if (!sauber) return { dokument: null, fehler: "Ohne Dateinamen gibt es kein Dokument." };
       if (!ARTEN[art]) {
@@ -68,7 +68,11 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
         von: von || "unbekannt",
         abgelegt: new Date().toISOString(),
         inhalt,
+        // Nur mit dem Muster Belege: dort hängt ein Dokument an einem Vorgang
+        // und erbt dessen Mandanten. Die Ablage dieses Musters kennt das Feld nicht.
+        vorgang,
       });
+      if (!dokument) return { dokument: null, fehler: `${sauber} wurde nicht abgelegt.` };
       return { dokument, fehler: null };
     },
 

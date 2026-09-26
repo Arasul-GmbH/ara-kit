@@ -39,7 +39,7 @@ the house works with (`business/profile.md`) belongs in the first draft.
 | **Who may see what** | Everything for everybody inside, or only their clients, departments, files. The app decides that |
 | **What has to stay** | What survives a new version, a switch and a year, and what of it gets proven. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention, from their primary source: `.ara/knowledge/app-professional.md` |
-| **Which shape it takes** | A form is rarely all of it: the seven patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
+| **Which shape it takes** | A form is rarely all of it: the eight patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | Something that gets checked is an afternoon. Something that may never be wrong is a project |
@@ -100,18 +100,13 @@ from the Dockerfile included, a SQLite file, an upload folder, a log on disk, a 
 An uploaded file belongs in a column (`BYTEA`). Removing the app throws its databases away, their
 backups stay.
 
-**The scaffold does this already**: `backend/ablage/db.mjs` opens the device's database, and an
-empty value stops the start instead of writing into a file. Without a device it takes SQLite, and
-the route `lage` says `dauerhaft: false`. On the device `--check` says "A database of its own comes
-along", and so does the container's log at start.
+**The scaffold does this already** in `backend/ablage/db.mjs`: an empty value stops the start
+instead of writing into a file, without a device it takes SQLite, and the route `lage` says
+`dauerhaft: false`.
 
 **The database starts empty**, and the app creates the schema with its migrations, one file per step
 under `backend/ablage/migrationen/`, noted in the table `migrationen`. **What has run once never gets
 touched again**: that would change the past of databases that already exist.
-
-Measured on 25.09.2026 on the Orin with the scaffold and patterns 2 and 6: three migrations ran in
-the device's PostgreSQL, the next deploy kept receipts and log and lost a file in the container, and
-live started with its own empty database.
 
 ## What the scaffold already is
 

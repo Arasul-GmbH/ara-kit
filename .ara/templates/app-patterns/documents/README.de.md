@@ -20,9 +20,7 @@ Die Anzeige, gelesen in der Bibliothek am 15.09.2026:
   `kennzeichen` das Merkmal für einen Test.
 - **Die PDF-Bibliothek braucht Hilfsdateien neben dem gebauten JavaScript**, den Ordner
   `pdf-dateien/`, den die `vite.config.ts` der Vorlage bei jedem Bau dorthin legt. Ohne ihn zeigt
-  ein Bild sich, und ein PDF endet im Fehlerzustand. Eine ältere App bekommt die Bibliothek mit
-  `marken.mjs --sync` und Abhängigkeit und Plugin aus `frontend/package.json` und
-  `frontend/vite.config.ts` der Vorlage.
+  ein Bild sich, und ein PDF endet im Fehlerzustand.
 - `Dateiablage` hat eine Vorschau (`vorschau`); diese Seite schaltet sie ab, zwei Anzeigen wären
   eine zu viel.
 

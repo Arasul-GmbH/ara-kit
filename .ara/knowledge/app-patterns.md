@@ -1,4 +1,4 @@
-# Procedure: seven shapes of an app beyond the form
+# Procedure: eight shapes of an app beyond the form
 
 > **When do you need this?** In the interview, while the idea is still forming, and whenever
 > somebody takes Arasul for a form tool. The device brings login, permissions, flows and models, the
@@ -23,6 +23,7 @@ read `arasul.json`, like the scaffold. What a foreign tool needs, its documentat
 | 5. A foreign container | A finished image behind the device's login | `.ara/templates/app-patterns/foreign-container/README.md` |
 | 6. Read a document | Fields out of a receipt, checked, every reading logged | `.ara/templates/app-patterns/extract/README.md` |
 | 7. Clients | Who sees which client, who decides | `.ara/templates/app-patterns/clients/README.md` |
+| 8. Receipts per client | 2, 6 and 7 together: receipt at an item, read, separated per client | `.ara/templates/app-patterns/receipts/README.md` |
 
 **Pattern 1 is the scaffold**: one `Route` per page in `Wege()` of
 `.ara/templates/app/frontend/src/app.tsx`, the library's `Seitenleiste` in `rahmen/seitenleiste.tsx`,
@@ -31,8 +32,7 @@ entry. Routes stay one level deep (`dokumente?nr=17`, not `dokumente/17`): the p
 bundles relatively, and a link to a selected row stays a link. Below 900 pixels the sidebar becomes
 a sheet that closes after the click.
 
-**What `/app` does with this.** The wish is often small, "a form for the holiday request". Then name
-once what lies next to it: the request as a document, a mail when it is decided, a lookup in the
-time-keeping, the tool the office uses anyway, a receipt the device reads, clients that must not see
-each other. The plan names the pattern it uses, so the next one knows what to look for; after
-`--new` the tool names this sheet.
+**What `/app` does with this.** The wish is often small, "a form for the holiday request". Name
+once what lies next to it: a document, a mail, a lookup, a tool the office uses anyway, a receipt
+the device reads, clients. The plan names the pattern it uses; after `--new` the tool names this
+sheet.

@@ -2,19 +2,19 @@
  * Die Formularseite: einen Vorgang einreichen.
  *
  * Sie ist aus `Formularseite` und `Feldgruppe` gebaut, den Mustern der
- * Bibliothek. Die Gruppe traegt Ueberschrift, Beschreibung und die Trennlinie
+ * Bibliothek. Die Gruppe trägt Überschrift, Beschreibung und die Trennlinie
  * dazwischen; `Formularseite` nimmt der letzten Gruppe ihre Linie wieder ab.
- * Das ist die Stelle, an der eine Anwendung sonst ihre fuenfte Art erfindet,
+ * Das ist die Stelle, an der eine Anwendung sonst ihre fünfte Art erfindet,
  * zwei Abschnitte zu trennen.
  *
  * Ein `form` bleibt es trotzdem, und das ist mehr als eine Ansammlung von
  * Eingaben: die Eingabetaste im letzten Feld sendet ab, und der Browser bietet
- * seine Hilfen an. `Label` und `id` gehoeren zusammen, an jedem Feld; ohne
- * sie laese ein Screenreader ein Feld ohne Namen vor. Neben dem Namen steht,
+ * seine Hilfen an. `Label` und `id` gehören zusammen, an jedem Feld; ohne
+ * sie läse ein Screenreader ein Feld ohne Namen vor. Neben dem Namen steht,
  * ob das Feld sein muss, und nicht erst, wenn es fehlt.
  *
  * **Wer ihn einreicht, steht in keinem Feld.** Das sagt die Plattform, und die
- * App liest es aus `api/me`. Ein Namensfeld waere eines, in das jeder einen
+ * App liest es aus `api/me`. Ein Namensfeld wäre eines, in das jeder einen
  * anderen Namen schreiben kann.
  */
 
@@ -40,7 +40,7 @@ export function Neu() {
   const weiter = useNavigate();
   const titelFehlt = versucht && !titel.trim();
 
-  // Der Knopf ist nie grau, solange nichts laeuft. Ein grauer Knopf sagt
+  // Der Knopf ist nie grau, solange nichts läuft. Ein grauer Knopf sagt
   // nicht, warum; ein Klick darauf sagt es am Feld und setzt den Fokus hin.
   const absenden = (ereignis: React.FormEvent) => {
     ereignis.preventDefault();

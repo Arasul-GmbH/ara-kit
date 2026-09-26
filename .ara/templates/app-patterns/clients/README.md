@@ -18,10 +18,8 @@ items; `backend/ablage/mandanten.mjs` with `nurZugeordnete`, the filter as SQL f
 accounts, two clients, foreign items 404, the management 403 without the role, the deciders from the
 mapping, a decision from somebody no longer responsible not counting, the filter in every query.
 
-**Checked on the Orin on 26.09.2026**, a probe in staging with two real account names in the
-platform's headers, asked at the container because nobody was released: each saw only their client,
-foreign items and submissions 404, the management 403 for `mitarbeiter` and open for `admin`, out of
-the contract. Only the submitter mapped: no run, with the reason. A mapped decider: the device
-refused with 400, the submitter had no release. **A run a mapped decider approves was not seen**: it
-needs a release for two accounts, so an administrator's session. That is the first proof on the
-customer's device, written into its runsheet.
+**Checked on the Orin on 26.09.2026** in staging, two real account names in the platform's headers:
+separation, 404 and the management role out of the contract held; a mapped decider without the app
+released made the device refuse with 400. **A run a mapped decider approves was not seen**: it needs
+a release for two accounts, so an administrator's session. That is the first proof on the
+customer's device.

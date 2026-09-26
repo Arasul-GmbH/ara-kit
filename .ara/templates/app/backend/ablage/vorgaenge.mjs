@@ -1,23 +1,23 @@
 /**
- * Die Ablage der Vorgaenge: die eine Naht zwischen dieser App und ihrer
+ * Die Ablage der Vorgänge: die eine Naht zwischen dieser App und ihrer
  * Datenbank.
  *
- * **Eine Ablage je Entitaet, und in ihr steht das einzige SQL der App.** Der
- * Kern darueber kennt die Tabelle nicht, kennt die Datenbank nicht und wuerde
- * es nicht merken, wenn hier morgen etwas anderes stuende. Das ist der Zweck
+ * **Eine Ablage je Entität, und in ihr steht das einzige SQL der App.** Der
+ * Kern darüber kennt die Tabelle nicht, kennt die Datenbank nicht und würde
+ * es nicht merken, wenn hier morgen etwas anderes stünde. Das ist der Zweck
  * der Naht: wer die Ablage austauscht, tauscht sie an einer Stelle aus.
  *
- * Kommt eine zweite Entitaet dazu, bekommt sie eine zweite Datei wie diese und
+ * Kommt eine zweite Entität dazu, bekommt sie eine zweite Datei wie diese und
  * nicht eine zweite Art, die Datenbank zu rufen. Eine Abfrage, die im Kern
  * steht, ist die erste von zehn.
  *
- * Das SQL ist das von PostgreSQL, mit `$1` als Platzhalter: am Geraet ist es
- * dessen Datenbank, ohne Geraet uebersetzt `db.mjs` fuer SQLite. Jeder Aufruf
- * ist asynchron, denn am Geraet geht er uebers Netz.
+ * Das SQL ist das von PostgreSQL, mit `$1` als Platzhalter: am Gerät ist es
+ * dessen Datenbank, ohne Gerät übersetzt `db.mjs` für SQLite. Jeder Aufruf
+ * ist asynchron, denn am Gerät geht er übers Netz.
  *
  * Die Aussenwelt sieht einen Vorgang immer gleich, egal was in der Tabelle
  * steht: `lauf` ist eine Zeichenkette oder `null`, und die Spalte ist TEXT,
- * weil die Nummer eines Laufs ein Wert des Geraets ist. Wer hier INTEGER
+ * weil die Nummer eines Laufs ein Wert des Geräts ist. Wer hier INTEGER
  * schriebe, legte sich auf eine Form fest, die ihm niemand versprochen hat.
  */
 
@@ -35,7 +35,7 @@ function alsLauf(lauf) {
 
 export function vorgangsAblage(db) {
   const ablage = {
-    /** Ein neuer Vorgang. Zurueck kommt er so, wie er jetzt in der Ablage steht. */
+    /** Ein neuer Vorgang. Zurück kommt er so, wie er jetzt in der Ablage steht. */
     async anlegen(vorgang) {
       return alsVorgang(
         await db.eine(
@@ -51,7 +51,7 @@ export function vorgangsAblage(db) {
       return (await db.abfrage(`SELECT ${FELDER} FROM vorgaenge ORDER BY id DESC`)).map(alsVorgang);
     },
 
-    /** Die, bei denen am Geraet noch etwas offen ist. */
+    /** Die, bei denen am Gerät noch etwas offen ist. */
     async wartende() {
       return (
         await db.abfrage(`SELECT ${FELDER} FROM vorgaenge WHERE status = 'wartet' AND lauf IS NOT NULL ORDER BY id DESC`)
@@ -64,7 +64,7 @@ export function vorgangsAblage(db) {
 
     /**
      * Den Stand eines Vorgangs fortschreiben. Titel, Text und Einreicher
-     * aendert niemand mehr; die Nummer des Laufs kommt einmal dazu, sobald es
+     * ändert niemand mehr; die Nummer des Laufs kommt einmal dazu, sobald es
      * ihn gibt, und bleibt dann.
      */
     async fortschreiben(id, felder) {
