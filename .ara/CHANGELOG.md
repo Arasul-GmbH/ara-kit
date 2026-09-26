@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.39.0 (2026-09-26)
+
+Contract: up to 6
+
+- **`--contract` says what reading a document answers.** A device from 26.09.2026 names in its contract under `auslesen` the answer of `document/extract-structured` as a schema; `--contract` prints every field with type and description and the sentences next to it, `--json` the whole schema with request and failure. `data` is an object or null and not checked against the app's schema. A device without the section gets none here.
+- **`--contract` says how an image goes to a model.** Under `bilder` stands how an app gives a photo to an image model itself through `llm/chat`; `--contract` prints the sentences word for word.
+- **`app-professional.md` points to both sections** instead of saying that no way gives a model an image. With it the measurement of 26.09.2026 on the Orin on a fuel receipt as a photo: one image model six of six fields, text recognition five, another image model two. For photos the app names the model itself and measures both ways.
+
 ## 0.38.0 (2026-09-26)
 
 Contract: up to 6

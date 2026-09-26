@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.39.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **`--contract` sagt, was das Auslesen antwortet.** Ein Gerät ab dem 26.09.2026 nennt im Kontrakt unter `auslesen` die Antwort von `document/extract-structured` als Schema; `--contract` gibt jedes Feld mit Typ und Beschreibung aus und die Sätze daneben, `--json` das ganze Schema mit Anfrage und Fehlschlag. `data` ist ein Objekt oder null und nicht gegen das Schema der App geprüft. Ein Gerät ohne den Abschnitt bekommt hier keinen.
+- **`--contract` sagt, wie ein Bild an ein Modell geht.** Unter `bilder` steht, wie eine App ein Foto über `llm/chat` selbst einem Bildmodell gibt; `--contract` gibt die Sätze wörtlich aus.
+- **`app-professional.md` verweist auf beide Abschnitte** statt zu sagen, kein Weg gebe einem Modell ein Bild. Dazu die Messung vom 26.09.2026 am Orin an einem Tankbeleg als Foto: ein Bildmodell sechs von sechs Feldern, die Texterkennung fünf, ein anderes Bildmodell zwei. Für Fotos nennt die App das Modell selbst und misst beide Wege.
+
 ## 0.38.0 (2026-09-26)
 
 Kontrakt: bis 6

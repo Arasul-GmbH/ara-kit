@@ -61,12 +61,15 @@ crooked, blurred photo, handwriting, a stamp over the figure cost fields. Measur
 the Orin: an invented receipt as a PDF with a text layer, six of six fields in 35 seconds; an
 invented fuel receipt as a photo, text recognition ran, six of six fields in 13 seconds.
 
-**Whether an image model is loaded does not matter.** In the contract of version 6, read on
-25.09.2026, no endpoint gives an image to a model, and `GET /api/v1/external/models` does not say
-which one understands images; `--contract` says whether that still holds, the device's models page which models lie there. **Promise no image
-understanding**, no handwriting, no photo of goods, before you have seen it on the customer's device.
+**The form of the answer and the way for an image stand in the contract.** `--contract` lists
+under "What `document/extract-structured` answers" every field with its type; `data` is an object
+or null, not checked against your schema. "An image to a model" says how the app hands a photo to
+an image model itself. On 26.09.2026 on the Orin, a fuel receipt as a photo: one image model six of
+six fields, text recognition five, another image model two. For photos the app names the model and
+measures both ways. **Promise no image understanding**, no handwriting, no photo of goods, before
+you have seen it on the customer's device.
 
-**Which model reads, the answer says** (`model`), and the app names none. **The field `modelle` in
+**Which model reads, the answer says** (`model`), and when reading a document the app names none. **The field `modelle` in
 `app.json` is a demand, not a delivery**: the device installs no model, at the deploy it says which
 one is missing. Empty, as in the scaffold, means none by name.
 
