@@ -68,13 +68,15 @@ schiefes, unscharfes Foto, Handschrift, ein Stempel über der Zahl kosten Felder
 Sekunden; ein erfundener Tankbeleg als Foto, Texterkennung lief, sechs von sechs Feldern in 13
 Sekunden.
 
-**Ob ein Bildmodell geladen ist, spielt keine Rolle.** Im Kontrakt der Fassung 6, gelesen am
-25.09.2026, gibt kein Endpunkt einem Modell ein Bild, und `GET /api/v1/external/models` sagt nicht,
-welches Bilder versteht; ob das noch gilt, sagt `--contract`, welche Modelle dort liegen, die
-Modellseite des Geräts. **Versprich kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor
+**Form der Antwort und Weg für ein Bild stehen im Kontrakt.** `--contract` nennt unter „Was
+`document/extract-structured` antwortet" jedes Feld mit Typ; `data` ist ein Objekt oder null, nicht
+gegen dein Schema geprüft. „Ein Bild an ein Modell" sagt, wie die App ein Foto selbst einem
+Bildmodell gibt. Am 26.09.2026 am Orin, ein Tankbeleg als Foto: ein Bildmodell sechs von sechs
+Feldern, die Texterkennung fünf, ein anderes Bildmodell zwei. Für Fotos nennt die App das Modell
+und misst beide Wege. **Versprich kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor
 du es am Gerät des Kunden gesehen hast.
 
-**Welches Modell liest, sagt die Antwort** (`model`), und die App nennt keines. **Das Feld
+**Welches Modell liest, sagt die Antwort** (`model`), und beim Auslesen nennt die App keines. **Das Feld
 `modelle` in `app.json` ist eine Forderung, keine Lieferung**: das Gerät installiert kein Modell,
 beim Einspielen sagt es, welches fehlt. Leer, wie in der Vorlage, heißt keines mit Namen.
 

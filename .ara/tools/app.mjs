@@ -1021,6 +1021,62 @@ function contractRuleSections() {
       ...freigaben.map((r) => `- ${r}`)
     );
   }
+  return sections.concat(readingSections());
+}
+
+/** Der Typ eines Feldes aus einem JSON-Schema, lesbar: `object | null`. */
+function schemaType(field) {
+  if (field?.type) return field.const !== undefined ? `${field.type} ${JSON.stringify(field.const)}` : field.type;
+  if (Array.isArray(field?.anyOf)) return field.anyOf.map((f) => f.type || "?").join(" | ");
+  return t("any", "beliebig");
+}
+
+/**
+ * Was das Auslesen zurückgibt und wie ein Bild an ein Modell geht, wörtlich aus
+ * dem Kontrakt (`auslesen` und `bilder`, seit dem 26.09.2026).
+ *
+ * Bis dahin stand die Form der Antwort nirgends, und eine App las `data`, weil
+ * sie es so erwartete. Ausgegeben werden die Felder der Antwort mit Typ und
+ * Beschreibung und die Sätze daneben; das ganze Schema steht in `--json`. Ein
+ * Gerät, das die Abschnitte nicht kennt, bekommt hier auch keinen.
+ */
+function readingSections() {
+  const sections = [];
+  const auslesen = contract?.auslesen;
+  const antwort = auslesen?.antwort?.properties;
+  if (antwort) {
+    const pflicht = new Set(auslesen.antwort.required || []);
+    sections.push(
+      "",
+      t(`## What \`${auslesen.weg}\` answers`, `## Was \`${auslesen.weg}\` antwortet`),
+      "",
+      t(
+        "Word for word from the contract, under `auslesen.antwort` (the whole schema, with request and failure: `--json`):",
+        "Wörtlich aus dem Kontrakt, unter `auslesen.antwort` (das ganze Schema, mit Anfrage und Fehlschlag: `--json`):"
+      ),
+      "",
+      ...Object.entries(antwort).map(
+        ([name, feld]) =>
+          `- \`${name}\` (${schemaType(feld)}${pflicht.has(name) ? "" : t(", optional", ", freiwillig")})` +
+          (feld.description ? `: ${feld.description}` : "")
+      ),
+      ...(auslesen.regeln?.length ? ["", ...auslesen.regeln.map((r) => `- ${r}`)] : [])
+    );
+  }
+  const bilder = contract?.bilder?.regeln || [];
+  if (bilder.length) {
+    sections.push(
+      "",
+      t("## An image to a model", "## Ein Bild an ein Modell"),
+      "",
+      t(
+        `They stand word for word in the contract, under \`bilder\` (\`${contract.bilder.weg}\`, field \`${contract.bilder.feld}\`):`,
+        `Sie stehen wörtlich im Kontrakt, unter \`bilder\` (\`${contract.bilder.weg}\`, Feld \`${contract.bilder.feld}\`):`
+      ),
+      "",
+      ...bilder.map((r) => `- ${r}`)
+    );
+  }
   return sections;
 }
 

@@ -2245,6 +2245,23 @@ const KONTRAKT = {
     max_archiv_bytes: 200 * 1024 * 1024,
   },
   apps: { basis: "/apps/<id>/", teststand: "/apps/<id>/test/" },
+  // Seit dem 26.09.2026 nennt das Gerät die Antwort des Auslesens und wie ein
+  // Bild an ein Modell geht. Die Namen der Felder sind die des Geräts; ein
+  // Satz steht hier mit Absicht anders als am Gerät, damit die Ausgabe
+  // nachweislich aus dem Kontrakt kommt und nicht aus dem Kit.
+  auslesen: {
+    weg: "document/extract-structured",
+    antwort: {
+      type: "object",
+      properties: {
+        data: { anyOf: [{ type: "object" }, { type: "null" }], description: "Die Felder, nicht gegen schema geprüft" },
+        job_id: { type: "string" },
+      },
+      required: ["data", "job_id"],
+    },
+    regeln: ["Probe: data kann null sein."],
+  },
+  bilder: { weg: "llm/chat", feld: "images", regeln: ["Probe: ein Textmodell mit Bild ist ein 400."] },
   endpunkte: [
     { verb: "GET", pfad: "/api/v1/external/contract", bereich: null, was: "Dieser Kontrakt" },
     { verb: "POST", pfad: "/api/v1/external/apps", bereich: "app:deploy", was: "Ein Paket einspielen" },
@@ -2439,6 +2456,17 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       "die Kontraktversion fehlt in der Ausgabe"
     );
     assert(/Regeln für einen Flow/.test(run.stdout), "die Flow-Regeln des Kontrakts fehlen in der Ausgabe");
+    // Die Antwort des Auslesens und der Weg für Bilder, wörtlich aus dem Kontrakt.
+    assert(
+      /document\/extract-structured` antwortet/.test(run.stdout) &&
+        /- `data` \(object \| null\): Die Felder, nicht gegen schema geprüft/.test(run.stdout),
+      `die Antwort des Auslesens fehlt in der Ausgabe: ${run.stdout}`
+    );
+    assert(/Probe: data kann null sein\./.test(run.stdout), "die Sätze zum Auslesen fehlen in der Ausgabe");
+    assert(
+      /## Ein Bild an ein Modell/.test(run.stdout) && /Probe: ein Textmodell mit Bild ist ein 400\./.test(run.stdout),
+      "der Weg für Bilder fehlt in der Ausgabe"
+    );
 
     run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
     assert(run.status === 0, `Prüfung des Manifests fehlgeschlagen: ${run.stdout}${run.stderr}`);
