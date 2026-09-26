@@ -27,7 +27,9 @@
  *   GET    /dokumente              die Liste, ohne Bytes, und die Grenze
  *   POST   /dokumente              eine Datei, roh im Rumpf. Typ aus
  *                                  `content-type`, Name aus `x-dateiname`
- *                                  (URL-kodiert, damit Umlaute ankommen)
+ *                                  (URL-kodiert, damit Umlaute ankommen).
+ *                                  `?vorgang=<id>` hängt es an einen Vorgang,
+ *                                  sobald das Muster Belege dabei ist
  *   GET    /dokumente/<id>/datei   die Bytes, mit ihrem Typ. Das ist die
  *                                  Quelle der Dokumentanzeige
  *   DELETE /dokumente/<id>         weg damit
@@ -119,6 +121,7 @@ export function dokumentWege({ kern, von }) {
         art: typ(anfrage),
         inhalt,
         von: von(anfrage),
+        vorgang: Number(new URL(anfrage.url, "http://app").searchParams.get("vorgang")) || null,
       });
       if (fehler) json(antwort, 400, { fehler });
       else json(antwort, 201, { dokument });

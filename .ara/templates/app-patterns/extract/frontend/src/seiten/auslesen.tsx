@@ -8,24 +8,101 @@
  *
  *   <Route path="/auslesen" element={<Auslesen />} />
  *
- * **Die Felder stehen neben dem Dokument**, nicht allein: wer einen Vorschlag
+ * **Die Felder stehen beim Dokument**, nicht allein: wer einen Vorschlag
  * übernimmt, soll ihn am Beleg prüfen können, ohne ein zweites Fenster. Was die
  * App daran auszusetzen hat, steht als Meldung darüber und nicht versteckt in
  * einer Spalte. Welches Modell es war und ob die Texterkennung lief, steht im
  * Protokoll: das gehört zur Nachvollziehbarkeit, nicht zur Entscheidung.
+ *
+ * **Liste und Ergebnis stehen ab 900 px nebeneinander**, das Ergebnis
+ * mitlaufend, und darunter als Blatt von unten. So hält es die Liste der
+ * Vorlage auch (`seiten/liste.tsx`). In der schmalen Spalte daneben stehen
+ * Dokument und Felder untereinander: zwei Spalten in ihr ließen dem Beleg
+ * keine lesbare Breite. Die Schwelle ist die eine des Produkts,
+ * `useSchmalesFenster`.
+ *
+ * **Jede Zeile ist per Tastatur wählbar.** Die `Datenliste` kennt nur den
+ * Klick auf die Zeile; der Dateiname ist deshalb ein Knopf, Tab führt hin,
+ * Eingabe wählt, die Pfeile gehen eine Zeile weiter. Gewählt ist, wo
+ * `aria-current` steht, in der Adresse steht es als `?nr=17`, und `stil.css`
+ * zeichnet die Zeile danach (`zeile-wahl`). Unter 900 px ist die ganze Karte
+ * der Knopf, dort trägt der Name nur die Markierung.
  */
 
+import { useMemo, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Button, Datenliste, Dokumentanzeige, Karte, Kopf, Meldung, type Spalte } from "@marken";
+import {
+  Button,
+  Datenliste,
+  Dokumentanzeige,
+  Karte,
+  Kopf,
+  Leerzustand,
+  Meldung,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  useSchmalesFenster,
+  type Spalte,
+} from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
 import { anzeigeArt, dokumentAdresse, useDokumente, type Dokument } from "../dokumente";
 import { useAuslesen, useAuslesenLage, useAuslesungen, wertInWorten, type Auslesung } from "../auslesen";
 import { zeitpunkt } from "../vorgaenge";
 
-const DOKUMENTE: ReadonlyArray<Spalte<Dokument>> = [
-  { schluessel: "name", titel: "Datei", zelle: (d) => d.name, wert: (d) => d.name },
-  { schluessel: "abgelegt", titel: "Abgelegt", zelle: (d) => zeitpunkt(d.abgelegt), wert: (d) => d.abgelegt },
-];
+/** Mit den Pfeilen zum Namen der Zeile darüber oder darunter. */
+function wandern(ereignis: KeyboardEvent<HTMLButtonElement>) {
+  if (ereignis.key !== "ArrowDown" && ereignis.key !== "ArrowUp") return;
+  const zeile = ereignis.currentTarget.closest("tr");
+  const nachbar = ereignis.key === "ArrowDown" ? zeile?.nextElementSibling : zeile?.previousElementSibling;
+  const ziel = nachbar?.querySelector<HTMLButtonElement>(".zeile-wahl");
+  if (!ziel) return;
+  ereignis.preventDefault();
+  ziel.focus();
+}
+
+function useDokumentSpalten(gewaehlt: number | null, waehlen: (id: number) => void, schmal: boolean) {
+  return useMemo<ReadonlyArray<Spalte<Dokument>>>(
+    () => [
+      {
+        schluessel: "name",
+        titel: "Datei",
+        zelle: (d) => {
+          const aktuell = gewaehlt === d.id ? "true" : undefined;
+          // Ein Dateiname ist oft ein langes Wort ohne Leerzeichen:
+          // `anywhere` bricht es, sonst rollte die Tabelle neben dem Ergebnis.
+          const name = <span className="line-clamp-2 whitespace-normal [overflow-wrap:anywhere]">{d.name}</span>;
+          if (schmal) {
+            return (
+              <span className="zeile-wahl" aria-current={aktuell}>
+                {name}
+              </span>
+            );
+          }
+          return (
+            <button
+              type="button"
+              className="zeile-wahl w-full rounded-sm text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              aria-current={aktuell}
+              onClick={(ereignis) => {
+                ereignis.stopPropagation();
+                waehlen(d.id);
+              }}
+              onKeyDown={wandern}
+            >
+              {name}
+            </button>
+          );
+        },
+        wert: (d) => d.name,
+      },
+      { schluessel: "abgelegt", titel: "Abgelegt", zelle: (d) => zeitpunkt(d.abgelegt), wert: (d) => d.abgelegt },
+    ],
+    [gewaehlt, waehlen, schmal]
+  );
+}
 
 interface Feld {
   name: string;
@@ -61,7 +138,12 @@ const PROTOKOLL: ReadonlyArray<Spalte<Auslesung>> = [
   },
 ];
 
-function Ergebnis({ dokument }: { dokument: Dokument }) {
+/**
+ * Das Ergebnis zum gewählten Dokument. Der Name steht ganz da: der Titel der
+ * Karte kürzte ihn in der schmalen Spalte auf eine Zeile. Im Blatt steht er
+ * schon im Kopf des Blatts, die Karte trägt ihn dort nicht noch einmal.
+ */
+function Ergebnis({ dokument, imBlatt = false }: { dokument: Dokument; imBlatt?: boolean }) {
   const protokoll = useAuslesungen(dokument.id);
   const auslesen = useAuslesen();
   return (
@@ -72,9 +154,13 @@ function Ergebnis({ dokument }: { dokument: Dokument }) {
           ? Object.entries(letzte.felder).map(([name, wert]) => ({ name, wert: wertInWorten(wert) }))
           : [];
         return (
-          <>
-            <Karte titel={dokument.name} hinweis={letzte ? `gelesen ${zeitpunkt(letzte.zeit)}` : "noch nicht gelesen"} kennzeichen="auslesung">
-              <div className="grid gap-ui-3 lg:grid-cols-2">
+          <div className="flex flex-col gap-4">
+            <Karte kennzeichen="auslesung">
+              {!imBlatt && <h2 className="text-ui-lg font-semibold break-words text-foreground">{dokument.name}</h2>}
+              <p className="mb-3 text-ui-sm text-muted-foreground">
+                {letzte ? `gelesen ${zeitpunkt(letzte.zeit)}` : "noch nicht gelesen"}
+              </p>
+              <div className="flex flex-col gap-ui-3">
                 <Dokumentanzeige
                   quelle={dokumentAdresse(dokument.id)}
                   art={anzeigeArt(dokument.art)}
@@ -120,7 +206,7 @@ function Ergebnis({ dokument }: { dokument: Dokument }) {
               beschriftung={`Protokoll: ${auslesungen.length} Auslesungen`}
               leer={{ titel: "Noch nichts ausgelesen." }}
             />
-          </>
+          </div>
         );
       }}
     </AsyncBoundary>
@@ -130,15 +216,17 @@ function Ergebnis({ dokument }: { dokument: Dokument }) {
 export function Auslesen() {
   const [suche, setSuche] = useSearchParams();
   const gewaehlt = Number(suche.get("nr")) || null;
+  const schmal = useSchmalesFenster();
   const liste = useDokumente();
   const lage = useAuslesenLage();
 
-  const waehlen = (id: number) => {
+  const waehlen = (id: number | null) => {
     const naechste = new URLSearchParams(suche);
-    if (gewaehlt === id) naechste.delete("nr");
+    if (id === null) naechste.delete("nr");
     else naechste.set("nr", String(id));
     setSuche(naechste);
   };
+  const spalten = useDokumentSpalten(gewaehlt, waehlen, schmal);
 
   return (
     <>
@@ -151,19 +239,53 @@ export function Auslesen() {
       <AsyncBoundary abfrage={liste} laedt="Dokumente werden geholt">
         {({ dokumente }) => {
           const offen = dokumente.find((d) => d.id === gewaehlt);
+          const tabelle = (
+            <Datenliste
+              daten={dokumente}
+              spalten={spalten}
+              kennung={(d) => String(d.id)}
+              beschriftung={`Dokumente: ${dokumente.length}`}
+              filter
+              leer={{ titel: "Noch kein Dokument abgelegt. Hochgeladen wird unter Dokumente." }}
+              aufZeile={(d) => waehlen(d.id)}
+            />
+          );
+
+          if (schmal) {
+            return (
+              <>
+                {tabelle}
+                <Sheet open={Boolean(offen)} onOpenChange={(auf) => !auf && waehlen(null)}>
+                  <SheetContent side="bottom" className="max-h-[85dvh] overflow-y-auto">
+                    {offen && (
+                      <>
+                        <SheetHeader>
+                          <SheetTitle className="pr-8 leading-snug break-words">{offen.name}</SheetTitle>
+                          <SheetDescription>Abgelegt {zeitpunkt(offen.abgelegt)}</SheetDescription>
+                        </SheetHeader>
+                        <Ergebnis dokument={offen} imBlatt />
+                      </>
+                    )}
+                  </SheetContent>
+                </Sheet>
+              </>
+            );
+          }
+
           return (
-            <>
-              <Datenliste
-                daten={dokumente}
-                spalten={DOKUMENTE}
-                kennung={(d) => String(d.id)}
-                beschriftung={`Dokumente: ${dokumente.length}`}
-                filter
-                leer={{ titel: "Noch kein Dokument abgelegt. Hochgeladen wird unter Dokumente." }}
-                aufZeile={(d) => waehlen(d.id)}
-              />
-              {offen && <Ergebnis dokument={offen} />}
-            </>
+            <div data-teilung className="grid grid-cols-[minmax(0,3fr)_minmax(14rem,2fr)] items-start gap-4">
+              {tabelle}
+              <aside aria-label="Einzelheiten" className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
+                {offen ? (
+                  <Ergebnis dokument={offen} />
+                ) : (
+                  <Leerzustand
+                    titel="Kein Dokument gewählt"
+                    beschreibung="Eine Zeile anklicken, oder mit Tab zum Dateinamen gehen und Eingabe drücken."
+                  />
+                )}
+              </aside>
+            </div>
           );
         }}
       </AsyncBoundary>

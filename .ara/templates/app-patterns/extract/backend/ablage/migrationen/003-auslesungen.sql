@@ -29,6 +29,9 @@ CREATE TABLE auslesungen (
   dauer_ms      INTEGER,
   texterkennung INTEGER,
   zeichen       INTEGER,
+  -- Der Auftrag am Gerät (`job_id`). Unter derselben Nummer steht der Aufruf
+  -- im Protokoll des Geräts, mit dem Menschen, für den er geschah.
+  auftrag       TEXT,
   -- Die Felder als JSON, so wie das Modell sie gab. NULL, wenn keine kamen.
   felder        TEXT,
   -- Was die App an den Feldern auszusetzen hatte, als JSON-Liste von Sätzen.

@@ -19,8 +19,7 @@ The viewer, read in the library on 15.09.2026:
   head, `hoehe` is the box's height as CSS, `kennzeichen` the mark for a test.
 - **The PDF library needs support files next to the built JavaScript**, the folder `pdf-dateien/`,
   laid there by the scaffold's `vite.config.ts` at every build. Without it an image shows and a PDF
-  ends in the error state. An app older than that gets the library with `marken.mjs --sync` and the
-  dependency and plugin from the scaffold's `frontend/package.json` and `frontend/vite.config.ts`.
+  ends in the error state.
 - `Dateiablage` has a preview (`vorschau`); this page switches it off, two viewers would be one too
   many.
 

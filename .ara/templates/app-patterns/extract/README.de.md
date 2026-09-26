@@ -15,8 +15,10 @@ mit dem Dokument in der Anzeige, den Feldern daneben, den Mängeln darüber, dem
 `backend/wege/auslesen.mjs` in `server.mjs`, **vor** die Wege der Dokumente, eine `Route` und ein
 Eintrag in der Seitenleiste, dann `--build`. Der Ruf an das Gerät steht schon in der Vorlage,
 `geraet.auslesen` in `backend/arasul.mjs`: der Weg aus `arasul.json`, die Datei als Formular mit dem
-Schema, zurück kommen Felder, Modell, Dauer und ob die Texterkennung lief. **Kein Weg und kein
-Modellname steht im Muster**, der Selbsttest hält es daran.
+Schema, zurück kommen Felder, Modell, Dauer und ob die Texterkennung lief, und der Mensch geht für
+das Protokoll des Geräts mit. **Kein Weg und kein Modellname steht im Muster**, der Selbsttest hält
+es daran. Ein Foto kann auch selbst an ein Bildmodell gehen: `geraet.fragen` mit `bilder`, wie,
+steht in `--contract` unter `bilder`.
 
 **Ersetze `SCHEMA`, `ANWEISUNG` und `fachlich`** durch das, was dein Kunde liest. Ein flaches Schema
 mit `required` ist am verlässlichsten; ein Feld, das das Modell raten müsste, lässt du besser weg,

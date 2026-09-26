@@ -1,34 +1,34 @@
 /**
- * Das Stylesheet der App. Vier Teile, und nur der vierte gehoert ihr.
+ * Das Stylesheet der App. Vier Teile, und nur der vierte gehört ihr.
  *
- *   `tailwindcss`        die Werkzeugklassen, fuer Anordnung und Abstand
+ *   `tailwindcss`        die Werkzeugklassen, für Anordnung und Abstand
  *   `tw-animate-css`     die Bewegungen, die die Primitive benutzen
- *   `marken/theme.css`   die Werte des Geraets, je Thema. OHNE Schicht
+ *   `marken/theme.css`   die Werte des Geräts, je Thema. OHNE Schicht
  *   `marken/marken.css`  die Regeln der sechs Bausteine. MIT `layer(components)`
  *
  * Die Reihenfolge steht so in der EINBAU.md des Pakets, und die beiden
- * Schichtangaben sind keine Nachlaessigkeit:
+ * Schichtangaben sind keine Nachlässigkeit:
  *
  *   `theme.css` ohne Schicht, weil ein `@theme` in einem `layer(...)`-Import
- *   keins mehr ist. Es gaebe dann kein `bg-primary`, und die
- *   sechsundvierzig Primitive staenden ohne Farbe da.
+ *   keins mehr ist. Es gäbe dann kein `bg-primary`, und die
+ *   sechsundvierzig Primitive ständen ohne Farbe da.
  *
  *   `marken.css` mit `layer(components)`, weil ungeschichtetes CSS gegen jede
  *   Schicht gewinnt, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an
- *   einem Baustein waere sonst wirkungslos, und genau das erwartet niemand,
+ *   einem Baustein wäre sonst wirkungslos, und genau das erwartet niemand,
  *   der sie dorthin schreibt.
  *
  * **Die Werte stehen in der Bibliothek und nicht hier.** Bis zum 29.08.2026
  * schrieb das Kit sie beim Anlegen als `design.css` daneben, aus dem Spiegel
- * abgelesen. Seit die Bibliothek als Paket kommt, traegt sie ihre Tokens
+ * abgelesen. Seit die Bibliothek als Paket kommt, trägt sie ihre Tokens
  * selbst (`theme.css`), und zwei Dateien, die dieselben Marken setzen, sind
  * die zweite Wahrheit: die eine sagte, Hell sei die Vorgabe, die andere,
- * Schwarz. Der ganze Ordner `marken/` wird beim naechsten Stand ersetzt, und
+ * Schwarz. Der ganze Ordner `marken/` wird beim nächsten Stand ersetzt, und
  * was hier unten steht, bleibt.
  *
  * Ganz unten stehen die eigenen Regeln. **Kein Farbwert steht darin**, nur
- * Marken: `var(--ara-kante)` statt `rgba(...)`. Eine Farbe, die hier stuende,
- * bliebe beim naechsten Stand zurueck.
+ * Marken: `var(--ara-kante)` statt `rgba(...)`. Eine Farbe, die hier stünde,
+ * bliebe beim nächsten Stand zurück.
  */
 
 @import "tailwindcss";
@@ -36,22 +36,22 @@
 @import "./marken/theme.css";
 @import "./marken/marken.css" layer(components);
 
-/* Dunkel ist kein Systemzustand, sondern der, den das Geraet nennt. Die Shell
+/* Dunkel ist kein Systemzustand, sondern der, den das Gerät nennt. Die Shell
    setzt beides an das Dokument dieser App: die Klasse `dark` und
    `data-theme="dark"`. Hell setzt gar nichts, denn `:root` IST hell. Diese
-   Zeile steht wortgleich in der `index.css` des Geraets; ohne Rahmen schreibt
+   Zeile steht wortgleich in der `index.css` des Geräts; ohne Rahmen schreibt
    `rahmen/thema.ts` dieselben zwei Dinge. */
 @custom-variant dark (&:is(.dark *));
 
 /* --- Eigene Regeln ---------------------------------------------------------
 
    Was hier steht, ist wenig, und das ist die Absicht. Kein Farbwert, keine
-   Schrift, kein Radius: das sind Werte des Geraets, sie stehen in
+   Schrift, kein Radius: das sind Werte des Geräts, sie stehen in
    `marken/theme.css` und werden dort ersetzt. Was hier eine Farbe braucht,
    nimmt eine Marke.
 
    Auch die Anordnung steht nicht mehr hier. Bis zum 29.08.2026 trug diese Datei
-   ein eigenes Raster fuer Seitenleiste und Inhalt und `rahmen/fenster.ts`
+   ein eigenes Raster für Seitenleiste und Inhalt und `rahmen/fenster.ts`
    eine zweite Schwelle bei 900 px. Beides bringt die Bibliothek mit
    (`SidebarProvider`, `SidebarInset`, `useSchmalesFenster`), und es gibt im
    Produkt genau EINE Schwelle. */
@@ -71,9 +71,9 @@
   max-width: 96rem;
 }
 
-/* Wie ein Vorgang steht. Das Wort traegt die Aussage und steht in der
-   Textfarbe: so haelt es 4,5:1 in beiden Themen, auch auf der gewaehlten
-   Zeile. Die Farbe traegt nur das Zeichen davor. Bis zum 26.09.2026 stand das
+/* Wie ein Vorgang steht. Das Wort trägt die Aussage und steht in der
+   Textfarbe: so hält es 4,5:1 in beiden Themen, auch auf der gewählten
+   Zeile. Die Farbe trägt nur das Zeichen davor. Bis zum 26.09.2026 stand das
    Wort selbst in Blau, Grau oder Rot, und Blau und Rot der Bibliothek kommen
    im hellen Thema als Text nicht auf 4,5:1. Seit Marken 4.0.0 gibt es nur
    Blau, Grau und Rot: Erfolg ist Blau, ein Fehler Rot, und wer wartet, hat
@@ -120,9 +120,9 @@
   border-color: var(--ara-text-leise);
 }
 
-/* Auf wen es wartet: hoechstens zwei Zeilen, ganz in den Einzelheiten. Auch
-   sie in der Textfarbe und kleiner: das leise Grau kommt auf der Flaeche
-   einer beruehrten Zeile auf 4,43:1. Sie bricht um, statt die Spalte breit
+/* Auf wen es wartet: höchstens zwei Zeilen, ganz in den Einzelheiten. Auch
+   sie in der Textfarbe und kleiner: das leise Grau kommt auf der Fläche
+   einer berührten Zeile auf 4,43:1. Sie bricht um, statt die Spalte breit
    zu halten, sonst rollte die Tabelle bei 900 px. */
 .stand__wer {
   display: -webkit-box;
@@ -133,15 +133,18 @@
   -webkit-line-clamp: 2;
 }
 
-/* Die gewaehlte Zeile. Die `Datenliste` kennt keine Auswahl, die App markiert
+/* Die gewählte Zeile. Die `Datenliste` kennt keine Auswahl, die App markiert
    den Titel mit `aria-current`, und hier wird die Zeile danach gezeichnet:
-   eine Flaeche und ein Balken in der Textfarbe. Blau hiesse hier "genehmigt". */
-[data-slot="table-row"]:has(.vorgang-wahl[aria-current="true"]),
-li:has(.vorgang-wahl[aria-current="true"]) > button {
+   eine Fläche und ein Balken in der Textfarbe. Blau hieße hier "genehmigt".
+   `vorgang-wahl` trägt die Liste der Vorlage, `zeile-wahl` jede andere Liste,
+   die so wählt, etwa die Muster Dokumente und Auslesen. Gezeichnet wird
+   beides gleich. */
+[data-slot="table-row"]:has(:is(.vorgang-wahl, .zeile-wahl)[aria-current="true"]),
+li:has(:is(.vorgang-wahl, .zeile-wahl)[aria-current="true"]) > button {
   background-color: var(--muted);
   box-shadow: inset 3px 0 0 var(--ara-text);
 }
 
-.vorgang-wahl[aria-current="true"] {
+:is(.vorgang-wahl, .zeile-wahl)[aria-current="true"] {
   font-weight: 600;
 }

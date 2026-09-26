@@ -21,11 +21,8 @@ Orin: zwei Konten, zwei Mandanten, fremde Vorgänge 404, die Verwaltung 403 ohne
 Entscheider aus der Zuordnung, eine Entscheidung von jemandem, der nicht mehr zuständig ist, zählt
 nicht, der Filter in jeder Abfrage.
 
-**Geprüft am Orin am 26.09.2026**, eine Probe im Teststand mit zwei echten Kontonamen in den
-Kopfzeilen der Plattform, am Container gefragt, weil niemand freigegeben war: jeder sah nur seinen
-Mandanten, fremde Vorgänge und Einreichungen 404, die Verwaltung 403 für `mitarbeiter` und offen
-für `admin`, aus dem Kontrakt. Nur der Einreicher zugeordnet: kein Lauf, mit dem Grund. Ein
-zugeordneter Entscheider: das Gerät lehnte mit 400 ab, der Einreicher hatte keine Freigabe. **Ein
-Lauf, den ein zugeordneter Entscheider genehmigt, wurde nicht gesehen**: er braucht eine Freigabe
-für zwei Konten, also eine Sitzung als Administrator. Das ist der erste Nachweis am Gerät des
-Kunden, in seinen Laufzettel geschrieben.
+**Geprüft am Orin am 26.09.2026** im Teststand, zwei echte Kontonamen in den Kopfzeilen der
+Plattform: Trennung, 404 und die Verwaltungsrolle aus dem Kontrakt hielten; ein zugeordneter
+Entscheider ohne Freigabe der App ließ das Gerät mit 400 ablehnen. **Ein Lauf, den ein zugeordneter
+Entscheider genehmigt, wurde nicht gesehen**: er braucht eine Freigabe für zwei Konten, also eine
+Sitzung als Administrator. Das ist der erste Nachweis am Gerät des Kunden.
