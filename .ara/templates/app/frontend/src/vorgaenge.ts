@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tan
 import { hole } from "./rahmen/schnittstelle";
 
 /** Wie ein Vorgang steht. Die Namen kommen aus dem Backend dieser App. */
-export type Stand = "wartet" | "genehmigt" | "abgelehnt" | "abgelaufen" | "ohne entscheidung" | "ohne lauf";
+export type Stand = "in arbeit" | "wartet" | "genehmigt" | "abgelehnt" | "abgelaufen" | "ohne entscheidung" | "ohne lauf";
 
 export interface Vorgang {
   id: number;
@@ -66,6 +66,7 @@ export function useEinreichen() {
  * muss. Bis zum 26.09.2026 war er als `warnung` das blasseste Grau der Liste.
  */
 export const STAND: Record<Stand, { wort: string; art: "wartet" | "hinweis" | "erfolg" | "fehler" }> = {
+  "in arbeit": { wort: "in Arbeit", art: "hinweis" },
   wartet: { wort: "wartet", art: "wartet" },
   genehmigt: { wort: "genehmigt", art: "erfolg" },
   abgelehnt: { wort: "abgelehnt", art: "fehler" },

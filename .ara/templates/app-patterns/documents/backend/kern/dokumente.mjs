@@ -14,6 +14,13 @@
  * Wer andere Arten braucht, erweitert `ARTEN` und weiß dann, dass die Anzeige
  * für sie den Fehlerzustand zeigt.
  *
+ * **Was eingereicht ist, bleibt, wie es war.** Hängt ein Dokument an einem
+ * Vorgang (Muster Belege), fragt der Kern vor dem Anhängen und vor dem
+ * Entfernen `darfAendern` aus `vorgaenge.mjs` der Vorlage, und der Weg
+ * antwortet 409, sobald der Vorgang eingereicht ist. Dafür bekommt er die
+ * Ablage der Vorgänge als `vorgaenge`; ohne sie hängt kein Dokument an einem
+ * Vorgang, und es gibt nichts zu prüfen.
+ *
  * **Die Grenze steht hier und wird der Oberfläche gesagt.** Sie hängt am
  * Arbeitsspeicher des Containers (`ressourcen.speicher` im Manifest): die
  * Bytes gehen einmal durch den Prozess. Wer die Grenze hebt, hebt beides.
@@ -28,9 +35,20 @@ export const ARTEN = Object.freeze({
   "image/webp": "bild",
 });
 
+import { darfAendern } from "./vorgaenge.mjs";
+
 export const GRENZE_BYTES = 10 * 1024 * 1024;
 
-export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
+export function dokumente({ ablage, vorgaenge = null, grenzeBytes = GRENZE_BYTES }) {
+  /** Warum an diesem Vorgang nichts mehr dazukommt oder geht, oder `null`, wenn es darf. */
+  async function gesperrt(nummer) {
+    if (!vorgaenge || !nummer) return null;
+    const vorgang = await vorgaenge.eines(nummer);
+    if (!vorgang) return { status: 404, fehler: `Vorgang ${nummer} gibt es nicht.` };
+    if (darfAendern(vorgang)) return null;
+    return { status: 409, fehler: `Vorgang ${nummer} ist eingereicht und steht auf "${vorgang.status}". Daran kommt nichts mehr dazu, und nichts geht.` };
+  }
+
   return {
     grenzeBytes,
 
@@ -42,10 +60,13 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
     /**
      * Ein Dokument ablegen.
      *
-     * Zurück kommt entweder das Dokument oder der Satz, warum nicht. Kein
-     * stilles null: wer hochlädt, soll lesen können, woran es lag.
+     * Zurück kommt entweder das Dokument oder der Satz, warum nicht, und dann
+     * `status` für den Weg, wenn es nicht 400 ist. Kein stilles null: wer
+     * hochlädt, soll lesen können, woran es lag.
      */
     async ablegen({ name, art, inhalt, von, vorgang = null }) {
+      const sperre = await gesperrt(vorgang);
+      if (sperre) return { dokument: null, ...sperre };
       const sauber = String(name || "").trim().slice(0, 200);
       if (!sauber) return { dokument: null, fehler: "Ohne Dateinamen gibt es kein Dokument." };
       if (!ARTEN[art]) {
@@ -81,9 +102,15 @@ export function dokumente({ ablage, grenzeBytes = GRENZE_BYTES }) {
       return await ablage.eines(id);
     },
 
-    /** Weg damit. */
+    /** Weg damit. Zurück kommt `{ status, fehler }`: 200, 404, oder 409 an einem eingereichten Vorgang. */
     async entfernen(id) {
-      return await ablage.loeschen(id);
+      if (vorgaenge) {
+        const dokument = await ablage.eines(id);
+        if (!dokument) return { status: 404, fehler: `Dokument ${id} gibt es nicht.` };
+        const sperre = await gesperrt(dokument.vorgang);
+        if (sperre) return { status: 409, fehler: sperre.fehler };
+      }
+      return (await ablage.loeschen(id)) ? { status: 200, fehler: null } : { status: 404, fehler: `Dokument ${id} gibt es nicht.` };
     },
   };
 }

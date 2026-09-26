@@ -3585,6 +3585,9 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
   // sie liest nur.
   const freigabe = { run_id: 7, status: "offen", begruendung: null, entschieden_von: null };
   const gesehen = { start: null, key: null, wege: [] };
+  // Nach der Bestätigung läuft der Flow noch ein Stück, bevor er seinen Satz
+  // schreibt. Die App sieht die Freigabe, bevor der Lauf fertig ist.
+  let laufFertig = false;
   return await mitVorlage(
     VORLAGE_KONTRAKT,
     (anfrage, url, rumpf, json) => {
@@ -3604,8 +3607,8 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
       if (url.pathname === "/api/v1/external/flows/runs/7") {
         return json(200, {
           data: {
-            status: freigabe.status === "bestaetigt" ? "fertig" : "wartend",
-            result: freigabe.status === "bestaetigt" ? "Anna hat den Vorgang genehmigt." : null,
+            status: laufFertig ? "fertig" : freigabe.status === "bestaetigt" ? "laeuft" : "wartend",
+            result: laufFertig ? "Anna hat den Vorgang genehmigt." : null,
           },
         });
       }
@@ -3669,12 +3672,24 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
       assert(vorgang.status === "genehmigt", `nach der Bestätigung: ${vorgang.status}`);
       assert(vorgang.entscheidet === undefined, "ein entschiedener Vorgang nennt noch, wer entscheidet");
       assert(vorgang.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Vorgang");
-      assert(/genehmigt/.test(vorgang.bemerkung || ""), `der Satz des Laufs fehlt: ${vorgang.bemerkung}`);
+      assert(vorgang.bemerkung === null, `ein Satz steht da, bevor der Lauf fertig ist: ${vorgang.bemerkung}`);
+      // Der Lauf wird fertig. Bis 0.41.0 fragte die App nur beim ersten
+      // Nachziehen, und der Satz fehlte für immer.
+      laufFertig = true;
+      liste = await ruf("/vorgaenge");
+      const spaeter = liste.daten.vorgaenge.find((v) => v.id === 1);
+      assert(/genehmigt/.test(spaeter.bemerkung || ""), `der Satz des Laufs wird nicht nachgezogen: ${spaeter.bemerkung}`);
+      const laeufe = gesehen.wege.filter((weg) => weg.endsWith("/flows/runs/7")).length;
+      await ruf("/vorgaenge");
+      assert(
+        gesehen.wege.filter((weg) => weg.endsWith("/flows/runs/7")).length === laeufe,
+        "die App fragt den Lauf weiter, obwohl der Satz schon dasteht"
+      );
       assert(
         gesehen.wege.every((weg) => weg.includes("/api/v1/external/")),
         `die App ruft Wege, die nicht aus dem Kontrakt kommen: ${gesehen.wege.join(", ")}`
       );
-      return "eingereicht, gewartet, bestätigt, genehmigt, jeder Wert aus dem Kontrakt";
+      return "eingereicht, gewartet, bestätigt, genehmigt, der Satz nachgezogen, sobald der Lauf fertig ist, jeder Wert aus dem Kontrakt";
     }
   );
 });
@@ -3735,6 +3750,114 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
       return "Vorgang angenommen, ohne Entscheidung, mit Begründung";
     }
   );
+});
+
+await checkAsync("Ein Vorgang entsteht in Arbeit, wird erst eingereicht, wenn er bereit ist, und ändert sich danach nicht mehr", async () => {
+  // Der Kern der Vorlage ohne Server, mit einer Ablage im Speicher und einem
+  // gespielten Gerät: eine Kanzlei gibt einen Abschluss erst frei, wenn alle
+  // Unterlagen da sind. Bis 0.41.0 startete schon das Anlegen den Lauf.
+  const { vorgaenge, darfAendern } = await import(join(ROOT, ".ara", "templates", "app", "backend", "kern", "vorgaenge.mjs"));
+  const zeilen = new Map();
+  const ablage = {
+    async anlegen(v) {
+      const id = zeilen.size + 1;
+      zeilen.set(id, { ...v, id, lauf: v.lauf ?? null, bemerkung: null, entschieden_von: null, begruendung: null });
+      return { ...zeilen.get(id) };
+    },
+    async eines(id) {
+      return zeilen.has(id) ? { ...zeilen.get(id) } : null;
+    },
+    async alle() {
+      return [...zeilen.values()].map((v) => ({ ...v }));
+    },
+    async wartende() {
+      return [...zeilen.values()].filter((v) => v.lauf !== null && v.status === "wartet").map((v) => ({ ...v }));
+    },
+    async fortschreiben(id, felder) {
+      const alt = zeilen.get(id);
+      zeilen.set(id, { ...alt, ...felder, lauf: alt.lauf ?? felder.lauf ?? null, titel: alt.titel, text: alt.text });
+      return { ...zeilen.get(id) };
+    },
+    async aendern(id, { titel, text }) {
+      if (zeilen.get(id)?.status !== "in arbeit") return null;
+      zeilen.set(id, { ...zeilen.get(id), titel, text });
+      return { ...zeilen.get(id) };
+    },
+  };
+  const starts = [];
+  const geraet = {
+    warumKeinRahmen: () => null,
+    async flowStarten(argumente, zusatz) {
+      starts.push({ argumente, zusatz });
+      return { lauf: String(starts.length), fehler: null };
+    },
+    freigaben: async () => ({ eintraege: [], fehler: null }),
+    lauf: async () => null,
+  };
+  let fehlt = "Es fehlt die Inventurliste.";
+  const kern = vorgaenge({ ablage, geraet, name: "Probe", bereit: async () => fehlt ?? true });
+
+  const angelegt = await kern.anlegen({ titel: "Abschluss 2025", von: "anna" });
+  assert(angelegt.status === "in arbeit" && angelegt.lauf === null, `ein neuer Vorgang ist nicht in Arbeit: ${JSON.stringify(angelegt)}`);
+  assert(starts.length === 0, "schon das Anlegen fordert einen Lauf an");
+  assert(darfAendern(angelegt), "ein Vorgang in Arbeit darf sich nicht ändern");
+
+  let r = await kern.einreichen(angelegt.id);
+  assert(r.status === 409 && r.vorgang.status === "in arbeit" && r.vorgang.lauf === null, `ein Vorgang, der nicht bereit ist, wurde eingereicht: ${JSON.stringify(r)}`);
+  assert(r.fehler === fehlt && r.vorgang.hinweis === fehlt, `der Satz, was fehlt, steht nicht am Vorgang: ${JSON.stringify(r)}`);
+  assert(starts.length === 0, "für einen Vorgang, der nicht bereit ist, wurde ein Lauf angefordert");
+  r = await kern.aendern(angelegt.id, { titel: "Abschluss 2025, Müller Bau GmbH" });
+  assert(r.status === 200 && r.vorgang.titel === "Abschluss 2025, Müller Bau GmbH", `ein Vorgang in Arbeit ließ sich nicht ändern: ${JSON.stringify(r)}`);
+
+  fehlt = null;
+  r = await kern.einreichen(angelegt.id);
+  assert(r.status === 200 && r.vorgang.status === "wartet" && r.vorgang.lauf === "1" && r.vorgang.hinweis === null, `bereit, und trotzdem nicht eingereicht: ${JSON.stringify(r)}`);
+  assert(starts.length === 1 && starts[0].argumente.vorgang === String(angelegt.id) && starts[0].zusatz.einreicher === "anna", `der Lauf bekam falsche Angaben: ${JSON.stringify(starts)}`);
+  assert(!darfAendern(r.vorgang), "ein eingereichter Vorgang darf sich noch ändern");
+
+  r = await kern.einreichen(angelegt.id);
+  assert(r.status === 409 && starts.length === 1, `ein Vorgang ließ sich zweimal einreichen: ${JSON.stringify(r)}`);
+  r = await kern.aendern(angelegt.id, { titel: "Nachgeschoben" });
+  assert(r.status === 409 && (await ablage.eines(angelegt.id)).titel === "Abschluss 2025, Müller Bau GmbH", `ein eingereichter Vorgang ließ sich ändern: ${JSON.stringify(r)}`);
+  r = await kern.einreichen(99);
+  assert(r.status === 404 && r.vorgang === null, `ein Vorgang, den es nicht gibt: ${JSON.stringify(r)}`);
+  for (const stand of ["wartet", "genehmigt", "abgelehnt", "abgelaufen", "ohne entscheidung", "ohne lauf"]) {
+    assert(!darfAendern({ status: stand }), `darfAendern lässt einen Vorgang auf "${stand}" ändern`);
+  }
+  assert(!darfAendern(null), "darfAendern lässt einen Vorgang ändern, den es nicht gibt");
+  return "angelegt in Arbeit ohne Lauf, nicht bereit 409 mit Satz, bereit eingereicht, danach 409 für Einreichen und Ändern";
+});
+
+await checkAsync("Die CSV-Hilfe der Vorlage schreibt BOM, Semikolon und Dezimalkomma und führt keine Formel aus", async () => {
+  // Ein Export geht an Excel oder den Steuerberater. Eine Zelle, die mit = + -
+  // @ Tab oder CR beginnt, liest die Tabellenkalkulation als Formel; ein
+  // Mandantenname wie =HYPERLINK(...) liefe sonst beim Empfänger.
+  const { csv, zelle, csvKoepfe } = await import(join(ROOT, ".ara", "templates", "app", "backend", "kern", "csv.mjs"));
+  const text = csv(
+    [
+      { name: "Müller; \"Bau\" GmbH", betrag: 1234.5, notiz: "zwei\nZeilen" },
+      { name: "=HYPERLINK(\"http://x\")", betrag: -12.5, notiz: "@SUMME(A1)" },
+      { name: "+49 30 123", betrag: 0.1, notiz: "-5" },
+      { name: "\tTab", betrag: 7, notiz: "\rCR" },
+    ],
+    [
+      { titel: "Name", wert: (z) => z.name },
+      { titel: "Betrag", wert: (z) => z.betrag, stellen: 2 },
+      { titel: "Notiz", wert: (z) => z.notiz },
+    ]
+  );
+  assert(text.startsWith("\uFEFF"), "die CSV beginnt ohne BOM, Excel liest Umlaute dann falsch");
+  const zeilenTeile = text.slice(1).split("\r\n");
+  assert(zeilenTeile[0] === "Name;Betrag;Notiz", `die Kopfzeile trennt nicht mit Semikolon: ${JSON.stringify(zeilenTeile[0])}`);
+  assert(zeilenTeile[1] === '"Müller; ""Bau"" GmbH";1234,50;"zwei\nZeilen"', `Quoting oder Dezimalkomma stimmen nicht: ${JSON.stringify(zeilenTeile[1])}`);
+  assert(zeilenTeile[2] === '"\'=HYPERLINK(""http://x"")";-12,50;\'@SUMME(A1)', `eine Formel bleibt ausführbar: ${JSON.stringify(zeilenTeile[2])}`);
+  assert(zeilenTeile[3] === "'+49 30 123;0,10;'-5", `+ oder - als Text bleibt eine Formel: ${JSON.stringify(zeilenTeile[3])}`);
+  assert(zeilenTeile[4] === "'\tTab;7,00;\"'\rCR\"", `Tab oder CR vorn bleibt ungeschützt: ${JSON.stringify(zeilenTeile[4])}`);
+  assert(text.endsWith("\r\n"), "die letzte Zeile endet ohne CRLF");
+  assert(zelle(1234567.891) === "1234567,891" && zelle(1e21) === "1000000000000000000000", `Zahlen tragen Tausenderpunkt oder Exponent: ${zelle(1234567.891)} ${zelle(1e21)}`);
+  assert(zelle(null) === "" && zelle(undefined) === "", "eine leere Zelle ist nicht leer");
+  assert(/text\/csv; charset=utf-8/.test(csvKoepfe("a.csv")["content-type"]) && /attachment/.test(csvKoepfe("Ä.csv")["content-disposition"]), "die Kopfzeilen der Antwort stimmen nicht");
+  return "BOM, Semikolon, Dezimalkomma, Quoting, Formelschutz für = + - @ Tab CR, eine Zahl bleibt eine Zahl";
 });
 
 // --- Die Muster jenseits des Formulars ---------------------------------------
@@ -4183,7 +4306,7 @@ await checkAsync("Die Vorlage nennt jedem Modellaufruf seinen Menschen, wie der 
   }
 });
 
-await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, und die Entscheider kommen aus der Zuordnung", async () => {
+await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, und entscheiden darf nur, wer als Entscheider zugeordnet ist", async () => {
   // So, wie das Blatt es sagt: die Vorlage, darüber das Muster, die Zeilen aus
   // dem Kopf von wege/mandanten.mjs in server.mjs. Das Gerät ist gespielt, und
   // seine Rollen heißen nicht so wie am Orin: ein Muster, das eine Rolle fest
@@ -4286,7 +4409,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     const post = (wer, rolle, pfad, rumpf) => ruf(wer, rolle, pfad, { method: "POST", body: JSON.stringify(rumpf) });
 
     // Jeder öffnet die App einmal, sonst kann ihn niemand zuordnen.
-    for (const wer of ["Änne", "bernd", "carla"]) {
+    for (const wer of ["Änne", "bernd", "carla", "emil"]) {
       const r = await ruf(wer, "team", "/mandanten");
       assert(r.code === 200 && r.daten.mandanten.length === 0 && r.daten.verwaltung === false, `${wer} sieht vor jeder Zuordnung etwas: ${JSON.stringify(r.daten)}`);
     }
@@ -4306,20 +4429,36 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     assert(r.code === 409, "ein Mandant ließ sich zweimal anlegen");
     r = await post("chefin", "leitung", "/zuordnungen", { benutzer: "dora", mandant: a });
     assert(r.code === 400 && /noch nie/.test(r.daten.fehler), `ein nie gesehener Name wurde zugeordnet: ${JSON.stringify(r.daten)}`);
-    for (const [wer, mandant] of [["Änne", a], ["carla", a], ["bernd", b]]) {
-      r = await post("chefin", "leitung", "/zuordnungen", { benutzer: wer, mandant });
+    // Sehen heißt nicht entscheiden: carla ist Partnerin bei A, Änne und emil
+    // sehen A nur, bernd entscheidet bei B und ist dort allein.
+    for (const [wer, mandant, entscheidet] of [["Änne", a, false], ["carla", a, true], ["emil", a, false], ["bernd", b, true]]) {
+      r = await post("chefin", "leitung", "/zuordnungen", { benutzer: wer, mandant, entscheidet });
       assert(r.code === 201, `Zuordnung ${wer}: ${JSON.stringify(r.daten)}`);
     }
     r = await ruf("chefin", "leitung", "/zuordnungen");
-    assert(r.daten.zuordnungen.length === 3 && r.daten.konten.some((k) => k.benutzer === "Änne"), `die Verwaltung sieht nicht alles: ${JSON.stringify(r.daten)}`);
+    assert(r.daten.zuordnungen.length === 4 && r.daten.konten.some((k) => k.benutzer === "Änne"), `die Verwaltung sieht nicht alles: ${JSON.stringify(r.daten)}`);
+    assert(
+      r.daten.zuordnungen.filter((z) => z.entscheidet).map((z) => z.benutzer).sort().join(",") === "bernd,carla",
+      `die Zuordnung sagt nicht, wer entscheidet: ${JSON.stringify(r.daten.zuordnungen)}`
+    );
+    assert(/006-entscheider\.sql/.test(ausgabe), `die Migration der Entscheider lief nicht: ${ausgabe}`);
 
     r = await ruf("Änne", "team", "/mandanten");
     assert(r.daten.mandanten.length === 1 && r.daten.mandanten[0].id === a, `Änne sieht mehr als ihren Mandanten: ${JSON.stringify(r.daten)}`);
 
-    // Einreichen: vier Augen, und entscheiden darf, wer dem Mandanten sonst zugeordnet ist.
+    // Anlegen ist nicht einreichen: der Vorgang liegt in Arbeit, ohne Lauf.
     r = await post("Änne", "team", "/vorgaenge", { titel: "Beleg Müller", text: "Tankquittung", mandant: a });
-    assert(r.code === 201 && r.daten.vorgang.mandant === a && String(r.daten.vorgang.lauf) === "1", `Vorgang in A: ${JSON.stringify(r.daten)}`);
+    assert(r.code === 201 && r.daten.vorgang.mandant === a && r.daten.vorgang.status === "in arbeit" && r.daten.vorgang.lauf === null, `Vorgang in A: ${JSON.stringify(r.daten)}`);
+    assert(starts.length === 0, "schon das Anlegen startet die Freigabe");
     const va = r.daten.vorgang.id;
+    r = await ruf("Änne", "team", `/vorgaenge/${va}`, { method: "PUT", body: JSON.stringify({ titel: "Beleg Müller GmbH", text: "Tankquittung" }) });
+    assert(r.code === 200 && r.daten.vorgang.titel === "Beleg Müller GmbH", `ein Vorgang in Arbeit ließ sich nicht ändern: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await post("bernd", "team", `/vorgaenge/${va}/einreichen`, {});
+    assert(r.code === 404 && starts.length === 0, `bernd reicht einen fremden Vorgang ein: ${r.code}`);
+
+    // Einreichen: vier Augen, und entscheiden darf nur, wer bei diesem Mandanten entscheidet.
+    r = await post("Änne", "team", `/vorgaenge/${va}/einreichen`, {});
+    assert(r.code === 200 && r.daten.vorgang.status === "wartet" && String(r.daten.vorgang.lauf) === "1", `Einreichen in A: ${r.code} ${JSON.stringify(r.daten)}`);
     const start = starts[0];
     assert(start?.einreicher === "Änne", `der Einreicher fehlt am Start: ${JSON.stringify(start)}`);
     assert(
@@ -4327,6 +4466,11 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       `die Regel kommt nicht aus der Zuordnung: ${JSON.stringify(start.freigabe)}`
     );
     assert(!/Müller|Tankquittung/.test(JSON.stringify(start)), "Inhalt des Vorgangs steht im Lauf");
+    // Nach dem Einreichen ändert sich nichts mehr.
+    r = await post("Änne", "team", `/vorgaenge/${va}/einreichen`, {});
+    assert(r.code === 409 && starts.length === 1, `ein Vorgang ließ sich zweimal einreichen: ${r.code}`);
+    r = await ruf("Änne", "team", `/vorgaenge/${va}`, { method: "PUT", body: JSON.stringify({ titel: "Nachgeschoben" }) });
+    assert(r.code === 409, `ein eingereichter Vorgang ließ sich ändern: ${r.code}`);
 
     r = await post("Änne", "team", "/vorgaenge", { titel: "Fremd", mandant: b });
     assert(r.code === 404, `Änne reicht bei einem fremden Mandanten ein: ${r.code}`);
@@ -4341,7 +4485,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     r = await ruf(null, null, "/vorgaenge");
     assert(r.code === 200 && r.daten.vorgaenge.length === 0, "ohne Anmeldung ist die Liste nicht leer");
     r = await ruf("carla", "team", `/vorgaenge/${va}`);
-    assert(r.code === 200 && r.daten.vorgang.titel === "Beleg Müller", "carla sieht den Vorgang ihres Mandanten nicht");
+    assert(r.code === 200 && r.daten.vorgang.titel === "Beleg Müller GmbH", "carla sieht den Vorgang ihres Mandanten nicht");
     // Die Liste nennt, auf wen der Vorgang wartet, aus derselben Zuordnung.
     r = await ruf("Änne", "team", "/vorgaenge");
     const wartend = r.daten.vorgaenge.find((v) => v.id === va);
@@ -4350,9 +4494,13 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       `der wartende Vorgang nennt nicht, wer entscheidet: ${JSON.stringify(wartend?.entscheidet)}`
     );
 
-    // Allein zugeordnet: kein Lauf, und der Satz sagt, warum.
+    // Allein Entscheider: kein Lauf, der Vorgang bleibt in Arbeit, und der Satz sagt, warum.
     r = await post("bernd", "team", "/vorgaenge", { titel: "Beleg Schmidt", mandant: b });
-    assert(r.code === 201 && r.daten.vorgang.status === "ohne lauf" && /niemand/.test(r.daten.vorgang.hinweis), `allein zugeordnet: ${JSON.stringify(r.daten)}`);
+    const vb = r.daten.vorgang.id;
+    r = await post("bernd", "team", `/vorgaenge/${vb}/einreichen`, {});
+    assert(r.code === 409 && /niemand/.test(r.daten.fehler), `allein Entscheider: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await ruf("bernd", "team", `/vorgaenge/${vb}`);
+    assert(r.daten.vorgang.status === "in arbeit" && /niemand/.test(r.daten.vorgang.hinweis), `der Satz steht nicht am Vorgang: ${JSON.stringify(r.daten)}`);
     assert(starts.length === 1, "für einen Vorgang ohne Entscheider wurde ein Lauf angefordert");
 
     // Entscheidet jemand, der nicht zuständig ist, zählt es nicht.
@@ -4360,11 +4508,27 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     r = await ruf("Änne", "team", "/vorgaenge");
     let vorgang = r.daten.vorgaenge.find((v) => v.id === va);
     assert(vorgang.status === "ohne entscheidung" && /nicht mehr zuständig|nicht mehr zustaendig/.test(vorgang.hinweis), `eine fremde Entscheidung zählt: ${JSON.stringify(vorgang)}`);
+    // Wer den Mandanten nur sieht, entscheidet nicht, auch wenn das Gerät ihn ließe.
     r = await post("Änne", "team", "/vorgaenge", { titel: "Beleg Müller 2", mandant: a });
-    freigaben = [{ run_id: 2, status: "bestaetigt", entschieden_von: "carla" }];
+    await post("Änne", "team", `/vorgaenge/${r.daten.vorgang.id}/einreichen`, {});
+    freigaben = [{ run_id: 2, status: "bestaetigt", entschieden_von: "emil" }];
     r = await ruf("Änne", "team", "/vorgaenge");
     vorgang = r.daten.vorgaenge.find((v) => String(v.lauf) === "2");
+    assert(vorgang?.status === "ohne entscheidung", `die Freigabe von emil, der A nur sieht, zählt: ${JSON.stringify(vorgang)}`);
+    r = await post("Änne", "team", "/vorgaenge", { titel: "Beleg Müller 3", mandant: a });
+    await post("Änne", "team", `/vorgaenge/${r.daten.vorgang.id}/einreichen`, {});
+    freigaben = [{ run_id: 3, status: "bestaetigt", entschieden_von: "carla" }];
+    r = await ruf("Änne", "team", "/vorgaenge");
+    vorgang = r.daten.vorgaenge.find((v) => String(v.lauf) === "3");
     assert(vorgang?.status === "genehmigt" && vorgang.entschieden_von === "carla", `die zuständige Entscheidung zählt nicht: ${JSON.stringify(vorgang)}`);
+    // Eine Zuordnung auf nur sehen gestellt: carla entscheidet nicht mehr, sieht aber weiter.
+    r = await post("chefin", "leitung", "/zuordnungen", { benutzer: "carla", mandant: a, entscheidet: false });
+    assert(r.code === 200, `die Zuordnung ließ sich nicht umstellen: ${r.code}`);
+    r = await post("Änne", "team", "/vorgaenge", { titel: "Beleg Müller 4", mandant: a });
+    r = await post("Änne", "team", `/vorgaenge/${r.daten.vorgang.id}/einreichen`, {});
+    assert(r.code === 409 && starts.length === 3, `nach dem Umstellen entscheidet noch jemand: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await ruf("carla", "team", `/vorgaenge/${va}`);
+    assert(r.code === 200, "wer nur sieht, sieht nicht mehr");
 
     // Eine Zuordnung lösen: danach entscheidet niemand mehr über Ännes Vorgänge in A.
     r = await ruf("chefin", "leitung", `/zuordnungen?benutzer=carla&mandant=${a}`, { method: "DELETE" });
@@ -4385,7 +4549,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     // Abfrage über die Vorgänge ohne die Bedingung ist eine, die alle zeigt.
     const ablage = readFileSync(join(PATTERNS, "clients", "backend", "ablage", "vorgaenge.mjs"), "utf8");
     const abfragen = [...ablage.matchAll(/`((?:SELECT|UPDATE)[^`]*vorgaenge[^`]*)`/g)].map((m) => m[1]);
-    assert(abfragen.length >= 4, `die Ablage der Vorgänge fragt nur ${abfragen.length} Mal`);
+    assert(abfragen.length >= 5, `die Ablage der Vorgänge fragt nur ${abfragen.length} Mal`);
     for (const sql of abfragen) assert(/nurZugeordnete/.test(sql), `eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
     // Und sie hält die Felder der Vorlage: sie ersetzt deren Ablage.
     const vorlageFelder = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "ablage", "vorgaenge.mjs"), "utf8").match(/const FELDER = "([^"]+)"/)[1];
@@ -4401,7 +4565,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     } finally {
       rmSync(kopie, { recursive: true, force: true });
     }
-    return "zwei Konten, zwei Mandanten, fremder Vorgang 404, Verwaltung nur für die Rolle aus dem Kontrakt, Entscheider aus der Zuordnung ohne Einreicher, fremde Entscheidung zählt nicht, jede Abfrage gefiltert";
+    return "zwei Konten, zwei Mandanten, fremder Vorgang 404, Verwaltung nur für die Rolle aus dem Kontrakt, angelegt in Arbeit, eingereicht erst auf Wunsch, danach 409, nur Entscheider ohne Einreicher, wer nur sieht entscheidet nicht, jede Abfrage gefiltert";
   } finally {
     app?.kill("SIGTERM");
     geraet.close();
@@ -4409,7 +4573,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
   }
 });
 
-await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant, ein Beleg hängt am Vorgang", async () => {
+await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant, ein Beleg hängt am Vorgang, nach dem Einreichen ändert sich nichts", async () => {
   // Die Muster 2, 6 und 7 zusammen, so wie das Blatt es sagt: die Vorlage,
   // darüber die drei, darüber dieses, die Zeilen aus den Köpfen der Wege in
   // server.mjs. Das Gerät ist gespielt, seine Kopfzeilen heißen anders als am Orin.
@@ -4421,6 +4585,7 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
   const paket = mkdtempSync(join(tmpdir(), "ara-belege-"));
   let app = null;
   const gelesen = [];
+  const starts = [];
   const geraet = createServer((anfrage, antwort) => {
     const teile = [];
     anfrage.on("data", (s) => teile.push(s));
@@ -4435,7 +4600,10 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
         gelesen.push(anfrage.headers[kontrakt.protokoll.einreicher.kopf] ?? null);
         return json(200, { success: true, data: { belegdatum: "2026-09-01", betrag_brutto: 12.5, aussteller: "Probe" }, model: "probe-modell:1b", job_id: `auftrag-${gelesen.length}` });
       }
-      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/flows/freigabe/run") return json(202, { data: { run_id: 1 } });
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/flows/freigabe/run") {
+        starts.push(JSON.parse(Buffer.concat(teile).toString("utf8")));
+        return json(202, { data: { run_id: starts.length } });
+      }
       if (url.pathname === "/api/v1/external/freigaben") return json(200, { data: { freigaben: [] } });
       if (url.pathname.startsWith("/api/v1/external/flows/runs/")) return json(200, { data: { status: "wartend" } });
       json(404, { error: { message: url.pathname } });
@@ -4459,6 +4627,12 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     };
     const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall");
     const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
+    // Der Kopf der Belege sagt, was in den Zeilen der Mandanten aus `bereit` wird.
+    const bereitZeile = readFileSync(join(PATTERNS, "receipts", "backend", "wege", "belege.mjs"), "utf8")
+      .split("\n")
+      .find((zeile) => zeile.startsWith(" *   bereit: "));
+    assert(bereitZeile && mandantenKopf.aufbau.includes("bereit: () => true,"), "die Köpfe nennen nicht mehr, wie ein Vorgang mit Beleg bereit wird");
+    mandantenKopf.aufbau = mandantenKopf.aufbau.replace("bereit: () => true,", bereitZeile.slice(5).trim());
     const server = join(paket, "server.mjs");
     let quelle = readFileSync(server, "utf8");
     for (const [alt, neu] of [
@@ -4526,10 +4700,15 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     for (const wer of ["Änne", "bernd", "carla"]) await ruf(wer, "team", "/mandanten");
     const a = (await post("chefin", "leitung", "/mandanten", { name: "Müller GmbH" })).daten.mandant.id;
     const b = (await post("chefin", "leitung", "/mandanten", { name: "Schmidt KG" })).daten.mandant.id;
-    for (const [wer, mandant] of [["Änne", a], ["carla", a], ["bernd", b]]) await post("chefin", "leitung", "/zuordnungen", { benutzer: wer, mandant });
+    for (const [wer, mandant, entscheidet] of [["Änne", a, false], ["carla", a, true], ["bernd", b, true]]) {
+      await post("chefin", "leitung", "/zuordnungen", { benutzer: wer, mandant, entscheidet });
+    }
     let r = await post("Änne", "team", "/vorgaenge", { titel: "Tankbeleg", mandant: a });
     assert(r.code === 201, `Vorgang in A: ${JSON.stringify(r.daten)}`);
     const va = r.daten.vorgang.id;
+    // Ohne Beleg ist der Vorgang nicht vollständig und bleibt in Arbeit.
+    r = await post("Änne", "team", `/vorgaenge/${va}/einreichen`, {});
+    assert(r.code === 409 && /Beleg/.test(r.daten.fehler) && starts.length === 0, `ein Vorgang ohne Beleg wurde eingereicht: ${r.code} ${JSON.stringify(r.daten)}`);
 
     // Ein Beleg hängt an einem Vorgang und erbt dessen Mandanten.
     const pdf = Buffer.from("%PDF-1.4 Probe");
@@ -4562,7 +4741,9 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     assert(r.code === 201 && r.daten.auslesung.mandant === a && r.daten.auslesung.auftrag === "auftrag-1", `die Auslesung trägt Mandant oder Auftrag nicht: ${JSON.stringify(r.daten)}`);
     assert(gelesen[0] === alsKopf("Änne"), `das Gerät bekam den Menschen zur Auslesung nicht: ${gelesen[0]}`);
     r = await ruf("bernd", "team", `/dokumente/${id}/auslesungen`);
-    assert(r.code === 200 && r.daten.auslesungen.length === 0, `bernd sieht das Protokoll eines fremden Belegs: ${JSON.stringify(r.daten)}`);
+    assert(r.code === 404 && !r.daten.auslesungen, `das Protokoll eines fremden Belegs antwortet ${r.code}: ${JSON.stringify(r.daten)}`);
+    r = await ruf("carla", "team", `/dokumente/${id}/auslesungen`);
+    assert(r.code === 200 && r.daten.auslesungen.length === 1, `carla sieht das Protokoll ihres Belegs nicht: ${JSON.stringify(r.daten)}`);
     r = await ruf("bernd", "team", `/dokumente/${id}`, { method: "DELETE" });
     assert(r.code === 404, `bernd entfernt einen fremden Beleg: ${r.code}`);
 
@@ -4572,7 +4753,23 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     r = await ruf("carla", "team", `/dokumente/${id}/auslesungen`);
     assert(r.daten.auslesungen.length === 1, "nach dem Entfernen fehlt das Protokoll für den eigenen Mandanten");
     r = await ruf("bernd", "team", `/dokumente/${id}/auslesungen`);
-    assert(r.daten.auslesungen.length === 0, "nach dem Entfernen sieht der fremde Mandant das Protokoll");
+    assert(r.code === 404, `nach dem Entfernen antwortet das fremde Protokoll ${r.code}`);
+
+    // Jetzt vollständig: ein Beleg, eingereicht, und danach ändert sich nichts mehr.
+    r = await hochladen("Änne", `/dokumente?vorgang=${va}`, pdf);
+    const zweiter = r.daten.dokument.id;
+    r = await post("Änne", "team", `/vorgaenge/${va}/einreichen`, {});
+    assert(r.code === 200 && r.daten.vorgang.status === "wartet" && starts.length === 1, `ein vollständiger Vorgang wurde nicht eingereicht: ${r.code} ${JSON.stringify(r.daten)}`);
+    assert(JSON.stringify(starts[0].freigabe?.entscheider) === JSON.stringify({ konten: ["carla"] }), `die Freigabe geht nicht an die Entscheiderin: ${JSON.stringify(starts[0])}`);
+    const vorher = gelesen.length;
+    r = await hochladen("Änne", `/dokumente?vorgang=${va}`, pdf);
+    assert(r.code === 409, `nach dem Einreichen hängt noch ein Beleg an: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await ruf("Änne", "team", `/dokumente/${zweiter}`, { method: "DELETE" });
+    assert(r.code === 409, `nach dem Einreichen geht ein Beleg: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await ruf("Änne", "team", `/dokumente/${zweiter}/auslesen`, { method: "POST" });
+    assert(r.code === 409 && gelesen.length === vorher, `nach dem Einreichen wird ein Beleg neu ausgelesen: ${r.code}`);
+    r = await ruf("Änne", "team", `/vorgaenge/${va}/belege`);
+    assert(r.daten.belege.length === 1 && r.daten.belege[0].id === zweiter, `die Belege am eingereichten Vorgang haben sich geändert: ${JSON.stringify(r.daten)}`);
 
     // Jede lesende Abfrage der beiden Ablagen trägt den Filter.
     for (const [datei, mindestens] of [["dokumente.mjs", 5], ["auslesungen.mjs", 1]]) {
@@ -4592,7 +4789,7 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     } finally {
       rmSync(kopie, { recursive: true, force: true });
     }
-    return "Beleg ohne Vorgang 400, fremder Vorgang 404, Mandant vom Vorgang, fremde Liste leer, Bytes, Auslesen und Entfernen 404, Protokoll bleibt getrennt, der Mensch geht ans Gerät";
+    return "Beleg ohne Vorgang 400, fremder Vorgang 404, Mandant vom Vorgang, fremde Liste leer, Bytes, Auslesen, Entfernen und Protokoll 404, Protokoll bleibt getrennt, der Mensch geht ans Gerät, ohne Beleg kein Einreichen, danach Anhängen, Entfernen und Auslesen 409";
   } finally {
     app?.kill("SIGTERM");
     geraet.close();

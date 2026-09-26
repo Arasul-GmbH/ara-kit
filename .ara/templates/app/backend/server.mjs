@@ -155,11 +155,14 @@ const server = createServer(async (anfrage, antwort) => {
     if (!rumpf) return json(antwort, 400, { fehler: "Der Vorgang war nicht lesbar." });
     const titel = String(rumpf.titel || "").trim().slice(0, 200);
     if (!titel) return json(antwort, 400, { fehler: "Ohne Titel gibt es keinen Vorgang." });
-    const vorgang = await vorgangsKern.einreichen({
+    // Das Formular der Vorlage ist mit dem Titel vollständig, also wird gleich
+    // eingereicht. Eine Fach-App trennt beides, siehe `kern/vorgaenge.mjs`.
+    const angelegt = await vorgangsKern.anlegen({
       titel,
       text: String(rumpf.text || "").trim().slice(0, 2000),
       von: geraet.angemeldet(anfrage.headers).benutzer,
     });
+    const { vorgang } = await vorgangsKern.einreichen(angelegt.id);
     return json(antwort, 201, { vorgang });
   }
 

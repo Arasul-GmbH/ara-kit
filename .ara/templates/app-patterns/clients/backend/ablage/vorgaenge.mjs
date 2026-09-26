@@ -61,12 +61,16 @@ export function vorgangsAblage(db, benutzer = null) {
       ).map(alsVorgang);
     },
 
-    /** Die, bei denen am Gerät noch etwas offen ist, so weit dieser Name sie sieht. */
+    /**
+     * Die, bei denen am Gerät noch etwas offen ist, so weit dieser Name sie
+     * sieht: wie in der Vorlage auch die genehmigten ohne den Satz danach.
+     */
     async wartende() {
       return (
         await db.abfrage(
           `SELECT ${FELDER} FROM vorgaenge
-            WHERE status = 'wartet' AND lauf IS NOT NULL AND ${nurZugeordnete("mandant", "$1")}
+            WHERE lauf IS NOT NULL AND (status = 'wartet' OR (status = 'genehmigt' AND bemerkung IS NULL))
+              AND ${nurZugeordnete("mandant", "$1")}
             ORDER BY id DESC`,
           [wer]
         )
@@ -78,6 +82,16 @@ export function vorgangsAblage(db, benutzer = null) {
       return alsVorgang(
         await db.eine(`SELECT ${FELDER} FROM vorgaenge WHERE id = $1 AND ${nurZugeordnete("mandant", "$2")}`, [id, wer])
       );
+    },
+
+    /** Titel und Text eines Vorgangs in Arbeit, wie in der Vorlage, und nur, wenn dieser Name ihn sieht. */
+    async aendern(id, { titel, text }) {
+      const geaendert = await db.ausfuehren(
+        `UPDATE vorgaenge SET titel = $1, text = $2
+          WHERE id = $3 AND status = 'in arbeit' AND ${nurZugeordnete("mandant", "$4")}`,
+        [titel, text, id, wer]
+      );
+      return geaendert > 0 ? ablage.eines(id) : null;
     },
 
     /**
