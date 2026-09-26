@@ -18,6 +18,7 @@
  */
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { Button, Ladezustand, Meldung } from "@marken";
 
@@ -32,22 +33,60 @@ export interface AsyncBoundaryProps<T> {
   laedt?: ReactNode;
   /** Die Überschrift, wenn es nicht klappt: "Die Vorgänge ließen sich nicht holen". */
   fehlerTitel?: string;
+  /** Wohin „Zur Übersicht" führt, wenn es das Gesuchte nicht gibt. Vorgabe: die Startseite der App. */
+  uebersicht?: string;
   children: (daten: T) => ReactNode;
 }
 
+/** Der Status eines Fehlers, wenn die Schnittstelle einen nannte. */
+function statusVon(fehler: unknown): number | null {
+  const status = (fehler as { status?: unknown } | null)?.status;
+  return typeof status === "number" ? status : null;
+}
+
 /**
- * Ein Fehler endet nie in einer Sackgasse: neben dem Grund steht der Knopf,
- * der es noch einmal versucht. Ein Satz ohne Handlung lässt den Menschen
- * neu laden, und das verliert, was er schon eingegeben hatte.
+ * Ein Fehler endet nie in einer Sackgasse, und der Knopf passt zum Fehler.
+ *
+ * **404 und 403 sind kein Versagen.** Fremdes antwortet mit 404, so will es
+ * das Kit, und ein Mitarbeiter, der dem Link eines Kollegen folgt, landet
+ * genau hier. Ein zweiter Versuch holt dasselbe noch einmal. Deshalb steht
+ * dort ein Hinweis statt Rot, und der Knopf heißt „Zur Übersicht".
+ * **Netz und 5xx** vergehen oft von selbst: dort steht der Fehler in Rot und
+ * „Erneut versuchen". Ein Satz ohne Handlung lässt den Menschen neu laden, und
+ * das verliert, was er schon eingegeben hatte.
  */
-export function AsyncBoundary<T>({ abfrage, laedt = "Wird geladen", fehlerTitel = "Das hat nicht geklappt", children }: AsyncBoundaryProps<T>) {
+export function AsyncBoundary<T>({
+  abfrage,
+  laedt = "Wird geladen",
+  fehlerTitel = "Das hat nicht geklappt",
+  uebersicht = "/",
+  children,
+}: AsyncBoundaryProps<T>) {
+  const gehe = useNavigate();
+  const ort = useLocation();
   if (abfrage.isPending) {
     return typeof laedt === "string" ? <Ladezustand groesse="klein" meldung={`${laedt} …`} /> : <>{laedt}</>;
   }
   if (abfrage.isError) {
+    const satz = abfrage.error instanceof Error ? abfrage.error.message : "Die App hat keine Verbindung zum Gerät.";
+    const status = statusVon(abfrage.error);
+    if (status === 404 || status === 403) {
+      // Wer schon auf der Übersicht steht, braucht keinen Weg dorthin.
+      const woanders = `${ort.pathname}${ort.search}` !== uebersicht && ort.pathname !== uebersicht;
+      return (
+        <Meldung art="hinweis" titel={status === 404 ? "Das gibt es hier nicht" : "Nicht freigegeben"} kennzeichen="nicht-da">
+          <p>{satz}</p>
+          {woanders && (
+            <Button variant="outline" size="sm" className="mt-2 self-start" onClick={() => gehe(uebersicht)} data-kennzeichen="zur-uebersicht">
+              Zur Übersicht
+            </Button>
+          )}
+        </Meldung>
+      );
+    }
     return (
       <Meldung art="fehler" titel={fehlerTitel}>
-        <p>{abfrage.error instanceof Error ? abfrage.error.message : "Die Schnittstelle hat nicht geantwortet."}</p>
+        <p>{satz}</p>
         <Button
           variant="outline"
           size="sm"
@@ -89,9 +128,11 @@ export class Fehlerwand extends Component<WandProps, WandZustand> {
     if (!this.state.fehler) return this.props.children;
     return (
       <div className="ara-strom">
+        {/* Die Meldung des Browsers steht im Protokoll, nicht hier: „Cannot read
+            properties of undefined" erklärt dem Menschen nichts. */}
         <Meldung art="fehler" titel="Die Seite ist stehengeblieben">
-          {this.state.fehler.message} Neu laden hilft meistens. Wenn nicht, gehoert das in die
-          Werkstatt und nicht in einen zweiten Versuch.
+          Neu laden hilft meistens. Wenn nicht, gehört das zu dem, der die App betreut, und nicht in einen
+          zweiten Versuch.
         </Meldung>
       </div>
     );

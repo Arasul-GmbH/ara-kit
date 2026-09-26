@@ -30,6 +30,9 @@
  * a second time. Beyond that every route it names has to exist in the backend, `GET agent`
  * included. The build puts a copy of `app.json` next to the backend so that the route can answer.
  *
+ * `--check` and `--build` also report where the interface, the sentences of the backend or a
+ * flow say du or dir: the device says Sie, and an app speaks like it or without address.
+ *
  * For a customer device `--customer <customer>` comes along. Address and key stand
  * in the device file, not in the command: that way no device can be addressed with
  * another customer's details.
@@ -70,6 +73,9 @@
  * ein zweites Mal. Darüber hinaus muss jede Route, die es nennt, im Backend stehen, `GET agent`
  * eingeschlossen. Der Bau legt eine Kopie der `app.json` neben das Backend, damit die Route
  * antworten kann.
+ *
+ * `--check` und `--build` melden auch, wo Oberfläche, Sätze des Backends oder ein Flow du oder
+ * dir sagen: das Gerät siezt, und eine App redet wie das Gerät oder ohne Anrede.
  *
  * Bei einem Kundengerät kommt `--customer <kunde>` dazu. Adresse und Schlüssel
  * stehen in der Geräteakte, nicht im Befehl: damit kann kein Gerät mit den Daten
@@ -113,7 +119,7 @@ import {
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
-import { standardFindings, standardScope } from "./lib/standard.mjs";
+import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
@@ -632,6 +638,7 @@ function buildApp(app) {
     [
       "",
       designCheck,
+      ...addressSection(app.dir).slice(1),
       t(
         `Built: ${relative(ROOT, buildDir)}, ${Math.max(1, Math.round(size / 1024))} KB.`,
         `Gebaut: ${relative(ROOT, buildDir)}, ${Math.max(1, Math.round(size / 1024))} KB.`
@@ -1435,6 +1442,7 @@ if (arg.check !== undefined) {
     console.log(
       reportManifest(relative(ROOT, dir) || dir, result, delivery) +
         arrangementSection(dir, manifest).join("\n") +
+        addressSection(dir).join("\n") +
         versionSection().join("\n")
     );
   }

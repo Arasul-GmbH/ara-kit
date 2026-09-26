@@ -63,8 +63,8 @@ beim Einspielen sagt es, welches fehlt. Leer, wie in der Vorlage, heißt keines 
 das Schema und ihre fachlichen Regeln, ein Konto, das im Kontenrahmen fehlt, ein Steuersatz, der
 nicht passt, schreibt jeden Befund an die Auslesung und startet einen Flow mit Freigabe darüber.
 Jede Auslesung ist eine neue Zeile im Protokoll, mit Modell, Dauer, Texterkennung und wer sie
-ausgelöst hat, nie geändert, auch wenn das Dokument geht. **Auch das Gerät protokolliert jeden
-Modellaufruf, mit dem Menschen nur, wenn die App ihn nennt**: `geraet.auslesen` und
+ausgelöst hat, nie geändert, auch wenn das Dokument geht. **Auch das Gerät protokolliert diese
+Aufrufe, mit dem Menschen nur, wenn die App ihn nennt**: `geraet.auslesen` und
 `geraet.fragen` nehmen `nutzer`, den Namen aus `angemeldet`, und reichen ihn weiter, wie
 `--contract` unter „Wer einen Modellaufruf ausgelöst hat" sagt; `auftrag` ordnet eine Auslesung
 dieser Zeile zu. Eine halbe Minute ist normal, Minuten, wenn das Modell erst geladen wird. Ohne den Bereich, den der Kontrakt nennt, bekommt der Schlüssel

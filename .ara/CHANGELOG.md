@@ -13,6 +13,19 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.43.0 (2026-09-26)
+
+Contract: up to 6
+
+- **An error of the device reaches the human as a sentence, never as an HTTP line.** `arasul.mjs` of the scaffold says per class what is going on and what helps now: 408, 504 and 429 busy, please again; 403 not released by the administrator; 5xx the model failed, on a route without a model the device reported an error. Verb, route, status and the device's message stand in `technisch` and go to the container's log, the key never. `hole` in the interface says a sentence per status as well, the line goes to the browser's log.
+- **`AsyncBoundary` tells not found from failed.** 404 and 403 are a hint with "Zur Übersicht", network and 5xx red with "Erneut versuchen". An unknown address of the app is a hint with the way back, no longer red.
+- **Pattern 6 shows labels and German values.** Every field of the schema carries a `title`, `ARTEN` says date, amount, currency or percent, the findings name the fields by their labels: "Belegdatum 14.01.2025", "Betrag brutto 3.550,00 €", "Steuersatz 16 % ist keiner der Sätze 0, 7 oder 19 %". A failed reading stands as a message with "Erneut auslesen" in it, and the page does not say "gelesen" above it.
+- **Pattern 7 puts the long sentence into the card**, `design-system.md` says a card's `hinweis` holds a few words. Patterns 2 and 7 keep the button rule: active, a click says at the field what is missing.
+- **Scaffold and patterns speak like the device**, with Sie or without address; the flow scaffold no longer says du. `--check` and `--build` report du and dir in texts of the interface, the backend and the flows, with file and line, and stop nothing.
+- **What the AI log holds, precisely.** `platform-services.md`, the head of `arasul.mjs` and `--contract` say: the routes under `protokoll.wege`, with the human the app passes on; the model step of a flow stands at the run, with its submitter.
+- **No knowledge path runs into nothing after `/init`.** Shared sheets name partner material by command or skill, `device.mjs`, `init.mjs` and `service-description.mjs` name the German sheets at language de. The self-test lays out both branches in both languages and follows every knowledge path from commands, persona and skills, and every one the tools print.
+- **Measured on 26.09.2026** with a probe of scaffold and patterns 2, 6 and 7, built from 0.42.0 and from this version, at 390 pixels: the Mandanten page was 834 pixels wide and the title "Zuordnen" 0 pixels, now 390 and 332; the reading showed the HTTP line and `betrag_brutto 3.550`, now the sentence and "Betrag brutto 3.550,00 €"; a foreign item offered "Erneut versuchen" in red, now "Zur Übersicht" as a hint.
+
 ## 0.42.0 (2026-09-26)
 
 Contract: up to 6

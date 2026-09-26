@@ -396,8 +396,8 @@ export function arrangementLines(arrangement) {
   lines.push(
     arrangement.protokoll
       ? t(
-          `- A model call carries the human it is made for in \`${arrangement.protokoll.kopf}\`, and the device logs it with them.`,
-          `- Ein Modellaufruf trägt den Menschen, für den er geschieht, in \`${arrangement.protokoll.kopf}\`, und das Gerät protokolliert ihn mit ihm.`
+          `- A call to ${arrangement.protokoll.wege.join(", ") || "a model"} carries the human it is made for in \`${arrangement.protokoll.kopf}\`, and the device's AI log keeps it with them. The model step of a flow is not in that log: it stands at the run, with its submitter.`,
+          `- Ein Aufruf an ${arrangement.protokoll.wege.join(", ") || "ein Modell"} trägt den Menschen, für den er geschieht, in \`${arrangement.protokoll.kopf}\`, und das KI-Protokoll des Geräts führt ihn mit ihm. Der Modellschritt eines Flows steht nicht darin: er steht am Lauf, mit dessen Einreicher.`
         )
       : t(
           "- This device does not say how a model call names its human. Its log shows the app, not the person.",

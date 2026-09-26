@@ -286,7 +286,7 @@ function apply(answers) {
     answers.deviations?.trim() ||
     t(
       "None. The standard rules from .ara/knowledge/security.md apply.",
-      "Keine. Es gelten die Standardregeln aus .ara/knowledge/security.md.",
+      "Keine. Es gelten die Standardregeln aus .ara/knowledge/security.de.md.",
       values.language
     );
   writeFileSync(

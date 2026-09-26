@@ -126,7 +126,7 @@ import {
   unreachable,
   writeLibrary,
 } from "./lib/marken.mjs";
-import { standardExempt, standardFindings } from "./lib/standard.mjs";
+import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
   needsParameter,
@@ -2471,6 +2471,20 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
     assert(run.status === 0, `Prüfung des Manifests fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(/Regeln, die kein Schema trägt/.test(run.stdout), "die Regeln des Kontrakts fehlen in der Ausgabe");
+    assert(!/Anrede:/.test(run.stdout), `eine App ohne du bekommt einen Befund zur Anrede: ${run.stdout}`);
+
+    // Ein Flow, der duzt: --check meldet es mit Datei und Zeile, und es hält
+    // nichts an, denn es ist ein Ton und kein Bruch des Kontrakts.
+    const flowsNeu = !existsSync(join(quelle, "flows"));
+    mkdirSync(join(quelle, "flows"), { recursive: true });
+    writeFileSync(join(quelle, "flows", "anrede-probe.md"), "---\nzusammenhang: Was darin steht, liest du dort.\n---\n");
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    if (flowsNeu) rmSync(join(quelle, "flows"), { recursive: true, force: true });
+    else rmSync(join(quelle, "flows", "anrede-probe.md"), { force: true });
+    assert(
+      run.status === 0 && /Anrede: .*duzt an 1 Stelle/.test(run.stdout) && /flows\/anrede-probe\.md:2 „du"/.test(run.stdout),
+      `--check meldet das Duzen nicht, oder es hält an: ${run.status} ${run.stdout}`
+    );
 
     run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
     assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -3498,6 +3512,9 @@ async function mitVorlage(kontrakt, geraetAntwort, arbeit) {
   // Der Port kommt vom Betriebssystem, damit zwei Läufe sich nicht ins Gehege
   // kommen. Die App sagt ihn beim Start, also wird zugehört statt geraten.
   let ausgabe = "";
+  // Die technische Zeile eines Fehlers geht nach stderr, ins Protokoll des
+  // Containers: auch das gehört zu dem, was die Prüfungen lesen.
+  app.stderr.on("data", (chunk) => (ausgabe += String(chunk)));
   const appUrl = await new Promise((done, failed) => {
     const zeit = setTimeout(() => failed(new Error("die App hat nicht gestartet")), 10_000);
     app.stdout.on("data", (chunk) => {
@@ -3713,20 +3730,29 @@ await checkAsync("Steht der Rahmen und der Lauf kommt trotzdem nicht, sagt die A
       if (antwortet === "leer") return json(200, { success: true, data: {} });
       return json(500, { error: { message: "der Flow-Dienst antwortet nicht" } });
     },
-    async ({ ruf, einreichen }) => {
+    async ({ ruf, einreichen, protokoll }) => {
       const lage = await ruf("/lage");
       assert(lage.daten.arasul === true, "die App sieht den Rahmen nicht, obwohl er steht");
 
       let vorgang = (await einreichen("Ohne Nummer")).daten.vorgang;
       assert(vorgang.lauf === null && vorgang.status === "ohne lauf", `falscher Stand: ${JSON.stringify(vorgang)}`);
-      assert(/Nummer des Laufs/.test(vorgang.hinweis || ""), `die App sagt nicht, was fehlte: ${vorgang.hinweis}`);
+      assert(/Nummer/.test(vorgang.hinweis || ""), `die App sagt nicht, was fehlte: ${vorgang.hinweis}`);
       assert(!/ohne Arasul/i.test(vorgang.hinweis || ""), `die App schiebt es auf Arasul: ${vorgang.hinweis}`);
+      assert(/Nummer des Laufs/.test(protokoll()), `die technische Zeile fehlt im Protokoll: ${protokoll()}`);
 
+      // Der Mensch liest einen Satz, wer die App betreut, die Zeile mit Weg
+      // und Status: am 26.09.2026 stand „POST ... wurde mit Status 408
+      // beantwortet" auf dem Bildschirm einer Steuerfachangestellten.
       antwortet = "fehler";
       vorgang = (await einreichen("Mit Fehler")).daten.vorgang;
       assert(vorgang.status === "ohne lauf", `falscher Stand: ${JSON.stringify(vorgang)}`);
-      assert(/500/.test(vorgang.hinweis || ""), `der Status des Geräts fehlt am Vorgang: ${vorgang.hinweis}`);
-      return "keine Nummer und ein Fehler, beide benannt, keiner als „ohne Arasul“";
+      assert(/Fehler gemeldet/.test(vorgang.hinweis || ""), `kein Satz für den Menschen am Vorgang: ${vorgang.hinweis}`);
+      assert(!/\b500\b|POST|\/api\/|Status/.test(vorgang.hinweis || ""), `die HTTP-Zeile steht am Vorgang: ${vorgang.hinweis}`);
+      assert(
+        /wurde mit Status 500 beantwortet: der Flow-Dienst antwortet nicht/.test(protokoll()) && !/aras_selbsttest/.test(protokoll()),
+        `die technische Zeile steht nicht im Protokoll, oder der Schlüssel steht darin: ${protokoll()}`
+      );
+      return "keine Nummer und ein Fehler, beide als Satz am Vorgang, die Zeile im Protokoll, keiner als „ohne Arasul“";
     }
   );
 });
@@ -4100,6 +4126,9 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
         fuer: anfrage.headers[VORLAGE_KONTRAKT.protokoll.einreicher.kopf] ?? null,
       });
       if (modus === "fehler") return json(500, { success: false, error: "Client disconnected" });
+      if (modus === "ausgelastet") return json(408, { error: { message: "Request timeout" } });
+      if (modus === "voll") return json(504, { error: { message: "Gateway Timeout" } });
+      if (modus === "verboten") return json(403, { error: { message: "Scope document:extract missing" } });
       const gemeinsam = { model: "probe-modell:1b", processing_time_ms: 1234, metadata: { ocr_used: true }, char_count: 321, job_id: "auftrag-1" };
       if (modus === "roh") return json(200, { success: true, data: null, raw_response: "Das kann ich nicht lesen.", ...gemeinsam });
       return json(200, {
@@ -4185,6 +4214,13 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
     };
     let r = await ruf("/auslesen");
     assert(r.daten.kann === true, `das Muster sieht das Auslesen nicht, obwohl das Gerät es anbietet: ${JSON.stringify(r.daten)}`);
+    // Die Seite beschriftet mit `title` und liest Datum und Betrag in de-DE:
+    // Beschriftung und Art kommen mit der Lage.
+    const felder = Object.fromEntries((r.daten.felder || []).map((f) => [f.name, f]));
+    assert(
+      felder.betrag_brutto?.titel === "Betrag brutto" && felder.betrag_brutto.art === "betrag" && felder.belegdatum?.art === "datum",
+      `die Lage nennt Beschriftung und Art der Felder nicht: ${JSON.stringify(r.daten.felder)}`
+    );
 
     const bild = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
     r = await ruf("/dokumente", { method: "POST", body: bild, headers: { "content-type": "image/png", "x-dateiname": encodeURIComponent("Quittung Büro.png") } });
@@ -4197,10 +4233,12 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
     assert(erste.felder?.aussteller === "Bürobedarf Probe GmbH" && erste.felder.betrag_brutto === 208.85, `die Felder kamen nicht an: ${JSON.stringify(erste)}`);
     assert(erste.modell === "probe-modell:1b" && erste.texterkennung === true && erste.dauer_ms === 1234, `das Protokoll fehlt: ${JSON.stringify(erste)}`);
     assert(erste.von === "Jürgen", `wer auslesen ließ, kommt nicht aus der Anmeldung: ${erste.von}`);
-    assert(erste.maengel.some((satz) => /steuersatz 16/.test(satz)), `ein Steuersatz, den es nicht gibt, fiel nicht auf: ${JSON.stringify(erste.maengel)}`);
+    assert(erste.maengel.some((satz) => /^Steuersatz 16 %/.test(satz)) && !erste.maengel.some((satz) => /steuersatz|betrag_brutto|belegdatum/.test(satz)), `ein Steuersatz, den es nicht gibt, fiel nicht auf: ${JSON.stringify(erste.maengel)}`);
     const ankunft = gesehen[0];
     assert(ankunft.name === "Quittung Büro.png" && ankunft.bytes?.equals(bild), `die Datei kam am Gerät anders an: ${ankunft.name}`);
     assert(ankunft.schema?.required?.includes("belegdatum") && ankunft.anweisung, "Schema oder Anweisung kamen am Gerät nicht an");
+    const ohneTitel = Object.entries(ankunft.schema.properties).filter(([, regel]) => !regel.title).map(([name]) => name);
+    assert(ohneTitel.length === 0, `das Schema der Vorlage trägt kein title an: ${ohneTitel.join(", ")}`);
     assert(ankunft.modell === null, "die App nennt ein Modell, statt die Vorgabe des Geräts zu nehmen");
     // Für wen gelesen wurde, kommt am Gerät in der Kopfzeile aus `protokoll`
     // an, mit denselben Bytes, die die Plattform der App gegeben hat.
@@ -4215,15 +4253,28 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
     assert(r.code === 201 && r.daten.auslesung.felder === null && /keine Felder/.test(r.daten.auslesung.fehler || ""), `eine Antwort ohne Felder wurde nicht benannt: ${JSON.stringify(r.daten)}`);
     assert(/nicht lesen/.test(r.daten.auslesung.roh || ""), "die rohe Antwort des Modells fehlt im Protokoll");
 
-    modus = "fehler";
-    r = await ruf(`/dokumente/${id}/auslesen`, { method: "POST" });
-    assert(r.code === 201 && /500/.test(r.daten.auslesung.fehler || "") && /Client disconnected/.test(r.daten.auslesung.fehler), `ein Fehler des Geräts wurde nicht benannt: ${JSON.stringify(r.daten)}`);
+    // Jeder Fehler des Geräts kommt als Satz je Klasse an, die Zeile mit Weg
+    // und Status steht im Protokoll des Containers und nirgends sonst.
+    for (const [art, satz, zeile] of [
+      ["fehler", /Modell ist am Gerät gescheitert/, /Status 500 beantwortet: Client disconnected/],
+      ["ausgelastet", /ausgelastet.*Bitte erneut auslesen/, /Status 408 beantwortet: Request timeout/],
+      ["voll", /ausgelastet.*Bitte erneut auslesen/, /Status 504 beantwortet/],
+      ["verboten", /Administrator hat das Auslesen .*nicht freigegeben/, /Status 403 beantwortet: Scope/],
+    ]) {
+      modus = art;
+      r = await ruf(`/dokumente/${id}/auslesen`, { method: "POST" });
+      const fehler = r.daten.auslesung?.fehler || "";
+      assert(r.code === 201 && satz.test(fehler), `${art}: kein Satz für den Menschen: ${JSON.stringify(r.daten)}`);
+      assert(!/\b(408|403|500|504)\b|POST|extract-structured|Status/.test(fehler), `${art}: die HTTP-Zeile steht an der Auslesung: ${fehler}`);
+      assert(zeile.test(fehlerausgabe), `${art}: die technische Zeile fehlt im Protokoll: ${fehlerausgabe}`);
+    }
+    assert(!/aras_selbsttest/.test(fehlerausgabe + ausgabe), "der Schlüssel steht im Protokoll");
 
     // Das Protokoll bleibt, auch wenn das Dokument geht.
     r = await ruf(`/dokumente/${id}`, { method: "DELETE" });
     assert(r.code === 200, "das Dokument ließ sich nicht entfernen");
     r = await ruf(`/dokumente/${id}/auslesungen`);
-    assert(r.daten.auslesungen.length === 3 && r.daten.auslesungen[0].fehler && r.daten.auslesungen[2].felder, `das Protokoll ist nicht vollständig oder nicht neueste zuerst: ${JSON.stringify(r.daten)}`);
+    assert(r.daten.auslesungen.length === 6 && r.daten.auslesungen[0].fehler && r.daten.auslesungen[5].felder, `das Protokoll ist nicht vollständig oder nicht neueste zuerst: ${JSON.stringify(r.daten)}`);
     r = await ruf(`/dokumente/${id}/auslesen`, { method: "POST" });
     assert(r.code === 404, "ein entferntes Dokument wurde ausgelesen");
 
@@ -5315,6 +5366,46 @@ check("Die Vorlage steht auf Marken 5.0.0, ein Diagramm kommt nur über @marken/
   }
   assert(falsch.length === 0, `holt ein Diagramm aus @marken statt aus @marken/diagramm: ${falsch.join(", ")}`);
   return `Spiegel ${bibliothek.fassung}, diagramm.ts eigener Einstieg, @marken/* in der tsconfig`;
+});
+
+check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --check meldet du und dir", () => {
+  // Am 26.09.2026 stand auf der Freigabekarte eines Partners „Eine Freigabe
+  // wartet auf Ihre Entscheidung" und darunter „liest du in Abschluss": das
+  // Gerät siezt, die Flow-Vorlage duzte, Muster 7 auch. Ein Bauender übernimmt
+  // den Ton der Muster.
+  const befunde = [];
+  for (const ordner of [join(ROOT, ".ara", "templates", "app"), ...readdirSync(PATTERNS).map((n) => join(PATTERNS, n))]) {
+    if (!statSync(ordner).isDirectory()) continue;
+    for (const b of addressFindings(ordner)) befunde.push(`${relative(ROOT, ordner)}/${b.datei}:${b.zeile} ${b.text}`);
+  }
+  assert(befunde.length === 0, `Vorlage oder Muster duzen:\n    ${befunde.join("\n    ")}`);
+
+  // Die Prüfung selbst: sie findet du und dir in Oberfläche, Backend und Flow,
+  // und sie hält Namen im Code und Pfade heraus.
+  const dir = mkdtempSync(join(tmpdir(), "ara-anrede-"));
+  try {
+    mkdirSync(join(dir, "frontend", "src"), { recursive: true });
+    mkdirSync(join(dir, "backend", "kern"), { recursive: true });
+    mkdirSync(join(dir, "flows"), { recursive: true });
+    writeFileSync(
+      join(dir, "frontend", "src", "seite.tsx"),
+      'import { x } from "./dir/x";\nconst dir = 1;\n// Hier steht du im Kommentar.\nexport const S = () => <p titel="Welche Mandanten Sie sehen">Dir ist nichts zugeordnet.</p>;\n'
+    );
+    writeFileSync(join(dir, "backend", "kern", "satz.mjs"), 'const dir = "/tmp";\nexport const satz = `Das kannst du nicht.`;\n');
+    writeFileSync(join(dir, "flows", "freigabe.md"), "---\ntitel: x\nzusammenhang: Bitte lies du das.\n---\n");
+    const gefunden = addressFindings(dir).map((b) => `${b.datei}:${b.zeile}:${b.wort}`);
+    assert(
+      gefunden.length === 3 &&
+        gefunden.includes("frontend/src/seite.tsx:4:Dir") &&
+        gefunden.includes("backend/kern/satz.mjs:2:du") &&
+        gefunden.includes("flows/freigabe.md:3:du"),
+      `die Prüfung der Anrede trifft daneben: ${gefunden.join(", ")}`
+    );
+    assert(addressSection(dir).some((z) => /Anrede|Address/.test(z)), "der Abschnitt für --check nennt die Anrede nicht");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  return "Vorlage und alle Muster ohne du und dir, die Prüfung trifft Oberfläche, Backend und Flow und lässt Code und Pfade";
 });
 
 await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zeichen Titel und 200 Zeilen", async () => {
@@ -10405,6 +10496,124 @@ check("Verweise auf Abschnitte treffen eine Ueberschrift in der Sprache des Blat
   assert(gezaehlt >= 20, `nur ${gezaehlt} Verweise gefunden, das Muster greift nicht`);
   assert(falsch.length === 0, `Verweise ins Leere:\n    ${falsch.join("\n    ")}`);
   return `${gezaehlt} Verweise`;
+});
+
+/**
+ * In welcher Sprache eine Zeichenkette eines Werkzeugs steht, an ihren Wörtern.
+ * `null`, wenn sie es nicht verrät: dann entscheiden die Zeilen davor.
+ */
+function spracheDesSatzes(text) {
+  const de = (text.match(/[äöüßÄÖÜ]|\b(und|der|die|das|nach|steht|stehen|Verfahren|nicht|eine?|dann|noch|Weg|mit|für|aus|sie|Zugang|Schlüssel|Kit beantwortet)\b/g) || []).length;
+  const en = (text.match(/\b(the|and|along|stands|then|with|procedure|of|from|them|Way|Harden|Roll|Establish|Procedure)\b/g) || []).length;
+  if (de > en) return "de";
+  if (en > de) return "en";
+  return null;
+}
+
+check("Jeder genannte Wissenspfad existiert nach jedem init-Zweig und in jeder Sprache", () => {
+  // Befund vom 26.09.2026: device.de.md schickte ein Unternehmen nach
+  // sales.de.md, das /init im Firmenzweig wegräumt, und device.mjs nannte bei
+  // language de das englische device.md. Beides fiel keiner Prüfung auf: die
+  // Verweisprüfung oben sieht den ganzen Klon in beiden Sprachen, nicht das,
+  // was ein Zweig in seiner Sprache nach /init liest. Hier wird jeder Zweig in
+  // jeder Sprache wirklich angelegt, und von seinen Befehlen, der Persona und
+  // den Skills aus wird jedem genannten Wissenspfad gefolgt, so weit er führt.
+  if (!PARTNER_MATERIAL) return OHNE_PARTNERWARE;
+  const pfad = /\.ara\/knowledge\/[a-z0-9\/-]+?(?:\.de)?\.md/g;
+  const deutsch = (rel) => /\.de\.md$/.test(rel);
+  // SKILL.md und CLAUDE.md stehen in einer Sprache für beide Zweige.
+  const sprachlos = (rel) => /^\.claude\//.test(rel);
+  const befunde = new Set();
+  let gefolgt = 0;
+
+  // Die Werkzeuge: jede Zeichenkette, die ein Wissensblatt nennt, in der
+  // Sprache ihres Satzes. Kommentare zählen nicht, sie gibt kein Werkzeug aus.
+  // Die Liste der Partnerware nennt die Dateien, die der Schnitt wegnimmt.
+  const werkzeugPfade = [];
+  const werkzeuge = [join(ROOT, ".ara", "tools"), join(ROOT, ".ara", "tools", "lib")];
+  for (const ordner of werkzeuge) {
+    for (const name of readdirSync(ordner)) {
+      if (!name.endsWith(".mjs") || name === "selftest.mjs" || name === "commands.mjs") continue;
+      const zeilen = readFileSync(join(ordner, name), "utf8").split("\n");
+      zeilen.forEach((zeile, i) => {
+        if (/^\s*(\*|\/\/|\/\*)/.test(zeile)) return;
+        // Was nur beim Partner ausgegeben wird, steht hinter `partnerMaterial ?`
+        // und fragt vorher, ob das Blatt da ist.
+        const nurPartner = /partnerMaterial \?/.test(zeile);
+        for (const lit of zeile.matchAll(/"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`|'((?:[^'\\]|\\.)*)'/g)) {
+          const inhalt = lit[1] ?? lit[2] ?? lit[3] ?? "";
+          const genannt = inhalt.match(pfad);
+          if (!genannt) continue;
+          const sprache = spracheDesSatzes(inhalt) ?? spracheDesSatzes(zeilen.slice(Math.max(0, i - 3), i + 1).join(" "));
+          for (const ziel of genannt) werkzeugPfade.push({ wo: `${relative(ROOT, join(ordner, name))}:${i + 1}`, ziel, sprache, nurPartner });
+        }
+      });
+    }
+  }
+  assert(werkzeugPfade.length >= 10, `nur ${werkzeugPfade.length} Wissenspfade in den Werkzeugen gefunden, das Muster greift nicht`);
+
+  for (const role of ["company", "partner"]) {
+    for (const lang of ["de", "en"]) {
+      const dir = mkdtempSync(join(tmpdir(), `ara-pfade-${role}-${lang}-`));
+      try {
+        cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true, filter: (src) => !/\/(mirror|node_modules|templates\/app\/frontend\/src\/marken)(\/|$)/.test(src) });
+        cpSync(join(ROOT, ".claude"), join(dir, ".claude"), { recursive: true });
+        const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", role, "--language", lang], {
+          encoding: "utf8",
+          cwd: dir,
+          env: { ...process.env, ARA_LANGUAGE: "" },
+        });
+        assert(run.status === 0, `${role}/${lang}: --apply fehlgeschlagen: ${run.stderr}`);
+        const da = (rel) => existsSync(join(dir, rel));
+
+        // Was dieser Zweig in dieser Sprache liest: seine Befehle, die Persona
+        // in seiner Sprache, die Skills, die ihm bleiben.
+        const offen = [];
+        const befehle = join(dir, ".claude", "commands");
+        for (const name of readdirSync(befehle)) if (name.endsWith(".md")) offen.push(`.claude/commands/${name}`);
+        offen.push(lang === "de" ? ".ara/persona/ara.de.md" : ".ara/persona/ara.md");
+        const skills = join(dir, ".claude", "skills");
+        for (const name of readdirSync(skills)) if (da(`.claude/skills/${name}/SKILL.md`)) offen.push(`.claude/skills/${name}/SKILL.md`);
+
+        const gesehen = new Set();
+        while (offen.length) {
+          const rel = offen.shift();
+          if (gesehen.has(rel)) continue;
+          gesehen.add(rel);
+          // Ein erzeugter Befehl hat die Sprache des Laufs, ein Blatt die seines
+          // Namens. /init ist englisch, in jedem Zweig: es steht vor jedem Profil.
+          const sprache =
+            rel === ".claude/commands/init.md" ? "en" : rel.startsWith(".claude/commands/") ? lang : sprachlos(rel) ? null : deutsch(rel) ? "de" : "en";
+          for (const ziel of new Set(readFileSync(join(dir, rel), "utf8").match(pfad) || [])) {
+            gefolgt++;
+            if (!da(ziel)) {
+              befunde.add(`${role}/${lang}: ${rel} nennt ${ziel}, das es in diesem Zweig nicht gibt`);
+              continue;
+            }
+            if (sprache === "de" && !deutsch(ziel) && da(ziel.replace(/\.md$/, ".de.md"))) {
+              befunde.add(`${role}/${lang}: ${rel} ist deutsch und nennt das englische ${ziel}`);
+            } else if (sprache === "en" && deutsch(ziel)) {
+              befunde.add(`${role}/${lang}: ${rel} ist englisch und nennt das deutsche ${ziel}`);
+            }
+            offen.push(ziel);
+          }
+        }
+
+        // Was die Werkzeuge ausgeben, in der Sprache des Laufs.
+        for (const { wo, ziel, sprache, nurPartner } of werkzeugPfade) {
+          if (sprache !== lang || (nurPartner && role !== "partner")) continue;
+          gefolgt++;
+          if (!da(ziel)) befunde.add(`${role}/${lang}: ${wo} gibt ${ziel} aus, das es in diesem Zweig nicht gibt`);
+          else if (lang === "de" && !deutsch(ziel) && da(ziel.replace(/\.md$/, ".de.md"))) befunde.add(`${role}/${lang}: ${wo} nennt bei language de das englische ${ziel}`);
+          else if (lang === "en" && deutsch(ziel)) befunde.add(`${role}/${lang}: ${wo} nennt bei language en das deutsche ${ziel}`);
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  }
+  assert(befunde.size === 0, `Wissenspfade ins Leere oder in der falschen Sprache:\n    ${[...befunde].join("\n    ")}`);
+  return `zwei Zweige, zwei Sprachen, ${gefolgt} Verweisen gefolgt, ${werkzeugPfade.length} in den Werkzeugen`;
 });
 
 // --- Update und Befehle in einem Fork ----------------------------------------

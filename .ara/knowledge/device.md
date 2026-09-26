@@ -115,8 +115,8 @@ according to the sheets, and a calm sentence on the licence. The kit is under th
 tool says it in one sentence.
 
 **Questions about Arasul need no device.** Somebody who tries the kit on their laptop and then
-asks what it actually is gets an answer, from `.ara/knowledge/sales.md` and
-`.ara/knowledge/extensions.md`, and an honest "I do not know that" where the answer would be a
+asks what it actually is gets an answer, from `.ara/knowledge/extensions.md` and, for a partner,
+the skill `sales`, and an honest "I do not know that" where the answer would be a
 product value the kit cannot reach. Say nothing more than was asked, unless the human starts.
 
 ## When SSH does not stand

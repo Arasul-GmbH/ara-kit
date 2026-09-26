@@ -83,7 +83,7 @@ better than an invented answer.
 
 **At the end of the round always:** when do you want to get back in touch, and what will it be
 about then? → `follow_up` and `follow_up_note`. A conversation without a next date is a customer
-forgotten in three months (`.ara/knowledge/crm.md`).
+forgotten in three months (skill `customers`).
 
 ## Creating: what you write
 

@@ -782,7 +782,7 @@ async function adminLogin() {
         ],
         [
           "Weg und Rumpf für den nächsten Aufruf stehen in der API-Referenz des Artefakts, nicht im",
-          "Kit: node .ara/tools/mirror.mjs --docs. Das Verfahren steht in .ara/knowledge/device.md.",
+          "Kit: node .ara/tools/mirror.mjs --docs. Das Verfahren steht in .ara/knowledge/device.de.md.",
         ]
       ),
     ].join("\n")
@@ -2073,7 +2073,7 @@ function nextSteps() {
         `Access first: node .ara/tools/find-device.mjs --host ${host} shows whether the device answers. ` +
           "Roll out a key along .ara/knowledge/remote-access.md, then check again.",
         `Erst der Zugang: node .ara/tools/find-device.mjs --host ${host} zeigt, ob das Gerät antwortet. ` +
-          "Schlüssel ausrollen nach .ara/knowledge/remote-access.md, dann noch einmal prüfen."
+          "Schlüssel ausrollen nach .ara/knowledge/remote-access.de.md, dann noch einmal prüfen."
       )
     );
     return steps;
@@ -2120,7 +2120,7 @@ function nextSteps() {
           ".ara/knowledge/remote-access.md.",
         `Vorgemerkt in der Akte seit ${changes.noted_on || existing.noted_on}. Sobald der Spiegel ein Profil für diese ` +
           "Hardware führt (node .ara/tools/mirror.mjs), geht es weiter. Bis dahin: Zugang härten nach " +
-          ".ara/knowledge/remote-access.md."
+          ".ara/knowledge/remote-access.de.md."
       )
     );
   } else if (arasulRunning(svc.arasul.state)) {
@@ -2169,7 +2169,7 @@ function nextSteps() {
               `eine Sitzung als Administrator: node .ara/tools/device.mjs --name ${name}` +
               `${customer ? ` --customer ${customer}` : ""} --admin-login. ` +
               "Weg und Rumpf des nächsten Aufrufs stehen in der API-Referenz des Artefakts " +
-              "(node .ara/tools/mirror.mjs --docs), das Verfahren in .ara/knowledge/device.md."
+              "(node .ara/tools/mirror.mjs --docs), das Verfahren in .ara/knowledge/device.de.md."
           )
         );
       }
@@ -2215,7 +2215,7 @@ function nextSteps() {
             "ruft ihn mit Startpasswort und Netzname und legt danach den Kit-Schlüssel an. Vorher Laufzettel anlegen: "
         ) +
         `node .ara/tools/runsheet.mjs --create${customer ? ` --customer ${customer}` : ""} --device ${name}. ` +
-        t("Procedure in .ara/knowledge/device.md.", "Verfahren in .ara/knowledge/device.md.") +
+        t("Procedure in .ara/knowledge/device.md.", "Verfahren in .ara/knowledge/device.de.md.") +
         " " +
         hardeningNotice({ keepSsh, port: hardeningPort() })
     );
@@ -2245,6 +2245,9 @@ const steps = nextSteps();
 function closingLines() {
   if (found.verdict !== "unsupported") return [];
   const carriers = supportedDevices(profiles);
+  // Das Blatt zum Verkaufen gehört dem Partner: im Firmenzweig räumt /init es
+  // weg, und ein Verweis darauf ginge ins Leere.
+  const partnerMaterial = existsSync(join(ROOT, ".ara", "knowledge", "sales.md"));
   return [
     "",
     t("## Without a matching device", "## Ohne passendes Gerät"),
@@ -2263,11 +2266,13 @@ function closingLines() {
     "",
     t(
       "Questions about Arasul do not need a device. Ask them here: what it is, what it needs, " +
-        "what it does not do. The kit answers them from .ara/knowledge/sales.md and " +
-        ".ara/knowledge/extensions.md, and it says when it does not know something.",
+        "what it does not do. The kit answers them from .ara/knowledge/extensions.md" +
+        (partnerMaterial ? " and .ara/knowledge/sales.md" : "") +
+        ", and it says when it does not know something.",
       "Fragen zu Arasul brauchen kein Gerät. Stell sie hier: was es ist, was es braucht, was es " +
-        "nicht tut. Das Kit beantwortet sie aus .ara/knowledge/sales.de.md und " +
-        ".ara/knowledge/extensions.de.md, und es sagt, wenn es etwas nicht weiß."
+        "nicht tut. Das Kit beantwortet sie aus .ara/knowledge/extensions.de.md" +
+        (partnerMaterial ? " und .ara/knowledge/sales.de.md" : "") +
+        ", und es sagt, wenn es etwas nicht weiß."
     ),
     "",
     t(
@@ -2312,7 +2317,7 @@ function troubleSection() {
       ],
       [
         "Das Kit hat nichts davon nachgeholt. Geh es durch, bevor das Gerät in ein Kundennetz geht:",
-        "Zugang härten nach .ara/knowledge/remote-access.md, alles andere am Gerät mit Root-Rechten.",
+        "Zugang härten nach .ara/knowledge/remote-access.de.md, alles andere am Gerät mit Root-Rechten.",
         "Es steht auch in der Akte, unter Prüfungen.",
       ]
     ),

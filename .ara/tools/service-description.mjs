@@ -400,7 +400,7 @@ console.log(
     "",
     t(
       `Procedure: .ara/knowledge/paperwork.md. After that: node .ara/tools/pdf.mjs ${relative(ROOT, target)}`,
-      `Verfahren: .ara/knowledge/paperwork.md. Danach: node .ara/tools/pdf.mjs ${relative(ROOT, target)}`
+      `Verfahren: .ara/knowledge/paperwork.de.md. Danach: node .ara/tools/pdf.mjs ${relative(ROOT, target)}`
     ),
   ].join("\n")
 );

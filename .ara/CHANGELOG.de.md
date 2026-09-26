@@ -15,6 +15,19 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.43.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Ein Fehler des Geräts erreicht den Menschen als Satz, nie als HTTP-Zeile.** `arasul.mjs` der Vorlage sagt je Klasse, was los ist und was jetzt hilft: 408, 504 und 429 ausgelastet, bitte erneut; 403 vom Administrator nicht freigegeben; 5xx das Modell ist gescheitert, an einem Weg ohne Modell hat das Gerät einen Fehler gemeldet. Verb, Weg, Status und die Nachricht des Geräts stehen in `technisch` und gehen ins Protokoll des Containers, der Schlüssel nie. `hole` in der Oberfläche sagt ebenfalls einen Satz je Status, die Zeile geht ins Protokoll des Browsers.
+- **`AsyncBoundary` unterscheidet Nichtgefunden von Gescheitert.** 404 und 403 sind ein Hinweis mit „Zur Übersicht", Netz und 5xx rot mit „Erneut versuchen". Eine unbekannte Adresse der App ist ein Hinweis mit dem Weg zurück, nicht mehr rot.
+- **Muster 6 zeigt Beschriftungen und deutsche Werte.** Jedes Feld des Schemas trägt ein `title`, `ARTEN` sagt Datum, Betrag, Währung oder Prozent, die Mängelsätze nennen die Felder mit ihrer Beschriftung: „Belegdatum 14.01.2025", „Betrag brutto 3.550,00 €", „Steuersatz 16 % ist keiner der Sätze 0, 7 oder 19 %". Eine gescheiterte Auslesung steht als Meldung da, mit „Erneut auslesen" darin, und darüber steht nicht „gelesen".
+- **Muster 7 stellt den langen Satz in die Karte**, `design-system.de.md` sagt, der `hinweis` einer Karte trägt ein paar Wörter. Muster 2 und 7 halten die Knopfregel: aktiv, ein Klick sagt am Feld, was fehlt.
+- **Vorlage und Muster reden wie das Gerät**, mit Sie oder ohne Anrede; die Flow-Vorlage duzt nicht mehr. `--check` und `--build` melden du und dir in Texten der Oberfläche, des Backends und der Flows, mit Datei und Zeile, und halten nichts an.
+- **Was das KI-Protokoll erfasst, genau.** `platform-services.de.md`, der Kopf von `arasul.mjs` und `--contract` sagen: die Wege unter `protokoll.wege`, mit dem Menschen, den die App mitgibt; der Modellschritt eines Flows steht am Lauf, mit seinem Einreicher.
+- **Kein Wissenspfad geht nach `/init` ins Leere.** Geteilte Blätter nennen Partnerware über Befehl oder Skill, `device.mjs`, `init.mjs` und `service-description.mjs` nennen bei language de die deutschen Blätter. Der Selbsttest legt beide Zweige in beiden Sprachen an und folgt jedem Wissenspfad aus Befehlen, Persona und Skills und jedem, den die Werkzeuge ausgeben.
+- **Gemessen am 26.09.2026** mit einer Probe aus Vorlage und Mustern 2, 6 und 7, gebaut aus 0.42.0 und aus diesem Stand, bei 390 Pixeln: die Seite Mandanten war 834 Pixel breit und der Titel „Zuordnen" 0 Pixel, jetzt 390 und 332; die Auslesung zeigte die HTTP-Zeile und `betrag_brutto 3.550`, jetzt den Satz und „Betrag brutto 3.550,00 €"; ein fremder Vorgang bot in Rot „Erneut versuchen" an, jetzt als Hinweis „Zur Übersicht".
+
 ## 0.42.0 (2026-09-26)
 
 Kontrakt: bis 6

@@ -31,10 +31,10 @@ whether a run takes submitter and approval rule, how a model call names its huma
 into the package as `backend/arasul.json`. `--check` prints it and what this device does not promise.
 
 **An app never writes those values into its source.** One that does finds nothing on a device that
-names them differently, takes that for "no Arasul here" and collects items nobody decides on. The
-self-test holds scaffold and patterns to that. **Model work of an app runs over a flow, reading a
-document or `geraet.fragen`**, and every call names the human it is made for: the device logs it
-with them (`protokoll`).
+names them differently, takes that for "no Arasul here" and collects items nobody decides on.
+**Model work of an app runs over a flow, reading a document or `geraet.fragen`.** The AI log holds
+the routes `protokoll.wege` names, with the human the app passes; a flow's model step stands at the
+run, with its submitter.
 
 ## Login: an app gets none of its own
 

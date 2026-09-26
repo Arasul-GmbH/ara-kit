@@ -41,9 +41,14 @@
  * **Die Vorschau der Dateiablage ist hier aus.** Sie zeigte die gewählte Datei
  * schon vor dem Hochladen, und dann stünden zwei Anzeigen auf einer Seite.
  * Gezeigt wird, was abgelegt ist.
+ *
+ * **„Hochladen" bleibt aktiv, solange nichts läuft.** Ohne gewählte Datei sagt
+ * ein Klick unter der Ablage, was fehlt, wie jedes Feld der Vorlage. Ein
+ * grauer Knopf sagt nicht, warum.
  */
 
 import { useState } from "react";
+import { CircleAlertIcon } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
   Button,
@@ -143,6 +148,8 @@ export function Dokumente() {
   const [suche, setSuche] = useSearchParams();
   const gewaehlt = Number(suche.get("nr")) || null;
   const [dateien, setDateien] = useState<File[]>([]);
+  const [versucht, setVersucht] = useState(false);
+  const dateiFehlt = versucht && !dateien.length;
   const liste = useDokumente();
   const hochladen = useHochladen();
   const entfernen = useEntfernen();
@@ -157,10 +164,15 @@ export function Dokumente() {
 
   const absenden = () => {
     const datei = dateien[0];
-    if (!datei || hochladen.isPending) return;
+    if (hochladen.isPending) return;
+    if (!datei) {
+      setVersucht(true);
+      return;
+    }
     hochladen.mutate(datei, {
       onSuccess: ({ dokument }) => {
         setDateien([]);
+        setVersucht(false);
         waehlen(dokument.id);
       },
     });
@@ -172,7 +184,7 @@ export function Dokumente() {
 
       {hochladen.isError && (
         <Meldung art="fehler" titel="Das Dokument ist nicht angekommen">
-          {hochladen.error instanceof Error ? hochladen.error.message : "Die Schnittstelle hat nicht geantwortet."}
+          {hochladen.error instanceof Error ? hochladen.error.message : "Die App hat keine Verbindung zum Gerät."}
         </Meldung>
       )}
 
@@ -209,11 +221,19 @@ export function Dokumente() {
                   vorschau={false}
                   disabled={hochladen.isPending}
                 />
+                {dateiFehlt && (
+                  // Der Satz in Textfarbe, das Zeichen in Rot, wie am Feld in `seiten/neu.tsx`.
+                  <p id="datei-fehlt" role="status" className="flex items-center gap-1.5 pt-ui-2 text-ui-sm text-foreground">
+                    <CircleAlertIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+                    Erst eine Datei wählen oder hierher ziehen, dann hochladen.
+                  </p>
+                )}
                 <div className="flex justify-end pt-ui-2">
                   <Button
                     variant="solid"
                     onClick={absenden}
-                    disabled={!dateien.length || hochladen.isPending}
+                    disabled={hochladen.isPending}
+                    aria-describedby={dateiFehlt ? "datei-fehlt" : undefined}
                     data-kennzeichen="hochladen"
                   >
                     {hochladen.isPending ? "Wird hochgeladen …" : "Hochladen"}

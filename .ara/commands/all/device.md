@@ -133,6 +133,6 @@ for.
 **Without Arasul it ends here, and helpfully.** The tool closes by itself with what Arasul
 would bring, which devices carry it and a calm sentence on the licence. Pass that on and add
 nothing to it. If the human then asks about Arasul, answer them: that needs no device, and
-`.ara/knowledge/sales.md` is there for it. Where the answer would be a product value you
+`.ara/knowledge/extensions.md` is there for it, for a partner the skill `sales` too. Where the answer would be a product value you
 cannot reach, say that you do not know it. With Arasul on a supported device it continues
 along the procedure.

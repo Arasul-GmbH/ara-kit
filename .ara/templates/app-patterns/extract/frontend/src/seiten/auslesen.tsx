@@ -14,6 +14,13 @@
  * einer Spalte. Welches Modell es war und ob die Texterkennung lief, steht im
  * Protokoll: das gehört zur Nachvollziehbarkeit, nicht zur Entscheidung.
  *
+ * **Beschriftet wird mit `title`, gelesen in de-DE.** Die Lage bringt zu
+ * jedem Feld des Schemas Beschriftung und Art mit (`beschriftungen` in
+ * `kern/auslesen.mjs`): Belegdatum 14.01.2025 und Betrag brutto 3.550,00 €,
+ * nicht `betrag_brutto` 3.550. Ging die letzte Auslesung schief, steht ihr
+ * Satz als Meldung da, mit „Erneut auslesen" als Knopf darin, und über den
+ * Feldern steht nicht „gelesen".
+ *
  * **Liste und Ergebnis stehen ab 900 px nebeneinander**, das Ergebnis
  * mitlaufend, und darunter als Blatt von unten. So hält es die Liste der
  * Vorlage auch (`seiten/liste.tsx`). In der schmalen Spalte daneben stehen
@@ -48,7 +55,14 @@ import {
 import { AsyncBoundary } from "../rahmen/async-boundary";
 import { zeilenPfeile } from "../rahmen/pfeile";
 import { anzeigeArt, dokumentAdresse, useDokumente, type Dokument } from "../dokumente";
-import { useAuslesen, useAuslesenLage, useAuslesungen, wertInWorten, type Auslesung } from "../auslesen";
+import {
+  useAuslesen,
+  useAuslesenLage,
+  useAuslesungen,
+  wertInWorten,
+  type Auslesung,
+  type FeldBeschriftung,
+} from "../auslesen";
 import { zeitpunkt } from "../vorgaenge";
 
 const DOKUMENT_SPALTEN: ReadonlyArray<Spalte<Dokument>> = [
@@ -66,13 +80,34 @@ const DOKUMENT_SPALTEN: ReadonlyArray<Spalte<Dokument>> = [
 
 interface Feld {
   name: string;
+  titel: string;
   wert: string;
 }
 
 const FELDER: ReadonlyArray<Spalte<Feld>> = [
-  { schluessel: "name", titel: "Feld", zelle: (f) => f.name, wert: (f) => f.name },
+  { schluessel: "titel", titel: "Feld", zelle: (f) => f.titel, wert: (f) => f.titel },
   { schluessel: "wert", titel: "Gelesen", zelle: (f) => f.wert, wert: (f) => f.wert },
 ];
+
+/**
+ * Die Felder einer Auslesung in der Reihenfolge des Schemas, beschriftet und
+ * lesbar. Was das Modell über das Schema hinaus lieferte, steht dahinter,
+ * unter seinem Schlüssel: es hat keine Beschriftung.
+ */
+function felderInWorten(werte: Record<string, unknown>, beschriftungen: FeldBeschriftung[]): Feld[] {
+  const waehrung = beschriftungen.find((b) => b.art === "waehrung");
+  const bekannt = new Set(beschriftungen.map((b) => b.name));
+  return [
+    ...beschriftungen.map((b) => ({
+      name: b.name,
+      titel: b.titel,
+      wert: wertInWorten(werte[b.name], b.art, waehrung ? werte[waehrung.name] : null),
+    })),
+    ...Object.entries(werte)
+      .filter(([name]) => !bekannt.has(name))
+      .map(([name, wert]) => ({ name, titel: name, wert: wertInWorten(wert) })),
+  ];
+}
 
 const PROTOKOLL: ReadonlyArray<Spalte<Auslesung>> = [
   { schluessel: "zeit", titel: "Wann", zelle: (a) => zeitpunkt(a.zeit), wert: (a) => a.zeit },
@@ -103,22 +138,46 @@ const PROTOKOLL: ReadonlyArray<Spalte<Auslesung>> = [
  * Karte kürzte ihn in der schmalen Spalte auf eine Zeile. Im Blatt steht er
  * schon im Kopf des Blatts, die Karte trägt ihn dort nicht noch einmal.
  */
-function Ergebnis({ dokument, imBlatt = false }: { dokument: Dokument; imBlatt?: boolean }) {
+function Ergebnis({
+  dokument,
+  beschriftungen,
+  imBlatt = false,
+}: {
+  dokument: Dokument;
+  beschriftungen: FeldBeschriftung[];
+  imBlatt?: boolean;
+}) {
   const protokoll = useAuslesungen(dokument.id);
   const auslesen = useAuslesen();
   return (
     <AsyncBoundary abfrage={protokoll} laedt="Protokoll wird geholt">
       {({ auslesungen }) => {
+        // Neueste zuerst: ging die neueste schief, sagt das die Meldung, und
+        // die Felder darunter sind die der letzten, die gelang.
+        const neueste = auslesungen[0] ?? null;
+        const schief = neueste && !neueste.felder ? neueste : null;
         const letzte = auslesungen.find((a) => a.felder) ?? null;
-        const felder: Feld[] = letzte?.felder
-          ? Object.entries(letzte.felder).map(([name, wert]) => ({ name, wert: wertInWorten(wert) }))
-          : [];
+        const felder: Feld[] = letzte?.felder ? felderInWorten(letzte.felder, beschriftungen) : [];
+        const knopf = (
+          <Button
+            variant="solid"
+            onClick={() => auslesen.mutate(dokument.id)}
+            disabled={auslesen.isPending}
+            data-kennzeichen="auslesen"
+          >
+            {auslesen.isPending ? "Das Modell liest …" : schief ? "Erneut auslesen" : letzte ? "Noch einmal auslesen" : "Auslesen"}
+          </Button>
+        );
         return (
           <div className="flex flex-col gap-4">
             <Karte kennzeichen="auslesung">
               {!imBlatt && <h2 className="text-ui-lg font-semibold break-words text-foreground">{dokument.name}</h2>}
               <p className="mb-3 text-ui-sm text-muted-foreground">
-                {letzte ? `gelesen ${zeitpunkt(letzte.zeit)}` : "noch nicht gelesen"}
+                {schief
+                  ? `zuletzt versucht ${zeitpunkt(schief.zeit)}, ohne Ergebnis`
+                  : letzte
+                    ? `gelesen ${zeitpunkt(letzte.zeit)}`
+                    : "noch nicht gelesen"}
               </p>
               <div className="flex flex-col gap-ui-3">
                 <Dokumentanzeige
@@ -131,11 +190,17 @@ function Ergebnis({ dokument, imBlatt = false }: { dokument: Dokument; imBlatt?:
                 <div className="flex flex-col gap-ui-2">
                   {auslesen.isError && (
                     <Meldung art="fehler" titel="Das Auslesen ging nicht">
-                      {auslesen.error instanceof Error ? auslesen.error.message : "Die Schnittstelle hat nicht geantwortet."}
+                      {auslesen.error instanceof Error ? auslesen.error.message : "Die App hat keine Verbindung zum Gerät."}
+                    </Meldung>
+                  )}
+                  {schief && !auslesen.isError && (
+                    <Meldung art="warnung" titel="Das Auslesen ging nicht" kennzeichen="auslesen-schief">
+                      <p>{schief.fehler ?? "Das Modell hat keine Felder geliefert."}</p>
+                      <div className="mt-2">{knopf}</div>
                     </Meldung>
                   )}
                   {letzte && letzte.maengel.length > 0 && (
-                    <Meldung art="warnung" titel="Prüf diese Felder am Beleg">
+                    <Meldung art="warnung" titel="Diese Felder am Beleg prüfen">
                       {letzte.maengel.join(" ")}
                     </Meldung>
                   )}
@@ -146,16 +211,7 @@ function Ergebnis({ dokument, imBlatt = false }: { dokument: Dokument; imBlatt?:
                     beschriftung="Die gelesenen Felder"
                     leer={{ titel: "Noch keine Felder gelesen." }}
                   />
-                  <div className="flex justify-end">
-                    <Button
-                      variant="solid"
-                      onClick={() => auslesen.mutate(dokument.id)}
-                      disabled={auslesen.isPending}
-                      data-kennzeichen="auslesen"
-                    >
-                      {auslesen.isPending ? "Das Modell liest …" : letzte ? "Noch einmal auslesen" : "Auslesen"}
-                    </Button>
-                  </div>
+                  {!(schief && !auslesen.isError) && <div className="flex justify-end">{knopf}</div>}
                 </div>
               </div>
             </Karte>
@@ -179,6 +235,7 @@ export function Auslesen() {
   const schmal = useSchmalesFenster();
   const liste = useDokumente();
   const lage = useAuslesenLage();
+  const beschriftungen = lage.data?.felder ?? [];
 
   const waehlen = (id: number | null) => {
     const naechste = new URLSearchParams(suche);
@@ -223,7 +280,7 @@ export function Auslesen() {
                           <SheetTitle className="pr-8 leading-snug break-words">{offen.name}</SheetTitle>
                           <SheetDescription>Abgelegt {zeitpunkt(offen.abgelegt)}</SheetDescription>
                         </SheetHeader>
-                        <Ergebnis dokument={offen} imBlatt />
+                        <Ergebnis dokument={offen} beschriftungen={beschriftungen} imBlatt />
                       </>
                     )}
                   </SheetContent>
@@ -239,7 +296,7 @@ export function Auslesen() {
               </div>
               <aside aria-label="Einzelheiten" className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 {offen ? (
-                  <Ergebnis dokument={offen} />
+                  <Ergebnis dokument={offen} beschriftungen={beschriftungen} />
                 ) : (
                   <Leerzustand
                     titel="Kein Dokument gewählt"

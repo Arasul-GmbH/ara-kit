@@ -22,23 +22,63 @@
  * Kontenrahmen nicht gibt, ein Steuersatz, der nicht zum Schlüssel passt. Das
  * Modell darf sich irren; die App darf es nicht übersehen.
  *
- * **Ersetze `SCHEMA` und `ANWEISUNG` durch deine Felder.** Das Beispiel liest
- * einen Beleg: Datum, Betrag, Aussteller, Steuersatz. Das Gerät verlangt ein
- * JSON-Schema; flach und mit `required` ist es am verlässlichsten.
+ * **`SCHEMA` und `ANWEISUNG` durch die eigenen Felder ersetzen.** Das Beispiel
+ * liest einen Beleg: Datum, Betrag, Aussteller, Steuersatz. Das Gerät verlangt
+ * ein JSON-Schema; flach und mit `required` ist es am verlässlichsten.
+ *
+ * **Jedes Feld trägt ein `title`**, die Beschriftung für den Menschen. Die
+ * Seite zeigt sie statt des Schlüssels, und die Mängelsätze nennen sie. Ein
+ * Feld ohne `title` erscheint als sein Schlüssel, und `betrag_brutto` auf dem
+ * Bildschirm hält eine Steuerfachangestellte für einen Fehler der App.
+ * **`ARTEN` sagt, wie ein Wert gelesen wird**: `datum` als 14.01.2025,
+ * `betrag` mit zwei Nachkommastellen und der Währung aus dem Feld der Art
+ * `waehrung`, `prozent` mit %. Ohne Eintrag gilt der Typ: eine Zahl in de-DE,
+ * ein Text, wie er kam. `ARTEN` bleibt bei der App und geht nicht ans Gerät:
+ * ins Schema gehört nur, was ein JSON-Schema kennt.
  */
 
 export const SCHEMA = Object.freeze({
   type: "object",
   properties: {
-    belegdatum: { type: "string", description: "Datum des Belegs als JJJJ-MM-TT" },
-    betrag_brutto: { type: "number", description: "Gesamtbetrag inklusive Steuer, Punkt als Dezimaltrenner" },
-    waehrung: { type: "string", description: "Währung als ISO-Code, etwa EUR" },
-    aussteller: { type: "string", description: "Wer den Beleg ausgestellt hat" },
-    belegnummer: { type: "string", description: "Rechnungs- oder Belegnummer, wenn eine dasteht" },
-    steuersatz: { type: "number", description: "Umsatzsteuersatz in Prozent, etwa 19 oder 7" },
+    belegdatum: { type: "string", title: "Belegdatum", description: "Datum des Belegs als JJJJ-MM-TT" },
+    betrag_brutto: {
+      type: "number",
+      title: "Betrag brutto",
+      description: "Gesamtbetrag inklusive Steuer, Punkt als Dezimaltrenner",
+    },
+    waehrung: { type: "string", title: "Währung", description: "Währung als ISO-Code, etwa EUR" },
+    aussteller: { type: "string", title: "Aussteller", description: "Wer den Beleg ausgestellt hat" },
+    belegnummer: { type: "string", title: "Belegnummer", description: "Rechnungs- oder Belegnummer, wenn eine dasteht" },
+    steuersatz: { type: "number", title: "Steuersatz", description: "Umsatzsteuersatz in Prozent, etwa 19 oder 7" },
   },
   required: ["belegdatum", "betrag_brutto", "aussteller"],
 });
+
+export const ARTEN = Object.freeze({
+  belegdatum: "datum",
+  betrag_brutto: "betrag",
+  waehrung: "waehrung",
+  steuersatz: "prozent",
+});
+
+/** Die Beschriftung eines Feldes: sein `title`, sonst der Schlüssel. */
+export function titel(schema, name) {
+  const wert = schema.properties?.[name]?.title;
+  return typeof wert === "string" && wert.trim() ? wert.trim() : name;
+}
+
+/**
+ * Die Felder für die Seite, in der Reihenfolge des Schemas: Schlüssel,
+ * Beschriftung und Art. Die Seite holt sie mit der Lage und liest danach
+ * jeden Wert so, wie ein Mensch ihn liest.
+ */
+export function beschriftungen(schema = SCHEMA, arten = ARTEN) {
+  return Object.entries(schema.properties ?? {}).map(([name, regel]) => ({
+    name,
+    titel: titel(schema, name),
+    art: arten[name] ?? (regel.type === "number" ? "zahl" : "text"),
+  }));
+}
 
 export const ANWEISUNG =
   "Lies nur, was auf dem Beleg steht. Rate kein Feld: fehlt eine Angabe, lass das Feld weg. " +
@@ -51,44 +91,48 @@ export const ANWEISUNG =
  */
 export function pruefen(schema, felder) {
   const maengel = [];
-  if (!felder || typeof felder !== "object" || Array.isArray(felder)) return ["Es kamen keine Felder."];
+  if (!felder || typeof felder !== "object" || Array.isArray(felder)) return ["Das Modell hat keine Felder geliefert."];
   for (const name of schema.required ?? []) {
-    if (felder[name] === undefined || felder[name] === null || felder[name] === "") maengel.push(`${name} fehlt.`);
+    if (felder[name] === undefined || felder[name] === null || felder[name] === "") maengel.push(`${titel(schema, name)} fehlt.`);
   }
   for (const [name, regel] of Object.entries(schema.properties ?? {})) {
     const wert = felder[name];
     if (wert === undefined || wert === null) continue;
-    if (regel.type === "number" && typeof wert !== "number") maengel.push(`${name} ist keine Zahl: ${JSON.stringify(wert)}.`);
-    if (regel.type === "string" && typeof wert !== "string") maengel.push(`${name} ist kein Text: ${JSON.stringify(wert)}.`);
+    if (regel.type === "number" && typeof wert !== "number") maengel.push(`${titel(schema, name)} ist keine Zahl: ${JSON.stringify(wert)}.`);
+    if (regel.type === "string" && typeof wert !== "string") maengel.push(`${titel(schema, name)} ist kein Text: ${JSON.stringify(wert)}.`);
   }
   return maengel;
 }
 
 /**
- * Fachliche Prüfung des Beispiels. Ersetze sie durch deine: hier steht, was
- * ein Beleg sein muss, damit ein Mensch ihn guten Gewissens freigibt.
+ * Fachliche Prüfung des Beispiels, durch die eigene zu ersetzen: hier steht,
+ * was ein Beleg sein muss, damit ein Mensch ihn guten Gewissens freigibt. Die
+ * Sätze nennen die Beschriftung, nie den Schlüssel.
  */
-export function fachlich(felder) {
+export function fachlich(felder, schema = SCHEMA) {
   const maengel = [];
   if (!felder) return maengel;
   if (typeof felder.belegdatum === "string" && !/^\d{4}-\d{2}-\d{2}$/.test(felder.belegdatum)) {
-    maengel.push(`belegdatum steht nicht als JJJJ-MM-TT da: ${felder.belegdatum}.`);
+    maengel.push(`${titel(schema, "belegdatum")} lässt sich nicht als Datum lesen: ${felder.belegdatum}.`);
   }
-  if (typeof felder.betrag_brutto === "number" && felder.betrag_brutto <= 0) maengel.push("betrag_brutto ist nicht positiv.");
+  if (typeof felder.betrag_brutto === "number" && felder.betrag_brutto <= 0) {
+    maengel.push(`${titel(schema, "betrag_brutto")} ist nicht größer als null.`);
+  }
   if (typeof felder.steuersatz === "number" && ![0, 7, 19].includes(felder.steuersatz)) {
-    maengel.push(`steuersatz ${felder.steuersatz} ist keiner der Sätze 0, 7 oder 19.`);
+    maengel.push(`${titel(schema, "steuersatz")} ${String(felder.steuersatz).replace(".", ",")} % ist keiner der Sätze 0, 7 oder 19 %.`);
   }
   return maengel;
 }
 
-export function auslesen({ dokumente, auslesungen, geraet, schema = SCHEMA, anweisung = ANWEISUNG }) {
+export function auslesen({ dokumente, auslesungen, geraet, schema = SCHEMA, anweisung = ANWEISUNG, arten = ARTEN }) {
+  const felder = beschriftungen(schema, arten);
   return {
-    /** Kann das Gerät hier auslesen? Wenn nicht, der Satz dazu. */
+    /** Kann das Gerät hier auslesen? Wenn nicht, der Satz dazu. Dazu die Felder mit Beschriftung und Art. */
     lage() {
       const grund = geraet.warumKeinRahmen();
-      if (grund) return { kann: false, grund };
-      if (!geraet.kannAuslesen()) return { kann: false, grund: "Dieses Gerät bietet das Auslesen von Dokumenten nicht an." };
-      return { kann: true, grund: null };
+      if (grund) return { kann: false, grund, felder };
+      if (!geraet.kannAuslesen()) return { kann: false, grund: "Dieses Gerät bietet das Auslesen von Dokumenten nicht an.", felder };
+      return { kann: true, grund: null, felder };
     },
 
     /**
@@ -122,7 +166,7 @@ export function auslesen({ dokumente, auslesungen, geraet, schema = SCHEMA, anwe
         // sein Protokoll. Ohne ihn stünde dort nur die App.
         nutzer: von || null,
       });
-      const maengel = ergebnis.felder ? [...pruefen(schema, ergebnis.felder), ...fachlich(ergebnis.felder)] : [];
+      const maengel = ergebnis.felder ? [...pruefen(schema, ergebnis.felder), ...fachlich(ergebnis.felder, schema)] : [];
       return await auslesungen.anlegen({
         dokument_id: dokument.id,
         // Nur mit dem Muster Belege: dessen Ablage legt die Auslesung unter den

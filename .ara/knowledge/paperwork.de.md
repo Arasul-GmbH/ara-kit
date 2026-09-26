@@ -25,7 +25,7 @@ Zwei Unternehmen schreiben Papier, und sie werden leicht verwechselt.
 | Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen | der Partner gibt sie weiter | `.ara/vorlagen/` |
 | Nachweise zu KI-Einstufung und Datenverarbeitung | Arasul verfasst, der Partner legt sie bei | `.ara/nachweise/` |
 | Übergabeprotokoll | Partner und Kunde zeichnen | `.ara/vorlagen/uebergabeprotokoll.md` |
-| Rechnung an den Endkunden | **der Partner** | `.ara/vorlagen/rechnung.md`, Verfahren in `.ara/knowledge/invoicing.de.md` |
+| Rechnung an den Endkunden | **der Partner** | `.ara/vorlagen/rechnung.md`, Verfahren über `/invoice` |
 | Partnervertrag, Kaufvertrag, Vereinbarung zur Auftragsverarbeitung | **Arasul** | nicht im Kit |
 
 Die drei letzten Zeilen sind der häufigste Irrtum. **Der Partnervertrag ist ein Papier,
@@ -43,8 +43,8 @@ verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
 ## Die Reihenfolge
 
 1. **Verstehen und rechnen.** Was der Kunde erreichen will, steht in seiner Akte und in
-   `customers/<kunde>/history/`. Gerechnet wird nach `.ara/knowledge/pricing.de.md`,
-   Aufbau und Ton nach `.ara/knowledge/sales.de.md`.
+   `customers/<kunde>/history/`. Gerechnet wird mit `/calculation`, Aufbau und Ton
+   nach dem Skill `sales`.
 2. **Spiegel holen.** `node .ara/tools/mirror.mjs --refresh`. Ohne frischen Spiegel
    entsteht kein Angebot, weil sonst Plattform und Erprobungsstand geraten wären.
 3. **Leistungsbeschreibung füllen.** Sie kommt vor dem Angebot, nicht danach. Sie legt
@@ -58,12 +58,12 @@ verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
 7. **PDF erzeugen.** `node .ara/tools/pdf.mjs <datei>`. Es weigert sich, solange noch ein
    Platzhalter in geschweiften Klammern im Text steht.
 8. **Ablegen und nachhalten.** Alles nach `customers/<kunde>/documents/`, Status auf
-   `quoted`, Gültigkeitsdatum als Wiedervorlage. Siehe `.ara/knowledge/crm.de.md`.
+   `quoted`, Gültigkeitsdatum als Wiedervorlage. Siehe Skill `customers`.
 
 Später, bei der Übergabe: Übergabeprotokoll und technische Abnahme, siehe
-`.ara/knowledge/handover.de.md`. Und danach die Rechnung, siehe
-`.ara/knowledge/invoicing.de.md`: sie ist das einzige Papier im Kit, dem ein Gesetz
-vorschreibt, was drinstehen muss, und darum hat sie ein eigenes Verfahren.
+`.ara/knowledge/handover.de.md`. Und danach die Rechnung, mit `/invoice`: sie ist das
+einzige Papier im Kit, dem ein Gesetz vorschreibt, was drinstehen muss, und darum hat sie ein
+eigenes Verfahren.
 
 ## Die fünf Anlagen zum Angebot
 
