@@ -43,10 +43,15 @@ export function useVorgaenge(): UseQueryResult<Vorgang[]> {
   return useQuery({
     queryKey: ["vorgaenge"],
     queryFn: async () => (await hole<{ vorgaenge: Vorgang[] }>("api/vorgaenge")).vorgaenge,
-    // Nachfragen nur, solange wirklich etwas offen ist. Eine Seite, die im
+    // Nachfragen nur, solange wirklich etwas offen ist: ein Vorgang wartet,
+    // oder einem genehmigten fehlt noch der Satz des Laufs. Eine Seite, die im
     // Leerlauf im Sekundentakt fragt, hält das Gerät ohne Grund wach.
     refetchInterval: (abfrage) =>
-      (abfrage.state.data ?? []).some((vorgang) => vorgang.status === "wartet") ? 5000 : false,
+      (abfrage.state.data ?? []).some(
+        (vorgang) => vorgang.status === "wartet" || (vorgang.status === "genehmigt" && vorgang.bemerkung === null)
+      )
+        ? 5000
+        : false,
   });
 }
 
