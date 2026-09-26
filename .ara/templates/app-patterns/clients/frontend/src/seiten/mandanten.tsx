@@ -38,9 +38,17 @@
  *
  * **Zugeordnet wird aus den gesehenen Konten.** Die App kann die Konten des
  * Geräts nicht auflisten. Wer neu ist, öffnet sie einmal, danach steht er hier.
+ *
+ * **Die Knöpfe bleiben aktiv, solange nichts läuft.** Fehlt ein Feld, sagt ein
+ * Klick am Feld, was fehlt, und setzt den Fokus hin, wie in `seiten/neu.tsx`.
+ * Ein grauer Knopf sagt nicht, warum. **Ein Satz steht im Inhalt einer Karte**,
+ * nicht in ihrem `hinweis`: der trägt ein paar Wörter und nimmt bei 390 px
+ * sonst dem Titel den Platz. **Angeredet wird wie am Gerät**, mit Sie oder
+ * ohne Anrede.
  */
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import { CircleAlertIcon } from "lucide-react";
 import {
   Button,
   Checkbox,
@@ -70,7 +78,20 @@ import { zeitpunkt, type Vorgang } from "../vorgaenge";
 
 /** Der Satz zu einem Fehler der Schnittstelle, oder ein allgemeiner. */
 function satz(fehler: unknown): string {
-  return fehler instanceof Error ? fehler.message : "Die Schnittstelle hat nicht geantwortet.";
+  return fehler instanceof Error ? fehler.message : "Die App hat keine Verbindung zum Gerät.";
+}
+
+/**
+ * Was an einem Feld fehlt, direkt darunter. Der Satz in Textfarbe, das
+ * Zeichen in Rot: Rot als Text hielte im hellen Thema keine 4,5:1.
+ */
+function Fehlt({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <p id={id} className="flex items-center gap-1.5 text-ui-sm text-foreground">
+      <CircleAlertIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+      {children}
+    </p>
+  );
 }
 
 /**
@@ -96,7 +117,7 @@ export function MandantWahl({ wert, aufWert }: { wert: string; aufWert: (wert: s
               />
             </div>
           ) : (
-            <Meldung art="hinweis" titel="Dir ist noch kein Mandant zugeordnet">
+            <Meldung art="hinweis" titel="Noch kein Mandant zugeordnet">
               Das macht die Verwaltung dieser App. Danach steht er hier.
             </Meldung>
           )
@@ -133,6 +154,11 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
   const [konto, setKonto] = useState("");
   const [mandant, setMandant] = useState("");
   const [entscheidet, setEntscheidet] = useState(false);
+  const [nameVersucht, setNameVersucht] = useState(false);
+  const [zuordnenVersucht, setZuordnenVersucht] = useState(false);
+  const nameFehlt = nameVersucht && !name.trim();
+  const kontoFehlt = zuordnenVersucht && !konto;
+  const mandantFehlt = zuordnenVersucht && !mandant;
   const anlegen = useMandantAnlegen();
   const zuordnen = useZuordnen();
   const loesen = useLoesen();
@@ -197,25 +223,46 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
           className="flex flex-col gap-2"
           onSubmit={(ereignis) => {
             ereignis.preventDefault();
-            if (name.trim()) anlegen.mutate(name, { onSuccess: () => setName("") });
+            if (anlegen.isPending) return;
+            if (!name.trim()) {
+              setNameVersucht(true);
+              document.getElementById("mandant-name")?.focus();
+              return;
+            }
+            anlegen.mutate(name, {
+              onSuccess: () => {
+                setName("");
+                setNameVersucht(false);
+              },
+            });
           }}
+          noValidate
         >
           <Label htmlFor="mandant-name">Name</Label>
-          <Input id="mandant-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+          <Input
+            id="mandant-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={120}
+            aria-required="true"
+            aria-invalid={nameFehlt || undefined}
+            aria-describedby={nameFehlt ? "mandant-name-fehlt" : undefined}
+          />
+          {nameFehlt && <Fehlt id="mandant-name-fehlt">Ohne Namen gibt es keinen Mandanten.</Fehlt>}
           <div className="flex justify-end">
-            <Button type="submit" variant="solid" disabled={!name.trim() || anlegen.isPending} data-kennzeichen="mandant-anlegen">
+            <Button type="submit" variant="solid" disabled={anlegen.isPending} data-kennzeichen="mandant-anlegen">
               Anlegen
             </Button>
           </div>
         </form>
       </Karte>
 
-      <Karte
-        titel="Zuordnen"
-        hinweis="Zur Wahl steht, wer die App schon einmal geöffnet hat. Sehen heißt nicht entscheiden: freigeben darf nur, wer als Entscheider markiert ist."
-        kennzeichen="zuordnen"
-      >
+      <Karte titel="Zuordnen" kennzeichen="zuordnen">
         <div className="flex flex-col gap-2">
+          <p className="text-ui-sm text-muted-foreground">
+            Zur Wahl steht, wer die App schon einmal geöffnet hat. Sehen heißt nicht entscheiden: freigeben darf nur,
+            wer als Entscheider markiert ist.
+          </p>
           <Label htmlFor="zuordnen-konto">Konto</Label>
           <Suchauswahl
             id="zuordnen-konto"
@@ -224,6 +271,7 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
             aufWert={setKonto}
             platzhalter="Konto wählen"
           />
+          {kontoFehlt && <Fehlt id="zuordnen-konto-fehlt">Welches Konto? Eines wählen.</Fehlt>}
           <Label htmlFor="zuordnen-mandant">Mandant</Label>
           <Suchauswahl
             id="zuordnen-mandant"
@@ -232,6 +280,7 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
             aufWert={setMandant}
             platzhalter="Mandant wählen"
           />
+          {mandantFehlt && <Fehlt id="zuordnen-mandant-fehlt">Welcher Mandant? Einen wählen.</Fehlt>}
           <div className="flex items-center gap-2">
             <Checkbox id="zuordnen-entscheidet" checked={entscheidet} onCheckedChange={(wert) => setEntscheidet(wert === true)} />
             <Label htmlFor="zuordnen-entscheidet">Entscheidet über die Vorgänge dieses Mandanten</Label>
@@ -239,8 +288,18 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
           <div className="flex justify-end">
             <Button
               variant="solid"
-              disabled={!konto || !mandant || zuordnen.isPending}
-              onClick={() => zuordnen.mutate({ benutzer: konto, mandant: Number(mandant), entscheidet })}
+              disabled={zuordnen.isPending}
+              onClick={() => {
+                if (!konto || !mandant) {
+                  setZuordnenVersucht(true);
+                  document.getElementById(konto ? "zuordnen-mandant" : "zuordnen-konto")?.focus();
+                  return;
+                }
+                zuordnen.mutate(
+                  { benutzer: konto, mandant: Number(mandant), entscheidet },
+                  { onSuccess: () => setZuordnenVersucht(false) }
+                );
+              }}
               data-kennzeichen="zuordnen"
             >
               Zuordnen
@@ -285,7 +344,7 @@ export function Mandanten() {
             </AsyncBoundary>
           ) : (
             <Meldung art="hinweis" titel="Mandanten pflegt die Verwaltung">
-              Welche Mandanten du siehst, legt die Verwaltung dieser App fest.
+              Welche Mandanten Sie sehen, legt die Verwaltung dieser App fest.
             </Meldung>
           )
         }

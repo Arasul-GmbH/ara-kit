@@ -22,12 +22,25 @@
  * Vereinbarung nennt (`koepfe`). Die Plattform setzt sie vor dem Container und
  * löscht, was von außen kam; fälschen kann sie niemand.
  *
- * **Jeder Modellaufruf nennt den Menschen, für den er geschieht.** Das Gerät
- * schreibt jeden Aufruf eines Modells ins Protokoll, mit App, Weg, Modell und
- * Dauer, den Menschen aber nur, wenn die App ihn nennt. Für eine Kanzlei ist
- * das Protokoll so viel wert wie diese Zeile. Wie er genannt wird und welche
- * Wege protokolliert werden, sagt die Vereinbarung unter `protokoll`; wer
- * `auslesen` oder `fragen` ruft, gibt `nutzer` mit, den Namen aus `angemeldet`.
+ * **Jeder Modellaufruf nennt den Menschen, für den er geschieht.** Das
+ * KI-Protokoll des Geräts erfasst genau die Wege, die die Vereinbarung unter
+ * `protokoll.wege` nennt: die äußere Schnittstelle, also `auslesen`, `fragen`
+ * und ein eigener Aufruf über `fuer`. Dort steht jeder Aufruf mit App, Weg,
+ * Modell und Dauer, den Menschen aber nur, wenn die App ihn nennt: wer
+ * `auslesen` oder `fragen` ruft, gibt `nutzer` mit, den Namen aus
+ * `angemeldet`. **Der Modellschritt eines Flows steht nicht darin.** Er
+ * gehört zum Lauf, und der Mensch eines Laufs ist sein Einreicher, den
+ * `flowStarten` mitgibt; nachlesen lässt er sich am Lauf in der Oberfläche
+ * von Arasul, nicht im KI-Protokoll. Wer einer Kanzlei eine
+ * Verfahrensdokumentation schreibt, schreibt beides so hin.
+ *
+ * **Ein Fehler des Geräts erreicht den Menschen als Satz, nie als HTTP-Zeile.**
+ * `fehler` sagt je Klasse, was los ist und was jetzt hilft: ausgelastet, bitte
+ * erneut; nicht freigegeben; das Modell ist gescheitert. Verb, Weg, Status und
+ * die Nachricht des Geräts stehen in `technisch` und gehen ins Protokoll des
+ * Containers, für den, der die App betreut. Eine Steuerfachangestellte, die
+ * „wurde mit Status 408 beantwortet" liest, hält die App für kaputt, auch wenn
+ * sie richtig rechnet.
  */
 
 import { readFileSync } from "node:fs";
@@ -79,6 +92,53 @@ export function gelungen(code) {
 /** Ein Satz des Geräts ohne seinen Schlusspunkt: der Satz der App setzt ihn. */
 function satz(text) {
   return String(text).trim().replace(/\.+$/, "");
+}
+
+/** Was das Gerät zu einem Fehler geschrieben hat, in welcher der üblichen Formen auch. */
+function nachricht(daten) {
+  if (typeof daten?.error?.message === "string") return satz(daten.error.message);
+  if (typeof daten?.error === "string") return satz(daten.error);
+  if (typeof daten?.message === "string") return satz(daten.message);
+  return null;
+}
+
+/**
+ * Der Satz für den Menschen zu einer Antwort, die nicht gelang, je Klasse.
+ *
+ * `tun` ist das, was der Mensch wiederholen würde, als Verb: „auslesen",
+ * „fragen", „einreichen". `modell` sagt, ob hinter dem Weg ein Modell
+ * arbeitet: nur dann heißt ein 5xx, dass das Modell gescheitert ist. `0`
+ * heißt, es kam keine Antwort, `abgelaufen`, dass die Frist dieser App
+ * vorbei war. Kein Status, keine Nachricht des Geräts: die stehen in
+ * `technisch`.
+ */
+export function menschensatz(code, { tun = "es", modell = false, abgelaufen = false } = {}) {
+  const erneut = tun === "es" ? "Bitte erneut versuchen." : `Bitte erneut ${tun}.`;
+  if (code === 408 || code === 504 || code === 429 || (code === 0 && abgelaufen)) {
+    return `Das Gerät war ausgelastet und hat nicht rechtzeitig geantwortet. ${erneut}`;
+  }
+  if (code === 0) return `Das Gerät war nicht erreichbar. ${erneut}`;
+  if (code === 401) return "Das Gerät hat den Schlüssel dieser App nicht angenommen. Das richtet der Administrator.";
+  if (code === 403) {
+    return tun === "es"
+      ? "Der Administrator hat das für diese App nicht freigegeben."
+      : `Der Administrator hat das ${tun[0].toUpperCase()}${tun.slice(1)} für diese App nicht freigegeben.`;
+  }
+  if (code === 413) return "Die Datei ist dem Gerät zu groß.";
+  if (typeof code === "number" && code >= 500) {
+    return modell
+      ? `Das Modell ist am Gerät gescheitert. ${erneut} Bleibt es dabei, gehört das zum Administrator.`
+      : `Das Gerät hat einen Fehler gemeldet. ${erneut} Bleibt es dabei, gehört das zum Administrator.`;
+  }
+  return "Das Gerät hat die Anfrage abgelehnt. Das richtet, wer die App betreut.";
+}
+
+/**
+ * Die technische Zeile zu einem Fehler: ins Protokoll des Containers, nie in
+ * eine Antwort an die Oberfläche. Der Schlüssel steht nicht darin.
+ */
+function protokollieren(technisch) {
+  process.stderr.write(`arasul: ${technisch}\n`);
 }
 
 /** Die Nummer eines Laufs aus einer Antwort, unter welchem der üblichen Namen sie auch steht. */
@@ -189,7 +249,7 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
    * schiefging. Ein Aufruf, der still nichts zurückgibt, wäre hier der
    * teuerste Fehler: die App sähe aus wie eine, auf der niemand entscheidet.
    */
-  async function rufen(schalter, werte, rumpf, { nutzer = null, frist = 30_000 } = {}) {
+  async function rufen(schalter, werte, rumpf, { nutzer = null, frist = 30_000, tun = "es", modell = false } = {}) {
     const ziel = weg(schalter, werte);
     if (!ziel) return { code: null, daten: null, fehler: `Der Kontrakt dieses Geräts nennt den Weg ${schalter} nicht.` };
     try {
@@ -210,18 +270,30 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
       } catch {
         daten = null;
       }
-      return {
-        code: antwort.status,
-        daten,
-        fehler: antwort.ok
-          ? null
-          : `${ziel.verb} ${ziel.pfad} wurde mit Status ${antwort.status} beantwortet${
-              daten?.error?.message ? `: ${satz(daten.error.message)}` : ""
-            }.`,
-      };
+      return beantwortet(ziel, antwort.status, daten, { tun, modell });
     } catch (fehler) {
-      return { code: 0, daten: null, fehler: `${ziel.verb} ${ziel.pfad} war nicht erreichbar: ${fehler.message}` };
+      return unbeantwortet(ziel, fehler, { tun, modell });
     }
+  }
+
+  /**
+   * Eine Antwort in der Form, die jeder Aufruf zurückgibt: `fehler` für den
+   * Menschen, `technisch` für das Protokoll. Beide `null`, wenn es gelang.
+   */
+  function beantwortet(ziel, code, daten, { tun, modell }) {
+    if (gelungen(code)) return { code, daten, fehler: null, technisch: null };
+    const grund = nachricht(daten);
+    const technisch = `${ziel.verb} ${ziel.pfad} wurde mit Status ${code} beantwortet${grund ? `: ${grund}` : ""}.`;
+    protokollieren(technisch);
+    return { code, daten, fehler: menschensatz(code, { tun, modell }), technisch };
+  }
+
+  /** Keine Antwort: das Netz, oder die Frist dieser App war vorbei. */
+  function unbeantwortet(ziel, fehler, { tun, modell }) {
+    const abgelaufen = fehler?.name === "TimeoutError";
+    const technisch = `${ziel.verb} ${ziel.pfad} ${abgelaufen ? "hat die Frist überschritten" : `war nicht erreichbar: ${fehler?.message}`}`;
+    protokollieren(technisch);
+    return { code: 0, daten: null, fehler: menschensatz(0, { tun, modell, abgelaufen }), technisch };
   }
 
   /**
@@ -232,7 +304,7 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
    * `FormData` selbst. Er wartet, bis das Modell geantwortet hat, deshalb ist
    * die Frist hier länger als bei den anderen.
    */
-  async function senden(schalter, felder, { datei, name, art }, frist, nutzer = null) {
+  async function senden(schalter, felder, { datei, name, art }, frist, nutzer = null, { tun = "es", modell = false } = {}) {
     const ziel = weg(schalter);
     if (!ziel) return { code: null, daten: null, fehler: `Der Kontrakt dieses Geräts nennt den Weg ${schalter} nicht.` };
     const formular = new FormData();
@@ -254,17 +326,9 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
       } catch {
         daten = null;
       }
-      return {
-        code: antwort.status,
-        daten,
-        fehler: antwort.ok
-          ? null
-          : `${ziel.verb} ${ziel.pfad} wurde mit Status ${antwort.status} beantwortet${
-              daten?.error?.message ? `: ${satz(daten.error.message)}` : typeof daten?.error === "string" ? `: ${satz(daten.error)}` : ""
-            }.`,
-      };
+      return beantwortet(ziel, antwort.status, daten, { tun, modell });
     } catch (fehler) {
-      return { code: 0, daten: null, fehler: `${ziel.verb} ${ziel.pfad} war nicht erreichbar: ${fehler.message}` };
+      return unbeantwortet(ziel, fehler, { tun, modell });
     }
   }
 
@@ -321,12 +385,13 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
         return { felder: null, fehler: "Dieses Gerät nennt in seinem Kontrakt keinen Weg, ein Dokument auszulesen." };
       }
       const beginn = Date.now();
-      const { code, daten, fehler } = await senden(
+      const { code, daten, fehler, technisch } = await senden(
         "dokument_auslesen",
         { schema, instructions: anweisung },
         { datei, name: dateiname, art },
         11 * 60_000,
-        nutzer
+        nutzer,
+        { tun: "auslesen", modell: true }
       );
       const antwort = daten && typeof daten === "object" ? daten : {};
       const protokoll = {
@@ -338,7 +403,7 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
         // einem Vorschlag der Aufruf, der ihn gemacht hat.
         auftrag: antwort.job_id ?? null,
       };
-      if (!gelungen(code)) return { felder: null, fehler, ...protokoll };
+      if (!gelungen(code)) return { felder: null, fehler, technisch, ...protokoll };
       // Das Modell hat geantwortet, aber kein JSON. Das Gerät gibt dann die
       // rohe Antwort mit; sie gehört ins Protokoll und nicht in die Felder.
       if (!antwort.data || typeof antwort.data !== "object") {
@@ -376,11 +441,17 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
       const rumpf = { prompt, wait_for_result: true };
       if (modell) rumpf.model = modell;
       if (bilder?.length) rumpf.images = bilder;
-      const { code, daten, fehler } = await rufen("modell_fragen", {}, rumpf, { nutzer, frist: 11 * 60_000 });
+      const { code, daten, fehler, technisch } = await rufen("modell_fragen", {}, rumpf, {
+        nutzer,
+        frist: 11 * 60_000,
+        tun: "fragen",
+        modell: true,
+      });
       const feld = inhalt(daten);
       return {
         antwort: gelungen(code) && typeof feld.response === "string" ? feld.response : null,
         fehler: gelungen(code) ? (typeof feld.response === "string" ? null : "Das Modell hat keine Antwort gegeben.") : fehler,
+        technisch,
         modell: feld.model ?? null,
         dauer_ms: typeof feld.processing_time_ms === "number" ? feld.processing_time_ms : Date.now() - beginn,
         auftrag: feld.job_id ?? null,
@@ -421,14 +492,16 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
             "Ohne sie entschiede jeder, dem die App freigegeben ist; darum startet kein Lauf.",
         };
       }
-      const { code, daten, fehler } = await rufen("flow_starten", { flow }, rumpf);
+      const { code, daten, fehler, technisch } = await rufen("flow_starten", { flow }, rumpf, { tun: "einreichen" });
       const nummer = gelungen(code) ? laufnummer(daten) : null;
-      if (nummer !== null) return { lauf: nummer, fehler: null };
+      if (nummer !== null) return { lauf: nummer, fehler: null, technisch: null };
+      if (fehler) return { lauf: null, fehler, technisch };
+      const zeile = `Der Flow ${flow} wurde mit Status ${code} angenommen, in der Antwort stand aber keine Nummer des Laufs.`;
+      protokollieren(zeile);
       return {
         lauf: null,
-        fehler:
-          fehler ||
-          `Der Flow ${flow} wurde mit Status ${code} angenommen, in der Antwort stand aber keine Nummer des Laufs.`,
+        fehler: "Das Gerät hat den Vorgang angenommen, aber nicht gesagt, unter welcher Nummer er läuft. Das richtet, wer die App betreut.",
+        technisch: zeile,
       };
     },
 

@@ -71,7 +71,7 @@ export function Neu() {
 
       {einreichen.isError && (
         <Meldung art="fehler" titel="Der Vorgang ist nicht angekommen">
-          {einreichen.error instanceof Error ? einreichen.error.message : "Die Schnittstelle hat nicht geantwortet."}{" "}
+          {einreichen.error instanceof Error ? einreichen.error.message : "Die App hat keine Verbindung zum Gerät."}{" "}
           Was eingetragen ist, steht noch da; Einreichen versucht es noch einmal.
         </Meldung>
       )}

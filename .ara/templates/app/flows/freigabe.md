@@ -19,13 +19,13 @@ schritte:
       titel: "{{name}}: Vorgang {{vorgang}} von {{von}}"
       zusammenhang: >-
         {{von}} hat in {{name}} den Vorgang {{vorgang}} eingereicht. Was darin
-        steht, liest du in {{name}} unter dieser Nummer, bevor du entscheidest.
-        Bitte bestätigen oder mit einer Begründung ablehnen.
+        steht, zeigt {{name}} unter dieser Nummer. Bitte vor der Entscheidung
+        dort nachlesen, dann bestätigen oder mit einer Begründung ablehnen.
       frist_minuten: 1440
 grenzen:
   zeitlimit_s: 300
 ---
 
-Über den Vorgang {{vorgang}} von {{von}} ist entschieden worden. Schreibe genau
-einen Satz darüber, wer entschieden hat und wie; der Schritt „entscheiden" nennt
-beides. Keine Anrede, keine Erfindungen, keine Empfehlung.
+Über den Vorgang {{vorgang}} von {{von}} ist entschieden worden. Gesucht ist
+genau ein Satz darüber, wer entschieden hat und wie; der Schritt „entscheiden"
+nennt beides. Keine Anrede, keine Erfindungen, keine Empfehlung.

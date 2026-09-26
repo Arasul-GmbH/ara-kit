@@ -29,9 +29,17 @@ export interface Auslesung {
   fehler: string | null;
 }
 
+/** Ein Feld des Schemas, wie die Seite es zeigt: Beschriftung aus `title`, Art aus `ARTEN`. */
+export interface FeldBeschriftung {
+  name: string;
+  titel: string;
+  art: "datum" | "betrag" | "waehrung" | "prozent" | "zahl" | "text";
+}
+
 export interface AuslesenLage {
   kann: boolean;
   grund: string | null;
+  felder: FeldBeschriftung[];
 }
 
 export function useAuslesenLage(): UseQueryResult<AuslesenLage> {
@@ -55,9 +63,32 @@ export function useAuslesen() {
   });
 }
 
-/** Ein Wert der Felder, wie ein Mensch ihn liest. */
-export function wertInWorten(wert: unknown): string {
+/** Ein Betrag mit zwei Nachkommastellen und seiner Währung, ohne gültigen Code in Euro. */
+function betrag(wert: number, waehrung: unknown): string {
+  const code = typeof waehrung === "string" && /^[A-Z]{3}$/.test(waehrung.trim().toUpperCase()) ? waehrung.trim().toUpperCase() : "EUR";
+  try {
+    return new Intl.NumberFormat("de-DE", { style: "currency", currency: code }).format(wert);
+  } catch {
+    return `${wert.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${code}`;
+  }
+}
+
+/**
+ * Ein Wert der Felder, wie ein Mensch ihn liest: ein Datum als 14.01.2025,
+ * ein Betrag als 3.550,00 €, ein Satz als 19 %. Was sich nicht so lesen
+ * lässt, steht, wie es kam; ein Mangel dazu steht in der Meldung darüber.
+ * `waehrung` ist der Wert des Feldes der Art `waehrung` derselben Auslesung.
+ */
+export function wertInWorten(wert: unknown, art: FeldBeschriftung["art"] = "text", waehrung: unknown = null): string {
   if (wert === null || wert === undefined || wert === "") return "fehlt";
-  if (typeof wert === "number") return wert.toLocaleString("de-DE");
+  if (art === "datum" && typeof wert === "string") {
+    const teile = /^(\d{4})-(\d{2})-(\d{2})$/.exec(wert.trim());
+    return teile ? `${teile[3]}.${teile[2]}.${teile[1]}` : wert;
+  }
+  if (typeof wert === "number") {
+    if (art === "betrag") return betrag(wert, waehrung);
+    if (art === "prozent") return `${wert.toLocaleString("de-DE")} %`;
+    return wert.toLocaleString("de-DE");
+  }
   return typeof wert === "string" ? wert : JSON.stringify(wert);
 }

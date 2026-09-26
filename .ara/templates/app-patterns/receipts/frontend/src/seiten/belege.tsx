@@ -77,7 +77,7 @@ export function BelegeAmVorgang({ vorgang, offen = true }: { vorgang: number; of
       </AsyncBoundary>
       {anhaengen.isError && (
         <Meldung art="fehler" titel="Der Beleg ist nicht angekommen">
-          {anhaengen.error instanceof Error ? anhaengen.error.message : "Die Schnittstelle hat nicht geantwortet."}
+          {anhaengen.error instanceof Error ? anhaengen.error.message : "Die App hat keine Verbindung zum Gerät."}
         </Meldung>
       )}
       {offen && (

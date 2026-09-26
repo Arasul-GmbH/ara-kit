@@ -52,11 +52,32 @@ function grund(daten: unknown): string | null {
   return null;
 }
 
+/**
+ * Der Satz zu einem Status, wenn die Gegenseite keinen schrieb, je Klasse und
+ * nie als HTTP-Zeile: wer „wurde mit Status 404 beantwortet" liest, hält die
+ * App für kaputt. Die Zeile mit Pfad und Status geht ins Protokoll des Browsers.
+ */
+export function satzZumStatus(status: number): string {
+  if (status === 0) return "Die App hat keine Verbindung zum Gerät. Bitte erneut versuchen.";
+  if (status === 401) return "Die Anmeldung ist abgelaufen. Bitte neu anmelden.";
+  if (status === 403) return "Das ist für Sie nicht freigegeben.";
+  if (status === 404) return "Das gibt es nicht, oder es ist nicht für Sie freigegeben.";
+  if (status === 408 || status === 429 || status === 504) return "Das Gerät war ausgelastet. Bitte erneut versuchen.";
+  if (status >= 500) return "Das Gerät hat einen Fehler gemeldet. Bitte erneut versuchen.";
+  return "Das hat das Gerät nicht angenommen.";
+}
+
 export async function hole<T>(pfad: string, optionen?: RequestInit): Promise<T> {
-  const antwort = await fetch(weg(pfad), {
-    headers: { "content-type": "application/json" },
-    ...optionen,
-  });
+  let antwort: Response;
+  try {
+    antwort = await fetch(weg(pfad), {
+      headers: { "content-type": "application/json" },
+      ...optionen,
+    });
+  } catch (fehler) {
+    console.error(`${pfad} war nicht erreichbar`, fehler);
+    throw new SchnittstellenFehler(satzZumStatus(0), 0);
+  }
   const text = await antwort.text();
   let daten: unknown = null;
   try {
@@ -65,10 +86,9 @@ export async function hole<T>(pfad: string, optionen?: RequestInit): Promise<T> 
     daten = null;
   }
   if (!antwort.ok) {
-    throw new SchnittstellenFehler(
-      grund(daten) ?? `${pfad} wurde mit Status ${antwort.status} beantwortet.`,
-      antwort.status
-    );
+    const satz = grund(daten);
+    if (!satz) console.error(`${pfad} wurde mit Status ${antwort.status} beantwortet.`);
+    throw new SchnittstellenFehler(satz ?? satzZumStatus(antwort.status), antwort.status);
   }
   return inhalt(daten) as T;
 }

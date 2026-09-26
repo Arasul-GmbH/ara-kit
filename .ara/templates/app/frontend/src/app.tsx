@@ -26,8 +26,8 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Meldung, SidebarInset, SidebarProvider, SidebarTrigger } from "@marken";
+import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { Button, Meldung, SidebarInset, SidebarProvider, SidebarTrigger } from "@marken";
 import { basisPfad } from "./rahmen/basis";
 import { useThema } from "./rahmen/thema";
 import { AnmeldungRahmen } from "./rahmen/anmeldung";
@@ -61,15 +61,25 @@ const speicher = new QueryClient({
   },
 });
 
+/** Eine Adresse, die es nicht gibt: ein Hinweis und der Weg zurück, kein Rot. */
+function Unbekannt() {
+  const gehe = useNavigate();
+  return (
+    <Meldung art="hinweis" titel="Diese Seite gibt es nicht" kennzeichen="nicht-da">
+      <p>Die Vorgänge stehen in der Übersicht.</p>
+      <Button variant="outline" size="sm" className="mt-2 self-start" onClick={() => gehe("/")} data-kennzeichen="zur-uebersicht">
+        Zur Übersicht
+      </Button>
+    </Meldung>
+  );
+}
+
 function Wege() {
   return (
     <Routes>
       <Route path="/" element={<Vorgaenge />} />
       <Route path="/neu" element={<Neu />} />
-      <Route
-        path="*"
-        element={<Meldung art="fehler" titel="Diesen Weg gibt es nicht">Zurück geht es über die Vorgänge.</Meldung>}
-      />
+      <Route path="*" element={<Unbekannt />} />
     </Routes>
   );
 }
