@@ -23,6 +23,8 @@ export interface Vorgang {
   begruendung: string | null;
   bemerkung: string | null;
   hinweis: string | null;
+  /** Nur solange er wartet: wer entscheidet, aus der Regel des Backends. `konten: null` heisst jeder mit Zugang. */
+  entscheidet?: { konten: string[] | null; ohne: string | null };
 }
 
 /** Was das Backend ueber seinen Rahmen sagt: erreicht es ein Arasul, und wenn nicht, warum nicht. */
@@ -57,15 +59,43 @@ export function useEinreichen() {
   });
 }
 
-/** Wie ein Stand heisst und welche Farbe dazu gehoert. Die Farbe folgt dem Wort. */
-export const STAND: Record<Stand, { wort: string; art: "hinweis" | "erfolg" | "warnung" | "fehler" }> = {
-  wartet: { wort: "wartet auf Entscheidung", art: "warnung" },
+/**
+ * Wie ein Stand heisst und welches Zeichen dazu gehoert. Das Zeichen folgt dem Wort.
+ *
+ * `wartet` hat eine eigene Art: es ist der Stand, auf den jemand etwas tun
+ * muss. Bis zum 26.09.2026 war er als `warnung` das blasseste Grau der Liste.
+ */
+export const STAND: Record<Stand, { wort: string; art: "wartet" | "hinweis" | "erfolg" | "fehler" }> = {
+  wartet: { wort: "wartet", art: "wartet" },
   genehmigt: { wort: "genehmigt", art: "erfolg" },
   abgelehnt: { wort: "abgelehnt", art: "fehler" },
-  abgelaufen: { wort: "ohne Entscheidung abgelaufen", art: "fehler" },
+  abgelaufen: { wort: "abgelaufen", art: "fehler" },
   "ohne entscheidung": { wort: "niemand entscheidet", art: "hinweis" },
   "ohne lauf": { wort: "kein Lauf gestartet", art: "fehler" },
 };
+
+/** Wer einen wartenden Vorgang entscheidet, als Satzteil. `null`, wenn das Backend es nicht sagt. */
+export function werEntscheidet(vorgang: Vorgang): string | null {
+  const wer = vorgang.entscheidet;
+  if (!wer) return null;
+  if (wer.konten === null) return wer.ohne ? `alle mit Zugang außer ${wer.ohne}` : "alle mit Zugang";
+  const konten = wer.konten.filter((konto) => konto !== wer.ohne);
+  return konten.length ? konten.join(", ") : "niemand nach der heutigen Regel";
+}
+
+/** Wie lange etwas her ist, als „seit 3 Std.". Nach zwei Wochen das Datum. */
+export function seit(iso: string, jetzt = Date.now()): string {
+  const zeit = new Date(iso).getTime();
+  if (Number.isNaN(zeit)) return "";
+  const minuten = Math.max(0, Math.floor((jetzt - zeit) / 60_000));
+  if (minuten < 1) return "seit eben";
+  if (minuten < 60) return `seit ${minuten} Min.`;
+  const stunden = Math.floor(minuten / 60);
+  if (stunden < 24) return `seit ${stunden} Std.`;
+  const tage = Math.floor(stunden / 24);
+  if (tage < 14) return tage === 1 ? "seit 1 Tag" : `seit ${tage} Tagen`;
+  return `seit ${new Date(zeit).toLocaleDateString("de-DE", { dateStyle: "medium" })}`;
+}
 
 export function zeitpunkt(iso: string): string {
   const zeit = new Date(iso);
