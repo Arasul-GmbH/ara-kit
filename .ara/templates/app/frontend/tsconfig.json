@@ -11,9 +11,11 @@
 
     // Derselbe Alias wie in `vite.config.ts` und in der Oberflaeche des
     // Geraets. Ohne ihn faende `tsc --noEmit` die Bibliothek nicht, und der
-    // Bau bliebe erst im Browser stehen.
+    // Bau bliebe erst im Browser stehen. `@marken/*` ist der zweite Einstieg:
+    // seit Marken 5.0.0 steht das Diagramm unter `@marken/diagramm` und nicht
+    // im Sammelexport, damit Recharts nur in eine App kommt, die es zeigt.
     "baseUrl": ".",
-    "paths": { "@marken": ["./src/marken/index.ts"] },
+    "paths": { "@marken": ["./src/marken/index.ts"], "@marken/*": ["./src/marken/*"] },
     "jsx": "react-jsx",
     "isolatedModules": true,
     "moduleDetection": "force",

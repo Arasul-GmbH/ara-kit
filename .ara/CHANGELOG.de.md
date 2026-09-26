@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.41.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Das Gerüst trägt die Designbibliothek 5.0.0**, aus dem Paket des Produkts (`marken-paket.py --ausgabe`, Stand des Produkts vom 26.09.2026). Blau `--primary` ist jetzt `#1e6aa4`, Rot im Hellen `#c42020`, Grau `#666666`: farbiger Text hält 4,5:1 auf hellem Grund. Eine App aus dem Kit sieht erst dann aus wie das Gerät, wenn ihr Spiegel auf derselben Fassung steht; `marken.mjs --sync` zieht bestehende Apps nach.
+- **Die Liste nutzt Auswahl und Kürzung der Bibliothek.** `gewaehlt` der `Datenliste` markiert die gewählte Zeile mit `aria-selected` und einer Linie, `kuerzen` an der Spalte hält einen langen Titel auf einer Zeile mit „…" und legt ihn ganz in den `title`. Der Knopf in der Titelzelle und die eigenen Regeln in `stil.css` sind weg, im Gerüst und in den Mustern 2 und 6. Tab erreicht jede Zeile, Eingabe und Leertaste wählen, die Pfeile gehen über `rahmen/pfeile.ts` weiter.
+- **Ein Diagramm kommt nur über `@marken/diagramm`.** `Chart`, `Sparkline` und `SERIENFARBEN` stehen nicht mehr im Sammelexport; die `tsconfig.json` des Gerüsts kennt `@marken/*`. `design-system.de.md` sagt es in einer Zeile, der Selbsttest wird rot bei einem Diagramm aus `@marken`.
+- **Der Wächter kennt den zweiten Einstieg.** `marken.mjs` zählt `diagramm.ts` als eigenen Einstieg und meldet es nicht mehr als Datei, zu der kein Weg führt.
+- **Gemessen am 26.09.2026**, das Gerüst mit den Mustern 2 und 6 gebaut: Einstieg 414,7 KB roh, 130,2 KB gzip, kein Recharts, wie mit 4.1.0. Eine Seite mit nachgeladenem Diagramm bekommt Recharts in einem eigenen Teil von 367 KB, der Einstieg bleibt bei 415 KB. Ohne die Zeile zu `memo` in `vite.config.ts` bleibt das JavaScript gleich und das CSS wächst von 95 auf 106 KB, also bleibt die Zeile. Der Selbsttest misst bei 1280 Pixeln: keine Spalte draußen, eine Zeile mit `aria-selected`, 200 Zeilen in der Tab-Reihenfolge, der Titel ganz im `title`, Pfeil nach unten zur nächsten Zeile, Bündel unter 500 KB.
+
 ## 0.40.0 (2026-09-26)
 
 Kontrakt: bis 6

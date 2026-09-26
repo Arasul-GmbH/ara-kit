@@ -302,7 +302,16 @@ function resolveImport(from, target, files) {
 }
 
 /**
- * Jede Datei, zu der von `index.ts` aus kein Weg fuehrt.
+ * Die Einstiege der Bibliothek: der Sammelexport und, seit 5.0.0, das
+ * Diagramm. `diagramm.ts` steht mit Absicht nicht im Sammelexport, weil
+ * `recharts` Seiteneffekte beim Laden hat und sonst jede App mitbaute; eine
+ * App holt es als `@marken/diagramm`. Ein Einstieg, den eine aeltere Fassung
+ * nicht hat, faellt weg.
+ */
+const ENTRIES = ["index.ts", "diagramm.ts"];
+
+/**
+ * Jede Datei, zu der von keinem Einstieg aus ein Weg fuehrt.
  *
  * Die Frage von frueher war „gibt `index.ts` jeden Baustein aus", und sie
  * passte auf einen flachen Ordner mit sechs Dateien. Der volle Satz hat drei
@@ -317,8 +326,9 @@ function resolveImport(from, target, files) {
 export function unreachable(library) {
   const files = library.files;
   if (!files.has("index.ts")) return [];
-  const seen = new Set(["index.ts"]);
-  const queue = ["index.ts"];
+  const entries = ENTRIES.filter((name) => files.has(name));
+  const seen = new Set(entries);
+  const queue = [...entries];
   while (queue.length) {
     const current = queue.shift();
     for (const target of relativeImports(files.get(current) || "")) {

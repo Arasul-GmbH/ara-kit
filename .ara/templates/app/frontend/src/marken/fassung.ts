@@ -71,4 +71,20 @@
  * gewaehlten Datei (`vorschau`, abwaehlbar). Keine neue Hauptzahl: eine App
  * auf 4.0.0 laeuft unveraendert, sie kennt das Muster nur nicht.
  */
-export const FASSUNG = '4.1.0';
+/*
+ * 5.0.0 (Auftrag marken-liste-auswahl-und-kontrast, 26.09.2026, J35): vier
+ * Befunde aus dem Audit des Kit-Geruests, die nur die Bibliothek loesen kann.
+ * `Datenliste` nimmt `gewaehlt` (die Zeile traegt `aria-selected` und einen
+ * Hintergrund mit Linie) und ist per Tastatur bedienbar (Tab auf die Zeile,
+ * Enter oder Leertaste); eine `Spalte` nimmt `kuerzen` und `breite`. Die
+ * Farben des hellen Themas halten 4,5:1 auf Seite, Karte und ihrem eigenen
+ * Wisch: `--primary`, `--destructive` und `--muted-foreground` sind dunkler
+ * geworden, das Rot des dunklen Themas bleibt das alte (`marken.py`,
+ * Punkt 9; die Werte stehen in `theme.css`). Und `Chart`,
+ * `Sparkline` und `SERIENFARBEN` stehen nicht mehr im Sammelexport, sondern
+ * unter `@marken/diagramm` -- eine App ohne Diagramm baute sonst 280 kB
+ * `recharts` mit. Das ist der Bruch und der Grund fuer die neue Hauptzahl:
+ * `import { Chart } from '@marken'` findet nichts mehr, und eine App mit Bau
+ * braucht den Pfad `@marken/*` in ihrer `tsconfig.json`.
+ */
+export const FASSUNG = '5.0.0';

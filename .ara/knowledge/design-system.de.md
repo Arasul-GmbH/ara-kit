@@ -48,18 +48,20 @@ Schrift oder Radius.
 
 ## Was jede Seite hält
 
-- **Nichts fällt heraus.** Ein langer Titel bekommt in der Liste zwei Zeilen und steht daneben ganz;
-  bei 1280 Pixeln verlässt keine Spalte die Tabelle. Der Selbsttest baut die Vorlage und misst sie.
+- **Nichts fällt heraus.** Ein langer Titel endet mit „…" (`kuerzen`) und steht daneben ganz; bei
+  1280 Pixeln verlässt keine Spalte die Tabelle. Der Selbsttest baut die Vorlage und misst sie.
 - **Liste und Einzelheiten nebeneinander** ab 900 Pixeln, die Einzelheiten mitlaufend, darunter als
   Blatt von unten. Nie unter der Liste.
-- **Jede Zeile per Tastatur**: der Titel ist ein Knopf, die gewählte Zeile trägt `aria-current`.
+- **Die Auswahl ist die der Bibliothek**: `gewaehlt` markiert die Zeile, Tab und Eingabe erreichen
+  sie, die Pfeile über `rahmen/pfeile.ts`.
 - **Jedes Feld hat ein Label** und daneben, ob es sein muss. Der Knopf bleibt aktiv, ein Klick sagt
   am Feld, was fehlt.
 - **Wer wartet, nennt, wer entscheidet und seit wann**, aus `entscheidet` des Backends.
 - **Laden hat die Form des Ergebnisses, ein Fehler einen Knopf zum erneuten Versuch, eine leere Liste
   eine Handlung.**
-- **Der Stand in der Textfarbe**, 4,5:1 in beiden Themen, die Farbe an einem Zeichen daneben: Blau
-  und Rot der Bibliothek bleiben als Text im hellen Thema unter 4,5:1.
+- **Der Stand in der Textfarbe**, 4,5:1 in beiden Themen, die Farbe an einem Zeichen daneben.
+- **Ein Diagramm nur aus `@marken/diagramm`**, am besten mit `lazy`: der Sammelexport trägt seit
+  5.0.0 keines.
 
 ## Was das Kit anhält, und was sonst verboten ist
 

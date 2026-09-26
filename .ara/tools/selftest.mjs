@@ -5091,6 +5091,35 @@ check("Das Aussehen einer App kommt aus der Bibliothek und aus sonst nichts", ()
   return `theme.css und marken.css im Spiegel, stil.css in der Reihenfolge der EINBAU.md, zwei Themen`;
 });
 
+check("Die Vorlage steht auf Marken 5.0.0, ein Diagramm kommt nur über @marken/diagramm", () => {
+  // Eine App aus dem Kit sieht erst dann aus wie das Geraet, wenn ihr Spiegel
+  // auf derselben Fassung steht. 5.0.0 bringt das Blau mit 4,5:1, die
+  // Auswahl und die Kuerzung der Datenliste und das Diagramm ausserhalb des
+  // Sammelexports; eine aeltere Fassung hat davon nichts.
+  const vorlage = join(ROOT, ".ara", "templates", "app", "frontend");
+  const bibliothek = readLibrary(join(vorlage, "src", "marken"));
+  const [haupt] = String(bibliothek?.fassung).split(".").map(Number);
+  assert(haupt >= 5, `der Spiegel der Vorlage steht auf ${bibliothek?.fassung}, nicht auf 5.0.0 oder neuer`);
+  assert(bibliothek.files.has("diagramm.ts"), "der Spiegel trägt kein diagramm.ts");
+  assert(!/from ['"]\.\/chart['"]/.test(bibliothek.files.get("primitive/index.ts")), "primitive/index.ts gibt das Diagramm wieder im Sammelexport aus");
+  assert(/"@marken\/\*"\s*:\s*\[\s*"\.\/src\/marken\/\*"\s*\]/.test(readFileSync(join(vorlage, "tsconfig.json"), "utf8")), "die tsconfig der Vorlage kennt @marken/* nicht");
+
+  // Wer `Chart` aus `@marken` holt, findet dort seit 5.0.0 nichts, und der
+  // Bau faellt erst beim Uebersetzen. Gefragt werden Vorlage und Muster.
+  const falsch = [];
+  for (const wurzel of [join(vorlage, "src"), join(ROOT, ".ara", "templates", "app-patterns")]) {
+    for (const name of readdirSync(wurzel, { recursive: true })) {
+      if (!/\.tsx?$/.test(name) || /(^|[\\/])marken[\\/]/.test(name)) continue;
+      const text = readFileSync(join(wurzel, name), "utf8");
+      for (const [, namen] of text.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']@marken["']/g)) {
+        if (/\b(Chart|Sparkline|SERIENFARBEN)\b/.test(namen)) falsch.push(name);
+      }
+    }
+  }
+  assert(falsch.length === 0, `holt ein Diagramm aus @marken statt aus @marken/diagramm: ${falsch.join(", ")}`);
+  return `Spiegel ${bibliothek.fassung}, diagramm.ts eigener Einstieg, @marken/* in der tsconfig`;
+});
+
 await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zeichen Titel und 200 Zeilen", async () => {
   // Am 26.09.2026 gemessen: mit einem langen Titel war die Tabelle 1309 px
   // breit in einem Kasten von 860, die Spalte Stand lag draussen, und die
@@ -5131,6 +5160,11 @@ await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zei
     const skripte = readdirSync(join(front, "dist", "assets")).filter((name) => name.endsWith(".js"));
     const buendel = skripte.map((name) => readFileSync(join(front, "dist", "assets", name), "utf8")).join("");
     assert(!/recharts/.test(buendel), "Recharts steckt im Bündel, obwohl keine Seite ein Diagramm zeigt");
+    // 5.0.0 mit dem Diagramm ausserhalb des Sammelexports: 415 KB roh am
+    // 26.09.2026, mit dem Diagramm darin waren es 690. Die Grenze liegt
+    // dazwischen und faengt ein Diagramm, das zurueck ins Buendel rutscht.
+    const kb = Math.round(Buffer.byteLength(buendel) / 1024);
+    assert(kb < 500, `das Bündel des Gerüsts hat ${kb} KB, mehr als 500`);
 
     const TITEL = "Rahmenvertrag Wartung und Bereitschaft für die Filiale Nord, verlängert um zwölf Monate mit neuer Preisstaffel ab Januar 2027";
     assert(TITEL.length >= 120, `der Probetitel hat nur ${TITEL.length} Zeichen`);
@@ -5172,9 +5206,17 @@ await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zei
         const r = aside ? aside.getBoundingClientRect() : { top: innerHeight };
         if (r.top >= innerHeight || r.bottom <= 0 || r.left >= innerWidth) befunde.push('die Einzelheiten stehen nicht im Fenster neben der Liste');
         else if (!aside.textContent.includes(${JSON.stringify(TITEL)})) befunde.push('die Einzelheiten zeigen den Titel nicht ganz');
-        const knoepfe = document.querySelectorAll('button.vorgang-wahl');
-        if (knoepfe.length !== 200) befunde.push('nur ' + knoepfe.length + ' Zeilen sind per Tastatur erreichbar');
-        if (document.querySelectorAll('.vorgang-wahl[aria-current="true"]').length !== 1) befunde.push('die gewaehlte Zeile ist nicht markiert');
+        // Auswahl und Kuerzung sind die der Datenliste (Marken 5.0.0), keine
+        // eigene Loesung: jede Zeile in der Tab-Reihenfolge, die gewaehlte
+        // traegt aria-selected, der lange Titel steht ganz im title.
+        if (document.querySelector('.vorgang-wahl, .zeile-wahl')) befunde.push('die Liste waehlt noch mit einer eigenen Loesung');
+        const zeilen = [...document.querySelectorAll('tbody tr[tabindex="0"]')];
+        if (zeilen.length !== 200) befunde.push('nur ' + zeilen.length + ' Zeilen sind per Tastatur erreichbar');
+        if (document.querySelectorAll('tbody tr[aria-selected="true"]').length !== 1) befunde.push('die gewaehlte Zeile traegt kein aria-selected');
+        if (![...document.querySelectorAll('tbody [title]')].some((el) => el.title === ${JSON.stringify(TITEL)})) befunde.push('der lange Titel ist nicht gekuerzt oder steht nicht ganz im title');
+        zeilen[0]?.focus();
+        zeilen[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        if (document.activeElement !== zeilen[1]) befunde.push('der Pfeil nach unten fuehrt nicht zur naechsten Zeile');
         let k = Infinity;
         for (const el of document.querySelectorAll('.stand, .stand__wort, .stand__wer')) {
           const g = grund(el); const v = mischen(farbe(getComputedStyle(el).color), g);
@@ -5228,7 +5270,7 @@ await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zei
     const ergebnis = JSON.parse(treffer[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
     assert(ergebnis.breite === 1280, `gemessen bei ${ergebnis.breite} px statt 1280`);
     assert(ergebnis.befunde.length === 0, ergebnis.befunde.join(" | "));
-    return `1280 px, 200 Zeilen, Titel mit ${TITEL.length} Zeichen: nichts ragt hinaus, Einzelheiten sichtbar, Stand ${ergebnis.kontrast}:1`;
+    return `1280 px, 200 Zeilen, Titel mit ${TITEL.length} Zeichen: nichts ragt hinaus, Einzelheiten sichtbar, Auswahl der Datenliste, Stand ${ergebnis.kontrast}:1, Bündel ${kb} KB`;
   } finally {
     server?.close();
     rmSync(work, { recursive: true, force: true });

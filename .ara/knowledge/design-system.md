@@ -47,17 +47,18 @@ end of `stil.css`, with token names only, no colour, font or radius.
 
 ## What every page keeps
 
-- **Nothing falls out.** A long title gets two lines in the list and stands whole beside it; at
-  1280 pixels no column leaves the table. The self-test builds the scaffold and measures it.
+- **Nothing falls out.** A long title ends with "…" (`kuerzen`) and stands whole beside it; at 1280
+  pixels no column leaves the table. The self-test builds the scaffold and measures it.
 - **List and details side by side** from 900 pixels, the details following along, below as a sheet
   from the bottom. Never under the list.
-- **Every row by keyboard**: the title is a button, the chosen row carries `aria-current`.
+- **Selection is the library's**: `gewaehlt` marks the row, Tab and Enter reach it, arrows via
+  `rahmen/pfeile.ts`.
 - **Every field has a label** and beside it whether it must be filled. The button stays active, a
   click says at the field what is missing.
 - **Waiting names who decides and since when**, from `entscheidet` of the backend.
 - **Loading has the shape of the result, an error a button to try again, an empty list an action.**
-- **Status in the text colour**, 4.5:1 in both themes, the colour on a mark beside it: the library's
-  blue and red stay under 4.5:1 as text in light.
+- **Status in the text colour**, 4.5:1 in both themes, the colour on a mark beside it.
+- **A chart only from `@marken/diagramm`**, best with `lazy`: the barrel carries none since 5.0.0.
 
 ## What stops the kit, and what else is forbidden
 

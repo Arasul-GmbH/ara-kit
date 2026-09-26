@@ -61,6 +61,20 @@ export interface Spalte<Zeile> {
   ausrichtung?: 'links' | 'rechts';
   /** Unter 900 px: steht die Spalte in der Karte? Vorgabe ja. */
   inKarte?: boolean;
+  /**
+   * Eine lange Zelle endet mit „…" statt die Tabelle zu verbreitern. Die
+   * Spalte nimmt dann den Platz, der uebrig bleibt, und nicht mehr: ein
+   * langer Titel schob sonst bei 1280 px die Spalten rechts von ihm aus der
+   * Tabelle (Audit des Kit-Geruests, 26.09.2026). Der volle Text steht im
+   * `title`, sofern die Spalte einen `wert` hat.
+   */
+  kuerzen?: boolean;
+  /**
+   * Die Breite der Spalte als CSS-Laenge (`'8rem'`, `'20%'`). Ohne `kuerzen`
+   * ist sie eine Vorgabe, die ein breiterer Inhalt sprengt; mit `kuerzen`
+   * haelt sie.
+   */
+  breite?: string;
 }
 
 export interface DatenlisteProps<Zeile> {
@@ -82,8 +96,19 @@ export interface DatenlisteProps<Zeile> {
   leer?: { titel: string; beschreibung?: React.ReactNode; aktion?: React.ReactNode };
   /** Was dasteht, wenn der Filter alles wegnimmt. */
   leerGefiltert?: string;
-  /** Ein Klick auf die Zeile. Ohne ihn ist die Zeile nichts zum Anklicken. */
+  /**
+   * Ein Klick auf die Zeile -- oder Enter und Leertaste, wenn sie den Fokus
+   * hat. Ohne ihn ist die Zeile nichts zum Anklicken und steht auch nicht in
+   * der Tab-Reihenfolge.
+   */
   aufZeile?: (zeile: Zeile) => void;
+  /**
+   * Die Kennung der gewaehlten Zeile. Sie traegt `aria-selected` und einen
+   * Hintergrund samt Linie am Anfang -- bis 5.0.0 zeigte die Liste nicht,
+   * welche Zeile gerade rechts im Detail steht. Die Auswahl gehoert dem
+   * Aufrufer: er weiss, was „gewaehlt" bei ihm heisst.
+   */
+  gewaehlt?: string | null;
   className?: string;
 }
 
@@ -99,6 +124,24 @@ function vergleiche(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b), 'de', { numeric: true, sensitivity: 'base' });
 }
 
+/**
+ * Breite und Kuerzung als Stil der Zelle. Eine gekuerzte Spalte ohne Breite
+ * bekommt `max-width: 0` samt `w-full`: so nimmt sie in einer Tabelle mit
+ * automatischem Layout genau den Rest, und ihr Inhalt kann ihn nicht mehr
+ * vergroessern. Mit Breite haelt `max-width` die Breite fest.
+ */
+function breiteStil<Zeile>(spalte: Spalte<Zeile>): React.CSSProperties | undefined {
+  if (spalte.kuerzen) {
+    return spalte.breite ? { width: spalte.breite, maxWidth: spalte.breite } : { maxWidth: 0 };
+  }
+  return spalte.breite ? { width: spalte.breite } : undefined;
+}
+
+function volltext<Zeile>(spalte: Spalte<Zeile>, zeile: Zeile): string | undefined {
+  const wert = spalte.wert?.(zeile);
+  return wert == null ? undefined : String(wert);
+}
+
 export function Datenliste<Zeile>({
   daten,
   spalten,
@@ -110,6 +153,7 @@ export function Datenliste<Zeile>({
   leer,
   leerGefiltert = 'Nichts passt zu dieser Suche.',
   aufZeile,
+  gewaehlt,
   className,
 }: DatenlisteProps<Zeile>) {
   const schmal = useSchmalesFenster();
@@ -228,20 +272,32 @@ export function Datenliste<Zeile>({
                           {spalte.titel}
                         </span>
                       )}
-                      <span className={cn('min-w-0', i > 0 && 'text-right text-ui-sm')}>
+                      <span
+                        className={cn(
+                          'min-w-0',
+                          i > 0 && 'text-right text-ui-sm',
+                          spalte.kuerzen && 'truncate'
+                        )}
+                        title={spalte.kuerzen ? volltext(spalte, zeile) : undefined}
+                      >
                         {spalte.zelle(zeile)}
                       </span>
                     </div>
                   ))}
               </>
             );
+            const istGewaehlt = gewaehlt != null && kennung(zeile) === gewaehlt;
             return (
               <li key={kennung(zeile)}>
                 {aufZeile ? (
+                  // `aria-current` und nicht `aria-selected`: das gilt nur in
+                  // einem Grid oder einer Listbox, und ein Knopf ist keins.
                   <button
                     type="button"
                     onClick={() => aufZeile(zeile)}
-                    className="flex w-full flex-col gap-1 rounded-md border border-border p-ui-2 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                    aria-current={istGewaehlt ? 'true' : undefined}
+                    data-state={istGewaehlt ? 'selected' : undefined}
+                    className="flex w-full flex-col gap-1 rounded-md border border-border p-ui-2 text-left transition-colors hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none data-[state=selected]:border-foreground data-[state=selected]:bg-foreground/8"
                   >
                     {inhalt}
                   </button>
@@ -266,6 +322,10 @@ export function Datenliste<Zeile>({
                   <TableHead
                     key={spalte.schluessel}
                     className={spalte.ausrichtung === 'rechts' ? 'text-right' : undefined}
+                    // Der Kopf nimmt nur die Breite; `max-width: 0` der
+                    // gekuerzten Zelle gehoert nicht hierher -- der Titel
+                    // steht sonst ueber der Nachbarspalte.
+                    style={spalte.breite ? { width: spalte.breite } : undefined}
                     // `aria-sort` ist die Auskunft, die ein Screenreader
                     // liest; der Pfeil daneben ist dieselbe fuer die Augen.
                     aria-sort={
@@ -302,22 +362,62 @@ export function Datenliste<Zeile>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortiert.map(zeile => (
-              <TableRow
-                key={kennung(zeile)}
-                onClick={aufZeile ? () => aufZeile(zeile) : undefined}
-                className={aufZeile ? 'cursor-pointer' : undefined}
-              >
-                {spalten.map(spalte => (
-                  <TableCell
-                    key={spalte.schluessel}
-                    className={spalte.ausrichtung === 'rechts' ? 'text-right' : undefined}
-                  >
-                    {spalte.zelle(zeile)}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {sortiert.map(zeile => {
+              const istGewaehlt = gewaehlt != null && kennung(zeile) === gewaehlt;
+              return (
+                <TableRow
+                  key={kennung(zeile)}
+                  onClick={aufZeile ? () => aufZeile(zeile) : undefined}
+                  // Die ganze Zeile ist per Tastatur erreichbar, nicht nur
+                  // mit der Maus. Enter und Leertaste nur, wenn die Zeile
+                  // SELBST den Fokus hat -- ein Knopf in einer Zelle behaelt
+                  // seine eigene Taste.
+                  tabIndex={aufZeile ? 0 : undefined}
+                  onKeyDown={
+                    aufZeile
+                      ? ereignis => {
+                          if (ereignis.target !== ereignis.currentTarget) return;
+                          if (ereignis.key === 'Enter' || ereignis.key === ' ') {
+                            ereignis.preventDefault();
+                            aufZeile(zeile);
+                          }
+                        }
+                      : undefined
+                  }
+                  aria-selected={gewaehlt !== undefined ? istGewaehlt : undefined}
+                  data-state={istGewaehlt ? 'selected' : undefined}
+                  className={cn(
+                    aufZeile &&
+                      'cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring',
+                    // Die Flaeche ist ein Wisch aus `--foreground` und nicht
+                    // `bg-muted`: im Dunkeln ist `--muted` gleich `--card`,
+                    // und die Auswahl waere in einer Karte unsichtbar. Dazu
+                    // die Linie am Anfang (H5: der aktive Zustand ist keine
+                    // Flaeche allein).
+                    'data-[state=selected]:bg-foreground/8 data-[state=selected]:shadow-[inset_3px_0_0_var(--color-foreground)]'
+                  )}
+                >
+                  {spalten.map(spalte => (
+                    <TableCell
+                      key={spalte.schluessel}
+                      className={cn(
+                        spalte.ausrichtung === 'rechts' && 'text-right',
+                        spalte.kuerzen && !spalte.breite && 'w-full'
+                      )}
+                      style={breiteStil(spalte)}
+                    >
+                      {spalte.kuerzen ? (
+                        <div className="truncate" title={volltext(spalte, zeile)}>
+                          {spalte.zelle(zeile)}
+                        </div>
+                      ) : (
+                        spalte.zelle(zeile)
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}

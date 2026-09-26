@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.41.0 (2026-09-26)
+
+Contract: up to 6
+
+- **The scaffold carries design library 5.0.0**, out of the product's package (`marken-paket.py --ausgabe`, product commit of 26.09.2026). Blue `--primary` is now `#1e6aa4`, red `#c42020` in light, grey `#666666`: coloured text holds 4.5:1 on the light ground. An app out of the kit looks like the device only when its mirror stands at the same version; `marken.mjs --sync` pulls existing apps up.
+- **The list uses the library's selection and shortening.** `gewaehlt` of the `Datenliste` marks the chosen row with `aria-selected` and a bar, `kuerzen` at the column keeps a long title on one line with "…" and puts it whole into `title`. The button in the title cell and the own rules in `stil.css` are gone, in the scaffold and in patterns 2 and 6. Tab reaches every row, Enter and space choose, the arrows go on through `rahmen/pfeile.ts`.
+- **A chart comes only through `@marken/diagramm`.** `Chart`, `Sparkline` and `SERIENFARBEN` are no longer in the barrel; `tsconfig.json` of the scaffold knows `@marken/*`. `design-system.md` says it in one line, the self-test goes red on a chart imported from `@marken`.
+- **The guard knows the second entry.** `marken.mjs` counts `diagramm.ts` as an entry of its own and no longer reports it as a file no path leads to.
+- **Measured on 26.09.2026**, the scaffold with patterns 2 and 6 built: entry 414.7 KB raw, 130.2 KB gzip, no Recharts, as with 4.1.0. A page with a lazily loaded chart gets Recharts in a part of its own of 367 KB, the entry stays at 415 KB. Without the `memo` line in `vite.config.ts` the JavaScript stays the same and the CSS grows from 95 to 106 KB, so the line stays. The self-test measures at 1280 pixels: no column outside, one row with `aria-selected`, 200 rows in the tab order, the title whole in `title`, arrow down to the next row, bundle under 500 KB.
+
 ## 0.40.0 (2026-09-26)
 
 Contract: up to 6
