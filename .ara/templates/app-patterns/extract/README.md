@@ -21,7 +21,8 @@ image model itself: `geraet.fragen` with `bilder`, how stands in `--contract` un
 **Replace `SCHEMA`, `ANWEISUNG` and `fachlich`** with what your customer reads. A flat schema with
 `required` is the most reliable; a field the model would have to guess is better left out, and the
 instruction says so. The page says that the model is reading, and a second click starts no second
-reading. Whoever discards a reading triggers a new one: the log keeps every one.
+reading. Whoever discards a reading triggers a new one: the log keeps every one, and for a document that
+does not exist and has no log it answers 404.
 
 **Checked**: the self-test against a played device, fields, a defect at the tax rate, no fields, a
 device error, the log after the document went; the Orin on 25.09.2026 with a probe out of the

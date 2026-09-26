@@ -13,6 +13,19 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.42.0 (2026-09-26)
+
+Contract: up to 6
+
+- **An item comes into being in work and is submitted when it is complete.** The scaffold's core splits `anlegen` from `einreichen(id)`, and `bereit(vorgang)` says `true` or the sentence what is missing: an item that is not ready stays in work without a run, the sentence at it. The scaffold's form still submits right after creating, its title makes it complete.
+- **What is submitted no longer changes.** `darfAendern(vorgang)` holds only in work. Pattern 7 has `PUT vorgaenge/<id>` and `POST vorgaenge/<id>/einreichen`, pattern 2 checks at attaching and removing once it knows the items, pattern 8 at attaching and reading anew: after submitting 409. `mitBeleg` in pattern 8 is the `bereit` for "no submitting without a receipt".
+- **Seeing is not deciding.** Pattern 7 marks at each mapping whether the account decides (`006-entscheider.sql`, default no), `regel` and `zustaendig` take only deciders. An app that gets the migration later has no decider until the management marks one, and its items stay in work with the sentence. `app-professional.md` puts the plan questions "when is an item complete" and "who approves" with the example of an office.
+- **The flow's sentence after the approval is caught up** until the run is finished. Up to 0.41.0 the app asked once, and when the run was not finished at that moment, the sentence never came.
+- **The log of a foreign document is 404**, no longer 200 with an empty list; the log of an own document that went stays.
+- **`backend/kern/csv.mjs`** writes a CSV for Excel and the tax adviser: BOM, semicolon, decimal comma, CRLF, and a cell beginning with `=`, `+`, `-`, `@`, tab or CR gets an apostrophe in front.
+- **The load set of `/app` stays under 15,000 tokens**: what pattern 7 decides stands in its sheet and no longer in the knowledge as well, measurement history left the knowledge.
+- **Measured on the Orin on 26.09.2026** with two accounts, a probe with patterns 2, 6, 7 and 8 in staging: created in work without a run, submitting without a receipt 409, the rule named only the decider, the submitter got 403 at the device and did not see the request, the decider approved, attaching, removing, reading anew, changing and submitting again got 409, the log of a foreign document 404, the flow's sentence arrived 22 seconds after the approval and was caught up.
+
 ## 0.41.0 (2026-09-26)
 
 Contract: up to 6

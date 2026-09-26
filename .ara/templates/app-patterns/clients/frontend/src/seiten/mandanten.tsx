@@ -15,14 +15,21 @@
  *     : [])
  *
  * In `seiten/neu.tsx` kommt `MandantWahl` als erste Feldgruppe dazu, und
- * `useEinreichenBeiMandant` aus `../mandanten` ersetzt `useEinreichen`:
+ * `useAnlegenBeiMandant` aus `../mandanten` ersetzt `useEinreichen`. Der
+ * Knopf heißt dann „Anlegen": der Vorgang entsteht in Arbeit.
  *
  *   const [mandant, setMandant] = useState("");
- *   const einreichen = useEinreichenBeiMandant();
+ *   const einreichen = useAnlegenBeiMandant();
  *   ...
  *   einreichen.mutate({ titel, text, mandant: Number(mandant) }, { onSuccess: () => weiter("/") });
  *   ...
  *   <MandantWahl wert={mandant} aufWert={setMandant} />
+ *
+ * Eingereicht wird in den Einzelheiten, in `Angaben` von `seiten/liste.tsx`:
+ *
+ *   import { VorgangEinreichen } from "./mandanten";
+ *   ...
+ *   <VorgangEinreichen vorgang={vorgang} />
  *
  * **Wer die Seite sieht, sagt das Backend.** Sie fragt `api/zuordnungen` nur,
  * wenn `api/mandanten` die Verwaltung bestätigt. Ruft jemand sie über die
@@ -36,6 +43,7 @@
 import { useState } from "react";
 import {
   Button,
+  Checkbox,
   Datenliste,
   Feldgruppe,
   Input,
@@ -52,12 +60,13 @@ import {
   useMandantAnlegen,
   useMandanten,
   useVerwaltung,
+  useVorgangEinreichen,
   useZuordnen,
   type Konto,
   type Mandant,
   type Zuordnung,
 } from "../mandanten";
-import { zeitpunkt } from "../vorgaenge";
+import { zeitpunkt, type Vorgang } from "../vorgaenge";
 
 /** Der Satz zu einem Fehler der Schnittstelle, oder ein allgemeiner. */
 function satz(fehler: unknown): string {
@@ -97,10 +106,33 @@ export function MandantWahl({ wert, aufWert }: { wert: string; aufWert: (wert: s
   );
 }
 
+/**
+ * Einreichen, solange der Vorgang in Arbeit ist. Fehlt noch etwas, steht der
+ * Satz des Backends da, und der Vorgang bleibt in Arbeit. Danach verschwindet
+ * der Knopf: was eingereicht ist, ändert sich nicht mehr.
+ */
+export function VorgangEinreichen({ vorgang }: { vorgang: Vorgang }) {
+  const einreichen = useVorgangEinreichen(vorgang.id);
+  if (vorgang.status !== "in arbeit") return null;
+  return (
+    <div className="flex flex-col gap-2" data-kennzeichen="einreichen">
+      {einreichen.isError && (
+        <Meldung art="hinweis" titel="Noch nicht eingereicht">
+          {satz(einreichen.error)}
+        </Meldung>
+      )}
+      <Button variant="solid" className="self-end" disabled={einreichen.isPending} onClick={() => einreichen.mutate()}>
+        {einreichen.isPending ? "Wird eingereicht …" : "Einreichen"}
+      </Button>
+    </div>
+  );
+}
+
 function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; konten: Konto[]; zuordnungen: Zuordnung[] }) {
   const [name, setName] = useState("");
   const [konto, setKonto] = useState("");
   const [mandant, setMandant] = useState("");
+  const [entscheidet, setEntscheidet] = useState(false);
   const anlegen = useMandantAnlegen();
   const zuordnen = useZuordnen();
   const loesen = useLoesen();
@@ -109,6 +141,23 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
   const spaltenZuordnung: ReadonlyArray<Spalte<Zuordnung>> = [
     { schluessel: "benutzer", titel: "Konto", zelle: (z) => z.benutzer, wert: (z) => z.benutzer },
     { schluessel: "mandant", titel: "Mandant", zelle: (z) => nameVon.get(z.mandant) ?? z.mandant, wert: (z) => nameVon.get(z.mandant) ?? "" },
+    {
+      schluessel: "entscheidet",
+      titel: "Darf",
+      zelle: (z) => (
+        // Umschalten ist dieselbe Zuordnung noch einmal, mit der anderen Angabe.
+        <Button
+          variant="ghost"
+          disabled={zuordnen.isPending}
+          onClick={() => zuordnen.mutate({ benutzer: z.benutzer, mandant: z.mandant, entscheidet: !z.entscheidet })}
+          title={z.entscheidet ? "Nur noch sehen lassen" : "Entscheiden lassen"}
+          data-kennzeichen="entscheidet"
+        >
+          {z.entscheidet ? "sieht und entscheidet" : "sieht"}
+        </Button>
+      ),
+      wert: (z) => (z.entscheidet ? "entscheidet" : "sieht"),
+    },
     { schluessel: "seit", titel: "Seit", zelle: (z) => `${zeitpunkt(z.seit)}, von ${z.zugeordnet_von}`, wert: (z) => z.seit },
     {
       schluessel: "loesen",
@@ -161,7 +210,11 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
         </form>
       </Karte>
 
-      <Karte titel="Zuordnen" hinweis="Zur Wahl steht, wer die App schon einmal geöffnet hat." kennzeichen="zuordnen">
+      <Karte
+        titel="Zuordnen"
+        hinweis="Zur Wahl steht, wer die App schon einmal geöffnet hat. Sehen heißt nicht entscheiden: freigeben darf nur, wer als Entscheider markiert ist."
+        kennzeichen="zuordnen"
+      >
         <div className="flex flex-col gap-2">
           <Label htmlFor="zuordnen-konto">Konto</Label>
           <Suchauswahl
@@ -179,11 +232,15 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
             aufWert={setMandant}
             platzhalter="Mandant wählen"
           />
+          <div className="flex items-center gap-2">
+            <Checkbox id="zuordnen-entscheidet" checked={entscheidet} onCheckedChange={(wert) => setEntscheidet(wert === true)} />
+            <Label htmlFor="zuordnen-entscheidet">Entscheidet über die Vorgänge dieses Mandanten</Label>
+          </div>
           <div className="flex justify-end">
             <Button
               variant="solid"
               disabled={!konto || !mandant || zuordnen.isPending}
-              onClick={() => zuordnen.mutate({ benutzer: konto, mandant: Number(mandant) })}
+              onClick={() => zuordnen.mutate({ benutzer: konto, mandant: Number(mandant), entscheidet })}
               data-kennzeichen="zuordnen"
             >
               Zuordnen

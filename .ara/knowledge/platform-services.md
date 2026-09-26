@@ -59,14 +59,8 @@ A flow stops with the tool `freigabe_anfordern`, with title, context and deadlin
 whoever watches and carries on with an assumption. Approved, the run carries on from the step;
 rejected, it ends with the reason; no decision by the deadline, it ends as well.
 
-**Deciding runs over a human's session**, so these routes stand in no contract and the kit does not
-call them:
-
-```
-GET  /api/freigabe-anfragen
-POST /api/freigabe-anfragen/<id>/bestaetigen
-POST /api/freigabe-anfragen/<id>/ablehnen
-```
+**Deciding runs over a human's session**, in the device's interface: no contract names those
+routes, and the kit does not call them.
 
 **The app reads the state with its own key and never decides**: `GET /api/v1/external/freigaben`,
 with the run number.

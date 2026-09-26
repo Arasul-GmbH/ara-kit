@@ -10,7 +10,7 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tan
 import { hole } from "./rahmen/schnittstelle";
 
 /** Wie ein Vorgang steht. Die Namen kommen aus dem Backend dieser App. */
-export type Stand = "wartet" | "genehmigt" | "abgelehnt" | "abgelaufen" | "ohne entscheidung" | "ohne lauf";
+export type Stand = "in arbeit" | "wartet" | "genehmigt" | "abgelehnt" | "abgelaufen" | "ohne entscheidung" | "ohne lauf";
 
 export interface Vorgang {
   id: number;
@@ -43,10 +43,15 @@ export function useVorgaenge(): UseQueryResult<Vorgang[]> {
   return useQuery({
     queryKey: ["vorgaenge"],
     queryFn: async () => (await hole<{ vorgaenge: Vorgang[] }>("api/vorgaenge")).vorgaenge,
-    // Nachfragen nur, solange wirklich etwas offen ist. Eine Seite, die im
+    // Nachfragen nur, solange wirklich etwas offen ist: ein Vorgang wartet,
+    // oder einem genehmigten fehlt noch der Satz des Laufs. Eine Seite, die im
     // Leerlauf im Sekundentakt fragt, hält das Gerät ohne Grund wach.
     refetchInterval: (abfrage) =>
-      (abfrage.state.data ?? []).some((vorgang) => vorgang.status === "wartet") ? 5000 : false,
+      (abfrage.state.data ?? []).some(
+        (vorgang) => vorgang.status === "wartet" || (vorgang.status === "genehmigt" && vorgang.bemerkung === null)
+      )
+        ? 5000
+        : false,
   });
 }
 
@@ -66,6 +71,7 @@ export function useEinreichen() {
  * muss. Bis zum 26.09.2026 war er als `warnung` das blasseste Grau der Liste.
  */
 export const STAND: Record<Stand, { wort: string; art: "wartet" | "hinweis" | "erfolg" | "fehler" }> = {
+  "in arbeit": { wort: "in Arbeit", art: "hinweis" },
   wartet: { wort: "wartet", art: "wartet" },
   genehmigt: { wort: "genehmigt", art: "erfolg" },
   abgelehnt: { wort: "abgelehnt", art: "fehler" },

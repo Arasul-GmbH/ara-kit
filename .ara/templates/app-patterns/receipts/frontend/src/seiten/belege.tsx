@@ -6,8 +6,11 @@
  *
  *   // in `Angaben`, als letzte Angabe:
  *   <Angabe name="Belege">
- *     <BelegeAmVorgang vorgang={vorgang.id} />
+ *     <BelegeAmVorgang vorgang={vorgang.id} offen={vorgang.status === "in arbeit"} />
  *   </Angabe>
+ *
+ * Angehängt wird nur, solange der Vorgang in Arbeit ist: danach steht die
+ * Ablage nicht mehr da, und das Backend antwortete ohnehin 409.
  *
  * Wer einen Vorgang sieht, sieht seine Belege und legt einen dazu; wer ihn
  * nicht sieht, bekommt vom Backend 404 und sieht auch keinen Beleg. Angesehen
@@ -22,7 +25,7 @@ import { AsyncBoundary } from "../rahmen/async-boundary";
 import { useBelegAnhaengen, useBelege, type Beleg } from "../belege";
 import { zeitpunkt } from "../vorgaenge";
 
-export function BelegeAmVorgang({ vorgang }: { vorgang: number }) {
+export function BelegeAmVorgang({ vorgang, offen = true }: { vorgang: number; offen?: boolean }) {
   const belege = useBelege(vorgang);
   const anhaengen = useBelegAnhaengen(vorgang);
   const [dateien, setDateien] = useState<File[]>([]);
@@ -77,17 +80,21 @@ export function BelegeAmVorgang({ vorgang }: { vorgang: number }) {
           {anhaengen.error instanceof Error ? anhaengen.error.message : "Die Schnittstelle hat nicht geantwortet."}
         </Meldung>
       )}
-      <Dateiablage
-        dateien={dateien}
-        aufDateien={setDateien}
-        mehrere={false}
-        akzeptiert=".pdf,image/*"
-        vorschau={false}
-        disabled={anhaengen.isPending}
-      />
-      <Button variant="outline" onClick={absenden} data-kennzeichen="beleg-anhaengen" className="self-end">
-        {anhaengen.isPending ? "Wird angehängt …" : "Beleg anhängen"}
-      </Button>
+      {offen && (
+        <>
+          <Dateiablage
+            dateien={dateien}
+            aufDateien={setDateien}
+            mehrere={false}
+            akzeptiert=".pdf,image/*"
+            vorschau={false}
+            disabled={anhaengen.isPending}
+          />
+          <Button variant="outline" onClick={absenden} data-kennzeichen="beleg-anhaengen" className="self-end">
+            {anhaengen.isPending ? "Wird angehängt …" : "Beleg anhängen"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }

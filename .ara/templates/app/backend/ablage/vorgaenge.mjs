@@ -51,10 +51,17 @@ export function vorgangsAblage(db) {
       return (await db.abfrage(`SELECT ${FELDER} FROM vorgaenge ORDER BY id DESC`)).map(alsVorgang);
     },
 
-    /** Die, bei denen am Gerät noch etwas offen ist. */
+    /**
+     * Die, bei denen am Gerät noch etwas offen ist: wer noch wartet, und wer
+     * genehmigt ist, solange der Satz des Laufs danach noch fehlt.
+     */
     async wartende() {
       return (
-        await db.abfrage(`SELECT ${FELDER} FROM vorgaenge WHERE status = 'wartet' AND lauf IS NOT NULL ORDER BY id DESC`)
+        await db.abfrage(
+          `SELECT ${FELDER} FROM vorgaenge
+            WHERE lauf IS NOT NULL AND (status = 'wartet' OR (status = 'genehmigt' AND bemerkung IS NULL))
+            ORDER BY id DESC`
+        )
       ).map(alsVorgang);
     },
 
@@ -63,8 +70,22 @@ export function vorgangsAblage(db) {
     },
 
     /**
+     * Titel und Text eines Vorgangs, der noch in Arbeit ist. Der Stand steht
+     * im WHERE: ein Vorgang, der eben eingereicht wurde, ändert sich nicht
+     * mehr, auch wenn zwei Anfragen sich kreuzen. `null`, wenn nichts geändert
+     * wurde.
+     */
+    async aendern(id, { titel, text }) {
+      const geaendert = await db.ausfuehren(
+        "UPDATE vorgaenge SET titel = $1, text = $2 WHERE id = $3 AND status = 'in arbeit'",
+        [titel, text, id]
+      );
+      return geaendert > 0 ? ablage.eines(id) : null;
+    },
+
+    /**
      * Den Stand eines Vorgangs fortschreiben. Titel, Text und Einreicher
-     * ändert niemand mehr; die Nummer des Laufs kommt einmal dazu, sobald es
+     * ändert hier niemand; die Nummer des Laufs kommt einmal dazu, sobald es
      * ihn gibt, und bleibt dann.
      */
     async fortschreiben(id, felder) {

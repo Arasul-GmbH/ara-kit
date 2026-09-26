@@ -62,14 +62,8 @@ wartet: **ohne Entscheidung geht nichts weiter**. Eine Rückfrage im Gespräch d
 der gerade zusieht, und läuft mit einer Annahme weiter. Genehmigt, läuft der Lauf ab dem Schritt
 weiter; abgelehnt, endet er mit dem Grund; keine Entscheidung bis zur Frist, endet er ebenso.
 
-**Entschieden wird über die Sitzung eines Menschen**, darum stehen diese Wege in keinem Kontrakt,
-und das Kit ruft sie nicht:
-
-```
-GET  /api/freigabe-anfragen
-POST /api/freigabe-anfragen/<id>/bestaetigen
-POST /api/freigabe-anfragen/<id>/ablehnen
-```
+**Entschieden wird über die Sitzung eines Menschen**, in der Oberfläche des Geräts: kein Kontrakt
+nennt diese Wege, und das Kit ruft sie nicht.
 
 **Die App liest den Stand mit ihrem eigenen Schlüssel und entscheidet nie**:
 `GET /api/v1/external/freigaben`, mit der Laufnummer.

@@ -32,6 +32,8 @@ export interface Zuordnung {
   mandant: number;
   zugeordnet_von: string;
   seit: string;
+  /** Ob dieses Konto über die Vorgänge des Mandanten entscheidet oder ihn nur sieht. */
+  entscheidet: boolean;
 }
 
 export interface Uebersicht {
@@ -75,7 +77,7 @@ export function useMandantAnlegen() {
 export function useZuordnen() {
   const nachher = useNachher();
   return useMutation({
-    mutationFn: (zuordnung: { benutzer: string; mandant: number }) =>
+    mutationFn: (zuordnung: { benutzer: string; mandant: number; entscheidet: boolean }) =>
       hole("api/zuordnungen", { method: "POST", body: JSON.stringify(zuordnung) }),
     onSuccess: nachher,
   });
@@ -91,14 +93,24 @@ export function useLoesen() {
 }
 
 /**
- * Einreichen mit Mandant. Ersetzt in `seiten/neu.tsx` das `useEinreichen` aus
- * `vorgaenge.ts`: ohne Mandant nimmt das Backend keinen Vorgang mehr an.
+ * Anlegen mit Mandant, in Arbeit. Ersetzt in `seiten/neu.tsx` das
+ * `useEinreichen` aus `vorgaenge.ts`: ohne Mandant nimmt das Backend keinen
+ * Vorgang mehr an, und eingereicht wird erst in den Einzelheiten.
  */
-export function useEinreichenBeiMandant() {
+export function useAnlegenBeiMandant() {
   const speicher = useQueryClient();
   return useMutation({
     mutationFn: (vorgang: { titel: string; text: string; mandant: number }) =>
       hole<{ vorgang: Vorgang }>("api/vorgaenge", { method: "POST", body: JSON.stringify(vorgang) }),
     onSuccess: () => speicher.invalidateQueries({ queryKey: ["vorgaenge"] }),
+  });
+}
+
+/** Einen Vorgang in Arbeit einreichen. Fehlt noch etwas, kommt der Satz des Backends als Fehler zurück. */
+export function useVorgangEinreichen(vorgang: number) {
+  const speicher = useQueryClient();
+  return useMutation({
+    mutationFn: () => hole<{ vorgang: Vorgang }>(`api/vorgaenge/${vorgang}/einreichen`, { method: "POST" }),
+    onSettled: () => speicher.invalidateQueries({ queryKey: ["vorgaenge"] }),
   });
 }

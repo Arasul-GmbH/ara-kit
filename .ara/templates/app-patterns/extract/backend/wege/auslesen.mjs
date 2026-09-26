@@ -23,7 +23,8 @@
  * Die Wege, hinter `/apps/<id>/api/`:
  *
  *   GET  /auslesen                     kann das Gerät auslesen, und wenn nicht, warum
- *   GET  /dokumente/<id>/auslesungen   das Protokoll eines Dokuments
+ *   GET  /dokumente/<id>/auslesungen   das Protokoll eines Dokuments. Eines, das es
+ *                                      nicht gibt und nie gab: 404
  *   POST /dokumente/<id>/auslesen      auslesen lassen. Wartet, bis das Modell
  *                                      geantwortet hat: eine halbe Minute ist
  *                                      normal, mehrere Minuten sind es, wenn
@@ -52,7 +53,9 @@ export function auslesenWege({ kern, von }) {
     }
 
     if (teile[2] === "auslesungen" && anfrage.method === "GET") {
-      json(antwort, 200, { auslesungen: await kern.protokoll(id) });
+      const auslesungen = await kern.protokoll(id);
+      if (!auslesungen) json(antwort, 404, { fehler: `Dokument ${id} gibt es nicht.` });
+      else json(antwort, 200, { auslesungen });
       return true;
     }
 

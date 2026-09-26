@@ -7,42 +7,34 @@
 ## Clients: who sees what
 
 **Who gets in** the device decides, **what somebody sees inside** the app: the device knows no
-clients. **Clients are pattern 7**, under `.ara/templates/app-patterns/clients/`. **Take the
-pattern, do not design it anew**: from a description the separation comes out different every time.
-What it decides:
-
-- **A mapping, not a second login**: per name from the login header, which clients it sees.
-- **Only a name the app has seen can be mapped**, an app's key cannot list the device's accounts: a
-  new employee opens the app once, then the management can map them.
-- **The filter stands in the WHERE, not in a check afterwards.** The store is built per request for
-  one name, a foreign client's item does not exist in it, and without a name it sees nothing.
-- **Foreign means 404, not 403**, which would say that it exists. 403 only for the management.
-- **Management only for a role the contract names**, one a rule may name as decider
-  (`freigaben.rollen`) and the role header can carry (`koepfe.rollen`). If none fits, nobody
-  manages, and the app says so.
-- **The management sees items only of clients it is mapped to**, unless the plan says otherwise.
-- **Every table with client data carries the filter**, the log of a reading included: for patterns
-  2 and 6 pattern 8 does it.
-
-Checked with two accounts and two clients: every route once as the one who may see nothing.
+clients. **Clients are pattern 7**, under `.ara/templates/app-patterns/clients/`, its sheet says
+what it decides. **Take the pattern, do not design it anew**: from a description the separation
+comes out different every time. **Every table with client data carries the filter**, the log of a
+reading included: for patterns 2 and 6 pattern 8 does it. Checked with two accounts and two clients:
+every route once as the one who may see nothing.
 
 ## Approvals in a professional app
 
-The circle of deciders stands in `.ara/knowledge/platform-services.md`, "Permissions: a run stops,
-a human decides". **For a professional app pattern 7 returns the rule**: four eyes, the deciders
-are the accounts mapped to the item's client, without the submitter. If nobody remains, no run
-starts and the item says why. An account named there without the app released makes the device
-refuse the start with 400, and that sentence stands at the item. **A decision counts only from
-somebody still responsible**: the device keeps the circle from the start, so the app checks the
-decider against the mapping when catching up. Who decides when only one person is mapped to a
-client is a case for the plan.
+**Two questions belong in the plan: when is an item complete, and who approves.** An office releases
+a closing only when all documents are there, and only a partner releases it, not every colleague who
+sees the client. An item comes into being **in work**, documents come and go, and `einreichen(id)`
+in the scaffold's core asks `bereit` first: an item that is not complete stays in work without a
+run, with the sentence what is missing. **After submitting nothing changes**: `darfAendern` holds
+only in work, patterns 2, 7 and 8 answer 409 to attaching, changing, deleting and reading anew.
 
-**How the scaffold carries it.** It sends submitter and rule only when `arasul.json` says under
-`freigaben` that the device takes them: an older device refuses unknown fields. `regel` in the core
-returns the rule, a sentence instead starts no run; `zustaendig` checks a decision when catching up;
-`VIER_AUGEN` in `server.mjs` excludes the submitter. An item demanding a rule the device cannot take
-starts no run and says why: an approval anybody could see is worse than none. The flow gets the
-item's number and the submitter, nothing else.
+**Seeing is not deciding.** Pattern 7 marks at each mapping whether the account decides, `regel`
+returns four eyes and only the deciders of the item's client, without the submitter. If nobody
+remains, no run starts and the item says why. The circle stands in
+`.ara/knowledge/platform-services.md`, "Permissions: a run stops, a human decides". An account named
+there without the app released makes the device refuse the start with 400, that sentence stands at
+the item. **A decision counts only from somebody still deciding**: the device keeps the circle from
+the start, so the app checks the decider against the mapping when catching up.
+
+**How the scaffold carries it.** Submitter and rule go only when `arasul.json` says under `freigaben`
+that the device takes them. `regel` returns the rule, a sentence starts no run; `zustaendig` checks a
+decision; `VIER_AUGEN` in `server.mjs` excludes the submitter. The flow gets the item's number and
+the submitter, nothing else. After the approval the app asks for the flow's sentence until the run
+is finished.
 
 ## Reading documents and images
 
@@ -52,15 +44,13 @@ fill the fields. The way stands in `arasul.json` under `wege.dokument_auslesen`,
 
 **The model sees text, not the image.** A PDF with a text layer the device reads directly, a photo
 or a scanned PDF goes through its text recognition, and the answer says whether that ran. A
-crooked, blurred photo, handwriting, a stamp over the figure cost fields. Measured on 25.09.2026
-on the Orin, invented receipts as a PDF with a text layer and as a photo: six of six fields each.
+crooked, blurred photo, handwriting, a stamp over the figure cost fields.
 
 **The form of the answer and the way for an image stand in the contract.** `--contract` lists
 under "What `document/extract-structured` answers" every field with its type; `data` is an object
 or null, not checked against your schema. "An image to a model" says how the app hands a photo to
-an image model itself, in the scaffold `geraet.fragen` with `bilder`. On 26.09.2026 on the Orin, a
-fuel receipt as a photo: one image model six of six fields, text recognition five, another two. For photos the app names the model and
-measures both ways. **Promise no image understanding**, no handwriting, no photo of goods, before
+an image model itself, in the scaffold `geraet.fragen` with `bilder`. For a photo the app names the
+model and measures both ways: on the Orin one image model read six of six fields, another two. **Promise no image understanding**, no handwriting, no photo of goods, before
 you have seen it on the customer's device.
 
 **Which model reads, the answer says** (`model`), and when reading a document the app names none. **The field `modelle` in
@@ -87,8 +77,10 @@ retrieval**, in the plan and in the header of the file that writes the format. A
 blog serves for reading against and is named as such. A source that loads in the browser only:
 `.ara/knowledge/browser.md`.
 
-**Retention duties**: a receipt that has to stay for years gets no deletion (pattern 2 brings one,
-take it out). How long the device keeps its backups stands in the admin handbook on the device.
+**A CSV for Excel or the tax adviser** goes through `backend/kern/csv.mjs` of the scaffold: BOM,
+semicolon, decimal comma, and a cell beginning with `=`, `+`, `-`, `@`, tab or CR gets an apostrophe
+in front, so it stays text. **Retention duties**: a receipt that has to stay for years gets no
+deletion (pattern 2 brings one, take it out). How long the device keeps its backups stands in the admin handbook on the device.
 
 Whatever could not be checked, a check program not at hand, a column two sources spell differently,
 stands as an assumption in the plan. **Before switching live** a sample file goes to whoever

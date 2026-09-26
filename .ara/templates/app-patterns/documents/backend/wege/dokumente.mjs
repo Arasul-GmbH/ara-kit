@@ -32,7 +32,8 @@
  *                                  sobald das Muster Belege dabei ist
  *   GET    /dokumente/<id>/datei   die Bytes, mit ihrem Typ. Das ist die
  *                                  Quelle der Dokumentanzeige
- *   DELETE /dokumente/<id>         weg damit
+ *   DELETE /dokumente/<id>         weg damit. An einem eingereichten
+ *                                  Vorgang 409, wie das Anhängen
  *
  * **Roh und nicht als Formular.** Ein `multipart/form-data` braucht einen
  * Parser, und den hat Node nicht eingebaut. Eine Datei je Aufruf, die Bytes
@@ -116,14 +117,14 @@ export function dokumentWege({ kern, von }) {
         json(antwort, 413, { fehler: `Mehr als ${kern.grenzeBytes} Bytes nimmt diese App nicht an.` });
         return true;
       }
-      const { dokument, fehler } = await kern.ablegen({
+      const { dokument, fehler, status } = await kern.ablegen({
         name: dateiname(anfrage),
         art: typ(anfrage),
         inhalt,
         von: von(anfrage),
         vorgang: Number(new URL(anfrage.url, "http://app").searchParams.get("vorgang")) || null,
       });
-      if (fehler) json(antwort, 400, { fehler });
+      if (fehler) json(antwort, status || 400, { fehler });
       else json(antwort, 201, { dokument });
       return true;
     }
@@ -155,8 +156,9 @@ export function dokumentWege({ kern, von }) {
     }
 
     if (teile.length === 2 && anfrage.method === "DELETE") {
-      if (await kern.entfernen(id)) json(antwort, 200, { entfernt: id });
-      else json(antwort, 404, { fehler: `Dokument ${id} gibt es nicht.` });
+      const { status, fehler } = await kern.entfernen(id);
+      if (fehler) json(antwort, status, { fehler });
+      else json(antwort, 200, { entfernt: id });
       return true;
     }
 

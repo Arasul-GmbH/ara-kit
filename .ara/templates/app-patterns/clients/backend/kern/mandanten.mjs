@@ -19,11 +19,13 @@
  * verwaltet niemand, und die App sagt das, statt jedem die Verwaltung zu
  * öffnen.
  *
- * **Die Entscheider kommen aus der Zuordnung.** `regel` gibt für einen Vorgang
- * vier Augen und die Konten, die seinem Mandanten zugeordnet sind, ohne den,
+ * **Sehen und entscheiden sind zwei Dinge.** Jede Zuordnung sagt, ob das Konto
+ * den Mandanten nur sieht oder auch über seine Vorgänge entscheidet, der
+ * Partner einer Kanzlei etwa, nicht jeder Sachbearbeiter. `regel` gibt für
+ * einen Vorgang vier Augen und nur die Entscheider seines Mandanten, ohne den,
  * der eingereicht hat. Bleibt niemand, gibt sie den Satz, warum kein Lauf
- * startet. Das Gerät würde den Start dann mit 400 abweisen; die App sagt es
- * vorher und in ihren Worten.
+ * startet, und der Vorgang bleibt in Arbeit. Das Gerät würde den Start sonst
+ * mit 400 abweisen; die App sagt es vorher und in ihren Worten.
  */
 
 /** Wie lange ein gesehener Name nicht noch einmal geschrieben wird. */
@@ -100,7 +102,7 @@ export function mandanten({ ablage, verwaltung }) {
      * gesehen hat: einen Tippfehler hier sähe sonst niemand, und der Mensch
      * dahinter fände seine Mandanten nicht.
      */
-    async zuordnen(wer, { benutzer, mandant }) {
+    async zuordnen(wer, { benutzer, mandant, entscheidet = false }) {
       if (!darfVerwalten(wer)) return nichtVerwaltung();
       const name = String(benutzer || "").trim();
       const nummer = Number(mandant);
@@ -112,8 +114,8 @@ export function mandanten({ ablage, verwaltung }) {
         };
       }
       if (!(await ablage.mandant(nummer))) return { status: 404, fehler: "Diesen Mandanten gibt es nicht." };
-      const neu = await ablage.zuordnen({ benutzer: name, mandant: nummer, von: wer.benutzer });
-      return { status: neu ? 201 : 200, zuordnung: { benutzer: name, mandant: nummer } };
+      const neu = await ablage.zuordnen({ benutzer: name, mandant: nummer, von: wer.benutzer, entscheidet: entscheidet === true });
+      return { status: neu ? 201 : 200, zuordnung: { benutzer: name, mandant: nummer, entscheidet: entscheidet === true } };
     },
 
     async loesen(wer, { benutzer, mandant }) {
@@ -124,27 +126,28 @@ export function mandanten({ ablage, verwaltung }) {
 
     /**
      * Die Regel für die Freigabe eines Vorgangs: vier Augen, und entscheiden
-     * dürfen die Konten seines Mandanten ohne den Einreicher.
+     * dürfen die Entscheider seines Mandanten ohne den Einreicher. Wer den
+     * Mandanten nur sieht, entscheidet nicht.
      *
      * Ob ein Konto die App freigegeben hat, weiß die App nicht; das Gerät
      * prüft es beim Start und weist ab, wenn nicht. Der Satz steht dann am
      * Vorgang.
      */
     async regel(vorgang) {
-      const konten = (await ablage.zustaendige(vorgang.mandant)).filter((name) => name !== vorgang.von);
+      const konten = (await ablage.entscheider(vorgang.mandant)).filter((name) => name !== vorgang.von);
       if (!konten.length) {
         return (
-          `Für diesen Mandanten ist außer ${vorgang.von} niemand zugeordnet, und wer einreicht, entscheidet nicht. ` +
-          "Ein zweites Konto zuordnen, dann neu einreichen."
+          `Für diesen Mandanten entscheidet außer ${vorgang.von} niemand, und wer einreicht, entscheidet nicht. ` +
+          "Die Verwaltung markiert bei der Zuordnung, wer entscheidet; dann noch einmal einreichen."
         );
       }
       return { ohne_einreicher: true, entscheider: { konten } };
     },
 
-    /** Ist dieser Name für den Mandanten des Vorgangs zuständig, und ist er nicht der Einreicher? */
+    /** Entscheidet dieser Name für den Mandanten des Vorgangs, und ist er nicht der Einreicher? */
     async zustaendig(vorgang, name) {
       if (!name || name === vorgang.von) return false;
-      return (await ablage.zustaendige(vorgang.mandant)).includes(name);
+      return (await ablage.entscheider(vorgang.mandant)).includes(name);
     },
   };
 }

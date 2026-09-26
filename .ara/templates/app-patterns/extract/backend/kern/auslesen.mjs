@@ -91,9 +91,17 @@ export function auslesen({ dokumente, auslesungen, geraet, schema = SCHEMA, anwe
       return { kann: true, grund: null };
     },
 
-    /** Das Protokoll eines Dokuments, die neueste Auslesung oben. */
+    /**
+     * Das Protokoll eines Dokuments, die neueste Auslesung oben, oder `null`,
+     * wenn es für diesen Menschen kein solches Dokument gibt. Das Protokoll
+     * bleibt, wenn das Dokument geht; ein Dokument, das es nicht gibt und von
+     * dem nichts im Protokoll steht, ist ein 404 und keine leere Liste. Bis
+     * 0.41.0 antwortete der Weg für das Dokument eines fremden Mandanten 200.
+     */
     async protokoll(dokumentId) {
-      return await auslesungen.zumDokument(dokumentId);
+      const eintraege = await auslesungen.zumDokument(dokumentId);
+      if (eintraege.length) return eintraege;
+      return (await dokumente.eines(dokumentId)) ? [] : null;
     },
 
     /**

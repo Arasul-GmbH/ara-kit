@@ -3,7 +3,7 @@
  * und die Filterhilfe für jede andere Ablage.
  *
  * Liegt in einer App aus der Vorlage unter `backend/ablage/mandanten.mjs`. Die
- * Migration dazu ist `004-mandanten.sql`. Das SQL ist das von PostgreSQL, mit
+ * Migrationen dazu sind `004-mandanten.sql` und `006-entscheider.sql`. Das SQL ist das von PostgreSQL, mit
  * `$1` als Platzhalter; ohne Gerät übersetzt `db.mjs` für SQLite.
  *
  * **Die Trennung steht im WHERE, nicht in einer Prüfung danach.** Eine Liste,
@@ -37,7 +37,7 @@ function alsMandant(zeile) {
 }
 
 function alsZuordnung(zeile) {
-  return zeile ? { ...zeile, mandant: Number(zeile.mandant) } : null;
+  return zeile ? { ...zeile, mandant: Number(zeile.mandant), entscheidet: Number(zeile.entscheidet) === 1 } : null;
 }
 
 export function mandantAblage(db) {
@@ -92,19 +92,26 @@ export function mandantAblage(db) {
 
     async zuordnungen() {
       return (
-        await db.abfrage("SELECT benutzer, mandant, zugeordnet_von, seit FROM zuordnungen ORDER BY benutzer, mandant")
+        await db.abfrage("SELECT benutzer, mandant, zugeordnet_von, seit, entscheidet FROM zuordnungen ORDER BY benutzer, mandant")
       ).map(alsZuordnung);
     },
 
-    /** Zuordnen. Zurück kommt, ob die Zuordnung neu ist. */
-    async zuordnen({ benutzer, mandant, von }) {
-      return (
-        (await db.ausfuehren(
-          `INSERT INTO zuordnungen (benutzer, mandant, zugeordnet_von, seit) VALUES ($1, $2, $3, $4)
-           ON CONFLICT (benutzer, mandant) DO NOTHING`,
-          [benutzer, mandant, von, new Date().toISOString()]
-        )) > 0
+    /**
+     * Zuordnen, und sagen, ob dieses Konto hier entscheidet. Gibt es die
+     * Zuordnung schon, ändert sich nur das. Zurück kommt, ob sie neu ist.
+     */
+    async zuordnen({ benutzer, mandant, von, entscheidet = false }) {
+      const flagge = entscheidet ? 1 : 0;
+      const da = await db.eine("SELECT benutzer FROM zuordnungen WHERE benutzer = $1 AND mandant = $2", [benutzer, mandant]);
+      if (da) {
+        await db.ausfuehren("UPDATE zuordnungen SET entscheidet = $1 WHERE benutzer = $2 AND mandant = $3", [flagge, benutzer, mandant]);
+        return false;
+      }
+      await db.ausfuehren(
+        "INSERT INTO zuordnungen (benutzer, mandant, zugeordnet_von, seit, entscheidet) VALUES ($1, $2, $3, $4, $5)",
+        [benutzer, mandant, von, new Date().toISOString(), flagge]
       );
+      return true;
     },
 
     /** Eine Zuordnung lösen. Zurück kommt, ob es sie gab. */
@@ -112,11 +119,11 @@ export function mandantAblage(db) {
       return (await db.ausfuehren("DELETE FROM zuordnungen WHERE benutzer = $1 AND mandant = $2", [benutzer, mandant])) > 0;
     },
 
-    /** Wer diesem Mandanten zugeordnet ist, in fester Reihenfolge. */
-    async zustaendige(mandant) {
-      return (await db.abfrage("SELECT benutzer FROM zuordnungen WHERE mandant = $1 ORDER BY benutzer", [mandant])).map(
-        (zeile) => zeile.benutzer
-      );
+    /** Wer über die Vorgänge dieses Mandanten entscheidet, in fester Reihenfolge. Sehen allein reicht nicht. */
+    async entscheider(mandant) {
+      return (
+        await db.abfrage("SELECT benutzer FROM zuordnungen WHERE mandant = $1 AND entscheidet = 1 ORDER BY benutzer", [mandant])
+      ).map((zeile) => zeile.benutzer);
     },
   };
 }

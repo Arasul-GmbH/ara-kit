@@ -18,6 +18,8 @@
  *         name: NAME,
  *         regel: mandantenFall.regel,
  *         zustaendig: mandantenFall.zustaendig,
+ *         // Was fehlt, bevor eingereicht wird: true oder der Satz dazu.
+ *         bereit: () => true,
  *       }),
  *     angemeldet: (anfrage) => geraet.angemeldet(anfrage.headers),
  *   });
@@ -36,9 +38,17 @@
  *   GET    /zuordnungen       alle Mandanten, gesehenen Konten, Zuordnungen. Nur die Verwaltung
  *   POST   /zuordnungen       `{ benutzer, mandant }` zuordnen. Nur die Verwaltung
  *   DELETE /zuordnungen       `?benutzer=…&mandant=…` lösen. Nur die Verwaltung
- *   GET    /vorgaenge         die Vorgänge der eigenen Mandanten
- *   POST   /vorgaenge         `{ titel, text, mandant }`. Ein fremder Mandant: 404
- *   GET    /vorgaenge/<id>    ein Vorgang. Ein fremder: 404
+ *   GET    /vorgaenge                   die Vorgänge der eigenen Mandanten
+ *   POST   /vorgaenge                   `{ titel, text, mandant }` anlegen, in Arbeit.
+ *                                       Ein fremder Mandant: 404
+ *   GET    /vorgaenge/<id>              ein Vorgang. Ein fremder: 404
+ *   PUT    /vorgaenge/<id>              `{ titel, text }` ändern. Nach dem Einreichen 409
+ *   POST   /vorgaenge/<id>/einreichen   einreichen, wenn `bereit` ja sagt, sonst 409
+ *                                       mit dem Satz. Schon eingereicht: 409
+ *
+ * **Angelegt ist nicht eingereicht.** Ein Vorgang entsteht in Arbeit, Belege
+ * kommen dazu, und erst `einreichen` startet die Freigabe. Danach ändert sich
+ * nichts mehr an ihm, und jeder Weg, der es versucht, bekommt 409.
  *
  * **Jeder Name, der hier vorbeikommt, wird vermerkt**, auch auf einem Weg, den
  * diese Datei nicht bedient. Daraus wählt die Verwaltung beim Zuordnen.
@@ -127,7 +137,7 @@ export function mandantenWege({ mandanten, vorgaenge, angemeldet }) {
         json(antwort, 400, { fehler: "Ohne Titel gibt es keinen Vorgang." });
         return true;
       }
-      const vorgang = await kern.einreichen({
+      const vorgang = await kern.anlegen({
         titel,
         text: String(rumpf.text || "").trim().slice(0, 2000),
         von: wer.benutzer,
@@ -139,10 +149,32 @@ export function mandantenWege({ mandanten, vorgaenge, angemeldet }) {
     }
 
     const id = Number(teile[1]);
-    if (teile.length === 2 && verb === "GET" && Number.isInteger(id) && id > 0) {
+    const nummer = Number.isInteger(id) && id > 0;
+    if (teile.length === 2 && verb === "GET" && nummer) {
       const vorgang = await kern.holen(id);
       if (!vorgang) json(antwort, 404, { fehler: `Vorgang ${id} gibt es nicht.` });
       else json(antwort, 200, { vorgang });
+      return true;
+    }
+
+    if (teile.length === 2 && verb === "PUT" && nummer) {
+      const rumpf = await rumpfLesen(anfrage);
+      if (!rumpf) {
+        json(antwort, 400, { fehler: "Der Vorgang war nicht lesbar." });
+        return true;
+      }
+      antworten(
+        antwort,
+        await kern.aendern(id, {
+          titel: String(rumpf.titel || "").trim().slice(0, 200),
+          text: String(rumpf.text || "").trim().slice(0, 2000),
+        })
+      );
+      return true;
+    }
+
+    if (teile.length === 3 && teile[2] === "einreichen" && verb === "POST" && nummer) {
+      antworten(antwort, await kern.einreichen(id));
       return true;
     }
 
