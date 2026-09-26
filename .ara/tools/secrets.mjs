@@ -5,6 +5,7 @@
  *   node .ara/tools/secrets.mjs --show                 where they lie, which names, what is set
  *   node .ara/tools/secrets.mjs --set ARASUL_TOKEN     the value is asked for, not displayed
  *   node .ara/tools/secrets.mjs --store keychain       change the store
+ *   node .ara/tools/secrets.mjs --forget ARASUL_TOKEN  take a name out of the chosen store
  *
  * `--show` lists every name the kit assigns: the known credentials and every entry
  * a device file points at, so the administrator's start password too. Names, not
@@ -23,6 +24,7 @@
  *   node .ara/tools/secrets.mjs --show                 wo liegen sie, welche Namen, was ist gesetzt
  *   node .ara/tools/secrets.mjs --set ARASUL_TOKEN     Wert wird abgefragt, nicht angezeigt
  *   node .ara/tools/secrets.mjs --store keychain       Ablage wechseln
+ *   node .ara/tools/secrets.mjs --forget ARASUL_TOKEN  einen Namen aus der gewählten Ablage nehmen
  *
  * `--show` zählt jeden Namen auf, den das Kit vergibt: die bekannten Zugänge und
  * jeden Eintrag, auf den eine Geräteakte zeigt, also auch das Startpasswort des
@@ -53,6 +55,7 @@ import {
 import {
   activeStore,
   envNames,
+  forgetSecret,
   getSecret,
   hasSecret,
   keychainAvailable,
@@ -163,6 +166,35 @@ if (typeof arg.store === "string") {
         "  node .ara/tools/secrets.mjs --show   sagt, welche Namen in der anderen liegen"
     )
   );
+  process.exit(0);
+}
+
+// Vergessen. Ein Wert, der nicht mehr gilt, ist eine Falle: er sieht aus wie ein
+// Zugang, und der nächste Aufruf endet in einer 401. Herausgenommen wird nur aus
+// der gewählten Ablage; was in der anderen liegt, kann einem anderen Klon gehören.
+if (typeof arg.forget === "string") {
+  const name = arg.forget;
+  if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) {
+    fail(t("The name may only contain capital letters and _.", "Der Name darf nur Großbuchstaben und _ enthalten."));
+  }
+  const elsewhere = otherStore(name);
+  const note = elsewhere
+    ? t(
+        `\nIt also lies in the ${elsewhere === "env" ? ".env" : "keychain"}. That one stays: it does not apply here and may belong to another clone.`,
+        `\nEr liegt auch in ${elsewhere === "env" ? "der .env" : "dem Schlüsselbund"}. Der bleibt: er gilt hier nicht und kann einem anderen Klon gehören.`
+      )
+    : "";
+  let forgotten;
+  try {
+    forgotten = forgetSecret(name);
+  } catch (error) {
+    fail(t(`Could not remove ${name}: ${error.message}`, `Konnte ${name} nicht entfernen: ${error.message}`));
+  }
+  if (!forgotten) {
+    console.log(t(`${name} is not in: ${storeLabel(activeStore())}. Nothing removed.`, `${name} steht nicht in: ${storeLabel(activeStore())}. Nichts entfernt.`) + note);
+    process.exit(1);
+  }
+  console.log(t(`${name} removed from: ${storeLabel(forgotten)}.`, `${name} entfernt aus: ${storeLabel(forgotten)}.`) + note);
   process.exit(0);
 }
 

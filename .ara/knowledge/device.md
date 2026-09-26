@@ -604,6 +604,13 @@ not hang on it: that is what the kit key is for, and it comes from the device ov
 **Which names the store holds**, `node .ara/tools/secrets.mjs --show` says. There stands the entry
 with the start password too, with the device next to it. Values never stand there.
 
+**An entry that no longer holds goes out**, it does not stay as a trap that ends in a 401:
+`node .ara/tools/secrets.mjs --forget <entry>`, for the `.env` and the keychain alike. Only the
+chosen store is touched; if the name also lies in the other one, the tool says so and leaves it,
+it may belong to another clone. The value is gone afterwards, so this is level 3: name the entry
+and what hangs on it, and wait for the yes. A revoked kit key goes with `--revoke-key`, which
+forgets it itself.
+
 ### Route and body stand in the artifact
 
 What you then call with the session does not stand in the kit but in the artifact. The mirror brings
