@@ -110,7 +110,7 @@ import {
   validLine,
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
-import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, releaseLines } from "./lib/appways.mjs";
+import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -3392,6 +3392,11 @@ check("Der Bau nimmt das Paket und lässt die Arbeit daran liegen", () => {
 
     const run = tool("app.mjs", ["--app", name, "--build", "--no-plan"]);
     assert(run.status === 0, `Bau fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    // Der Bau sagt, dass die Designprüfung lief und worüber, auch ohne Befund.
+    assert(
+      /(Design check|Designprüfung): 1 (file|Datei) .*(no finding|kein Befund)/.test(run.stdout),
+      `der Bau sagt nicht, dass die Designprüfung lief: ${run.stdout}`
+    );
     const build = join(dir, "build");
     for (const datei of ["app.json", "frontend/index.html", "flows/probe.md"]) {
       assert(existsSync(join(build, datei)), `im Paket fehlt: ${datei}`);
@@ -3555,7 +3560,16 @@ const VORLAGE_KONTRAKT = {
     { verb: "GET", pfad: "/api/v1/external/flows/runs/:id", was: "Einen Lauf lesen" },
     { verb: "GET", pfad: "/api/v1/external/freigaben", was: "Freigaben dieser App" },
     { verb: "POST", pfad: "/api/v1/external/document/extract-structured", was: "Ein Dokument auslesen" },
+    { verb: "POST", pfad: "/api/v1/external/llm/chat", was: "Ein Modell fragen" },
   ],
+  // Wer einen Modellaufruf ausgelöst hat, seit dem 26.09.2026. Auch diese
+  // Kopfzeile heißt hier anders als am Orin: eine Vorlage, die sie fest im
+  // Quelltext trägt, reicht hier niemanden weiter.
+  protokoll: {
+    wege: ["llm/chat", "document/analyze", "document/extract-structured", "v1/chat/completions", "v1/embeddings"],
+    einreicher: { kopf: "x-geraet-fuer", feld: "einreicher", feld_openai: "user" },
+    regeln: ["Jeder Modellaufruf steht im Protokoll des Geraets."],
+  },
 };
 
 /** Dasselbe Gerät vor dem 25.09.2026: es kennt `freigaben` nicht und weist jedes unbekannte Feld ab. */
@@ -3728,23 +3742,23 @@ await checkAsync("Ohne Arasul entscheidet niemand, und die App sagt es", async (
 /** Der Ordner der Muster, und die Vorlage daneben. */
 const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
 
-check("Das Wissen kennt sieben Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+check("Das Wissen kennt acht Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
-  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt sieben Muster, und
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt acht Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
   // Seit 0.37.0 ist das Blatt der Überblick, und das Blatt jedes Musters liegt
   // neben seinem Code: gelesen wird nur das, das der Plan nimmt.
   for (const [blatt, endung] of [[".ara/knowledge/app-patterns.md", ".md"], [".ara/knowledge/app-patterns.de.md", ".de.md"]]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
-    for (const nummer of [1, 2, 3, 4, 5, 6, 7]) {
+    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8]) {
       assert(new RegExp(`^\\| ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
     assert(pfade.length >= 7, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
     for (const pfad of pfade) assert(existsSync(join(ROOT, pfad)), `${blatt} nennt ${pfad}, die Datei fehlt`);
     const blaetter = pfade.filter((pfad) => pfad.endsWith(`/README${endung}`));
-    assert(blaetter.length === 6, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind sechs`);
+    assert(blaetter.length === 7, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind sieben`);
     // Was das Blatt der Dokumente über die Bibliothek sagt, steht so in der Bibliothek.
     const dokumente = readFileSync(join(PATTERNS, "documents", `README${endung}`), "utf8");
     for (const wort of ["quelle", "art", "hoehe", "pdf-dateien", "Dokumentanzeige", "Dateiablage"]) {
@@ -3762,7 +3776,7 @@ check("Das Wissen kennt sieben Muster jenseits des Formulars, und jeder Verweis 
   ]) {
     assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
   }
-  return "sieben Muster, beide Fassungen, Befehl, Prüfliste und --new";
+  return "acht Muster, beide Fassungen, Befehl, Prüfliste und --new";
 });
 
 check("Die Vorlage trägt die Dokumentanzeige, und das Muster Dokumente benutzt sie richtig", () => {
@@ -3960,9 +3974,10 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
         schema: JSON.parse(formular.get("schema") || "null"),
         anweisung: formular.get("instructions"),
         modell: formular.get("model"),
+        fuer: anfrage.headers[VORLAGE_KONTRAKT.protokoll.einreicher.kopf] ?? null,
       });
       if (modus === "fehler") return json(500, { success: false, error: "Client disconnected" });
-      const gemeinsam = { model: "probe-modell:1b", processing_time_ms: 1234, metadata: { ocr_used: true }, char_count: 321 };
+      const gemeinsam = { model: "probe-modell:1b", processing_time_ms: 1234, metadata: { ocr_used: true }, char_count: 321, job_id: "auftrag-1" };
       if (modus === "roh") return json(200, { success: true, data: null, raw_response: "Das kann ich nicht lesen.", ...gemeinsam });
       return json(200, {
         success: true,
@@ -4064,6 +4079,13 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
     assert(ankunft.name === "Quittung Büro.png" && ankunft.bytes?.equals(bild), `die Datei kam am Gerät anders an: ${ankunft.name}`);
     assert(ankunft.schema?.required?.includes("belegdatum") && ankunft.anweisung, "Schema oder Anweisung kamen am Gerät nicht an");
     assert(ankunft.modell === null, "die App nennt ein Modell, statt die Vorgabe des Geräts zu nehmen");
+    // Für wen gelesen wurde, kommt am Gerät in der Kopfzeile aus `protokoll`
+    // an, mit denselben Bytes, die die Plattform der App gegeben hat.
+    assert(
+      ankunft.fuer === Buffer.from("Jürgen", "utf8").toString("latin1"),
+      `der Mensch kam am Gerät nicht in der Kopfzeile aus dem Kontrakt an: ${JSON.stringify(ankunft.fuer)}`
+    );
+    assert(erste.auftrag === "auftrag-1", `der Auftrag des Geräts steht nicht an der Auslesung: ${erste.auftrag}`);
 
     modus = "roh";
     r = await ruf(`/dokumente/${id}/auslesen`, { method: "POST" });
@@ -4091,6 +4113,73 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
     app?.kill("SIGTERM");
     geraet.close();
     rmSync(paket, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Die Vorlage nennt jedem Modellaufruf seinen Menschen, wie der Kontrakt es sagt, und sonst keinem Weg", async () => {
+  // Das Gerät protokolliert jeden Modellaufruf einer App, den Menschen aber nur,
+  // wenn die App ihn nennt. Geprüft an `arasul.mjs` der Vorlage selbst, gegen
+  // ein gespieltes Gerät, dessen Kopfzeile anders heißt als am Orin.
+  const { geraet: anschluss } = await import(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"));
+  const gesehen = [];
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const rumpf = Buffer.concat(teile);
+      gesehen.push({ weg: url.pathname, fuer: anfrage.headers["x-geraet-fuer"] ?? null, roh: rumpf });
+      antwort.writeHead(200, { "content-type": "application/json" });
+      if (url.pathname.endsWith("/llm/chat")) {
+        return antwort.end(JSON.stringify({ success: true, response: "Ein Satz.", model: "probe-modell:1b", job_id: "auftrag-9", processing_time_ms: 5 }));
+      }
+      if (url.pathname.endsWith("/document/extract-structured")) {
+        return antwort.end(JSON.stringify({ success: true, data: { a: 1 }, model: "probe-modell:1b", job_id: "auftrag-8" }));
+      }
+      antwort.end(JSON.stringify({ data: { run_id: 3 } }));
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    const umgebung = { ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest" };
+    const vereinbarung = JSON.parse(arrangementFile(appArrangement(VORLAGE_KONTRAKT, { device: "selbsttest", date: today() })));
+    const g = anschluss(vereinbarung, umgebung, { name: "Probe", flow: "freigabe" });
+    const roh = Buffer.from("Jürgen", "utf8").toString("latin1");
+
+    const gelesen = await g.auslesen({ datei: Buffer.from("%PDF-1.4"), name: "a.pdf", art: "application/pdf", schema: { type: "object" }, anweisung: "x", nutzer: "Jürgen" });
+    assert(gelesen.felder?.a === 1 && gelesen.auftrag === "auftrag-8", `das Auslesen kam nicht an: ${JSON.stringify(gelesen)}`);
+    assert(g.kannFragen(), "die Vorlage sieht den Weg zu einem Modell nicht, obwohl das Gerät ihn nennt");
+    const gefragt = await g.fragen({ prompt: "Wie heißt das?", bilder: ["aGFsbG8="], nutzer: "Jürgen" });
+    assert(gefragt.antwort === "Ein Satz." && gefragt.auftrag === "auftrag-9" && gefragt.modell === "probe-modell:1b", `die Frage kam nicht an: ${JSON.stringify(gefragt)}`);
+    const frage = JSON.parse(gesehen[1].roh.toString("utf8"));
+    assert(frage.images?.[0] === "aGFsbG8=" && !("model" in frage), `Bild oder Modell gingen anders an das Gerät: ${JSON.stringify(frage)}`);
+    await g.flowStarten({ vorgang: "1" }, { einreicher: "Jürgen" });
+
+    assert(gesehen[0].fuer === roh, `beim Auslesen fehlte der Mensch oder kam verändert an: ${gesehen[0].fuer}`);
+    assert(gesehen[1].fuer === roh, `bei der Frage an ein Modell fehlte der Mensch: ${gesehen[1].fuer}`);
+    assert(gesehen[2].fuer === null, "der Start eines Laufs bekam die Kopfzeile, obwohl er kein Modellaufruf ist");
+
+    // Ohne `nutzer` geht keine Kopfzeile mit; der Aufruf steht dann ohne Menschen im Protokoll.
+    await g.fragen({ prompt: "Ohne" });
+    assert(gesehen[3].fuer === null, "ohne Namen ging trotzdem eine Kopfzeile mit");
+
+    // Für einen eigenen Aufruf, etwa an `/v1`: Kopfzeile und Feld aus der Vereinbarung.
+    const fuer = g.fuer("Jürgen");
+    assert(fuer.kopfzeilen["x-geraet-fuer"] === roh && fuer.openai.user === "Jürgen", `fuer() nennt nicht, was der Kontrakt sagt: ${JSON.stringify(fuer)}`);
+
+    // Ein Gerät vor dem 26.09.2026 nennt kein `protokoll`: dann geht keine Kopfzeile mit.
+    const { protokoll, ...ohneProtokoll } = VORLAGE_KONTRAKT;
+    const alt = anschluss(JSON.parse(arrangementFile(appArrangement(ohneProtokoll, {}))), umgebung, { name: "Probe", flow: "freigabe" });
+    await alt.fragen({ prompt: "Alt", nutzer: "Jürgen" });
+    assert(gesehen[4].fuer === null, "ein Gerät ohne `protokoll` bekam eine Kopfzeile, die es nicht erwartet");
+    assert(JSON.stringify(alt.fuer("Jürgen")) === JSON.stringify({ kopfzeilen: {}, openai: {} }), "fuer() erfindet ohne `protokoll` Namen");
+
+    // Und der Name der Kopfzeile steht nirgends in der Vorlage: er kommt aus der Vereinbarung.
+    const quelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"), "utf8");
+    assert(!/x-arasul-user/i.test(quelle.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")), "die Vorlage trägt den Namen der Kopfzeile im Code");
+    return "Auslesen und Frage mit dem Menschen in denselben Bytes, Lauf ohne, ohne Namen ohne, fuer() für /v1, altes Gerät ohne";
+  } finally {
+    geraet.close();
   }
 });
 
@@ -4313,6 +4402,197 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       rmSync(kopie, { recursive: true, force: true });
     }
     return "zwei Konten, zwei Mandanten, fremder Vorgang 404, Verwaltung nur für die Rolle aus dem Kontrakt, Entscheider aus der Zuordnung ohne Einreicher, fremde Entscheidung zählt nicht, jede Abfrage gefiltert";
+  } finally {
+    app?.kill("SIGTERM");
+    geraet.close();
+    rmSync(paket, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant, ein Beleg hängt am Vorgang", async () => {
+  // Die Muster 2, 6 und 7 zusammen, so wie das Blatt es sagt: die Vorlage,
+  // darüber die drei, darüber dieses, die Zeilen aus den Köpfen der Wege in
+  // server.mjs. Das Gerät ist gespielt, seine Kopfzeilen heißen anders als am Orin.
+  const kontrakt = {
+    ...VORLAGE_KONTRAKT,
+    koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["leitung", "team"] },
+    freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["leitung"] },
+  };
+  const paket = mkdtempSync(join(tmpdir(), "ara-belege-"));
+  let app = null;
+  const gelesen = [];
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (anfrage.headers["x-arasul-app-key"] !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
+      if (url.pathname === "/api/v1/external/document/extract-structured") {
+        gelesen.push(anfrage.headers[kontrakt.protokoll.einreicher.kopf] ?? null);
+        return json(200, { success: true, data: { belegdatum: "2026-09-01", betrag_brutto: 12.5, aussteller: "Probe" }, model: "probe-modell:1b", job_id: `auftrag-${gelesen.length}` });
+      }
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/flows/freigabe/run") return json(202, { data: { run_id: 1 } });
+      if (url.pathname === "/api/v1/external/freigaben") return json(200, { data: { freigaben: [] } });
+      if (url.pathname.startsWith("/api/v1/external/flows/runs/")) return json(200, { data: { status: "wartend" } });
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
+    for (const muster of ["documents", "extract", "clients", "receipts"]) cpSync(join(PATTERNS, muster, "backend"), paket, { recursive: true });
+    // Die Zeilen aus den Köpfen der Wege, genau so eingesetzt.
+    const kopfzeilen = (datei, anfang) => {
+      const zeilen = readFileSync(join(PATTERNS, datei), "utf8")
+        .split("\n")
+        .filter((zeile) => zeile.startsWith(" *   "))
+        .map((zeile) => zeile.slice(5));
+      const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
+      const beginn = zeilen.findIndex((zeile) => zeile.startsWith(anfang));
+      const ende = zeilen.findIndex((zeile, i) => i > beginn && zeile === "});");
+      assert(beginn >= 0 && ende > beginn, `der Kopf von ${datei} nennt die Zeilen nicht mehr`);
+      return { importe, aufbau: zeilen.slice(beginn, ende + 1).join("\n") + "\n" };
+    };
+    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall");
+    const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
+    const server = join(paket, "server.mjs");
+    let quelle = readFileSync(server, "utf8");
+    for (const [alt, neu] of [
+      [
+        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
+        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe,
+      ],
+      [
+        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
+        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau,
+      ],
+      [
+        '  if (pfad === "/vorgaenge" && anfrage.method === "GET") {',
+        '  if (await belege(anfrage, antwort, pfad)) return;\n  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {',
+      ],
+    ]) {
+      assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
+      quelle = quelle.replace(alt, neu);
+    }
+    writeFileSync(server, quelle);
+    writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
+
+    app = spawn("node", [server], {
+      env: {
+        ...process.env,
+        PORT: "0",
+        ARASUL_APP_NAME: "Probe",
+        APP_DATEN: join(paket, "daten"),
+        ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`,
+        ARASUL_APP_KEY: "aras_selbsttest",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let ausgabe = "";
+    let fehlerausgabe = "";
+    app.stderr.on("data", (stueck) => (fehlerausgabe += String(stueck)));
+    const basis = await new Promise((fertig, gescheitert) => {
+      const zeit = setTimeout(() => gescheitert(new Error(`die App hat nicht gestartet: ${fehlerausgabe}`)), 10_000);
+      app.stdout.on("data", (stueck) => {
+        ausgabe += String(stueck);
+        const treffer = ausgabe.match(/auf (\d+)/);
+        if (treffer) {
+          clearTimeout(zeit);
+          fertig(`http://127.0.0.1:${treffer[1]}`);
+        }
+      });
+    });
+    await new Promise((fertig) => setTimeout(fertig, 300));
+    assert(/005-belege\.sql/.test(ausgabe), `die Migration der Belege lief nicht: ${ausgabe} ${fehlerausgabe}`);
+
+    const alsKopf = (text) => Buffer.from(text, "utf8").toString("latin1");
+    const ruf = async (wer, rolle, pfad, optionen = {}) => {
+      const kopf = { ...(optionen.headers || {}) };
+      if (wer) kopf[kontrakt.koepfe.benutzer] = alsKopf(wer);
+      if (rolle) kopf[kontrakt.koepfe.rolle] = rolle;
+      const antwort = await fetch(`${basis}${pfad}`, { ...optionen, headers: kopf });
+      const art = antwort.headers.get("content-type") || "";
+      return { code: antwort.status, daten: art.includes("json") ? await antwort.json() : Buffer.from(await antwort.arrayBuffer()) };
+    };
+    const post = (wer, rolle, pfad, rumpf) =>
+      ruf(wer, rolle, pfad, { method: "POST", body: JSON.stringify(rumpf), headers: { "content-type": "application/json" } });
+    const hochladen = (wer, pfad, bytes) =>
+      ruf(wer, "team", pfad, { method: "POST", body: bytes, headers: { "content-type": "application/pdf", "x-dateiname": encodeURIComponent("Quittung Müller.pdf") } });
+
+    for (const wer of ["Änne", "bernd", "carla"]) await ruf(wer, "team", "/mandanten");
+    const a = (await post("chefin", "leitung", "/mandanten", { name: "Müller GmbH" })).daten.mandant.id;
+    const b = (await post("chefin", "leitung", "/mandanten", { name: "Schmidt KG" })).daten.mandant.id;
+    for (const [wer, mandant] of [["Änne", a], ["carla", a], ["bernd", b]]) await post("chefin", "leitung", "/zuordnungen", { benutzer: wer, mandant });
+    let r = await post("Änne", "team", "/vorgaenge", { titel: "Tankbeleg", mandant: a });
+    assert(r.code === 201, `Vorgang in A: ${JSON.stringify(r.daten)}`);
+    const va = r.daten.vorgang.id;
+
+    // Ein Beleg hängt an einem Vorgang und erbt dessen Mandanten.
+    const pdf = Buffer.from("%PDF-1.4 Probe");
+    r = await hochladen("Änne", "/dokumente", pdf);
+    assert(r.code === 400 && /Vorgang/.test(r.daten.fehler), `ein Beleg ohne Vorgang wurde angenommen: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await hochladen("bernd", `/dokumente?vorgang=${va}`, pdf);
+    assert(r.code === 404, `bernd hängt einen Beleg an einen fremden Vorgang: ${r.code}`);
+    r = await hochladen("Änne", `/dokumente?vorgang=${va}`, pdf);
+    assert(r.code === 201 && r.daten.dokument.mandant === a && r.daten.dokument.vorgang === va, `der Beleg erbt Vorgang und Mandant nicht: ${JSON.stringify(r.daten)}`);
+    const id = r.daten.dokument.id;
+
+    r = await ruf("Änne", "team", `/vorgaenge/${va}/belege`);
+    assert(r.code === 200 && r.daten.belege.length === 1 && r.daten.belege[0].name === "Quittung Müller.pdf", `die Belege am Vorgang fehlen: ${JSON.stringify(r.daten)}`);
+    r = await ruf("bernd", "team", `/vorgaenge/${va}/belege`);
+    assert(r.code === 404, `bernd sieht die Belege eines fremden Vorgangs: ${r.code}`);
+
+    // Der fremde Mandant sieht weder Liste noch Bytes noch Auslesung.
+    r = await ruf("bernd", "team", "/dokumente");
+    assert(r.code === 200 && r.daten.dokumente.length === 0, `bernd sieht Dokumente von A: ${JSON.stringify(r.daten)}`);
+    r = await ruf("carla", "team", "/dokumente");
+    assert(r.daten.dokumente.length === 1, "carla sieht das Dokument ihres Mandanten nicht");
+    r = await ruf("bernd", "team", `/dokumente/${id}/datei`);
+    assert(r.code === 404, `bernd bekommt die Bytes eines fremden Belegs: ${r.code}`);
+    r = await ruf("carla", "team", `/dokumente/${id}/datei`);
+    assert(r.code === 200 && Buffer.compare(r.daten, pdf) === 0, "carla bekommt die Bytes ihres Belegs nicht");
+    r = await ruf("bernd", "team", `/dokumente/${id}/auslesen`, { method: "POST" });
+    assert(r.code === 404 && gelesen.length === 0, `bernd lässt einen fremden Beleg auslesen: ${r.code}`);
+
+    r = await ruf("Änne", "team", `/dokumente/${id}/auslesen`, { method: "POST" });
+    assert(r.code === 201 && r.daten.auslesung.mandant === a && r.daten.auslesung.auftrag === "auftrag-1", `die Auslesung trägt Mandant oder Auftrag nicht: ${JSON.stringify(r.daten)}`);
+    assert(gelesen[0] === alsKopf("Änne"), `das Gerät bekam den Menschen zur Auslesung nicht: ${gelesen[0]}`);
+    r = await ruf("bernd", "team", `/dokumente/${id}/auslesungen`);
+    assert(r.code === 200 && r.daten.auslesungen.length === 0, `bernd sieht das Protokoll eines fremden Belegs: ${JSON.stringify(r.daten)}`);
+    r = await ruf("bernd", "team", `/dokumente/${id}`, { method: "DELETE" });
+    assert(r.code === 404, `bernd entfernt einen fremden Beleg: ${r.code}`);
+
+    // Das Protokoll bleibt, wenn der Beleg geht, und bleibt getrennt.
+    r = await ruf("Änne", "team", `/dokumente/${id}`, { method: "DELETE" });
+    assert(r.code === 200, "Änne kann ihren Beleg nicht entfernen");
+    r = await ruf("carla", "team", `/dokumente/${id}/auslesungen`);
+    assert(r.daten.auslesungen.length === 1, "nach dem Entfernen fehlt das Protokoll für den eigenen Mandanten");
+    r = await ruf("bernd", "team", `/dokumente/${id}/auslesungen`);
+    assert(r.daten.auslesungen.length === 0, "nach dem Entfernen sieht der fremde Mandant das Protokoll");
+
+    // Jede lesende Abfrage der beiden Ablagen trägt den Filter.
+    for (const [datei, mindestens] of [["dokumente.mjs", 5], ["auslesungen.mjs", 1]]) {
+      const text = readFileSync(join(PATTERNS, "receipts", "backend", "ablage", datei), "utf8");
+      const abfragen = [...text.matchAll(/`((?:SELECT|DELETE)[^`]*)`/g)].map((m) => m[1]);
+      assert(abfragen.length >= mindestens, `${datei} fragt nur ${abfragen.length} Mal`);
+      for (const sql of abfragen) assert(/nurZugeordnete/.test(sql), `${datei}: eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+    }
+
+    // In eine App aus der Vorlage gelegt, hält die Oberfläche aller vier den Standard.
+    const kopie = mkdtempSync(join(tmpdir(), "ara-muster-"));
+    try {
+      cpSync(join(ROOT, ".ara", "templates", "app"), kopie, { recursive: true });
+      for (const muster of ["documents", "extract", "clients", "receipts"]) cpSync(join(PATTERNS, muster), kopie, { recursive: true });
+      const befunde = standardFindings(kopie, { scaffold: true });
+      assert(befunde.length === 0, `das Muster Belege steht neben der Bibliothek: ${befunde.join(" | ")}`);
+    } finally {
+      rmSync(kopie, { recursive: true, force: true });
+    }
+    return "Beleg ohne Vorgang 400, fremder Vorgang 404, Mandant vom Vorgang, fremde Liste leer, Bytes, Auslesen und Entfernen 404, Protokoll bleibt getrennt, der Mensch geht ans Gerät";
   } finally {
     app?.kill("SIGTERM");
     geraet.close();
@@ -4966,6 +5246,11 @@ check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wir
   assert(voll.wege.dokument_auslesen === null && voll.unangeboten.includes("dokument_auslesen"), "ein Weg, den das Gerät nicht anbietet, wurde erfunden oder als Mangel gezählt");
   assert(voll.koepfe.benutzer === KONTRAKT.koepfe.benutzer && voll.koepfe.rolle === KONTRAKT.koepfe.rolle, "die Namen der Kopfzeilen kommen nicht aus dem Kontrakt");
   assert(voll.freigaben.einreicher === false && voll.daten === null, "ein Gerät ohne `freigaben` und `daten` bekommt sie angedichtet");
+  assert(voll.protokoll === null, "ein Gerät ohne `protokoll` bekommt eine Kopfzeile für den Menschen angedichtet");
+  assert(
+    arrangementLines(voll).some((zeile) => /(does not say how a model call names its human|sagt nicht, wie ein Modellaufruf seinen Menschen nennt)/.test(zeile)),
+    "die Vereinbarung sagt nicht, dass dieses Gerät keinen Menschen zum Modellaufruf nimmt"
+  );
 
   // Ein Gerät vom 25.09.2026: Datenbank, Einreicher, Regel, Auslesen.
   const neu = appArrangement(
@@ -4982,6 +5267,16 @@ check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wir
   assert(neu.freigaben.einreicher && neu.freigaben.regel, "Einreicher und Regel werden am Schema des Starts nicht erkannt");
   assert(neu.daten?.je_stand === true, "`daten` wird nicht gelesen");
   assert(neu.wege.dokument_auslesen?.pfad.endsWith("/document/extract-structured"), "der Weg zum Auslesen fehlt, obwohl das Gerät ihn nennt");
+
+  // Ein Gerät vom 26.09.2026: es nennt, wie ein Modellaufruf seinen Menschen nennt.
+  const mitProtokoll = appArrangement(VORLAGE_KONTRAKT, {});
+  assert(
+    JSON.stringify(mitProtokoll.protokoll) ===
+      JSON.stringify({ wege: VORLAGE_KONTRAKT.protokoll.wege, kopf: "x-geraet-fuer", feld: "einreicher", feld_openai: "user" }),
+    `\`protokoll\` kommt nicht so aus dem Kontrakt, wie er es nennt: ${JSON.stringify(mitProtokoll.protokoll)}`
+  );
+  assert(mitProtokoll.wege.modell_fragen?.pfad.endsWith("/llm/chat"), "der Weg, ein Modell zu fragen, fehlt, obwohl das Gerät ihn nennt");
+  assert(arrangementLines(mitProtokoll).some((zeile) => zeile.includes("x-geraet-fuer")), "die Vereinbarung nennt die Kopfzeile für den Menschen nicht");
 
   // Ein Gerät, das nichts davon verspricht: das Kit erfindet nichts, es zählt
   // auf, was fehlt, und jeder Weg steht als null in der Datei.
@@ -9203,9 +9498,158 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
     const woerter = verdaechtig(deutscheZweige(readFileSync(pfad, "utf8")));
     if (woerter.length) funde.push(`${relative(ROOT, pfad)}: ${[...new Set(woerter)].join(", ")}`);
   }
+
+  // Die Vorlage der App und die Muster: deutscher Inhalt steht dort in
+  // Kommentaren, in Sätzen zwischen Anführungszeichen und als Text zwischen
+  // JSX-Tags. Bezeichner bleiben ASCII (`geraet`, `vorgaenge`), und ein Wort,
+  // das im Code als Name vorkommt, ist ein Name und kein Ersatz. Die Kopie der
+  // Bibliothek unter `marken/` gehört dem Produkt und nicht dem Kit.
+  const quellen = [
+    ...sammeln(join(ROOT, ".ara", "templates", "app"), (n) => /\.(mjs|ts|tsx|sql|css|json|md|html)$|^Dockerfile$/.test(n)),
+    ...sammeln(join(ROOT, ".ara", "templates", "app-patterns"), (n) => /\.(mjs|ts|tsx|sql|css|json)$|^Dockerfile$/.test(n)),
+  ].filter((pfad) => !/[\\/](marken|node_modules|dist)[\\/]/.test(pfad) && !pfad.endsWith("package-lock.json"));
+  const namen = new Set();
+  const stuecke = quellen.map((pfad) => {
+    const quelle = readFileSync(pfad, "utf8");
+    const bereiche = prosaBereiche(quelle, pfad);
+    let code = quelle;
+    for (const [von, bis] of bereiche) code = code.slice(0, von) + " ".repeat(bis - von) + code.slice(bis);
+    for (const name of code.match(/[a-z_][a-z0-9_]*/g) || []) namen.add(name);
+    return { pfad, text: bereiche.map(([von, bis]) => quelle.slice(von, bis)).join("\n") };
+  });
+  for (const { pfad, text } of stuecke) {
+    const woerter = verdaechtig(text).filter((wort) => {
+      if (wort === wort.toLowerCase() && namen.has(wort)) return false;
+      // In Großbuchstaben ist SS richtig, nur ae, oe, ue wären Ersatz.
+      if (wort === wort.toUpperCase()) return /(?<![AEOUQ])(AE|OE|UE)/.test(wort);
+      return true;
+    });
+    if (woerter.length) funde.push(`${relative(ROOT, pfad)}: ${[...new Set(woerter)].join(", ")}`);
+  }
+
   assert(funde.length === 0, `ASCII-Ersatz statt Umlaut:\n    ${funde.join("\n    ")}`);
-  return `${blaetter.length} Blätter, ${werkzeuge.length} Werkzeuge`;
+  return `${blaetter.length} Blätter, ${werkzeuge.length} Werkzeuge, ${quellen.length} Dateien der Vorlage und der Muster`;
 });
+
+/**
+ * Wo in einer Datei der Vorlage deutscher Inhalt steht, als Bereiche
+ * `[von, bis]`: Kommentare, Zeichenketten mit Leerraum (ohne SQL und ohne
+ * `${}`-Einschübe), Text zwischen JSX-Tags, in Markdown alles außerhalb von
+ * Codeblöcken. Codespannen in Backticks bleiben draußen: dort stehen Namen.
+ */
+function prosaBereiche(quelle, pfad) {
+  const raus = [];
+  const ohneSpannen = (von, bis) => {
+    let anfang = von;
+    let offen = false;
+    for (let i = von; i < bis; i++) {
+      if (quelle[i] === "\n") offen = false;
+      if (quelle[i] !== "`") continue;
+      if (!offen) raus.push([anfang, i]);
+      else anfang = i + 1;
+      offen = !offen;
+    }
+    if (!offen) raus.push([anfang, bis]);
+  };
+  const name = pfad.split(/[\\/]/).pop();
+  const muster = (re, vorn, hinten) => {
+    for (const m of quelle.matchAll(re)) ohneSpannen(m.index + vorn, m.index + m[0].length - hinten);
+    return raus;
+  };
+  if (name.endsWith(".sql")) return muster(/--.*/g, 2, 0);
+  if (name.endsWith(".css")) return muster(/\/\*[\s\S]*?\*\//g, 2, 2);
+  if (name === "Dockerfile") return muster(/#.*/g, 1, 0);
+  if (name.endsWith(".html")) return muster(/<!--[\s\S]*?-->/g, 4, 3);
+  if (name.endsWith(".json")) {
+    for (const m of quelle.matchAll(/"((?:[^"\\]|\\.)*)"/g)) {
+      if (/\s/.test(m[1]) && !/--|&&/.test(m[1])) ohneSpannen(m.index + 1, m.index + m[0].length - 1);
+    }
+    return raus;
+  }
+  if (name.endsWith(".md")) {
+    let pos = 0;
+    for (const m of quelle.matchAll(/^```[\s\S]*?^```/gm)) {
+      ohneSpannen(pos, m.index);
+      pos = m.index + m[0].length;
+    }
+    ohneSpannen(pos, quelle.length);
+    return raus;
+  }
+  const code = [];
+  let codeAnfang = 0;
+  let letztes = "";
+  let i = 0;
+  while (i < quelle.length) {
+    const c = quelle[i];
+    const d = quelle[i + 1];
+    if (c === "/" && (d === "/" || d === "*")) {
+      code.push([codeAnfang, i]);
+      const ende = d === "/" ? quelle.indexOf("\n", i) : quelle.indexOf("*/", i + 2);
+      const bis = ende < 0 ? quelle.length : ende;
+      ohneSpannen(i + 2, bis);
+      i = d === "/" ? bis : bis + 2;
+      codeAnfang = i;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") {
+      code.push([codeAnfang, i]);
+      let j = i + 1;
+      let tiefe = 0;
+      let start = i + 1;
+      const teile = [];
+      while (j < quelle.length) {
+        const z = quelle[j];
+        if (z === "\\") { j += 2; continue; }
+        if (c === "`" && !tiefe && z === "$" && quelle[j + 1] === "{") { teile.push([start, j]); tiefe = 1; j += 2; continue; }
+        if (tiefe) {
+          if (z === "{") tiefe += 1;
+          else if (z === "}" && --tiefe === 0) start = j + 1;
+          j += 1;
+          continue;
+        }
+        if (z === c || (c !== "`" && z === "\n")) break;
+        j += 1;
+      }
+      teile.push([start, j]);
+      const inhalt = teile.map(([von, bis]) => quelle.slice(von, bis)).join(" ");
+      const sql = /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|VALUES)\b/.test(inhalt);
+      if (!sql && /\s/.test(inhalt.trim())) {
+        if (c === "`") raus.push(...teile);
+        else ohneSpannen(i + 1, j);
+      }
+      i = j + 1;
+      codeAnfang = i;
+      letztes = c;
+      continue;
+    }
+    // Ein regulärer Ausdruck ist Code, auch wenn er Buchstaben trägt.
+    if (c === "/" && (letztes === "" || "(,=:[!&|?{};".includes(letztes))) {
+      let j = i + 1;
+      let klasse = false;
+      while (j < quelle.length && quelle[j] !== "\n") {
+        if (quelle[j] === "\\") { j += 2; continue; }
+        if (quelle[j] === "[") klasse = true;
+        else if (quelle[j] === "]") klasse = false;
+        else if (quelle[j] === "/" && !klasse) break;
+        j += 1;
+      }
+      i = j + 1;
+      letztes = "/";
+      continue;
+    }
+    if (!/\s/.test(c)) letztes = c;
+    i += 1;
+  }
+  code.push([codeAnfang, quelle.length]);
+  if (name.endsWith(".tsx")) {
+    for (const [von, bis] of code) {
+      for (const m of quelle.slice(von, bis).matchAll(/>([^<>{}=;()]*[A-Za-zÄÖÜäöüß][^<>{}=;()]*)(?=[<{])/g)) {
+        raus.push([von + m.index + 1, von + m.index + 1 + m[1].length]);
+      }
+    }
+  }
+  return raus;
+}
 
 check("Jede Route steht in beiden Fassungen des Blattes", () => {
   // Eine Uebersetzung, die eine Route verliert, faellt sonst erst am Geraet auf,
@@ -9621,6 +10065,7 @@ const FACH_APP_LADESATZ = {
     ".ara/templates/app-patterns/documents/README",
     ".ara/templates/app-patterns/extract/README",
     ".ara/templates/app-patterns/clients/README",
+    ".ara/templates/app-patterns/receipts/README",
   ],
 };
 /** Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. */

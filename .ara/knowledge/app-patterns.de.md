@@ -1,4 +1,4 @@
-# Verfahren: sieben Muster einer App jenseits des Formulars
+# Verfahren: acht Muster einer App jenseits des Formulars
 
 > **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann, wenn
 > jemand Arasul für ein Formularwerkzeug hält. Das Gerät bringt Anmeldung, Freigaben, Flows und
@@ -24,6 +24,7 @@ braucht, sagt dessen Dokumentation.
 | 5. Fremder Container | Ein fertiges Abbild hinter der Anmeldung des Geräts | `.ara/templates/app-patterns/foreign-container/README.de.md` |
 | 6. Dokument auslesen | Felder aus einem Beleg, geprüft, jede Auslesung protokolliert | `.ara/templates/app-patterns/extract/README.de.md` |
 | 7. Mandanten | Wer welchen Mandanten sieht, wer entscheidet | `.ara/templates/app-patterns/clients/README.de.md` |
+| 8. Belege je Mandant | 2, 6 und 7 zusammen: Beleg am Vorgang, ausgelesen, je Mandant getrennt | `.ara/templates/app-patterns/receipts/README.de.md` |
 
 **Muster 1 ist die Vorlage**: eine `Route` je Seite in `Wege()` von
 `.ara/templates/app/frontend/src/app.tsx`, die `Seitenleiste` der Bibliothek in
@@ -33,9 +34,7 @@ tief (`dokumente?nr=17`, nicht `dokumente/17`): die Seite lädt ihre Bündel rel
 auf eine gewählte Zeile bleibt ein Verweis. Unter 900 Pixeln wird die Seitenleiste ein Blatt, das
 sich nach dem Klick schließt.
 
-**Was `/app` damit tut.** Der Wunsch ist oft klein, „ein Formular für den Urlaubsantrag". Dann nenne
-einmal, was daneben liegt: der Antrag als Dokument, eine Mail, wenn entschieden ist, ein
-Nachschlagen in der Zeiterfassung, das Werkzeug, das das Büro ohnehin nutzt, ein Beleg, den das
-Gerät ausliest, Mandanten, die einander nicht sehen dürfen. Der Plan nennt das Muster, das er
-benutzt, damit der Nächste weiß, wonach er suchen muss; nach `--new` nennt das Werkzeug dieses
-Blatt.
+**Was `/app` damit tut.** Der Wunsch ist oft klein, „ein Formular für den Urlaubsantrag". Nenne
+einmal, was daneben liegt: ein Dokument, eine Mail, ein Nachschlagen, ein Werkzeug, das das Büro
+ohnehin nutzt, ein Beleg, den das Gerät ausliest, Mandanten. Der Plan nennt das Muster, das er
+benutzt; nach `--new` nennt das Werkzeug dieses Blatt.

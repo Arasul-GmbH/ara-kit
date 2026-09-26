@@ -24,8 +24,7 @@ current version carries, `marken.json` says.
 `bg-primary` or `rounded-md` from; it is loaded **without a layer**, inside `layer(...)` a `@theme`
 is none. `marken/marken.css` carries the blocks' rules, loaded **with** `layer(components)`, or it
 would beat every Tailwind class. Both stand in this order in the scaffold's `stil.css`, with no second
-file of values: up to 0.17.0 the kit wrote `design.css` out of the shell, a second truth that
-disagreed about the default theme.
+file of values.
 
 **The theme comes from the device.** Light is `:root` and sets nothing; dark is the class `dark`
 plus `data-theme="dark"` at `<html>`. The shell writes both into the app's own document at every

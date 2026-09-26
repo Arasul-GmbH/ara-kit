@@ -27,17 +27,17 @@ erste Mitarbeiter und die erste Freigabe".
 ## Was eine App bekommt: `backend/arasul.json`
 
 Die Namen der Adresse der Schnittstelle, des Schlüssels und der Adresse der Datenbank im Container,
-die Kopfzeile des Schlüssels, die zwei Kopfzeilen der Anmeldung, die Wege für einen Flow und für das
-Auslesen eines Dokuments, ob ein Lauf Einreicher und Freigaberegel annimmt: das sagt der Kontrakt
+die Kopfzeile des Schlüssels, die zwei Kopfzeilen der Anmeldung, die Wege für einen Flow, für das
+Auslesen eines Dokuments und für eine Frage an ein Modell, ob ein Lauf Einreicher und Freigaberegel
+annimmt, wie ein Modellaufruf seinen Menschen nennt: das sagt der Kontrakt
 dieses Geräts, und beim Einspielen schreibt `app.mjs` es als `backend/arasul.json` ins Paket.
 `--check` gibt es aus und nennt, was dieses Gerät nicht verspricht.
 
 **Eine App schreibt diese Werte nie in ihren Quelltext.** Eine, die es tut, findet auf einem Gerät,
 das sie anders nennt, nichts, hält das für „hier läuft kein Arasul" und sammelt Vorgänge, über die
-niemand entscheidet: der Vorlage ist das bis zum 29.08.2026 passiert, ihr Freigabe-Schritt wurde
-übersprungen, nicht abgelehnt. Der Selbsttest hält Vorlage und Muster daran. **Modellarbeit einer
-App läuft über einen Flow oder über das Auslesen eines Dokuments**: `arasul.json` trägt keinen
-anderen Weg zu einem Modell.
+niemand entscheidet. Der Selbsttest hält Vorlage und Muster daran. **Modellarbeit einer App läuft
+über einen Flow, das Auslesen eines Dokuments oder `geraet.fragen`**, und jeder Aufruf nennt den
+Menschen, für den er geschieht: das Gerät protokolliert ihn mit ihm (`protokoll`).
 
 ## Anmeldung: eine App bekommt keine eigene
 

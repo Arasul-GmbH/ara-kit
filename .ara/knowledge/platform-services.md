@@ -26,15 +26,15 @@ employee and permission: `.ara/knowledge/device.md`, "The first employee and the
 ## What an app gets: `backend/arasul.json`
 
 The names of the interface's address, the key and the database address in the container, the key's
-header, the two login headers, the ways for a flow and for reading a document, whether a run takes
-submitter and approval rule: this device's contract says them, and at deploy `app.mjs` writes them
+header, the two login headers, the ways for a flow, for reading a document and for asking a model,
+whether a run takes submitter and approval rule, how a model call names its human: this device's contract says them, and at deploy `app.mjs` writes them
 into the package as `backend/arasul.json`. `--check` prints it and what this device does not promise.
 
 **An app never writes those values into its source.** One that does finds nothing on a device that
-names them differently, takes that for "no Arasul here" and collects items nobody decides on: the
-scaffold did so up to 29.08.2026, its approval step was skipped, not refused. The self-test holds
-scaffold and patterns to that. **Model work of an app runs over a flow or over reading a document**:
-`arasul.json` carries no other way to a model.
+names them differently, takes that for "no Arasul here" and collects items nobody decides on. The
+self-test holds scaffold and patterns to that. **Model work of an app runs over a flow, reading a
+document or `geraet.fragen`**, and every call names the human it is made for: the device logs it
+with them (`protokoll`).
 
 ## Login: an app gets none of its own
 

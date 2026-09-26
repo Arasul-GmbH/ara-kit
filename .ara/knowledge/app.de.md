@@ -40,7 +40,7 @@ Haus arbeitet (`business/profile.md`), gehört in den ersten Entwurf.
 | **Wer was sehen darf** | Jeder darin alles, oder nur seine Mandanten, Abteilungen, Akten. Das entscheidet die App |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt, und was davon nachgewiesen wird. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung, aus ihrer Primärquelle: `.ara/knowledge/app-professional.de.md` |
-| **Welche Gestalt sie annimmt** | Ein Formular ist selten alles: die sieben Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
+| **Welche Gestalt sie annimmt** | Ein Formular ist selten alles: die acht Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |
@@ -102,19 +102,14 @@ aus dem Dockerfile eingeschlossen, eine SQLite-Datei, ein Ordner für Hochgelade
 auf der Platte, eine Datenbank daneben. Eine hochgeladene Datei gehört in eine Spalte (`BYTEA`).
 Entfernen wirft die Datenbanken der App weg, ihre Sicherungen bleiben.
 
-**Die Vorlage tut das schon**: `backend/ablage/db.mjs` öffnet die Datenbank des Geräts, und ein
-leerer Wert hält den Start an, statt in eine Datei zu schreiben. Ohne Gerät nimmt sie SQLite, und
-der Weg `lage` sagt `dauerhaft: false`. Am Gerät sagt `--check` „Eine eigene Datenbank kommt mit",
-und das Protokoll des Containers beim Start ebenso.
+**Die Vorlage tut das schon** in `backend/ablage/db.mjs`: ein leerer Wert hält den Start an,
+statt in eine Datei zu schreiben, ohne Gerät nimmt sie SQLite, und der Weg `lage` sagt
+`dauerhaft: false`.
 
 **Die Datenbank beginnt leer**, und die App legt das Schema mit ihren Migrationen an, eine Datei je
 Schritt unter `backend/ablage/migrationen/`, vermerkt in der Tabelle `migrationen`. **Was einmal
 gelaufen ist, wird nie mehr angefasst**: das änderte die Vergangenheit von Datenbanken, die es
 schon gibt.
-
-Gemessen am 25.09.2026 am Orin mit der Vorlage und den Mustern 2 und 6: drei Migrationen liefen im
-PostgreSQL des Geräts, das nächste Einspielen behielt Belege und Protokoll und verlor eine Datei im
-Container, und live begann mit einer eigenen, leeren Datenbank.
 
 ## Was die Vorlage schon ist
 

@@ -24,8 +24,7 @@ App anders schreibt. Was die aktuelle Fassung trägt, sagt `marken.json`.
 `bg-primary` oder `rounded-md` baut; es wird **ohne Schicht** geladen, in `layer(...)` ist ein
 `@theme` keines mehr. `marken/marken.css` trägt die Regeln der Bausteine, geladen **mit**
 `layer(components)`, sonst schlüge es jede Tailwind-Klasse. Beide stehen in dieser Reihenfolge in
-der `stil.css` der Vorlage, ohne zweite Datei mit Werten: bis 0.17.0 schrieb das Kit `design.css`
-aus der Shell, eine zweite Wahrheit, die sich über das Vorgabethema nicht einig war.
+der `stil.css` der Vorlage, ohne zweite Datei mit Werten.
 
 **Das Thema kommt vom Gerät.** Hell ist `:root` und setzt nichts; Dunkel ist die Klasse `dark` und
 `data-theme="dark"` am `<html>`. Die Shell schreibt beides bei jedem Wechsel und Laden in das
