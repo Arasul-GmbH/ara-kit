@@ -2,8 +2,8 @@
  * Die Liste: die Vorgänge, die es gibt, und der eine, den man gerade ansieht.
  *
  * Sie ist das Muster `Datenliste` der Bibliothek. Das ist mehr als eine
- * Tabelle: sortieren, suchen, ein Leerzustand, und unter 900 Pixeln wird aus
- * der Tabelle eine Kartenliste. Vier Dinge, und jede Seite, die sie einzeln
+ * Tabelle: sortieren, suchen, ein Leerzustand, und in einem schmalen Kasten
+ * wird aus der Tabelle eine Kartenliste. Vier Dinge, und jede Seite, die sie einzeln
  * löst, löst sie anders.
  *
  * **Die Spalten sind Daten und kein Markup.** `zelle` sagt, was dasteht,
@@ -20,6 +20,12 @@
  * mitlaufend, und darunter als Blatt von unten. Bis zum 26.09.2026 standen sie
  * unter der Liste: bei 200 Zeilen sah niemand, dass sich nach dem Klick etwas
  * getan hatte. Die Schwelle ist die eine des Produkts, `useSchmalesFenster`.
+ *
+ * **Die Einzelheiten haben höchstens 18rem, die Liste den Rest.** Die
+ * Datenliste misst seit Marken 5.1.0 ihren eigenen Kasten und zeigt unter
+ * 640 px Karten. Mit 3 zu 2 blieben ihr bei 1280 px 583 px; so sind es 684,
+ * und sie bleibt eine Tabelle. Im Rahmen des Geräts bei 1440 px (1052 px
+ * breit) stehen Karten neben den Einzelheiten, abgeschnitten wird nichts.
  *
  * **Auswahl und Kürzung sind die der Bibliothek.** `gewaehlt` markiert die
  * Zeile mit `aria-selected` und zeichnet sie, `kuerzen` hält einen langen
@@ -260,7 +266,7 @@ export function Vorgaenge() {
           }
 
           return (
-            <div data-teilung className="grid grid-cols-[minmax(0,3fr)_minmax(14rem,2fr)] items-start gap-4">
+            <div data-teilung className="grid grid-cols-[minmax(0,1fr)_minmax(14rem,18rem)] items-start gap-4">
               <div className="min-w-0" onKeyDown={zeilenPfeile}>
                 {liste}
               </div>
