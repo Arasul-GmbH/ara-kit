@@ -46,6 +46,20 @@ by a timestamp), `Formularseite` with a `Feldgruppe` per section in `seiten/neu.
 app names the active entry. The page layout belongs to the library. Rules of your own stand at the
 end of `stil.css`, with token names only, no colour, font or radius.
 
+## What every page keeps
+
+- **Nothing falls out.** A long title gets two lines in the list and stands whole beside it; at
+  1280 pixels no column leaves the table. The self-test builds the scaffold and measures it.
+- **List and details side by side** from 900 pixels, the details following along, below as a sheet
+  from the bottom. Never under the list.
+- **Every row by keyboard**: the title is a button, the chosen row carries `aria-current`.
+- **Every field has a label** and beside it whether it must be filled. The button stays active, a
+  click says at the field what is missing.
+- **Waiting names who decides and since when**, from `entscheidet` of the backend.
+- **Loading has the shape of the result, an error a button to try again, an empty list an action.**
+- **Status in the text colour**, 4.5:1 in both themes, the colour on a mark beside it: the library's
+  blue and red stay under 4.5:1 as text in light.
+
 ## What stops the kit, and what else is forbidden
 
 Otherwise a partner's apps look different after three months. The device does not compare and the
@@ -69,5 +83,6 @@ Measured is the app's own source, not the mirror. **A foreign container is exemp
 same rule. Beyond that: **change nothing in the mirror**, it gets replaced, and what a part lacks
 belongs in the product; and **no second threshold**, 900 pixels is the one (`useSchmalesFenster`).
 
-**Check an interface in both themes and both widths**, 390 for the phone, 1440 for the desk. Below
-900 the sidebar is a sheet and a data list a card list, and a page scrolling sideways is broken.
+**Check an interface in both themes and three widths**, 390 for the phone, 1280 and 1440 for the
+desk. Below 900 the sidebar is a sheet and a data list a card list, and a page scrolling sideways is
+broken.

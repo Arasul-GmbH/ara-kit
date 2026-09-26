@@ -37,6 +37,14 @@
  * Start; die App zaehlt eine solche Entscheidung nicht. Die Vorlage laesst
  * jeden gelten. Das Muster Mandanten setzt beides.
  *
+ * **Wer wartet, erfaehrt, auf wen.** Jeder wartende Vorgang in der Liste
+ * traegt `entscheidet`: `{ konten, ohne }` aus derselben `regel`, mit der der
+ * Lauf startete. `konten` ist `null`, wenn jeder entscheidet, dem die App
+ * freigegeben ist, und leer, wenn nach der Regel niemand bleibt; `ohne` nennt
+ * den Einreicher, wenn vier Augen gelten. Die Regel gilt heute und nicht beim
+ * Start: eine Entscheidung aus dem alten Kreis zaehlt die App ohnehin nicht,
+ * siehe `zustaendig`.
+ *
  * **Kein stilles null.** Jeder Vorgang, der ohne Lauf bleibt, traegt den Satz,
  * warum. "Ohne Arasul" steht nur dann da, wenn das Geraet der App wirklich
  * nichts gegeben hat; alles andere wird benannt, mit Status und Antwort.
@@ -106,6 +114,16 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
     });
   }
 
+  /** Wer einen wartenden Vorgang entscheidet, aus der Regel der App. */
+  async function wer(vorgang) {
+    const freigabe = await regel(vorgang);
+    // Ein Satz heisst: nach heutiger Regel koennte niemand entscheiden.
+    if (typeof freigabe === "string") return { konten: [], ohne: null };
+    if (!freigabe || typeof freigabe !== "object") return { konten: null, ohne: null };
+    const konten = Array.isArray(freigabe.entscheider?.konten) ? freigabe.entscheider.konten : null;
+    return { konten, ohne: freigabe.ohne_einreicher ? vorgang.von : null };
+  }
+
   return {
     /**
      * Alle Vorgaenge, vorher am Geraet nachgezogen.
@@ -120,7 +138,11 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
         const freigaben = await geraet.freigaben();
         for (const vorgang of wartende) await nachziehen(vorgang, freigaben);
       }
-      return await ablage.alle();
+      const alle = await ablage.alle();
+      for (const vorgang of alle) {
+        if (vorgang.status === "wartet") vorgang.entscheidet = await wer(vorgang);
+      }
+      return alle;
     },
 
     /** Genau einer, wie die Ablage ihn gibt, oder `null`. */

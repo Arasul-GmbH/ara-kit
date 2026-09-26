@@ -47,6 +47,21 @@ sortiert nach einem Zeitstempel), `Formularseite` mit einer `Feldgruppe` je Absc
 Bibliothek. Eigene Regeln stehen am Ende von `stil.css`, nur mit Namen von Marken, ohne Farbe,
 Schrift oder Radius.
 
+## Was jede Seite hält
+
+- **Nichts fällt heraus.** Ein langer Titel bekommt in der Liste zwei Zeilen und steht daneben ganz;
+  bei 1280 Pixeln verlässt keine Spalte die Tabelle. Der Selbsttest baut die Vorlage und misst sie.
+- **Liste und Einzelheiten nebeneinander** ab 900 Pixeln, die Einzelheiten mitlaufend, darunter als
+  Blatt von unten. Nie unter der Liste.
+- **Jede Zeile per Tastatur**: der Titel ist ein Knopf, die gewählte Zeile trägt `aria-current`.
+- **Jedes Feld hat ein Label** und daneben, ob es sein muss. Der Knopf bleibt aktiv, ein Klick sagt
+  am Feld, was fehlt.
+- **Wer wartet, nennt, wer entscheidet und seit wann**, aus `entscheidet` des Backends.
+- **Laden hat die Form des Ergebnisses, ein Fehler einen Knopf zum erneuten Versuch, eine leere Liste
+  eine Handlung.**
+- **Der Stand in der Textfarbe**, 4,5:1 in beiden Themen, die Farbe an einem Zeichen daneben: Blau
+  und Rot der Bibliothek bleiben als Text im hellen Thema unter 4,5:1.
+
 ## Was das Kit anhält, und was sonst verboten ist
 
 Sonst sehen die Apps eines Partners nach drei Monaten alle anders aus. Das Gerät vergleicht nicht,
@@ -71,6 +86,6 @@ hält die Vorlage an dieselbe Regel. Dazu: **nichts im Spiegel ändern**, er wir
 einem Teil fehlt, gehört ins Produkt; und **keine zweite Schwelle**, 900 Pixel ist die eine
 (`useSchmalesFenster`).
 
-**Prüf eine Oberfläche in beiden Themen und beiden Breiten**, 390 für das Telefon, 1440 für den
-Schreibtisch. Unter 900 ist die Seitenleiste ein Blatt und eine Datenliste eine Kartenliste, und eine
+**Prüf eine Oberfläche in beiden Themen und drei Breiten**, 390 für das Telefon, 1280 und 1440 für
+den Schreibtisch. Unter 900 ist die Seitenleiste ein Blatt und eine Datenliste eine Kartenliste, und eine
 Seite, die seitwärts rollt, ist kaputt.

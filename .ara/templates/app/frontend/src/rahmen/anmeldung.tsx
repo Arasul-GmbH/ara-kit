@@ -66,7 +66,7 @@ const Kontext = createContext<Anmeldung | null>(null);
 export function AnmeldungRahmen({ children }: { children: ReactNode }) {
   const abfrage = useAnmeldungAbfrage();
   return (
-    <AsyncBoundary abfrage={abfrage} laedt="Anmeldung wird gelesen">
+    <AsyncBoundary abfrage={abfrage} laedt="Anmeldung wird gelesen" fehlerTitel="Die Anmeldung ließ sich nicht lesen">
       {(anmeldung) => <Kontext value={anmeldung}>{children}</Kontext>}
     </AsyncBoundary>
   );

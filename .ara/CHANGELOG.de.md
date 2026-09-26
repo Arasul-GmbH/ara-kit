@@ -15,6 +15,20 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.38.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Das Gerüst einer App hält seine Spalten.** Ein Titel mit 120 Zeichen schob die Tabelle der Liste bei 1280 Pixeln auf 1309 Pixel in einem Kasten von 860, und die Spalte Stand lag draußen. Jetzt bekommt der Titel zwei Zeilen, Name und Datum brechen um, und die Seite mit Liste und Einzelheiten bekommt mehr als die Lesebreite. Gemessen von 900 bis 1920 Pixeln: keine Tabelle rollt seitwärts.
+- **Liste und Einzelheiten stehen ab 900 Pixeln nebeneinander**, die Einzelheiten laufen mit; darunter öffnen sie sich als Blatt von unten. Vorher standen sie unter der Liste, und bei 200 Zeilen sah niemand, dass ein Klick etwas getan hatte.
+- **Jede Zeile ist per Tastatur wählbar**: der Titel ist ein Knopf, Tab führt hin, Eingabe wählt, die Pfeile gehen eine Zeile weiter. Die gewählte Zeile trägt `aria-current` und einen Balken in der Textfarbe.
+- **Ein wartender Vorgang sagt, wer entscheidet und seit wann.** Das Backend gibt jedem wartenden Vorgang `entscheidet` mit, aus derselben `regel`, mit der der Lauf startete: alle mit Zugang, alle außer dem Einreicher, oder die Konten des Musters Mandanten. `wartet` ist nicht mehr der blasseste Stand.
+- **Das Formular hat an jedem Feld ein Label** und sagt daneben, ob das Feld sein muss. Der Knopf ist nicht mehr grau ohne Grund: ein Klick mit leerem Titel sagt am Feld, was fehlt, und setzt den Fokus dorthin.
+- **Laden, Fehler und leer sind Zustände mit Handlung.** Die Liste lädt in ihrer eigenen Form, ein Fehler trägt „Erneut versuchen“, eine leere Liste bietet den ersten Vorgang oder den Weg zurück zu allen an.
+- **Der Stand hält 4,5:1 in beiden Themen.** Das Wort steht in der Textfarbe, Blau und Rot sitzen an einem Zeichen daneben. Als Text kam das Blau der Bibliothek im hellen Thema auf 3,22:1, das Rot auf 3,48:1.
+- **Recharts kommt nicht mehr in jede App.** `memo` gilt dem Bau als rein, so fallen die Diagramme aus dem Bündel, solange keine Seite eines zeigt: 408 statt 690 KB.
+- **Der Selbsttest baut das Gerüst und misst es in Chromium bei 1280 Pixeln**, mit 200 Zeilen und einem Titel von 125 Zeichen: keine Spalte draußen, Einzelheiten im Fenster, jede Zeile ein Knopf, der Stand mindestens 4,5:1, kein Recharts im Bündel. `design-system.de.md` nennt die Regeln in sieben Zeilen.
+
 ## 0.37.0 (2026-09-26)
 
 Kontrakt: bis 6
