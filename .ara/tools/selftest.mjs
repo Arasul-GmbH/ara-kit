@@ -3611,6 +3611,13 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
       // hilft nicht nach.
       let liste = await ruf("/vorgaenge");
       assert(liste.daten.vorgaenge[0].status === "wartet", "der Vorgang entscheidet sich selbst");
+      // Wer wartet, erfährt, auf wen: die Vorlage zieht den Kreis nicht enger,
+      // also jeder mit Zugang, und das steht so da und nicht als Lücke.
+      const wer = liste.daten.vorgaenge[0].entscheidet;
+      assert(
+        wer && wer.konten === null && wer.ohne === null,
+        `der wartende Vorgang sagt nicht, wer entscheidet: ${JSON.stringify(wer)}`
+      );
 
       // Jetzt der Mensch, in der Oberfläche von Arasul.
       freigabe.status = "bestaetigt";
@@ -3618,6 +3625,7 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
       liste = await ruf("/vorgaenge");
       const vorgang = liste.daten.vorgaenge.find((v) => v.id === 1);
       assert(vorgang.status === "genehmigt", `nach der Bestätigung: ${vorgang.status}`);
+      assert(vorgang.entscheidet === undefined, "ein entschiedener Vorgang nennt noch, wer entscheidet");
       assert(vorgang.entschieden_von === "Anna", "der Name des Entscheiders fehlt am Vorgang");
       assert(/genehmigt/.test(vorgang.bemerkung || ""), `der Satz des Laufs fehlt: ${vorgang.bemerkung}`);
       assert(
@@ -4217,6 +4225,13 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     assert(r.code === 200 && r.daten.vorgaenge.length === 0, "ohne Anmeldung ist die Liste nicht leer");
     r = await ruf("carla", "team", `/vorgaenge/${va}`);
     assert(r.code === 200 && r.daten.vorgang.titel === "Beleg Müller", "carla sieht den Vorgang ihres Mandanten nicht");
+    // Die Liste nennt, auf wen der Vorgang wartet, aus derselben Zuordnung.
+    r = await ruf("Änne", "team", "/vorgaenge");
+    const wartend = r.daten.vorgaenge.find((v) => v.id === va);
+    assert(
+      JSON.stringify(wartend?.entscheidet) === JSON.stringify({ konten: ["carla"], ohne: "Änne" }),
+      `der wartende Vorgang nennt nicht, wer entscheidet: ${JSON.stringify(wartend?.entscheidet)}`
+    );
 
     // Allein zugeordnet: kein Lauf, und der Satz sagt, warum.
     r = await post("bernd", "team", "/vorgaenge", { titel: "Beleg Schmidt", mandant: b });
@@ -4766,6 +4781,150 @@ check("Das Aussehen einer App kommt aus der Bibliothek und aus sonst nichts", ()
   assert(/\[data-theme=['"]dark['"]\]/.test(theme), "theme.css traegt keinen Block fuer Dunkel");
 
   return `theme.css und marken.css im Spiegel, stil.css in der Reihenfolge der EINBAU.md, zwei Themen`;
+});
+
+await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zeichen Titel und 200 Zeilen", async () => {
+  // Am 26.09.2026 gemessen: mit einem langen Titel war die Tabelle 1309 px
+  // breit in einem Kasten von 860, die Spalte Stand lag draussen, und die
+  // Einzelheiten standen unsichtbar unter 200 Zeilen. Das sieht man nur am
+  // gebauten Gerüst in einem Browser, also baut diese Prüfung es und misst.
+  if (process.env.ARA_SELFTEST_KLON) return "übersprungen, im Klon liegt dieselbe Vorlage, der Worktree misst sie";
+  if (spawnSync("npm", ["--version"], { encoding: "utf8" }).status !== 0) return "übersprungen, hier gibt es kein npm";
+  const browser = tool("pdf.mjs", ["--browser"]);
+  if (browser.status !== 0) return "übersprungen, kein Chromium auf diesem Rechner";
+  const chromium = browser.stdout.split("\n")[0].trim();
+
+  const work = mkdtempSync(join(tmpdir(), "ara-geruest-"));
+  const front = join(work, "frontend");
+  const laufen = (befehl, args, cwd) =>
+    new Promise((fertig) => {
+      const kind = spawn(befehl, args, { cwd });
+      let ausgabe = "";
+      kind.stdout.on("data", (d) => (ausgabe += d));
+      kind.stderr.on("data", (d) => (ausgabe += d));
+      kind.on("close", (status) => fertig({ status, ausgabe }));
+    });
+  let server;
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app", "frontend"), front, {
+      recursive: true,
+      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
+    });
+    for (const datei of ["package.json", "index.html", join("src", "app.tsx")]) {
+      const pfad = join(front, datei);
+      writeFileSync(pfad, readFileSync(pfad, "utf8").replace(/\{\{id\}\}/g, "geruest").replace(/\{\{name\}\}/g, "Gerüst"));
+    }
+    const geholt = await laufen("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], front);
+    if (geholt.status !== 0) return `übersprungen, npm install ging nicht: ${geholt.ausgabe.trim().split("\n").pop()}`;
+    const gebaut = await laufen("npm", ["run", "build"], front);
+    assert(gebaut.status === 0, `das Gerüst baut nicht:\n${gebaut.ausgabe.split("\n").slice(-12).join("\n")}`);
+
+    // Der Diagrammcode gehört nicht in eine App, die kein Diagramm zeigt.
+    const skripte = readdirSync(join(front, "dist", "assets")).filter((name) => name.endsWith(".js"));
+    const buendel = skripte.map((name) => readFileSync(join(front, "dist", "assets", name), "utf8")).join("");
+    assert(!/recharts/.test(buendel), "Recharts steckt im Bündel, obwohl keine Seite ein Diagramm zeigt");
+
+    const TITEL = "Rahmenvertrag Wartung und Bereitschaft für die Filiale Nord, verlängert um zwölf Monate mit neuer Preisstaffel ab Januar 2027";
+    assert(TITEL.length >= 120, `der Probetitel hat nur ${TITEL.length} Zeichen`);
+    const staende = ["wartet", "genehmigt", "abgelehnt", "abgelaufen", "ohne entscheidung", "ohne lauf"];
+    const vorgaenge = Array.from({ length: 200 }, (_, i) => ({
+      id: 200 - i,
+      titel: i % 3 === 0 ? TITEL : `Bestellung ${200 - i}`,
+      text: "ohne Angabe",
+      von: i % 2 ? "Dora Langername-Doppelname" : "Anna Beispiel",
+      gestellt: new Date(Date.now() - i * 3_600_000).toISOString(),
+      status: staende[i % staende.length],
+      entschieden_von: null,
+      begruendung: null,
+      bemerkung: null,
+      hinweis: null,
+      ...(i % staende.length === 0 ? { entscheidet: { konten: null, ohne: "Anna Beispiel" } } : {}),
+    }));
+
+    // Die Messung laeuft in der Seite und schreibt ihr Ergebnis hinein;
+    // `--dump-dom` gibt es heraus. Sie wartet, bis 200 Zeilen stehen; die
+    // Einzelheiten zeichnet derselbe Durchgang.
+    const messung = `<script>
+      const lum = (c) => c.slice(0, 3).map((v) => (v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+        .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const farbe = (s) => { const t = (s.match(/rgba?\\(([^)]+)\\)/) || [, "0 0 0 0"])[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [t[0], t[1], t[2], t[3] ?? 1]; };
+      const mischen = (o, u) => [0, 1, 2].map((i) => o[i] * o[3] + u[i] * (1 - o[3])).concat(1);
+      const grund = (el) => { const s = []; for (let e = el; e; e = e.parentElement) { const f = farbe(getComputedStyle(e).backgroundColor); if (f[3] > 0) s.push(f); if (f[3] === 1) break; } return s.reverse().reduce((g, f) => mischen(f, g), [255, 255, 255, 1]); };
+      const warten = setInterval(() => {
+        if (document.querySelectorAll('tbody tr').length < 200) return;
+        clearInterval(warten);
+        const aside = document.querySelector('aside');
+        const befunde = [];
+        const d = document.documentElement;
+        if (d.scrollWidth > d.clientWidth + 1) befunde.push('die Seite ist ' + d.scrollWidth + ' px breit bei ' + d.clientWidth);
+        for (const k of document.querySelectorAll('[data-slot="table-container"]')) {
+          if (k.scrollWidth > k.clientWidth + 1) befunde.push('die Tabelle ist ' + k.scrollWidth + ' px breit in einem Kasten von ' + k.clientWidth);
+          for (const th of k.querySelectorAll('th')) if (th.getBoundingClientRect().right > k.getBoundingClientRect().right + 1) befunde.push('die Spalte ' + th.textContent + ' liegt draussen');
+        }
+        const r = aside ? aside.getBoundingClientRect() : { top: innerHeight };
+        if (r.top >= innerHeight || r.bottom <= 0 || r.left >= innerWidth) befunde.push('die Einzelheiten stehen nicht im Fenster neben der Liste');
+        else if (!aside.textContent.includes(${JSON.stringify(TITEL)})) befunde.push('die Einzelheiten zeigen den Titel nicht ganz');
+        const knoepfe = document.querySelectorAll('button.vorgang-wahl');
+        if (knoepfe.length !== 200) befunde.push('nur ' + knoepfe.length + ' Zeilen sind per Tastatur erreichbar');
+        if (document.querySelectorAll('.vorgang-wahl[aria-current="true"]').length !== 1) befunde.push('die gewaehlte Zeile ist nicht markiert');
+        let k = Infinity;
+        for (const el of document.querySelectorAll('.stand, .stand__wort, .stand__wer')) {
+          const g = grund(el); const v = mischen(farbe(getComputedStyle(el).color), g);
+          const [h, n] = [lum(v), lum(g)].sort((a, b) => b - a); k = Math.min(k, (h + 0.05) / (n + 0.05));
+        }
+        if (!(k >= 4.5)) befunde.push('der Stand haelt nur ' + k.toFixed(2) + ':1');
+        const pre = document.createElement('pre'); pre.id = 'messung';
+        pre.textContent = JSON.stringify({ breite: innerWidth, kontrast: Number(k.toFixed(2)), befunde });
+        document.body.append(pre);
+      }, 100);
+    </script>`;
+    const seite = readFileSync(join(front, "dist", "index.html"), "utf8").replace("</body>", `${messung}</body>`);
+    const TYPEN = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".html": "text/html" };
+    server = createServer((anfrage, antwort) => {
+      const weg = new URL(anfrage.url, "http://x").pathname;
+      const json = (daten) => {
+        antwort.writeHead(200, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (weg === "/api/me") return json({ benutzer: "Anna Beispiel", rolle: "admin" });
+      if (weg === "/api/lage") return json({ app: "geruest", arasul: true, hinweis: null, geraet: "gespielt" });
+      if (weg === "/api/vorgaenge") return json({ vorgaenge });
+      const datei = join(front, "dist", weg);
+      if (weg.startsWith("/assets/") && existsSync(datei) && statSync(datei).isFile()) {
+        antwort.writeHead(200, { "content-type": TYPEN[datei.slice(datei.lastIndexOf("."))] || "application/octet-stream" });
+        return antwort.end(readFileSync(datei));
+      }
+      antwort.writeHead(200, { "content-type": "text/html" });
+      antwort.end(seite);
+    });
+    await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
+    const adresse = `http://127.0.0.1:${server.address().port}/?nr=200`;
+
+    const lauf = await laufen(
+      chromium,
+      [
+        "--headless=new",
+        "--disable-gpu",
+        "--no-sandbox",
+        "--no-first-run",
+        `--user-data-dir=${join(work, "profil")}`,
+        "--window-size=1280,800",
+        "--virtual-time-budget=20000",
+        "--dump-dom",
+        adresse,
+      ],
+      work
+    );
+    const treffer = lauf.ausgabe.match(/<pre id="messung">([^<]*)<\/pre>/);
+    assert(treffer, `die Seite hat nicht zu Ende gezeichnet: ${lauf.ausgabe.split("\n").slice(-3).join(" | ").slice(0, 300)}`);
+    const ergebnis = JSON.parse(treffer[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+    assert(ergebnis.breite === 1280, `gemessen bei ${ergebnis.breite} px statt 1280`);
+    assert(ergebnis.befunde.length === 0, ergebnis.befunde.join(" | "));
+    return `1280 px, 200 Zeilen, Titel mit ${TITEL.length} Zeichen: nichts ragt hinaus, Einzelheiten sichtbar, Stand ${ergebnis.kontrast}:1`;
+  } finally {
+    server?.close();
+    rmSync(work, { recursive: true, force: true });
+  }
 });
 
 check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wird gesagt", () => {
