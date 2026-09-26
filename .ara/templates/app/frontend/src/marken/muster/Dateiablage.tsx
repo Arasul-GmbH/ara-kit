@@ -10,14 +10,15 @@ import { Dokumentanzeige } from './Dokumentanzeige';
 /** Eine Groesse in Bytes, so wie ein Mensch sie liest. */
 function groesseInWorten(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  const einheiten = ['kB', 'MB', 'GB'];
+  const einheiten = ['KB', 'MB', 'GB'];
   let wert = bytes / 1024;
   let i = 0;
   while (wert >= 1024 && i < einheiten.length - 1) {
     wert /= 1024;
     i += 1;
   }
-  return `${wert.toFixed(wert < 10 ? 1 : 0)} ${einheiten[i]}`;
+  // de-DE: „1,5 MB“ und nicht „1.5 MB“ (J35).
+  return `${wert.toLocaleString('de-DE', { maximumFractionDigits: wert < 10 ? 1 : 0 })} ${einheiten[i]}`;
 }
 
 /**

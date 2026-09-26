@@ -27,6 +27,12 @@ import { Skeleton } from './skeleton';
  * 160 px Leiste neben 230 px Inhalt sind zwei zu schmale Spalten statt einer
  * brauchbaren.
  *
+ * HIER ZAEHLT DAS FENSTER UND NICHT DER BEHAELTER -- anders als bei der
+ * `Datenliste` (seit 5.1.0). Die Leiste teilt sich das Fenster mit dem Rest
+ * der Seite, und in einer App im Rahmen des Geraets IST das Fenster der
+ * Rahmen: `matchMedia` im iframe misst genau ihn. Ihren eigenen Kasten kann
+ * sie nicht messen, denn den macht sie selbst breit.
+ *
  * KEINE EIGENEN FARBTOKENS. shadcn gibt der Seitenleiste acht eigene
  * (`--sidebar`, `--sidebar-accent`, …). Auf diesem Geraet gilt die Regel
  * „eine Flaechenfarbe" (DESIGN.md): alle Grundflaechen teilen `--background`,
@@ -295,12 +301,20 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
   );
 }
 
-/** Die Flaeche neben der Leiste. */
+/**
+ * Die Flaeche neben der Leiste.
+ *
+ * `min-w-0`, weil sie ein Flex-Kind ist: ohne das schrumpft sie nicht unter
+ * die Breite ihres Inhalts, sondern schiebt ihn aus dem Rahmen. Am Orin
+ * (26.09.2026) stand so eine Tabelle neben der Seitenleiste einer App 100 px
+ * ueber dem Rand -- der Rollkasten der Tabelle kam nie zum Zug, weil die
+ * Flaeche um ihn mitwuchs.
+ */
 function SidebarInset({ className, ...props }: React.ComponentProps<'main'>) {
   return (
     <main
       data-slot="sidebar-inset"
-      className={cn('relative flex w-full flex-1 flex-col bg-background', className)}
+      className={cn('relative flex w-full min-w-0 flex-1 flex-col bg-background', className)}
       {...props}
     />
   );

@@ -173,7 +173,11 @@ export function Chart<Datum extends object>({
             labelFormatter={wert => formatX(Number(wert))}
             formatter={(wert, name) => {
               const zahl = typeof wert === 'number' ? wert : Number(wert);
-              return [`${zahl.toFixed(1)}${einheiten.get(String(name)) ?? ''}`, String(name)];
+              // de-DE: Komma statt Punkt (J35).
+              return [
+                `${zahl.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${einheiten.get(String(name)) ?? ''}`,
+                String(name),
+              ];
             }}
           />
           <Legend />

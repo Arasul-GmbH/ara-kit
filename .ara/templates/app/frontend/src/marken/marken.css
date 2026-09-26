@@ -392,16 +392,24 @@ button.ara-karte:hover {
   background-color: var(--ara-wisch);
 }
 
+/* Der Kopf bricht um, statt zu schieben: ein langer Hinweis stand bis 5.1.0
+   mit `flex-shrink: 0` neben dem Titel, schob die Seite bei 390 px auf
+   501 px und kuerzte den Titel auf „m…" (App-Bau-Probe, 26.09.2026). Der
+   Titel hat jetzt eine Grundbreite von 12rem; passen Titel und Hinweis nicht
+   nebeneinander in DIESE Karte, rutscht der Hinweis in eine eigene Zeile und
+   bricht dort selbst um. Gefragt wird die Karte, nicht das Fenster. */
 .ara-karte__kopf {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ara-abstand-2);
   width: 100%;
+  min-width: 0;
 }
 
 .ara-karte__titel {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 12rem;
   margin: 0;
   overflow: hidden;
   font-size: var(--ara-groesse-lg);
@@ -411,7 +419,8 @@ button.ara-karte:hover {
 }
 
 .ara-karte__hinweis {
-  flex-shrink: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 0.125rem 0.375rem;
   border-radius: var(--ara-rundung-sm);
   background-color: var(--ara-wisch);
