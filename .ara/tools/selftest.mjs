@@ -5571,15 +5571,19 @@ check("Das Aussehen einer App kommt aus der Bibliothek und aus sonst nichts", ()
   return `theme.css und marken.css im Spiegel, stil.css in der Reihenfolge der EINBAU.md, zwei Themen`;
 });
 
-check("Die Vorlage steht auf Marken 5.0.0, ein Diagramm kommt nur über @marken/diagramm", () => {
+check("Die Vorlage steht auf Marken 5.1.0, ein Diagramm kommt nur über @marken/diagramm", () => {
   // Eine App aus dem Kit sieht erst dann aus wie das Geraet, wenn ihr Spiegel
   // auf derselben Fassung steht. 5.0.0 bringt das Blau mit 4,5:1, die
   // Auswahl und die Kuerzung der Datenliste und das Diagramm ausserhalb des
-  // Sammelexports; eine aeltere Fassung hat davon nichts.
+  // Sammelexports; eine aeltere Fassung hat davon nichts. 5.1.0 misst den
+  // Kasten der Datenliste statt des Fensters: im Rahmen des Geraets stand
+  // mit 5.0.x eine Tabelle 100 px ueber dem Rand (Orin, 26.09.2026).
   const vorlage = join(ROOT, ".ara", "templates", "app", "frontend");
   const bibliothek = readLibrary(join(vorlage, "src", "marken"));
-  const [haupt] = String(bibliothek?.fassung).split(".").map(Number);
-  assert(haupt >= 5, `der Spiegel der Vorlage steht auf ${bibliothek?.fassung}, nicht auf 5.0.0 oder neuer`);
+  const [haupt, neben] = String(bibliothek?.fassung).split(".").map(Number);
+  assert(haupt > 5 || (haupt === 5 && neben >= 1), `der Spiegel der Vorlage steht auf ${bibliothek?.fassung}, nicht auf 5.1.0 oder neuer`);
+  assert(/useSchmalerBehaelter/.test(bibliothek.files.get("muster/Datenliste.tsx")), "die Datenliste misst nicht ihren Kasten");
+  assert(/function SidebarInset[\s\S]*?min-w-0/.test(bibliothek.files.get("primitive/sidebar.tsx")), "SidebarInset traegt kein min-w-0");
   assert(bibliothek.files.has("diagramm.ts"), "der Spiegel trägt kein diagramm.ts");
   assert(!/from ['"]\.\/chart['"]/.test(bibliothek.files.get("primitive/index.ts")), "primitive/index.ts gibt das Diagramm wieder im Sammelexport aus");
   assert(/"@marken\/\*"\s*:\s*\[\s*"\.\/src\/marken\/\*"\s*\]/.test(readFileSync(join(vorlage, "tsconfig.json"), "utf8")), "die tsconfig der Vorlage kennt @marken/* nicht");
@@ -5597,7 +5601,7 @@ check("Die Vorlage steht auf Marken 5.0.0, ein Diagramm kommt nur über @marken/
     }
   }
   assert(falsch.length === 0, `holt ein Diagramm aus @marken statt aus @marken/diagramm: ${falsch.join(", ")}`);
-  return `Spiegel ${bibliothek.fassung}, diagramm.ts eigener Einstieg, @marken/* in der tsconfig`;
+  return `Spiegel ${bibliothek.fassung}, Datenliste misst ihren Kasten, diagramm.ts eigener Einstieg, @marken/* in der tsconfig`;
 });
 
 check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --check meldet du und dir", () => {
