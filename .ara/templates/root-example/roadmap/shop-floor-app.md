@@ -1,6 +1,6 @@
 # shop-floor-app
 
-Where it lives: https://github.com/hafenkante-example/shop-floor-app
+Where it lives: <https://github.com/hafenkante-example/shop-floor-app>
 What it is for: the app the shop floor books machine hours in
 
 What this place has to be able to do by when. *How* it is built is decided there.

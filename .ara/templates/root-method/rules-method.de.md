@@ -22,11 +22,11 @@ Karte je Ort gleichzeitig. Was nicht als Karte in `ready/` liegt, ist nicht bego
 
 ### Harte Regeln der Methode
 
-5. **Ziele hier, Umsetzung dort.** Diese Wurzel legt fest, *was* ein Ort bis wann können
+1. **Ziele hier, Umsetzung dort.** Diese Wurzel legt fest, *was* ein Ort bis wann können
    muss, in seinem Blatt unter `roadmap/`, mit Meilenstein und Frist. *Wie* er es baut,
    entscheidet der Ort. Ein Ziel ohne Meilenstein ist eine Idee und gehört auf eine Karte in
    `roadmap/backlog/new/`.
-6. **Kein Pflegelauf.** Die Historie der Versionsverwaltung ist das Journal, der Grund
+2. **Kein Pflegelauf.** Die Historie der Versionsverwaltung ist das Journal, der Grund
    gehört in den Commit. In `company/` kommt nur, was über den Einzelfall hinaus bindet.
    Nichts wird zurückgeschrieben, nur damit es geschrieben ist.
 

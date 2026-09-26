@@ -108,6 +108,9 @@ export const METHOD_TARGETS = Object.freeze(new Set(laid(METHOD)));
  */
 export function fill(text, values) {
   return text
+    // A row placeholder stands in the template as `| {{key}} | |`, so that the sheet itself is a
+    // valid table for markdownlint. It gives way to the rows it stands for.
+    .replace(/^\| \{\{([a-z_]+)\}\} \| \|$/gm, (whole, key) => (key in values ? `{{${key}}}` : whole))
     // A line that is only a placeholder and comes out empty disappears with its line break:
     // an empty line inside a table would end the table.
     .replace(/^\{\{([a-z_]+)\}\}\r?\n/gm, (whole, key) => (key in values && values[key] === "" ? "" : whole))
