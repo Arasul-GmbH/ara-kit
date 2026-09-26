@@ -178,19 +178,19 @@
   --card-foreground: #1a1a1a;
   --popover: #ffffff;
   --popover-foreground: #1a1a1a;
-  --primary: #2d8fd9;
+  --primary: #1e6aa4;
   --primary-foreground: #ffffff;
   --secondary: #ececec;
   --secondary-foreground: #1a1a1a;
   --muted: #ececec;
-  --muted-foreground: #6b6b6b;
+  --muted-foreground: #666666;
   --accent: rgba(16, 16, 16, 0.05); /* hover wash */
   --accent-foreground: #1a1a1a;
-  --destructive: #ef4444;
+  --destructive: #c42020;
   --destructive-foreground: #ffffff;
   --border: rgba(16, 16, 16, 0.1);
   --input: rgba(16, 16, 16, 0.12);
-  --ring: #2d8fd9;
+  --ring: #1e6aa4;
 
   /* Schriftgroessen-Skala. Sie ist keine Tailwind-Skala (die steht als
      `--text-ui-*` im `@theme` darueber), sondern die Reihe fuer handgeschrie-
@@ -242,6 +242,10 @@
   --border: rgba(228, 228, 228, 0.08);
   --input: rgba(228, 228, 228, 0.1);
   --ring: #81a1c1;
+
+  /* Das Rot des hellen Themas (#c42020) ist auf dunklem Grund zu dunkel:
+     3,3:1 auf `--background`. Hier bleibt das hellere Rot, 5,1:1. */
+  --destructive: #ef4444;
 
   /* Der Schleier ist im Dunkeln dichter. */
   --backdrop-color: rgba(0, 0, 0, 0.7);

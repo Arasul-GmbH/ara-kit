@@ -75,11 +75,11 @@
   --ara-flaeche-hoch: var(--popover, #ffffff);
   --ara-wisch: var(--accent, rgba(16, 16, 16, 0.05));
   --ara-text: var(--foreground, #1a1a1a);
-  --ara-text-leise: var(--muted-foreground, #6b6b6b);
+  --ara-text-leise: var(--muted-foreground, #666666);
   --ara-kante: var(--border, rgba(16, 16, 16, 0.1));
-  --ara-akzent: var(--primary, #2d8fd9);
+  --ara-akzent: var(--primary, #1e6aa4);
   --ara-akzent-text: var(--primary-foreground, #ffffff);
-  --ara-fehler: var(--destructive, #ef4444);
+  --ara-fehler: var(--destructive, #c42020);
 
   /* Der Schleier unter dem Menue. Er war bis H2 fest `rgb(0 0 0 / 0.5)` und
      damit der einzige Wert der Bibliothek ohne Token -- im hellen Thema eine
@@ -113,9 +113,10 @@
    Shell ist der Token ohnehin gesetzt und dieser Block wirkungslos; er ist
    fuer das eine Dokument, in dem KEIN Token steht: den iframe einer App.
 
-   HIER STEHT NUR, WAS `index.css` in seinem Dunkel-Block auch ueberschreibt.
-   `--destructive` fehlt dort und fehlt darum auch hier -- eine Fehlerfarbe,
-   die es nur im Dunkeln gibt, waere eine, die im Hellen fehlt. `scripts/test/marken.py` prueft beide Richtungen.
+   HIER STEHT NUR, WAS `theme.css` in seinem Dunkel-Block auch ueberschreibt.
+   Seit 5.0.0 gehoert `--destructive` dazu: das Rot des hellen Themas ist fuer
+   4,5:1 auf hellem Grund dunkler geworden und waere auf dunklem Grund zu
+   dunkel. `scripts/test/marken.py` prueft beide Richtungen.
    ========================================================================== */
 
 [data-theme='dark'] {
@@ -128,6 +129,7 @@
   --ara-kante: var(--border, rgba(228, 228, 228, 0.08));
   --ara-akzent: var(--primary, #81a1c1);
   --ara-akzent-text: var(--primary-foreground, #0a0a0a);
+  --ara-fehler: var(--destructive, #ef4444);
   --ara-schleier: var(--backdrop-color, rgba(0, 0, 0, 0.7));
 }
 

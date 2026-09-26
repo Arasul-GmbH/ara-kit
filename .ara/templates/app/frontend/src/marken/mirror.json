@@ -1,7 +1,7 @@
 {
-  "fassung": "4.1.0",
+  "fassung": "5.0.0",
   "quelle": "packages/marken/src",
-  "gespiegelt": "2026-09-15",
+  "gespiegelt": "2026-09-26",
   "produktversion": null,
   "abhaengigkeiten": {
     "class-variance-authority": "^0.7.1",
@@ -232,17 +232,18 @@
   "dateien": {
     "bausteine.ts": "c39ef3ce4b1343b21ddd1f7a0997d44e934919409b3065b2861eb1913e1d4e9a",
     "cn.ts": "7c15f8c8533f2aa2f5d5e0828512e01302ad2d672daaddff1327b94e50a4b1e0",
-    "fassung.ts": "38441df6c7379ba42e578f8060a831dbdd3fa594f2a6fe4518d095de71e83d4b",
+    "diagramm.ts": "d8cd866f014d8ca81b396de1570e5c38e451a06d558d0f231e414542f49aaf4b",
+    "fassung.ts": "5ce171b7f3e97a5e860565b004379e9d8a187d1a6bb8332ed5eadb4aaf88dce7",
     "Formular.tsx": "69f4d62c711c8d90f76632db27f6792e73af1d777551f81bdaceb4cd6e474cee",
     "index.ts": "9aa834cd82774ad44c9f18ac711927bb0c55aeda4ebea759269430395449bcc7",
     "Karte.tsx": "58f3d2d27c2f9d9cd13ace8139f1759ee7e5aab44992281625429648d36c37a6",
     "Kopf.tsx": "a8d8a2c64e8de09e9aeb9dd8f6c0df63f35f39ee8d13db014ed4569ee43dfdc5",
     "Liste.tsx": "e3542acd4b07d7ec0649dcc3abe26e4740f575f93ce3ca3bde72ef60c5653784",
-    "marken.css": "8a40988937fa7bff8b042550647f903b76f767f10cdf53b9ed8d15c3c582db85",
+    "marken.css": "f275b83c0f9abb495627806d581aae4ab2bcd3183c4f8c801e34f48a18403892",
     "Meldung.tsx": "427458e43acc039870a472485dd036a6ea45aedf34025b8988eea851b742df70",
     "Menue.tsx": "d48a1bde655a74f974a37ed9159233712ea9d65e987730621242f7abdef1f9b7",
     "muster/Dateiablage.tsx": "22526481d182c9aeea384cc10e6374b23a09b5c2e200496f34d373776430e884",
-    "muster/Datenliste.tsx": "6ea4efe09435d1afc710bd96e843a5be4df84a26be61c706e34f869a783e1fb7",
+    "muster/Datenliste.tsx": "8cd68b70e47e5d60a690aab8be72e00b908007dacdb16044d7ea638d37ddc972",
     "muster/Dialogform.tsx": "89f01d6852ea12ccac6f3433860faf205dc251416d7649a16f2062d86062e0c3",
     "muster/Dokumentanzeige.tsx": "ac5ff0d58c3e9f87dfd17c9aacd7b7488e575948c7fb59e9088a9bb09ea78231",
     "muster/Feldgruppe.tsx": "7f52d8a006e0e6171532f8d630789d6ef1280465078db39c15baf94d555c75d5",
@@ -273,7 +274,7 @@
     "primitive/dropdown-menu.tsx": "656915b7a7852b2caffaaa66884cc4d93946868cf783dfea8ad6c02f94b68f28",
     "primitive/form.tsx": "054e61865c48669d6391356ad9c60dc9a3d2dd8fcd989d9f4d1745581e24bbbb",
     "primitive/hover-card.tsx": "5aa26e72b6e467fce2814b726c9aa8e9942de6fea0aabe3bd154a3cd46b81ac8",
-    "primitive/index.ts": "b83d20746c01ac11a5130b8ae422b703b4fd687238b4d64c5597b385fbf4f33e",
+    "primitive/index.ts": "aafe78d83d76779eaa8829e3d64f77aa4b980b50aab47782493e5d15fffe6175",
     "primitive/input-otp.tsx": "4c27b585a9d33a1ae84e9fab13f673146bcf7000a02d6ecd492ba8f5b2e10fcb",
     "primitive/input.tsx": "7aad4237539ad4ab5279d51f4a7c6edb7e2c1c6553b430793400c0aff73da802",
     "primitive/label.tsx": "377e56aa7bfa1c5fa22f1e13a73035e9601feda45202517deddcb6e0c0f74dbd",
@@ -299,7 +300,7 @@
     "primitive/toggle-group.tsx": "598cf75c5a887a38c600499b0ec455947c8b345e2fceeb4f6dff197452209809",
     "primitive/toggle.tsx": "765f00fcf085c8068843b400bc29998d8337270cf7963dfd99453d7bb5c20e8a",
     "primitive/tooltip.tsx": "a9b2c35ef9360539c5b58e71c56e18b79b5ae27e0965f8fff892d304690e00e5",
-    "theme.css": "cbfec493ca3763ddc30ad7c71fdd94737a2f2e20d4c037f2b5bf3747e9679ee4",
+    "theme.css": "fa3848003dde64524ff31b56a6261a785f5ee8eb8e79c9c44a8735cbc4706e36",
     "useSchmalesFenster.ts": "709a0bd157b26d05da8ce3a9005f2d5520d3aa13268fc29e15ae5f134ca209e0"
   }
 }

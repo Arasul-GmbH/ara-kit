@@ -159,7 +159,9 @@ export {
   CarouselNext,
 } from './carousel';
 export type { KarussellApi } from './carousel';
-export { Chart, Sparkline, SERIENFARBEN } from './chart';
+// `Chart` und `Sparkline` stehen mit Absicht NICHT hier, sondern in
+// `../diagramm.ts` (`@marken/diagramm`): ueber das Barrel hielte jede App
+// `recharts` im Bau, auch ohne ein einziges Diagramm (Fassung 5.0.0).
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from './collapsible';
 export {
   Command,
