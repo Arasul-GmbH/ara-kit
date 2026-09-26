@@ -15,6 +15,18 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.40.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Jeder Modellaufruf der Vorlage nennt seinen Menschen.** Ein Gerät vom 26.09.2026 protokolliert jeden Modellaufruf einer App und nennt den Menschen nur, wenn die App ihn nennt; wie, sagt es unter `protokoll`. Das Kit schreibt das in `arasul.json`, und `backend/arasul.mjs` reicht den angemeldeten Namen in denselben Bytes an `document/extract-structured` und `llm/chat` weiter, nie an einen anderen Weg. `geraet.fragen` fragt ein Modell, auch mit Bildern, `geraet.fuer` gibt Kopfzeile und Feld für einen eigenen Aufruf an `/v1`. Ein Gerät ohne den Abschnitt bekommt keine Kopfzeile. `--contract` gibt den Abschnitt aus.
+- **Muster 8, Belege je Mandant am Vorgang**, zeigt die Muster 2, 6 und 7 zusammen: eine Spalte `mandant` an Dokumenten und Auslesungen, ein Beleg hängt an einem Vorgang und nimmt dessen Mandanten, jede lesende Abfrage trägt den Filter, das Protokoll bleibt getrennt, wenn das Dokument geht. `BelegeAmVorgang` legt die Belege in die Einzelheiten eines Vorgangs.
+- **Muster 6 behält den Auftrag des Geräts** (`auftrag`) an jeder Auslesung, dieselbe Nummer steht im Protokoll des Geräts, und verweist für ein Foto auf `bilder`.
+- **Die Seiten der Muster 2 und 6 teilen wie die Liste**: ab 900 Pixeln nebeneinander, darunter als Blatt, jede Zeile per Tastatur wählbar.
+- **Deutsche Inhalte der Vorlage tragen echte Umlaute**, in Kommentaren, Sätzen und JSX-Text; Namen im Code bleiben ASCII. Der Selbsttest prüft auch Vorlage und Muster.
+- **`--build` sagt, dass die Designprüfung lief**, über wie viele Dateien, auch ohne Befund. Die englische Ausgabe zeigt `<device>` statt `<gerät>`.
+- Am Orin am 26.09.2026 eine Probe aus Vorlage mit den Mustern 2 und 6: eine Auslesung ohne Namen stand mit demselben Auftrag im Protokoll des Geräts, sechs von sechs Feldern in 37 Sekunden; ein Name, dem die App nicht freigegeben ist, kam am Gerät an und wurde mit 400 abgewiesen, wie der Kontrakt es sagt. Eine Auslesung mit Menschen wurde nicht gesehen: sie braucht eine Freigabe der Probe für ein Konto, also eine Sitzung als Administrator.
+
 ## 0.39.0 (2026-09-26)
 
 Kontrakt: bis 6
