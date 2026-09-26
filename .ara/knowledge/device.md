@@ -564,6 +564,10 @@ the interface and not over SSH: it needs neither a login name nor a key for that
 SESSION=$(node .ara/tools/device.mjs --name <device> --admin-login --token)
 ```
 
+Whoever keeps the password of an administrator under a name of their own names that entry instead
+of storing a second copy: `--admin-login --password-ref <NAME> --login-user <name>`. Sharing an app
+with an account goes over the same session, `app.mjs --share`, see `.ara/knowledge/deploy.md`.
+
 The route there is `POST /api/auth/login`, and that is a statement about the product like any other:
 **it belongs checked on a device.** The documentation self-test does that:
 

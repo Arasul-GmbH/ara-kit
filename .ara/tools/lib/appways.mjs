@@ -29,6 +29,13 @@
  *      den Menschen nennt, für den sie fragt (`protokoll` im Kontrakt, seit dem
  *      26.09.2026): eine Kopfzeile, ein Feld, und an `/v1` ein anderes Feld.
  *      Ohne sie steht der Aufruf ohne Menschen im Protokoll.
+ *   9. Wie lange das Gerät auf ein Modell **wartet** und wo die App ein
+ *      Auslesen **abholt**, das danach noch rechnet (`warten` im Kontrakt, seit
+ *      dem 26.09.2026). Der Weg steht dort unter `warten.wege`, zum Weg aus
+ *      `auslesen.weg`; das Kit schreibt ihn ab und nennt ihn nicht selbst.
+ *      Nennt der Kontrakt, wie viele Auslesungen **gleichzeitig** gehen,
+ *      steht das hier; nennt er es nicht, steht `null`, und die App liest eine
+ *      nach der anderen.
  *
  * Bis zum 29.08.2026 stand nichts davon im Kontrakt, sondern in der Vorlage:
  * `ARASUL_API_URL`, `ARASUL_API_SCHLUESSEL`, `x-api-key` und drei Pfade ohne
@@ -138,6 +145,45 @@ function logArrangement(contract) {
     kopf: wer.kopf,
     feld: typeof wer.feld === "string" ? wer.feld : null,
     feld_openai: typeof wer.feld_openai === "string" ? wer.feld_openai : null,
+  };
+}
+
+/** Eine ganze Zahl über null aus dem Kontrakt, sonst `null`. */
+function positiv(wert) {
+  return Number.isInteger(wert) && wert > 0 ? wert : null;
+}
+
+/**
+ * Warten und Abholen, aus `warten` und `auslesen`.
+ *
+ * Bis 0.43.0 ging ein Auslesen verloren, das länger rechnete, als das Gerät
+ * wartete: das 202 sah aus wie eine Antwort ohne Felder, und niemand holte das
+ * Ergebnis ab, das eine Minute später fertig war. Der Abholweg steht im
+ * Kontrakt zum Weg des Auslesens, relativ zur Basis und mit dem Platzhalter
+ * des Geräts; hier wird daraus einer mit `{auftrag}`, wie die Vorlage ihn
+ * einsetzt. Ein Gerät vor dem 26.09.2026 nennt nichts davon, dann steht hier
+ * `null` und kein Weg.
+ */
+function waitArrangement(contract) {
+  const warten = contract?.warten;
+  if (!warten || typeof warten !== "object") return { warten: null, abholen: null };
+  const weg = typeof contract?.auslesen?.weg === "string" ? contract.auslesen.weg : null;
+  const roh = weg && typeof warten.wege?.[weg] === "string" ? warten.wege[weg] : null;
+  let abholen = null;
+  if (roh) {
+    const relativ = `/${roh.replace(/^\/+/, "").replace(/:[A-Za-z_]+/g, "{auftrag}")}`;
+    const praefix = typeof contract?.umgebung?.praefix === "string" ? contract.umgebung.praefix : EXTERNAL_PREFIX;
+    abholen = { verb: "GET", pfad: `${praefix}${relativ}`, relativ: contract?.umgebung?.basis_enthaelt_praefix === true ? relativ : null };
+  }
+  return {
+    warten: {
+      status: positiv(warten.status),
+      vorgabe_sekunden: positiv(warten.vorgabe_sekunden),
+      hoechstens_sekunden: positiv(warten.hoechstens_sekunden),
+      aufbewahrt_sekunden: positiv(warten.aufbewahrt_sekunden),
+      gleichzeitig: positiv(warten.gleichzeitig) ?? positiv(contract?.auslesen?.gleichzeitig),
+    },
+    abholen,
   };
 }
 
@@ -291,6 +337,9 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     }
     wege[way.key] = { verb: way.verb, pfad: way.pfad, relativ: relativeWay(contract, entry, way.pfad) };
   }
+  const { warten, abholen } = waitArrangement(contract);
+  // Abholen gibt es nur, wo es auch Auslesen gibt.
+  wege.dokument_abholen = wege.dokument_auslesen ? abholen : null;
 
   // Ob ein Lauf seinen Einreicher und eine Regel für die Freigabe mitbringen
   // darf. Gelesen am Schema, das der Kontrakt für den Start eines Laufs
@@ -330,6 +379,7 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     wege,
     freigaben,
     daten,
+    warten,
     protokoll: logArrangement(contract),
     missing,
     unangeboten,
@@ -417,6 +467,23 @@ export function arrangementLines(arrangement) {
           : t(`- not offered by this device: the way to ${way.was}`, `- bietet dieses Gerät nicht an: der Weg, um ${way.was}`)
     );
   }
+  const abholen = arrangement.wege.dokument_abholen;
+  if (arrangement.wege.dokument_auslesen) {
+    const zugleich = arrangement.warten?.gleichzeitig;
+    lines.push(
+      abholen
+        ? t(
+            `- ${abholen.verb} ${abholen.relativ ?? abholen.pfad}: fetch a reading that was still running after its wait. ` +
+              (zugleich ? `At most ${zugleich} readings at a time, as the contract says.` : "The contract names no number of readings at a time, so the app reads one after the other."),
+            `- ${abholen.verb} ${abholen.relativ ?? abholen.pfad}: ein Auslesen abholen, das nach seiner Wartezeit noch rechnete. ` +
+              (zugleich ? `Höchstens ${zugleich} Auslesungen zugleich, wie der Kontrakt sagt.` : "Der Kontrakt nennt keine Zahl gleichzeitiger Auslesungen, also liest die App eine nach der anderen.")
+          )
+        : t(
+            "- This device names no way to fetch a reading that runs longer than it waits. Such a reading is lost, and the human reads again.",
+            "- Dieses Gerät nennt keinen Weg, ein Auslesen abzuholen, das länger rechnet, als es wartet. Ein solches geht verloren, und der Mensch liest neu."
+          )
+    );
+  }
   return lines;
 }
 
@@ -429,15 +496,17 @@ export function arrangementLines(arrangement) {
  * nichts, und ein Werkzeug, das nach dem letzten Schritt schweigt, sieht in
  * diesem Moment kaputt aus.
  *
- * **Das Kit kann die Freigabe nicht erteilen, und es soll das sagen.** Sein
- * Schluessel traegt `app:deploy`, das ist der Bereich fuer Pakete und Staende.
- * Wer sie erteilt, ist ein Administrator, und dafuer gibt es zwei Wege: eine
- * Sitzung aus dem Startpasswort, wenn eines in der Ablage liegt, sonst ein
- * Mensch in der Oberflaeche des Geraets.
+ * **Der Schluessel des Kits kann die Freigabe nicht erteilen, und es soll das
+ * sagen.** Er traegt `app:deploy`, das ist der Bereich fuer Pakete und Staende.
+ * Wer sie erteilt, ist ein Administrator, und dafuer gibt es zwei Wege: `app.mjs
+ * --share` mit einer Sitzung aus dem Startpasswort oder einem Eintrag, den
+ * `--password-ref` nennt, sonst ein Mensch in der Oberflaeche des Geraets. Bis
+ * 0.43.0 stand hier statt des Befehls die API-Referenz, und ein Fremder liess
+ * dort am 26.09.2026 den Stand weg.
  *
  * **Kein Weg und keine Seite wird hier benannt.** Wie die Freigabe im Produkt
- * heisst, steht im Admin-Handbuch und in der API-Referenz des Artefakts, und
- * die liegen im Spiegel und am Geraet selbst. Ein Pfad aus dem Gedaechtnis
+ * heisst, liest `--share` aus der API-Referenz des Artefakts, und die liegt im
+ * Spiegel und am Geraet selbst. Ein Pfad aus dem Gedaechtnis
  * waere genau die Sorte Zusage, die dieses Kit nicht macht. Liegt kein Spiegel
  * da, zeigt der Text auf die Anleitungen am Geraet (`mirror.mjs --docs
  * --device`): der Fremdtest am 29.08.2026 lief von der Ausgabe ueber
@@ -458,6 +527,7 @@ export function releaseLines({
   base,
   testUrl = null,
   deviceCall,
+  shareCall = null,
   startRef,
   startPassword = false,
   docs = false,
@@ -466,10 +536,10 @@ export function releaseLines({
   const lines = [
     t(
       "Nobody sees it yet. An app on this device is visible to a person only once it has been " +
-        "released for them, and the kit cannot release it: its key carries app:deploy and nothing " +
+        "released for them, and the kit's key cannot release it: it carries app:deploy and nothing " +
         "else. An administrator does that.",
       "Gesehen hat es noch niemand. Eine App an diesem Gerät sieht ein Mensch erst, wenn sie für " +
-        "ihn freigegeben ist, und freigeben kann das Kit sie nicht: sein Schlüssel trägt app:deploy " +
+        "ihn freigegeben ist, und der Schlüssel des Kits kann sie nicht freigeben: er trägt app:deploy " +
         "und sonst nichts. Das tut ein Administrator."
     ),
     "",
@@ -483,49 +553,40 @@ export function releaseLines({
       ""
     );
   }
-  lines.push(t("Two ways to an administrator:", "Zwei Wege zu einem Administrator:"), "");
+  const docsLine = docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || t("node .ara/tools/mirror.mjs --docs --device <device>", "node .ara/tools/mirror.mjs --docs --device <gerät>");
   lines.push(
+    t("With a session as administrator the kit shares it, with staging unless said otherwise:", "Mit einer Sitzung als Administrator gibt das Kit sie frei, für den Teststand, wenn nichts anderes gesagt ist:"),
+    `      ${shareCall || "node .ara/tools/app.mjs --device <device> --app <id>"} --share <${t("account", "konto")}>`,
     ...(startPassword
       ? t(
-          [
-            `- The start password lies under ${startRef}. A session comes out of it, and the password`,
-            "  stays unseen while it does:",
-            `      ${deviceCall} --admin-login`,
-            "  Which route the release goes stands in the API reference of the artifact, not in the kit:",
-            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <device>"}`,
-          ],
-          [
-            `- Das Startpasswort liegt unter ${startRef}. Daraus wird eine Sitzung, und das Passwort`,
-            "  bleibt dabei ungesehen:",
-            `      ${deviceCall} --admin-login`,
-            "  Welchen Weg die Freigabe geht, steht in der API-Referenz des Artefakts, nicht im Kit:",
-            `      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <gerät>"}`,
-          ]
+          [`  The session comes from the start password under ${startRef}; the password stays unseen.`],
+          [`  Die Sitzung kommt aus dem Startpasswort unter ${startRef}; das Passwort bleibt ungesehen.`]
         )
       : t(
           [
-            `- No start password lies under ${startRef}, so the kit gets no session. Whoever knows it,`,
-            "  the administrator of this device, hands it over once:",
+            `  No start password lies under ${startRef}. If the password of an administrator is already`,
+            "  stored under a name of its own, name it: --password-ref <NAME> --login-user <name>.",
+            "  Otherwise whoever knows the start password hands it over once:",
             `      printf '%s' "<password>" | node .ara/tools/secrets.mjs --set ${startRef}`,
           ],
           [
-            `- Unter ${startRef} liegt kein Startpasswort, also bekommt das Kit keine Sitzung. Wer es`,
-            "  kennt, der Administrator dieses Geräts, gibt es einmal herein:",
+            `  Unter ${startRef} liegt kein Startpasswort. Liegt das Passwort eines Administrators schon`,
+            "  unter eigenem Namen, nenn ihn: --password-ref <NAME> --login-user <name>.",
+            "  Sonst gibt, wer das Startpasswort kennt, es einmal herein:",
             `      printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set ${startRef}`,
           ]
-        ))
+        )),
+    ""
   );
   lines.push(
     ...t(
       [
-        `- Or a human does it in the interface: ${base}, logged in as administrator. For that the kit`,
-        "  is not needed. Which page carries the release stands in the admin handbook of the",
-        `  artifact:\n      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <device>"}`,
+        `Or a human does it in the interface: ${base}, logged in as administrator. Which page carries`,
+        `the release stands in the admin handbook of the artifact:\n      ${docsLine}`,
       ],
       [
-        `- Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Dafür`,
-        "  braucht es das Kit nicht. Welche Seite die Freigabe trägt, steht im Admin-Handbuch des",
-        `  Artefakts:\n      ${docs ? "node .ara/tools/mirror.mjs --docs" : docsCall || "node .ara/tools/mirror.mjs --docs --device <gerät>"}`,
+        `Oder ein Mensch tut es in der Oberfläche: ${base}, angemeldet als Administrator. Welche Seite`,
+        `die Freigabe trägt, steht im Admin-Handbuch des Artefakts:\n      ${docsLine}`,
       ]
     )
   );
@@ -541,10 +602,10 @@ export function releaseLines({
     t(
       "**And a release means a slot.** What was deployed just now lies in staging, and whoever is " +
         "released for the live version only does not see it: the release stands, the overview stays " +
-        "empty. So the release has to mean staging. What that is called there stands in the handbook.",
+        "empty. So the release has to mean staging. --share does that unless --stand live stands there.",
       "**Und eine Freigabe gilt einem Stand.** Was gerade eingespielt wurde, liegt im Teststand, und wer " +
         "nur für den Livestand freigegeben ist, sieht ihn nicht: die Freigabe steht, die Übersicht bleibt " +
-        "leer. Die Freigabe muss also den Teststand meinen. Wie das dort heißt, steht im Handbuch."
+        "leer. Die Freigabe muss also den Teststand meinen. --share tut das, solange nicht --stand live dasteht."
     )
   );
   return lines;

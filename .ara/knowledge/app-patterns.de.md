@@ -9,11 +9,9 @@ fremden Dienst rufen, ein fremdes Werkzeug hinter der Anmeldung: das ist das eig
 und das Produkt stellt dafür keinen Dienst bereit, aus Entscheidung und nicht aus Lücke.
 
 Jedes Muster ist Code unter `.ara/templates/app-patterns/`, und **neben dem Code liegt sein Blatt**,
-`README.de.md`: was du klärst, was das Gerät erreichen muss, was geprüft ist. Lies nur das Blatt des
-Musters, das der Plan nimmt. Jede Datei sagt in ihrem Kopf, wohin sie in einer App aus `--new`
-gehört, der Selbsttest lässt sie laufen, und **keine trägt einen Weg, eine Kopfzeile oder einen
-Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage. Was ein fremdes Werkzeug
-braucht, sagt dessen Dokumentation.
+`README.de.md`. Lies nur das Blatt des Musters, das der Plan nimmt. Jede Datei sagt in ihrem Kopf,
+wohin sie gehört, der Selbsttest lässt sie laufen, und **keine trägt einen Weg, eine Kopfzeile oder
+einen Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage.
 
 | Muster | Was es zeigt | Blatt |
 | --- | --- | --- |
@@ -30,9 +28,7 @@ braucht, sagt dessen Dokumentation.
 `.ara/templates/app/frontend/src/app.tsx`, die `Seitenleiste` der Bibliothek in
 `rahmen/seitenleiste.tsx`, eine Datei je Seite unter `seiten/`. **Ein neuer Bereich sind drei
 Schritte**: eine Seite, eine `Route`, ein Eintrag in der Seitenleiste. Die Routen bleiben eine Ebene
-tief (`dokumente?nr=17`, nicht `dokumente/17`): die Seite lädt ihre Bündel relativ, und ein Verweis
-auf eine gewählte Zeile bleibt ein Verweis. Unter 900 Pixeln wird die Seitenleiste ein Blatt, das
-sich nach dem Klick schließt.
+tief (`dokumente?nr=17`, nicht `dokumente/17`).
 
 **Was `/app` damit tut.** Der Wunsch ist oft klein, „ein Formular für den Urlaubsantrag". Nenne
 einmal, was daneben liegt: ein Dokument, eine Mail, ein Nachschlagen, ein Werkzeug, das das Büro

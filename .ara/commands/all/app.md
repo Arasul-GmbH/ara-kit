@@ -22,8 +22,7 @@ its moment comes.
 Security levels and product values: `.claude/CLAUDE.md`. Beforehand you read
 `business/profile.md`: language, branch, detail level, security level, what the house works with.
 
-**The argument.** `<app>` is the app under `apps/<app>/`; apps sit at the top, independent of
-customers, and where one runs the device says. No argument: first the marker `.ara/state.json`,
+**The argument.** `<app>` is the app under `apps/<app>/`. No argument: first the marker `.ara/state.json`,
 then the existing folders. Exactly one, take it, otherwise ask through the interview tool.
 
 **First, always:**
@@ -35,10 +34,7 @@ node .ara/tools/app.mjs --app <app>
 It says where the app stands and what is due, with the calls. Pass that on in three lines and do the
 first, instead of listing everything possible.
 
-**No app yet**: the interview along the checklist comes before anything is created, then `--new`
-and the first plan. Whatever stayed open goes into the plan as an assumption and gets read out next
-time. **A plan is active**: its assumptions first, then build, then `--build`. **To a device**:
-without a file under `devices/`, `/device` first; then `--check`, then `--deploy` into staging.
-Before the deploy you say that the app is not yet visible, and why, as `.ara/knowledge/deploy.md`
-says. `--live` is a level 2 intervention: ask, even if you deployed a minute ago. **Without Arasul**
-`--compose` goes over SSH, and beforehand you say what is missing there.
+**No app yet**: the interview comes before anything is created; what stayed open goes into the plan
+as an assumption. **To a device**: without a file under `devices/`, `/device` first. Before the
+deploy you say that the app is not yet visible, and why (`.ara/knowledge/deploy.md`). `--live` is
+level 2: ask.

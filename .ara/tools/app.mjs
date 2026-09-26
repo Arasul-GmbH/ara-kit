@@ -20,6 +20,8 @@
  *   node .ara/tools/app.mjs --device orin --app beispiel --live
  *   node .ara/tools/app.mjs --device orin --app beispiel --back
  *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
+ *   node .ara/tools/app.mjs --device orin --app beispiel --share anna   share it with an account, staging
+ *   node .ara/tools/app.mjs --device orin --app beispiel --unshare anna
  *   node .ara/tools/app.mjs --device rechner --app beispiel --compose   device without Arasul
  *
  * `--check` and `--deploy` also take a folder: `--deploy <folder>` deploys a
@@ -63,6 +65,8 @@
  *   node .ara/tools/app.mjs --device orin --app beispiel --live
  *   node .ara/tools/app.mjs --device orin --app beispiel --back
  *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
+ *   node .ara/tools/app.mjs --device orin --app beispiel --share anna   einem Konto freigeben, Teststand
+ *   node .ara/tools/app.mjs --device orin --app beispiel --unshare anna
  *   node .ara/tools/app.mjs --device rechner --app beispiel --compose   Gerät ohne Arasul
  *
  * `--check` und `--deploy` nehmen auch einen Ordner: `--deploy <ordner>` spielt
@@ -86,7 +90,6 @@
  * Grenzen, Packbefehl und Regeln für das Paket kommen aus derselben Antwort.
  */
 
-import { spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -99,10 +102,11 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
+import { spawnSync } from "node:child_process";
 import { join, relative, resolve } from "node:path";
 import { ROOT, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
-import { reason } from "./lib/arasul.mjs";
+import { call, reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { catchUpLines, checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
 import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, redeployLines, releaseLines } from "./lib/appways.mjs";
@@ -124,6 +128,7 @@ import { agentFindings } from "./lib/agentfield.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
+import { contractRows, fillPath, listOf, routeRows, shareWays } from "./lib/adminways.mjs";
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -161,6 +166,11 @@ if (process.argv.length <= 2) {
         "  --live                   switch staging live",
         "  --back                   back to the previous live version",
         "  --remove --confirm <id>  remove the app, with containers and volumes",
+        "  --share <account>        share the app with an account, as administrator",
+        "  --stand test|live        with --share: which slot, otherwise test",
+        "  --unshare <account>      take the share back",
+        "  --password-ref <name>    with --share: the stored entry for the login, otherwise the start password",
+        "  --login-user <name>      with --share: the administrator who logs in, otherwise the device's default",
         "  --compose                set it up on a device without Arasul",
         "  --port <number>          port on the device for --compose, otherwise 8080",
         "  --base <url>             a different address from the file (api_base, otherwise address)",
@@ -191,6 +201,11 @@ if (process.argv.length <= 2) {
         "  --live                   den Teststand live schalten",
         "  --back                   auf die vorige Live-Version zurück",
         "  --remove --confirm <id>  App entfernen, samt Containern und Volumen",
+        "  --share <konto>          die App einem Konto freigeben, als Administrator",
+        "  --stand test|live        mit --share: welcher Stand, sonst test",
+        "  --unshare <konto>        die Freigabe zurücknehmen",
+        "  --password-ref <name>    mit --share: der Eintrag für die Anmeldung, sonst das Startpasswort",
+        "  --login-user <name>      mit --share: der Administrator, der sich anmeldet, sonst die Vorgabe des Geräts",
         "  --compose                auf einem Gerät ohne Arasul aufsetzen",
         "  --port <nummer>          Port am Gerät für --compose, sonst 8080",
         "  --base <url>             andere Adresse als die aus der Akte (api_base, sonst address)",
@@ -252,7 +267,7 @@ function whichApp() {
   return null;
 }
 
-const DEVICE_ACTIONS = ["contract", "check", "deploy", "status", "live", "back", "remove", "compose"];
+const DEVICE_ACTIONS = ["contract", "check", "deploy", "status", "live", "back", "remove", "compose", "share", "unshare"];
 const wantsDevice = DEVICE_ACTIONS.some((name) => arg[name] !== undefined);
 
 // --- Am Rechner: die Akte ----------------------------------------------------
@@ -1577,6 +1592,7 @@ if (arg.deploy !== undefined) {
                 base,
                 testUrl: `${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", stand.app_id ?? manifest.id)}`,
                 deviceCall: `node .ara/tools/device.mjs${device.customer ? ` --customer ${device.customer}` : ""} --name ${device.device}`,
+                shareCall: `node .ara/tools/app.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device} --app ${stand.app_id ?? manifest.id}`,
                 startRef,
                 startPassword: hasSecret(startRef),
                 docs: Boolean(mirrorState()),
@@ -1600,8 +1616,8 @@ const app = whichApp();
 if (!app) {
   fail(
     t(
-      "For --status, --live, --back and --remove I need --app <id>.",
-      "Für --status, --live, --back und --remove brauche ich --app <id>."
+      "For --status, --live, --back, --remove, --share and --unshare I need --app <id>.",
+      "Für --status, --live, --back, --remove, --share und --unshare brauche ich --app <id>."
     )
   );
 }
@@ -1694,6 +1710,183 @@ function showStand(data) {
     ].join("\n")
   );
 }
+
+// --- --share und --unshare ---------------------------------------------------
+
+/**
+ * Wo die Wege zum Freigeben beschrieben sind, der Reihe nach: im Kontrakt,
+ * im Spiegel, in den Anleitungen am Gerät. Zurück kommen die Wege und die
+ * Quelle, oder die Liste dessen, was an keiner Stelle stand.
+ *
+ * Der Kontrakt nennt sie heute nicht, er beschreibt die äußere Schnittstelle
+ * und nicht die Verwaltung. Die API-Referenz tut es, im Spiegel und am Gerät;
+ * dort ist sie die Fassung, die läuft.
+ */
+function shareSource() {
+  const tried = [];
+  const fromContract = shareWays(contractRows(contract));
+  if (fromContract.ways && !fromContract.missing.length) return { ...fromContract.ways, source: t("the contract", "dem Kontrakt") };
+  tried.push(t("the contract names no way to share an app", "der Kontrakt nennt keinen Weg, eine App freizugeben"));
+
+  const referenz = (datei) => /(^|\/)api\/|referen/i.test(datei) && /\.md$/i.test(datei);
+  const mirror = process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
+  if (existsSync(mirror)) {
+    const files = [];
+    const walk = (dir, depth = 0) => {
+      if (depth > 6) return;
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) walk(path, depth + 1);
+        else if (referenz(relative(mirror, path))) files.push(path);
+      }
+    };
+    walk(mirror);
+    const found = shareWays(files.flatMap((file) => routeRows(readFileSync(file, "utf8"))));
+    if (found.ways && !found.missing.length) {
+      return { ...found.ways, source: t(`the mirror (${files.map((f) => relative(ROOT, f)).join(", ")})`, `dem Spiegel (${files.map((f) => relative(ROOT, f)).join(", ")})`) };
+    }
+    tried.push(t(`the mirror: ${found.missing.join("; ")}`, `der Spiegel: ${found.missing.join("; ")}`));
+  }
+
+  const docs = ["--docs", ...(device.customer ? ["--customer", device.customer] : []), "--device", device.device];
+  const mirrorTool = join(ROOT, ".ara", "tools", "mirror.mjs");
+  const list = spawnSync(process.execPath, [mirrorTool, ...docs], { encoding: "utf8" });
+  const files = (list.stdout || "").split("\n").map((z) => z.match(/^- (\S+)$/)?.[1]).filter((f) => f && referenz(f));
+  if (files.length) {
+    const rows = [];
+    for (const file of files) {
+      const read = spawnSync(process.execPath, [mirrorTool, ...docs, "--read", file], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+      if (read.status === 0) rows.push(...routeRows(read.stdout));
+    }
+    const found = shareWays(rows);
+    if (found.ways && !found.missing.length) {
+      return { ...found.ways, source: t(`the manuals on ${place} (${files.join(", ")})`, `den Anleitungen auf ${place} (${files.join(", ")})`) };
+    }
+    tried.push(t(`the manuals on ${place}: ${found.missing.join("; ")}`, `die Anleitungen auf ${place}: ${found.missing.join("; ")}`));
+  } else {
+    tried.push(
+      t(
+        `no API reference among the manuals on ${place}${list.status ? `: ${(list.stdout || list.stderr || "").trim().split("\n")[0]}` : ""}`,
+        `keine API-Referenz unter den Anleitungen auf ${place}${list.status ? `: ${(list.stdout || list.stderr || "").trim().split("\n")[0]}` : ""}`
+      )
+    );
+  }
+  return { tried };
+}
+
+/**
+ * Eine Sitzung als Administrator, aus `device.mjs --admin-login`.
+ *
+ * Nicht nachgebaut: die Anmeldung, ihre Quelle für Weg und Felder und die
+ * Sätze bei einer Abweisung stehen dort. `--password-ref` und `--login-user`
+ * gehen durch, das Passwort bleibt im anderen Prozess, und zurück kommt nur
+ * der Ausweis.
+ */
+function adminSession() {
+  const args = [join(ROOT, ".ara", "tools", "device.mjs"), ...(device.customer ? ["--customer", device.customer] : []), "--name", device.device, "--admin-login", "--token"];
+  for (const name of ["password-ref", "login-user", "login-path", "login-user-field", "login-password-field"]) {
+    if (str(arg[name])) args.push(`--${name}`, str(arg[name]));
+  }
+  if (arg.insecure) args.push("--insecure");
+  const run = spawnSync(process.execPath, args, { encoding: "utf8" });
+  if (run.status !== 0 || !run.stdout.trim()) {
+    fail(t("No session as administrator, so no share:\n", "Keine Sitzung als Administrator, also keine Freigabe:\n") + (run.stderr || run.stdout).trim());
+  }
+  return run.stdout.trim();
+}
+
+async function share() {
+  const revoking = arg.unshare !== undefined;
+  const konto = str(revoking ? arg.unshare : arg.share);
+  if (!konto) {
+    fail(t(`--${revoking ? "unshare" : "share"} needs the name of an account.`, `--${revoking ? "unshare" : "share"} braucht den Namen eines Kontos.`));
+  }
+  const stand = str(arg.stand) || "test";
+  if (!["test", "live"].includes(stand)) {
+    fail(t(`--stand is test or live, not ${stand}.`, `--stand ist test oder live, nicht ${stand}.`));
+  }
+  const ways = shareSource();
+  if (!ways.share) {
+    fail(
+      [
+        t(`${place} says nowhere the kit can read it how an app is shared:`, `${place} sagt nirgends, wo das Kit es lesen kann, wie eine App freigegeben wird:`),
+        ...ways.tried.map((z) => `- ${z}`),
+        "",
+        t(
+          "An administrator does it in the interface. Which page, stands in the admin handbook: ",
+          "Ein Administrator tut es in der Oberfläche. Welche Seite, steht im Admin-Handbuch: "
+        ) + `node .ara/tools/mirror.mjs --docs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device}`,
+      ].join("\n")
+    );
+  }
+  if (!revoking && stand === "test" && !ways.share.slot) {
+    fail(
+      t(
+        `The way to share on ${place} (${ways.share.path}) takes no slot, so a share would fall on live and the account would not see staging. Share with --stand live, or in the interface.`,
+        `Der Weg zum Freigeben auf ${place} (${ways.share.path}) nimmt keinen Stand, eine Freigabe fiele also auf live, und das Konto sähe den Teststand nicht. Mit --stand live freigeben, oder in der Oberfläche.`
+      )
+    );
+  }
+
+  const token = adminSession();
+  const ask = (method, path, json = null) =>
+    call({ base, method, path, json, key: `Bearer ${token}`, keyHeader: "Authorization", insecure: link.insecure }).catch((error) => fail(error.message));
+
+  const konten = await ask(ways.accounts.verb, ways.accounts.path);
+  if (!konten.ok) fail(t(`${place} does not list its accounts.\n`, `${place} listet seine Konten nicht.\n`) + reason(konten));
+  const eintrag = listOf(konten.data).find((k) => k?.[ways.accounts.name] === konto);
+  if (!eintrag) {
+    fail(
+      t(
+        `There is no account "${konto}" on ${place}. Which ones there are: ${listOf(konten.data).map((k) => k?.[ways.accounts.name]).filter(Boolean).join(", ")}`,
+        `Auf ${place} gibt es kein Konto "${konto}". Welche es gibt: ${listOf(konten.data).map((k) => k?.[ways.accounts.name]).filter(Boolean).join(", ")}`
+      )
+    );
+  }
+  const kennung = eintrag[ways.accounts.id];
+
+  let answer;
+  if (revoking) {
+    answer = await ask("DELETE", fillPath(ways.revoke.path, { [ways.revoke.app]: app, [ways.revoke.account]: kennung }));
+    if (answer.status === 404) {
+      console.log(t(`${app} was not shared with ${konto} on ${place}. Nothing to take back.`, `${app} war auf ${place} nicht für ${konto} freigegeben. Nichts zurückzunehmen.`));
+      process.exit(0);
+    }
+  } else {
+    answer = await ask("POST", ways.share.path, {
+      [ways.share.app]: app,
+      [ways.share.account]: kennung,
+      ...(ways.share.slot ? { [ways.share.slot]: stand } : {}),
+    });
+  }
+  if (!answer.ok) {
+    fail(
+      t(
+        `${place} did not ${revoking ? "take back" : "accept"} the share.\n`,
+        `${place} hat die Freigabe nicht ${revoking ? "zurückgenommen" : "angenommen"}.\n`
+      ) + reason(answer)
+    );
+  }
+  if (arg.json) {
+    console.log(JSON.stringify({ device: place, app, konto, stand: revoking ? null : stand, geteilt: !revoking, antwort: answer.data, quelle: ways.source }, null, 2));
+    process.exit(0);
+  }
+  const pfad = (stand === "test" ? contract?.apps?.teststand : contract?.apps?.basis) || null;
+  console.log(
+    [
+      revoking
+        ? t(`${app} is no longer shared with ${konto} on ${place}.`, `${app} ist auf ${place} nicht mehr für ${konto} freigegeben.`)
+        : t(`${app} is shared with ${konto} on ${place}, slot ${stand}.`, `${app} ist auf ${place} für ${konto} freigegeben, Stand ${stand}.`),
+      ...(!revoking && pfad ? [t(`${konto} opens it at ${base}${pfad.replace("<id>", app)}`, `${konto} öffnet sie unter ${base}${pfad.replace("<id>", app)}`)] : []),
+      t(`Ways and fields from ${ways.source}.`, `Wege und Felder aus ${ways.source}.`),
+      ...(revoking ? [] : [t(`Take it back: --unshare ${konto}`, `Zurücknehmen: --unshare ${konto}`)]),
+    ].join("\n")
+  );
+  process.exit(0);
+}
+
+if (arg.share !== undefined || arg.unshare !== undefined) await share();
 
 if (arg.status) {
   const found = await endpoint("GET", `/api/v1/external/apps/${app}`);

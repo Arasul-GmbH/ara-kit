@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.44.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Ein langes Auslesen wird abgeholt, nicht verloren.** Rechnet das Modell nach der Wartezeit des Geräts noch, antwortet das Gerät mit 202 und dem Auftrag, und `arasul.mjs` der Vorlage holt das Ergebnis alle fünf Sekunden auf dem Weg ab, den der Kontrakt unter `warten.wege` zum Weg unter `auslesen.weg` nennt, ohne die Datei ein zweites Mal zu schicken. Das Kit schreibt diesen Weg als `wege.dokument_abholen` in die `arasul.json`, dazu die Wartezeiten. Ein Gerät ohne `warten` nennt keinen Weg; dann endet das Auslesen mit einem Satz statt einer leeren Antwort.
+- **Höchstens so viele Auslesungen zugleich, wie der Kontrakt erlaubt.** Die Vorlage reiht ihre Auslesungen ein und gibt sie weiter, wie der Kontrakt es unter `warten.gleichzeitig` oder `auslesen.gleichzeitig` sagt. Kontrakt 6 nennt keine Zahl, also geht eine nach der anderen: die Warteschlange des Geräts teilen alle Apps, und über ihre Größe hinaus weist sie ab.
+- **`app.mjs --share <konto>` gibt eine App einem Konto frei, Vorgabe Teststand**, `--stand live` mit Absicht, `--unshare <konto>` nimmt sie zurück. Die Sitzung kommt aus `device.mjs --admin-login`. Weg und Felder liest das Kit aus dem Kontrakt, dem Spiegel oder der API-Referenz am Gerät, nach dem, was ein Weg tut: der POST, dessen Rumpf eine App und ein Konto nennt, der GET der Konten, der DELETE darunter. Nimmt der Weg keinen Stand, gibt das Kit nicht frei, denn die Freigabe fiele auf live. Nach `--deploy` nennt das Kit diesen Befehl statt der API-Referenz.
+- **`--admin-login --password-ref <NAME>`** meldet sich mit einem Eintrag an, der schon liegt, zusammen mit `--login-user`. Bis 0.43.0 las die Anmeldung nur `ARASUL_START_<GERÄT>`, und wer das Passwort eines Administrators unter eigenem Namen hielt, legte eine zweite Kopie ab.
+- **Der Ladesatz von `/app` ist höchstens 14.000 Tokens groß**, vorher 15.000, und der Selbsttest hält ihn dort.
+
 ## 0.43.0 (2026-09-26)
 
 Kontrakt: bis 6

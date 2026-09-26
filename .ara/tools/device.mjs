@@ -15,6 +15,8 @@
  *   node .ara/tools/device.mjs --name orin --revoke-key           revoke this kit's own key
  *   node .ara/tools/device.mjs --name orin --admin-login          get a session as administrator
  *   node .ara/tools/device.mjs --name orin --admin-login --token  only the credential, for a script
+ *   node .ara/tools/device.mjs --name orin --admin-login --password-ref ADMIN_PW --login-user anna
+ *                                                                 log in with an entry that is already stored
  *   node .ara/tools/device.mjs --name thor --probe findings.txt   dry run, findings from a file
  *   node .ara/tools/device.mjs --name orin --license              unlock the device with the stored token
  *   printf '%s' "$CODE" | node .ara/tools/device.mjs --name orin --license --pipe   unlock with a pasted code
@@ -64,7 +66,9 @@
  * from the secret store straight into the login, back comes a credential, and the
  * password is never displayed. Route and user name come from the artifact when it
  * names them, otherwise from --login-path and --login-user. What the two fields of the
- * login are called there is --login-user-field and --login-password-field. See
+ * login are called there is --login-user-field and --login-password-field. Whoever keeps the
+ * password of an administrator under a name of their own names it with --password-ref,
+ * instead of storing a second copy under the start password's name. See
  * lib/session.mjs.
  *
  * The trace search distinguishes three situations: the platform runs, only remains
@@ -96,6 +100,8 @@
  *   node .ara/tools/device.mjs --name orin --revoke-key           den eigenen Kit-Schlüssel widerrufen
  *   node .ara/tools/device.mjs --name orin --admin-login          Sitzung als Administrator holen
  *   node .ara/tools/device.mjs --name orin --admin-login --token  nur den Ausweis, für ein Skript
+ *   node .ara/tools/device.mjs --name orin --admin-login --password-ref ADMIN_PW --login-user anna
+ *                                                                 anmelden mit einem Eintrag, der schon liegt
  *   node .ara/tools/device.mjs --name thor --probe befunde.txt    Trockenlauf, Befunde aus einer Datei
  *   node .ara/tools/device.mjs                                    welche Akten es gibt
  *   node .ara/tools/device.mjs --name mac --json                  dasselbe als JSON
@@ -145,7 +151,9 @@
  * zurück kommt ein Ausweis, und angezeigt wird das Passwort nie. Weg und
  * Benutzername kommen aus dem Artefakt, wenn es sie nennt, sonst aus --login-path
  * und --login-user. Wie die beiden Felder der Anmeldung dort heißen, sagen
- * --login-user-field und --login-password-field. Siehe lib/session.mjs.
+ * --login-user-field und --login-password-field. Wer das Passwort eines Administrators unter
+ * einem eigenen Namen hält, nennt ihn mit --password-ref, statt eine zweite Kopie unter dem
+ * Namen des Startpassworts abzulegen. Siehe lib/session.mjs.
  *
  * Die Spurensuche unterscheidet drei Lagen: die Plattform läuft, es liegen nur
  * Reste da, oder da ist nichts. Über Reste hinweg wird nur installiert, wenn
@@ -557,7 +565,20 @@ async function adminLogin() {
       )
     );
   }
-  const ref = existing.start_password_ref || startRef;
+  // Der Eintrag aus dem Aufruf sticht den der Akte. Bis 0.43.0 las die
+  // Anmeldung nur ARASUL_START_<GERÄT>, und wer das Passwort eines Admins schon
+  // unter eigenem Namen hielt, legte eine zweite Kopie davon ab (App-Bau-Probe
+  // am 26.09.2026). Eine Kopie mehr ist ein Ort mehr, an dem es veraltet.
+  const named = str(arg["password-ref"]);
+  if (named && !/^[A-Z_][A-Z0-9_]*$/.test(named)) {
+    fail(
+      t(
+        `${named} is not the name of an entry. Names are written in capitals, digits and underscores, as secrets.mjs --show lists them.`,
+        `${named} ist kein Name eines Eintrags. Namen stehen in Großbuchstaben, Ziffern und Unterstrichen, so wie secrets.mjs --show sie nennt.`
+      )
+    );
+  }
+  const ref = named || existing.start_password_ref || startRef;
   let base;
   try {
     base = baseUrl(existing.api_base || host);
@@ -578,6 +599,19 @@ async function adminLogin() {
    * Kit braucht.
    */
   const password = getSecret(ref);
+  if (!password && named) {
+    const elsewhere = otherStore(ref);
+    fail(
+      t(
+        `Nothing lies under ${ref} in the chosen store` +
+          (elsewhere ? `; the name lies in the other one (${elsewhere}), and that one does not apply here.` : ".") +
+          "\nWhich names are set: node .ara/tools/secrets.mjs --show",
+        `Unter ${ref} liegt in der gewählten Ablage nichts` +
+          (elsewhere ? `; der Name liegt in der anderen (${elsewhere}), und die gilt hier nicht.` : ".") +
+          "\nWelche Namen gesetzt sind: node .ara/tools/secrets.mjs --show"
+      )
+    );
+  }
   if (!password) {
     fail(
       t(
@@ -682,10 +716,10 @@ async function adminLogin() {
         t(
           `${place} refuses the login (${answer.status}). Two reasons come into question: the\n` +
             `administrator is not called "${spec.user}" there (then --login-user <name>), or the\n` +
-            `start password from ${ref} no longer holds because it was changed on the device.\n`,
+            `password from ${ref} no longer holds because it was changed on the device.\n`,
           `${place} weist die Anmeldung ab (${answer.status}). Zwei Gründe kommen infrage: der\n` +
             `Administrator heißt dort nicht "${spec.user}" (dann --login-user <name>), oder das\n` +
-            `Startpasswort aus ${ref} gilt nicht mehr, weil es am Gerät geändert wurde.\n`
+            `Passwort aus ${ref} gilt nicht mehr, weil es am Gerät geändert wurde.\n`
         ) + reason(answer)
       );
     }
@@ -753,8 +787,8 @@ async function adminLogin() {
         `- Der Weg kommt ${woher[spec.sources.path]}, der Benutzername ${woher[spec.sources.user]}`
       ),
       t(
-        `- The start password came from ${ref}. It is not displayed.`,
-        `- Das Startpasswort kam aus ${ref}. Angezeigt wird es nicht.`
+        `- The password came from ${ref}${named ? ", named in the call" : ""}. It is not displayed.`,
+        `- Das Passwort kam aus ${ref}${named ? ", genannt im Aufruf" : ""}. Angezeigt wird es nicht.`
       ),
       "",
       t("Credential for the header:", "Ausweis für die Kopfzeile:"),

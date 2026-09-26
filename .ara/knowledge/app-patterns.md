@@ -9,10 +9,9 @@ foreign service, a foreign tool behind the login: that is the app's own doing, a
 provides no service for it, by decision and not by gap.
 
 Every pattern is code under `.ara/templates/app-patterns/`, and **next to the code lies its sheet**,
-`README.md`: what you settle, what the device has to reach, what was checked. Read only the sheet of
-the pattern the plan takes. Each file says in its head where it goes in an app out of `--new`, the
-self-test runs them, and **none carries a route, header or environment name of the device**: they
-read `arasul.json`, like the scaffold. What a foreign tool needs, its documentation says.
+`README.md`. Read only the sheet of the pattern the plan takes. Each file says in its head where it
+goes, the self-test runs them, and **none carries a route, header or environment name of the
+device**: they read `arasul.json`, like the scaffold.
 
 | Pattern | What it shows | Sheet |
 | --- | --- | --- |
@@ -28,9 +27,7 @@ read `arasul.json`, like the scaffold. What a foreign tool needs, its documentat
 **Pattern 1 is the scaffold**: one `Route` per page in `Wege()` of
 `.ara/templates/app/frontend/src/app.tsx`, the library's `Seitenleiste` in `rahmen/seitenleiste.tsx`,
 one file per page under `seiten/`. **A new area is three steps**: a page, a `Route`, a sidebar
-entry. Routes stay one level deep (`dokumente?nr=17`, not `dokumente/17`): the page loads its
-bundles relatively, and a link to a selected row stays a link. Below 900 pixels the sidebar becomes
-a sheet that closes after the click.
+entry. Routes stay one level deep (`dokumente?nr=17`, not `dokumente/17`).
 
 **What `/app` does with this.** The wish is often small, "a form for the holiday request". Name
 once what lies next to it: a document, a mail, a lookup, a tool the office uses anyway, a receipt

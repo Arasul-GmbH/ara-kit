@@ -1,12 +1,9 @@
 # The design system: the blocks an app is built from
 
-An app runs in a frame in the middle of Arasul's interface, and the human sees one screen. Two
-appearances on it are not a matter of taste, they are a fault. So there is exactly one library for
-both sides, `packages/marken` in the product, shipped as a **package**: `marken.json` names the
-version, the dependencies and every file with its sha256. The kit mirrors it into the app scaffold,
-every app carries a copy under `frontend/src/marken/`, and an app built from its parts looks like the
-device without anybody copying a colour. How the copies hang together and who holds them at their
-source: `.ara/knowledge/design-guard.md`.
+An app runs in a frame inside Arasul's interface, and two appearances on one screen are a fault.
+So there is one library for both sides, shipped as a **package**: `marken.json` names the version,
+the dependencies and every file with its sha256. Every app carries a copy under
+`frontend/src/marken/`. How the copies hang together: `.ara/knowledge/design-guard.md`.
 
 ## Three sets, two stylesheets, one theme source
 
@@ -16,15 +13,9 @@ source: `.ara/knowledge/design-guard.md`.
 | Patterns | `marken/muster/` | Datenliste, Formularseite, Seitenleiste, Dateiablage, Dokumentanzeige and more, made **of** primitives for a task every application has |
 | Blocks | `marken/*.tsx` | Kopf, Meldung, Karte and the like. Pure CSS (`ara-*`), they run **without** a build |
 
-With a build you take primitives and patterns, the blocks for a page head and a message. A whole
-form is a pattern: rebuilt, it is two hundred lines the next app writes differently. What the
-current version carries, `marken.json` says.
-
-`marken/theme.css` carries the values of both themes and the `@theme` block Tailwind builds
-`bg-primary` or `rounded-md` from; it is loaded **without a layer**, inside `layer(...)` a `@theme`
-is none. `marken/marken.css` carries the blocks' rules, loaded **with** `layer(components)`, or it
-would beat every Tailwind class. Both stand in this order in the scaffold's `stil.css`, with no second
-file of values.
+A whole form is a pattern: rebuilt, it is two hundred lines the next app writes differently.
+`marken/theme.css` (both themes, the `@theme` block) is loaded **without a layer**, `marken/marken.css`
+**with** `layer(components)`; the scaffold's `stil.css` does both, keep it that way.
 
 **The theme comes from the device.** The shell sets the class `dark` and `data-theme="dark"` at
 `<html>` and sends `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` reads and does not guess; only

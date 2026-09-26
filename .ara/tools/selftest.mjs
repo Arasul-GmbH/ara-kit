@@ -68,6 +68,7 @@ import {
   verificationOf,
 } from "./lib/platform.mjs";
 import {
+  CONTRACT_PATH,
   KIT_CONTRACT_VERSION,
   checkManifest,
   checkVersion,
@@ -111,6 +112,7 @@ import {
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
+import { contractRows, fillPath, routeRows, shareWays } from "./lib/adminways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
@@ -2514,7 +2516,11 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       ARASUL_START_SELFTEST_ARASUL: "probe-passwort",
     });
     assert(run.status === 0, `Einspielen mit Startpasswort fehlgeschlagen: ${run.stdout}${run.stderr}`);
-    assert(/--admin-login/.test(run.stdout), `mit Startpasswort fehlt die Sitzung: ${run.stdout}`);
+    // Seit 0.44.0 nennt der Text den Befehl zum Freigeben, und die Sitzung dafür aus dem Startpasswort.
+    assert(
+      /--app probeapp --share </.test(run.stdout) && /ARASUL_START_SELFTEST_ARASUL/.test(run.stdout),
+      `mit Startpasswort fehlt der Befehl zum Freigeben: ${run.stdout}`
+    );
 
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--live"], env);
     assert(run.status === 0, `Live schalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -2747,6 +2753,134 @@ await checkAsync("Ein selbst installiertes Gerät kennt sein eigenes Zertifikat"
     rmSync(akte, { recursive: true, force: true });
     rmSync(work, { recursive: true, force: true });
   }
+});
+
+await checkAsync("Eine App wird einem Konto im Teststand freigegeben und wieder entzogen, Weg und Felder aus der API-Referenz, die Sitzung aus einem genannten Eintrag", async () => {
+  // Die App-Bau-Probe am 26.09.2026: kein Befehl zum Freigeben, ein Fremder
+  // fand die Wege in der API-Referenz und ließ den Stand weg, und die Freigabe
+  // fiel auf live. Das gespielte Gerät nennt seine Wege anders als der Orin:
+  // ein Kit, das `/api/freigaben` auswendig kennt, findet hier nichts.
+  const name = "selftest-teilen";
+  const akte = join(ROOT, "devices", name);
+  const spiegel = mkdtempSync(join(tmpdir(), "ara-teilen-"));
+  mkdirSync(join(spiegel, "docs", "api"), { recursive: true });
+  writeFileSync(
+    join(spiegel, "docs", "api", "REFERENZ.md"),
+    [
+      "| Method | Endpoint | Description |",
+      "| ------ | -------- | ----------- |",
+      "| GET    | `/api/konto` | Alle Konten: `id, username, role` |",
+      "| POST   | `/api/konto` | Konto anlegen: `{ username, password }` |",
+      "| GET    | `/api/teilen` | Alle Freigaben; mit `app_name`, `username` |",
+      "| POST   | `/api/teilen` | Freigeben: `{ app, konto_id, stand? }`; 201 neu |",
+      "| DELETE | `/api/teilen/:app/:kontoId` | Zurücknehmen; 404, wenn es sie nicht gibt |",
+    ].join("\n")
+  );
+  const gesehen = [];
+  let geteilt = new Map();
+  const server = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const rumpf = teile.length ? JSON.parse(Buffer.concat(teile).toString("utf8")) : null;
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      gesehen.push({ verb: anfrage.method, weg: url.pathname, rumpf, ausweis: anfrage.headers.authorization ?? null });
+      if (url.pathname === CONTRACT_PATH) return json(200, { data: KONTRAKT });
+      if (anfrage.method === "POST" && url.pathname === "/api/auth/login") {
+        return rumpf?.username === "anna" && rumpf?.password === "geheim-anna" ? json(200, { token: "sitzung-anna" }) : json(401, { error: "nein" });
+      }
+      if (anfrage.headers.authorization !== "Bearer sitzung-anna") return json(401, { error: "ohne Sitzung" });
+      if (anfrage.method === "GET" && url.pathname === "/api/konto") return json(200, { data: [{ id: 3, username: "anna" }, { id: 7, username: "bernd" }] });
+      if (anfrage.method === "POST" && url.pathname === "/api/teilen") {
+        geteilt.set(`${rumpf.app}/${rumpf.konto_id}`, rumpf.stand ?? "live");
+        return json(201, { data: rumpf, neu: true });
+      }
+      const weg = url.pathname.match(/^\/api\/teilen\/([^/]+)\/([^/]+)$/);
+      if (anfrage.method === "DELETE" && weg) {
+        const schluessel = `${weg[1]}/${weg[2]}`;
+        if (!geteilt.has(schluessel)) return json(404, { error: "keine" });
+        geteilt.delete(schluessel);
+        return json(200, { data: { entfernt: true } });
+      }
+      json(404, { error: url.pathname });
+    });
+  });
+  await new Promise((fertig) => server.listen(0, "127.0.0.1", fertig));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST_TEILEN: "aras_selbsttest", ANNA_PASSWORT: "geheim-anna", ARA_MIRROR: spiegel };
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), {
+    name,
+    address: "127.0.0.1:1",
+    api_base: base,
+    verdict: "supported",
+    arasul: "found",
+    api_key_ref: "ARASUL_KEY_SELFTEST_TEILEN",
+  });
+  try {
+    const anna = ["--password-ref", "ANNA_PASSWORT", "--login-user", "anna"];
+    let run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", ...anna], env);
+    assert(run.status === 0, `freigeben scheiterte: ${run.stdout}${run.stderr}`);
+    const post = gesehen.find((g) => g.verb === "POST" && g.weg === "/api/teilen");
+    assert(post && post.rumpf.app === "probe" && post.rumpf.konto_id === 7 && post.rumpf.stand === "test", `der Rumpf kam anders an: ${JSON.stringify(post)}`);
+    assert(/REFERENZ\.md/.test(run.stdout) && /--unshare bernd/.test(run.stdout), `Quelle oder Rückweg fehlen: ${run.stdout}`);
+    assert(!/geheim-anna|sitzung-anna/.test(run.stdout + run.stderr), "Passwort oder Ausweis stehen in der Ausgabe");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", "--stand", "live", ...anna], env);
+    assert(run.status === 0 && geteilt.get("probe/7") === "live", `mit --stand live: ${geteilt.get("probe/7")} ${run.stderr}`);
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--unshare", "bernd", ...anna], env);
+    assert(run.status === 0 && !geteilt.has("probe/7") && gesehen.some((g) => g.verb === "DELETE" && g.weg === "/api/teilen/probe/7"), `zurücknehmen: ${run.stdout}${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--unshare", "bernd", ...anna], env);
+    assert(run.status === 0 && /Nichts zurückzunehmen|Nothing to take back/.test(run.stdout), `ein zweites Zurücknehmen: ${run.stdout}${run.stderr}`);
+
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "carla", ...anna], env);
+    assert(run.status !== 0 && /carla/.test(run.stderr) && /bernd/.test(run.stderr), `ein Konto, das es nicht gibt: ${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", "--stand", "irgendwo", ...anna], env);
+    assert(run.status !== 0 && /test.*live/.test(run.stderr), `ein Stand, den es nicht gibt: ${run.stderr}`);
+
+    // Ohne den Stand im Rumpf fiele die Freigabe auf live: dann gibt das Kit nicht still frei.
+    writeFileSync(join(spiegel, "docs", "api", "REFERENZ.md"), readFileSync(join(spiegel, "docs", "api", "REFERENZ.md"), "utf8").replace("konto_id, stand?", "konto_id"));
+    const vorher = gesehen.length;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", ...anna], env);
+    assert(run.status !== 0 && /live/.test(run.stderr) && !gesehen.slice(vorher).some((g) => g.verb === "POST" && g.weg === "/api/teilen"), `ohne Stand im Rumpf: ${run.stderr}`);
+
+    // Und ohne Wege in der Referenz sagt es, wo es gesucht hat.
+    writeFileSync(join(spiegel, "docs", "api", "REFERENZ.md"), "Nichts.\n");
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probe", "--share", "bernd", ...anna], env);
+    assert(run.status !== 0 && /Kontrakt|contract/.test(run.stderr) && /Spiegel|mirror/.test(run.stderr), `ohne Wege: ${run.stderr}`);
+    return "Konto nach Namen, Stand test als Vorgabe, live auf Wunsch, zurückgenommen, zweimal ohne Fehler, fremdes Konto, ohne Stand im Rumpf keine Freigabe, ohne Wege benannt";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(spiegel, { recursive: true, force: true });
+  }
+});
+
+check("Die Wege zum Freigeben werden aus einer API-Referenz gelesen, nach dem, was sie tun", () => {
+  const rows = routeRows(
+    [
+      "| GET    | `/api/benutzer` | Alle Benutzer: `id, username, email, role` |",
+      "| POST   | `/api/benutzer` | Benutzer anlegen: `{ username, password, email?, rolle: \"admin\" \\| \"mitarbeiter\" }` |",
+      "| GET    | `/api/freigaben` | Alle Freigaben; Filter `?app_id=` und `?benutzer_id=`; mit `app_name`, `username` |",
+      "| POST   | `/api/freigaben` | Freigeben: `{ app_id, benutzer_id, stand? }`; 201 neu |",
+      "| DELETE | `/api/freigaben/:appId/:benutzerId` | Freigabe zurücknehmen |",
+      "| POST   | `/api/andere/:id/freigeben` | Etwas anderes: `{ app_id, lauf_id }` |",
+    ].join("\n")
+  );
+  const { ways, missing } = shareWays(rows);
+  assert(missing.length === 0, `es fehlt: ${missing.join("; ")}`);
+  assert(ways.share.path === "/api/freigaben" && ways.share.app === "app_id" && ways.share.account === "benutzer_id" && ways.share.slot === "stand", `freigeben: ${JSON.stringify(ways.share)}`);
+  assert(ways.accounts.path === "/api/benutzer" && ways.accounts.name === "username", `Konten: ${JSON.stringify(ways.accounts)}`);
+  assert(ways.revoke.app === "appId" && ways.revoke.account === "benutzerId", `zurücknehmen: ${JSON.stringify(ways.revoke)}`);
+  assert(fillPath(ways.revoke.path, { appId: "a b", benutzerId: 7 }) === "/api/freigaben/a%20b/7", "Platzhalter werden nicht gefüllt");
+  assert(shareWays(contractRows(KONTRAKT)).missing.length > 0, "im Kontrakt ohne Verwaltung wurde ein Weg erfunden");
+  return "freigeben, Konten und zurücknehmen gefunden, der Kontrakt ohne sie leer";
 });
 
 // --- Doku-Selbsttest ---------------------------------------------------------
@@ -4352,6 +4486,104 @@ await checkAsync("Die Vorlage nennt jedem Modellaufruf seinen Menschen, wie der 
     const quelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"), "utf8");
     assert(!/x-arasul-user/i.test(quelle.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")), "die Vorlage trägt den Namen der Kopfzeile im Code");
     return "Auslesen und Frage mit dem Menschen in denselben Bytes, Lauf ohne, ohne Namen ohne, fuer() für /v1, altes Gerät ohne";
+  } finally {
+    geraet.close();
+  }
+});
+
+await checkAsync("Ein Auslesen, das länger rechnet, als das Gerät wartet, holt die Vorlage ab, und zum Gerät gehen nur so viele zugleich, wie der Kontrakt erlaubt", async () => {
+  // Bis 0.43.0 ging ein Auslesen verloren, das nach der Wartezeit des Geräts
+  // noch rechnete: das 202 sah aus wie eine Antwort ohne Felder. Das gespielte
+  // Gerät nennt seinen Abholweg anders als der Orin; eine Vorlage, die ihn
+  // fest im Quelltext trägt, holt hier nichts ab.
+  const { geraet: anschluss } = await import(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"));
+  const kontrakt = {
+    ...VORLAGE_KONTRAKT,
+    umgebung: { ...VORLAGE_KONTRAKT.umgebung, praefix: "/api/v1/external", basis_enthaelt_praefix: false },
+    auslesen: { weg: "document/extract-structured" },
+    warten: { status: 202, wege: { "document/extract-structured": "abholung/:nummer" }, hoechstens_sekunden: 30, aufbewahrt_sekunden: 60 },
+  };
+  let offen = 0;
+  let hoechstens = 0;
+  const auftraege = new Map();
+  const gesendet = [];
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", async () => {
+      const url = new URL(anfrage.url, "http://x");
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/document/extract-structured") {
+        offen += 1;
+        hoechstens = Math.max(hoechstens, offen);
+        const formular = await new Request("http://x", { method: "POST", headers: { "content-type": anfrage.headers["content-type"] }, body: Buffer.concat(teile) }).formData();
+        const nummer = `auftrag-${gesendet.length + 1}`;
+        gesendet.push({ nummer, wartezeit: formular.get("timeout_seconds") });
+        await new Promise((weiter) => setTimeout(weiter, 30));
+        if (formular.get("timeout_seconds") === "1") {
+          // Rechnet noch: 202 mit dem Auftrag. Zweimal abgeholt rechnet er noch, beim dritten Mal ist er fertig.
+          auftraege.set(nummer, 2);
+          offen -= 1;
+          return json(202, { success: false, status: "laeuft", job_id: nummer, abholen: `abholung/${nummer}`, model: "probe-modell:1b" });
+        }
+        offen -= 1;
+        return json(200, { success: true, data: { a: nummer }, model: "probe-modell:1b", job_id: nummer, processing_time_ms: 30 });
+      }
+      const treffer = url.pathname.match(/^\/api\/v1\/external\/abholung\/([^/]+)$/);
+      if (anfrage.method === "GET" && treffer) {
+        const rest = auftraege.get(treffer[1]);
+        if (rest === undefined) return json(404, { error: { message: "unbekannt" } });
+        if (rest > 0) {
+          auftraege.set(treffer[1], rest - 1);
+          return json(202, { success: false, status: "laeuft", job_id: treffer[1], abholen: `abholung/${treffer[1]}` });
+        }
+        return json(200, { success: true, data: { abgeholt: true }, model: "probe-modell:1b", job_id: treffer[1], processing_time_ms: 70_000, metadata: { ocr_used: false } });
+      }
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    const umgebung = { ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest" };
+    const vereinbarung = JSON.parse(arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
+    assert(vereinbarung.wege.dokument_abholen?.pfad === "/api/v1/external/abholung/{auftrag}", `der Abholweg kommt nicht aus dem Kontrakt: ${JSON.stringify(vereinbarung.wege.dokument_abholen)}`);
+    assert(vereinbarung.warten?.gleichzeitig === null, "ohne Angabe im Kontrakt erfindet das Kit eine Zahl gleichzeitiger Auslesungen");
+    const datei = { datei: Buffer.from("%PDF-1.4"), name: "a.pdf", art: "application/pdf", schema: { type: "object" }, anweisung: "x" };
+
+    // Rechnet noch: abgeholt, ohne die Datei zweimal zu schicken.
+    const g = anschluss(vereinbarung, umgebung, { name: "Probe", flow: "freigabe", abholenAlleMs: 20 });
+    const lang = await g.auslesen({ ...datei, wartezeit: 1 });
+    assert(lang.felder?.abgeholt === true && lang.auftrag === "auftrag-1" && lang.dauer_ms === 70_000, `das lange Auslesen ging verloren: ${JSON.stringify(lang)}`);
+    assert(gesendet.length === 1, `die Datei ging ${gesendet.length}-mal an das Gerät`);
+
+    // Sechs zugleich: ohne Angabe im Kontrakt geht eine nach der anderen, und keine geht verloren.
+    const sechs = await Promise.all(Array.from({ length: 6 }, () => g.auslesen(datei)));
+    assert(sechs.every((a) => a.felder?.a), `nicht alle sechs kamen an: ${JSON.stringify(sechs)}`);
+    assert(hoechstens === 1, `ohne Angabe im Kontrakt gingen ${hoechstens} Auslesungen zugleich an das Gerät`);
+
+    // Nennt der Kontrakt eine Zahl, gilt sie.
+    hoechstens = 0;
+    const drei = anschluss(
+      JSON.parse(arrangementFile(appArrangement({ ...kontrakt, warten: { ...kontrakt.warten, gleichzeitig: 3 } }, {}))),
+      umgebung,
+      { name: "Probe", flow: "freigabe", abholenAlleMs: 20 }
+    );
+    await Promise.all(Array.from({ length: 6 }, () => drei.auslesen(datei)));
+    assert(hoechstens === 3, `mit gleichzeitig 3 gingen ${hoechstens} Auslesungen zugleich an das Gerät`);
+
+    // Ein Gerät ohne `warten` nennt keinen Abholweg: das 202 wird ein Satz, keine leere Antwort.
+    const { warten, ...ohneWarten } = kontrakt;
+    const alt = anschluss(JSON.parse(arrangementFile(appArrangement(ohneWarten, {}))), umgebung, { name: "Probe", flow: "freigabe" });
+    const verloren = await alt.auslesen({ ...datei, wartezeit: 1 });
+    assert(verloren.felder === null && /rechnet noch/.test(verloren.fehler || "") && !/202|Status/.test(verloren.fehler), `ohne Abholweg: ${JSON.stringify(verloren)}`);
+
+    // Und kein Abholweg steht in der Vorlage: er kommt aus der Vereinbarung.
+    const quelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    assert(!/extract-structured|abholung/.test(quelle), "die Vorlage trägt einen Weg des Geräts im Code");
+    return "202 abgeholt mit einer Sendung, sechs ohne Verlust und einzeln, drei zugleich mit Angabe, ohne Abholweg ein Satz";
   } finally {
     geraet.close();
   }
@@ -6350,7 +6582,7 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
   assert(/app:deploy/.test(ohne), "es steht nicht da, warum das Kit sie nicht erteilen kann");
   assert(/403/.test(ohne), "die 403 am Teststand wird nicht erklaert");
   assert(/secrets\.mjs --set ARASUL_START_ORIN/.test(ohne), `ohne Startpasswort fehlt der Weg dorthin: ${ohne}`);
-  assert(!/--admin-login/.test(ohne), "ohne Startpasswort wird eine Sitzung angeboten, die es nicht gibt");
+  assert(/--password-ref <NAME>/.test(ohne), `ohne Startpasswort fehlt der Weg über einen Eintrag, der schon liegt: ${ohne}`);
   assert(/https:\/\/192\.0\.2\.10/.test(ohne), "die Oberflaeche wird nicht genannt");
 
   const mit = releaseLines({
@@ -6360,7 +6592,7 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
     startRef: "ARASUL_START_ORIN",
     startPassword: true,
   }).join("\n");
-  assert(/--admin-login/.test(mit), `mit Startpasswort fehlt die Sitzung: ${mit}`);
+  assert(/--share <konto>|--share <account>/.test(mit) && /Startpasswort unter ARASUL_START_ORIN|start password under ARASUL_START_ORIN/.test(mit), `mit Startpasswort fehlt der Befehl zum Freigeben: ${mit}`);
   // Ohne Spiegel liegen die Anleitungen trotzdem am Gerät, und das Kit liest
   // sie dort. Bis 0.31.0 stand hier --refresh, und das verlangt einen Token.
   assert(/mirror\.mjs --docs --device/.test(mit), `ohne Spiegel fehlt der Weg zu den Anleitungen am Gerät: ${mit}`);
@@ -6370,6 +6602,7 @@ check("Nach dem Einspielen steht da, dass ein Admin freigeben muss, und wie", ()
   // Kein Produktwert: die Seite und der Weg der Freigabe stehen im Artefakt.
   for (const text of [ohne, mit]) {
     assert(!/\/api\/(freigaben|permissions)/.test(text), "das Kit nennt einen Weg, den es nicht wissen kann");
+    assert(/--share/.test(text), `der Befehl zum Freigeben fehlt: ${text}`);
     assert(/Admin-Handbuch|admin handbook/.test(text), "das Artefakt wird nicht als Quelle genannt");
     // Fund 1 des Fremdtests am 29.08.2026: das Haekchen allein gibt den
     // Livestand frei, und eine frisch eingespielte App hat keinen.
@@ -10398,10 +10631,14 @@ const FACH_APP_LADESATZ = {
     ".ara/templates/app-patterns/receipts/README",
   ],
 };
-/** Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. */
-const FACH_APP_GRENZE = 15000;
+/**
+ * Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. Bis 0.43.0
+ * 15.000, und der Satz stand bei 14.981: das nächste Musterblatt passte nicht
+ * mehr. Seit 0.44.0 14.000.
+ */
+const FACH_APP_GRENZE = 14000;
 
-check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 15.000 Tokens, in beiden Sprachen", () => {
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 14.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
   // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
   // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit

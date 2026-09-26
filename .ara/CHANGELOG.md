@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.44.0 (2026-09-26)
+
+Contract: up to 6
+
+- **A long reading is fetched, not lost.** If the model still computes after the device's wait, the device answers 202 with the job, and `arasul.mjs` of the scaffold fetches the result every five seconds on the way the contract names under `warten.wege` for the way under `auslesen.weg`, without sending the file twice. The kit writes that way into `arasul.json` as `wege.dokument_abholen`, together with the wait times. A device without `warten` names no way; then the reading ends with a sentence instead of an empty answer.
+- **At most as many readings at a time as the contract allows.** The scaffold queues its readings and sends them on as the contract says under `warten.gleichzeitig` or `auslesen.gleichzeitig`. Contract 6 names no number, so it sends one after the other: the device's queue is shared by every app and refuses beyond its size.
+- **`app.mjs --share <account>` shares an app with an account, staging by default**, `--stand live` on purpose, `--unshare <account>` takes it back. The session comes from `device.mjs --admin-login`. Route and fields the kit reads from the contract, the mirror or the API reference on the device, by what a route does: the POST whose body names an app and an account, the GET of the accounts, the DELETE below. If the way takes no slot, the kit does not share, because the share would fall on live. After `--deploy` the kit names this command instead of the API reference.
+- **`--admin-login --password-ref <NAME>`** logs in with an entry already stored, together with `--login-user`. Up to 0.43.0 the login read only `ARASUL_START_<DEVICE>`, and whoever kept an administrator's password under a name of their own stored a second copy.
+- **The load set of `/app` is at most 14,000 tokens**, down from 15,000, and the self-test holds it there.
+
 ## 0.43.0 (2026-09-26)
 
 Contract: up to 6
