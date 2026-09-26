@@ -23,7 +23,8 @@ steht in `--contract` unter `bilder`.
 **Ersetze `SCHEMA`, `ANWEISUNG` und `fachlich`** durch das, was dein Kunde liest. Ein flaches Schema
 mit `required` ist am verlässlichsten; ein Feld, das das Modell raten müsste, lässt du besser weg,
 und die Anweisung sagt es. Die Seite sagt, dass das Modell liest, und ein zweiter Klick startet
-keine zweite Auslesung. Wer eine Auslesung verwirft, löst eine neue aus: das Protokoll behält jede.
+keine zweite Auslesung. Wer eine Auslesung verwirft, löst eine neue aus: das Protokoll behält jede,
+und für ein Dokument, das es nicht gibt und von dem nichts im Protokoll steht, antwortet es 404.
 
 **Geprüft**: der Selbsttest gegen ein gespieltes Gerät, Felder, ein Mangel am Steuersatz, keine
 Felder, ein Fehler des Geräts, das Protokoll, nachdem das Dokument ging; der Orin am 25.09.2026 mit

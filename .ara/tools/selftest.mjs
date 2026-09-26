@@ -3832,7 +3832,7 @@ await checkAsync("Die CSV-Hilfe der Vorlage schreibt BOM, Semikolon und Dezimalk
   // Ein Export geht an Excel oder den Steuerberater. Eine Zelle, die mit = + -
   // @ Tab oder CR beginnt, liest die Tabellenkalkulation als Formel; ein
   // Mandantenname wie =HYPERLINK(...) liefe sonst beim Empfänger.
-  const { csv, zelle, csvKoepfe } = await import(join(ROOT, ".ara", "templates", "app", "backend", "kern", "csv.mjs"));
+  const { csv, zelle, csvKopfzeilen } = await import(join(ROOT, ".ara", "templates", "app", "backend", "kern", "csv.mjs"));
   const text = csv(
     [
       { name: "Müller; \"Bau\" GmbH", betrag: 1234.5, notiz: "zwei\nZeilen" },
@@ -3856,7 +3856,7 @@ await checkAsync("Die CSV-Hilfe der Vorlage schreibt BOM, Semikolon und Dezimalk
   assert(text.endsWith("\r\n"), "die letzte Zeile endet ohne CRLF");
   assert(zelle(1234567.891) === "1234567,891" && zelle(1e21) === "1000000000000000000000", `Zahlen tragen Tausenderpunkt oder Exponent: ${zelle(1234567.891)} ${zelle(1e21)}`);
   assert(zelle(null) === "" && zelle(undefined) === "", "eine leere Zelle ist nicht leer");
-  assert(/text\/csv; charset=utf-8/.test(csvKoepfe("a.csv")["content-type"]) && /attachment/.test(csvKoepfe("Ä.csv")["content-disposition"]), "die Kopfzeilen der Antwort stimmen nicht");
+  assert(/text\/csv; charset=utf-8/.test(csvKopfzeilen("a.csv")["content-type"]) && /attachment/.test(csvKopfzeilen("Ä.csv")["content-disposition"]), "die Kopfzeilen der Antwort stimmen nicht");
   return "BOM, Semikolon, Dezimalkomma, Quoting, Formelschutz für = + - @ Tab CR, eine Zahl bleibt eine Zahl";
 });
 

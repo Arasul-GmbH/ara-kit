@@ -36,7 +36,7 @@ Haus arbeitet (`business/profile.md`), gehört in den ersten Entwurf.
 | **Welche Daten** | Was hinein geht, liegen bleibt, hinaus geht. Personenbezogenes ausdrücklich benennen |
 | **Die Schritte** | Aus Sicht des Menschen davor, ein Schritt je Zeile |
 | **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Daten schieben ist ein Programm, kein Flow |
-| **Wo ein Mensch entscheidet** | Jede Freigabe, wer dort entscheidet und wer ausdrücklich nicht, etwa der Einreicher |
+| **Wo ein Mensch entscheidet** | Jede Freigabe, wann ein Vorgang vollständig genug dafür ist, wer entscheidet und wer ausdrücklich nicht |
 | **Wer was sehen darf** | Jeder darin alles, oder nur seine Mandanten, Abteilungen, Akten. Das entscheidet die App |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt, und was davon nachgewiesen wird. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung, aus ihrer Primärquelle: `.ara/knowledge/app-professional.de.md` |
@@ -98,8 +98,8 @@ Administrator zurück, wie `daten.wiederherstellen` sagt. Test und live haben je
 `.ara/knowledge/deploy.de.md`.
 
 **Was nicht bleibt**, weil jedes Einspielen den Container ersetzt: sein Dateisystem, ein `VOLUME`
-aus dem Dockerfile eingeschlossen, eine SQLite-Datei, ein Ordner für Hochgeladenes, ein Protokoll
-auf der Platte, eine Datenbank daneben. Eine hochgeladene Datei gehört in eine Spalte (`BYTEA`).
+eingeschlossen, eine SQLite-Datei, ein Ordner für Hochgeladenes. Eine hochgeladene Datei gehört in
+eine Spalte (`BYTEA`).
 Entfernen wirft die Datenbanken der App weg, ihre Sicherungen bleiben.
 
 **Die Vorlage tut das schon** in `backend/ablage/db.mjs`: ein leerer Wert hält den Start an,
@@ -114,11 +114,10 @@ schon gibt.
 ## Was die Vorlage schon ist
 
 Der Klon bringt keine App mit; die Vorlage liegt unter `.ara/templates/app/`, und was `--new` daraus
-macht, läuft ab der ersten Minute: ein Vorgang liegt in der Datenbank des Geräts, das Backend
-startet den Flow `freigabe` mit seiner Nummer und seinem Einreicher, ein Mensch entscheidet in
-Arasul, und der Vorgang steht als genehmigt oder abgelehnt da, mit dem, der entschieden hat, und
-dem Satz des Flows. Ohne Arasul bleibt er unentschieden, und die Seite sagt das. Fragt jemand, wie
-eine App aussieht, leg eine an und zeig sie.
+macht, läuft ab der ersten Minute: ein Vorgang liegt in der Datenbank des Geräts, der Flow
+`freigabe` startet mit seiner Nummer und seinem Einreicher, ein Mensch entscheidet in Arasul, und der
+Vorgang steht als genehmigt oder abgelehnt da, mit Entscheider und dem Satz des Flows. Fragt jemand,
+wie eine App aussieht, leg eine an und zeig sie.
 
 Der Stapel ist der der Oberfläche des Geräts: **Vite, React, TypeScript, Tailwind,
 `react-router`, TanStack Query.** Fünf Stellen, jede gibt es einmal:
@@ -131,12 +130,10 @@ Der Stapel ist der der Oberfläche des Geräts: **Vite, React, TypeScript, Tailw
 | `rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, mit Rolle |
 | `rahmen/async-boundary.tsx` | Lädt, ging schief, ist da. Jede Abfrage geht hindurch |
 
-Das Backend: `server.mjs` macht HTTP, `kern/vorgaenge.mjs` die Fälle, und der Kern bekommt **zwei
-Anschlüsse** übergeben, eine Ablage und ein Gerät, darum steht in ihm kein `fetch`, kein SQL, keine
-Umgebung, und jeder Fall wird ohne beides geprüft. Eine Ablage je Entität, mit dem einzigen SQL
-dafür: am Gerät PostgreSQL über `pg`, ohne Gerät SQLite aus Node. Ein SQL im Dialekt von
-PostgreSQL, `$1` als Platzhalter, das `ablage/db.mjs` samt laufender Nummern für SQLite übersetzt;
-darum stehen Zeiten und JSON als Text, Bytes als `BYTEA`.
+Das Backend: `server.mjs` macht HTTP, `kern/vorgaenge.mjs` die Fälle mit **zwei Anschlüssen**, einer
+Ablage und einem Gerät, darum wird jeder Fall ohne beides geprüft. Eine Ablage je Entität mit dem
+einzigen SQL dafür, im Dialekt von PostgreSQL; `ablage/db.mjs` übersetzt es für SQLite.
+`kern/csv.mjs` schreibt einen Export.
 
 **Sie beschreibt sich selbst für Agenten**: das Feld `agent` in `app.json` nennt die Routen, die ein
 Agent rufen darf, und das Backend beantwortet die Route `agent` aus einer Kopie der `app.json`, die

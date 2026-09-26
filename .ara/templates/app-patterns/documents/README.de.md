@@ -13,11 +13,9 @@ zeigen die Zeilen für `server.mjs`, die `Route` und die Seitenleiste. Dann `--b
 
 Die Anzeige, gelesen in der Bibliothek am 15.09.2026:
 
-- Ihre `quelle` ist eine `File`, ein `Blob` oder eine Adresse desselben Ursprungs; ohne sie zeigt
-  sie ihren leeren Zustand. **Gib ihr die `art`**, `pdf` oder `bild`, bei einer Adresse: die Adresse
-  der eigenen Bytes hat keine Endung, an der sie die Art erkennt, darum nimmt die Seite sie aus dem
-  abgelegten Typ. `name` steht in ihrem Kopf, `hoehe` ist die Höhe der Fläche als CSS,
-  `kennzeichen` das Merkmal für einen Test.
+- Ihre `quelle` ist eine `File`, ein `Blob` oder eine Adresse desselben Ursprungs. **Gib ihr die
+  `art`**, `pdf` oder `bild`, bei einer Adresse: die Adresse der eigenen Bytes hat keine Endung,
+  darum nimmt die Seite sie aus dem abgelegten Typ. `hoehe` setzt die Höhe.
 - **Die PDF-Bibliothek braucht Hilfsdateien neben dem gebauten JavaScript**, den Ordner
   `pdf-dateien/`, den die `vite.config.ts` der Vorlage bei jedem Bau dorthin legt. Ohne ihn zeigt
   ein Bild sich, und ein PDF endet im Fehlerzustand.
@@ -25,6 +23,8 @@ Die Anzeige, gelesen in der Bibliothek am 15.09.2026:
   eine zu viel.
 
 **Die Bytes liegen in der Datenbank der App** als `BYTEA`, warum: `.ara/knowledge/app.de.md`,
-„Daten, die bleiben". Die Grenze ist zehn Megabyte je Datei, gesetzt im Kern und der Seite gesagt;
-sie hängt am Speicher des Containers im Manifest, heb beides zusammen. Ein Dokument in Felder
+„Daten, die bleiben". Die Grenze ist zehn Megabyte je Datei, gesetzt im Kern;
+sie hängt am Speicher des Containers im Manifest, heb beides zusammen. **An einem Vorgang** (Muster
+8) bekommt der Kern die Ablage der Vorgänge und antwortet auf Anhängen und Entfernen mit 409, sobald
+der Vorgang eingereicht ist. Ein Dokument in Felder
 auslesen ist Muster 6, nebenan unter `extract/`.

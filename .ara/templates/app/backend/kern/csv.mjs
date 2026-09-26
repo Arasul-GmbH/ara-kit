@@ -24,14 +24,14 @@
  * eigene Regeln für Kopfzeile, Felder und Zeichensatz. Die stehen in seiner
  * Quelle, nicht hier: `.ara/knowledge/app-professional.md`.
  *
- *   import { csv, csvKoepfe } from "./kern/csv.mjs";
+ *   import { csv, csvKopfzeilen } from "./kern/csv.mjs";
  *
  *   const text = csv(vorgaenge, [
  *     { titel: "Nummer", wert: (v) => v.id },
  *     { titel: "Titel", wert: (v) => v.titel },
  *     { titel: "Betrag", wert: (v) => v.betrag, stellen: 2 },
  *   ]);
- *   antwort.writeHead(200, csvKoepfe("vorgaenge.csv"));
+ *   antwort.writeHead(200, csvKopfzeilen("vorgaenge.csv"));
  *   antwort.end(text);
  */
 
@@ -75,7 +75,7 @@ export function csv(zeilen, spalten) {
 }
 
 /** Die Kopfzeilen einer Antwort mit einer CSV: als Datei zum Speichern, nie zwischengespeichert. */
-export function csvKoepfe(dateiname) {
+export function csvKopfzeilen(dateiname) {
   return {
     "content-type": "text/csv; charset=utf-8",
     "content-disposition": `attachment; filename*=UTF-8''${encodeURIComponent(dateiname)}`,

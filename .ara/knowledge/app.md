@@ -35,7 +35,7 @@ the house works with (`business/profile.md`) belongs in the first draft.
 | **Which data** | What goes in, stays, goes out. Name personal data explicitly |
 | **The steps** | From the point of view of the human in front of it, one step per line |
 | **Where a flow is needed** | Where a language model really does the work. Shifting data is a program, not a flow |
-| **Where a human decides** | Every approval, who decides there and who explicitly not, the submitter for instance |
+| **Where a human decides** | Every approval, when an item is complete enough for it, who decides and who explicitly not |
 | **Who may see what** | Everything for everybody inside, or only their clients, departments, files. The app decides that |
 | **What has to stay** | What survives a new version, a switch and a year, and what of it gets proven. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention, from their primary source: `.ara/knowledge/app-professional.md` |
@@ -96,8 +96,7 @@ restart and is backed up every night; an administrator brings one app's data bac
 `daten.wiederherstellen` says. Staging and live each have their own, see `.ara/knowledge/deploy.md`.
 
 **What does not stay**, because every deploy replaces the container: its file system, a `VOLUME`
-from the Dockerfile included, a SQLite file, an upload folder, a log on disk, a database next to it.
-An uploaded file belongs in a column (`BYTEA`). Removing the app throws its databases away, their
+included, a SQLite file, an upload folder. An uploaded file belongs in a column (`BYTEA`). Removing the app throws its databases away, their
 backups stay.
 
 **The scaffold does this already** in `backend/ablage/db.mjs`: an empty value stops the start
@@ -111,10 +110,9 @@ touched again**: that would change the past of databases that already exist.
 ## What the scaffold already is
 
 The clone brings no app; the scaffold lies under `.ara/templates/app/`, and what `--new` makes of
-it runs from the first minute: an item lies in the device's database, the backend starts the flow
-`freigabe` with its number and submitter, a human decides in Arasul, and the item stands approved or
-rejected, with the decider and the flow's sentence. Without Arasul it stays undecided, and the page
-says so. Asked what an app looks like, create one and show it.
+it runs from the first minute: an item lies in the device's database, the flow `freigabe` starts
+with its number and submitter, a human decides in Arasul, and the item stands approved or rejected,
+with decider and the flow's sentence. Asked what an app looks like, create one and show it.
 
 The stack is the device interface's: **Vite, React, TypeScript, Tailwind, `react-router`, TanStack
 Query.** Five places, each exists once:
@@ -127,12 +125,10 @@ Query.** Five places, each exists once:
 | `rahmen/anmeldung.tsx` | Who is there, out of `api/me`, with role |
 | `rahmen/async-boundary.tsx` | Loading, went wrong, is there. Every query goes through it |
 
-The backend: `server.mjs` does HTTP, `kern/vorgaenge.mjs` the cases, and the core gets **two
-connections** handed in, a store and a device, so it holds no `fetch`, no SQL, no environment, and
-every case is checked without either. One store per entity, with the only SQL for it: PostgreSQL
-through `pg` on the device, SQLite out of Node without one. One SQL in PostgreSQL's dialect, `$1` as
-placeholder, which `ablage/db.mjs` translates for SQLite with the running numbers; so times and JSON
-stand as text, bytes as `BYTEA`.
+The backend: `server.mjs` does HTTP, `kern/vorgaenge.mjs` the cases with **two connections** handed
+in, a store and a device, so every case is checked without either. One store per entity with the
+only SQL for it, in PostgreSQL's dialect; `ablage/db.mjs` translates it for SQLite. `kern/csv.mjs`
+writes an export.
 
 **It describes itself for agents**: the field `agent` in `app.json` lists the routes an agent may
 call, and the backend answers the route `agent` out of a copy of `app.json` the build lays beside

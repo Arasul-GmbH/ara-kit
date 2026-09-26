@@ -8,47 +8,35 @@
 ## Mandanten: wer was sieht
 
 **Wer hineinkommt**, entscheidet das Gerät, **was jemand darin sieht**, die App: das Gerät kennt
-keine Mandanten. **Mandanten sind Muster 7**, unter `.ara/templates/app-patterns/clients/`. **Nimm
-das Muster, entwirf es nicht neu**: aus einer Beschreibung gebaut, kommt die Trennung jedes Mal
-anders heraus. Was es entscheidet:
-
-- **Eine Zuordnung, keine zweite Anmeldung**: je Name aus der Kopfzeile der Anmeldung, welche
-  Mandanten er sieht.
-- **Zuordnen lässt sich nur ein Name, den die App gesehen hat**, der Schlüssel einer App kann die
-  Konten des Geräts nicht auflisten: ein neuer Mitarbeiter öffnet die App einmal, dann kann die
-  Verwaltung ihn zuordnen.
-- **Der Filter steht im WHERE, nicht in einer Prüfung danach.** Die Ablage wird je Anfrage für einen
-  Namen gebaut, der Vorgang eines fremden Mandanten existiert in ihr nicht, und ohne Namen sieht sie
-  nichts.
-- **Fremd heißt 404, nicht 403**, das sagte, dass es ihn gibt. 403 nur für die Verwaltung.
-- **Verwaltung nur für eine Rolle, die der Kontrakt nennt**, eine, die eine Regel als Entscheider
-  nennen darf (`freigaben.rollen`) und die Kopfzeile der Rolle tragen kann (`koepfe.rollen`). Passt
-  keine, verwaltet niemand, und die App sagt es.
-- **Die Verwaltung sieht Vorgänge nur der Mandanten, denen sie zugeordnet ist**, außer der Plan sagt
-  anderes.
-- **Jede Tabelle mit Daten eines Mandanten trägt den Filter**, das Protokoll einer Auslesung
-  eingeschlossen: für die Muster 2 und 6 tut es Muster 8.
-
+keine Mandanten. **Mandanten sind Muster 7**, unter `.ara/templates/app-patterns/clients/`, sein
+Blatt sagt, was es entscheidet. **Nimm das Muster, entwirf es nicht neu**: aus einer Beschreibung
+gebaut, kommt die Trennung jedes Mal anders heraus. **Jede Tabelle mit Daten eines Mandanten trägt
+den Filter**, das Protokoll einer Auslesung eingeschlossen: für die Muster 2 und 6 tut es Muster 8.
 Geprüft mit zwei Konten und zwei Mandanten: jeder Weg einmal als der, der nichts sehen darf.
 
 ## Freigaben in einer Fach-App
 
-Der Kreis der Entscheider steht in `.ara/knowledge/platform-services.de.md`, „Freigaben: ein Lauf
-hält an, ein Mensch entscheidet". **Für eine Fach-App gibt Muster 7 die Regel zurück**: vier
-Augen, Entscheider sind die Konten, die dem Mandanten des Vorgangs zugeordnet sind, ohne den
-Einreicher. Bleibt niemand, startet kein Lauf, und der Vorgang sagt warum. Ein dort genanntes Konto
-ohne Freigabe der App lässt das Gerät den Start mit 400 ablehnen, und dieser Satz steht am
-Vorgang. **Eine Entscheidung zählt nur von jemandem, der noch zuständig ist**: das Gerät behält den
-Kreis vom Start, darum prüft die App den Entscheider beim Nachziehen gegen die Zuordnung. Wer
-entscheidet, wenn einem Mandanten nur einer zugeordnet ist, ist ein Fall für den Plan.
+**Zwei Fragen gehören in den Plan: wann ein Vorgang vollständig ist, und wer freigibt.** Eine
+Kanzlei gibt einen Abschluss erst frei, wenn alle Unterlagen da sind, und nur ein Partner gibt frei,
+nicht jeder Kollege, der den Mandanten sieht. Ein Vorgang entsteht **in Arbeit**, Unterlagen kommen
+und gehen, und `einreichen(id)` im Kern der Vorlage fragt vorher `bereit`: ein Vorgang, der nicht
+vollständig ist, bleibt in Arbeit ohne Lauf, mit dem Satz, was fehlt. **Nach dem Einreichen ändert
+sich nichts mehr**: `darfAendern` gilt nur in Arbeit, die Muster 2, 7 und 8 antworten auf Anhängen,
+Ändern, Löschen und neues Auslesen mit 409.
 
-**Wie die Vorlage es trägt.** Einreicher und Regel schickt sie nur, wenn `arasul.json` unter
-`freigaben` sagt, dass das Gerät sie annimmt: ein älteres Gerät lehnt unbekannte Felder ab. `regel`
-im Kern gibt die Regel zurück, ein Satz statt einer Regel startet keinen Lauf; `zustaendig` prüft
-eine Entscheidung beim Nachziehen; `VIER_AUGEN` in `server.mjs` schließt den Einreicher aus. Ein
-Vorgang, der eine Regel verlangt, die das Gerät nicht annimmt, startet keinen Lauf und sagt warum:
-eine Freigabe, die jeder sehen könnte, ist schlimmer als keine. Der Flow bekommt die Nummer des
-Vorgangs und den Einreicher, sonst nichts.
+**Sehen heißt nicht entscheiden.** Muster 7 markiert an jeder Zuordnung, ob das Konto entscheidet,
+`regel` gibt vier Augen und nur die Entscheider des Mandanten, ohne den Einreicher. Bleibt niemand,
+startet kein Lauf, und der Vorgang sagt warum. Der Kreis steht in
+`.ara/knowledge/platform-services.de.md`, „Freigaben: ein Lauf hält an, ein Mensch entscheidet".
+Ein dort genanntes Konto ohne Freigabe der App lässt das Gerät den Start mit 400 ablehnen, dieser
+Satz steht am Vorgang. **Eine Entscheidung zählt nur von jemandem, der noch entscheidet**: das Gerät
+behält den Kreis vom Start, darum prüft die App den Entscheider beim Nachziehen gegen die Zuordnung.
+
+**Wie die Vorlage es trägt.** Einreicher und Regel gehen nur mit, wenn `arasul.json` unter
+`freigaben` sagt, dass das Gerät sie annimmt. `regel` gibt die Regel, ein Satz startet keinen Lauf;
+`zustaendig` prüft eine Entscheidung; `VIER_AUGEN` in `server.mjs` schließt den Einreicher aus. Der
+Flow bekommt die Nummer des Vorgangs und den Einreicher, sonst nichts. Nach der Freigabe fragt die
+App nach dem Satz des Flows, bis der Lauf fertig ist.
 
 ## Dokumente und Bilder auslesen
 
@@ -58,16 +46,13 @@ Code ist Muster 6 unter `.ara/templates/app-patterns/extract/`.
 
 **Das Modell sieht Text, nicht das Bild.** Ein PDF mit Textschicht liest das Gerät direkt, ein Foto
 oder ein gescanntes PDF geht durch seine Texterkennung, und die Antwort sagt, ob sie lief. Ein
-schiefes, unscharfes Foto, Handschrift, ein Stempel über der Zahl kosten Felder. Gemessen am
-25.09.2026 am Orin, erfundene Belege als PDF mit Textschicht und als Foto: je sechs von sechs
-Feldern.
+schiefes, unscharfes Foto, Handschrift, ein Stempel über der Zahl kosten Felder.
 
 **Form der Antwort und Weg für ein Bild stehen im Kontrakt.** `--contract` nennt unter „Was
 `document/extract-structured` antwortet" jedes Feld mit Typ; `data` ist ein Objekt oder null, nicht
 gegen dein Schema geprüft. „Ein Bild an ein Modell" sagt, wie die App ein Foto selbst einem
-Bildmodell gibt, in der Vorlage `geraet.fragen` mit `bilder`. Am 26.09.2026 am Orin, ein
-Tankbeleg als Foto: ein Bildmodell sechs von sechs Feldern, die Texterkennung fünf, ein anderes
-zwei. Für Fotos nennt die App das Modell und misst beide Wege. **Versprich kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor
+Bildmodell gibt, in der Vorlage `geraet.fragen` mit `bilder`. Für ein Foto nennt die App das
+Modell und misst beide Wege: am Orin las ein Bildmodell sechs von sechs Feldern, ein anderes zwei. **Versprich kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor
 du es am Gerät des Kunden gesehen hast.
 
 **Welches Modell liest, sagt die Antwort** (`model`), und beim Auslesen nennt die App keines. **Das Feld
@@ -95,8 +80,10 @@ Bundesministeriums der Finanzen, der Norm, **mit Adresse und Abrufdatum**, im Pl
 Datei, die das Format schreibt. Ein Repository oder ein Blog dient zum Gegenlesen und wird als
 solche Quelle genannt. Eine Quelle, die nur im Browser lädt: `.ara/knowledge/browser.de.md`.
 
-**Aufbewahrungspflichten**: ein Beleg, der Jahre bleiben muss, bekommt kein Löschen (Muster 2
-bringt eines mit, nimm es heraus). Wie lange das Gerät seine Sicherungen hält, steht im
+**Eine CSV für Excel oder den Steuerberater** geht durch `backend/kern/csv.mjs` der Vorlage: BOM,
+Semikolon, Dezimalkomma, und eine Zelle, die mit `=`, `+`, `-`, `@`, Tab oder CR beginnt, bekommt ein
+Hochkomma davor und bleibt Text. **Aufbewahrungspflichten**: ein Beleg, der Jahre bleiben muss,
+bekommt kein Löschen (Muster 2 bringt eines mit, nimm es heraus). Wie lange das Gerät seine Sicherungen hält, steht im
 Admin-Handbuch am Gerät.
 
 Was sich nicht prüfen ließ, ein Prüfprogramm, das nicht zur Hand war, eine Spalte, die zwei Quellen

@@ -13,10 +13,9 @@ Then `--build`.
 
 The viewer, read in the library on 15.09.2026:
 
-- Its `quelle` is a `File`, a `Blob` or an address of the same origin; without one it shows its
-  empty state. **Give it the `art`**, `pdf` or `bild`, for an address: the app's byte address has
-  no extension to read the kind off, so the page takes it from the stored type. `name` stands in its
-  head, `hoehe` is the box's height as CSS, `kennzeichen` the mark for a test.
+- Its `quelle` is a `File`, a `Blob` or an address of the same origin. **Give it the `art`**, `pdf`
+  or `bild`, for an address: the app's byte address has no extension, so the page takes it from the
+  stored type. `hoehe` sets the height.
 - **The PDF library needs support files next to the built JavaScript**, the folder `pdf-dateien/`,
   laid there by the scaffold's `vite.config.ts` at every build. Without it an image shows and a PDF
   ends in the error state.
@@ -24,6 +23,7 @@ The viewer, read in the library on 15.09.2026:
   many.
 
 **The bytes lie in the app's database** as `BYTEA`, why: `.ara/knowledge/app.md`, "Data that stays".
-The limit is ten megabytes per file, set in the core and told to the page; it hangs on the
-container's memory in the manifest, raise both together. Reading a document into fields is pattern
+The limit is ten megabytes per file, set in the core; it hangs on the container's memory in the
+manifest, raise both together. **At an item** (pattern 8) the core gets the store of the items and
+answers 409 to attaching and removing once the item is submitted. Reading a document into fields is pattern
 6, next door under `extract/`.

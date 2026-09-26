@@ -15,6 +15,19 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.42.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Ein Vorgang entsteht in Arbeit und wird eingereicht, wenn er vollständig ist.** Der Kern der Vorlage trennt `anlegen` von `einreichen(id)`, und `bereit(vorgang)` sagt `true` oder den Satz, was fehlt: ein Vorgang, der nicht bereit ist, bleibt in Arbeit ohne Lauf, der Satz steht an ihm. Das Formular der Vorlage reicht weiter gleich nach dem Anlegen ein, mit dem Titel ist es vollständig.
+- **Was eingereicht ist, ändert sich nicht mehr.** `darfAendern(vorgang)` gilt nur in Arbeit. Muster 7 hat `PUT vorgaenge/<id>` und `POST vorgaenge/<id>/einreichen`, Muster 2 prüft beim Anhängen und Entfernen, sobald es die Vorgänge kennt, Muster 8 beim Anhängen und neuen Auslesen: nach dem Einreichen 409. `mitBeleg` in Muster 8 ist das `bereit` für „kein Einreichen ohne Beleg".
+- **Sehen heißt nicht entscheiden.** Muster 7 markiert an jeder Zuordnung, ob das Konto entscheidet (`006-entscheider.sql`, Vorgabe nein), `regel` und `zustaendig` nehmen nur Entscheider. Eine App, die die Migration nachträglich bekommt, hat keinen Entscheider, bis die Verwaltung einen markiert, und ihre Vorgänge bleiben mit dem Satz in Arbeit. `app-professional.de.md` stellt die Planfragen „wann ist ein Vorgang vollständig" und „wer gibt frei" mit dem Beispiel einer Kanzlei.
+- **Der Satz des Flows nach der Freigabe wird nachgezogen**, bis der Lauf fertig ist. Bis 0.41.0 fragte die App einmal, und war der Lauf in dem Moment nicht fertig, kam der Satz nie.
+- **Das Protokoll eines fremden Dokuments ist 404**, nicht mehr 200 mit leerer Liste; das Protokoll eines eigenen Dokuments, das ging, bleibt.
+- **`backend/kern/csv.mjs`** schreibt eine CSV für Excel und den Steuerberater: BOM, Semikolon, Dezimalkomma, CRLF, und eine Zelle, die mit `=`, `+`, `-`, `@`, Tab oder CR beginnt, bekommt ein Hochkomma davor.
+- **Der Ladesatz von `/app` bleibt unter 15.000 Tokens**: was Muster 7 entscheidet, steht in seinem Blatt und nicht mehr zusätzlich im Wissen, Messgeschichte ging aus dem Wissen.
+- **Gemessen am Orin am 26.09.2026** mit zwei Konten, eine Probe mit den Mustern 2, 6, 7 und 8 im Teststand: angelegt in Arbeit ohne Lauf, Einreichen ohne Beleg 409, die Regel nannte nur die Entscheiderin, der Einreicher bekam am Gerät 403 und sah die Anfrage nicht, die Entscheiderin gab frei, Anhängen, Entfernen, neues Auslesen, Ändern und erneutes Einreichen bekamen 409, das Protokoll eines fremden Dokuments 404, der Satz des Flows kam 22 Sekunden nach der Freigabe und wurde nachgezogen.
+
 ## 0.41.0 (2026-09-26)
 
 Kontrakt: bis 6
