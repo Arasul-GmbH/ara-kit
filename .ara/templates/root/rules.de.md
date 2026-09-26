@@ -50,7 +50,7 @@ lebt hier.
 
 | Was entsteht | wohin |
 | --- | --- |
-{{folder_rows}}
+| {{folder_rows}} | |
 | was eine App über sich sagt | `apps/<id>/APP.md`, von `arasul.mjs` geschrieben, nie von Hand |
 | ein neuer Ort | eine Zeile in `.claude/places.json`, nie eine Kopie hier drin |
 | ein Skript, das das Haus nutzt | dorthin, wo es gebraucht wird, Skripte sind überall erlaubt |

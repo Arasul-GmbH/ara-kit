@@ -1192,7 +1192,7 @@ if (arg.contract) {
     process.exit(version.ok ? 0 : 1);
   }
   console.log(
-    [
+    spaced([
       t(`# Contract of ${place}`, `# Kontrakt von ${place}`),
       "",
       ...summarize(contract),
@@ -1207,8 +1207,7 @@ if (arg.contract) {
       )
       .concat(flowSection())
       .concat(contractRuleSections())
-      .concat(versionSection())
-      .join("\n")
+      .concat(versionSection()))
   );
   process.exit(version.ok ? 0 : 1);
 }
@@ -1381,6 +1380,26 @@ function arrangementSection(dir, manifest) {
   return lines;
 }
 
+/**
+ * Zeilen eines Berichts, vor jeder Überschrift genau eine Leerzeile.
+ *
+ * Die Abschnitte kommen aus verschiedenen Händen, und der Kontrakt entscheidet,
+ * welche es gibt. Am 26.09.2026 stand „What the app gets from" ohne Leerzeile
+ * direkt unter der letzten Regel des Kontrakts, und Markdown las die
+ * Überschrift als Fortsetzung der Liste. Hier wird das einmal geregelt statt in
+ * jedem Abschnitt.
+ */
+function spaced(lines) {
+  const out = [];
+  for (const line of lines) {
+    if (line === "" && (out.length === 0 || out[out.length - 1] === "")) continue;
+    if (/^#{1,6} /.test(line) && out.length && out[out.length - 1] !== "") out.push("");
+    out.push(line);
+  }
+  while (out[out.length - 1] === "") out.pop();
+  return out.join("\n");
+}
+
 function reportManifest(where, result, delivery) {
   const lines = [
     t(`# app.json from ${where} against the contract of ${place}`, `# app.json aus ${where} gegen den Kontrakt von ${place}`),
@@ -1455,10 +1474,12 @@ if (arg.check !== undefined) {
     console.log(JSON.stringify({ device: place, folder: dir, version, delivery, arrangement, ...result }, null, 2));
   } else {
     console.log(
-      reportManifest(relative(ROOT, dir) || dir, result, delivery) +
-        arrangementSection(dir, manifest).join("\n") +
-        addressSection(dir).join("\n") +
-        versionSection().join("\n")
+      spaced([
+        ...reportManifest(relative(ROOT, dir) || dir, result, delivery).split("\n"),
+        ...arrangementSection(dir, manifest),
+        ...addressSection(dir),
+        ...versionSection(),
+      ])
     );
   }
   process.exit(result.ok && !delivery.length && version.ok ? 0 : 1);

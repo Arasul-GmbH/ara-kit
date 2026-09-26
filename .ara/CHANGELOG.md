@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.46.0 (2026-09-26)
+
+Contract: up to 6
+
+- **`app.mjs --check` puts a blank line before every heading**, also when the contract carries rule sections. Up to 0.45.0 "What the app gets from" stood directly under the last rule of the contract, and Markdown read the heading as part of the list. `--contract` goes through the same function.
+- **`secrets.mjs --forget <NAME>`** takes a name out of the chosen store, `.env` or keychain. What lies in the other store stays and is named: it may belong to another clone. `device.md` says when: an entry that no longer holds, with a yes beforehand, because the value is gone afterwards.
+- **The templates of a company root are free of markdownlint findings.** The row placeholder of the table "Where new things go" stands as a table row, the hard rules of the method count from 1 under their own heading, the address in the example roadmap is a link. The method's rules had counted on at 5, and the scaffold's rules have had a fifth since then: in a laid out root there were two rules 5.
+- **The self-test builds patterns 2, 6, 7 and 8 into the scaffold and measures them in a browser at 390 pixels**: documents, reading, clients and the receipts at an item. Every visible title has a width, no page is wider than the window. The counter-test rebuilds the finding of 26.09.2026 (Mandanten 834 pixels wide, "Zuordnen" 0 pixels) and has to go red.
+
 ## 0.45.0 (2026-09-26)
 
 Contract: up to 6

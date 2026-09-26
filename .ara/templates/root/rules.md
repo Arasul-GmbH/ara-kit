@@ -49,7 +49,7 @@ there, this root refers to it. What is business of the whole house lives here.
 
 | What comes into being | where to |
 | --- | --- |
-{{folder_rows}}
+| {{folder_rows}} | |
 | what an app says about itself | `apps/<id>/APP.md`, written by `arasul.mjs`, never by hand |
 | a new place | a line in `.claude/places.json`, never a copy in here |
 | a script the house uses | anywhere it is needed, scripts are allowed everywhere |

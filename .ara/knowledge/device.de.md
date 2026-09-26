@@ -642,6 +642,13 @@ vom Gerät.
 **Welche Namen die Ablage führt**, sagt `node .ara/tools/secrets.mjs --show`. Dort steht
 auch der Eintrag mit dem Startpasswort, mit dem Gerät daneben. Werte stehen dort nie.
 
+**Ein Eintrag, der nicht mehr gilt, geht hinaus**, er bleibt nicht als Falle liegen, die in
+einer 401 endet: `node .ara/tools/secrets.mjs --forget <eintrag>`, für die `.env` und den
+Schlüsselbund gleich. Angefasst wird nur die gewählte Ablage; liegt der Name auch in der
+anderen, sagt das Werkzeug es und lässt ihn liegen, er kann einem anderen Klon gehören. Der
+Wert ist danach weg, das ist also Stufe 3: Eintrag nennen und was daran hängt, und auf das Ja
+warten. Ein widerrufener Kit-Schlüssel geht mit `--revoke-key`, das vergisst ihn selbst.
+
 ### Weg und Rumpf stehen im Artefakt
 
 Was du mit der Sitzung dann aufrufst, steht nicht im Kit, sondern im Artefakt. Der Spiegel

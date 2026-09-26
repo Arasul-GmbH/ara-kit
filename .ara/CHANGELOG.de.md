@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.46.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **`app.mjs --check` setzt vor jede Überschrift eine Leerzeile**, auch wenn der Kontrakt Regelabschnitte trägt. Bis 0.45.0 stand „Was die App von … bekommt" direkt unter der letzten Regel des Kontrakts, und Markdown las die Überschrift als Teil der Liste. `--contract` geht durch dieselbe Funktion.
+- **`secrets.mjs --forget <NAME>`** nimmt einen Namen aus der gewählten Ablage, `.env` oder Schlüsselbund. Was in der anderen Ablage liegt, bleibt und wird genannt: es kann einem anderen Klon gehören. `device.de.md` sagt, wann: ein Eintrag, der nicht mehr gilt, mit einem Ja vorher, denn der Wert ist danach weg.
+- **Die Vorlagen einer Firmenwurzel sind ohne Befund von markdownlint.** Der Zeilenplatzhalter der Tabelle „Wohin Neues gehört" steht als Tabellenzeile, die harten Regeln der Methode zählen unter ihrer eigenen Überschrift ab 1, die Adresse in der Beispiel-Roadmap ist ein Verweis. Die Regeln der Methode hatten bei 5 weitergezählt, und die Regeln des Gerüsts haben seitdem eine fünfte: in einer angelegten Wurzel standen zwei Regeln 5.
+- **Der Selbsttest baut die Muster 2, 6, 7 und 8 in das Gerüst und misst sie im Browser bei 390 Pixeln**: Dokumente, Auslesen, Mandanten und die Belege am Vorgang. Jeder sichtbare Titel hat Breite, keine Seite ist breiter als das Fenster. Die Gegenprobe baut den Befund vom 26.09.2026 nach (Mandanten 834 Pixel breit, „Zuordnen" 0 Pixel) und muss rot werden.
+
 ## 0.45.0 (2026-09-26)
 
 Kontrakt: bis 6

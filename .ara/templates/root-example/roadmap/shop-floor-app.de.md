@@ -1,6 +1,6 @@
 # shop-floor-app
 
-Wo er lebt: https://github.com/hafenkante-example/shop-floor-app
+Wo er lebt: <https://github.com/hafenkante-example/shop-floor-app>
 Wofür er da ist: die App, in der die Werkstatt Maschinenstunden bucht
 
 Was dieser Ort bis wann können muss. *Wie* gebaut wird, entscheidet sich dort.

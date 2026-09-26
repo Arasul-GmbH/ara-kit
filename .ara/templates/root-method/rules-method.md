@@ -21,11 +21,11 @@ card per place at a time. What does not lie as a card in `ready/` is not started
 
 ### Hard rules of the method
 
-5. **Goals here, implementation there.** This root lays down *what* a place has to be
+1. **Goals here, implementation there.** This root lays down *what* a place has to be
    able to do by when, in its sheet under `roadmap/`, with milestone and deadline. *How*
    it is built the place decides. A goal without a milestone is an idea and belongs on a
    card in `roadmap/backlog/new/`.
-6. **No maintenance run.** The history of version control is the journal, the reason
+2. **No maintenance run.** The history of version control is the journal, the reason
    belongs in the commit. Into `company/` goes only what binds beyond the single case.
    Nothing is written back just so that it is written.
 
