@@ -221,3 +221,87 @@ export function standardFindings(dir, { manifest = undefined, scaffold = false }
 
   return out;
 }
+
+// --- Anrede ------------------------------------------------------------------
+
+/**
+ * Das Gerät redet seine Menschen mit Sie an. Eine App, die duzt, steht damit
+ * auf derselben Karte neben ihm: „Eine Freigabe wartet auf Ihre Entscheidung",
+ * darunter „liest du in Abschluss". So stand es am 26.09.2026 auf der
+ * Freigabekarte eines Partners einer Steuerkanzlei. Eine App redet an wie das
+ * Gerät, mit Sie, oder sie formuliert ohne Anrede.
+ */
+const DUZEN = /\b(du|dir|dich|dein|deine|deinem|deinen|deiner|deines)\b/i;
+
+/**
+ * Die Texte, die ein Mensch zu sehen bekommt, aus einer Quelldatei: Text in
+ * JSX und Zeichenketten mit einem Leerzeichen darin. Ein Pfad, eine Klasse, ein
+ * Schlüssel hat keines, und `dir` als Name einer Variablen steht in keiner
+ * Zeichenkette.
+ */
+function surfaceTexts(text, jsx) {
+  const out = [];
+  const zeile = (index) => text.slice(0, index).split("\n").length;
+  for (const treffer of text.matchAll(/"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)) {
+    const inhalt = treffer[1] ?? treffer[2] ?? treffer[3] ?? "";
+    if (/\s/.test(inhalt.trim())) out.push({ zeile: zeile(treffer.index), inhalt });
+  }
+  if (jsx) {
+    for (const treffer of text.matchAll(/>([^<>{}]*[A-Za-zÄÖÜäöüß][^<>{}]*)</g)) {
+      out.push({ zeile: zeile(treffer.index), inhalt: treffer[1] });
+    }
+  }
+  return out;
+}
+
+/**
+ * Wo eine App ihre Menschen duzt: in der Oberfläche, in den Sätzen des Backends,
+ * die dort ankommen, und in ihren Flows, deren Titel und Kontext auf der
+ * Freigabekarte des Geräts stehen. Eine Liste von Sätzen, leer heißt gut. Der
+ * Spiegel der Bibliothek zählt nicht mit, er gehört dem Produkt.
+ */
+export function addressFindings(dir) {
+  const out = [];
+  const dateien = [...sourceFiles(join(dir, "frontend"))];
+  const back = join(dir, "backend");
+  if (existsSync(back) && statSync(back).isDirectory()) {
+    for (const name of readdirSync(back, { recursive: true })) {
+      const pfad = join(back, String(name));
+      if (/(^|[\\/])(node_modules|dist|build)([\\/]|$)/.test(String(name))) continue;
+      if (/\.(mjs|js|ts)$/.test(String(name)) && statSync(pfad).isFile()) dateien.push(pfad);
+    }
+  }
+  for (const pfad of dateien) {
+    const name = relative(dir, pfad).split(sep).join(posix.sep);
+    const text = stripComments(readFileSync(pfad, "utf8"));
+    for (const { zeile, inhalt } of surfaceTexts(text, /\.(tsx|jsx|html)$/.test(name))) {
+      const wort = inhalt.match(DUZEN);
+      if (wort) out.push({ datei: name, zeile, wort: wort[0], text: inhalt.trim().replace(/\s+/g, " ").slice(0, 90) });
+    }
+  }
+  const flows = join(dir, "flows");
+  if (existsSync(flows) && statSync(flows).isDirectory()) {
+    for (const eintrag of readdirSync(flows).filter((n) => n.endsWith(".md")).sort()) {
+      const zeilen = readFileSync(join(flows, eintrag), "utf8").split("\n");
+      zeilen.forEach((inhalt, i) => {
+        const wort = inhalt.match(DUZEN);
+        if (wort) out.push({ datei: `flows/${eintrag}`, zeile: i + 1, wort: wort[0], text: inhalt.trim().slice(0, 90) });
+      });
+    }
+  }
+  return out;
+}
+
+/** Die Befunde zur Anrede als Abschnitt für `--check` und `--build`, leer, wenn nichts auffiel. */
+export function addressSection(dir) {
+  const befunde = addressFindings(dir);
+  if (!befunde.length) return [];
+  return [
+    "",
+    t(
+      `Address: the device says Sie to its people, this app says du in ${befunde.length} ${befunde.length === 1 ? "place" : "places"}. Write Sie, or phrase it without address:`,
+      `Anrede: das Gerät siezt seine Menschen, diese App duzt an ${befunde.length} ${befunde.length === 1 ? "Stelle" : "Stellen"}. Mit Sie schreiben, oder ohne Anrede:`
+    ),
+    ...befunde.map((b) => `- ${b.datei}:${b.zeile} „${b.wort}": ${b.text}`),
+  ];
+}
