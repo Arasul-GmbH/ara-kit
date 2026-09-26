@@ -1,12 +1,10 @@
 # Das Designsystem: die Bausteine, aus denen eine App gebaut wird
 
-Eine App läuft in einem Rahmen mitten in der Oberfläche von Arasul, und der Mensch sieht einen
-Bildschirm. Zwei Erscheinungsbilder darauf sind kein Geschmack, sondern ein Fehler. Darum gibt es
-genau eine Bibliothek für beide Seiten, `packages/marken` im Produkt, ausgeliefert als **Paket**:
-`marken.json` nennt die Fassung, die Abhängigkeiten und jede Datei mit ihrem sha256. Das Kit
-spiegelt es in die App-Vorlage, jede App trägt eine Kopie unter `frontend/src/marken/`, und eine
-App aus seinen Teilen sieht aus wie das Gerät, ohne dass jemand eine Farbe abgeschrieben hat. Wie
-die Kopien zusammenhängen und wer sie an ihrer Quelle hält: `.ara/knowledge/design-guard.de.md`.
+Eine App läuft in einem Rahmen in der Oberfläche von Arasul, und zwei Erscheinungsbilder auf einem
+Bildschirm sind ein Fehler. Darum gibt es eine Bibliothek für beide Seiten, ausgeliefert als
+**Paket**: `marken.json` nennt die Fassung, die Abhängigkeiten und jede Datei mit ihrem sha256. Jede
+App trägt eine Kopie unter `frontend/src/marken/`. Wie die Kopien zusammenhängen:
+`.ara/knowledge/design-guard.de.md`.
 
 ## Drei Sätze, zwei Stilblätter, eine Quelle für das Thema
 
@@ -16,15 +14,9 @@ die Kopien zusammenhängen und wer sie an ihrer Quelle hält: `.ara/knowledge/de
 | Muster | `marken/muster/` | Datenliste, Formularseite, Seitenleiste, Dateiablage, Dokumentanzeige und mehr, **aus** Primitiven gemacht für eine Aufgabe, die jede Anwendung hat |
 | Bausteine | `marken/*.tsx` | Kopf, Meldung, Karte und dergleichen. Reines CSS (`ara-*`), sie laufen **ohne** Bau |
 
-Mit einem Bau nimmst du Primitive und Muster, die Bausteine für den Kopf einer Seite und eine
-Meldung. Ein ganzes Formular ist ein Muster: nachgebaut sind es zweihundert Zeilen, die die nächste
-App anders schreibt. Was die aktuelle Fassung trägt, sagt `marken.json`.
-
-`marken/theme.css` trägt die Werte beider Themen und den `@theme`-Block, aus dem Tailwind
-`bg-primary` oder `rounded-md` baut; es wird **ohne Schicht** geladen, in `layer(...)` ist ein
-`@theme` keines mehr. `marken/marken.css` trägt die Regeln der Bausteine, geladen **mit**
-`layer(components)`, sonst schlüge es jede Tailwind-Klasse. Beide stehen in dieser Reihenfolge in
-der `stil.css` der Vorlage, ohne zweite Datei mit Werten.
+Ein ganzes Formular ist ein Muster: nachgebaut sind es zweihundert Zeilen, die die nächste App
+anders schreibt. `marken/theme.css` (beide Themen, der `@theme`-Block) wird **ohne Schicht** geladen,
+`marken/marken.css` **mit** `layer(components)`; die `stil.css` der Vorlage tut beides, lass es so.
 
 **Das Thema kommt vom Gerät.** Die Shell setzt die Klasse `dark` und `data-theme="dark"` am
 `<html>` und schickt `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` liest und rät nicht; nur

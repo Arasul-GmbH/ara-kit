@@ -131,7 +131,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 | `mirror.mjs` | The installation artifact and its manuals, also on a device (`--show`, `--docs`, `--refresh`) |
 | `check-environment.mjs` | What this computer can do |
 | `device.mjs` | Device file, SSH, hardware, verdict, installation, kit key, licence, admin session: `.ara/knowledge/device.md` |
-| `app.mjs` | An app: scaffold, plans, build, and with `--device` contract, check, staging, live, back, remove, Compose: `.ara/knowledge/app.md` |
+| `app.mjs` | An app: scaffold, plans, build, and with `--device` contract, check, staging, live, back, remove, share, Compose: `.ara/knowledge/app.md` |
 | `customer.mjs` | Create a customer file and read its picture |
 | `maintain.mjs` | Read the state of a device, status line and report, reading only |
 | `heal.mjs` | Self-healing inside the Arasul tree, every step recorded and undoable: `.ara/knowledge/self-healing.md` |

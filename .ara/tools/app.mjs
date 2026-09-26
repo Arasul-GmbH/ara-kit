@@ -20,6 +20,8 @@
  *   node .ara/tools/app.mjs --device orin --app beispiel --live
  *   node .ara/tools/app.mjs --device orin --app beispiel --back
  *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
+ *   node .ara/tools/app.mjs --device orin --app beispiel --share anna   share it with an account, staging
+ *   node .ara/tools/app.mjs --device orin --app beispiel --unshare anna
  *   node .ara/tools/app.mjs --device rechner --app beispiel --compose   device without Arasul
  *
  * `--check` and `--deploy` also take a folder: `--deploy <folder>` deploys a
@@ -63,6 +65,8 @@
  *   node .ara/tools/app.mjs --device orin --app beispiel --live
  *   node .ara/tools/app.mjs --device orin --app beispiel --back
  *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
+ *   node .ara/tools/app.mjs --device orin --app beispiel --share anna   einem Konto freigeben, Teststand
+ *   node .ara/tools/app.mjs --device orin --app beispiel --unshare anna
  *   node .ara/tools/app.mjs --device rechner --app beispiel --compose   Gerät ohne Arasul
  *
  * `--check` und `--deploy` nehmen auch einen Ordner: `--deploy <ordner>` spielt

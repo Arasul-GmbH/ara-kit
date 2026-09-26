@@ -22,8 +22,7 @@ wenn ihr Moment kommt.
 Sicherheitsstufen und Produktwerte: `.claude/CLAUDE.md`. Vorher liest du `business/profile.md`:
 Sprache, Zweig, Detailtiefe, Sicherheitsstufe, womit das Haus arbeitet.
 
-**Das Argument.** `<app>` ist die App unter `apps/<app>/`; Apps stehen oben, unabhängig von
-Kunden, und wo eine läuft, sagt das Gerät. Kein Argument: erst der Merker `.ara/state.json`, dann
+**Das Argument.** `<app>` ist die App unter `apps/<app>/`. Kein Argument: erst der Merker `.ara/state.json`, dann
 die vorhandenen Ordner. Genau einer, nimm ihn, sonst frag über das Interview-Werkzeug.
 
 **Zuerst, immer:**
@@ -35,11 +34,7 @@ node .ara/tools/app.mjs --app <app>
 Es sagt, wo die App steht und was ansteht, mit den Aufrufen. Gib das in drei Zeilen weiter und tu
 das Erste, statt aufzuzählen, was alles ginge.
 
-**Noch keine App**: das Interview nach der Prüfliste kommt, bevor etwas angelegt wird, dann `--new`
-und der erste Plan. Was offen blieb, kommt als Annahme in den Plan und wird beim nächsten Mal
-vorgelesen. **Ein Plan ist aktiv**: erst seine Annahmen, dann bauen, dann `--build`. **An ein
-Gerät**: ohne Akte unter `devices/` zuerst `/device`; dann `--check`, dann `--deploy` in den
-Teststand. Vor dem Einspielen sagst du, dass die App noch nicht sichtbar ist, und warum, wie
-`.ara/knowledge/deploy.de.md` sagt. `--live` ist ein Eingriff der Stufe 2: frag, auch wenn du vor
-einer Minute eingespielt hast. **Ohne Arasul** geht `--compose` über SSH, und vorher sagst du, was
-dort fehlt.
+**Noch keine App**: das Interview kommt, bevor etwas angelegt wird; was offen blieb, kommt als
+Annahme in den Plan. **An ein Gerät**: ohne Akte unter `devices/` zuerst `/device`. Vor dem
+Einspielen sagst du, dass die App noch nicht sichtbar ist, und warum (`.ara/knowledge/deploy.de.md`).
+`--live` ist Stufe 2: frag.

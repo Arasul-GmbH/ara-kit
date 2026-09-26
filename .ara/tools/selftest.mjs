@@ -2516,7 +2516,11 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       ARASUL_START_SELFTEST_ARASUL: "probe-passwort",
     });
     assert(run.status === 0, `Einspielen mit Startpasswort fehlgeschlagen: ${run.stdout}${run.stderr}`);
-    assert(/--admin-login/.test(run.stdout), `mit Startpasswort fehlt die Sitzung: ${run.stdout}`);
+    // Seit 0.44.0 nennt der Text den Befehl zum Freigeben, und die Sitzung dafür aus dem Startpasswort.
+    assert(
+      /--app probeapp --share </.test(run.stdout) && /ARASUL_START_SELFTEST_ARASUL/.test(run.stdout),
+      `mit Startpasswort fehlt der Befehl zum Freigeben: ${run.stdout}`
+    );
 
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--live"], env);
     assert(run.status === 0, `Live schalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
@@ -10627,10 +10631,14 @@ const FACH_APP_LADESATZ = {
     ".ara/templates/app-patterns/receipts/README",
   ],
 };
-/** Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. */
-const FACH_APP_GRENZE = 15000;
+/**
+ * Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. Bis 0.43.0
+ * 15.000, und der Satz stand bei 14.981: das nächste Musterblatt passte nicht
+ * mehr. Seit 0.44.0 14.000.
+ */
+const FACH_APP_GRENZE = 14000;
 
-check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 15.000 Tokens, in beiden Sprachen", () => {
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 14.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
   // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
   // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit
