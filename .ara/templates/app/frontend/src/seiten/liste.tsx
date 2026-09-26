@@ -21,14 +21,15 @@
  * unter der Liste: bei 200 Zeilen sah niemand, dass sich nach dem Klick etwas
  * getan hatte. Die Schwelle ist die eine des Produkts, `useSchmalesFenster`.
  *
- * **Jede Zeile ist per Tastatur wählbar.** Die `Datenliste` kennt nur den
- * Klick auf die Zeile; der Titel ist deshalb ein Knopf, Tab führt hin, Eingabe
- * wählt, die Pfeile gehen eine Zeile weiter. Gewählt ist, wo `aria-current`
- * steht, und `stil.css` zeichnet die Zeile danach. Unter 900 px ist die ganze
- * Karte der Knopf, dort trägt der Titel nur die Markierung.
+ * **Auswahl und Kürzung sind die der Bibliothek.** `gewaehlt` markiert die
+ * Zeile mit `aria-selected` und zeichnet sie, `kuerzen` hält einen langen
+ * Titel auf einer Zeile mit „…", und ganz steht er im `title` und in den
+ * Einzelheiten. Tab führt zu jeder Zeile, Eingabe und Leertaste wählen sie,
+ * die Pfeile gehen eine Zeile weiter (`rahmen/pfeile.ts`). Bis Kit 0.40.0
+ * baute diese Seite das selbst, mit einem Knopf im Titel und eigenen Regeln
+ * in `stil.css`; seit Marken 5.0.0 kann die Bibliothek es.
  */
 
-import { useMemo, type KeyboardEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Button,
@@ -46,6 +47,7 @@ import {
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { zeilenPfeile } from "../rahmen/pfeile";
 import { ANSICHTEN, ansichtAus, type Ansicht } from "../rahmen/seitenleiste";
 import { STAND, seit, useLage, useVorgaenge, werEntscheidet, zeitpunkt, type Vorgang } from "../vorgaenge";
 
@@ -64,7 +66,7 @@ function passt(vorgang: Vorgang, ansicht: Ansicht): boolean {
  * Wie ein Vorgang steht: das Wort, ein Zeichen daneben, und solange er
  * wartet, seit wann und bei wem. Das Wort steht in der Textfarbe und hält
  * so 4,5:1 in beiden Themen; die Farbe trägt nur das Zeichen, denn Blau
- * und Rot der Bibliothek erreichen als Text im hellen Thema keine 4,5:1.
+ * heißt genehmigt und ist keine Farbe für einen Text.
  */
 function Stand({ vorgang, knapp = false }: { vorgang: Vorgang; knapp?: boolean }) {
   const stand = STAND[vorgang.status] ?? { wort: vorgang.status, art: "hinweis" as const };
@@ -85,80 +87,36 @@ function Stand({ vorgang, knapp = false }: { vorgang: Vorgang; knapp?: boolean }
   );
 }
 
-/** Mit den Pfeilen zum Titel der Zeile darüber oder darunter. */
-function wandern(ereignis: KeyboardEvent<HTMLButtonElement>) {
-  if (ereignis.key !== "ArrowDown" && ereignis.key !== "ArrowUp") return;
-  const zeile = ereignis.currentTarget.closest("tr");
-  const nachbar = ereignis.key === "ArrowDown" ? zeile?.nextElementSibling : zeile?.previousElementSibling;
-  const ziel = nachbar?.querySelector<HTMLButtonElement>(".vorgang-wahl");
-  if (!ziel) return;
-  ereignis.preventDefault();
-  ziel.focus();
-}
-
-function useSpalten(gewaehlt: number | null, waehlen: (id: number) => void, schmal: boolean) {
-  return useMemo<ReadonlyArray<Spalte<Vorgang>>>(
-    () => [
-      {
-        schluessel: "titel",
-        titel: "Vorgang",
-        zelle: (vorgang) => {
-          const aktuell = gewaehlt === vorgang.id ? "true" : undefined;
-          // Zwei Zeilen und dann Schluss: ein Titel mit 120 Zeichen drängte
-          // sonst die Spalte Stand aus der Tabelle. Ganz steht er daneben.
-          // `anywhere` bricht auch ein langes Wort, sonst bestimmte es die
-          // schmalste Breite der Spalte, und zwischen 900 und 1100 px rollte
-          // die Tabelle.
-          const titel = (
-            <span className="line-clamp-2 whitespace-normal [overflow-wrap:anywhere]">{vorgang.titel}</span>
-          );
-          if (schmal) {
-            return (
-              <span className="vorgang-wahl" aria-current={aktuell}>
-                {titel}
-              </span>
-            );
-          }
-          return (
-            <button
-              type="button"
-              className="vorgang-wahl w-full rounded-sm text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-              aria-current={aktuell}
-              onClick={(ereignis) => {
-                ereignis.stopPropagation();
-                waehlen(vorgang.id);
-              }}
-              onKeyDown={wandern}
-            >
-              {titel}
-            </button>
-          );
-        },
-        wert: (vorgang) => vorgang.titel,
-      },
-      {
-        schluessel: "gestellt",
-        titel: "Eingereicht",
-        zelle: (vorgang) => (
-          <span className="flex flex-col">
-            <span className="whitespace-normal [overflow-wrap:anywhere]">{vorgang.von}</span>
-            <span className="whitespace-normal text-muted-foreground">{zeitpunkt(vorgang.gestellt)}</span>
-          </span>
-        ),
-        // Der Zeitstempel vorn sortiert nach der Zeit, der Name dahinter
-        // bleibt durchsuchbar: die Suche liest denselben Wert.
-        wert: (vorgang) => `${vorgang.gestellt} ${vorgang.von}`,
-      },
-      {
-        schluessel: "status",
-        titel: "Stand",
-        zelle: (vorgang) => <Stand vorgang={vorgang} knapp />,
-        wert: (vorgang) => STAND[vorgang.status]?.wort ?? vorgang.status,
-      },
-    ],
-    [gewaehlt, waehlen, schmal]
-  );
-}
+const SPALTEN: ReadonlyArray<Spalte<Vorgang>> = [
+  {
+    schluessel: "titel",
+    titel: "Vorgang",
+    zelle: (vorgang) => vorgang.titel,
+    wert: (vorgang) => vorgang.titel,
+    // Eine Zeile und „…": ein Titel mit 120 Zeichen drängte sonst die
+    // Spalte Stand aus der Tabelle. Ganz steht er im `title` und daneben.
+    kuerzen: true,
+  },
+  {
+    schluessel: "gestellt",
+    titel: "Eingereicht",
+    zelle: (vorgang) => (
+      <span className="flex flex-col">
+        <span className="whitespace-normal [overflow-wrap:anywhere]">{vorgang.von}</span>
+        <span className="whitespace-normal text-muted-foreground">{zeitpunkt(vorgang.gestellt)}</span>
+      </span>
+    ),
+    // Der Zeitstempel vorn sortiert nach der Zeit, der Name dahinter
+    // bleibt durchsuchbar: die Suche liest denselben Wert.
+    wert: (vorgang) => `${vorgang.gestellt} ${vorgang.von}`,
+  },
+  {
+    schluessel: "status",
+    titel: "Stand",
+    zelle: (vorgang) => <Stand vorgang={vorgang} knapp />,
+    wert: (vorgang) => STAND[vorgang.status]?.wort ?? vorgang.status,
+  },
+];
 
 /** Eine Zeile der Einzelheiten: was es ist, und was dazu dasteht. */
 function Angabe({ name, children }: { name: string; children: React.ReactNode }) {
@@ -219,7 +177,6 @@ export function Vorgaenge() {
     else naechste.set("nr", String(id));
     setSuche(naechste);
   };
-  const spalten = useSpalten(gewaehlt, waehlen, schmal);
 
   return (
     <>
@@ -242,7 +199,7 @@ export function Vorgaenge() {
 
       <AsyncBoundary
         abfrage={vorgaenge}
-        laedt={<Datenliste daten={[]} spalten={spalten} kennung={() => ""} beschriftung="Vorgänge" laedt />}
+        laedt={<Datenliste daten={[]} spalten={SPALTEN} kennung={() => ""} beschriftung="Vorgänge" laedt />}
         fehlerTitel="Die Vorgänge ließen sich nicht holen"
       >
         {(alle) => {
@@ -251,7 +208,7 @@ export function Vorgaenge() {
           const liste = (
             <Datenliste
               daten={sichtbar}
-              spalten={spalten}
+              spalten={SPALTEN}
               kennung={(vorgang) => String(vorgang.id)}
               beschriftung={`${wortFuer(ansicht)}: ${sichtbar.length} von ${alle.length}`}
               filter
@@ -277,6 +234,7 @@ export function Vorgaenge() {
                     }
               }
               aufZeile={(vorgang) => waehlen(vorgang.id)}
+              gewaehlt={gewaehlt === null ? null : String(gewaehlt)}
             />
           );
 
@@ -303,14 +261,16 @@ export function Vorgaenge() {
 
           return (
             <div data-teilung className="grid grid-cols-[minmax(0,3fr)_minmax(14rem,2fr)] items-start gap-4">
-              {liste}
+              <div className="min-w-0" onKeyDown={zeilenPfeile}>
+                {liste}
+              </div>
               <aside aria-label="Einzelheiten" className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 {offen ? (
                   <Einzelheiten vorgang={offen} />
                 ) : (
                   <Leerzustand
                     titel="Kein Vorgang gewählt"
-                    beschreibung="Eine Zeile anklicken, oder mit Tab zum Titel gehen und Eingabe drücken."
+                    beschreibung="Eine Zeile anklicken, oder mit Tab zu ihr gehen und Eingabe drücken."
                   />
                 )}
               </aside>

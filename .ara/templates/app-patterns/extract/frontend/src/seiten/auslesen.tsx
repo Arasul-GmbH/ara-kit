@@ -21,15 +21,13 @@
  * keine lesbare Breite. Die Schwelle ist die eine des Produkts,
  * `useSchmalesFenster`.
  *
- * **Jede Zeile ist per Tastatur wählbar.** Die `Datenliste` kennt nur den
- * Klick auf die Zeile; der Dateiname ist deshalb ein Knopf, Tab führt hin,
- * Eingabe wählt, die Pfeile gehen eine Zeile weiter. Gewählt ist, wo
- * `aria-current` steht, in der Adresse steht es als `?nr=17`, und `stil.css`
- * zeichnet die Zeile danach (`zeile-wahl`). Unter 900 px ist die ganze Karte
- * der Knopf, dort trägt der Name nur die Markierung.
+ * **Auswahl und Kürzung sind die der Bibliothek**, wie in der Liste der
+ * Vorlage: `gewaehlt` markiert die Zeile mit `aria-selected`, `kuerzen` hält
+ * einen langen Dateinamen auf einer Zeile mit „…", ganz steht er im `title`.
+ * Tab führt zu jeder Zeile, Eingabe wählt, die Pfeile gehen eine Zeile weiter
+ * (`rahmen/pfeile.ts`). In der Adresse steht die Wahl als `?nr=17`.
  */
 
-import { useMemo, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Button,
@@ -48,61 +46,23 @@ import {
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { zeilenPfeile } from "../rahmen/pfeile";
 import { anzeigeArt, dokumentAdresse, useDokumente, type Dokument } from "../dokumente";
 import { useAuslesen, useAuslesenLage, useAuslesungen, wertInWorten, type Auslesung } from "../auslesen";
 import { zeitpunkt } from "../vorgaenge";
 
-/** Mit den Pfeilen zum Namen der Zeile darüber oder darunter. */
-function wandern(ereignis: KeyboardEvent<HTMLButtonElement>) {
-  if (ereignis.key !== "ArrowDown" && ereignis.key !== "ArrowUp") return;
-  const zeile = ereignis.currentTarget.closest("tr");
-  const nachbar = ereignis.key === "ArrowDown" ? zeile?.nextElementSibling : zeile?.previousElementSibling;
-  const ziel = nachbar?.querySelector<HTMLButtonElement>(".zeile-wahl");
-  if (!ziel) return;
-  ereignis.preventDefault();
-  ziel.focus();
-}
-
-function useDokumentSpalten(gewaehlt: number | null, waehlen: (id: number) => void, schmal: boolean) {
-  return useMemo<ReadonlyArray<Spalte<Dokument>>>(
-    () => [
-      {
-        schluessel: "name",
-        titel: "Datei",
-        zelle: (d) => {
-          const aktuell = gewaehlt === d.id ? "true" : undefined;
-          // Ein Dateiname ist oft ein langes Wort ohne Leerzeichen:
-          // `anywhere` bricht es, sonst rollte die Tabelle neben dem Ergebnis.
-          const name = <span className="line-clamp-2 whitespace-normal [overflow-wrap:anywhere]">{d.name}</span>;
-          if (schmal) {
-            return (
-              <span className="zeile-wahl" aria-current={aktuell}>
-                {name}
-              </span>
-            );
-          }
-          return (
-            <button
-              type="button"
-              className="zeile-wahl w-full rounded-sm text-left focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
-              aria-current={aktuell}
-              onClick={(ereignis) => {
-                ereignis.stopPropagation();
-                waehlen(d.id);
-              }}
-              onKeyDown={wandern}
-            >
-              {name}
-            </button>
-          );
-        },
-        wert: (d) => d.name,
-      },
-      { schluessel: "abgelegt", titel: "Abgelegt", zelle: (d) => zeitpunkt(d.abgelegt), wert: (d) => d.abgelegt },
-    ],
-    [gewaehlt, waehlen, schmal]
-  );
-}
+const DOKUMENT_SPALTEN: ReadonlyArray<Spalte<Dokument>> = [
+  {
+    schluessel: "name",
+    titel: "Datei",
+    zelle: (d) => d.name,
+    wert: (d) => d.name,
+    // Ein Dateiname ist oft ein langes Wort ohne Leerzeichen. Gekürzt
+    // rollt die Tabelle neben dem Dokument nicht, ganz steht er im `title`.
+    kuerzen: true,
+  },
+  { schluessel: "abgelegt", titel: "Abgelegt", zelle: (d) => zeitpunkt(d.abgelegt), wert: (d) => d.abgelegt },
+];
 
 interface Feld {
   name: string;
@@ -226,7 +186,6 @@ export function Auslesen() {
     else naechste.set("nr", String(id));
     setSuche(naechste);
   };
-  const spalten = useDokumentSpalten(gewaehlt, waehlen, schmal);
 
   return (
     <>
@@ -242,12 +201,13 @@ export function Auslesen() {
           const tabelle = (
             <Datenliste
               daten={dokumente}
-              spalten={spalten}
+              spalten={DOKUMENT_SPALTEN}
               kennung={(d) => String(d.id)}
               beschriftung={`Dokumente: ${dokumente.length}`}
               filter
               leer={{ titel: "Noch kein Dokument abgelegt. Hochgeladen wird unter Dokumente." }}
               aufZeile={(d) => waehlen(d.id)}
+              gewaehlt={gewaehlt === null ? null : String(gewaehlt)}
             />
           );
 
@@ -274,7 +234,9 @@ export function Auslesen() {
 
           return (
             <div data-teilung className="grid grid-cols-[minmax(0,3fr)_minmax(14rem,2fr)] items-start gap-4">
-              {tabelle}
+              <div className="min-w-0" onKeyDown={zeilenPfeile}>
+                {tabelle}
+              </div>
               <aside aria-label="Einzelheiten" className="sticky top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto">
                 {offen ? (
                   <Ergebnis dokument={offen} />

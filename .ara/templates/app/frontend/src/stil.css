@@ -74,7 +74,7 @@
 /* Wie ein Vorgang steht. Das Wort trägt die Aussage und steht in der
    Textfarbe: so hält es 4,5:1 in beiden Themen, auch auf der gewählten
    Zeile. Die Farbe trägt nur das Zeichen davor. Bis zum 26.09.2026 stand das
-   Wort selbst in Blau, Grau oder Rot, und Blau und Rot der Bibliothek kommen
+   Wort selbst in Blau, Grau oder Rot, und Blau und Rot kamen bis Marken 5.0.0
    im hellen Thema als Text nicht auf 4,5:1. Seit Marken 4.0.0 gibt es nur
    Blau, Grau und Rot: Erfolg ist Blau, ein Fehler Rot, und wer wartet, hat
    einen offenen Ring in der Textfarbe, denn dort muss jemand etwas tun. */
@@ -131,20 +131,4 @@
   font-size: var(--ara-groesse-xs);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-}
-
-/* Die gewählte Zeile. Die `Datenliste` kennt keine Auswahl, die App markiert
-   den Titel mit `aria-current`, und hier wird die Zeile danach gezeichnet:
-   eine Fläche und ein Balken in der Textfarbe. Blau hieße hier "genehmigt".
-   `vorgang-wahl` trägt die Liste der Vorlage, `zeile-wahl` jede andere Liste,
-   die so wählt, etwa die Muster Dokumente und Auslesen. Gezeichnet wird
-   beides gleich. */
-[data-slot="table-row"]:has(:is(.vorgang-wahl, .zeile-wahl)[aria-current="true"]),
-li:has(:is(.vorgang-wahl, .zeile-wahl)[aria-current="true"]) > button {
-  background-color: var(--muted);
-  box-shadow: inset 3px 0 0 var(--ara-text);
-}
-
-:is(.vorgang-wahl, .zeile-wahl)[aria-current="true"] {
-  font-weight: 600;
 }

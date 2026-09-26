@@ -77,12 +77,16 @@ const hier = (weg: string): string => fileURLToPath(new URL(weg, import.meta.url
  * mit dieser App übersetzt, und es gibt kein `dist/`, das jemand vergisst.
  * Der Name ist derselbe wie dort, damit derselbe Quelltext hier und dort läuft.
  *
- * **`memo` gilt dem Bau als rein.** `Sparkline` und `Ladezustand` der
+ * `@marken/diagramm` ist derselbe Alias mit einem Pfad dahinter: seit Marken
+ * 5.0.0 stehen `Chart` und `Sparkline` nicht mehr im Sammelexport, und
+ * Recharts kommt nur in eine App, die ein Diagramm zeigt.
+ *
+ * **`memo` gilt dem Bau als rein.** `Ladezustand` und andere Teile der
  * Bibliothek sind `memo(...)` auf oberster Ebene, und einen Aufruf dort hält
- * der Bau für eine Nebenwirkung. Weil `@marken` alles über einen Sammelexport
- * ausgibt, kam so `chart.tsx` samt Recharts in jede App, ob sie ein Diagramm
- * zeigt oder nicht: 282 KB von 690 KB, gemessen am 26.09.2026. Mit dieser Zeile
- * bleibt Recharts nur, wo eine Seite `Chart` oder `Sparkline` wirklich benutzt.
+ * der Bau für eine Nebenwirkung. Bis Marken 4.1.0 kam so `chart.tsx` samt
+ * Recharts in jede App. Das JavaScript hält seit 5.0.0 auch ohne diese Zeile,
+ * das CSS nicht: ohne sie wuchs es am 26.09.2026 von 95 auf 106 KB, weil
+ * Tailwind die Klassen jedes Moduls liest, das der Bau behält.
  */
 export default defineConfig({
   base: "./",
