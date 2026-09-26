@@ -1720,7 +1720,21 @@ check("Ein Geheimnis lässt sich auch ohne Terminal hinterlegen", () => {
     assert(run.status !== 0, "ein leerer Wert wurde hinterlegt");
     assert(/kein Wert/.test(run.stderr), `der leere Wert wird nicht benannt: ${run.stderr}`);
     assert(!/ARA_SELFTEST_LEER/.test(readFileSync(join(fork, ".env"), "utf8")), "der leere Eintrag steht in der .env");
-    return "gesetzt, gefunden, leer abgewiesen";
+
+    // --forget nimmt den Namen aus der .env und lässt die anderen stehen. Bis
+    // 0.45.0 ging das nur über device.mjs --revoke-key oder von Hand in der .env.
+    run = forkTool(["--set", "ARA_SELFTEST_BLEIBT"], "bleibt\n");
+    run = forkTool(["--forget", "ARA_SELFTEST_PROBE"]);
+    assert(run.status === 0 && /entfernt aus: \.env/.test(run.stdout), `--forget nimmt nichts aus der .env: ${run.stdout}${run.stderr}`);
+    const nachher = readFileSync(join(fork, ".env"), "utf8");
+    assert(!/ARA_SELFTEST_PROBE/.test(nachher), `der vergessene Name steht noch in der .env: ${nachher}`);
+    assert(/^ARA_SELFTEST_BLEIBT=bleibt$/m.test(nachher), `--forget hat einen anderen Namen mitgenommen: ${nachher}`);
+    run = forkTool(["--forget", "ARA_SELFTEST_PROBE"]);
+    assert(run.status !== 0 && /Nichts entfernt/.test(run.stdout), `ein zweites --forget tut, als hätte es etwas entfernt: ${run.stdout}`);
+    for (const blatt of [".ara/knowledge/device.md", ".ara/knowledge/device.de.md"]) {
+      assert(readFileSync(join(ROOT, blatt), "utf8").includes("secrets.mjs --forget"), `${blatt} nennt --forget nicht`);
+    }
+    return "gesetzt, gefunden, leer abgewiesen, vergessen";
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -1763,7 +1777,16 @@ check("Was in den Schlüsselbund geht, kommt gleich wieder heraus", () => {
       zurueck.stdout === String(wert.length),
       `der Schlüsselbund gibt ${zurueck.stdout} Zeichen zurück, hinein gingen ${wert.length}`
     );
-    return `${wert.length} Zeichen hinein, ${zurueck.stdout} zurück`;
+
+    // --forget nimmt ihn auch aus dem Schlüsselbund, und danach ist er weg.
+    const vergessen = spawnSync("node", [join(fork, ".ara", "tools", "secrets.mjs"), "--forget", name], { encoding: "utf8" });
+    assert(vergessen.status === 0 && /entfernt aus: Schlüsselbund/.test(vergessen.stdout), `--forget nimmt nichts aus dem Schlüsselbund: ${vergessen.stdout}${vergessen.stderr}`);
+    const weg = spawnSync("node", ["-e", `import(${JSON.stringify(join(fork, ".ara", "tools", "lib", "secrets.mjs"))}).then((m) => process.stdout.write(String(m.getSecret(${JSON.stringify(name)}))))`], {
+      encoding: "utf8",
+      env: { ...process.env, [name]: "" },
+    });
+    assert(weg.stdout === "null", `nach --forget gibt der Schlüsselbund noch etwas zurück: ${weg.stdout.length} Zeichen`);
+    return `${wert.length} Zeichen hinein, ${zurueck.stdout} zurück, vergessen`;
   } finally {
     if (platform() === "darwin") {
       spawnSync("security", ["delete-generic-password", "-a", name, "-s", "ara-kit"], { encoding: "utf8" });
@@ -2653,6 +2676,11 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--check", "--base", base], env);
     assert(run.status === 0, `Pruefung mit Backend fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(/ARASUL_BASIS_URL/.test(run.stdout), `--check nennt die Umgebungsnamen des Geraets nicht: ${run.stdout}`);
+    // Vor jeder Überschrift eine Leerzeile, auch wenn der Kontrakt Regelabschnitte
+    // trägt: am 26.09.2026 klebte „What the app gets from" an der letzten Regel.
+    const kleber = run.stdout.split("\n").filter((z, i, alle) => i > 0 && /^#{1,6} /.test(z) && alle[i - 1] !== "");
+    assert(/## Rules for a flow|## Regeln für einen Flow/.test(run.stdout), `--check zeigt die Regeln des Kontrakts nicht: ${run.stdout}`);
+    assert(!kleber.length, `--check setzt vor diese Überschriften keine Leerzeile: ${kleber.join(" | ")}`);
     const vorDemEinspielen = JSON.parse(readFileSync(join(appDir, "build", "backend", "arasul.json"), "utf8"));
     assert(vorDemEinspielen.kopf === null, "--check hat die Vereinbarung schon geschrieben");
 
@@ -5795,6 +5823,227 @@ await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zei
     assert(ergebnis.breite === 1280, `gemessen bei ${ergebnis.breite} px statt 1280`);
     assert(ergebnis.befunde.length === 0, ergebnis.befunde.join(" | "));
     return `1280 px, 200 Zeilen, Titel mit ${TITEL.length} Zeichen: nichts ragt hinaus, Einzelheiten sichtbar, Auswahl der Datenliste, Stand ${ergebnis.kontrast}:1, Bündel ${kb} KB`;
+  } finally {
+    server?.close();
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Breite, keine Seite ist breiter als das Fenster", async () => {
+  // Am 26.09.2026 von Hand gemessen, an einer Probe aus Gerüst und Mustern: die
+  // Seite Mandanten war bei 390 px 834 px breit, der Titel „Zuordnen" 0 px, weil
+  // ein Satz im `hinweis` der Karte ihm den Platz nahm. Das fiel erst im Browser
+  // auf, also baut diese Prüfung Gerüst und Muster zusammen, wie ihre Blätter es
+  // sagen, und misst jede Seite. Die Gegenprobe baut den Fehler von damals nach
+  // und muss rot werden, sonst misst die Prüfung nichts.
+  if (process.env.ARA_SELFTEST_KLON) return "übersprungen, im Klon liegen dieselben Muster, der Worktree misst sie";
+  if (spawnSync("npm", ["--version"], { encoding: "utf8" }).status !== 0) return "übersprungen, hier gibt es kein npm";
+  const browser = tool("pdf.mjs", ["--browser"]);
+  if (browser.status !== 0) return "übersprungen, kein Chromium auf diesem Rechner";
+  const chromium = browser.stdout.split("\n")[0].trim();
+
+  const work = mkdtempSync(join(tmpdir(), "ara-muster-390-"));
+  const front = join(work, "frontend");
+  const laufen = (befehl, args, cwd) =>
+    new Promise((fertig) => {
+      const kind = spawn(befehl, args, { cwd });
+      let ausgabe = "";
+      kind.stdout.on("data", (d) => (ausgabe += d));
+      kind.stderr.on("data", (d) => (ausgabe += d));
+      kind.on("close", (status) => fertig({ status, ausgabe }));
+    });
+  const ersetzen = (datei, alt, neu) => {
+    const pfad = join(front, datei);
+    const text = readFileSync(pfad, "utf8");
+    assert(text.includes(alt), `in ${datei} steht die Stelle zum Einhängen nicht mehr: ${alt}`);
+    writeFileSync(pfad, text.replace(alt, neu));
+  };
+  let server;
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app", "frontend"), front, {
+      recursive: true,
+      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
+    });
+    for (const muster of ["documents", "extract", "clients", "receipts"]) {
+      cpSync(join(PATTERNS, muster, "frontend"), front, { recursive: true });
+    }
+    for (const datei of ["package.json", "index.html", join("src", "app.tsx")]) {
+      const pfad = join(front, datei);
+      writeFileSync(pfad, readFileSync(pfad, "utf8").replace(/\{\{id\}\}/g, "muster").replace(/\{\{name\}\}/g, "Muster"));
+    }
+    // Eingehängt, wie die Köpfe der Seiten es zeigen: drei Wege, die Belege und
+    // das Einreichen in den Einzelheiten eines Vorgangs.
+    ersetzen(
+      join("src", "app.tsx"),
+      'import { Neu } from "./seiten/neu";',
+      'import { Neu } from "./seiten/neu";\nimport { Dokumente } from "./seiten/dokumente";\nimport { Auslesen } from "./seiten/auslesen";\nimport { Mandanten } from "./seiten/mandanten";'
+    );
+    ersetzen(
+      join("src", "app.tsx"),
+      '<Route path="*"',
+      '<Route path="/dokumente" element={<Dokumente />} />\n      <Route path="/auslesen" element={<Auslesen />} />\n      <Route path="/mandanten" element={<Mandanten />} />\n      <Route path="*"'
+    );
+    ersetzen(join("src", "seiten", "liste.tsx"), "\nfunction Angaben(", '\nimport { BelegeAmVorgang } from "./belege";\nimport { VorgangEinreichen } from "./mandanten";\n\nfunction Angaben(');
+    ersetzen(
+      join("src", "seiten", "liste.tsx"),
+      "    </dl>",
+      '      <VorgangEinreichen vorgang={vorgang} />\n      <Angabe name="Belege">\n        <BelegeAmVorgang vorgang={vorgang.id} offen={vorgang.status === "in arbeit"} />\n      </Angabe>\n    </dl>'
+    );
+    const geholt = await laufen("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], front);
+    if (geholt.status !== 0) return `übersprungen, npm install ging nicht: ${geholt.ausgabe.trim().split("\n").pop()}`;
+    const gebaut = await laufen("npm", ["run", "build"], front);
+    assert(gebaut.status === 0, `Gerüst mit den Mustern 2, 6, 7 und 8 baut nicht:\n${gebaut.ausgabe.split("\n").slice(-12).join("\n")}`);
+
+    const jetzt = new Date().toISOString();
+    const NAME = "Rechnung-2025-0114-Werkstattbedarf-Nord-Wartungsvertrag-Filiale-Hafenkante.png";
+    const dokument = { id: 1, name: NAME, art: "image/png", groesse: 68, von: "Dora Langername-Doppelname", abgelegt: jetzt };
+    const mandant = { id: 1, name: "Bäckerei Nord und Söhne Gesellschaft mit beschränkter Haftung", angelegt_von: "Anna Beispiel", angelegt: jetzt };
+    const vorgang = {
+      id: 1, titel: "Rahmenvertrag Wartung und Bereitschaft für die Filiale Nord, verlängert um zwölf Monate", text: "ohne Angabe",
+      von: "Dora Langername-Doppelname", gestellt: jetzt, status: "in arbeit", entschieden_von: null, begruendung: null,
+      bemerkung: null, hinweis: null, mandant: 1, bereit: "Es fehlt ein Beleg.",
+    };
+    const ANTWORTEN = {
+      "/api/me": { benutzer: "Anna Beispiel", rolle: "admin" },
+      "/api/lage": { app: "muster", arasul: true, hinweis: null, geraet: "gespielt" },
+      "/api/vorgaenge": { vorgaenge: [vorgang, { ...vorgang, id: 2, titel: "Bestellung 2", status: "wartet" }] },
+      "/api/dokumente": { dokumente: [dokument, { ...dokument, id: 2, name: "Lieferschein.pdf", art: "application/pdf" }], grenze_bytes: 10485760 },
+      "/api/auslesen": {
+        kann: true,
+        grund: null,
+        felder: [
+          { name: "belegdatum", titel: "Belegdatum", art: "datum" },
+          { name: "betrag_brutto", titel: "Betrag brutto", art: "betrag" },
+          { name: "steuersatz", titel: "Steuersatz", art: "prozent" },
+          { name: "lieferant", titel: "Lieferant", art: "text" },
+        ],
+      },
+      "/api/dokumente/1/auslesungen": {
+        auslesungen: [{
+          id: 1, dokument_id: 1, von: "Anna Beispiel", zeit: jetzt, modell: "probe", dauer_ms: 11000, texterkennung: true, zeichen: 900,
+          auftrag: "auftrag-1", fehler: null,
+          felder: { belegdatum: "2025-01-14", betrag_brutto: 3550, steuersatz: 16, lieferant: "Werkstattbedarf Nord GmbH und Compagnie Kommanditgesellschaft" },
+          maengel: ["Steuersatz 16 % ist keiner der Sätze 0, 7 oder 19 %"],
+        }],
+      },
+      "/api/mandanten": { mandanten: [mandant], verwaltung: true },
+      "/api/zuordnungen": {
+        mandanten: [mandant],
+        konten: [{ benutzer: "Dora Langername-Doppelname", zuerst: jetzt, zuletzt: jetzt }, { benutzer: "Anna Beispiel", zuerst: jetzt, zuletzt: jetzt }],
+        zuordnungen: [{ benutzer: "Dora Langername-Doppelname", mandant: 1, zugeordnet_von: "Anna Beispiel", seit: jetzt, entscheidet: true }],
+      },
+      "/api/vorgaenge/1/belege": { belege: [{ ...dokument, mandant: 1, vorgang: 1 }] },
+    };
+    // Ein Bild aus einem Punkt, damit die Anzeige etwas zu zeigen hat.
+    const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+
+    // Die Messung läuft in der Seite, wie bei 1280 px. Fertig ist eine Seite,
+    // wenn ihr Kennzeichen und ihr Text dastehen; dann zählt jeder sichtbare
+    // Titel (h1, h2, der Titel eines Blatts) und die Breite des Dokuments.
+    const messung = `<script>
+      const FERTIG = {
+        "/": () => document.querySelector('[data-kennzeichen="belege"]') && document.body.textContent.includes(${JSON.stringify(NAME)}),
+        "/dokumente": () => document.querySelector('[data-testid="hochladen"]') && document.body.textContent.includes(${JSON.stringify(NAME)}),
+        "/auslesen": () => document.body.textContent.includes("Betrag brutto") && document.body.textContent.includes("3.550,00"),
+        "/mandanten": () => document.querySelector('[data-testid="zuordnen"]') && document.body.textContent.includes("Dora Langername"),
+      };
+      const beginn = Date.now();
+      const warten = setInterval(() => {
+        const fertig = FERTIG[location.pathname]?.();
+        if (!fertig && Date.now() - beginn < 15000) return;
+        clearInterval(warten);
+        setTimeout(() => {
+          const befunde = [];
+          if (!fertig) befunde.push('die Seite wurde nicht fertig: ' + document.body.textContent.slice(0, 160));
+          const d = document.documentElement;
+          const breite = Math.max(d.scrollWidth, document.body.scrollWidth);
+          if (breite > d.clientWidth + 1) befunde.push('die Seite ist ' + breite + ' px breit bei ' + d.clientWidth);
+          const titel = [...document.querySelectorAll('h1, h2, [data-slot="sheet-title"]')].filter((el) => getComputedStyle(el).display !== 'none' && el.getClientRects().length);
+          for (const el of titel) {
+            const r = el.getBoundingClientRect();
+            if (!(r.width > 0)) befunde.push('der Titel „' + el.textContent.trim() + '" ist ' + Math.round(r.width) + ' px breit');
+            else if (r.right > d.clientWidth + 1) befunde.push('der Titel „' + el.textContent.trim() + '" ragt bis ' + Math.round(r.right) + ' px');
+          }
+          const pre = document.createElement('pre'); pre.id = 'messung';
+          pre.textContent = JSON.stringify({ breite: innerWidth, titel: titel.map((el) => el.textContent.trim()), befunde });
+          document.body.append(pre);
+        }, 300);
+      }, 100);
+    </script>`;
+    // Die Gegenprobe: der Fehler vom 26.09.2026, ein Kopf, der seinem Titel den
+    // Platz nimmt, und ein Inhalt, der breiter ist als das Fenster.
+    const GEGENPROBE = `<style>.ara-karte__titel{flex:0 0 0;width:0;min-width:0;overflow:hidden}.ara-strom{min-width:834px}</style>`;
+    const html = readFileSync(join(front, "dist", "index.html"), "utf8");
+    const TYPEN = { ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".html": "text/html", ".mjs": "text/javascript" };
+    server = createServer((anfrage, antwort) => {
+      const adresse = new URL(anfrage.url, "http://x");
+      const weg = adresse.pathname;
+      if (weg in ANTWORTEN) {
+        antwort.writeHead(200, { "content-type": "application/json" });
+        return antwort.end(JSON.stringify(ANTWORTEN[weg]));
+      }
+      if (/^\/api\/dokumente\/\d+\/datei$/.test(weg)) {
+        antwort.writeHead(200, { "content-type": "image/png" });
+        return antwort.end(PNG);
+      }
+      if (weg.startsWith("/api/")) {
+        antwort.writeHead(404, { "content-type": "application/json" });
+        return antwort.end(JSON.stringify({ fehler: "gibt es hier nicht" }));
+      }
+      const datei = join(front, "dist", weg);
+      if (weg.startsWith("/assets/") && existsSync(datei) && statSync(datei).isFile()) {
+        antwort.writeHead(200, { "content-type": TYPEN[datei.slice(datei.lastIndexOf("."))] || "application/octet-stream" });
+        return antwort.end(readFileSync(datei));
+      }
+      const zusatz = adresse.searchParams.has("gegenprobe") ? GEGENPROBE : "";
+      antwort.writeHead(200, { "content-type": "text/html" });
+      antwort.end(html.replace("</body>", `${zusatz}${messung}</body>`));
+    });
+    await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
+    const basis = `http://127.0.0.1:${server.address().port}`;
+
+    const messen = async (pfad, nr) => {
+      const lauf = await laufen(
+        chromium,
+        [
+          "--headless=new",
+          "--disable-gpu",
+          "--no-sandbox",
+          "--no-first-run",
+          `--user-data-dir=${join(work, `profil-${nr}`)}`,
+          "--window-size=390,844",
+          "--virtual-time-budget=25000",
+          "--dump-dom",
+          basis + pfad,
+        ],
+        work
+      );
+      const treffer = lauf.ausgabe.match(/<pre id="messung">([^<]*)<\/pre>/);
+      assert(treffer, `${pfad} hat nicht zu Ende gezeichnet: ${lauf.ausgabe.split("\n").slice(-3).join(" | ").slice(0, 300)}`);
+      return JSON.parse(treffer[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">"));
+    };
+    const SEITEN = [
+      ["Muster 2", "/dokumente"],
+      ["Muster 6", "/auslesen?nr=1"],
+      ["Muster 7", "/mandanten"],
+      ["Muster 8", "/?nr=1"],
+    ];
+    const [gegen, ...ergebnisse] = await Promise.all([messen("/mandanten?gegenprobe=1", 0), ...SEITEN.map(([, pfad], i) => messen(pfad, i + 1))]);
+    const befunde = [];
+    SEITEN.forEach(([muster, pfad], i) => {
+      const e = ergebnisse[i];
+      if (e.breite !== 390) befunde.push(`${muster} ${pfad}: gemessen bei ${e.breite} px statt 390`);
+      if (!e.titel.length) befunde.push(`${muster} ${pfad}: kein Titel gefunden`);
+      for (const b of e.befunde) befunde.push(`${muster} ${pfad}: ${b}`);
+    });
+    assert(ergebnisse[2].titel.includes("Zuordnen"), `auf der Seite Mandanten steht die Karte Zuordnen nicht: ${ergebnisse[2].titel.join(", ")}`);
+    assert(befunde.length === 0, befunde.join("\n    "));
+    assert(
+      gegen.befunde.some((b) => /„Zuordnen" ist 0 px/.test(b)) && gegen.befunde.some((b) => /die Seite ist \d+ px breit bei 390/.test(b)),
+      `die Gegenprobe bleibt grün, die Messung sieht den Fehler vom 26.09.2026 nicht: ${gegen.befunde.join(" | ") || "keine Befunde"}`
+    );
+    const titel = ergebnisse.reduce((n, e) => n + e.titel.length, 0);
+    return `4 Seiten bei 390 px gebaut und gemessen, ${titel} Titel mit Breite, keine breiter als das Fenster; Gegenprobe rot mit ${gegen.befunde.length} Befunden`;
   } finally {
     server?.close();
     rmSync(work, { recursive: true, force: true });
