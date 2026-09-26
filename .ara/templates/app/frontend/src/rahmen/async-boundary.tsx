@@ -128,9 +128,11 @@ export class Fehlerwand extends Component<WandProps, WandZustand> {
     if (!this.state.fehler) return this.props.children;
     return (
       <div className="ara-strom">
+        {/* Die Meldung des Browsers steht im Protokoll, nicht hier: „Cannot read
+            properties of undefined" erklärt dem Menschen nichts. */}
         <Meldung art="fehler" titel="Die Seite ist stehengeblieben">
-          {this.state.fehler.message} Neu laden hilft meistens. Wenn nicht, gehoert das in die
-          Werkstatt und nicht in einen zweiten Versuch.
+          Neu laden hilft meistens. Wenn nicht, gehört das zu dem, der die App betreut, und nicht in einen
+          zweiten Versuch.
         </Meldung>
       </div>
     );
