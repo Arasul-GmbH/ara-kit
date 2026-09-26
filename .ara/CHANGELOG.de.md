@@ -25,7 +25,7 @@ Kontrakt: bis 6
 - **Die Seiten der Muster 2 und 6 teilen wie die Liste**: ab 900 Pixeln nebeneinander, darunter als Blatt, jede Zeile per Tastatur wählbar.
 - **Deutsche Inhalte der Vorlage tragen echte Umlaute**, in Kommentaren, Sätzen und JSX-Text; Namen im Code bleiben ASCII. Der Selbsttest prüft auch Vorlage und Muster.
 - **`--build` sagt, dass die Designprüfung lief**, über wie viele Dateien, auch ohne Befund. Die englische Ausgabe zeigt `<device>` statt `<gerät>`.
-- Am Orin am 26.09.2026 eine Probe aus Vorlage mit den Mustern 2 und 6: eine Auslesung ohne Namen stand mit demselben Auftrag im Protokoll des Geräts, sechs von sechs Feldern in 37 Sekunden; ein Name, dem die App nicht freigegeben ist, kam am Gerät an und wurde mit 400 abgewiesen, wie der Kontrakt es sagt. Eine Auslesung mit Menschen wurde nicht gesehen: sie braucht eine Freigabe der Probe für ein Konto, also eine Sitzung als Administrator.
+- Am Orin am 26.09.2026 eine Probe aus der Vorlage mit den Mustern 2 und 6, im Teststand: für ein Konto freigegeben, stand eine Auslesung als dieser Mensch mit seinem Namen und demselben Auftrag wie an der Auslesung im Protokoll des Geräts, sechs von sechs Feldern in 11 Sekunden. Ohne Namen stand der Aufruf ohne Menschen da; ein Name, dem die App nicht freigegeben ist, wurde mit 400 abgewiesen und hinterließ keine Zeile.
 
 ## 0.39.0 (2026-09-26)
 

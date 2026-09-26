@@ -23,7 +23,7 @@ Contract: up to 6
 - **The pages of patterns 2 and 6 split like the list**: side by side from 900 pixels, below as a sheet, every row selectable by keyboard.
 - **German content of the scaffold carries real umlauts**, in comments, sentences and JSX text; names in code stay ASCII. The self-test checks the scaffold and the patterns too.
 - **`--build` says that the design check ran**, over how many files, also without a finding. English output shows `<device>` instead of `<gerät>`.
-- On the Orin on 26.09.2026 a probe out of the scaffold with patterns 2 and 6: a reading without a name stood in the device's log with the same job, six of six fields in 37 seconds; a name the app is not released for arrived at the device and was refused with 400, as the contract says. A reading with a human was not seen: it needs a release of the probe for an account, so an administrator's session.
+- On the Orin on 26.09.2026 a probe out of the scaffold with patterns 2 and 6, in staging: released for one account, a reading as that human stood in the device's log with their name and the same job as at the reading, six of six fields in 11 seconds. Without a name the call stood there without a human; a name the app is not released for was refused with 400 and left no line.
 
 ## 0.39.0 (2026-09-26)
 
