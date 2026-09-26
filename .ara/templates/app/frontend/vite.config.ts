@@ -76,6 +76,13 @@ const hier = (weg: string): string => fileURLToPath(new URL(weg, import.meta.url
  * Oberflaeche des Geraets. Ein Pfad-Alias und kein Paket: die Bibliothek wird
  * mit dieser App uebersetzt, und es gibt kein `dist/`, das jemand vergisst.
  * Der Name ist derselbe wie dort, damit derselbe Quelltext hier und dort laeuft.
+ *
+ * **`memo` gilt dem Bau als rein.** `Sparkline` und `Ladezustand` der
+ * Bibliothek sind `memo(...)` auf oberster Ebene, und einen Aufruf dort haelt
+ * der Bau fuer eine Nebenwirkung. Weil `@marken` alles ueber einen Sammelexport
+ * ausgibt, kam so `chart.tsx` samt Recharts in jede App, ob sie ein Diagramm
+ * zeigt oder nicht: 282 KB von 690 KB, gemessen am 26.09.2026. Mit dieser Zeile
+ * bleibt Recharts nur, wo eine Seite `Chart` oder `Sparkline` wirklich benutzt.
  */
 export default defineConfig({
   base: "./",
@@ -83,5 +90,10 @@ export default defineConfig({
     alias: { "@marken": hier("./src/marken") },
   },
   plugins: [tailwindcss(), react(), ohneCrossOrigin(), pdfDateienBeilegen(() => hier("./dist/assets"))],
-  build: { outDir: "dist", emptyOutDir: true, sourcemap: false },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    sourcemap: false,
+    rolldownOptions: { treeshake: { manualPureFunctions: ["memo"] } },
+  },
 });

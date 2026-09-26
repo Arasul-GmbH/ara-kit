@@ -63,18 +63,85 @@
   min-width: 0;
 }
 
-/* Wie ein Vorgang steht. Das Wort traegt die Aussage, die Farbe steht daneben.
-   Seit Marken 4.0.0 gibt es nur Blau, Grau und Rot: Erfolg ist der Akzent, eine
-   Warnung der leise Text, ein Fehler bleibt rot. Dieselben drei Marken nimmt
-   `marken.css` fuer die Meldung. */
-.stand[data-art="erfolg"] {
-  color: var(--ara-akzent);
+/* Liste und Einzelheiten nebeneinander brauchen mehr als die Lesebreite von
+   56rem, die `marken.css` dem Strom gibt: darin blieben der Liste bei 1280 px
+   gut 500 px, und die Spalte Stand fiel hinaus. Nur die Seite, die teilt,
+   wird breiter; ein Formular bleibt in seiner Lesebreite. */
+.ara-strom:has([data-teilung]) {
+  max-width: 96rem;
 }
 
-.stand[data-art="warnung"] {
-  color: var(--ara-text-leise);
+/* Wie ein Vorgang steht. Das Wort traegt die Aussage und steht in der
+   Textfarbe: so haelt es 4,5:1 in beiden Themen, auch auf der gewaehlten
+   Zeile. Die Farbe traegt nur das Zeichen davor. Bis zum 26.09.2026 stand das
+   Wort selbst in Blau, Grau oder Rot, und Blau und Rot der Bibliothek kommen
+   im hellen Thema als Text nicht auf 4,5:1. Seit Marken 4.0.0 gibt es nur
+   Blau, Grau und Rot: Erfolg ist Blau, ein Fehler Rot, und wer wartet, hat
+   einen offenen Ring in der Textfarbe, denn dort muss jemand etwas tun. */
+.stand {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 6.5rem;
+  color: var(--ara-text);
+  white-space: normal;
 }
 
-.stand[data-art="fehler"] {
-  color: var(--ara-fehler);
+.stand__wort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.stand__wort::before {
+  content: "";
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 9999px;
+}
+
+.stand[data-art="wartet"] .stand__wort {
+  font-weight: 600;
+}
+
+.stand[data-art="erfolg"] .stand__wort::before {
+  border-color: var(--ara-akzent);
+  background-color: var(--ara-akzent);
+}
+
+.stand[data-art="fehler"] .stand__wort::before {
+  border-color: var(--ara-fehler);
+  background-color: var(--ara-fehler);
+}
+
+.stand[data-art="hinweis"] .stand__wort::before {
+  border-color: var(--ara-text-leise);
+}
+
+/* Auf wen es wartet: hoechstens zwei Zeilen, ganz in den Einzelheiten. Auch
+   sie in der Textfarbe und kleiner: das leise Grau kommt auf der Flaeche
+   einer beruehrten Zeile auf 4,43:1. Sie bricht um, statt die Spalte breit
+   zu halten, sonst rollte die Tabelle bei 900 px. */
+.stand__wer {
+  display: -webkit-box;
+  overflow: hidden;
+  padding-left: 0.875rem;
+  font-size: var(--ara-groesse-xs);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Die gewaehlte Zeile. Die `Datenliste` kennt keine Auswahl, die App markiert
+   den Titel mit `aria-current`, und hier wird die Zeile danach gezeichnet:
+   eine Flaeche und ein Balken in der Textfarbe. Blau hiesse hier "genehmigt". */
+[data-slot="table-row"]:has(.vorgang-wahl[aria-current="true"]),
+li:has(.vorgang-wahl[aria-current="true"]) > button {
+  background-color: var(--muted);
+  box-shadow: inset 3px 0 0 var(--ara-text);
+}
+
+.vorgang-wahl[aria-current="true"] {
+  font-weight: 600;
 }
