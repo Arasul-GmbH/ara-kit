@@ -13,6 +13,20 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.38.0 (2026-09-26)
+
+Contract: up to 6
+
+- **The app scaffold keeps its columns.** A title of 120 characters pushed the table of the list to 1309 pixels in a box of 860 at 1280, and the column Stand lay outside. Now the title gets two lines, name and date break, and the page that shows list and details gets more than the reading width. Measured from 900 to 1920 pixels: no table scrolls sideways.
+- **List and details stand side by side from 900 pixels**, the details following along; below they open as a sheet from the bottom. Before, they stood under the list, and with 200 rows nobody saw that a click had done anything.
+- **Every row is selectable by keyboard**: the title is a button, Tab leads there, Enter chooses, the arrows go one row on. The chosen row is marked with `aria-current` and drawn with a bar in the text colour.
+- **A waiting item says who decides and since when.** The backend adds `entscheidet` to every waiting item, out of the same `regel` the run started with: everybody with access, everybody except the submitter, or the accounts of the clients pattern. `wartet` is no longer the palest status.
+- **The form has a label at every field** and says beside it whether the field must be filled. The button is no longer grey without a reason: a click on an empty title says at the field what is missing and puts the focus there.
+- **Loading, error and empty are states with an action.** The list loads in its own shape, an error carries "Erneut versuchen", an empty list offers the first item or the way back to all.
+- **Status text holds 4.5:1 in both themes.** The word stands in the text colour, blue and red sit on a mark beside it. As text the library's blue came to 3.22:1 and its red to 3.48:1 in light.
+- **Recharts no longer comes into every app.** `memo` counts as pure for the build, so the charts leave the bundle as long as no page shows one: 408 instead of 690 KB.
+- **The self-test builds the scaffold and measures it in Chromium at 1280 pixels**, with 200 rows and a title of 125 characters: no column outside, details in the window, every row a button, status at least 4.5:1, no Recharts in the bundle. `design-system.md` names the rules in seven lines.
+
 ## 0.37.0 (2026-09-26)
 
 Contract: up to 6
