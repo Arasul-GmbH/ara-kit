@@ -61,8 +61,8 @@ one is missing. Empty, as in the scaffold, means none by name.
 schema and its professional rules, an account missing from the chart, a tax rate that does not fit,
 writes every finding onto the reading, and starts a flow with an approval about it. Every reading is
 a new row in the log, with model, duration, text recognition and who triggered it, never changed,
-also when the document goes. **The device logs every model call as well, with the human only if
-the app names them**: `geraet.auslesen` and `geraet.fragen` take `nutzer`, the name from
+also when the document goes. **The device logs these calls as well, with the human only if the
+app names them**: `geraet.auslesen` and `geraet.fragen` take `nutzer`, the name from
 `angemeldet`, and pass it on as `--contract` says under "Who triggered a model call"; `auftrag`
 ties a reading to that line. Half a minute is normal, minutes when the model loads first. Without the
 scope the contract names the key gets a 403, a decision of the administrator.

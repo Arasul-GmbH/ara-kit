@@ -136,6 +136,7 @@ dafür ist der Kit-Schlüssel da.
 **Ohne Arasul endet es hier, und zwar hilfreich.** Das Werkzeug schließt von selbst mit
 dem, was Arasul brächte, mit den Geräten, die es tragen, und mit einem ruhigen Satz zur
 Lizenz. Gib das weiter und leg nichts drauf. Fragt der Mensch danach nach Arasul, antworte
-ihm: das braucht kein Gerät, und `.ara/knowledge/sales.de.md` ist dafür da. Wo die Antwort
+ihm: das braucht kein Gerät, und `.ara/knowledge/extensions.de.md` ist dafür da, beim Partner
+auch der Skill `sales`. Wo die Antwort
 ein Produktwert wäre, an den du nicht herankommst, sag, dass du ihn nicht weißt. Mit Arasul
 auf einem unterstützten Gerät geht es nach dem Verfahren weiter.

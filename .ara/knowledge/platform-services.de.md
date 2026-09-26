@@ -35,9 +35,9 @@ dieses Geräts, und beim Einspielen schreibt `app.mjs` es als `backend/arasul.js
 
 **Eine App schreibt diese Werte nie in ihren Quelltext.** Eine, die es tut, findet auf einem Gerät,
 das sie anders nennt, nichts, hält das für „hier läuft kein Arasul" und sammelt Vorgänge, über die
-niemand entscheidet. Der Selbsttest hält Vorlage und Muster daran. **Modellarbeit einer App läuft
-über einen Flow, das Auslesen eines Dokuments oder `geraet.fragen`**, und jeder Aufruf nennt den
-Menschen, für den er geschieht: das Gerät protokolliert ihn mit ihm (`protokoll`).
+niemand entscheidet. **Modellarbeit einer App läuft über einen Flow, das Auslesen eines Dokuments
+oder `geraet.fragen`.** Das KI-Protokoll erfasst die Wege, die `protokoll.wege` nennt, mit dem
+Menschen, den die App mitgibt; der Modellschritt eines Flows steht am Lauf, mit seinem Einreicher.
 
 ## Anmeldung: eine App bekommt keine eigene
 

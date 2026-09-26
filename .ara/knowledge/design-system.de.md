@@ -26,11 +26,9 @@ App anders schreibt. Was die aktuelle Fassung trägt, sagt `marken.json`.
 `layer(components)`, sonst schlüge es jede Tailwind-Klasse. Beide stehen in dieser Reihenfolge in
 der `stil.css` der Vorlage, ohne zweite Datei mit Werten.
 
-**Das Thema kommt vom Gerät.** Hell ist `:root` und setzt nichts; Dunkel ist die Klasse `dark` und
-`data-theme="dark"` am `<html>`. Die Shell schreibt beides bei jedem Wechsel und Laden in das
-eigene Dokument der App und schickt `{typ: "arasul:theme", theme}`, das Einzige, das Hell
-ausdrücklich nennt. `rahmen/thema.ts` liest und rät nicht; nur ohne Rahmen, direkt in einem Tab,
-folgt es dem Betriebssystem und schreibt das Attribut selbst.
+**Das Thema kommt vom Gerät.** Die Shell setzt die Klasse `dark` und `data-theme="dark"` am
+`<html>` und schickt `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` liest und rät nicht; nur
+ohne Rahmen folgt es dem Betriebssystem.
 
 ## Wie eine App sie einsetzt
 
@@ -57,8 +55,10 @@ Schrift oder Radius.
 - **Jedes Feld hat ein Label** und daneben, ob es sein muss. Der Knopf bleibt aktiv, ein Klick sagt
   am Feld, was fehlt.
 - **Wer wartet, nennt, wer entscheidet und seit wann**, aus `entscheidet` des Backends.
-- **Laden hat die Form des Ergebnisses, ein Fehler einen Knopf zum erneuten Versuch, eine leere Liste
-  eine Handlung.**
+- **Laden hat die Form des Ergebnisses, eine leere Liste eine Handlung.** Ein Fehler ist ein Satz, nie
+  eine HTTP-Zeile: 404 und 403 ein Hinweis mit „Zur Übersicht", Netz und 5xx rot mit „Erneut versuchen".
+- **Der `hinweis` einer Karte trägt ein paar Wörter**: Stand, Fassung, Frist. Ein Satz steht im Inhalt.
+- **Die App redet wie das Gerät**: mit Sie oder ohne Anrede. `--check` meldet du und dir.
 - **Der Stand in der Textfarbe**, 4,5:1 in beiden Themen, die Farbe an einem Zeichen daneben.
 - **Ein Diagramm nur aus `@marken/diagramm`**, am besten mit `lazy`: der Sammelexport trägt seit
   5.0.0 keines.

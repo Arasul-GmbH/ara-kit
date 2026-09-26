@@ -147,7 +147,7 @@ away, with later the next `/init` asks again. Plus one sentence on the electroni
 receiving is mandatory for the customer since 2025, issuing comes in stages from 2027. Into the
 frontmatter: `invoice` and `invoice_tool`. With yes the kit creates `/invoice`: invoice as a ZUGFeRD
 PDF, with a number range of its own in `business/`. What belongs to it and what expressly does not
-stands in `.ara/knowledge/invoicing.md`.
+stands in the procedure `/invoice` loads.
 
 Answers into `tools` in the frontmatter (comma separated) and in prose into "What my house works
 with".

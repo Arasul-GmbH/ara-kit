@@ -28,7 +28,7 @@ Two companies write paper, and they are easily mixed up.
 | Leistungsbeschreibung, Endkundenbedingungen, Drittlizenzen | the partner passes them on | `.ara/vorlagen/` |
 | Nachweise on AI classification and data processing | Arasul writes them, the partner attaches them | `.ara/nachweise/` |
 | Übergabeprotokoll | partner and customer sign | `.ara/vorlagen/uebergabeprotokoll.md` |
-| Invoice to the end customer | **the partner** | `.ara/vorlagen/rechnung.md`, procedure in `.ara/knowledge/invoicing.md` |
+| Invoice to the end customer | **the partner** | `.ara/vorlagen/rechnung.md`, procedure with `/invoice` |
 | Partner contract, sales contract, data processing agreement | **Arasul** | not in the kit |
 
 The last three lines are the most frequent mistake. **The partner contract is a paper the partner
@@ -44,8 +44,8 @@ appear in it from the offer stands below under "Reservations that travel on".
 ## The order
 
 1. **Understand and calculate.** What the customer wants to achieve stands in their file and in
-   `customers/<customer>/history/`. Calculating happens along `.ara/knowledge/pricing.md`, structure
-   and tone along `.ara/knowledge/sales.md`.
+   `customers/<customer>/history/`. Calculating happens with `/calculation`, structure and tone along
+   the skill `sales`.
 2. **Fetch the mirror.** `node .ara/tools/mirror.mjs --refresh`. Without a fresh mirror no offer
    comes into being, because platform and trial level would otherwise be guessed.
 3. **Fill in the Leistungsbeschreibung.** It comes before the offer, not after. It fixes what is
@@ -58,12 +58,11 @@ appear in it from the offer stands below under "Reservations that travel on".
 7. **Produce the PDF.** `node .ara/tools/pdf.mjs <file>`. It refuses as long as a placeholder in
    curly braces still stands in the text.
 8. **File and follow up.** Everything into `customers/<customer>/documents/`, status to `quoted`,
-   validity date as a follow-up. See `.ara/knowledge/crm.md`.
+   validity date as a follow-up. See the skill `customers`.
 
 Later, at the handover: Übergabeprotokoll and technical acceptance, see
-`.ara/knowledge/handover.md`. And after that the invoice, see `.ara/knowledge/invoicing.md`: it is
-the only paper in the kit that a law prescribes the contents of, and that is why it has a procedure
-of its own.
+`.ara/knowledge/handover.md`. And after that the invoice, with `/invoice`: it is the only paper
+in the kit that a law prescribes the contents of, and that is why it has a procedure of its own.
 
 ## The five annexes to the offer
 

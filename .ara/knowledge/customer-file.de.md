@@ -87,7 +87,7 @@ Ein leeres Feld ist besser als eine erfundene Antwort.
 
 **Am Ende der Runde immer:** Wann willst du dich wieder melden, und worum geht es dann?
 → `follow_up` und `follow_up_note`. Ein Gespräch ohne nächsten Termin ist ein Kunde, den
-man in drei Monaten vergessen hat (`.ara/knowledge/crm.de.md`).
+man in drei Monaten vergessen hat (Skill `customers`).
 
 ## Anlegen: was du schreibst
 

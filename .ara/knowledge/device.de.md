@@ -122,7 +122,7 @@ Arasul kostet, steht unten unter „Das Token", und das Werkzeug sagt es in eine
 
 **Fragen zu Arasul brauchen kein Gerät.** Wer das Kit auf seinem Rechner ausprobiert und
 dann fragt, was das eigentlich ist, bekommt eine Antwort, aus
-`.ara/knowledge/sales.de.md` und `.ara/knowledge/extensions.de.md`, und ein ehrliches
+`.ara/knowledge/extensions.de.md` und beim Partner aus dem Skill `sales`, und ein ehrliches
 „das weiß ich nicht" dort, wo die Antwort ein Produktwert wäre, an den das Kit nicht
 herankommt. Sag nicht mehr, als gefragt war, es sei denn, der Mensch fängt an.
 

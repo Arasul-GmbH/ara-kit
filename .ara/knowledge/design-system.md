@@ -26,11 +26,9 @@ is none. `marken/marken.css` carries the blocks' rules, loaded **with** `layer(c
 would beat every Tailwind class. Both stand in this order in the scaffold's `stil.css`, with no second
 file of values.
 
-**The theme comes from the device.** Light is `:root` and sets nothing; dark is the class `dark`
-plus `data-theme="dark"` at `<html>`. The shell writes both into the app's own document at every
-change and load, and sends `{typ: "arasul:theme", theme}`, the only thing naming light explicitly.
-`rahmen/thema.ts` reads and does not guess; only without a frame, directly in a tab, does it follow
-the operating system and write the attribute itself.
+**The theme comes from the device.** The shell sets the class `dark` and `data-theme="dark"` at
+`<html>` and sends `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` reads and does not guess; only
+without a frame does it follow the operating system.
 
 ## How an app uses them
 
@@ -56,7 +54,10 @@ end of `stil.css`, with token names only, no colour, font or radius.
 - **Every field has a label** and beside it whether it must be filled. The button stays active, a
   click says at the field what is missing.
 - **Waiting names who decides and since when**, from `entscheidet` of the backend.
-- **Loading has the shape of the result, an error a button to try again, an empty list an action.**
+- **Loading has the shape of the result, an empty list an action.** An error is a sentence, never an
+  HTTP line: 404 and 403 a hint with "Zur Übersicht", network and 5xx red with "Erneut versuchen".
+- **A card's `hinweis` holds a few words**: status, version, deadline. A sentence goes into the card.
+- **The app speaks like the device**: Sie, or without address. `--check` reports du and dir.
 - **Status in the text colour**, 4.5:1 in both themes, the colour on a mark beside it.
 - **A chart only from `@marken/diagramm`**, best with `lazy`: the barrel carries none since 5.0.0.
 
