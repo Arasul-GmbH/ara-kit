@@ -1,14 +1,14 @@
 /**
  * Die eine Stelle, an der diese App etwas holt.
  *
- * Jeder Aufruf geht ueber `hole`. Das ist kein Selbstzweck: hier stehen die
- * drei Dinge, die sonst an zwanzig Stellen stuenden und an neunzehn davon
- * falsch waeren.
+ * Jeder Aufruf geht über `hole`. Das ist kein Selbstzweck: hier stehen die
+ * drei Dinge, die sonst an zwanzig Stellen stünden und an neunzehn davon
+ * falsch wären.
  *
  *   1. **Der Pfad** kommt aus `basis.ts` und nicht aus dem Aufrufer.
- *   2. **Die Anmeldung** faehrt von allein mit: das Sitzungscookie des Geraets
- *      ist `httpOnly` und gehoert zur Herkunft, aus der auch diese Seite kam.
- *      Die App traegt keinen Schluessel und darf keinen tragen.
+ *   2. **Die Anmeldung** fährt von allein mit: das Sitzungscookie des Geräts
+ *      ist `httpOnly` und gehört zur Herkunft, aus der auch diese Seite kam.
+ *      Die App trägt keinen Schlüssel und darf keinen tragen.
  *   3. **Der Umschlag** wird abgenommen. Die Plattform antwortet an manchen
  *      Wegen mit `data` darum herum und an anderen ohne. Wer sich auf eine der
  *      beiden Formen festlegt, wirft die andere weg, und das sieht danach aus
@@ -28,7 +28,7 @@ export class SchnittstellenFehler extends Error {
   }
 }
 
-/** Der Inhalt einer Antwort, egal ob sie einen Umschlag traegt. */
+/** Der Inhalt einer Antwort, egal ob sie einen Umschlag trägt. */
 function inhalt(daten: unknown): unknown {
   if (!daten || typeof daten !== "object" || Array.isArray(daten)) return daten;
   const innen = (daten as Record<string, unknown>).data;

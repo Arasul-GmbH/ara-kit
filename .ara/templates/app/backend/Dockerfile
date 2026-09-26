@@ -28,7 +28,7 @@ RUN npm ci --omit=dev --no-audit --no-fund
 #
 # Dazu das Manifest, `app.json`: die Route `agent` liefert aus ihm, was die App
 # Agenten anbietet. Der Bau des Kits legt es neben diese Datei. Im Quelltext
-# liegt es eine Ebene darueber, und ein `docker build` von hier aus findet es
+# liegt es eine Ebene darüber, und ein `docker build` von hier aus findet es
 # nicht: gebaut wird aus dem Paket.
 COPY . .
 

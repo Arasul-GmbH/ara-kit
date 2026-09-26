@@ -1,18 +1,18 @@
 /**
- * Die Liste: die Vorgaenge, die es gibt, und der eine, den man gerade ansieht.
+ * Die Liste: die Vorgänge, die es gibt, und der eine, den man gerade ansieht.
  *
  * Sie ist das Muster `Datenliste` der Bibliothek. Das ist mehr als eine
  * Tabelle: sortieren, suchen, ein Leerzustand, und unter 900 Pixeln wird aus
  * der Tabelle eine Kartenliste. Vier Dinge, und jede Seite, die sie einzeln
- * loest, loest sie anders.
+ * löst, löst sie anders.
  *
  * **Die Spalten sind Daten und kein Markup.** `zelle` sagt, was dasteht,
  * `wert` sagt, wonach sortiert und worin gesucht wird. Beides getrennt, weil
  * das, was man sieht, selten das ist, wonach man sortiert: „vor 3 Tagen"
  * sortiert nach einem Zeitstempel.
  *
- * **Welcher ausgewaehlt ist, steht in der Adresse** (`?nr=17`) und nicht im
- * Zustand dieser Seite. Zwei Gruende: ein Verweis auf einen Vorgang bleibt
+ * **Welcher ausgewählt ist, steht in der Adresse** (`?nr=17`) und nicht im
+ * Zustand dieser Seite. Zwei Gründe: ein Verweis auf einen Vorgang bleibt
  * einer, und die Wege der App bleiben eine Ebene tief, wie es `basis.ts`
  * verlangt.
  *
@@ -21,11 +21,11 @@
  * unter der Liste: bei 200 Zeilen sah niemand, dass sich nach dem Klick etwas
  * getan hatte. Die Schwelle ist die eine des Produkts, `useSchmalesFenster`.
  *
- * **Jede Zeile ist per Tastatur waehlbar.** Die `Datenliste` kennt nur den
- * Klick auf die Zeile; der Titel ist deshalb ein Knopf, Tab fuehrt hin, Eingabe
- * waehlt, die Pfeile gehen eine Zeile weiter. Gewaehlt ist, wo `aria-current`
+ * **Jede Zeile ist per Tastatur wählbar.** Die `Datenliste` kennt nur den
+ * Klick auf die Zeile; der Titel ist deshalb ein Knopf, Tab führt hin, Eingabe
+ * wählt, die Pfeile gehen eine Zeile weiter. Gewählt ist, wo `aria-current`
  * steht, und `stil.css` zeichnet die Zeile danach. Unter 900 px ist die ganze
- * Karte der Knopf, dort traegt der Titel nur die Markierung.
+ * Karte der Knopf, dort trägt der Titel nur die Markierung.
  */
 
 import { useMemo, type KeyboardEvent } from "react";
@@ -49,7 +49,7 @@ import { AsyncBoundary } from "../rahmen/async-boundary";
 import { ANSICHTEN, ansichtAus, type Ansicht } from "../rahmen/seitenleiste";
 import { STAND, seit, useLage, useVorgaenge, werEntscheidet, zeitpunkt, type Vorgang } from "../vorgaenge";
 
-/** Wie die Ansicht heisst, in denselben Worten wie in der Seitenleiste. */
+/** Wie die Ansicht heißt, in denselben Worten wie in der Seitenleiste. */
 function wortFuer(ansicht: Ansicht): string {
   return ANSICHTEN.find((eintrag) => eintrag.id === ansicht)?.wort ?? "Alle";
 }
@@ -62,8 +62,8 @@ function passt(vorgang: Vorgang, ansicht: Ansicht): boolean {
 
 /**
  * Wie ein Vorgang steht: das Wort, ein Zeichen daneben, und solange er
- * wartet, seit wann und bei wem. Das Wort steht in der Textfarbe und haelt
- * so 4,5:1 in beiden Themen; die Farbe traegt nur das Zeichen, denn Blau
+ * wartet, seit wann und bei wem. Das Wort steht in der Textfarbe und hält
+ * so 4,5:1 in beiden Themen; die Farbe trägt nur das Zeichen, denn Blau
  * und Rot der Bibliothek erreichen als Text im hellen Thema keine 4,5:1.
  */
 function Stand({ vorgang, knapp = false }: { vorgang: Vorgang; knapp?: boolean }) {
@@ -85,7 +85,7 @@ function Stand({ vorgang, knapp = false }: { vorgang: Vorgang; knapp?: boolean }
   );
 }
 
-/** Mit den Pfeilen zum Titel der Zeile darueber oder darunter. */
+/** Mit den Pfeilen zum Titel der Zeile darüber oder darunter. */
 function wandern(ereignis: KeyboardEvent<HTMLButtonElement>) {
   if (ereignis.key !== "ArrowDown" && ereignis.key !== "ArrowUp") return;
   const zeile = ereignis.currentTarget.closest("tr");
@@ -104,7 +104,7 @@ function useSpalten(gewaehlt: number | null, waehlen: (id: number) => void, schm
         titel: "Vorgang",
         zelle: (vorgang) => {
           const aktuell = gewaehlt === vorgang.id ? "true" : undefined;
-          // Zwei Zeilen und dann Schluss: ein Titel mit 120 Zeichen draengte
+          // Zwei Zeilen und dann Schluss: ein Titel mit 120 Zeichen drängte
           // sonst die Spalte Stand aus der Tabelle. Ganz steht er daneben.
           // `anywhere` bricht auch ein langes Wort, sonst bestimmte es die
           // schmalste Breite der Spalte, und zwischen 900 und 1100 px rollte
@@ -194,7 +194,7 @@ function Angaben({ vorgang }: { vorgang: Vorgang }) {
   );
 }
 
-/** Die Einzelheiten neben der Liste. Der Titel steht ganz da, die Karte kuerzte ihn auf eine Zeile. */
+/** Die Einzelheiten neben der Liste. Der Titel steht ganz da, die Karte kürzte ihn auf eine Zeile. */
 function Einzelheiten({ vorgang }: { vorgang: Vorgang }) {
   return (
     <Karte kennzeichen="vorgang">
@@ -224,11 +224,11 @@ export function Vorgaenge() {
   return (
     <>
       {/* Der Weg zum Formular steht in der Seitenleiste und nicht auch noch
-          hier: zwei Knoepfe fuer dieselbe Handlung sind einer zu viel. */}
+          hier: zwei Knöpfe für dieselbe Handlung sind einer zu viel. */}
       <Kopf titel="Vorgänge" beschreibung="Eingereicht hier, entschieden in Arasul." />
 
-      {/* Warum kein Flow anhaelt, sagt die App selbst: "ohne Arasul" und "das
-          Geraet hat den Wert nicht gesetzt" sehen gleich aus und sind es nicht. */}
+      {/* Warum kein Flow anhält, sagt die App selbst: "ohne Arasul" und "das
+          Gerät hat den Wert nicht gesetzt" sehen gleich aus und sind es nicht. */}
       <AsyncBoundary abfrage={lage} laedt={null} fehlerTitel="Der Rahmen ließ sich nicht lesen">
         {(stand) =>
           stand.arasul ? null : (

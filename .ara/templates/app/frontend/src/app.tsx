@@ -1,28 +1,28 @@
 /**
- * Die Oberflaeche von {{name}}: der Rahmen und die Wege.
+ * Die Oberfläche von {{name}}: der Rahmen und die Wege.
  *
  * Hier steht, was um jede Seite herum gilt, und sonst nichts:
  *
  *   `Fehlerwand`            was der Mensch sieht, wenn das Zeichnen stolpert
- *   `QueryClientProvider`   ein Zwischenspeicher fuer alle Abfragen
- *   `useThema`              das Thema des Geraets, gelesen und mitgefuehrt
- *   `BrowserRouter`         die Wege, unter dem Pfad, an dem die App haengt
+ *   `QueryClientProvider`   ein Zwischenspeicher für alle Abfragen
+ *   `useThema`              das Thema des Geräts, gelesen und mitgeführt
+ *   `BrowserRouter`         die Wege, unter dem Pfad, an dem die App hängt
  *   `SidebarProvider`       auf und zu, und unter 900 px ein Blatt
  *   `AppSeitenleiste`       die Bereiche, aus dem Muster der Bibliothek
  *   `AnmeldungRahmen`       wer da ist, aus `api/me`, bevor etwas gezeichnet wird
  *
  * Die Reihenfolge ist eine Entscheidung: die Anmeldung steht INNEN, weil sie
- * eine Abfrage ist und dafuer den Zwischenspeicher braucht; die Fehlerwand
- * steht AUSSEN, weil sie sonst genau die Fehler nicht faengt, die in den
+ * eine Abfrage ist und dafür den Zwischenspeicher braucht; die Fehlerwand
+ * steht **außen**, weil sie sonst genau die Fehler nicht fängt, die in den
  * Rahmen darunter entstehen. Die Seitenleiste steht innerhalb des Routers,
- * weil sie die Adresse liest, und ausserhalb der Anmeldung, weil sie auch
- * dastehen soll, solange das Geraet noch nicht gesagt hat, wer da ist.
+ * weil sie die Adresse liest, und außerhalb der Anmeldung, weil sie auch
+ * dastehen soll, solange das Gerät noch nicht gesagt hat, wer da ist.
  *
  * **Die Anordnung kommt aus der Bibliothek und nicht aus einem eigenen
- * Raster.** `SidebarProvider` haelt die Spalte frei, `SidebarInset` traegt
- * den Inhalt, `SidebarTrigger` klappt auf und zu. Was hier ein `grid` waere,
- * liefe beim naechsten Stand des Geraets von der Oberflaeche weg, in der es
- * haengt.
+ * Raster.** `SidebarProvider` hält die Spalte frei, `SidebarInset` trägt
+ * den Inhalt, `SidebarTrigger` klappt auf und zu. Was hier ein `grid` wäre,
+ * liefe beim nächsten Stand des Geräts von der Oberfläche weg, in der es
+ * hängt.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -36,14 +36,14 @@ import { AppSeitenleiste } from "./rahmen/seitenleiste";
 import { Vorgaenge } from "./seiten/liste";
 import { Neu } from "./seiten/neu";
 
-/** Wie diese App heisst. Das Geraet setzt den Namen im Backend, hier steht er fuer die Leiste. */
+/** Wie diese App heißt. Das Gerät setzt den Namen im Backend, hier steht er für die Leiste. */
 const NAME = "{{name}}";
 
 /**
- * Ein Zwischenspeicher fuer die ganze App.
+ * Ein Zwischenspeicher für die ganze App.
  *
- * `retry` haelt an, wo ein zweiter Versuch nichts bringt: 401 heisst, die
- * Sitzung ist weg, 403 heisst, die App ist nicht freigegeben. Beides
+ * `retry` hält an, wo ein zweiter Versuch nichts bringt: 401 heißt, die
+ * Sitzung ist weg, 403 heißt, die App ist nicht freigegeben. Beides
  * dreimal zu fragen macht es nicht wahrer, es macht die Seite nur langsam.
  */
 const speicher = new QueryClient({
