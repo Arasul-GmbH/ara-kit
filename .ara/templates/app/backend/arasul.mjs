@@ -34,6 +34,15 @@
  * von Arasul, nicht im KI-Protokoll. Wer einer Kanzlei eine
  * Verfahrensdokumentation schreibt, schreibt beides so hin.
  *
+ * **Ein Auslesen geht nicht verloren, weil es lange rechnet.** Wartet das
+ * Gerät nicht mehr, antwortet es mit dem Auftrag und rechnet weiter; die App
+ * holt das Ergebnis auf dem Weg ab, den die Vereinbarung unter
+ * `wege.dokument_abholen` nennt, und schickt die Datei kein zweites Mal. Zum
+ * Gerät gehen höchstens so viele Auslesungen zugleich, wie die Vereinbarung
+ * unter `warten.gleichzeitig` erlaubt, ohne Angabe eine; die übrigen warten
+ * hier in der Reihe und nicht in der Warteschlange des Geräts, die alle Apps
+ * teilen.
+ *
  * **Ein Fehler des Geräts erreicht den Menschen als Satz, nie als HTTP-Zeile.**
  * `fehler` sagt je Klasse, was los ist und was jetzt hilft: ausgelastet, bitte
  * erneut; nicht freigegeben; das Modell ist gescheitert. Verb, Weg, Status und
@@ -160,6 +169,29 @@ export function liste(daten, name) {
   return [];
 }
 
+/** Wie oft die App ein Auslesen abholt, das noch rechnet. */
+export const ABHOLEN_ALLE_MS = 5_000;
+
+/**
+ * Eine Reihe, die höchstens `grenze` Aufgaben zugleich laufen lässt. Die
+ * übrigen warten, in der Reihenfolge, in der sie kamen.
+ */
+export function zugleich(grenze) {
+  let laufend = 0;
+  const wartend = [];
+  return async function inDerReihe(aufgabe) {
+    if (laufend >= grenze) await new Promise((dran) => wartend.push(dran));
+    else laufend += 1;
+    try {
+      return await aufgabe();
+    } finally {
+      const naechste = wartend.shift();
+      if (naechste) naechste();
+      else laufend -= 1;
+    }
+  };
+}
+
 /**
  * Das Gerät, so weit diese App es erreicht.
  *
@@ -167,7 +199,7 @@ export function liste(daten, name) {
  * sich der Fall "das Gerät hat den Wert nicht gesetzt" prüfen, ohne einen
  * Prozess zu starten.
  */
-export function geraet(vereinbarung, umgebung, { name, flow }) {
+export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABHOLEN_ALLE_MS }) {
   const kopf = vereinbarung.kopf || null;
   const wege = vereinbarung.wege || {};
   const basisName = vereinbarung.umgebung?.basis || null;
@@ -175,6 +207,8 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
   const basis = basisName ? String(umgebung[basisName] || "").replace(/\/+$/, "") : "";
   const schluessel = schluesselName ? String(umgebung[schluesselName] || "") : "";
   const protokoll = vereinbarung.protokoll?.kopf ? vereinbarung.protokoll : null;
+  const warten = vereinbarung.warten || {};
+  const reihe = zugleich(Number.isInteger(warten.gleichzeitig) && warten.gleichzeitig > 0 ? warten.gleichzeitig : 1);
 
   /**
    * Die Kopfzeile mit dem Menschen, für den die App ein Modell fragt, oder
@@ -332,6 +366,89 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
     }
   }
 
+  /**
+   * Eine Auslesung am Gerät, von der Datei bis zum Ergebnis.
+   *
+   * `wartezeit` sind die Sekunden, die das Gerät auf das Modell wartet, bevor
+   * es mit dem Auftrag antwortet; ohne Angabe gilt seine Vorgabe. Antwortet
+   * es so, holt die App ab, bis das Ergebnis da ist, höchstens so lange, wie
+   * das Gerät es aufbewahrt.
+   */
+  async function auslesenJetzt({ datei, dateiname, art, schema, anweisung, nutzer, wartezeit }) {
+    const beginn = Date.now();
+    const felder = { schema, instructions: anweisung };
+    if (wartezeit) felder.timeout_seconds = String(wartezeit);
+    // Eine Minute länger, als das Gerät höchstens wartet: sonst bricht die App
+    // ab, und mit ihr das Gerät den Auftrag.
+    const frist = warten.hoechstens_sekunden ? (warten.hoechstens_sekunden + 60) * 1000 : 11 * 60_000;
+    let { code, daten, fehler, technisch } = await senden(
+      "dokument_auslesen",
+      felder,
+      { datei, name: dateiname, art },
+      frist,
+      nutzer,
+      { tun: "auslesen", modell: true }
+    );
+    if (laeuftNoch(code, daten)) ({ code, daten, fehler, technisch } = await abholen(daten.job_id));
+    const antwort = daten && typeof daten === "object" ? daten : {};
+    const protokoll = {
+      modell: antwort.model ?? null,
+      dauer_ms: typeof antwort.processing_time_ms === "number" ? antwort.processing_time_ms : Date.now() - beginn,
+      texterkennung: antwort.metadata?.ocr_used ?? null,
+      zeichen: antwort.char_count ?? null,
+      // Derselbe Wert steht im Protokoll des Geräts: damit findet sich zu
+      // einem Vorschlag der Aufruf, der ihn gemacht hat.
+      auftrag: antwort.job_id ?? null,
+    };
+    if (!gelungen(code)) return { felder: null, fehler, technisch, ...protokoll };
+    // Das Modell hat geantwortet, aber kein JSON. Das Gerät gibt dann die
+    // rohe Antwort mit; sie gehört ins Protokoll und nicht in die Felder.
+    if (!antwort.data || typeof antwort.data !== "object") {
+      return {
+        felder: null,
+        fehler: "Das Modell hat geantwortet, aber keine Felder in der verlangten Form.",
+        roh: typeof antwort.raw_response === "string" ? antwort.raw_response.slice(0, 2000) : null,
+        ...protokoll,
+      };
+    }
+    return { felder: antwort.data, fehler: null, ...protokoll };
+  }
+
+  /** Das Gerät rechnet noch: 202 mit dem Stand `laeuft` und einem Auftrag. */
+  function laeuftNoch(code, daten) {
+    return code === (warten.status || 202) && daten?.status === "laeuft" && typeof daten.job_id === "string";
+  }
+
+  /**
+   * Ein Auslesen abholen, das nach der Wartezeit des Geräts noch rechnete.
+   *
+   * Gefragt wird alle fünf Sekunden, so lange, wie das Gerät das Ergebnis
+   * aufbewahrt. Die Antwort hat danach dieselbe Form wie eine, auf die die
+   * App gewartet hätte. Ohne Weg zum Abholen sagt sie, dass das Ergebnis am
+   * Gerät liegt und hier nicht ankommt.
+   */
+  async function abholen(auftrag) {
+    if (!wege.dokument_abholen) {
+      protokollieren(`Auftrag ${auftrag} rechnet noch, und der Kontrakt nennt keinen Weg, ihn abzuholen.`);
+      return {
+        code: 0,
+        daten: { job_id: auftrag },
+        fehler: "Das Gerät rechnet noch und kann das Ergebnis dieser App nicht nachreichen. Bitte später erneut auslesen.",
+        technisch: null,
+      };
+    }
+    const ende = Date.now() + (warten.aufbewahrt_sekunden || 3600) * 1000;
+    for (;;) {
+      await new Promise((weiter) => setTimeout(weiter, abholenAlleMs));
+      const antwort = await rufen("dokument_abholen", { auftrag }, null, { frist: 60_000, tun: "auslesen", modell: true });
+      if (!laeuftNoch(antwort.code, antwort.daten) && antwort.code !== 0) return antwort;
+      if (Date.now() > ende) {
+        protokollieren(`Auftrag ${auftrag} war nach der Aufbewahrungszeit des Geräts nicht fertig.`);
+        return { ...antwort, code: 0, fehler: menschensatz(0, { tun: "auslesen", modell: true, abgelaufen: true }) };
+      }
+    }
+  }
+
   return {
     warumKeinRahmen,
 
@@ -378,43 +495,13 @@ export function geraet(vereinbarung, umgebung, { name, flow }) {
      * Kein Modellname aus dieser App: das Gerät nimmt seine Vorgabe, und die
      * Antwort sagt, welches es war.
      */
-    async auslesen({ datei, name: dateiname, art, schema, anweisung, nutzer = null }) {
+    async auslesen({ datei, name: dateiname, art, schema, anweisung, nutzer = null, wartezeit = null }) {
       const fehlt = warumKeinRahmen();
       if (fehlt) return { felder: null, fehler: fehlt };
       if (!wege.dokument_auslesen) {
         return { felder: null, fehler: "Dieses Gerät nennt in seinem Kontrakt keinen Weg, ein Dokument auszulesen." };
       }
-      const beginn = Date.now();
-      const { code, daten, fehler, technisch } = await senden(
-        "dokument_auslesen",
-        { schema, instructions: anweisung },
-        { datei, name: dateiname, art },
-        11 * 60_000,
-        nutzer,
-        { tun: "auslesen", modell: true }
-      );
-      const antwort = daten && typeof daten === "object" ? daten : {};
-      const protokoll = {
-        modell: antwort.model ?? null,
-        dauer_ms: typeof antwort.processing_time_ms === "number" ? antwort.processing_time_ms : Date.now() - beginn,
-        texterkennung: antwort.metadata?.ocr_used ?? null,
-        zeichen: antwort.char_count ?? null,
-        // Derselbe Wert steht im Protokoll des Geräts: damit findet sich zu
-        // einem Vorschlag der Aufruf, der ihn gemacht hat.
-        auftrag: antwort.job_id ?? null,
-      };
-      if (!gelungen(code)) return { felder: null, fehler, technisch, ...protokoll };
-      // Das Modell hat geantwortet, aber kein JSON. Das Gerät gibt dann die
-      // rohe Antwort mit; sie gehört ins Protokoll und nicht in die Felder.
-      if (!antwort.data || typeof antwort.data !== "object") {
-        return {
-          felder: null,
-          fehler: "Das Modell hat geantwortet, aber keine Felder in der verlangten Form.",
-          roh: typeof antwort.raw_response === "string" ? antwort.raw_response.slice(0, 2000) : null,
-          ...protokoll,
-        };
-      }
-      return { felder: antwort.data, fehler: null, ...protokoll };
+      return reihe(() => auslesenJetzt({ datei, dateiname, art, schema, anweisung, nutzer, wartezeit }));
     },
 
     /** Kann dieses Gerät ein Modell direkt fragen? Dann nennt die Vereinbarung den Weg. */

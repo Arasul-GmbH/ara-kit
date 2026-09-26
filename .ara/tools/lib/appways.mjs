@@ -29,6 +29,13 @@
  *      den Menschen nennt, für den sie fragt (`protokoll` im Kontrakt, seit dem
  *      26.09.2026): eine Kopfzeile, ein Feld, und an `/v1` ein anderes Feld.
  *      Ohne sie steht der Aufruf ohne Menschen im Protokoll.
+ *   9. Wie lange das Gerät auf ein Modell **wartet** und wo die App ein
+ *      Auslesen **abholt**, das danach noch rechnet (`warten` im Kontrakt, seit
+ *      dem 26.09.2026). Der Weg steht dort unter `warten.wege`, zum Weg aus
+ *      `auslesen.weg`; das Kit schreibt ihn ab und nennt ihn nicht selbst.
+ *      Nennt der Kontrakt, wie viele Auslesungen **gleichzeitig** gehen,
+ *      steht das hier; nennt er es nicht, steht `null`, und die App liest eine
+ *      nach der anderen.
  *
  * Bis zum 29.08.2026 stand nichts davon im Kontrakt, sondern in der Vorlage:
  * `ARASUL_API_URL`, `ARASUL_API_SCHLUESSEL`, `x-api-key` und drei Pfade ohne
@@ -138,6 +145,45 @@ function logArrangement(contract) {
     kopf: wer.kopf,
     feld: typeof wer.feld === "string" ? wer.feld : null,
     feld_openai: typeof wer.feld_openai === "string" ? wer.feld_openai : null,
+  };
+}
+
+/** Eine ganze Zahl über null aus dem Kontrakt, sonst `null`. */
+function positiv(wert) {
+  return Number.isInteger(wert) && wert > 0 ? wert : null;
+}
+
+/**
+ * Warten und Abholen, aus `warten` und `auslesen`.
+ *
+ * Bis 0.43.0 ging ein Auslesen verloren, das länger rechnete, als das Gerät
+ * wartete: das 202 sah aus wie eine Antwort ohne Felder, und niemand holte das
+ * Ergebnis ab, das eine Minute später fertig war. Der Abholweg steht im
+ * Kontrakt zum Weg des Auslesens, relativ zur Basis und mit dem Platzhalter
+ * des Geräts; hier wird daraus einer mit `{auftrag}`, wie die Vorlage ihn
+ * einsetzt. Ein Gerät vor dem 26.09.2026 nennt nichts davon, dann steht hier
+ * `null` und kein Weg.
+ */
+function waitArrangement(contract) {
+  const warten = contract?.warten;
+  if (!warten || typeof warten !== "object") return { warten: null, abholen: null };
+  const weg = typeof contract?.auslesen?.weg === "string" ? contract.auslesen.weg : null;
+  const roh = weg && typeof warten.wege?.[weg] === "string" ? warten.wege[weg] : null;
+  let abholen = null;
+  if (roh) {
+    const relativ = `/${roh.replace(/^\/+/, "").replace(/:[A-Za-z_]+/g, "{auftrag}")}`;
+    const praefix = typeof contract?.umgebung?.praefix === "string" ? contract.umgebung.praefix : EXTERNAL_PREFIX;
+    abholen = { verb: "GET", pfad: `${praefix}${relativ}`, relativ: contract?.umgebung?.basis_enthaelt_praefix === true ? relativ : null };
+  }
+  return {
+    warten: {
+      status: positiv(warten.status),
+      vorgabe_sekunden: positiv(warten.vorgabe_sekunden),
+      hoechstens_sekunden: positiv(warten.hoechstens_sekunden),
+      aufbewahrt_sekunden: positiv(warten.aufbewahrt_sekunden),
+      gleichzeitig: positiv(warten.gleichzeitig) ?? positiv(contract?.auslesen?.gleichzeitig),
+    },
+    abholen,
   };
 }
 
@@ -291,6 +337,9 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     }
     wege[way.key] = { verb: way.verb, pfad: way.pfad, relativ: relativeWay(contract, entry, way.pfad) };
   }
+  const { warten, abholen } = waitArrangement(contract);
+  // Abholen gibt es nur, wo es auch Auslesen gibt.
+  wege.dokument_abholen = wege.dokument_auslesen ? abholen : null;
 
   // Ob ein Lauf seinen Einreicher und eine Regel für die Freigabe mitbringen
   // darf. Gelesen am Schema, das der Kontrakt für den Start eines Laufs
@@ -330,6 +379,7 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     wege,
     freigaben,
     daten,
+    warten,
     protokoll: logArrangement(contract),
     missing,
     unangeboten,
@@ -415,6 +465,23 @@ export function arrangementLines(arrangement) {
         : way.pflicht
           ? t(`- missing: the way to ${way.was}`, `- fehlt: der Weg, um ${way.was}`)
           : t(`- not offered by this device: the way to ${way.was}`, `- bietet dieses Gerät nicht an: der Weg, um ${way.was}`)
+    );
+  }
+  const abholen = arrangement.wege.dokument_abholen;
+  if (arrangement.wege.dokument_auslesen) {
+    const zugleich = arrangement.warten?.gleichzeitig;
+    lines.push(
+      abholen
+        ? t(
+            `- ${abholen.verb} ${abholen.relativ ?? abholen.pfad}: fetch a reading that was still running after its wait. ` +
+              (zugleich ? `At most ${zugleich} readings at a time, as the contract says.` : "The contract names no number of readings at a time, so the app reads one after the other."),
+            `- ${abholen.verb} ${abholen.relativ ?? abholen.pfad}: ein Auslesen abholen, das nach seiner Wartezeit noch rechnete. ` +
+              (zugleich ? `Höchstens ${zugleich} Auslesungen zugleich, wie der Kontrakt sagt.` : "Der Kontrakt nennt keine Zahl gleichzeitiger Auslesungen, also liest die App eine nach der anderen.")
+          )
+        : t(
+            "- This device names no way to fetch a reading that runs longer than it waits. Such a reading is lost, and the human reads again.",
+            "- Dieses Gerät nennt keinen Weg, ein Auslesen abzuholen, das länger rechnet, als es wartet. Ein solches geht verloren, und der Mensch liest neu."
+          )
     );
   }
   return lines;

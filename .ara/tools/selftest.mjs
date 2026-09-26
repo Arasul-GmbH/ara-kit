@@ -4357,6 +4357,104 @@ await checkAsync("Die Vorlage nennt jedem Modellaufruf seinen Menschen, wie der 
   }
 });
 
+await checkAsync("Ein Auslesen, das länger rechnet, als das Gerät wartet, holt die Vorlage ab, und zum Gerät gehen nur so viele zugleich, wie der Kontrakt erlaubt", async () => {
+  // Bis 0.43.0 ging ein Auslesen verloren, das nach der Wartezeit des Geräts
+  // noch rechnete: das 202 sah aus wie eine Antwort ohne Felder. Das gespielte
+  // Gerät nennt seinen Abholweg anders als der Orin; eine Vorlage, die ihn
+  // fest im Quelltext trägt, holt hier nichts ab.
+  const { geraet: anschluss } = await import(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"));
+  const kontrakt = {
+    ...VORLAGE_KONTRAKT,
+    umgebung: { ...VORLAGE_KONTRAKT.umgebung, praefix: "/api/v1/external", basis_enthaelt_praefix: false },
+    auslesen: { weg: "document/extract-structured" },
+    warten: { status: 202, wege: { "document/extract-structured": "abholung/:nummer" }, hoechstens_sekunden: 30, aufbewahrt_sekunden: 60 },
+  };
+  let offen = 0;
+  let hoechstens = 0;
+  const auftraege = new Map();
+  const gesendet = [];
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", async () => {
+      const url = new URL(anfrage.url, "http://x");
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/document/extract-structured") {
+        offen += 1;
+        hoechstens = Math.max(hoechstens, offen);
+        const formular = await new Request("http://x", { method: "POST", headers: { "content-type": anfrage.headers["content-type"] }, body: Buffer.concat(teile) }).formData();
+        const nummer = `auftrag-${gesendet.length + 1}`;
+        gesendet.push({ nummer, wartezeit: formular.get("timeout_seconds") });
+        await new Promise((weiter) => setTimeout(weiter, 30));
+        if (formular.get("timeout_seconds") === "1") {
+          // Rechnet noch: 202 mit dem Auftrag. Zweimal abgeholt rechnet er noch, beim dritten Mal ist er fertig.
+          auftraege.set(nummer, 2);
+          offen -= 1;
+          return json(202, { success: false, status: "laeuft", job_id: nummer, abholen: `abholung/${nummer}`, model: "probe-modell:1b" });
+        }
+        offen -= 1;
+        return json(200, { success: true, data: { a: nummer }, model: "probe-modell:1b", job_id: nummer, processing_time_ms: 30 });
+      }
+      const treffer = url.pathname.match(/^\/api\/v1\/external\/abholung\/([^/]+)$/);
+      if (anfrage.method === "GET" && treffer) {
+        const rest = auftraege.get(treffer[1]);
+        if (rest === undefined) return json(404, { error: { message: "unbekannt" } });
+        if (rest > 0) {
+          auftraege.set(treffer[1], rest - 1);
+          return json(202, { success: false, status: "laeuft", job_id: treffer[1], abholen: `abholung/${treffer[1]}` });
+        }
+        return json(200, { success: true, data: { abgeholt: true }, model: "probe-modell:1b", job_id: treffer[1], processing_time_ms: 70_000, metadata: { ocr_used: false } });
+      }
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    const umgebung = { ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest" };
+    const vereinbarung = JSON.parse(arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
+    assert(vereinbarung.wege.dokument_abholen?.pfad === "/api/v1/external/abholung/{auftrag}", `der Abholweg kommt nicht aus dem Kontrakt: ${JSON.stringify(vereinbarung.wege.dokument_abholen)}`);
+    assert(vereinbarung.warten?.gleichzeitig === null, "ohne Angabe im Kontrakt erfindet das Kit eine Zahl gleichzeitiger Auslesungen");
+    const datei = { datei: Buffer.from("%PDF-1.4"), name: "a.pdf", art: "application/pdf", schema: { type: "object" }, anweisung: "x" };
+
+    // Rechnet noch: abgeholt, ohne die Datei zweimal zu schicken.
+    const g = anschluss(vereinbarung, umgebung, { name: "Probe", flow: "freigabe", abholenAlleMs: 20 });
+    const lang = await g.auslesen({ ...datei, wartezeit: 1 });
+    assert(lang.felder?.abgeholt === true && lang.auftrag === "auftrag-1" && lang.dauer_ms === 70_000, `das lange Auslesen ging verloren: ${JSON.stringify(lang)}`);
+    assert(gesendet.length === 1, `die Datei ging ${gesendet.length}-mal an das Gerät`);
+
+    // Sechs zugleich: ohne Angabe im Kontrakt geht eine nach der anderen, und keine geht verloren.
+    const sechs = await Promise.all(Array.from({ length: 6 }, () => g.auslesen(datei)));
+    assert(sechs.every((a) => a.felder?.a), `nicht alle sechs kamen an: ${JSON.stringify(sechs)}`);
+    assert(hoechstens === 1, `ohne Angabe im Kontrakt gingen ${hoechstens} Auslesungen zugleich an das Gerät`);
+
+    // Nennt der Kontrakt eine Zahl, gilt sie.
+    hoechstens = 0;
+    const drei = anschluss(
+      JSON.parse(arrangementFile(appArrangement({ ...kontrakt, warten: { ...kontrakt.warten, gleichzeitig: 3 } }, {}))),
+      umgebung,
+      { name: "Probe", flow: "freigabe", abholenAlleMs: 20 }
+    );
+    await Promise.all(Array.from({ length: 6 }, () => drei.auslesen(datei)));
+    assert(hoechstens === 3, `mit gleichzeitig 3 gingen ${hoechstens} Auslesungen zugleich an das Gerät`);
+
+    // Ein Gerät ohne `warten` nennt keinen Abholweg: das 202 wird ein Satz, keine leere Antwort.
+    const { warten, ...ohneWarten } = kontrakt;
+    const alt = anschluss(JSON.parse(arrangementFile(appArrangement(ohneWarten, {}))), umgebung, { name: "Probe", flow: "freigabe" });
+    const verloren = await alt.auslesen({ ...datei, wartezeit: 1 });
+    assert(verloren.felder === null && /rechnet noch/.test(verloren.fehler || "") && !/202|Status/.test(verloren.fehler), `ohne Abholweg: ${JSON.stringify(verloren)}`);
+
+    // Und kein Abholweg steht in der Vorlage: er kommt aus der Vereinbarung.
+    const quelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+    assert(!/extract-structured|abholung/.test(quelle), "die Vorlage trägt einen Weg des Geräts im Code");
+    return "202 abgeholt mit einer Sendung, sechs ohne Verlust und einzeln, drei zugleich mit Angabe, ohne Abholweg ein Satz";
+  } finally {
+    geraet.close();
+  }
+});
+
 await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, und entscheiden darf nur, wer als Entscheider zugeordnet ist", async () => {
   // So, wie das Blatt es sagt: die Vorlage, darüber das Muster, die Zeilen aus
   // dem Kopf von wege/mandanten.mjs in server.mjs. Das Gerät ist gespielt, und
