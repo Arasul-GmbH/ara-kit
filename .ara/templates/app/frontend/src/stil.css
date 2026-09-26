@@ -57,10 +57,11 @@
    Produkt genau EINE Schwelle. */
 
 /* Der Inhalt steht am linken Rand seiner eigenen Spalte und nicht in der
-   Mitte des ganzen Fensters: sonst rutscht er unter die Seitenleiste. */
+   Mitte des ganzen Fensters: sonst rutscht er unter die Seitenleiste. Ein
+   eigenes `min-width: 0` braucht er seit Marken 5.1.0 nicht mehr, das trägt
+   `SidebarInset` selbst. */
 .ara-strom {
   margin: 0;
-  min-width: 0;
 }
 
 /* Liste und Einzelheiten nebeneinander brauchen mehr als die Lesebreite von

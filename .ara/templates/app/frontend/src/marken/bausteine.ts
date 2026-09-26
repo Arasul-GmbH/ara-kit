@@ -15,7 +15,11 @@
  * Primitiven: er ist reines React, braucht keinen Bau, und er traegt die EINE
  * Schwelle des Produkts (900 px). Eine App ohne Bau, die unter 900 px eine
  * Spalte zeigen soll, kann sie damit lesen, statt sich eine zweite auszudenken
- * -- und `Sidebar` und `Datenliste` lesen dieselbe.
+ * -- und `Sidebar` liest dieselbe.
+ *
+ * `useSchmalerBehaelter` (seit 5.1.0) ist sein Geschwister fuer die Frage
+ * „passt es in MEINEN Kasten?": eine App im Rahmen teilt ihr Fenster noch
+ * einmal mit der eigenen Seitenleiste, und dort luegt jede Fensterschwelle.
  */
 
 export { Kopf } from './Kopf';
@@ -31,4 +35,5 @@ export type { MeldungProps, MeldungsArt } from './Meldung';
 export { Menue } from './Menue';
 export type { MenueProps } from './Menue';
 export { useSchmalesFenster, SCHMAL_AB_PX } from './useSchmalesFenster';
+export { useSchmalerBehaelter } from './useSchmalerBehaelter';
 export { FASSUNG } from './fassung';

@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.45.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **Das Gerüst steht auf Marken 5.1.0**, aus dem Paket von Arasul 0.8.9. Die `Datenliste` misst ihren eigenen Kasten statt des Fensters und zeigt unter 640 Pixeln Karten, oder wenn ihre Tabelle nicht hineinpasst; `SidebarInset` trägt `min-w-0`; der Kopf einer Karte bricht um. Eine App im Rahmen des Geräts teilt das Fenster mit ihrer eigenen Seitenleiste: mit 5.0.x stand dort eine Tabelle 100 Pixel über dem Rand. Eine eigene App bekommt das mit `marken.mjs --sync` und einem neuen Bau.
+- **Die Einzelheiten der Liste sind höchstens 18rem breit, die Liste nimmt den Rest.** Mit 3 zu 2 hatte die Liste bei 1280 Pixeln 583 und wäre zu Karten geworden; jetzt hat sie 684 und bleibt eine Tabelle. Im Rahmen des Geräts bei 1440 (1052 Pixel) stehen Karten neben den Einzelheiten. Die Muster Dokumente und Auslesen behalten 3 zu 2, ihr Dokument braucht die Breite.
+- **`.ara-strom` trägt kein eigenes `min-width: 0` mehr**, das bringt `SidebarInset` mit. Der Selbsttest fragt nach 5.1.0, der messenden Datenliste und `min-w-0` an `SidebarInset`.
+
 ## 0.44.0 (2026-09-26)
 
 Kontrakt: bis 6

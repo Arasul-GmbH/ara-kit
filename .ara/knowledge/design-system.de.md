@@ -39,7 +39,9 @@ Schrift oder Radius.
 ## Was jede Seite hält
 
 - **Nichts fällt heraus.** Ein langer Titel endet mit „…" (`kuerzen`) und steht daneben ganz; bei
-  1280 Pixeln verlässt keine Spalte die Tabelle. Der Selbsttest baut die Vorlage und misst sie.
+  1280 Pixeln verlässt keine Spalte die Tabelle. Seit Marken 5.1.0 misst die `Datenliste` ihren
+  eigenen Kasten, nicht das Fenster: unter 640 Pixeln, oder wenn ihre Tabelle nicht hineinpasst,
+  zeigt sie Karten. Der Selbsttest baut die Vorlage und misst sie.
 - **Liste und Einzelheiten nebeneinander** ab 900 Pixeln, die Einzelheiten mitlaufend, darunter als
   Blatt von unten. Nie unter der Liste.
 - **Die Auswahl ist die der Bibliothek**: `gewaehlt` markiert die Zeile, Tab und Eingabe erreichen
@@ -76,8 +78,8 @@ und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build
 Gemessen wird der eigene Quelltext der App, nicht der Spiegel. **Ein fremder Container ist
 ausgenommen**: ohne `frontend`, mit fertigem `image`, bringt er keine Oberfläche mit. Der Selbsttest
 hält die Vorlage an dieselbe Regel. Dazu: **nichts im Spiegel ändern**, er wird ersetzt, und was
-einem Teil fehlt, gehört ins Produkt; und **keine zweite Schwelle**, 900 Pixel ist die eine
-(`useSchmalesFenster`).
+einem Teil fehlt, gehört ins Produkt; und **keine eigene Schwelle**: 900 Pixel des Fensters gelten
+für die Seite (`useSchmalesFenster`), den Kasten einer Datenliste misst die Bibliothek selbst.
 
 **Prüf eine Oberfläche in beiden Themen und drei Breiten**, 390 für das Telefon, 1280 und 1440 für
 den Schreibtisch. Unter 900 ist die Seitenleiste ein Blatt und eine Datenliste eine Kartenliste, und eine

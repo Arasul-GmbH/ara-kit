@@ -37,7 +37,9 @@ end of `stil.css`, with token names only, no colour, font or radius.
 ## What every page keeps
 
 - **Nothing falls out.** A long title ends with "…" (`kuerzen`) and stands whole beside it; at 1280
-  pixels no column leaves the table. The self-test builds the scaffold and measures it.
+  pixels no column leaves the table. Since marken 5.1.0 `Datenliste` measures its own box, not the
+  window: under 640 pixels, or when its table does not fit, it shows cards. The self-test builds the
+  scaffold and measures it.
 - **List and details side by side** from 900 pixels, the details following along, below as a sheet
   from the bottom. Never under the list.
 - **Selection is the library's**: `gewaehlt` marks the row, Tab and Enter reach it, arrows via
@@ -73,7 +75,8 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
 Measured is the app's own source, not the mirror. **A foreign container is exempt**: without
 `frontend`, with a finished `image`, it brings no interface. The self-test holds the scaffold to the
 same rule. Beyond that: **change nothing in the mirror**, it gets replaced, and what a part lacks
-belongs in the product; and **no second threshold**, 900 pixels is the one (`useSchmalesFenster`).
+belongs in the product; and **no threshold of your own**: 900 pixels of the window is the page's
+(`useSchmalesFenster`), the box of a data list the library measures itself.
 
 **Check an interface in both themes and three widths**, 390 for the phone, 1280 and 1440 for the
 desk. Below 900 the sidebar is a sheet and a data list a card list, and a page scrolling sideways is

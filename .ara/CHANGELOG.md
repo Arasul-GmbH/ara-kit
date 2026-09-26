@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.45.0 (2026-09-26)
+
+Contract: up to 6
+
+- **The scaffold stands on marken 5.1.0**, from the package of Arasul 0.8.9. `Datenliste` measures its own box instead of the window and shows cards under 640 pixels or when its table does not fit; `SidebarInset` carries `min-w-0`; a card's head wraps. An app inside the device's frame shares the window with its own sidebar: with 5.0.x a table stood 100 pixels beyond the edge there. An app of your own gets this with `marken.mjs --sync` and a new build.
+- **The details of the list are at most 18rem wide, the list takes the rest.** With 3 to 2 the list had 583 pixels at 1280 and would have become cards; now it has 684 and stays a table. In the device's frame at 1440 (1052 pixels) cards stand beside the details. The patterns documents and extract keep 3 to 2, their document needs the width.
+- **`.ara-strom` no longer carries a `min-width: 0` of its own**, `SidebarInset` brings it along. The self-test asks for 5.1.0, the measuring data list and `min-w-0` at `SidebarInset`.
+
 ## 0.44.0 (2026-09-26)
 
 Contract: up to 6

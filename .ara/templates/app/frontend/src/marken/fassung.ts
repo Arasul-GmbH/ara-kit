@@ -87,4 +87,25 @@
  * `import { Chart } from '@marken'` findet nichts mehr, und eine App mit Bau
  * braucht den Pfad `@marken/*` in ihrer `tsconfig.json`.
  */
-export const FASSUNG = '5.0.0';
+/*
+ * 5.0.1 (J35, 26.09.2026): Zahlen auf Deutsch. Der Tooltip von `Chart` und
+ * die Groesse unter der `Dateiablage` schrieben mit `toFixed` „1.5 MB" statt
+ * „1,5 MB"; jetzt `toLocaleString('de-DE')`. Keine neue Eigenschaft, kein
+ * neuer Name -- eine App auf 5.0.0 zeigt nur die Zahlen noch mit Punkt.
+ */
+/*
+ * 5.1.0 (Auftrag marken-misst-den-behaelter, 26.09.2026, J35): die Bibliothek
+ * richtet sich nach dem Behaelter, nicht nach dem Fenster. Eine App im Rahmen
+ * teilt ihr Fenster mit der eigenen Seitenleiste; am Orin bei 1440 px war der
+ * Rahmen 1052 px breit, die Datenliste zeigte ihre Tabelle und stand 100 px
+ * ueber dem Rand. Neu `useSchmalerBehaelter` (ResizeObserver am eigenen
+ * Kasten, auch im Buendel); die `Datenliste` misst damit sich selbst und
+ * schaltet unter `LISTE_SCHMAL_AB_PX` (640 px ihres Kastens) auf Karten --
+ * und darueber auch dann, wenn ihre Tabelle nicht in den Kasten passt;
+ * `SidebarInset` traegt `min-w-0`, damit ein breiter Inhalt in seinem
+ * eigenen Rollkasten bleibt; der Kopf der `Karte` bricht um, statt mit einem
+ * langen Hinweis die Seite zu verbreitern. Keine neue Hauptzahl: kein Name
+ * faellt weg -- eine Liste zeigt in einem breiten Fenster mit schmalem
+ * Kasten jetzt Karten statt einer abgeschnittenen Tabelle.
+ */
+export const FASSUNG = '5.1.0';
