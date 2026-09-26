@@ -113,7 +113,7 @@ import {
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
-import { standardFindings } from "./lib/standard.mjs";
+import { standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
@@ -465,7 +465,20 @@ const noAppleDouble = (path) => !/(^|\/)\._/.test(path);
  */
 function failOnStandard(app) {
   const findings = standardFindings(app.dir, { manifest: app.manifest });
-  if (!findings.length) return;
+  if (!findings.length) {
+    // Gesagt wird es auch, wenn nichts auffiel: eine Prüfung, die schweigt,
+    // sieht aus wie eine, die nicht lief.
+    const scope = standardScope(app.dir, { manifest: app.manifest });
+    return scope.exempt
+      ? t(
+          "Design check: not needed, a foreign container brings no interface of its own.",
+          "Designprüfung: entfällt, ein fremder Container bringt keine eigene Oberfläche mit."
+        )
+      : t(
+          `Design check: ${scope.files} ${scope.files === 1 ? "file" : "files"} of the interface held against the library (own colours, palette colours, own primitives, the field marken), no finding.`,
+          `Designprüfung: ${scope.files} ${scope.files === 1 ? "Datei" : "Dateien"} der Oberfläche gegen die Bibliothek gehalten (eigene Farben, Palettenfarben, eigene Primitive, Feld marken), kein Befund.`
+        );
+  }
   fail(
     [
       t(
@@ -521,7 +534,7 @@ function buildApp(app) {
       )
     );
   }
-  failOnStandard(app);
+  const designCheck = failOnStandard(app);
 
   const buildDir = join(app.dir, "build");
   rmSync(buildDir, { recursive: true, force: true });
@@ -618,6 +631,7 @@ function buildApp(app) {
   console.log(
     [
       "",
+      designCheck,
       t(
         `Built: ${relative(ROOT, buildDir)}, ${Math.max(1, Math.round(size / 1024))} KB.`,
         `Gebaut: ${relative(ROOT, buildDir)}, ${Math.max(1, Math.round(size / 1024))} KB.`
@@ -1077,7 +1091,36 @@ function readingSections() {
       ...bilder.map((r) => `- ${r}`)
     );
   }
-  return sections;
+  return sections.concat(logSection());
+}
+
+/**
+ * Wer einen Modellaufruf ausgelöst hat, wörtlich aus dem Kontrakt (`protokoll`,
+ * seit dem 26.09.2026).
+ *
+ * Das Gerät schreibt jeden Modellaufruf einer App in sein Protokoll, den
+ * Menschen dazu aber nur, wenn die App ihn nennt. Ohne diesen Abschnitt stand
+ * im Protokoll einer Kanzlei „App X hat gefragt" und nicht, für wen. Die
+ * Vorlage liest die Namen aus `arasul.json`, das Kit schreibt sie aus diesem
+ * Abschnitt dorthin.
+ */
+function logSection() {
+  const protokoll = contract?.protokoll;
+  if (!protokoll?.regeln?.length) return [];
+  const wer = protokoll.einreicher || {};
+  return [
+    "",
+    t("## Who triggered a model call", "## Wer einen Modellaufruf ausgelöst hat"),
+    "",
+    t(
+      `They stand word for word in the contract, under \`protokoll\`. Logged ways: ${(protokoll.wege || []).map((w) => `\`${w}\``).join(", ")}. ` +
+        `The human goes in the header \`${wer.kopf ?? "?"}\`, the field \`${wer.feld ?? "?"}\`, at \`/v1\` in \`${wer.feld_openai ?? "?"}\`:`,
+      `Sie stehen wörtlich im Kontrakt, unter \`protokoll\`. Protokollierte Wege: ${(protokoll.wege || []).map((w) => `\`${w}\``).join(", ")}. ` +
+        `Der Mensch geht in der Kopfzeile \`${wer.kopf ?? "?"}\` mit, im Feld \`${wer.feld ?? "?"}\`, an \`/v1\` in \`${wer.feld_openai ?? "?"}\`:`
+    ),
+    "",
+    ...protokoll.regeln.map((r) => `- ${r}`),
+  ];
 }
 
 /**

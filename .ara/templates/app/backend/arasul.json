@@ -1,5 +1,5 @@
 {
-  "hinweis": "Diese Datei fuellt das Ara-Kit beim Einspielen aus dem Kontrakt des Geraets. Von Hand bleibt sie so, wie sie hier steht: was zwischen App und Geraet vereinbart ist, raet die App nicht. Steht hier null, hat die App keinen Rahmen, und sie sagt das an jedem Vorgang.",
+  "hinweis": "Diese Datei füllt das Ara-Kit beim Einspielen aus dem Kontrakt des Geräts. Von Hand bleibt sie so, wie sie hier steht: was zwischen App und Gerät vereinbart ist, rät die App nicht. Steht hier null, hat die App keinen Rahmen, und sie sagt das an jedem Vorgang.",
   "geraet": null,
   "erzeugt": null,
   "kontrakt": null,
@@ -22,12 +22,14 @@
     "lauf_lesen": null,
     "freigaben_lesen": null,
     "dokument_auslesen": null,
-    "dokument_text": null
+    "dokument_text": null,
+    "modell_fragen": null
   },
   "freigaben": {
     "einreicher": false,
     "regel": false,
     "rollen": []
   },
-  "daten": null
+  "daten": null,
+  "protokoll": null
 }
