@@ -44,9 +44,10 @@
  * --no-git leaves version control out. --example lays out the showcase, an invented company
  * with the method and filled sheets. An unknown switch is reported, not skipped. The target
  * has to be empty or missing, and it never lies inside the kit. --adopt takes a grown folder
- * over as a root instead: it writes .claude/root.json, .claude/places.json and arasul.mjs and
- * nothing else, stops when one of them lies there, enters the clones the .gitignore leaves out
- * as places and names the source trees and the .env files it finds, with a proposal each.
+ * over as a root instead: it writes .claude/root.json, .claude/places.json, arasul.mjs and a
+ * proposal for the bridge and nothing else, stops when one of them lies there, enters the clones
+ * the .gitignore leaves out as places and names the source trees, the .env files and the folders
+ * of level 1 that every account would read, with a proposal each.
  *
  * === deutsch ===
  *
@@ -97,9 +98,10 @@
  * erfundene Firma mit der Methode und gefüllten Blättern. Ein unbekannter Schalter wird
  * gemeldet, nicht überlesen. Das Ziel muss leer sein oder fehlen, und es liegt nie im Kit.
  * --adopt übernimmt stattdessen einen gewachsenen Ordner als Wurzel: es schreibt
- * .claude/root.json, .claude/places.json und arasul.mjs und sonst nichts, hält an, wenn eine
- * davon schon liegt, trägt die Klone, die die .gitignore auslässt, als Orte ein und nennt die
- * Quelltextbäume und .env-Dateien, die es findet, mit je einem Vorschlag.
+ * .claude/root.json, .claude/places.json, arasul.mjs und einen Vorschlag für die Brücke und sonst
+ * nichts, hält an, wenn eine davon schon liegt, trägt die Klone, die die .gitignore auslässt, als
+ * Orte ein und nennt die Quelltextbäume, die .env-Dateien und die Ordner der Ebene 1, die jedes
+ * Konto läse, mit je einem Vorschlag.
  */
 
 import { spawnSync } from "node:child_process";
@@ -107,7 +109,7 @@ import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from "n
 import { basename, isAbsolute, join, relative } from "node:path";
 import { ROOT, fail, headerHelp, helpOnly, parseArgs } from "./lib/kit.mjs";
 import { LANGUAGES, language, setLanguage, t } from "./lib/i18n.mjs";
-import { ADOPT_TARGETS, TEMPLATE, addMethod, addPlace, adopt, expandHome, languageOf, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
+import { ADOPT_TARGETS, PROPOSAL, TEMPLATE, addMethod, addPlace, adopt, expandHome, languageOf, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
 import { enroll, plan, settingsFile, shortSum, status, unenroll } from "./lib/root-enroll.mjs";
 
 // Every switch this tool knows. What is not here is reported: `--lang` used to be skipped, and
@@ -211,7 +213,27 @@ function sayPlaces(places) {
   }
 }
 
+/**
+ * A proposal without a hook is one of an adopted root: the bridge approves it with `login`, because
+ * it also writes two lines into the house's CLAUDE.md, and that step is the bridge's alone.
+ */
+function hookless() {
+  try {
+    return !JSON.parse(readFileSync(join(root, PROPOSAL), "utf8")).hook;
+  } catch {
+    return false;
+  }
+}
+
+function sayBridgeApproves() {
+  console.log(t(
+    `The proposal of this root carries no hook and is approved with the bridge: cd "${root}" && node arasul.mjs login, then login --approve <checksum>. login --withdraw takes it back.`,
+    `Der Vorschlag dieser Wurzel trägt keinen Hook und wird mit der Brücke freigegeben: cd "${root}" && node arasul.mjs login, dann login --approve <prüfsumme>. login --withdraw nimmt ihn zurück.`
+  ));
+}
+
 function sayEnrolment() {
+  if (hookless()) return sayBridgeApproves();
   const now = status(root, settingsFile(args.settings));
   const say = {
     none: t("Boundary and rights: a proposal only, not enrolled. Nothing of it is active.", "Grenze und Rechte: nur ein Vorschlag, nicht angemeldet. Nichts davon wirkt."),
@@ -234,6 +256,10 @@ function listRules(list) {
 }
 
 function doEnrol() {
+  if (hookless()) {
+    sayBridgeApproves();
+    process.exit(0);
+  }
   const target = settingsFile(args.settings);
   let proposal;
   try {
@@ -280,6 +306,10 @@ function doEnrol() {
 }
 
 function doUnenrol() {
+  if (hookless()) {
+    sayBridgeApproves();
+    process.exit(0);
+  }
   let ledger;
   try {
     ledger = unenroll(root, settingsFile(args.settings));
@@ -316,7 +346,35 @@ function doDeploy() {
 }
 
 /**
- * Take a grown folder over as a root. It writes three files and nothing else, and says what it
+ * The folders of level 1 that would go into the root, and with it to every account of the device.
+ * The ones that look like customers or like the inside of the company first, each with the way to
+ * make it an area of its own before the first sync: an area lies at its place in this tree and is
+ * synced on its own, with rights per person, and the root's sync leaves its name out.
+ */
+function sayLevelOne(folders) {
+  const why = {
+    customers: t("looks like data of customers", "sieht nach Kundendaten aus"),
+    inside: t("looks like the inside of the company", "sieht nach Firmeninterna aus"),
+  };
+  console.log("");
+  console.log(t(
+    "Every account of the device reads the root. These folders of level 1 would go into it at the first sync, and so to everybody:",
+    "Die Wurzel liest jedes Konto am Gerät. Diese Ordner der Ebene 1 gingen beim ersten Abgleich in sie, und damit an alle:"
+  ));
+  for (const folder of folders) {
+    const notes = [folder.kind ? why[folder.kind] : null, folder.key ? null : t("its name is no id of the device: lower case, digits, hyphens, 2 to 40 characters; rename it first", "sein Name ist keine Kennung des Geräts: Kleinbuchstaben, Ziffern, Bindestriche, 2 bis 40 Zeichen; zuerst umbenennen")].filter(Boolean);
+    console.log(`  ${folder.name}/${notes.length ? `  ${notes.join("; ")}` : ""}`);
+  }
+  const named = folders.filter((folder) => folder.kind);
+  const ids = (named.length ? named : folders).filter((folder) => folder.key).map((folder) => folder.name);
+  console.log(t(
+    `  Proposal: before you sync for the first time, make every folder not everybody should read an area on the device, with the folder's name as its id${ids.length ? ` (${ids.join(", ")})` : ""}, and give yourself write on it. The way, as of 2026-09-27: the device's front end, Settings, Company folder, Create folder, kind area, then the rights per person below it. An area lies at its place in this tree, only the people with a right on it get it, and the root leaves it out. What not everybody should read and needs no device at all goes into the .gitignore instead.`,
+    `  Vorschlag: bevor du zum ersten Mal abgleichst, lege jeden Ordner, den nicht alle lesen sollen, am Gerät als Bereich an, mit dem Namen des Ordners als Kennung${ids.length ? ` (${ids.join(", ")})` : ""}, und gib dir darauf schreiben. Der Weg, Stand 27.09.2026: Oberfläche des Geräts, Einstellungen, Firmenordner, Ordner anlegen, Art Bereich, darunter die Rechte je Person. Ein Bereich liegt an seiner Stelle in diesem Baum, nur wer ein Recht darauf hat, bekommt ihn, und die Wurzel lässt ihn aus. Was nicht alle lesen sollen und gar nicht ans Gerät muss, kommt stattdessen in die .gitignore.`
+  ));
+}
+
+/**
+ * Take a grown folder over as a root. It writes four files and nothing else, and says what it
  * found: the clones it entered as places, the ones it could not, the source trees and the files
  * with secrets, each with what happens to it at a sync and what the house could do.
  */
@@ -348,8 +406,8 @@ function doAdopt() {
 
   console.log(t(`Root of ${name} taken over: ${root}`, `Wurzel von ${name} übernommen: ${root}`));
   console.log(t(
-    `Written, these three and nothing else: ${ADOPT_TARGETS.join(", ")}. Language ${lang}.`,
-    `Geschrieben, diese drei und sonst nichts: ${ADOPT_TARGETS.join(", ")}. Sprache ${lang}.`
+    `Written, these four and nothing else: ${ADOPT_TARGETS.join(", ")}. Language ${lang}.`,
+    `Geschrieben, diese vier und sonst nichts: ${ADOPT_TARGETS.join(", ")}. Sprache ${lang}.`
   ));
   if (!found.gitignore) {
     console.log(t(
@@ -398,6 +456,7 @@ function doAdopt() {
     for (const secret of found.secrets.slice(0, 10)) console.log(`  ${secret.rel}`);
     if (found.secrets.length > 10) console.log(t(`  and ${found.secrets.length - 10} more`, `  und ${found.secrets.length - 10} weitere`));
   }
+  if (found.folders.length) sayLevelOne(found.folders);
   const own = [".claude/CLAUDE.md", ".claude/settings.json", ".claude/skills", ".claude/hooks", ".gitignore", ".git"].filter((entry) => existsSync(join(root, entry)));
   if (own.length) {
     console.log("");
@@ -407,8 +466,16 @@ function doAdopt() {
   console.log(t(`Took ${((Date.now() - started) / 1000).toFixed(1)} seconds.`, `Dauer: ${((Date.now() - started) / 1000).toFixed(1)} Sekunden.`));
   console.log(t("Next steps:", "Nächste Schritte:"));
   console.log(t(`  1. Log in there: cd "${root}" && node arasul.mjs login <address> --user <name>`, `  1. Dort anmelden: cd "${root}" && node arasul.mjs login <adresse> --user <name>`));
-  console.log(t("  2. Look before anything moves: node arasul.mjs sync --plan", "  2. Ansehen, bevor sich etwas bewegt: node arasul.mjs sync --plan"));
-  console.log(t("  3. Then sync: node arasul.mjs sync", "  3. Dann abgleichen: node arasul.mjs sync"));
+  console.log(t(
+    "     login shows the proposal of this root: apps and the reading form of call without asking, and two lines on sicht.md and APP.md for the house's CLAUDE.md. Approve it there with its checksum.",
+    "     login zeigt den Vorschlag dieser Wurzel: apps und die lesende Form von call ohne Rückfrage, und zwei Zeilen zu sicht.md und APP.md für die CLAUDE.md des Hauses. Gib ihn dort mit seiner Prüfsumme frei."
+  ));
+  if (found.folders.some((folder) => folder.kind)) {
+    console.log(t("  2. Before the first sync: the folders above that not everybody should read, as areas on the device", "  2. Vor dem ersten Abgleich: die Ordner oben, die nicht alle lesen sollen, als Bereich am Gerät anlegen"));
+  }
+  const step = found.folders.some((folder) => folder.kind) ? 3 : 2;
+  console.log(t(`  ${step}. Look before anything moves: node arasul.mjs sync --plan`, `  ${step}. Ansehen, bevor sich etwas bewegt: node arasul.mjs sync --plan`));
+  console.log(t(`  ${step + 1}. Then sync: node arasul.mjs sync`, `  ${step + 1}. Dann abgleichen: node arasul.mjs sync`));
   process.exit(0);
 }
 

@@ -13,6 +13,19 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.51.0 (2026-09-28)
+
+Contract: up to 6
+
+- **`root.mjs --adopt` names every folder of level 1 that every account would read**, customers and the inside of the company first, and proposes to make each an area on the device before the first sync, with the way there. It writes a fourth file, a proposal without a hook: `apps` and the reading form of `call` without asking, `--write` asks, and two lines on `sicht.md` and `APP.md` for the house's `CLAUDE.md`. `arasul.mjs login` shows it, `login --approve` enters the rules and appends the lines, `login --withdraw` takes both back.
+- **`sync --install` checks from launchd itself** before it stores anything: an agent runs once and says which addresses answer from the background. When node there does not reach the device, one line names the cause, the local network of macOS, and the way out, `login` under an address that answered.
+- **The device names every address of its file service** (`adressen`); the bridge takes the first that answers from here, in plan, sync and background.
+- **`--keep-mine` puts the device's version into one folder**, `.claude/geraet-alt/<time>/` (`device-old` in an English root), and at the first sync also every file only the device has. `sync --plan` names every such file beforehand.
+- **A newer bridge takes the place of an older one** in the room of the root and here, without `--keep-mine`, also out of an empty folder. The bridge carries the kit version it came with.
+- **The plan says "sync stops here" only to whoever writes the root.** A reader's sync goes through.
+- **`login` and `sync --install` offer the file service's client** when it is missing; `--fetch-client` fetches it from the vendor's releases, checked against its checksum, unpacked into `~/.config/arasul/klient/`, installed nowhere.
+- **`status` shows times in the clock of this computer**, not UTC.
+
 ## 0.50.0 (2026-09-27)
 
 Contract: up to 6

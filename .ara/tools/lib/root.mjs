@@ -388,7 +388,7 @@ export function layOut({ root, name, language, places, folders = [], method = fa
  */
 function mergeRules(root, ...changes) {
   const file = join(root, PROPOSAL);
-  // A root taken over from a grown folder carries no proposal: its house has settings of its own.
+  // A root without a proposal has settings of its own, and the house decides them.
   if (!existsSync(file)) return;
   const proposal = JSON.parse(readFileSync(file, "utf8"));
   proposal.permissions ||= {};
@@ -474,7 +474,81 @@ const SECRET_FILE = /^\.env(\..+)?$/;
 // What a machine makes: not looked into, a clone or a secret does not lie there.
 const MADE = new Set([".git", "node_modules", ".next", ".venv", "__pycache__"]);
 /** What adopting writes, and nothing else. */
-export const ADOPT_TARGETS = Object.freeze([".claude/root.json", ".claude/places.json", "arasul.mjs"]);
+export const ADOPT_TARGETS = Object.freeze([".claude/root.json", ".claude/places.json", "arasul.mjs", PROPOSAL.split(sep).join("/")]);
+
+/**
+ * Names of a folder of level 1 that look like data of customers or like the inside of a company.
+ * Whatever lies at level 1 of a root goes to every account of the device: the root is read by
+ * everybody who is active there (measured on 2026-09-27, a second account got the customers' folder
+ * and company/core.md of an adopted root). These are the ones worth a word first; every other
+ * folder of level 1 is named as well.
+ */
+const CUSTOMER_NAMES = /^(kunden?|customers?|clients?|klienten|mandant(en)?|auftraege|auftrage|orders?|projekte-kunden|crm|leads|partner)$/;
+const INSIDE_NAMES = /^(company|firma|intern(al)?|internes|hr|personal|people|finanz(en)?|finance|buchhaltung|accounting|steuer(n)?|tax|vertraege|vertrage|contracts?|legal|recht|gehalt|gehaelter|salary|salaries|bank|verwaltung|admin|management|geschaeftsfuehrung|board|strategie|strategy)$/;
+/** The id a device takes for a folder: lower case, digits and hyphens, 2 to 40 characters (as of 2026-09-27). */
+const FOLDER_KEY = /^[a-z0-9][a-z0-9-]{1,39}$/;
+
+/**
+ * The folders at level 1 of a grown folder that a sync of the root would take along, and so show
+ * to every account: not left out by the .gitignore, no clone, not the root's own furniture.
+ */
+function levelOne(root, rules, clones) {
+  const own = new Set([".claude", "apps", ".git", "node_modules", ".arasul-papierkorb"]);
+  const cloned = new Set(clones.filter((clone) => !clone.rel.includes("/")).map((clone) => clone.rel));
+  const out = [];
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.isSymbolicLink() || own.has(entry.name) || MADE.has(entry.name) || cloned.has(entry.name)) continue;
+    if (ignoredBy(rules, entry.name, true)) continue;
+    const key = entry.name.toLowerCase();
+    const kind = CUSTOMER_NAMES.test(key) ? "customers" : INSIDE_NAMES.test(key) ? "inside" : null;
+    out.push({ name: entry.name, kind, key: FOLDER_KEY.test(entry.name) });
+  }
+  const rank = (folder) => (folder.kind === "customers" ? 0 : folder.kind === "inside" ? 1 : 2);
+  return out.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+}
+
+/**
+ * The two lines the proposal of an adopted root offers for the house's CLAUDE.md: where the view of
+ * this person lies and where each app says what it can. A laid out root has both in its rules; a
+ * grown folder has its own rules, and a new session would find neither without a word.
+ */
+export function adoptLines(language) {
+  return [
+    t(
+      "- `sicht.md` at the top of this root says which folders and apps of the Arasul device you have; `node <root>/arasul.mjs sync` writes it anew, never by hand.",
+      "- `sicht.md` oben in dieser Wurzel sagt, welche Ordner und Apps des Arasul-Geräts du hast; `node <wurzel>/arasul.mjs sync` schreibt sie neu, nie von Hand.",
+      language
+    ),
+    t(
+      "- What an app can do stands in `apps/<id>/APP.md`: call only the routes named there, with `node <root>/arasul.mjs call <app> <route>`; a route that changes something needs `--write`.",
+      "- Was eine App kann, steht in `apps/<id>/APP.md`: rufe nur die Routen, die dort stehen, mit `node <wurzel>/arasul.mjs call <app> <route>`; eine Route, die etwas ändert, braucht `--write`.",
+      language
+    ),
+  ];
+}
+
+/**
+ * The proposal of an adopted root: the bridge's rules and the two lines for CLAUDE.md, no hook.
+ * The house has its own settings and maybe hooks of its own; a boundary hook of the kit on top
+ * would be a decision about how the house works, and that is not the kit's to propose here.
+ */
+export function adoptProposal(root, language) {
+  const file = LANGUAGE_FILES.find((rel) => existsSync(join(root, rel))) || LANGUAGE_FILES[0];
+  return {
+    note: t(
+      "A proposal, not a setting. Nothing in this folder is active by itself. node arasul.mjs login shows it, and approving it with its checksum writes the rules into the user's own settings and the lines into the house's CLAUDE.md; login --withdraw takes both back. {root} stands for this folder.",
+      "Ein Vorschlag, keine Einstellung. Nichts in diesem Ordner wirkt von selbst. node arasul.mjs login zeigt ihn, und wer ihn mit seiner Prüfsumme freigibt, schreibt die Regeln in die eigenen Einstellungen und die Zeilen in die CLAUDE.md des Hauses; login --withdraw nimmt beides zurück. {root} steht für diesen Ordner.",
+      language
+    ),
+    permissions: {
+      allow: ["Bash(node {root}/arasul.mjs apps:*)", "Bash(node {root}/arasul.mjs call:*)"],
+      deny: [],
+      ask: ["Bash(node {root}/arasul.mjs call*--write*)"],
+      additionalDirectories: [],
+    },
+    lines: { file, lines: adoptLines(language) },
+  };
+}
 
 const posix = (path) => path.split(sep).join("/");
 
@@ -570,13 +644,6 @@ function placeName(folder, taken) {
 }
 
 /**
- * Takes a grown folder over as a root, and overwrites nothing.
- *
- * Exactly three files come into being: `.claude/root.json`, `.claude/places.json` and the bridge
- * `arasul.mjs`. Everything else stays as the house has it: its rules, its skills, its settings,
- * its .gitignore, its version control. The caller has checked that none of the three lies there.
- */
-/**
  * Welche Sprache ein gewachsener Ordner spricht, aus seiner CLAUDE.md.
  *
  * Nachtrag zu K17, 27.09.2026: `--adopt` schrieb die Sprache aus dem Profil des
@@ -597,6 +664,14 @@ export function languageOf(root) {
   return null;
 }
 
+/**
+ * Takes a grown folder over as a root, and overwrites nothing.
+ *
+ * Exactly four files come into being: `.claude/root.json`, `.claude/places.json`, the bridge
+ * `arasul.mjs` and the proposal `.claude/proposal/proposal.json`, which is active only once
+ * somebody approves it. Everything else stays as the house has it: its rules, its skills, its
+ * settings, its .gitignore, its version control. The caller has checked that none of them lies there.
+ */
 export function adopt({ root, name, language, kitVersion }) {
   const file = join(root, ".gitignore");
   const rules = parseGitignore(existsSync(file) ? readFileSync(file, "utf8") : "");
@@ -614,9 +689,11 @@ export function adopt({ root, name, language, kitVersion }) {
       purpose: t(`a repository of its own in this folder, taken over as a place on ${today()}`, `ein eigenes Repository in diesem Ordner, übernommen als Ort am ${today()}`, language),
     });
   }
+  const folders = levelOne(root, rules, found.clones);
   mkdirSync(join(root, ".claude"), { recursive: true });
   writeJson(join(root, ".claude", "root.json"), { name, language, created: today(), kit: kitVersion, method: false, example: false, adopted: today() });
   writeJson(join(root, ".claude", "places.json"), { note: placesNote(language), places });
+  writeJson(join(root, PROPOSAL), adoptProposal(root, language));
   copyFileSync(join(TEMPLATE, "arasul.mjs"), join(root, "arasul.mjs"));
-  return { places, ...found, gitignore: existsSync(file) };
+  return { places, ...found, folders, gitignore: existsSync(file) };
 }
