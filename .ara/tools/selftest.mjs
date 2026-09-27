@@ -8735,7 +8735,9 @@ function dateidienst(lager, basis, anfrage, antwort, pfad) {
   if (pfad === "/graph/v1.0/me/drives") {
     const raeume = existsSync(lager) ? readdirSync(lager) : [];
     antwort.writeHead(200, { "Content-Type": "application/json" });
-    return antwort.end(JSON.stringify({ value: raeume.map((name) => ({ id: `sp$${name}`, name, driveType: name === "Shares" ? "virtual" : "project", root: { webDavUrl: `${basis}/dav/spaces/sp%24${encodeURIComponent(name)}` } })) }));
+    // Wie der echte Dienst: zuerst der persönliche Raum, benannt nach dem Menschen, und er ist leer.
+    const persoenlich = { id: "sp$persoenlich-anna", name: "anna", driveType: "personal", root: { webDavUrl: `${basis}/dav/spaces/sp%24persoenlich-anna` } };
+    return antwort.end(JSON.stringify({ value: [persoenlich, ...raeume.map((name) => ({ id: `sp$${name}`, name, driveType: name === "Shares" ? "virtual" : "project", root: { webDavUrl: `${basis}/dav/spaces/sp%24${encodeURIComponent(name)}` } }))] }));
   }
   const treffer = pfad.match(/^\/dav\/spaces\/sp%24([^/]+)(\/.*)?$/);
   // MOVE innerhalb eines Raums, ohne zu überschreiben: 412, wenn das Ziel schon liegt.
@@ -9343,6 +9345,10 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     lauf = await bruecke(w, ["sync", "--install", "--every", "7", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
     assert(lauf.status === 0, `sync --install endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
     assert(/alle 7 Minuten/.test(lauf.stdout) && /Schlüsselbund/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
+    // Beim Einrichten geht eine Mitteilung hinaus: wer sie nicht sieht, erfährt, wo sie erlaubt wird.
+    const probe = h.mitteilungen();
+    assert(probe.length === 1 && probe[0][0] === "Firmenordner im Hintergrund" && /Skripteditor/.test(lauf.stdout), `beim Einrichten kommt keine Probemitteilung: ${JSON.stringify(probe)}`);
+    rmSync(join(h.dir, "mitteilungen.jsonl"));
     const plist = readFileSync(agent(), "utf8");
     assert(plist.includes("<integer>420</integer>") && plist.includes("<string>--background</string>") && plist.includes("<key>RunAtLoad</key><true/>"), `die Datei des Agenten stimmt nicht:\n${plist}`);
     assert(!plist.includes(BRUECKE_PASSWORT) && !plist.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis steht in der Datei des Agenten");
@@ -9429,6 +9435,23 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
   } finally {
     await geraet.schliessen().catch(() => {});
     spawnSync("/usr/bin/security", ["delete-keychain", h.schluesselbund]);
+  }
+});
+
+await checkAsync("Die Brücke nimmt für einen Ordner, der wie der Mensch heißt, dessen Projektraum und nicht den persönlichen", async () => {
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-namensgleich-");
+  mkdirSync(join(lager, "anna"), { recursive: true });
+  writeFileSync(join(lager, "anna", "am-geraet.md"), "liegt im Projektraum\n");
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([{ kennung: "anna", name: "Anna", ebene: 1, eltern: null, pfad: "anna", recht: "schreiben" }]), lager });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0 && /Runter:\s+1 Datei/.test(lauf.stdout) && !/keinen Raum/.test(lauf.stdout), `der Plan sieht in den leeren persönlichen Raum (gemessen am 27.09.2026): ${lauf.stdout}${lauf.stderr}`);
+    return "zwei Räume eines Namens, der Plan liest den Projektraum";
+  } finally {
+    await geraet.schliessen();
   }
 });
 

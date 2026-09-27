@@ -1543,7 +1543,13 @@ async function spacesOf(plan, device, password) {
 
 /** Where a folder of the device lies in the file service, as a path for WebDAV, or null. */
 function davOf(service, folder) {
-  const byName = (name) => service.spaces.find((space) => space.dav && (space.name === name || space.id === name));
+  // A person's own space carries their user name. A folder whose id is that name has two spaces of
+  // one name, and the folder's is the project space: measured on 2026-09-27, the service listed the
+  // empty personal one first, and the plan compared with it.
+  const byName = (name) => {
+    const found = service.spaces.filter((space) => space.dav && (space.name === name || space.id === name));
+    return found.find((space) => space.type === "project") || found.find((space) => space.type !== "personal") || found[0];
+  };
   if (folder.root || folder.level === 1) {
     const space = byName(folder.id);
     return space ? new URL(space.dav).pathname.replace(/\/+$/, "") : null;
@@ -2577,7 +2583,9 @@ async function doInstall(args) {
 
   mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
   mkdirSync(LAUNCH_AGENTS, { recursive: true });
-  const program = [nodePath(), join(ROOT, "arasul.mjs"), "sync", "--background", "--device", device.name, "--client", client];
+  // This very file, by its path: whoever installs runs the bridge they mean, and a root that is still
+  // to become one carries the house's arasul.mjs after its first sync.
+  const program = [nodePath(), fileURLToPath(import.meta.url), "sync", "--background", "--device", device.name, "--client", client];
   const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
   for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
   writeFileSync(AGENT_PLIST, plistOf(program, every, env), { mode: 0o644 });
@@ -2602,6 +2610,14 @@ async function doInstall(args) {
   say(`  ${t(
     "A conflict or an error comes as a notification. node arasul.mjs status says in one line how things stand. Revoking the credential in the device's front end stops the sync at its next run.",
     "Ein Konflikt oder ein Fehler kommt als Mitteilung. node arasul.mjs status sagt in einer Zeile, wie es steht. Wird der Ausweis in der Oberfläche des Geräts widerrufen, hält der Abgleich beim nächsten Lauf an."
+  )}`);
+  // macOS shows what osascript says as a notification of the Script Editor, and only when the Script
+  // Editor may notify: on 2026-09-27 at a Mac it could not, and every notification went nowhere
+  // without a sign. So one comes now, and the output says where it is allowed.
+  notify(t("Company folder in the background", "Firmenordner im Hintergrund"), t(`${basename(ROOT)} is synced every ${every} minutes from now on.`, `${basename(ROOT)} wird ab jetzt alle ${every} Minuten abgeglichen.`));
+  say(`  ${t(
+    "A notification went out just now. If none appeared: System Settings, Notifications, Script Editor, allow notifications. Without it a conflict stays silent and only status says it.",
+    "Eben ging eine Mitteilung hinaus. Ist keine erschienen: Systemeinstellungen, Mitteilungen, Skripteditor, Mitteilungen erlauben. Ohne das bleibt ein Konflikt still, und nur status sagt ihn."
   )}`);
   if (guardedByMacos(ROOT)) {
     say(`  ${t(
