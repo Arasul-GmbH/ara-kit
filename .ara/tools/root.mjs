@@ -107,7 +107,7 @@ import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from "n
 import { basename, isAbsolute, join, relative } from "node:path";
 import { ROOT, fail, headerHelp, helpOnly, parseArgs } from "./lib/kit.mjs";
 import { LANGUAGES, language, setLanguage, t } from "./lib/i18n.mjs";
-import { ADOPT_TARGETS, TEMPLATE, addMethod, addPlace, adopt, expandHome, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
+import { ADOPT_TARGETS, TEMPLATE, addMethod, addPlace, adopt, expandHome, languageOf, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
 import { enroll, plan, settingsFile, shortSum, status, unenroll } from "./lib/root-enroll.mjs";
 
 // Every switch this tool knows. What is not here is reported: `--lang` used to be skipped, and
@@ -154,9 +154,12 @@ const isRoot = existsSync(join(root, ".claude", "root.json"));
 const meta = isRoot ? JSON.parse(readFileSync(join(root, ".claude", "root.json"), "utf8")) : null;
 // An existing root speaks its own language, not the one of the kit next to it:
 // its check script answers in it, and two languages in one output is none.
+// Ein Ordner, der übernommen wird, spricht die Sprache seiner CLAUDE.md, nicht
+// die des Kits; --language überstimmt beides.
+const grown = args.adopt && !isRoot ? languageOf(root) : null;
 const lang = LANGUAGES.includes(args.language)
   ? args.language
-  : LANGUAGES.includes(meta?.language) ? meta.language : language();
+  : LANGUAGES.includes(meta?.language) ? meta.language : grown || language();
 setLanguage(lang);
 
 const insideKit = relative(ROOT, root);

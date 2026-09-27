@@ -139,7 +139,9 @@ und **überschreibt nichts**. Genau drei Dateien entstehen, `.claude/root.json`,
 `.claude/places.json` und `arasul.mjs`; liegt eine davon schon da, wird nichts geschrieben, und
 das Werkzeug sagt, welche. Die `.claude/CLAUDE.md` des Hauses, seine Skills, Hooks und
 Einstellungen, seine `.gitignore` und seine Versionsverwaltung bleiben, wie sie sind. Der Name ist
-der des Ordners, wenn `--name` keinen anderen sagt.
+der des Ordners, wenn `--name` keinen anderen sagt. **Die Sprache ist die seiner
+`.claude/CLAUDE.md`** (oder einer `CLAUDE.md` oben), nicht die des Kit-Profils; lässt sie sich
+nicht erkennen, gilt das Profil, und `--language` überstimmt beides.
 
 Was es findet, sagt es, und davon schreibt es nichts:
 
@@ -253,6 +255,12 @@ nichts.
 | `deploy` | Legt diese Wurzel in die Wurzel des Geräts: zuerst das Prüfskript, die Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
 
+**Die Sprache der Ausgabe** ist die der Wurzel, aus `.claude/root.json`. In einem Ordner, der noch
+keine hat, etwa dem leeren, in den die Wurzel eines Mitarbeiters herunterkommt, ist es die Sprache,
+die dieser Rechner sich von der letzten Wurzel gemerkt hat, in der er angemeldet oder abgeglichen
+hat, und erst dann das `LANG` des Systems. `--language de|en` oder `ARASUL_LANGUAGE` überstimmen
+sie; sag es mit, wenn du jemandem die Brücke für einen leeren Ordner gibst.
+
 **Der Ausweis** liegt in `~/.config/arasul/credentials.json`, Rechte 0600, je Gerät ein Eintrag
 mit Adresse und Ausweis. Nie in der Wurzel, nie im Schlüsselbund. Die Anmeldung schickt Name und
 Passwort an den Anmeldeweg, und was zurückkommt, ist eine Sitzung: sie hat ein Ende und trägt
@@ -284,6 +292,15 @@ Dateidienstes, dem Namen des Menschen dort und je Ordner mit Kennung, Ebene, Elt
 Recht. **`503` ist keine leere Liste**: das erste heißt, auf diesem Gerät läuft kein Dateidienst,
 das zweite heißt, dieser Mensch hat keinen Ordner. Ein Werkzeug, das beides verwechselt, räumt
 jemandem den Baum leer.
+
+**Den Firmenordner einschalten** ist ein Schritt am Gerät, und das Kit trägt ihn nicht: das
+Handbuch des Produkts zum Firmenordner sagt ihn, im Spiegel, vom Gerät gelesen:
+`node .ara/tools/mirror.mjs --docs --device <gerät> --read docs/features/FIRMENORDNER.md`, gleich
+am Anfang und im Ablauf zum Einrichten. Gemessen am 26.09.2026: ein Schalter in der Konfiguration
+des Geräts, und beide Container, die das Handbuch nennt, werden neu angelegt, nicht nur der erste.
+Das ist eine Änderung: Bestätigung mit Absicht, Ziel und Weg zurück (den Schalter wieder heraus).
+Danach werden die Menschen, die es schon gibt, auf dem Weg aus der API-Referenz in den Dateidienst
+nachgetragen, und der Nachweis ist, dass `GET /api/firmenordner` nicht mehr `503` antwortet.
 
 **Jeder Ordner landet an seiner echten Stelle in diesem Baum.** Ein Ordner der Ebene 1 wird ein
 Ordner oben in der Wurzel, einer der Ebene 2 wird `<eltern>/<kennung>`, und die Kette darüber
@@ -420,6 +437,14 @@ Raum trug: zehn an ihrem Namen, fünf zur Seite gelegt und byteweise gleich. Am 
 kein Produktklon, und der Skill `build` lag dort. Eine Änderung auf jeder Seite kam auf der anderen
 an, eine auf beiden Seiten geänderte Datei kam als Konfliktkopie mit beiden Fassungen heraus, und
 eine am Gerät gelöschte Datei lag am Mac im Papierkorb.
+
+**Eine Probe kommt nie in einen Raum, der bleibt.** Was ein Klient in einem Raum löscht, liegt
+danach im Papierkorb dieses Raums am Dateidienst, nicht weg, und der Administrator von Arasul darf
+ihn nicht leeren: der Dateidienst antwortete am 27.09.2026 mit `403`, und weder Kit noch Produkt
+nennen einem Administrator von Arasul einen Weg. Nach der Messung oben blieben 78 Einträge der
+Probe im Papierkorb des Raums der Wurzel. Eine Probe des eigenen Klienten kommt deshalb in einen
+eigenen Raum, Ebene 1, den du danach als Ganzes auf dem Weg des Geräts dafür wegwirfst: der leert
+genau das, was er wegwirft (das Handbuch zum Firmenordner, Abschnitt zum Wegwerfen).
 
 **Der Abgleich im Hintergrund.** Täglich aus dem Firmenordner zu arbeiten heißt, dass der Abgleich
 läuft, ohne dass jemand daran denkt; ein Befehl mit Passwort je Lauf wird nach drei Tagen

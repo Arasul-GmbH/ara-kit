@@ -345,7 +345,7 @@ const stop = (message, code = 1) => {
   throw new Stop(message, code);
 };
 
-const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name", "every"];
+const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name", "every", "language"];
 const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine", "install", "uninstall", "background"];
 
 function parseArgs(argv) {
@@ -2652,7 +2652,7 @@ async function doInstall(args) {
   // to become one carries the house's arasul.mjs after its first sync.
   const program = [nodePath(), fileURLToPath(import.meta.url), "sync", "--background", "--device", device.name, "--client", client];
   const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
-  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
+  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "ARASUL_LANGUAGE", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
   writeFileSync(AGENT_PLIST, plistOf(program, every, env), { mode: 0o644 });
   launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]);
   let run;
@@ -3387,6 +3387,7 @@ function usage() {
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
       "",
       "  --device <name>  another device than the last one   --settings <file>  another settings file",
+      "  --language de|en  the language of the output, before the root's .claude/root.json has one",
     ].join("\n"),
     [
       "node arasul.mjs <befehl>",
@@ -3407,12 +3408,40 @@ function usage() {
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",
       "",
       "  --device <name>  ein anderes Gerät als das zuletzt angemeldete   --settings <datei>  eine andere Einstellungsdatei",
+      "  --language de|en  die Sprache der Ausgabe, solange .claude/root.json der Wurzel keine nennt",
     ].join("\n")
   ));
 }
 
+/**
+ * The language, when the root does not say it yet.
+ *
+ * In run 3 on 26.09.2026 an employee put this file alone into an empty folder, and `login` spoke
+ * English on a computer with LANG=en_US although the house speaks German; the first `sync` brought
+ * root.json and German with it. The order now: --language, ARASUL_LANGUAGE, root.json, the
+ * language this computer remembered from the last root it synced, and only then LANG.
+ */
+function chooseLanguage(args) {
+  const given = one(args, "language") || process.env.ARASUL_LANGUAGE || "";
+  if (given && !["de", "en"].includes(given)) stop(t(`--language takes de or en, not '${given}'.`, `--language nimmt de oder en, nicht '${given}'.`), 2);
+  if (given) return speak(given);
+  if (META?.language) return;
+  const remembered = readJson(CREDENTIALS, null)?.language;
+  if (["de", "en"].includes(remembered)) speak(remembered);
+}
+
+/** After a root is here, this computer remembers its language for the next empty folder. */
+function rememberLanguage() {
+  const language = readJson(join(ROOT, ".claude", "root.json"), null)?.language;
+  if (!["de", "en"].includes(language) || !existsSync(CREDENTIALS)) return;
+  const data = readJson(CREDENTIALS, null);
+  if (!data || typeof data.devices !== "object" || data.language === language) return;
+  writeCredentials({ ...data, language });
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  chooseLanguage(args);
   const command = args._[0];
   if (!command || args.flags.help || command === "help") {
     usage();
@@ -3435,12 +3464,18 @@ async function main() {
   const extra = args._.length - 1;
   if (command !== "call" && command !== "login" && extra > 0) stop(t(`${command} takes no argument: ${args._.slice(1).join(" ")}`, `${command} nimmt kein Argument: ${args._.slice(1).join(" ")}`), 2);
   switch (command) {
-    case "login":
-      return (await doLogin(args)) ? 0 : 1;
+    case "login": {
+      const ok = await doLogin(args);
+      rememberLanguage();
+      return ok ? 0 : 1;
+    }
     case "status":
       return (await doStatus(args)) ? 0 : 1;
-    case "sync":
-      return (await doSync(args)) ? 0 : 1;
+    case "sync": {
+      const ok = await doSync(args);
+      rememberLanguage();
+      return ok ? 0 : 1;
+    }
     case "deploy":
       return (await doDeploy(args)) ? 0 : 1;
     case "apps":

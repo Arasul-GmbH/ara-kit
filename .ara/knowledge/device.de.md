@@ -564,12 +564,12 @@ Frage im Chat bekommt eine sinnvolle Antwort.
 
 Wer die Modelle eines Geräts selbst gesichert hat, spart auf einem frischen Gerät den
 Download. Ein Knopf dafür steht weder im Kit noch im Produkt; der Weg ist Handarbeit am
-Gerät und wurde am 27.09.2026 am Orin einmal ganz gegangen. Jeder Schritt am Gerät ist eine
+Gerät und wurde am 26.09.2026 am Orin einmal ganz gegangen. Jeder Schritt am Gerät ist eine
 Änderung und braucht vorher die Bestätigung.
 
 1. **Erst installieren, dann zurücklegen.** Lag das Modell-Volume schon vor der Installation
    da, kann der Installer es für Daten eines früheren Geräts halten und anhalten, so am
-   27.09.2026 (siehe „Reste, aber nichts läuft“).
+   26.09.2026 (siehe „Reste, aber nichts läuft“).
 2. **Der Download im Hintergrund darf nicht gleichzeitig schreiben.** Steht das Modell in
    der Sicherung, das der Installer gerade holt, beende diesen Download zuerst, nach dem Weg,
    den das Admin-Handbuch im Spiegel dafür nennt, und verwirf seine halben Dateien.

@@ -13,6 +13,20 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.49.0 (2026-09-27)
+
+Contract: up to 6
+
+- **After an installation the device file says what was reached.** When the installer went through and the second check sees the platform run, `device.mjs` sets `status: installed`, a new state between `installing` and `live`; after an aborted attempt it stays `installing`. `live` stays with the handover.
+- **When the installer stops over data of the project on the device, the kit no longer suggests `--despite-traces`.** It recognises the stop, names the volumes and passes on word for word the ways the installer names: take over the old directory or empty the device. If every volume holds models, it says that the order is install first, then lay the model back. `.ara/knowledge/device.md` has the new section "A model from your own backup".
+- **The buying step says "Arasul fits this device"** instead of claiming the device carried Arasul while two lines above stood "no traces".
+- **Whether a flow's model steps stand in the device's AI log, the contract says.** `app.mjs --check` and the header of the scaffold's `arasul.mjs` read it from `protokoll.wege`; until now both said flatly they did not, which has been wrong since the product logs them.
+- **`jsonAusAntwort` in the scaffold** pulls JSON out of the text `fragen` returns, or says why there is none, a decimal comma for one. `app-professional.md` says that an image model returns text and the app checks year, amount and every field itself.
+- **The address check passes over built files**: hashed names out of a build and minified lines. On a built package it reported a "dir" out of pdf.js.
+- **`arasul.mjs` speaks the language of the house before its `root.json` arrives**: `--language`, `ARASUL_LANGUAGE`, then the language this computer remembered from the last root, and only then `LANG`. Until now `login` in an empty folder spoke English on a German house.
+- **`root.mjs --adopt` takes the language of the folder's `CLAUDE.md`**, not the kit profile's; `--language` overrules.
+- **`root.md` says how the company folder is switched on**, out of the product's manual in the mirror, and that a probe never goes into a room that stays: its trash cannot be emptied by Arasul's administrator.
+
 ## 0.48.0 (2026-09-27)
 
 Contract: up to 6

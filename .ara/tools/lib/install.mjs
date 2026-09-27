@@ -456,7 +456,7 @@ export function modelFrom(text) {
 /**
  * Hat der Installer abgebrochen, weil schon Daten des Projekts am Gerät liegen?
  *
- * Durchlauf 3, 27.09.2026: zwei Volumes lagen da, der Installer stieg mit
+ * Durchlauf 3, 26.09.2026: zwei Volumes lagen da, der Installer stieg mit
  * Rückgabe 1 aus und nannte selbst zwei Wege, das alte Verzeichnis übernehmen
  * oder das Gerät leeren. Das Kit sah danach nur den liegengebliebenen Ordner
  * und riet zu --despite-traces, das an den Volumes nichts ändert: der Installer

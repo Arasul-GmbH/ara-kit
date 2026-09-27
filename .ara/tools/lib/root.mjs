@@ -576,6 +576,27 @@ function placeName(folder, taken) {
  * `arasul.mjs`. Everything else stays as the house has it: its rules, its skills, its settings,
  * its .gitignore, its version control. The caller has checked that none of the three lies there.
  */
+/**
+ * Welche Sprache ein gewachsener Ordner spricht, aus seiner CLAUDE.md.
+ *
+ * Nachtrag zu K17, 27.09.2026: `--adopt` schrieb die Sprache aus dem Profil des
+ * Kits in root.json, en, und die übernommene Wurzel war deutsch. Gezählt werden
+ * kurze Wörter, die fast jeder Satz trägt, dazu die Umlaute; wer klar vorn
+ * liegt, gewinnt. Unentschieden oder keine Datei: `null`, dann gilt das Profil.
+ */
+export const LANGUAGE_FILES = [".claude/CLAUDE.md", "CLAUDE.md"];
+export function languageOf(root) {
+  const file = LANGUAGE_FILES.map((rel) => join(root, rel)).find((path) => existsSync(path));
+  if (!file) return null;
+  const text = readFileSync(file, "utf8").toLowerCase();
+  const count = (words) => (text.match(new RegExp(`\\b(${words})\\b`, "g")) || []).length;
+  const de = count("und|der|die|das|nicht|ist|mit|für|ein|eine|wird|auf|den|zu") + (text.match(/[äöüß]/g) || []).length;
+  const en = count("the|and|is|not|with|for|a|an|of|to|this|that|be|on");
+  if (de >= 2 * en && de >= 5) return "de";
+  if (en >= 2 * de && en >= 5) return "en";
+  return null;
+}
+
 export function adopt({ root, name, language, kitVersion }) {
   const file = join(root, ".gitignore");
   const rules = parseGitignore(existsSync(file) ? readFileSync(file, "utf8") : "");

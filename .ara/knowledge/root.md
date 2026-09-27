@@ -135,7 +135,9 @@ and **overwrites nothing**. Exactly three files come into being, `.claude/root.j
 `.claude/places.json` and `arasul.mjs`; when one of them lies there already, nothing is written
 and the tool says which one. The house's `.claude/CLAUDE.md`, its skills, hooks and settings,
 its `.gitignore` and its version control stay as they are. The name is the folder's unless
-`--name` says another.
+`--name` says another. **The language is the one its `.claude/CLAUDE.md` speaks** (or a
+`CLAUDE.md` at the top), not the kit profile's; if that cannot be told, the profile's applies, and
+`--language` overrules both.
 
 What it finds, it says, and it writes nothing of that:
 
@@ -245,6 +247,12 @@ app offers. This file does that, and nothing else.
 | `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
 
+**The language of the output** is the root's, out of `.claude/root.json`. In a folder that has
+none yet, such as the empty folder an employee's root comes down into, it is the language this
+computer remembered from the last root it logged in or synced in, and only then the system's
+`LANG`. `--language de|en` or `ARASUL_LANGUAGE` overrule it; say it along when you hand somebody
+the bridge for an empty folder.
+
 **The credential** lies in `~/.config/arasul/credentials.json`, mode 0600, one entry per device
 with its address and credential. Never in the root, never in the keychain. The login sends name
 and password to the login route, and what it gets back is a session: it has an end and carries
@@ -274,6 +282,15 @@ its file service, the person's name there and, per folder, its id, its level, it
 path and the right on it. **`503` is not an empty list**: the first says there is no file service
 on this device, the second says this person has no folder. A tool that mixes up the two empties
 somebody's tree.
+
+**Switching the company folder on** is a step on the device, and the kit does not carry it: the
+product's manual on the company folder says it, in the mirror, read from the device:
+`node .ara/tools/mirror.mjs --docs --device <device> --read docs/features/FIRMENORDNER.md`,
+right at the top and in the procedure for setting one up. Measured on 2026-09-26: one switch in
+the device's configuration, and both containers the manual names are recreated, not only the
+first. It is a change: confirmation with intent, target and the way back (the switch out again).
+Afterwards the people who exist already are synced into the file service along the route of the
+API reference, and the proof is `GET /api/firmenordner` no longer answering `503`.
 
 **Every folder lands at its real place in this tree.** A folder of level 1 becomes a folder at
 the top of the root, one of level 2 becomes `<parent>/<id>`, and the chain above it is made
@@ -406,6 +423,14 @@ no `node_modules`, `.venv` or `.next`, no settings or hooks and no product clone
 `build` did. A change on each side arrived on the other, a file changed on both sides came out
 as a conflicted copy with both versions, and a file deleted on the device lay in the trash on the
 Mac.
+
+**A probe never goes into a room that stays.** What a client deletes in a room lies afterwards in
+that room's trash on the file service, not gone, and Arasul's administrator may not empty it: the
+file service answered `403` on 2026-09-27, and neither kit nor product names a way for an
+administrator of Arasul. After the measurement above, 78 entries of the probe stayed in the trash
+of the root's room. So a probe of your own client goes into a room of its own, level 1, which you
+throw away as a whole afterwards along the device's route for that: it empties exactly what it
+throws away (the manual on the company folder, section on throwing away).
 
 **The sync in the background.** Working out of the company folder every day means the sync runs
 without anybody thinking of it; a command with a password per run is forgotten after three days.

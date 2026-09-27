@@ -531,12 +531,12 @@ gets a sensible answer.
 
 Whoever backed up a device's models themselves saves the download on a fresh device. There is
 no button for it, neither in the kit nor in the product; the way is handwork on the device and
-was walked once end to end on the Orin on 27.09.2026. Every step on the device is a change and
+was walked once end to end on the Orin on 26.09.2026. Every step on the device is a change and
 needs the confirmation beforehand.
 
 1. **Install first, lay back afterwards.** If the model volume lay there before the
    installation, the installer can take it for data of an earlier device and stop, as on
-   27.09.2026 (see "Traces, but nothing runs").
+   26.09.2026 (see "Traces, but nothing runs").
 2. **The background download must not write at the same time.** If the backup holds the model
    the installer is fetching right now, end that download first, the way the admin handbook in
    the mirror names for it, and discard its half files.

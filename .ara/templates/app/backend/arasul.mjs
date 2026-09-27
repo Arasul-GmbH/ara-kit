@@ -174,7 +174,7 @@ export function liste(daten, name) {
  * JSON aus der Antwort von `fragen`, oder der Grund, warum keines darin steht.
  *
  * `fragen` liefert Text, keine Felder. Am Orin gab ein Bildmodell am
- * 27.09.2026 für dasselbe Foto einmal JSON mit Dezimalkomma, also kein
+ * 26.09.2026 für dasselbe Foto einmal JSON mit Dezimalkomma, also kein
  * gültiges, und einmal ein falsches Jahr. Repariert wird hier nichts: ein
  * geratener Betrag wäre schlimmer als keiner. Die App prüft danach die Felder
  * gegen ihre Regeln, das Jahr eingeschlossen, und legt den Rest einem Menschen
