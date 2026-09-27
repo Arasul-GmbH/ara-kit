@@ -443,11 +443,22 @@ export function arrangementLines(arrangement) {
       )
     );
   }
+  // Ob die Modellschritte eines Flows im KI-Protokoll stehen, sagt dieselbe
+  // Liste. Bis 0.48.0 stand hier fest "steht nicht darin"; seit Jet-PR 796
+  // nennt der Kontrakt den Weg der Flows unter `protokoll.wege`, und in
+  // Durchlauf 3 stand jede Runde eines Laufs mit Einreicher im Protokoll.
+  const flowInLog = (arrangement.protokoll?.wege || []).some((way) => /(^|\/)flows\//.test(way));
   lines.push(
     arrangement.protokoll
       ? t(
-          `- A call to ${arrangement.protokoll.wege.join(", ") || "a model"} carries the human it is made for in \`${arrangement.protokoll.kopf}\`, and the device's AI log keeps it with them. The model step of a flow is not in that log: it stands at the run, with its submitter.`,
-          `- Ein Aufruf an ${arrangement.protokoll.wege.join(", ") || "ein Modell"} trägt den Menschen, für den er geschieht, in \`${arrangement.protokoll.kopf}\`, und das KI-Protokoll des Geräts führt ihn mit ihm. Der Modellschritt eines Flows steht nicht darin: er steht am Lauf, mit dessen Einreicher.`
+          `- A call to ${arrangement.protokoll.wege.join(", ") || "a model"} carries the human it is made for in \`${arrangement.protokoll.kopf}\`, and the device's AI log keeps it with them. ` +
+            (flowInLog
+              ? "The model steps of a flow stand there too, with the run and its submitter as the human."
+              : "The model step of a flow is not in that log: it stands at the run, with its submitter."),
+          `- Ein Aufruf an ${arrangement.protokoll.wege.join(", ") || "ein Modell"} trägt den Menschen, für den er geschieht, in \`${arrangement.protokoll.kopf}\`, und das KI-Protokoll des Geräts führt ihn mit ihm. ` +
+            (flowInLog
+              ? "Die Modellschritte eines Flows stehen auch darin, mit dem Lauf und seinem Einreicher als Menschen."
+              : "Der Modellschritt eines Flows steht nicht darin: er steht am Lauf, mit dessen Einreicher.")
         )
       : t(
           "- This device does not say how a model call names its human. Its log shows the app, not the person.",

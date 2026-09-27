@@ -46,7 +46,11 @@ figure cost fields.
 **The form of the answer stands in the contract**: `--contract` lists under "What
 `document/extract-structured` answers" every field with its type; `data` is an object or null, not
 checked against your schema. For a photo the app may also ask an image model itself ("An image to a
-model" in the contract); image models differ widely, so measure both ways. **Promise no image
+model" in the contract); image models differ widely, so measure both ways. **What `fragen`
+returns is text, not fields**: `jsonAusAntwort` in the scaffold pulls the JSON out or says why
+there is none, a decimal comma for one; year, amount and every field the app checks itself
+afterwards. What the contract says about a model is a measurement, not a promise for every photo.
+**Promise no image
 understanding**, no handwriting, no photo of goods, before you have seen it on the customer's device.
 
 **Which model reads, the answer says** (`model`). **The field `modelle` in `app.json` is a demand,

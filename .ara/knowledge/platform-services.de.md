@@ -28,7 +28,8 @@ beim Einspielen schreibt `app.mjs` es als `backend/arasul.json` ins Paket; `--ch
 **Eine App schreibt diese Werte nie in ihren Quelltext.** **Modellarbeit
 einer App läuft über einen Flow, das Auslesen eines Dokuments oder `geraet.fragen`.** Das
 KI-Protokoll erfasst die Wege, die `protokoll.wege` nennt, mit dem Menschen, den die App mitgibt;
-der Modellschritt eines Flows steht am Lauf, mit seinem Einreicher.
+die Modellschritte eines Flows stehen darin, wenn die Liste den Weg der Flows nennt, mit dem Lauf
+und seinem Einreicher.
 
 ## Anmeldung: eine App bekommt keine eigene
 

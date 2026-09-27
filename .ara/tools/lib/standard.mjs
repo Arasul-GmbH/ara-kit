@@ -255,6 +255,18 @@ function surfaceTexts(text, jsx) {
 }
 
 /**
+ * Eine gebaute Datei, kein Quelltext: ein Name mit dem Fingerabdruck, den der
+ * Bau anhängt (`pdf-DozoEV77.js`), oder eine Zeile, die kein Mensch schreibt.
+ * In Durchlauf 3 meldete `--check` auf dem gebauten Paket ein „dir" aus pdf.js,
+ * fremdem Code, den die App nur mitliefert. Was die App selbst sagt, steht in
+ * ihrer Quelle, und die prüft `--build`.
+ */
+function builtFile(pfad, text) {
+  if (/[\\/]assets[\\/][^\\/]+-[A-Za-z0-9_-]{8}\.(js|css)$/.test(pfad)) return true;
+  return text.split("\n").some((zeile) => zeile.length > 1000);
+}
+
+/**
  * Wo eine App ihre Menschen duzt: in der Oberfläche, in den Sätzen des Backends,
  * die dort ankommen, und in ihren Flows, deren Titel und Kontext auf der
  * Freigabekarte des Geräts stehen. Eine Liste von Sätzen, leer heißt gut. Der
@@ -273,7 +285,9 @@ export function addressFindings(dir) {
   }
   for (const pfad of dateien) {
     const name = relative(dir, pfad).split(sep).join(posix.sep);
-    const text = stripComments(readFileSync(pfad, "utf8"));
+    const roh = readFileSync(pfad, "utf8");
+    if (builtFile(pfad, roh)) continue;
+    const text = stripComments(roh);
     for (const { zeile, inhalt } of surfaceTexts(text, /\.(tsx|jsx|html)$/.test(name))) {
       const wort = inhalt.match(DUZEN);
       if (wort) out.push({ datei: name, zeile, wort: wort[0], text: inhalt.trim().replace(/\s+/g, " ").slice(0, 90) });

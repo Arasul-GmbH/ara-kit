@@ -27,7 +27,8 @@ rules, how a model call names its human: this device's contract says them, and a
 writes them into the package as `backend/arasul.json`; `--check` prints it. **An app never writes
 those values into its source.** **Model work of an app runs over a
 flow, reading a document or `geraet.fragen`.** The AI log holds the routes `protokoll.wege` names,
-with the human the app passes; a flow's model step stands at the run, with its submitter.
+with the human the app passes; a flow's model steps stand there when that list names the flow
+route, with the run and its submitter.
 
 ## Login: an app gets none of its own
 

@@ -7,7 +7,7 @@ os:                       # operating system, entered by device.mjs
 arch:                     # architecture, entered by device.mjs
 profile:                  # platform profile from the catalogue. Entered by device.mjs, only when the mirror really carries it
 serial:
-status: planned           # planned | delivered | installing | live | retired
+status: planned           # planned | delivered | installing | installed | live | retired
 verdict:                  # supported | soon | unsupported, entered by device.mjs
 noted_on:                 # YYYY-MM-DD. When an unsupported device was noted down
 location:                 # room, building

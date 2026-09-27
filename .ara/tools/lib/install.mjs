@@ -453,6 +453,47 @@ export function modelFrom(text) {
   return found;
 }
 
+/**
+ * Hat der Installer abgebrochen, weil schon Daten des Projekts am Gerät liegen?
+ *
+ * Durchlauf 3, 27.09.2026: zwei Volumes lagen da, der Installer stieg mit
+ * Rückgabe 1 aus und nannte selbst zwei Wege, das alte Verzeichnis übernehmen
+ * oder das Gerät leeren. Das Kit sah danach nur den liegengebliebenen Ordner
+ * und riet zu --despite-traces, das an den Volumes nichts ändert: der Installer
+ * prüft sie selbst und bricht wieder ab. Die Wege stehen in seinen Zeilen,
+ * nicht im Kit, also werden sie von dort gelesen und wörtlich weitergegeben.
+ *
+ * Zurück: `{ project, volumes, ways, lines }` oder `null`. `ways` sind die
+ * Zeilen, in denen der Installer nach einem Doppelpunkt einen Befehl nennt.
+ */
+export function existingData(text) {
+  const lines = stripAnsi(text)
+    .split(/\r?\n/)
+    .map((raw) => raw.replace(/\s+$/, ""));
+  const start = lines.findIndex((line) => /Daten des Projekts|data of the project/i.test(line));
+  if (start < 0) return null;
+  const project = (lines[start].match(/(?:Daten des Projekts|data of the project)\s+(\S+?):?$/i) || [])[1] || null;
+  const block = [];
+  const volumes = [];
+  for (const raw of lines.slice(start + 1, start + 30)) {
+    const line = raw.replace(/^\s*\[[A-Z]+\]\s?/, "");
+    const bare = line.trim();
+    // Ohne Vorsilbe und als einzelnes Wort: ein Volume aus der Liste.
+    if (!/^\s*\[[A-Z]+\]/.test(raw) && /^\S+$/.test(bare)) {
+      volumes.push(bare);
+      continue;
+    }
+    // Die erste Zeile, die weder Liste noch Fehlermeldung ist, schließt den Block.
+    if (!/^\s*\[[A-Z]+\]/.test(raw)) break;
+    block.push(bare);
+  }
+  const ways = block
+    .map((line) => line.match(/^(.*?):\s{2,}(\S.*)$/))
+    .filter(Boolean)
+    .map((m) => ({ label: m[1].trim(), command: m[2].trim() }));
+  return { project, volumes, ways, lines: [lines[start].replace(/^\s*\[[A-Z]+\]\s?/, "").trim(), ...block.filter(Boolean)] };
+}
+
 // --- Der Spiegel -------------------------------------------------------------
 
 export function mirrorState() {

@@ -217,6 +217,7 @@ import {
 } from "./lib/licence.mjs";
 import {
   createKey,
+  existingData,
   fetchMirror,
   hardeningNotice,
   hardeningPort,
@@ -1586,6 +1587,9 @@ async function installArasul() {
     sshPort: step.sshPort,
     keepSsh,
     model: step.model,
+    // Brach er ab, weil schon Daten des Projekts am Gerät liegen, steht hier,
+    // welche und welche Wege er selbst nennt. Sonst null.
+    existing: step.status === 0 ? null : existingData(step.output),
     // Nur zum Übergeben an settleDeployKey. Nie gezeigt, nie in die Akte.
     keys: step.keys || [],
     version: state.version ?? null,
@@ -1594,10 +1598,57 @@ async function installArasul() {
   };
 }
 
+/**
+ * Was nach einem Abbruch über vorhandene Daten zu sagen ist.
+ *
+ * Nicht --despite-traces: der Schalter geht über die Reste hinweg, die das Kit
+ * sieht, und der Installer prüft die Volumes danach selbst und bricht wieder
+ * ab. Die Wege nennt der Installer, das Kit gibt sie wörtlich weiter. Beide
+ * greifen in Daten ein, einer davon leert das Gerät: das ist eine Frage an den
+ * Menschen, keine Entscheidung des Kits.
+ */
+function existingLines(existing) {
+  const onlyModels = existing.volumes.length > 0 && existing.volumes.every((v) => /models?$/i.test(v));
+  return [
+    t(
+      `The installer stopped because data of an earlier installation lies on the device${existing.volumes.length ? `: ${existing.volumes.join(", ")}` : ""}. ` +
+        "--despite-traces changes nothing about that, the installer checks these volumes itself and stops again.",
+      `Der Installer hat angehalten, weil am Gerät Daten einer früheren Installation liegen${existing.volumes.length ? `: ${existing.volumes.join(", ")}` : ""}. ` +
+        "--despite-traces ändert daran nichts, der Installer prüft diese Volumes selbst und hält wieder an."
+    ),
+    ...(existing.ways.length
+      ? [
+          t("The installer names these ways itself, word for word:", "Diese Wege nennt der Installer selbst, wörtlich:"),
+          ...existing.ways.map((way) => `- ${way.label}: ${way.command}`),
+        ]
+      : [t("What the installer said:", "Was der Installer gesagt hat:"), ...existing.lines.map((line) => `  ${line}`)]),
+    t(
+      "Which one fits is a question for the human, through the interview tool: taking over keeps the old data, " +
+        "emptying the device deletes it and cannot be undone. Look first at what the volumes hold. " +
+        "Procedure: .ara/knowledge/device.md, \"Installing Arasul\".",
+      "Welcher passt, ist eine Frage an den Menschen, über das Interview-Werkzeug: Übernehmen behält die alten Daten, " +
+        "das Gerät leeren löscht sie und ist nicht umkehrbar. Erst nachsehen, was in den Volumes liegt. " +
+        "Verfahren: .ara/knowledge/device.de.md, „Arasul installieren“."
+    ),
+    ...(onlyModels
+      ? [
+          t(
+            "Every listed volume holds models. If you laid them there from a backup before installing: the order is the other way round, " +
+              "install first, then lay the model back, .ara/knowledge/device.md, \"A model from your own backup\".",
+            "Jedes genannte Volume trägt Modelle. Wer sie vor der Installation aus einer Sicherung dorthin gelegt hat: die Reihenfolge ist umgekehrt, " +
+              "erst installieren, dann das Modell zurücklegen, .ara/knowledge/device.de.md, „Ein Modell aus der eigenen Sicherung“."
+          ),
+        ]
+      : []),
+  ];
+}
+
 let arasul = null;
 if (wantsArasul) {
   arasul = await installArasul();
-  if (!arasul.ok) {
+  if (!arasul.ok && arasul.existing) {
+    console.log(`\n${existingLines(arasul.existing).join("\n")}`);
+  } else if (!arasul.ok) {
     console.log(
       t(
         `\nThe installer bailed out with return code ${arasul.status}. Nothing gets talked up:\n` +
@@ -1792,8 +1843,16 @@ const pwRef = startPasswordRef({
   stored: hasSecret(startRef),
 });
 if (pwRef) changes.start_password_ref = pwRef;
+// Der Stand, den die Installation erreicht hat, nicht der, in dem sie begann.
+// Bis 0.48.0 stand hier nach Rückgabe 0 `installing`, und die Akte blieb dort
+// stehen (Durchlauf 3, offen seit Durchlauf 2): wer sie las, hielt ein
+// laufendes Gerät für eines mitten in der Einrichtung. `installed` heißt: der
+// Installer ist durch und die zweite Prüfung sieht die Plattform laufen.
+// `live` bleibt der Abnahme vorbehalten, device.md Phase 6.
+if (arasul) {
+  changes.status = arasul.ok && arasulRunning(svc.arasul.state) ? "installed" : "installing";
+}
 if (arasul?.ok) {
-  changes.status = "installing";
   changes.net_name = arasul.netName;
   // Ein frisch installiertes Gerät trägt ein Zertifikat aus seiner eigenen
   // Geräte-CA. Ohne diesen Eintrag scheiterte am 28.08.2026 der erste Aufruf
@@ -1979,9 +2038,9 @@ const where = `${customer ? `--customer ${customer} ` : ""}--device ${name}`;
 function buyStep() {
   return (
 t(
-        "This device carries Arasul, and no token is stored. Ask through the interview tool whether it should " +
+        "Arasul fits this device, and no token is stored. Ask through the interview tool whether it should " +
           `be installed, with the link in the question: ${BUY_URL}. `,
-        "Dieses Gerät trägt Arasul, und es ist kein Token hinterlegt. Frag über das Interview-Werkzeug, ob es " +
+        "Auf dieses Gerät passt Arasul, und es ist kein Token hinterlegt. Frag über das Interview-Werkzeug, ob es " +
           `installiert werden soll, mit dem Link in der Frage: ${BUY_URL}. `
       ) +
         buyLines().slice(1, 3).join(" ") +
@@ -2229,6 +2288,8 @@ function nextSteps() {
     }
   } else if (!hasSecret("ARASUL_TOKEN")) {
     steps.push(buyStep());
+  } else if (arasul?.existing) {
+    steps.push(existingLines(arasul.existing).join(" "));
   } else {
     const traces = svc.arasul.state === "traces";
     steps.push(

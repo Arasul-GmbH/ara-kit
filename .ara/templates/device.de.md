@@ -7,7 +7,7 @@ os:                       # Betriebssystem, von device.mjs eingetragen
 arch:                     # Architektur, von device.mjs eingetragen
 profile:                  # Plattformprofil aus dem Katalog. Von device.mjs eingetragen, nur wenn der Spiegel es wirklich führt
 serial:
-status: planned           # planned | delivered | installing | live | retired
+status: planned           # planned | delivered | installing | installed | live | retired
 verdict:                  # supported | soon | unsupported, von device.mjs eingetragen
 noted_on:                 # JJJJ-MM-TT. Wann ein nicht unterstütztes Gerät vorgemerkt wurde
 location:                 # Raum, Gebäude
