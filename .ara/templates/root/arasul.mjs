@@ -15,8 +15,8 @@
  *   node arasul.mjs status                             one line on the sync, device, credential, folder, proposals
  *   node arasul.mjs sync                               sync the company folder, write apps/<id>/APP.md
  *   node arasul.mjs sync --plan                        what a sync would move up and down, writing nothing
- *   node arasul.mjs sync --install [--every <min>]     on a Mac: sync in the background, password in the keychain
- *   node arasul.mjs sync --uninstall                   take the agent and the password back
+ *   node arasul.mjs sync --install [--every <min>]     on a Mac: sync in the background, app token in the keychain
+ *   node arasul.mjs sync --uninstall                   take the agent back, revoke the token
  *   node arasul.mjs apps                               the assigned apps with their routes, writes APP.md
  *   node arasul.mjs call <app> <route> [name=value ...] [--write] [--method <verb>]
  *
@@ -38,12 +38,12 @@
  * apps. The state of the last sync lies next to the credential, in firmenordner.json.
  *
  * `sync --install` hands the sync to launchd on a Mac: an agent of the person logged in runs
- * `sync --background` every five minutes (--every names another interval), and the password of the
- * file service lies in the keychain for it, checked once against the service and in no file. The
+ * `sync --background` every five minutes (--every names another interval), and an app token of the
+ * file service, issued once with the password, lies in the keychain for it and in no file. The
  * credential is asked first at every run, so revoking it on the device stops the sync. A conflict
  * or an error comes as a notification of macOS, once per state. `status` says in its first line
  * when the last sync went through, how much changed here since, and how many conflicts lie in the
- * tree. `sync --uninstall` takes the agent and the password back.
+ * tree. `sync --uninstall` takes the agent back and revokes the token.
  *
  * What never goes along: what a machine makes, what belongs to this computer, `.env` and `.env.*`
  * at every depth, and what the .gitignore at the top of this root leaves out. `sync --plan` shows
@@ -84,8 +84,8 @@
  *   node arasul.mjs status                             eine Zeile zum Abgleich, Gerät, Ausweis, Ordner, Vorschläge
  *   node arasul.mjs sync                               den Firmenordner abgleichen, apps/<id>/APP.md schreiben
  *   node arasul.mjs sync --plan                        was ein Abgleich hoch und runter bewegte, ohne zu schreiben
- *   node arasul.mjs sync --install [--every <min>]     am Mac: Abgleich im Hintergrund, Passwort im Schlüsselbund
- *   node arasul.mjs sync --uninstall                   Agent und Passwort zurücknehmen
+ *   node arasul.mjs sync --install [--every <min>]     am Mac: Abgleich im Hintergrund, App-Token im Schlüsselbund
+ *   node arasul.mjs sync --uninstall                   Agent zurücknehmen, Token widerrufen
  *   node arasul.mjs apps                               die zugewiesenen Apps mit ihren Routen, schreibt APP.md
  *   node arasul.mjs call <app> <route> [name=wert ...] [--write] [--method <verb>]
  *
@@ -108,13 +108,13 @@
  * firmenordner.json.
  *
  * `sync --install` übergibt den Abgleich am Mac an launchd: ein Agent des angemeldeten Menschen
- * führt alle fünf Minuten `sync --background` aus (--every nennt einen anderen Abstand), und das
- * Passwort des Dateidienstes liegt dafür im Schlüsselbund, einmal am Dienst geprüft und in keiner
- * Datei. Der Ausweis wird bei jedem Lauf zuerst gefragt, ein am Gerät widerrufener Ausweis hält den
+ * führt alle fünf Minuten `sync --background` aus (--every nennt einen anderen Abstand), und ein
+ * App-Token des Dateidienstes, einmal mit dem Passwort ausgestellt, liegt dafür im Schlüsselbund
+ * und in keiner Datei. Der Ausweis wird bei jedem Lauf zuerst gefragt, ein am Gerät widerrufener Ausweis hält den
  * Abgleich also an. Ein Konflikt oder ein Fehler kommt als Mitteilung von macOS, einmal je Stand.
  * `status` sagt in seiner ersten Zeile, wann der letzte Abgleich durchging, wie viel sich hier
- * seitdem geändert hat und wie viele Konflikte im Baum liegen. `sync --uninstall` nimmt Agent und
- * Passwort zurück.
+ * seitdem geändert hat und wie viele Konflikte im Baum liegen. `sync --uninstall` nimmt den Agenten
+ * zurück und widerruft das Token.
  *
  * Was nie mitgeht: was eine Maschine macht, was zu diesem Rechner gehört, `.env` und `.env.*` in
  * jeder Tiefe, und was die .gitignore oben in dieser Wurzel auslässt. `sync --plan` zeigt vorher je
@@ -3380,8 +3380,8 @@ function usage() {
       "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md and sicht.md",
       "  sync --plan                    what a sync would move up and down, with count and size, writing nothing",
       "  sync --keep-mine               where the files of the root differ, move the device's version aside there and sync this one",
-      "  sync --install [--every <min>] on a Mac: sync in the background, password in the keychain, every 5 minutes",
-      "  sync --uninstall               take the agent and the password back",
+      "  sync --install [--every <min>] on a Mac: sync in the background, an app token in the keychain, every 5 minutes",
+      "  sync --uninstall               take the agent back and revoke the token",
       "  deploy [--client <path>]       put this root into the room of the root on the device, the check script first",
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
@@ -3400,8 +3400,8 @@ function usage() {
       "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md und sicht.md schreiben",
       "  sync --plan                    was ein Abgleich hoch und runter bewegte, mit Anzahl und Größe, ohne zu schreiben",
       "  sync --keep-mine               wo die Dateien der Wurzel verschieden sind, die des Geräts dort zur Seite legen und diese abgleichen",
-      "  sync --install [--every <min>] am Mac: Abgleich im Hintergrund, Passwort im Schlüsselbund, alle 5 Minuten",
-      "  sync --uninstall               Agent und Passwort zurücknehmen",
+      "  sync --install [--every <min>] am Mac: Abgleich im Hintergrund, ein App-Token im Schlüsselbund, alle 5 Minuten",
+      "  sync --uninstall               Agent zurücknehmen und Token widerrufen",
       "  deploy [--client <pfad>]       diese Wurzel in den Raum der Wurzel am Gerät legen, zuerst das Prüfskript",
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",
