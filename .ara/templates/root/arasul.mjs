@@ -1151,6 +1151,8 @@ const SERVICE = Object.freeze({
   shared: "Shares",
   client: "opencloudcmd",
   password: "OPENCLOUD_TOKEN",
+  // App tokens of the service: issued with the password, revoked with a DELETE (as of 2026-09-27).
+  appTokens: "auth-app/tokens",
   /**
    * The root of the device: level 0 with this kind, exactly one per device, and the device lists
    * it first for every active person (measured on 2026-09-22). Its id comes out of the device's
@@ -1525,8 +1527,8 @@ async function spacesOf(plan, device, password) {
   const answer = await ask(target, { path: "graph/v1.0/me/drives", basic, timeout: 60_000 });
   if (answer.status === 401 || answer.status === 403) {
     stop(t(
-      `The file service does not take the password of ${plan.user} (${answer.status}). Nothing was written.${inBackground ? " The password in the keychain no longer holds: node arasul.mjs sync --install stores the new one." : ""}`,
-      `Der Dateidienst nimmt das Passwort von ${plan.user} nicht an (${answer.status}). Nichts wurde geschrieben.${inBackground ? " Das Passwort im Schlüsselbund gilt nicht mehr: node arasul.mjs sync --install legt das neue ab." : ""}`
+      `The file service does not take the password of ${plan.user} (${answer.status}). Nothing was written.${inBackground ? " The access in the keychain no longer holds, ended, revoked or the password changed: node arasul.mjs sync --install issues a new one." : ""}`,
+      `Der Dateidienst nimmt das Passwort von ${plan.user} nicht an (${answer.status}). Nichts wurde geschrieben.${inBackground ? " Der Zugang im Schlüsselbund gilt nicht mehr, abgelaufen, widerrufen oder das Passwort geändert: node arasul.mjs sync --install stellt einen neuen aus." : ""}`
     ));
   }
   if (answer.status < 200 || answer.status >= 300) {
@@ -2340,6 +2342,8 @@ const LAUNCH_AGENTS = process.env.ARASUL_LAUNCH_AGENTS ? resolve(process.env.ARA
 const LAUNCHCTL = process.env.ARASUL_LAUNCHCTL || "/bin/launchctl";
 const BACKGROUND_DIR = join(CONFIG_DIR, "abgleich");
 const EVERY_DEFAULT = 5;
+/** How long an app token of the file service holds: a year, then `--install` issues the next. */
+const APP_TOKEN_HOURS = 8760;
 /** A device that does not answer is often one that restarts. Said only when it lasts this long. */
 const QUIET_UNREACHABLE = 15 * 60_000;
 
@@ -2371,23 +2375,33 @@ function keychainRead() {
       `Der Schlüsselbund hat das Passwort für den Abgleich dieser Wurzel nicht herausgegeben: ${clientSaid(run)}. Ein gesperrter Schlüsselbund öffnet sich mit der nächsten Anmeldung.`
     ));
   }
-  return Buffer.from(run.stdout.trim(), "base64").toString("utf8");
+  try {
+    const entry = JSON.parse(Buffer.from(run.stdout.trim(), "base64").toString("utf8"));
+    return entry && typeof entry.value === "string" ? entry : null;
+  } catch {
+    return null;
+  }
 }
 
-/** Into the keychain, through the input of `security` and never as an argument: the process list shows arguments. */
-function keychainStore(secret) {
+/**
+ * Into the keychain, through the input of `security` and never as an argument: the process list
+ * shows arguments. One entry per root: what the access is (an app token of the file service or the
+ * password), its value, until when it holds, and for whom.
+ */
+function keychainStore(entry) {
+  const secret = JSON.stringify(entry);
   const line = [
     "add-generic-password", "-U",
     "-s", quoted(KEYCHAIN_SERVICE),
     "-a", quoted(AGENT_LABEL),
     "-l", quoted(`${KEYCHAIN_SERVICE} ${basename(ROOT)}`),
-    "-j", quoted(t(`Password of the file service for the sync in the background of ${ROOT}. Taken back by node arasul.mjs sync --uninstall.`, `Passwort des Dateidienstes für den Abgleich im Hintergrund von ${ROOT}. Zurückgenommen mit node arasul.mjs sync --uninstall.`)),
+    "-j", quoted(t(`Access to the file service for the sync in the background of ${ROOT}. Taken back by node arasul.mjs sync --uninstall.`, `Zugang zum Dateidienst für den Abgleich im Hintergrund von ${ROOT}. Zurückgenommen mit node arasul.mjs sync --uninstall.`)),
     "-w", quoted(Buffer.from(secret, "utf8").toString("base64")),
     ...inKeychain().map(quoted),
   ].join(" ");
   const run = spawnSync(SECURITY, ["-i"], { input: `${line}\n`, encoding: "utf8", timeout: 30_000 });
-  if (run.status !== 0 || keychainRead() !== secret) {
-    stop(t(`The keychain did not take the password: ${clientSaid(run)}. Nothing was set up.`, `Der Schlüsselbund hat das Passwort nicht angenommen: ${clientSaid(run)}. Nichts wurde eingerichtet.`));
+  if (run.status !== 0 || JSON.stringify(keychainRead()) !== secret) {
+    stop(t(`The keychain did not take the access: ${clientSaid(run)}. Nothing was set up.`, `Der Schlüsselbund hat den Zugang nicht angenommen: ${clientSaid(run)}. Nichts wurde eingerichtet.`));
   }
 }
 
@@ -2396,17 +2410,46 @@ function keychainForget() {
   return spawnSync(SECURITY, ["delete-generic-password", "-s", KEYCHAIN_SERVICE, "-a", AGENT_LABEL, ...inKeychain()], { encoding: "utf8", timeout: 30_000 }).status === 0;
 }
 
-/** The password of the sync in the background, out of the keychain and out of nothing else. */
+/** The access of the sync in the background, out of the keychain and out of nothing else. */
 function keychainPassword() {
-  if (!IS_MAC && !KEYCHAIN_FILE) stop(t("The sync in the background takes its password out of the keychain of a Mac, and this is no Mac.", "Der Abgleich im Hintergrund nimmt sein Passwort aus dem Schlüsselbund eines Mac, und das hier ist keiner."));
-  const password = keychainRead();
-  if (!password) {
+  if (!IS_MAC && !KEYCHAIN_FILE) stop(t("The sync in the background takes its access out of the keychain of a Mac, and this is no Mac.", "Der Abgleich im Hintergrund nimmt seinen Zugang aus dem Schlüsselbund eines Mac, und das hier ist keiner."));
+  const entry = keychainRead();
+  if (!entry) {
     stop(t(
-      "No password for the sync in the background lies in the keychain. node arasul.mjs sync --install stores it, once.",
-      "Im Schlüsselbund liegt kein Passwort für den Abgleich im Hintergrund. node arasul.mjs sync --install legt es ab, einmal."
+      "No access for the sync in the background lies in the keychain. node arasul.mjs sync --install stores one, once.",
+      "Im Schlüsselbund liegt kein Zugang für den Abgleich im Hintergrund. node arasul.mjs sync --install legt einen ab, einmal."
     ));
   }
-  return password;
+  return entry.value;
+}
+
+/**
+ * An app token of the file service, issued with the password once, so that the password itself
+ * lies nowhere. Measured on 2026-09-27 at a device: the service issues one for a year, takes it
+ * wherever it takes the password, the client included, and refuses it after revoking. Null where
+ * the service issues none; then the password is kept, and the output says so.
+ */
+async function issueAppToken(plan, device, password) {
+  const target = { address: plan.address, ca: device.entry.ca };
+  try {
+    const answer = await send(target, { method: "POST", path: `${SERVICE.appTokens}?expiry=${APP_TOKEN_HOURS}h`, basic: { user: plan.user, password }, timeout: 30_000 });
+    const body = jsonOf(answer);
+    if (answer.status < 200 || answer.status >= 300 || typeof body?.token !== "string" || !body.token) return null;
+    return { value: body.token, until: typeof body.expiration_date === "string" ? body.expiration_date.slice(0, 19) : null };
+  } catch {
+    return null;
+  }
+}
+
+/** Revoke the app token at the file service, with itself. True when the service confirmed it. */
+async function revokeAppToken(entry) {
+  const device = readCredentials().devices[entry.device];
+  try {
+    const answer = await send({ address: entry.address, ca: device?.ca }, { method: "DELETE", path: `${SERVICE.appTokens}?token=${encodeURIComponent(entry.value)}`, basic: { user: entry.user, password: entry.value }, timeout: 30_000 });
+    return answer.status >= 200 && answer.status < 300;
+  } catch {
+    return false;
+  }
 }
 
 const launchctl = (args) => spawnSync(LAUNCHCTL, args, { encoding: "utf8", timeout: 30_000 });
@@ -2596,7 +2639,12 @@ async function doInstall(args) {
   const password = await askPassword({ ...args, flags: { ...args.flags, background: false } }, plan, device);
   // Proven before it is stored: a password the service does not take would fail at every run.
   await spacesOf(plan, device, password);
-  keychainStore(password);
+  const token = await issueAppToken(plan, device, password);
+  if (token) await spacesOf(plan, device, token.value);
+  const before = keychainRead();
+  keychainStore({ kind: token ? "token" : "password", value: token ? token.value : password, ...(token?.until ? { until: token.until } : {}), device: device.name, address: plan.address, user: plan.user });
+  // An earlier install of this root issued a token of its own; it goes now, not in a year.
+  if (before?.kind === "token" && before.value !== token?.value) await revokeAppToken(before);
 
   mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
   mkdirSync(LAUNCH_AGENTS, { recursive: true });
@@ -2622,7 +2670,9 @@ async function doInstall(args) {
   }
   say(t(`Sync in the background set up: ${plan.user} on ${device.name}, every ${every} minutes, starting now.`, `Abgleich im Hintergrund eingerichtet: ${plan.user} auf ${device.name}, alle ${every} Minuten, ab jetzt.`));
   say(`  ${t("Agent", "Agent")}: ${AGENT_PLIST} (${AGENT_LABEL}), ${t("started again by launchd at every login", "von launchd bei jeder Anmeldung neu gestartet")}`);
-  say(`  ${t("Password", "Passwort")}: ${t(`in the keychain, '${KEYCHAIN_SERVICE}', checked against the file service. In no file.`, `im Schlüsselbund, '${KEYCHAIN_SERVICE}', am Dateidienst geprüft. In keiner Datei.`)}`);
+  say(`  ${t("Access", "Zugang")}: ${token
+    ? t(`an app token of the file service for this computer, holds until ${token.until ? token.until.slice(0, 10) : "?"}, in the keychain '${KEYCHAIN_SERVICE}'. Your password is stored nowhere.`, `ein App-Token des Dateidienstes für diesen Rechner, gilt bis ${token.until ? token.until.slice(0, 10) : "?"}, im Schlüsselbund '${KEYCHAIN_SERVICE}'. Dein Passwort liegt nirgends.`)
+    : t(`the file service issues no app token, so your password lies in the keychain '${KEYCHAIN_SERVICE}', checked against the service. In no file.`, `der Dateidienst stellt kein App-Token aus, darum liegt dein Passwort im Schlüsselbund '${KEYCHAIN_SERVICE}', am Dienst geprüft. In keiner Datei.`)}`);
   say(`  ${t("Log", "Protokoll")}: ${AGENT_LOG}`);
   say(`  ${t(
     "A conflict or an error comes as a notification. node arasul.mjs status says in one line how things stand. Revoking the credential in the device's front end stops the sync at its next run.",
@@ -2645,11 +2695,13 @@ async function doInstall(args) {
   return true;
 }
 
-/** `sync --uninstall`: the agent out of launchd, its file away, the password out of the keychain. */
-function doUninstall() {
+/** `sync --uninstall`: the agent out of launchd, its file away, the token revoked, the access out of the keychain. */
+async function doUninstall() {
   const loaded = launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]).status === 0;
   const had = existsSync(AGENT_PLIST);
   rmSync(AGENT_PLIST, { force: true });
+  const entry = IS_MAC || KEYCHAIN_FILE ? keychainRead() : null;
+  const revoked = entry?.kind === "token" ? await revokeAppToken(entry) : null;
   const forgot = IS_MAC || KEYCHAIN_FILE ? keychainForget() : false;
   const state = readFolderState();
   if (state.roots[ROOT]?.background) {
@@ -2662,7 +2714,10 @@ function doUninstall() {
   }
   say(t("Sync in the background taken back:", "Abgleich im Hintergrund zurückgenommen:"));
   say(`  ${t("Agent", "Agent")}: ${loaded ? t("taken out of launchd", "aus launchd genommen") : t("was not loaded", "war nicht geladen")}${had ? t(`, ${AGENT_PLIST} deleted`, `, ${AGENT_PLIST} gelöscht`) : ""}`);
-  say(`  ${t("Password", "Passwort")}: ${forgot ? t("taken out of the keychain", "aus dem Schlüsselbund genommen") : t("none lay in the keychain", "im Schlüsselbund lag keines")}`);
+  say(`  ${t("Access", "Zugang")}: ${forgot ? t("taken out of the keychain", "aus dem Schlüsselbund genommen") : t("none lay in the keychain", "im Schlüsselbund lag keiner")}${
+    revoked === true ? t(", the app token revoked at the file service", ", das App-Token am Dateidienst widerrufen")
+    : revoked === false ? t(`, the app token could not be revoked at the file service now: it ends on ${entry.until?.slice(0, 10) || "?"}, or revoke it in the file service's front end`, `, das App-Token ließ sich am Dateidienst gerade nicht widerrufen: es endet am ${entry.until?.slice(0, 10) || "?"}, oder widerrufe es in der Oberfläche des Dateidienstes`)
+    : ""}`);
   say(`  ${t("What was synced stays here. The log stays for reading", "Was abgeglichen wurde, bleibt hier. Das Protokoll bleibt zum Lesen")}: ${AGENT_LOG}`);
   return true;
 }
@@ -3287,7 +3342,7 @@ async function doSync(args) {
   if (args.flags.every && !args.flags.install) stop(t("--every belongs to --install.", "--every gehört zu --install."), 2);
   if (args.flags.plan) return doPlan(args);
   if (args.flags.install) return doInstall(args);
-  if (args.flags.uninstall) return doUninstall();
+  if (args.flags.uninstall) return await doUninstall();
   const release = takeLock();
   if (!release) {
     say(t("A sync of this root is running already, in the background or at another terminal. Nothing was started.", "Ein Abgleich dieser Wurzel läuft schon, im Hintergrund oder an einem anderen Terminal. Nichts wurde gestartet."));

@@ -8726,10 +8726,25 @@ const FO_ADRESSE = "https://dateidienst.probe:8443";
  * Graph, sein Inhalt über PROPFIND eine Ebene tief. Name und Passwort wie beim echten Dienst,
  * der Basic-Auth nimmt. Die Antwort trägt das Präfix D: groß, wie manche Dienste es schreiben.
  */
+/** App-Tokens des Dateidienstes, wie am Orin gemessen (27.09.2026): mit dem Passwort ausgestellt, wie ein Passwort angenommen, nach dem Widerruf abgewiesen. */
+const APP_TOKENS = new Set();
+const APP_TOKEN = "apptoken_probe_0123456789";
+
 function dateidienst(lager, basis, anfrage, antwort, pfad) {
-  const erwartet = `Basic ${Buffer.from(`anna:${BRUECKE_PASSWORT}`).toString("base64")}`;
-  if (anfrage.headers.authorization !== erwartet) {
+  const mitPasswort = anfrage.headers.authorization === `Basic ${Buffer.from(`anna:${BRUECKE_PASSWORT}`).toString("base64")}`;
+  const mitToken = [...APP_TOKENS].some((token) => anfrage.headers.authorization === `Basic ${Buffer.from(`anna:${token}`).toString("base64")}`);
+  if (!mitPasswort && !mitToken) {
     antwort.writeHead(401);
+    return antwort.end();
+  }
+  if (pfad === "/auth-app/tokens" && anfrage.method === "POST") {
+    APP_TOKENS.add(APP_TOKEN);
+    antwort.writeHead(200, { "Content-Type": "application/json" });
+    return antwort.end(JSON.stringify({ token: APP_TOKEN, expiration_date: "2027-09-27T08:47:05.361473851Z", created_date: "2026-09-27T08:47:05Z", label: "" }));
+  }
+  if (pfad === "/auth-app/tokens" && anfrage.method === "DELETE") {
+    APP_TOKENS.delete(new URLSearchParams(anfrage.url.split("?")[1] || "").get("token"));
+    antwort.writeHead(200);
     return antwort.end();
   }
   if (pfad === "/graph/v1.0/me/drives") {
@@ -8793,7 +8808,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
           ? senden(200, { token: BRUECKE_TOKEN, user: { id: 7, username: "anna", role: rolle } })
           : senden(401, { error: { message: "Anmeldung abgewiesen" } });
       }
-      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/"))) return dateidienst(lager, basis, anfrage, antwort, pfad);
+      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/") || pfad.startsWith("/auth-app/"))) return dateidienst(lager, basis, anfrage, antwort, pfad);
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
       const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
       const gueltig = sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`;
@@ -9350,7 +9365,7 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
 
     lauf = await bruecke(w, ["sync", "--install", "--every", "7", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
     assert(lauf.status === 0, `sync --install endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
-    assert(/alle 7 Minuten/.test(lauf.stdout) && /Schlüsselbund/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
+    assert(/alle 7 Minuten/.test(lauf.stdout) && /App-Token des Dateidienstes.*gilt bis 2027-09-27.*Dein Passwort liegt nirgends/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
     // Beim Einrichten geht eine Mitteilung hinaus: wer sie nicht sieht, erfährt, wo sie erlaubt wird.
     const probe = h.mitteilungen();
     assert(probe.length === 1 && probe[0][0] === "Firmenordner im Hintergrund" && /Skripteditor/.test(lauf.stdout), `beim Einrichten kommt keine Probemitteilung: ${JSON.stringify(probe)}`);
@@ -9362,15 +9377,16 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     const geladen = h.rufe().find((ruf) => ruf[0] === "bootstrap");
     assert(geladen && /^gui\/\d+$/.test(geladen[1]) && geladen[2] === agent(), `der Agent wurde nicht in die Sitzung des Menschen geladen: ${JSON.stringify(h.rufe())}`);
     const gelesen = spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", "-w", h.schluesselbund], { encoding: "utf8" });
-    assert(Buffer.from(gelesen.stdout.trim(), "base64").toString("utf8") === BRUECKE_PASSWORT, "im Schlüsselbund liegt nicht das geprüfte Passwort");
+    const eintrag0 = JSON.parse(Buffer.from(gelesen.stdout.trim(), "base64").toString("utf8"));
+    assert(eintrag0.kind === "token" && eintrag0.value === APP_TOKEN && !JSON.stringify(eintrag0).includes(BRUECKE_PASSWORT), `im Schlüsselbund liegt nicht das App-Token, oder das Passwort liegt dort: ${eintrag0.kind}`);
     const dateien = readdirSync(w.ausweise, { recursive: true }).map((name) => join(w.ausweise, String(name))).filter((pfad) => statSync(pfad).isFile());
     assert(!dateien.some((pfad) => readFileSync(pfad, "utf8").includes(BRUECKE_PASSWORT)), "das Passwort liegt in einer Datei neben dem Ausweis");
 
-    // Der Agent läuft ohne Terminal und ohne Eingabe, und der Klient bekommt das Passwort aus dem Schlüsselbund.
+    // Der Agent läuft ohne Terminal und ohne Eingabe, und der Klient bekommt das App-Token aus dem Schlüsselbund.
     lauf = await alsAgent();
     assert(lauf.status === 0, `der Lauf im Hintergrund endet mit ${lauf.status}: ${lauf.stdout} ${lauf.stderr}`);
     const ruf = klientRufe(klient.protokoll).at(-1);
-    assert(ruf?.token === BRUECKE_PASSWORT && !ruf.argv.some((teil) => teil.includes(BRUECKE_PASSWORT)), "der Klient bekommt im Hintergrund das Passwort nicht über die Umgebung");
+    assert(ruf?.token === APP_TOKEN && !ruf.argv.some((teil) => teil.includes(APP_TOKEN)), "der Klient bekommt im Hintergrund das App-Token nicht über die Umgebung");
     assert(!h.mitteilungen().length, `ein sauberer Lauf meldet sich: ${JSON.stringify(h.mitteilungen())}`);
     let zeile = await status();
     assert(/^Abgleich: zuletzt abgeglichen \d{4}-\d\d-\d\d \d\d:\d\d UTC, offen 0, Konflikte 0, im Hintergrund alle 7 Minuten$/.test(zeile), `die Zeile von status stimmt nicht: ${zeile}`);
@@ -9442,7 +9458,9 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
     assert(lauf.status === 0 && /zurückgenommen/.test(lauf.stdout), `sync --uninstall: ${lauf.stdout}${lauf.stderr}`);
     assert(!agent() && h.rufe().some((r) => r[0] === "bootout"), "der Agent liegt nach --uninstall noch da");
-    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "das Passwort liegt nach --uninstall noch im Schlüsselbund");
+    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "der Zugang liegt nach --uninstall noch im Schlüsselbund");
+    // Das Gerät ist hier aus: das Token lässt sich nicht widerrufen, und das wird gesagt, mit seinem Ende.
+    assert(/ließ sich am Dateidienst gerade nicht widerrufen: es endet am 2027-09-27/.test(lauf.stdout), `--uninstall sagt nicht, dass das App-Token bleibt: ${lauf.stdout}`);
     assert(/nicht im Hintergrund/.test(await status()), `status sagt nach --uninstall noch Hintergrund: ${await status()}`);
     lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
     assert(lauf.status === 0 && /war kein Abgleich im Hintergrund eingerichtet/.test(lauf.stdout), `ein zweites --uninstall sagt nicht, dass nichts da war: ${lauf.stdout}`);

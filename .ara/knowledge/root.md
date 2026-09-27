@@ -239,8 +239,8 @@ app offers. This file does that, and nothing else.
 | `sync` | Syncs the company folder, the root of the device at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
 | `sync --plan` | Shows per folder what a sync would move: up and down with count and size, conflicts, what was deleted on one side, what stays home. Writes nothing and starts no client |
 | `sync --keep-mine` | Where the files that make the root differ on both sides, moves the device's version aside on the device and syncs this root's. Without it `sync` stops there |
-| `sync --install` | On a Mac: the sync in the background. Checks the password against the file service, puts it into the keychain and hands an agent to launchd that syncs every five minutes, `--every <minutes>` another interval |
-| `sync --uninstall` | Takes the agent out of launchd and the password out of the keychain. What was synced stays |
+| `sync --install` | On a Mac: the sync in the background. Checks the password against the file service, has it issue an app token for this computer, puts the token into the keychain and hands an agent to launchd that syncs every five minutes, `--every <minutes>` another interval |
+| `sync --uninstall` | Takes the agent out of launchd, revokes the app token and takes it out of the keychain. What was synced stays |
 | `status` | First one line: when the last sync went through, how much is open here, how many conflicts, whether it runs in the background. Then the device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
 | `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
@@ -409,9 +409,13 @@ Mac.
 
 **The sync in the background.** Working out of the company folder every day means the sync runs
 without anybody thinking of it; a command with a password per run is forgotten after three days.
-`sync --install` asks for the password once, checks it against the file service and puts it into
+`sync --install` asks for the password once, checks it against the file service and has the
+service issue an app token for this computer with it, valid for a year. Only the token goes into
 the keychain of the Mac, service `Arasul Firmenordner`, one entry per root and through the input
-of `security`, never as an argument. It stands in no file. Then it writes an agent for launchd to
+of `security`, never as an argument; the password is stored nowhere and stands in no file. Where
+the service issues no token, the password goes there instead, and `--install` says so. Measured
+on 2026-09-27 at a device: the service issued the token for a year, took it wherever it takes the
+password, the client included, and refused it after revoking. Then it writes an agent for launchd to
 `~/Library/LaunchAgents/de.arasul.abgleich.<folder>-<checksum>.plist` and loads it into the
 session of the person logged in: it runs at once and then every five minutes, and launchd starts
 it again at every login. The agent runs `sync --background`, which takes the password out of the
@@ -419,12 +423,20 @@ keychain and works like `sync`; its output goes to `~/.config/arasul/abgleich/<a
 One sync of a root at a time: the agent and a terminal share a lock, and whoever comes second
 starts nothing. A conflict or an error comes as a notification of macOS, once when it comes
 about and once when it is over, not at every run. A device that does not answer is said only
-after a quarter of an hour, because a restart takes minutes. **Revoking** the credential in the
+after a quarter of an hour, because a restart takes minutes; that holds as well when the client
+loses the service in the middle of a sync. Measured on 2026-09-27 with a restart of the device four
+seconds into a sync that took 60 MB up: the client stopped with `Connection timed out`, the next
+run after the restart took everything up and down, and the 60 MB were equal byte for byte. **Revoking** the credential in the
 device's front end stops the sync at its next run with one sentence, before the client starts:
-the credential is asked first at every run. A password changed on the device stops it as well,
-and `sync --install` stores the new one. `sync --uninstall` takes agent and password back. A
+the credential is asked first at every run. An app token revoked, ended or a password
+changed stops it as well, and `sync --install` issues a new one. `sync --uninstall` takes agent
+and token back and revokes the token at the service. A
 root under Desktop, Documents, Downloads or iCloud is guarded by macOS: a program in the
 background gets in only with full disk access for node, and `--install` says so.
+
+**A folder named like a person** has two spaces of that name in the file service: the person's own
+and the folder's. The tool takes the project space. Measured on 2026-09-27: the service listed the
+empty personal space first, and the plan compared with it.
 
 **Open** in the line of `status` counts what changed here since the last sync, against the state
 kept per folder; what changed on the device only the next sync sees. A `+` behind it means a
