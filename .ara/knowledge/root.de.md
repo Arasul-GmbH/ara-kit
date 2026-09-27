@@ -437,7 +437,10 @@ in einer englischen Wurzel). Verschoben, nicht gelöscht: was hier geändert wur
 hochging, ist noch zu lesen. `sync --plan` nennt einen solchen Ordner mit seinen Dateien und
 verschiebt nichts, `status` sagt in einem Satz, wohin er ging. Kann der Rechner ihn dort nicht
 hinlegen, geht er in `.arasul-papierkorb/`. Eine leere Ordnerliste oder ein Stand eines anderen
-Dateidienstes verschiebt nichts.
+Dateidienstes verschiebt nichts. Gemessen am 27.09.2026 an einem Gerät mit einem Administrator
+und einem Leser: ein Ordner in der Oberfläche weggeworfen, einer dem Leser entzogen. Die Brücke
+aus 0.49.0 hätte von beiden je eine Datei in die Wurzel genommen; diese zeigte bei beiden 0 Dateien
+hoch, beide Abgleiche liefen zweimal durch, und der Raum der Wurzel blieb Byte für Byte gleich.
 
 **Gemessen am 27.09.2026 an einem Gerät**, dessen Wurzel das Gerüst eines Kundendurchlaufs trug,
 mit einer Kopie eines gewachsenen Ordners mit rund 800 eigenen Dateien und vier Produktklonen:

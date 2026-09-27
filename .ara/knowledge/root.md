@@ -422,7 +422,10 @@ any client runs, into `<root>-withdrawn/<time>/` (`<root>-entzogen/` in a German
 deleted: what was changed here and never went up is still there to be read. `sync --plan` names
 such a folder with its files and moves nothing, `status` says in one sentence where it went.
 Where the computer cannot move it there, it goes into `.arasul-papierkorb/`. An empty list of
-folders, or a state of another file service, moves nothing.
+folders, or a state of another file service, moves nothing. Measured on 2026-09-27 at a device
+with an administrator and a reader: one folder thrown away in the front end, one withdrawn from
+the reader. The bridge of 0.49.0 would have taken one file of each into the root; this one showed
+0 files up for both, both syncs went through twice, and the root's room stayed the same byte for byte.
 
 **Measured on 2026-09-27 at a device** whose root carried the scaffold of a customer run, with a
 copy of a grown folder of about 800 files of the house's own and four product clones: `--adopt`
