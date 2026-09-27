@@ -25,6 +25,7 @@
  *   node .ara/tools/root.mjs --path ~/showcase --example
  *   node .ara/tools/root.mjs --path ~/acme --check
  *   node .ara/tools/root.mjs --path ~/acme --show
+ *   node .ara/tools/root.mjs --adopt ~/Code/acme [--name "Acme Ltd"]
  *
  * --folders names the folders of level 1: comma separated, `name` or `name=what for`. They
  * are named when laying out. Later a folder is made by hand, with a line in the table of
@@ -42,7 +43,10 @@
  * hooks, .git and node_modules never go along. --language de|en overrides the profile.
  * --no-git leaves version control out. --example lays out the showcase, an invented company
  * with the method and filled sheets. An unknown switch is reported, not skipped. The target
- * has to be empty or missing, and it never lies inside the kit.
+ * has to be empty or missing, and it never lies inside the kit. --adopt takes a grown folder
+ * over as a root instead: it writes .claude/root.json, .claude/places.json and arasul.mjs and
+ * nothing else, stops when one of them lies there, enters the clones the .gitignore leaves out
+ * as places and names the source trees and the .env files it finds, with a proposal each.
  *
  * === deutsch ===
  *
@@ -72,6 +76,7 @@
  *   node .ara/tools/root.mjs --path ~/vorzeigefassung --example
  *   node .ara/tools/root.mjs --path ~/acme --check
  *   node .ara/tools/root.mjs --path ~/acme --show
+ *   node .ara/tools/root.mjs --adopt ~/Code/acme [--name "Acme GmbH"]
  *
  * --folders nennt die Ordner der Ebene 1: durch Kommas getrennt, `name` oder `name=wofür`.
  * Sie werden beim Anlegen genannt. Später entsteht ein Ordner von Hand, mit einer Zeile in
@@ -91,14 +96,18 @@
  * --no-git lässt die Versionsverwaltung weg. --example legt die Vorzeigefassung aus, eine
  * erfundene Firma mit der Methode und gefüllten Blättern. Ein unbekannter Schalter wird
  * gemeldet, nicht überlesen. Das Ziel muss leer sein oder fehlen, und es liegt nie im Kit.
+ * --adopt übernimmt stattdessen einen gewachsenen Ordner als Wurzel: es schreibt
+ * .claude/root.json, .claude/places.json und arasul.mjs und sonst nichts, hält an, wenn eine
+ * davon schon liegt, trägt die Klone, die die .gitignore auslässt, als Orte ein und nennt die
+ * Quelltextbäume und .env-Dateien, die es findet, mit je einem Vorschlag.
  */
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
-import { isAbsolute, join, relative } from "node:path";
+import { copyFileSync, existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { basename, isAbsolute, join, relative } from "node:path";
 import { ROOT, fail, headerHelp, helpOnly, parseArgs } from "./lib/kit.mjs";
 import { LANGUAGES, language, setLanguage, t } from "./lib/i18n.mjs";
-import { TEMPLATE, addMethod, addPlace, expandHome, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
+import { ADOPT_TARGETS, TEMPLATE, addMethod, addPlace, adopt, expandHome, layOut, normalizeFolders, normalizePlace, readExample, runCheck } from "./lib/root.mjs";
 import { enroll, plan, settingsFile, shortSum, status, unenroll } from "./lib/root-enroll.mjs";
 
 // Every switch this tool knows. What is not here is reported: `--lang` used to be skipped, and
@@ -106,7 +115,7 @@ import { enroll, plan, settingsFile, shortSum, status, unenroll } from "./lib/ro
 const SWITCHES = [
   "path", "name", "folders", "method", "places", "place", "kind", "where", "local", "write", "purpose",
   "language", "no-git", "example", "check", "show", "enroll", "consent", "unenroll", "settings",
-  "deploy", "client", "password-stdin", "device",
+  "deploy", "client", "password-stdin", "device", "adopt",
 ];
 
 helpOnly(import.meta.url);
@@ -132,13 +141,15 @@ if (args._.length) {
 if (args.language !== undefined && !LANGUAGES.includes(args.language)) {
   fail(t(`--language takes ${LANGUAGES.join(" or ")}, not '${args.language}'.`, `--language nimmt ${LANGUAGES.join(" oder ")}, nicht '${args.language}'.`));
 }
-if (!args.path || args.path === true) {
+// `--adopt <path>` names the folder itself, `--path` stays the name of it everywhere else.
+const given = args.adopt && args.adopt !== true ? args.adopt : args.path;
+if (!given || given === true) {
   console.log(headerHelp(import.meta.url));
-  process.exit(args.path === true ? 1 : 0);
+  process.exit(given === true || args.adopt === true ? 1 : 0);
 }
 
 const started = Date.now();
-const root = expandHome(String(args.path), process.cwd());
+const root = expandHome(String(given), process.cwd());
 const isRoot = existsSync(join(root, ".claude", "root.json"));
 const meta = isRoot ? JSON.parse(readFileSync(join(root, ".claude", "root.json"), "utf8")) : null;
 // An existing root speaks its own language, not the one of the kit next to it:
@@ -168,6 +179,13 @@ function singlePlace() {
 }
 
 function sayCheck() {
+  if (!existsSync(join(root, ".claude", "scripts", "check.mjs"))) {
+    console.log(t(
+      "No check script of the kit lies in this root: it was taken over, and taking over lays none, because it overwrites nothing of the house.",
+      "In dieser Wurzel liegt kein Prüfskript des Kits: sie wurde übernommen, und Übernehmen legt keines, weil es nichts vom Haus überschreibt."
+    ));
+    return true;
+  }
   const run = runCheck(root);
   console.log((run.stdout || "").trimEnd());
   if (run.stderr?.trim()) console.error(run.stderr.trimEnd());
@@ -293,6 +311,105 @@ function doDeploy() {
   const run = spawnSync(process.execPath, [bridge, "deploy", ...pass], { cwd: root, stdio: "inherit" });
   process.exit(run.status ?? 1);
 }
+
+/**
+ * Take a grown folder over as a root. It writes three files and nothing else, and says what it
+ * found: the clones it entered as places, the ones it could not, the source trees and the files
+ * with secrets, each with what happens to it at a sync and what the house could do.
+ */
+function doAdopt() {
+  if (isRoot) fail(t(`${root} is a root already. Look at it with --show.`, `${root} ist schon eine Wurzel. Sieh sie mit --show an.`));
+  if (!existsSync(root) || !statSync(root).isDirectory()) {
+    fail(t(`${root} is not there. --adopt takes over a folder that exists, a new root is laid out with --path.`, `${root} ist nicht da. --adopt übernimmt einen Ordner, den es gibt, eine neue Wurzel entsteht mit --path.`));
+  }
+  if (!readdirSync(root).filter((entry) => entry !== ".DS_Store").length) {
+    fail(t(`${root} is empty. An empty folder is laid out, not taken over: --path "${root}" --name <name>.`, `${root} ist leer. Ein leerer Ordner wird angelegt, nicht übernommen: --path "${root}" --name <name>.`));
+  }
+  const clash = ["method", "example", "folders", "places", "place", "no-git"].filter((key) => args[key] !== undefined);
+  if (clash.length) {
+    fail(t(
+      `--adopt takes a folder over as it is and goes with ${clash.map((key) => `--${key}`).join(", ")} no way. Take it over first, then add.`,
+      `--adopt übernimmt einen Ordner, wie er ist, und geht nicht mit ${clash.map((key) => `--${key}`).join(", ")}. Erst übernehmen, dann ergänzen.`
+    ));
+  }
+  const there = ADOPT_TARGETS.filter((target) => existsSync(join(root, target)));
+  if (there.length) {
+    fail(t(
+      `${there.join(", ")} lies there already and belongs to the house. Taking over overwrites nothing, nothing was written.`,
+      `${there.join(", ")} liegt schon da und gehört dem Haus. Übernehmen überschreibt nichts, nichts wurde geschrieben.`
+    ));
+  }
+  const name = args.name && args.name !== true ? String(args.name) : basename(root);
+  const kitVersion = readFileSync(join(ROOT, ".ara", "VERSION"), "utf8").trim();
+  const found = adopt({ root, name, language: lang, kitVersion });
+
+  console.log(t(`Root of ${name} taken over: ${root}`, `Wurzel von ${name} übernommen: ${root}`));
+  console.log(t(
+    `Written, these three and nothing else: ${ADOPT_TARGETS.join(", ")}. Language ${lang}.`,
+    `Geschrieben, diese drei und sonst nichts: ${ADOPT_TARGETS.join(", ")}. Sprache ${lang}.`
+  ));
+  if (!found.gitignore) {
+    console.log(t(
+      "There is no .gitignore at the top. What a sync leaves out is then only what never goes: what a machine makes, the settings of this computer, .env at every depth.",
+      "Oben liegt keine .gitignore. Ein Abgleich lässt dann nur aus, was nie mitgeht: was eine Maschine macht, die Einstellungen dieses Rechners, .env in jeder Tiefe."
+    ));
+  }
+  console.log("");
+  sayPlaces(found.places);
+
+  const open = found.clones.filter((clone) => !clone.ignored);
+  if (open.length) {
+    console.log("");
+    console.log(t(
+      "Not entered as a place, the .gitignore does not leave these clones out, so they would go into the company folder as a copy:",
+      "Nicht als Ort eingetragen, die .gitignore lässt diese Klone nicht aus, sie gingen also als Kopie in den Firmenordner:"
+    ));
+    for (const clone of open) {
+      console.log(`  ${clone.rel}/${clone.where ? `  ${clone.where}` : ""}`);
+      console.log(t(
+        `    Proposal: a line /${clone.rel}/ in .gitignore, then --path "${root}" --place <name> --kind ${clone.kind || "folder"} --where ${clone.where || `./${clone.rel}`} --local ./${clone.rel} --purpose "<what it is>"`,
+        `    Vorschlag: eine Zeile /${clone.rel}/ in die .gitignore, dann --path "${root}" --place <name> --kind ${clone.kind || "folder"} --where ${clone.where || `./${clone.rel}`} --local ./${clone.rel} --purpose "<was es ist>"`
+      ));
+    }
+  }
+  const shared = found.sources.filter((source) => !source.ignored);
+  const home = found.sources.filter((source) => source.ignored);
+  if (found.sources.length) {
+    console.log("");
+    console.log(t("Source trees:", "Quelltextbäume:"));
+    for (const source of shared) {
+      console.log(`  ${source.rel}/ (${source.why})`);
+      console.log(t(
+        "    Goes into the company folder, without node_modules, .next, build, dist, .venv and .env. Proposal: if it is a project of its own, make it a repository and enter it as a place; if it is only for this computer, a line /" + source.rel + "/ in .gitignore keeps it home. Single scripts are fine as they are.",
+        "    Geht in den Firmenordner, ohne node_modules, .next, build, dist, .venv und .env. Vorschlag: ist es ein eigenes Projekt, ein Repository daraus machen und als Ort eintragen; ist es nur für diesen Rechner, hält eine Zeile /" + source.rel + "/ in der .gitignore es zu Hause. Einzelne Skripte sind in Ordnung, wie sie sind."
+      ));
+    }
+    for (const source of home) console.log(t(`  ${source.rel}/ (${source.why}): the .gitignore leaves it out, it stays home.`, `  ${source.rel}/ (${source.why}): die .gitignore lässt es aus, es bleibt zu Hause.`));
+  }
+  if (found.secrets.length) {
+    console.log("");
+    console.log(t(
+      `Files of the kind .env: ${found.secrets.length}. They stay home at every depth, a sync never takes them along:`,
+      `Dateien der Art .env: ${found.secrets.length}. Sie bleiben in jeder Tiefe zu Hause, ein Abgleich nimmt sie nie mit:`
+    ));
+    for (const secret of found.secrets.slice(0, 10)) console.log(`  ${secret.rel}`);
+    if (found.secrets.length > 10) console.log(t(`  and ${found.secrets.length - 10} more`, `  und ${found.secrets.length - 10} weitere`));
+  }
+  const own = [".claude/CLAUDE.md", ".claude/settings.json", ".claude/skills", ".claude/hooks", ".gitignore", ".git"].filter((entry) => existsSync(join(root, entry)));
+  if (own.length) {
+    console.log("");
+    console.log(t(`What the house has stays as it is: ${own.join(", ")}.`, `Was das Haus hat, bleibt, wie es ist: ${own.join(", ")}.`));
+  }
+  console.log("");
+  console.log(t(`Took ${((Date.now() - started) / 1000).toFixed(1)} seconds.`, `Dauer: ${((Date.now() - started) / 1000).toFixed(1)} Sekunden.`));
+  console.log(t("Next steps:", "Nächste Schritte:"));
+  console.log(t(`  1. Log in there: cd "${root}" && node arasul.mjs login <address> --user <name>`, `  1. Dort anmelden: cd "${root}" && node arasul.mjs login <adresse> --user <name>`));
+  console.log(t("  2. Look before anything moves: node arasul.mjs sync --plan", "  2. Ansehen, bevor sich etwas bewegt: node arasul.mjs sync --plan"));
+  console.log(t("  3. Then sync: node arasul.mjs sync", "  3. Dann abgleichen: node arasul.mjs sync"));
+  process.exit(0);
+}
+
+if (args.adopt !== undefined) doAdopt();
 
 if (args.deploy) {
   if (!isRoot) fail(t(`${root} is no root: .claude/root.json is missing.`, `${root} ist keine Wurzel: .claude/root.json fehlt.`));

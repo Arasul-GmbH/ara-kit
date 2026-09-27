@@ -15,6 +15,18 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.47.0 (2026-09-26)
+
+Kontrakt: bis 6
+
+- **`root.mjs --adopt <ordner>` übernimmt einen gewachsenen Ordner als Wurzel und überschreibt nichts.** Es schreibt `root.json` und `places.json` in das `.claude` des Ordners und `arasul.mjs` oben hinein und hält ohne zu schreiben an, wenn eine davon schon liegt. Klone, die die `.gitignore` oben auslässt, werden Orte, mit der GitHub-Adresse ihres Remotes; ein Klon, den sie nicht auslässt, ein Quelltextbaum und jede `.env`-Datei werden mit einem Vorschlag genannt. `/root` bietet es für einen Ordner an, der voll und keine Wurzel ist.
+- **`.env` und `.env.*` gehen nie in den Firmenordner, in keiner Tiefe**, `.venv` und `__pycache__` auch nicht. **Die `.gitignore` oben in der Wurzel zählt auch**: gelesen wie git sie liest und dem Klienten als Namen und Pfade gegeben, die er genauso liest.
+- **`build` und `dist` bleiben nur in einem Quelltextbaum zu Hause**, einem Ordner mit `package.json` oder einem anderen Manifest. Bis 0.46.0 standen sie als Namen in der Liste und hielten jeden solchen Ordner zu Hause, etwa einen Skill build.
+- **`arasul.mjs sync --plan`** zeigt je Ordner, was ein Abgleich hoch und runter bewegte, mit Anzahl und Größe, die Konflikte, was auf einer Seite gelöscht wurde und was zu Hause bleibt, und schreibt nichts. Es listet den Raum über den Dateidienst und vergleicht mit dem Stand des letzten Abgleichs, den `sync` jetzt je Ordner neben dem Ausweis hält.
+- **Der Plan vergleicht mit beiden Seiten des letzten Abgleichs und mit zusammengesetzten Namen**: eine leere Datei trägt am Gerät die Zeit ihres Hochladens, und der Klient schreibt einen Umlaut am Mac zerlegt. Beides gemessen am 27.09.2026.
+- **Was der Klient hier löscht, landet zuerst in einem Papierkorb** neben dem Ausweis, als harter Link, und `sync` sagt, wo.
+- **`sync` und `deploy` halten vor dem Klienten an, wenn eine Datei, die die Wurzel ausmacht, auf beiden Seiten verschieden ist** (`.gitignore`, `.claude/CLAUDE.md`, `root.json`, `places.json`, `arasul.mjs`) und der Mensch die Wurzel schreibt. Gemessen an einem Gerät am 26.09.2026: der Klient legte die `.gitignore` des Geräts an den Namen, und der nächste Abgleich nahm vier Produktklone hoch. `--keep-mine` legt die Fassung des Geräts am Gerät zur Seite und gleicht die des Hauses ab.
+
 ## 0.46.0 (2026-09-26)
 
 Kontrakt: bis 6

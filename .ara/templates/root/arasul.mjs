@@ -14,6 +14,7 @@
  *   node arasul.mjs login --withdraw                   take back what approving entered
  *   node arasul.mjs status                             device, credential, company folder, proposals
  *   node arasul.mjs sync                               sync the company folder, write apps/<id>/APP.md
+ *   node arasul.mjs sync --plan                        what a sync would move up and down, writing nothing
  *   node arasul.mjs apps                               the assigned apps with their routes, writes APP.md
  *   node arasul.mjs call <app> <route> [name=value ...] [--write] [--method <verb>]
  *
@@ -33,6 +34,12 @@
  * the client writes itself stays out. `sync` also writes sicht.md, the view of this person: from
  * the device as soon as it delivers one, until then out of what the device says about folders and
  * apps. The state of the last sync lies next to the credential, in firmenordner.json.
+ *
+ * What never goes along: what a machine makes, what belongs to this computer, `.env` and `.env.*`
+ * at every depth, and what the .gitignore at the top of this root leaves out. `sync --plan` shows
+ * beforehand, per folder, how many files of what size would go up and down, which ones conflict
+ * and what stays home, and writes nothing. What the client deletes here because it was deleted on
+ * the device is kept in a trash next to the credential, and the output says where.
  *
  * `deploy` puts this root onto the device: the check script runs first and a finding stops it,
  * then the tree goes into the room of the root through the same client, and a download into a
@@ -66,6 +73,7 @@
  *   node arasul.mjs login --withdraw                   zurücknehmen, was das Freigeben eintrug
  *   node arasul.mjs status                             Gerät, Ausweis, Firmenordner, Vorschläge
  *   node arasul.mjs sync                               den Firmenordner abgleichen, apps/<id>/APP.md schreiben
+ *   node arasul.mjs sync --plan                        was ein Abgleich hoch und runter bewegte, ohne zu schreiben
  *   node arasul.mjs apps                               die zugewiesenen Apps mit ihren Routen, schreibt APP.md
  *   node arasul.mjs call <app> <route> [name=wert ...] [--write] [--method <verb>]
  *
@@ -86,6 +94,12 @@
  * die Sicht dieses Menschen: vom Gerät, sobald es eine liefert, bis dahin aus dem, was das Gerät
  * über Ordner und Apps sagt. Der Stand des letzten Abgleichs liegt neben dem Ausweis, in
  * firmenordner.json.
+ *
+ * Was nie mitgeht: was eine Maschine macht, was zu diesem Rechner gehört, `.env` und `.env.*` in
+ * jeder Tiefe, und was die .gitignore oben in dieser Wurzel auslässt. `sync --plan` zeigt vorher je
+ * Ordner, wie viele Dateien welcher Größe hoch und runter gingen, welche in Konflikt stehen und was
+ * zu Hause bleibt, und schreibt nichts. Was der Klient hier löscht, weil es am Gerät gelöscht
+ * wurde, bleibt in einem Papierkorb neben dem Ausweis, und die Ausgabe sagt, wo.
  *
  * `deploy` legt diese Wurzel aufs Gerät: zuerst läuft das Prüfskript, und ein Befund hält an,
  * dann geht der Baum über denselben Klienten in den Raum der Wurzel, und ein Herunterladen in
@@ -111,6 +125,7 @@ import {
   chmodSync,
   copyFileSync,
   existsSync,
+  linkSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -310,7 +325,7 @@ const stop = (message, code = 1) => {
 };
 
 const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name"];
-const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help"];
+const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine"];
 
 function parseArgs(argv) {
   const out = { _: [], flags: {} };
@@ -433,15 +448,20 @@ const TLS_CODES = new Set([
   "CERT_HAS_EXPIRED",
 ]);
 
-function send({ address, ca }, { method = "GET", path, token, json, timeout = 30_000 }) {
+function send({ address, ca }, { method = "GET", path, token, basic, json, body, headers: more = {}, timeout = 30_000, limit = MAX_ANSWER }) {
   const url = new URL(path, address.endsWith("/") ? address : `${address}/`);
   const secure = url.protocol === "https:";
-  const headers = { Accept: "application/json" };
+  const headers = { Accept: "application/json", ...more };
   if (token) headers.Authorization = `Bearer ${token}`;
+  // Name and password, for the file service only: it takes them, the device's own routes do not.
+  if (basic) headers.Authorization = `Basic ${Buffer.from(`${basic.user}:${basic.password}`).toString("base64")}`;
   let payload = null;
   if (json !== undefined) {
     payload = Buffer.from(JSON.stringify(json));
     headers["Content-Type"] = "application/json";
+    headers["Content-Length"] = payload.length;
+  } else if (body !== undefined) {
+    payload = Buffer.from(body);
     headers["Content-Length"] = payload.length;
   }
   const options = { method, headers };
@@ -458,7 +478,7 @@ function send({ address, ca }, { method = "GET", path, token, json, timeout = 30
       let size = 0;
       res.on("data", (chunk) => {
         size += chunk.length;
-        if (size > MAX_ANSWER) req.destroy(Object.assign(new Error("answer too large"), { code: "ETOOBIG" }));
+        if (size > limit) req.destroy(Object.assign(new Error("answer too large"), { code: "ETOOBIG" }));
         else parts.push(chunk);
       });
       res.on("end", () => done({ status: res.statusCode, headers: res.headers, body: Buffer.concat(parts) }));
@@ -1130,6 +1150,14 @@ const CLIENT_PLACES = Object.freeze([
   join(homedir(), "Applications", "OpenCloud.app", "Contents", "MacOS", "opencloudcmd"),
 ]);
 
+/**
+ * Where a file goes that the client deleted here because it was deleted on the device: into a
+ * folder next to the credential, and only when this computer cannot link there, into this one,
+ * which is never synced.
+ */
+const TRASH = join(CONFIG_DIR, "papierkorb");
+const TRASH_IN_ROOT = ".arasul-papierkorb";
+
 /** What the state of the last sync is written to. No secret lies in it. */
 const FOLDER_STATE = join(CONFIG_DIR, "firmenordner.json");
 
@@ -1141,12 +1169,17 @@ const ROOT_OWN = Object.freeze(["apps", "scripts", ".claude", ".git"]);
 /**
  * What never goes into the company folder.
  *
- * Three kinds, and each one for its own reason. **What a machine makes**: `.git`, `node_modules`
- * and the build folders are made again out of what is there, and they are the bulk of every
- * tree. **What belongs to this computer**: the hooks and the settings of an agent say what it
- * may do here, and that is a decision per computer, not per house. Both patterns hold at every
- * depth of the tree, not only at its top. **What the client itself writes**: its journal lies in
- * the synced folder, and without this line it reports conflicts about itself.
+ * Four kinds, and each one for its own reason. **What a machine makes**: `.git`, `node_modules`,
+ * `.next`, a Python environment and its caches are made again out of what is there, and they are
+ * the bulk of every tree. `build` and `dist` are not on this list: as names they would keep a
+ * house's own folder of that name home at every depth, a skill called build for instance. They
+ * are what a machine makes only in a source tree, and `builtFolders` names them there. **What belongs to this computer**: the hooks and the settings
+ * of an agent say what it may do here, and that is a decision per computer, not per house.
+ * **What holds a secret**: `.env` and every `.env.*`, at every depth, because a prototype deep in
+ * an experiment keeps its keys there just like the top does, and what goes into the company folder
+ * goes to everybody who reads it. All of these hold at every depth of the tree, not only at its
+ * top. **What the client itself writes**: its journal lies in the synced folder, and without this
+ * line it reports conflicts about itself.
  *
  * The list goes to the client as a file, in its own format: one pattern per line. Measured
  * against the client on 2026-09-22 with a folder that carried every one of these: what stands
@@ -1157,9 +1190,11 @@ const ROOT_OWN = Object.freeze(["apps", "scripts", ".claude", ".git"]);
 const NEVER_SYNCED = Object.freeze([
   ".git",
   "node_modules",
-  "dist",
-  "build",
   ".next",
+  ".venv",
+  "__pycache__",
+  ".env",
+  ".env.*",
   ".claude/hooks",
   "*/.claude/hooks",
   "settings.json",
@@ -1167,6 +1202,7 @@ const NEVER_SYNCED = Object.freeze([
   ".sync_*.db-*",
   ".sync_*.db.ctmp",
   ".DS_Store",
+  TRASH_IN_ROOT,
 ]);
 
 /**
@@ -1186,7 +1222,7 @@ function rootExcludes(plan) {
 }
 
 /** Folders the walk does not go into: they are not synced, so nothing of ours lies in them. */
-const NOT_WALKED = new Set([".git", "node_modules", "dist", "build", ".next"]);
+const NOT_WALKED = new Set([".git", "node_modules", ".next", ".venv", "__pycache__", TRASH_IN_ROOT]);
 
 /**
  * The mark the client puts in the name of a file it could not merge. Two spellings: the one of the
@@ -1194,6 +1230,660 @@ const NOT_WALKED = new Set([".git", "node_modules", "dist", "build", ".next"]);
  * with a file that differed on both sides: `name (conflicted copy 2026-09-22 201200).ext`.
  */
 const CONFLICT_MARK = /_conflict-| \(conflicted copy /;
+
+// --- What stays home, and what a sync would do ------------------------------------------------
+
+/**
+ * The rules of the .gitignore at the top of this root, read the way git reads them.
+ *
+ * What the house keeps out of its version control it keeps out of the company folder too: the
+ * clones of its products, what runs, its secrets. Only the file at the top counts. A .gitignore
+ * deeper down often keeps big media out of git that the house still shares with its people, and
+ * the one at the top is the one the house wrote for the whole tree.
+ */
+function gitignoreRules() {
+  const file = join(ROOT, ".gitignore");
+  return existsSync(file) ? parseGitignore(readFileSync(file, "utf8")) : [];
+}
+
+/** The rules of a .gitignore out of its text. The kit's `root.mjs --adopt` reads with this one too. */
+export function parseGitignore(text) {
+  const rules = [];
+  for (const raw of String(text).split(/\r?\n/)) {
+    let line = raw.replace(/(?<!\\)\s+$/, "");
+    if (!line || line.startsWith("#")) continue;
+    const negate = line.startsWith("!");
+    if (negate) line = line.slice(1);
+    line = line.replace(/^\\([#!])/, "$1");
+    const dirOnly = line.endsWith("/");
+    line = line.replace(/\/+$/, "");
+    if (!line) continue;
+    const anchored = line.includes("/");
+    const body = line.replace(/^\//, "");
+    rules.push({ negate, dirOnly, anchored, body, regex: new RegExp(`${anchored ? "^" : "(?:^|/)"}${globSource(body)}$`) });
+  }
+  return rules;
+}
+
+/** A pattern of git as the source of a regular expression: `*` stays in its folder, `**` does not. */
+function globSource(glob) {
+  let out = "";
+  for (let i = 0; i < glob.length; i += 1) {
+    const c = glob[i];
+    if (c === "*" && glob[i + 1] === "*") {
+      if (glob[i + 2] === "/") {
+        out += "(?:.*/)?";
+        i += 2;
+      } else {
+        out += ".*";
+        i += 1;
+      }
+    } else if (c === "*") out += "[^/]*";
+    else if (c === "?") out += "[^/]";
+    else if (c === "[" && glob.indexOf("]", i + 2) > i) {
+      const end = glob.indexOf("]", i + 2);
+      out += glob.slice(i, end + 1).replace(/^\[!/, "[^");
+      i = end;
+    } else if (c === "\\" && i + 1 < glob.length) {
+      i += 1;
+      out += glob[i].replace(/[.+^${}()|[\]\\*?]/g, "\\$&");
+    } else out += c.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+  }
+  return out;
+}
+
+/** Does the .gitignore leave this path out? The last rule that matches decides, as in git. */
+export function ignoredBy(rules, path, isDir) {
+  let hit = null;
+  for (const rule of rules) {
+    if (rule.dirOnly && !isDir) continue;
+    if (rule.regex.test(path)) hit = rule.negate ? null : rule;
+  }
+  return hit;
+}
+
+/**
+ * One rule of git as one line of the client's list, where the client reads it the same way.
+ *
+ * A name without a slash stands for that name at every depth, for git and for the client alike.
+ * A path with a slash inside is matched from the top by both. A name anchored at the top with a
+ * leading slash is not: the client anchors no name (measured on 2026-09-22), so such a rule is
+ * answered with the paths it hits in this tree. `undefined` means: answer it that way, an empty
+ * string: it has nothing to do with this folder.
+ */
+function clientLine(rule, prefix) {
+  if (rule.negate || rule.body.includes("**")) return undefined;
+  if (!rule.anchored) return rule.body;
+  if (!rule.body.includes("/")) return undefined;
+  if (!prefix) return rule.body;
+  if (rule.body.startsWith(`${prefix}/`)) return rule.body.slice(prefix.length + 1);
+  return /[*?[]/.test(rule.body) ? undefined : "";
+}
+
+/** The entries of a folder, or none when it cannot be read. */
+function entriesOf(dir) {
+  try {
+    return readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
+const slashed = (path) => path.split("\\").join("/");
+
+/**
+ * What the .gitignore of this root adds to the client's list for one folder of this tree.
+ *
+ * Rules the client reads the same way go in as they are. The others go in as the paths they hit
+ * right now: a line per folder or file, found by walking the tree. With a `!` in the file every
+ * rule goes that way, because a line of the client cannot take back what another one kept out.
+ */
+function houseIgnores(local, base = []) {
+  const rules = gitignoreRules();
+  if (!rules.length) return { lines: [], pinned: new Set() };
+  const prefix = slashed(relative(ROOT, local));
+  const negations = rules.some((rule) => rule.negate);
+  const lines = new Set();
+  const pinned = new Set();
+  const rest = [];
+  for (const rule of rules) {
+    const line = negations ? undefined : clientLine(rule, prefix);
+    if (line === undefined) rest.push(rule);
+    else if (line) lines.add(line);
+  }
+  if (rest.length) {
+    const tests = [...base, ...lines].map(excludeTest);
+    const walk = (at, deep) => {
+      if (deep > 40) return;
+      for (const entry of entriesOf(at)) {
+        const path = join(at, entry.name);
+        const mine = slashed(relative(local, path));
+        if (entry.isSymbolicLink() || tests.some((test) => test(mine))) continue;
+        const dir = entry.isDirectory();
+        if (ignoredBy(negations ? rules : rest, slashed(relative(ROOT, path)), dir)) {
+          lines.add(mine);
+          if (!mine.includes("/")) pinned.add(mine);
+          continue;
+        }
+        if (dir) walk(path, deep + 1);
+      }
+    };
+    walk(local, 0);
+  }
+  return { lines: [...lines], pinned };
+}
+
+/** What marks a source tree: the same manifests as check 17 of the root's check script. */
+const MANIFESTS = Object.freeze(["package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "composer.json", "Gemfile"]);
+const BUILT = Object.freeze(["build", "dist"]);
+
+/**
+ * The build folders of the source trees in this folder, as paths for the client's list.
+ *
+ * `build` and `dist` are made by a machine only where a manifest lies next to them. Elsewhere they
+ * are the house's: a skill called build, a folder of drafts called dist. So they go into the list
+ * as the paths they have in the tree right now, not as names. Only when a synced folder is itself
+ * a source tree does its own `build` go as a bare name, and then it holds at every depth of that
+ * folder: the client anchors no name at the top. `sync --plan` shows what that keeps home.
+ */
+function builtFolders(local, base = []) {
+  const tests = base.map(excludeTest);
+  const out = [];
+  const walk = (at, deep) => {
+    if (deep > 40) return;
+    const entries = entriesOf(at);
+    const source = entries.some((entry) => entry.isFile() && (MANIFESTS.includes(entry.name) || /\.(csproj|sln)$/.test(entry.name)));
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+      const path = join(at, entry.name);
+      const rel = slashed(relative(local, path));
+      if (tests.some((test) => test(rel))) continue;
+      if (source && BUILT.includes(entry.name)) {
+        out.push(rel);
+        continue;
+      }
+      walk(path, deep + 1);
+    }
+  };
+  walk(local, 0);
+  return out;
+}
+
+/** The list for one folder: what never goes, what the root keeps to itself, what the house ignores, what was built. */
+function excludesFor(plan, folder, local) {
+  const base = folder.root ? rootExcludes(plan) : [...NEVER_SYNCED];
+  const house = houseIgnores(local, base);
+  const built = builtFolders(local, [...base, ...house.lines]);
+  const list = [...new Set([...base, ...house.lines, ...built])];
+  // A name that stands for one entry at the top, and that the client reads at every depth. What it
+  // keeps home further down, the plan names: the .gitignore did not mean it.
+  list.pinned = new Set([...house.pinned, ...built.filter((path) => !path.includes("/"))].filter((name) => !base.includes(name)));
+  return list;
+}
+
+/** How much lies below a path: files and bytes, without following a link. */
+function weigh(path) {
+  let count = 0;
+  let bytes = 0;
+  const walk = (at, deep) => {
+    let info;
+    try {
+      info = lstatSync(at);
+    } catch {
+      return;
+    }
+    if (info.isSymbolicLink()) return;
+    if (!info.isDirectory()) {
+      count += 1;
+      bytes += info.size;
+      return;
+    }
+    if (deep > 60) return;
+    for (const entry of entriesOf(at)) walk(join(at, entry.name), deep + 1);
+  };
+  walk(path, 0);
+  return { count, bytes };
+}
+
+/**
+ * What lies below a folder as the client sees it through its list: the files it syncs, with size
+ * and time to the second, and what stays home, weighed per line of the list that keeps it.
+ */
+function localTree(dir, excludes, { weighHome = true } = {}) {
+  const tests = excludes.map((pattern) => [pattern, excludeTest(pattern)]);
+  const files = new Map();
+  const home = new Map();
+  const over = [];
+  const walk = (at, deep) => {
+    if (deep > 40) return;
+    for (const entry of entriesOf(at)) {
+      const path = join(at, entry.name);
+      const rel = slashed(relative(dir, path));
+      if (entry.isSymbolicLink()) continue;
+      const hit = tests.find(([, test]) => test(rel));
+      if (hit && excludes.pinned?.has(hit[0]) && rel !== hit[0]) over.push(rel);
+      if (hit) {
+        if (weighHome) {
+          const size = weigh(path);
+          const had = home.get(hit[0]) || { count: 0, bytes: 0 };
+          home.set(hit[0], { count: had.count + size.count, bytes: had.bytes + size.bytes });
+        }
+        continue;
+      }
+      if (entry.isDirectory()) walk(path, deep + 1);
+      else if (entry.isFile()) {
+        try {
+          const info = statSync(path);
+          // The client writes names decomposed (NFD) on this computer, the service answers them
+          // composed (NFC): measured on 2026-09-27 with an umlaut. One key for both, the real name kept.
+          files.set(rel.normalize("NFC"), { size: info.size, mtime: Math.floor(info.mtimeMs / 1000), path: rel });
+        } catch {
+          // Gone between reading the folder and looking at the file: it is not there.
+        }
+      }
+    }
+  };
+  walk(dir, 0);
+  return { files, home, over };
+}
+
+/**
+ * The spaces of the file service this person sees.
+ *
+ * Name and password go to the service as the client sends them, because the service takes nothing
+ * else from a program (the device switches basic authentication on for exactly that, as of
+ * 2026-09-22). The certificate is the one pinned for the device: the service lies on the device.
+ */
+async function spacesOf(plan, device, password) {
+  const target = { address: plan.address, ca: device.entry.ca };
+  const basic = { user: plan.user, password };
+  const answer = await ask(target, { path: "graph/v1.0/me/drives", basic, timeout: 60_000 });
+  if (answer.status === 401 || answer.status === 403) {
+    stop(t(
+      `The file service does not take the password of ${plan.user} (${answer.status}). Nothing was written.`,
+      `Der Dateidienst nimmt das Passwort von ${plan.user} nicht an (${answer.status}). Nichts wurde geschrieben.`
+    ));
+  }
+  if (answer.status < 200 || answer.status >= 300) {
+    stop(t(`The file service answers the list of its spaces with status ${answer.status}.`, `Der Dateidienst antwortet auf die Liste seiner Räume mit Status ${answer.status}.`));
+  }
+  const list = jsonOf(answer)?.value;
+  if (!Array.isArray(list)) stop(t("The file service answers the list of its spaces with something this file cannot read.", "Der Dateidienst antwortet auf die Liste seiner Räume mit etwas, das diese Datei nicht lesen kann."));
+  return {
+    target,
+    basic,
+    spaces: list.map((drive) => ({ id: String(drive?.id ?? ""), name: String(drive?.name ?? ""), type: String(drive?.driveType ?? ""), dav: String(drive?.root?.webDavUrl ?? "") })),
+  };
+}
+
+/** Where a folder of the device lies in the file service, as a path for WebDAV, or null. */
+function davOf(service, folder) {
+  const byName = (name) => service.spaces.find((space) => space.dav && (space.name === name || space.id === name));
+  if (folder.root || folder.level === 1) {
+    const space = byName(folder.id);
+    return space ? new URL(space.dav).pathname.replace(/\/+$/, "") : null;
+  }
+  const shares = byName(SERVICE.shared) || service.spaces.find((space) => space.dav && space.type === "virtual");
+  return shares ? `${new URL(shares.dav).pathname.replace(/\/+$/, "")}/${encodeURIComponent(folder.id)}` : null;
+}
+
+const PROPFIND = '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:resourcetype/><d:getcontentlength/><d:getlastmodified/></d:prop></d:propfind>';
+
+/** The answers of one PROPFIND: path, folder or file, size, time. Read by pattern, the prefix of the namespace varies. */
+function multistatus(xml) {
+  const items = [];
+  for (const block of xml.split(/<(?:[\w-]+:)?response[\s>]/).slice(1)) {
+    const href = block.match(/<(?:[\w-]+:)?href>([^<]*)</)?.[1];
+    if (!href) continue;
+    const size = Number(block.match(/<(?:[\w-]+:)?getcontentlength>(\d+)</)?.[1] || 0);
+    const modified = Date.parse(block.match(/<(?:[\w-]+:)?getlastmodified>([^<]*)</)?.[1] || "");
+    const dir = /<(?:[\w-]+:)?collection\s*\/?>/.test(block);
+    const decoded = href.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+    items.push({ path: decodeURIComponent(decoded.replace(/^https?:\/\/[^/]+/, "")), dir, size, mtime: Number.isFinite(modified) ? Math.floor(modified / 1000) : 0 });
+  }
+  return items;
+}
+
+/**
+ * What lies in one room of the file service, through the same list as here: one folder deep per
+ * request, eight at a time, because a PROPFIND over the whole tree is switched off by default.
+ */
+async function remoteTree(service, dav, excludes) {
+  const tests = excludes.map((pattern) => [pattern, excludeTest(pattern)]);
+  const files = new Map();
+  const home = new Map();
+  const prefix = decodeURIComponent(dav);
+  const queue = [""];
+  let missing = false;
+  while (queue.length) {
+    const batch = queue.splice(0, 8);
+    await Promise.all(batch.map(async (sub) => {
+      const path = `${dav}/${sub ? `${sub.split("/").map(encodeURIComponent).join("/")}/` : ""}`;
+      const answer = await ask(service.target, {
+        method: "PROPFIND",
+        path,
+        basic: service.basic,
+        body: PROPFIND,
+        headers: { Depth: "1", "Content-Type": "application/xml; charset=utf-8", Accept: "application/xml" },
+        timeout: 120_000,
+        limit: 256 * 1024 * 1024,
+      });
+      if (answer.status === 404 && !sub) {
+        missing = true;
+        return;
+      }
+      if (answer.status !== 207) {
+        stop(t(`The file service answers PROPFIND on ${sub || "/"} with status ${answer.status}. Nothing was written.`, `Der Dateidienst antwortet auf PROPFIND für ${sub || "/"} mit Status ${answer.status}. Nichts wurde geschrieben.`));
+      }
+      for (const item of multistatus(answer.body.toString("utf8"))) {
+        if (!item.path.startsWith(prefix)) continue;
+        const rel = item.path.slice(prefix.length).replace(/^\/+|\/+$/g, "");
+        if (!rel || rel === sub) continue;
+        const hit = tests.find(([, test]) => test(rel));
+        if (hit) {
+          const had = home.get(hit[0]) || { count: 0, bytes: 0 };
+          home.set(hit[0], { count: had.count + (item.dir ? 0 : 1), bytes: had.bytes + (item.dir ? 0 : item.size) });
+          continue;
+        }
+        if (item.dir) queue.push(rel);
+        else files.set(rel.normalize("NFC"), { size: item.size, mtime: item.mtime });
+      }
+    }));
+  }
+  return { files, home, missing };
+}
+
+// The state of the last sync per folder, file by file: size and time here and there. The client
+// sets the time of a file it moves to the time on the other side, but not always: an empty file
+// carries the time of its upload on the device (measured on 2026-09-27). So both sides are kept,
+// and each is compared with its own. With it a plan tells a file that is new on one side from one
+// that was deleted on the other.
+const BASES = join(CONFIG_DIR, "firmenordner-stand");
+const baseFile = (local) => join(BASES, `${createHash("sha256").update(local).digest("hex").slice(0, 16)}.json`);
+
+function readBase(local) {
+  const data = readJson(baseFile(local), null);
+  if (!data || data.local !== local || typeof data.files !== "object") return null;
+  // remote: the state there, false when the room was listed and the file was not in it, null when unknown.
+  const absent = data.listed ? false : null;
+  return new Map(Object.entries(data.files).map(([path, [size, mtime, rsize, rmtime]]) => [path, { size, mtime, remote: rsize === undefined ? absent : { size: rsize, mtime: rmtime } }]));
+}
+
+/** The state after a sync: what lies here, and when the room was listed afterwards, what lies there. */
+function writeBase(local, files, remote = null) {
+  mkdirSync(BASES, { recursive: true, mode: 0o700 });
+  const temporary = join(BASES, `.stand-${process.pid}.tmp`);
+  const entry = (path, file) => {
+    const there = remote?.get(path);
+    return there ? [file.size, file.mtime, there.size, there.mtime] : [file.size, file.mtime];
+  };
+  const data = { local, at: new Date().toISOString(), listed: Boolean(remote), files: Object.fromEntries([...files].map(([path, file]) => [path, entry(path, file)])) };
+  writeFileSync(temporary, `${JSON.stringify(data)}\n`, { mode: 0o600 });
+  renameSync(temporary, baseFile(local));
+}
+
+/** Two states of a file are the same when size and time to the second agree. */
+const alike = (a, b) => a.size === b.size && Math.abs(a.mtime - b.mtime) <= 1;
+
+/**
+ * What a sync would do with each file, out of here, there and the state of the last sync.
+ *
+ * Without a state nothing is deleted: what lies on one side only goes to the other, and what lies
+ * on both and differs is a conflict, the client keeps both. With a state, a file missing on one
+ * side and unchanged on the other was deleted there, and goes on the other side too.
+ */
+function comparePlan(local, remote, base) {
+  const out = { up: [], down: [], conflict: [], deleteThere: [], deleteHere: [], same: 0 };
+  const paths = new Set([...local.keys(), ...remote.keys(), ...(base ? base.keys() : [])]);
+  for (const path of [...paths].sort()) {
+    // A conflicted copy stays where it came about, the client takes it nowhere; sync names it.
+    if (CONFLICT_MARK.test(path.split("/").pop())) continue;
+    const here = local.get(path);
+    const there = remote.get(path);
+    const was = base?.get(path);
+    if (!here && !there) continue;
+    if (!was) {
+      if (here && there) {
+        if (alike(here, there)) out.same += 1;
+        else out.conflict.push({ path, size: here.size });
+      } else if (here) out.up.push({ path, size: here.size });
+      else out.down.push({ path, size: there.size });
+      continue;
+    }
+    const changedHere = here && !alike(here, was);
+    const changedThere = there && !alike(there, was.remote ? was.remote : was);
+    if (here && there) {
+      if (changedHere && changedThere && !alike(here, there)) out.conflict.push({ path, size: here.size });
+      else if (changedHere && !changedThere) out.up.push({ path, size: here.size });
+      else if (changedThere && !changedHere) out.down.push({ path, size: there.size });
+      else out.same += 1;
+    } else if (here) {
+      // It was not there at the last sync either: it goes up, it was not deleted there.
+      if (changedHere || was.remote === false) out.up.push({ path, size: here.size });
+      else out.deleteHere.push({ path, size: here.size });
+    } else if (changedThere) out.down.push({ path, size: there.size });
+    else out.deleteThere.push({ path, size: there.size });
+  }
+  return out;
+}
+
+/** A size for a human, in the language of the root. */
+function sized(bytes) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit += 1;
+  }
+  const text = unit === 0 ? String(value) : value.toFixed(value < 10 ? 1 : 0);
+  return `${german ? text.replace(".", ",") : text} ${units[unit]}`;
+}
+
+const total = (list) => list.reduce((sum, item) => sum + item.size, 0);
+const fileCount = (count) => (count === 1 ? t("1 file", "1 Datei") : t(`${count} files`, `${count} Dateien`));
+const some = (list, max = 5) => `${list.slice(0, max).map((item) => item.path).join(", ")}${list.length > max ? ", ..." : ""}`;
+
+/** What stays home, heaviest first, in one line per pattern. */
+function sayHome(label, home) {
+  const rows = [...home].filter(([, size]) => size.count > 0).sort((a, b) => b[1].bytes - a[1].bytes);
+  if (!rows.length) return;
+  say(`    ${label}:`);
+  for (const [pattern, size] of rows.slice(0, 20)) say(`      ${pattern.padEnd(28)} ${fileCount(size.count)}, ${sized(size.bytes)}`);
+  if (rows.length > 20) say(`      ${t(`and ${rows.length - 20} more lines of the list`, `und ${rows.length - 20} weitere Zeilen der Liste`)}`);
+}
+
+/**
+ * `sync --plan`: what a sync would move, and nothing more.
+ *
+ * It asks the device for the folders, the file service for what lies in them, and looks at this
+ * tree through the same list the client gets. It writes nothing: no file here, no APP.md, no view,
+ * no state of a sync, and it does not start the client. The password is asked for, because the
+ * file service shows its rooms to no one else.
+ */
+async function doPlan(args) {
+  const device = chooseDevice(args);
+  const plan = await askFolders(device);
+  const head = t("Company folder", "Firmenordner");
+  if (!plan.service) {
+    say(`${head}: ${plan.reason}`);
+    return false;
+  }
+  say(`${head}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}. ${t("Plan only, nothing is written.", "Nur der Plan, nichts wird geschrieben.")}`);
+  for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
+  if (!plan.folders.length) {
+    say(`  ${t("No folder is shared with you. A sync would move nothing.", "Dir ist kein Ordner freigegeben. Ein Abgleich bewegte nichts.")}`);
+    return !plan.refused.length;
+  }
+  if (!plan.address) stop(t("The device names no address of the file service.", "Das Gerät nennt keine Adresse des Dateidienstes."));
+  if (!plan.user) stop(t("The device names no user for the file service.", "Das Gerät nennt keinen Benutzer für den Dateidienst."));
+  const password = await askPassword(args, plan, device);
+  const service = await spacesOf(plan, device, password);
+  const rank = (folder) => (folder.root ? 0 : folder.level);
+  const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
+  const sums = { up: [], down: [], conflict: [], deleteThere: [], deleteHere: [] };
+  for (const folder of order) {
+    const local = placeOf(folder);
+    const excludes = excludesFor(plan, folder, local);
+    const here = existsSync(local) ? localTree(local, excludes) : { files: new Map(), home: new Map() };
+    const dav = davOf(service, folder);
+    const there = dav ? await remoteTree(service, dav, excludes) : { files: new Map(), home: new Map(), missing: true };
+    const base = readBase(local);
+    const result = comparePlan(here.files, there.files, base);
+    for (const key of Object.keys(sums)) sums[key].push(...result[key]);
+    say();
+    say(`  ${labelOf(folder)}   ${t("level", "Ebene")} ${folder.level}${folder.right ? `, ${folder.right}` : ""}`);
+    if (there.missing) say(`    ${t("The file service shows no room for it to you yet: everything here would go up.", "Der Dateidienst zeigt dir dafür noch keinen Raum: alles hier ginge hoch.")}`);
+    say(`    ${base ? t(`Compared with the last sync (${base.size} files).`, `Verglichen mit dem letzten Abgleich (${base.size} Dateien).`) : t("Never synced from here: what lies on one side only goes to the other, nothing is deleted.", "Von hier noch nie abgeglichen: was nur auf einer Seite liegt, geht auf die andere, gelöscht wird nichts.")}`);
+    say(`    ${t("Up", "Hoch")}:                ${fileCount(result.up.length)}, ${sized(total(result.up))}${result.up.length ? `: ${some(result.up, 3)}` : ""}`);
+    say(`    ${t("Down", "Runter")}:              ${fileCount(result.down.length)}, ${sized(total(result.down))}${result.down.length ? `: ${some(result.down, 3)}` : ""}`);
+    say(`    ${t("Unchanged", "Unverändert")}:         ${fileCount(result.same)}`);
+    if (result.conflict.length) {
+      say(`    ${t("Conflicts", "Konflikte")}:         ${fileCount(result.conflict.length)}, ${t("different on both sides, the client keeps both", "auf beiden Seiten anders, der Klient behält beide")}: ${some(result.conflict)}`);
+      const rules = folder.root ? result.conflict.map((item) => item.path).filter((path) => RULE_FILES.includes(path)) : [];
+      if (rules.length) say(`    ${t(`sync stops here: ${rules.join(", ")} make this root, keep one version on both sides first.`, `sync hält hier an: ${rules.join(", ")} machen diese Wurzel aus, behalte zuerst eine Fassung auf beiden Seiten.`)}`);
+    }
+    if (result.deleteHere.length) say(`    ${t("Deleted on the device", "Am Gerät gelöscht")}: ${fileCount(result.deleteHere.length)}, ${sized(total(result.deleteHere))}, ${t("would go here too, into the trash first", "ginge hier auch, zuerst in den Papierkorb")}: ${some(result.deleteHere)}`);
+    if (result.deleteThere.length) say(`    ${t("Deleted here", "Hier gelöscht")}:     ${fileCount(result.deleteThere.length)}, ${sized(total(result.deleteThere))}, ${t("would go on the device too", "ginge am Gerät auch")}: ${some(result.deleteThere)}`);
+    sayHome(t("Stays home", "Bleibt zu Hause"), here.home);
+    if (here.over?.length) {
+      say(`    ${t(
+        `Stays home as well, though the .gitignore means only the one at the top: the client keeps a name out at every depth: ${here.over.slice(0, 5).join(", ")}${here.over.length > 5 ? ", ..." : ""}`,
+        `Bleibt auch zu Hause, obwohl die .gitignore nur den oben meint: der Klient hält einen Namen in jeder Tiefe draußen: ${here.over.slice(0, 5).join(", ")}${here.over.length > 5 ? ", ..." : ""}`
+      )}`);
+    }
+    sayHome(t("Stays on the device, does not come down", "Bleibt am Gerät, kommt nicht herunter"), there.home);
+  }
+  say();
+  say(t(
+    `In total: up ${fileCount(sums.up.length)}, ${sized(total(sums.up))}; down ${fileCount(sums.down.length)}, ${sized(total(sums.down))}; ${sums.conflict.length} conflicts; deleted on the device ${sums.deleteHere.length}, deleted here ${sums.deleteThere.length}.`,
+    `Insgesamt: hoch ${fileCount(sums.up.length)}, ${sized(total(sums.up))}; runter ${fileCount(sums.down.length)}, ${sized(total(sums.down))}; ${sums.conflict.length} Konflikte; am Gerät gelöscht ${sums.deleteHere.length}, hier gelöscht ${sums.deleteThere.length}.`
+  ));
+  return true;
+}
+
+/**
+ * The files that make this folder a root. Where one of them differs on both sides, the client puts
+ * the device's version at its name and the house's next to it as a conflicted copy. Measured on
+ * 2026-09-26 at a device whose root carried another house's scaffold: after the first sync the
+ * house's `.gitignore` was a conflicted copy, the device's one decided, and the second sync took
+ * the clones of four products up that the house's own had kept home. So a sync stops before the
+ * client runs when one of these conflicts, and names them.
+ */
+const RULE_FILES = Object.freeze([".gitignore", ".claude/CLAUDE.md", ".claude/root.json", ".claude/places.json", "arasul.mjs"]);
+
+/**
+ * The files of the root that differ on both sides, looked at before the client runs. An empty
+ * list means: go. The room is listed through the same list the client gets, and the comparison
+ * is the one of the plan.
+ */
+async function ruleConflicts(service, folder, local, excludes) {
+  // Who only reads the root gets the device's version, and that is right: the rules are the house's.
+  if (!folder.root || folder.right !== "schreiben") return [];
+  const dav = davOf(service, folder);
+  if (!dav) return [];
+  const there = await remoteTree(service, dav, excludes);
+  const here = localTree(local, excludes, { weighHome: false });
+  return comparePlan(here.files, there.files, readBase(local)).conflict.map((item) => item.path).filter((path) => RULE_FILES.includes(path));
+}
+
+/** Why a sync or a deploy stopped at the rules of the root, in one sentence with the way out. */
+function ruleStop(paths) {
+  return t(
+    `Not synced: ${paths.join(", ")} differ here and on the device. The client would put the device's version at the name and this one next to it, and the rules of this root would change without anybody deciding it. Keep one version on both sides and sync again, or sync with --keep-mine: the device's version is moved aside on the device, stays there to be read, and this one takes its name.`,
+    `Nicht abgeglichen: ${paths.join(", ")} sind hier und am Gerät verschieden. Der Klient legte die Fassung des Geräts an den Namen und diese daneben, und die Regeln dieser Wurzel änderten sich, ohne dass jemand es entschieden hat. Behalte eine Fassung auf beiden Seiten und gleiche neu ab, oder gleiche mit --keep-mine ab: die Fassung des Geräts wird am Gerät zur Seite gelegt, bleibt dort lesbar, und diese nimmt ihren Namen.`
+  );
+}
+
+/**
+ * `--keep-mine`: the device's version of each file moves aside on the device, to
+ * `<name> (Gerät <date> <time>)<ending>` next to it, with a WebDAV MOVE that overwrites nothing.
+ * Then nothing conflicts, the client takes this version up, and the other one comes down as a file
+ * everybody sees. Nothing of either side is lost, and the rules that hold are the house's.
+ */
+async function moveAside(service, folder, paths) {
+  const dav = davOf(service, folder);
+  const now = new Date();
+  const two = (n) => String(n).padStart(2, "0");
+  const stamp = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())} ${two(now.getHours())}${two(now.getMinutes())}`;
+  const moved = [];
+  for (const path of paths) {
+    const cut = path.lastIndexOf(".") > path.lastIndexOf("/") + 1 ? path.lastIndexOf(".") : path.length;
+    const aside = `${path.slice(0, cut)} (${t("device", "Gerät")} ${stamp})${path.slice(cut)}`;
+    const encoded = (rel) => rel.split("/").map(encodeURIComponent).join("/");
+    const answer = await ask(service.target, {
+      method: "MOVE",
+      path: `${dav}/${encoded(path)}`,
+      basic: service.basic,
+      headers: { Destination: new URL(`${dav}/${encoded(aside)}`, service.target.address).href, Overwrite: "F" },
+    });
+    if (answer.status !== 201 && answer.status !== 204) {
+      stop(t(`The file service did not move ${path} aside (status ${answer.status}). Nothing more was changed.`, `Der Dateidienst hat ${path} nicht zur Seite gelegt (Status ${answer.status}). Sonst wurde nichts geändert.`));
+    }
+    moved.push(aside);
+  }
+  return moved;
+}
+
+/**
+ * Nothing the client deletes here is lost.
+ *
+ * The client deletes here what was deleted on the device, that is what a sync does. So that no
+ * file goes without a trace, every file it may touch gets a second name in the trash before it
+ * runs: a hard link, not a copy, so it costs no space. What still lies at its place afterwards
+ * loses that second name. What the client took away keeps it, and the output says where. Where
+ * this computer cannot link into the trash next to the credential, the trash lies in this root,
+ * in a folder that is never synced.
+ */
+function guardDeletions(local, excludes) {
+  const { files: present } = localTree(local, excludes, { weighHome: false });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const own = `${basename(ROOT)}-${createHash("sha256").update(ROOT).digest("hex").slice(0, 8)}`;
+  const within = slashed(relative(ROOT, local)) || ".";
+  let base = join(TRASH, own, stamp, within);
+  const linked = [];
+  for (const path of [...present.values()].map((file) => file.path)) {
+    const target = join(base, path);
+    try {
+      mkdirSync(dirname(target), { recursive: true });
+      linkSync(join(local, path), target);
+      linked.push(path);
+    } catch (error) {
+      if (error.code === "EXDEV" && !linked.length && base.startsWith(TRASH)) {
+        base = join(ROOT, TRASH_IN_ROOT, stamp, within);
+        try {
+          mkdirSync(dirname(join(base, path)), { recursive: true });
+          linkSync(join(local, path), join(base, path));
+          linked.push(path);
+        } catch {
+          // A file that cannot be linked is not guarded; the count at the end says how many were.
+        }
+      }
+    }
+  }
+  const prune = (dir) => {
+    for (const entry of entriesOf(dir)) if (entry.isDirectory()) prune(join(dir, entry.name));
+    try {
+      if (!readdirSync(dir).length) rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // Not empty, or gone already.
+    }
+  };
+  return {
+    guarded: linked.length,
+    of: present.size,
+    settle() {
+      const gone = [];
+      for (const path of linked) {
+        if (existsSync(join(local, path))) rmSync(join(base, path), { force: true });
+        else gone.push(path);
+      }
+      const top = base.slice(0, base.indexOf(stamp) + stamp.length);
+      prune(top);
+      return { gone, where: gone.length ? base : null };
+    },
+  };
+}
 
 /** The client of the vendor: named, or where it lies after unpacking, or on the path. */
 function clientPath(args) {
@@ -1294,7 +1984,9 @@ function writeFolderState(data) {
  * links it did not follow. Counted out of the tree and not out of the client's report, because
  * both can also come into being between two syncs.
  */
-function inspectFolder(dir, skipAtTop = new Set()) {
+function inspectFolder(dir, skipAtTop = new Set(), excludes = []) {
+  // What the list keeps home the client never looks at: a link in a clone of a place is not its.
+  const tests = excludes.map(excludeTest);
   const conflicts = [];
   const links = [];
   const walk = (at, deep) => {
@@ -1309,6 +2001,7 @@ function inspectFolder(dir, skipAtTop = new Set()) {
       // For the root: the rooms at its top are folders of their own, counted on their own.
       if (deep === 0 && skipAtTop.has(entry.name)) continue;
       const path = join(at, entry.name);
+      if (tests.length && tests.some((test) => test(slashed(relative(dir, path))))) continue;
       if (entry.isSymbolicLink()) {
         links.push(relative(ROOT, path));
         continue;
@@ -1390,14 +2083,20 @@ async function askPassword(args, plan, device) {
   return password;
 }
 
-/** The two lists for the client, as files in a throwaway folder: the general one and the root's. */
-function excludeFiles(plan) {
+/** The lists for the client, one per folder, as files in a throwaway folder. */
+function excludeFiles() {
   const workspace = mkdtempSync(join(tmpdir(), "ara-firmenordner-"));
-  const general = join(workspace, "ausschluss.lst");
-  const root = join(workspace, "ausschluss-wurzel.lst");
-  writeFileSync(general, `${NEVER_SYNCED.join("\n")}\n`, { mode: 0o600 });
-  writeFileSync(root, `${rootExcludes(plan).join("\n")}\n`, { mode: 0o600 });
-  return { workspace, general, root, remove: () => rmSync(workspace, { recursive: true, force: true }) };
+  let count = 0;
+  return {
+    workspace,
+    write(lines) {
+      count += 1;
+      const file = join(workspace, `ausschluss-${count}.lst`);
+      writeFileSync(file, `${lines.join("\n")}\n`, { mode: 0o600 });
+      return file;
+    },
+    remove: () => rmSync(workspace, { recursive: true, force: true }),
+  };
 }
 
 /**
@@ -1464,22 +2163,42 @@ async function syncFolders(args, device, apps = []) {
   const rank = (folder) => (folder.root ? 0 : folder.level);
   const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
   const tops = topNames(plan);
-  const lists = excludeFiles(plan);
+  const service = await spacesOf(plan, device, password);
+  const lists = excludeFiles();
   const results = [];
   try {
     for (const folder of order) {
       const local = placeOf(folder);
       mkdirSync(local, { recursive: true });
+      const excludes = excludesFor(plan, folder, local);
+      const clash = service ? await ruleConflicts(service, folder, local, excludes) : [];
+      if (clash.length && !args.flags["keep-mine"]) {
+        results.push({ ...folder, ok: false, message: ruleStop(clash), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
+        continue;
+      }
+      if (clash.length) {
+        const moved = await moveAside(service, folder, clash);
+        say(`  ${t(`Moved aside on the device, this root's version takes the name: ${moved.join(", ")}`, `Am Gerät zur Seite gelegt, die Fassung dieser Wurzel nimmt den Namen: ${moved.join(", ")}`)}`);
+      }
       const bootstrap = folder.root ? bootstrapBridge() : null;
-      const run = runClient({ client, plan, folder, local, excludes: folder.root ? lists.root : lists.general, password });
+      const guard = guardDeletions(local, excludes);
+      const run = runClient({ client, plan, folder, local, excludes: lists.write(excludes), password });
       if (bootstrap) bootstrap.settle();
-      const seen = inspectFolder(local, folder.root ? tops : new Set());
+      const trash = guard.settle();
+      if (run.status === 0) {
+        const dav = service ? davOf(service, folder) : null;
+        const there = dav ? (await remoteTree(service, dav, excludes)).files : null;
+        writeBase(local, localTree(local, excludes, { weighHome: false }).files, there);
+      }
+      const seen = inspectFolder(local, folder.root ? tops : new Set(), excludes);
       results.push({
         ...folder,
         ok: run.status === 0,
         message: run.status === 0 ? null : clientFailed(run),
         conflicts: seen.conflicts,
         links: seen.links,
+        trashed: trash.gone,
+        trash: trash.where,
         at: new Date().toISOString(),
       });
     }
@@ -1507,6 +2226,13 @@ async function syncFolders(args, device, apps = []) {
     if (result.links.length) {
       say(`      ${result.links.length} ${t("symbolic links, the client does not sync them", "Symlinks, die gleicht der Klient nicht ab")}: ${result.links.slice(0, 5).join(", ")}${result.links.length > 5 ? ", ..." : ""}`);
       clean = false;
+    }
+    if (result.trashed.length) {
+      say(`      ${t(
+        `${fileCount(result.trashed.length)} deleted on the device and so here, kept in the trash: ${result.trash}`,
+        `${fileCount(result.trashed.length)} am Gerät gelöscht und darum hier, aufbewahrt im Papierkorb: ${result.trash}`
+      )}`);
+      say(`        ${result.trashed.slice(0, 5).join(", ")}${result.trashed.length > 5 ? ", ..." : ""}`);
     }
   }
   if (unwritten.length) {
@@ -1558,6 +2284,7 @@ function recordSync(device, plan, results) {
       ...(result.message ? { message: result.message } : {}),
       conflicts: result.conflicts.length,
       links: result.links.length,
+      ...(result.trashed?.length ? { trashed: result.trashed.length, trash: result.trash } : {}),
     };
   }
   state.roots[ROOT] = mine;
@@ -1696,7 +2423,7 @@ async function folderStatus(args, device) {
   for (const folder of [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path))) {
     const last = known[folder.path];
     const local = join(ROOT, ...folder.path.split("/"));
-    const seen = existsSync(local) ? inspectFolder(local, folder.root ? tops : new Set()) : { conflicts: [], links: [] };
+    const seen = existsSync(local) ? inspectFolder(local, folder.root ? tops : new Set(), excludesFor(plan, folder, local)) : { conflicts: [], links: [] };
     const when = last
       ? `${last.result === "ok" ? t("synced", "abgeglichen") : t("last sync did not work out", "der letzte Abgleich ging nicht durch")} ${stamp(last.at)}`
       : t("never synced", "noch nie abgeglichen");
@@ -1857,18 +2584,33 @@ async function doDeploy(args) {
     stop(t(`${plan.user} has '${room.right}' on the root ${room.id}, and deploying needs 'schreiben': on the root that is the administrators' right, by role. Ask one. Nothing was deployed.`, `${plan.user} hat auf der Wurzel ${room.id} '${room.right}', und Ausrollen braucht 'schreiben': auf der Wurzel ist das das Recht der Administratoren, nach Rolle. Bitte einen. Nichts wurde ausgerollt.`));
   }
 
-  const excludes = rootExcludes(plan);
+  const excludes = excludesFor(plan, room, ROOT);
+  const service = await spacesOf(plan, device, password);
+  {
+    const clash = await ruleConflicts(service, room, ROOT, excludes);
+    if (clash.length && !args.flags["keep-mine"]) stop(`${ruleStop(clash)} ${t("Nothing was deployed.", "Nichts wurde ausgerollt.")}`);
+    if (clash.length) {
+      const moved = (await moveAside(service, room, clash)).join(", ");
+      say(t(`Moved aside on the device, this root's version takes the name: ${moved}`, `Am Gerät zur Seite gelegt, die Fassung dieser Wurzel nimmt den Namen: ${moved}`));
+    }
+  }
   const expected = filesThrough(ROOT, excludes);
-  const lists = excludeFiles(plan);
+  const lists = excludeFiles();
+  const list = lists.write(excludes);
   let probe = null;
   let arrived = [];
   let up;
+  let trash = { gone: [], where: null };
   try {
-    up = runClient({ client, plan, folder: room, local: ROOT, excludes: lists.root, password });
+    const guard = guardDeletions(ROOT, excludes);
+    up = runClient({ client, plan, folder: room, local: ROOT, excludes: list, password });
+    trash = guard.settle();
     if (up.status !== 0) stop(t(`The client did not sync the root: ${clientFailed(up)}`, `Der Klient hat die Wurzel nicht abgeglichen: ${clientFailed(up)}`));
+    const dav = davOf(service, room);
+    writeBase(ROOT, localTree(ROOT, excludes, { weighHome: false }).files, dav ? (await remoteTree(service, dav, excludes)).files : null);
     // Seen, not believed: the room comes down into a throwaway folder, and what lies there counts.
     probe = mkdtempSync(join(tmpdir(), "ara-wurzel-probe-"));
-    const down = runClient({ client, plan, folder: room, local: probe, excludes: lists.root, password });
+    const down = runClient({ client, plan, folder: room, local: probe, excludes: list, password });
     if (down.status !== 0) stop(t(`Deployed, but the proof did not come about, the client says: ${clientSaid(down)}`, `Ausgerollt, aber der Beweis kam nicht zustande, der Klient sagt: ${clientSaid(down)}`));
     arrived = filesThrough(probe, excludes);
   } finally {
@@ -1876,7 +2618,7 @@ async function doDeploy(args) {
     if (probe) rmSync(probe, { recursive: true, force: true });
   }
   const missing = expected.filter((file) => !arrived.includes(file));
-  const seen = inspectFolder(ROOT, topNames(plan));
+  const seen = inspectFolder(ROOT, topNames(plan), excludes);
   recordSync(device, plan, [{ ...room, ok: !missing.length, message: missing.length ? t(`${missing.length} files did not arrive`, `${missing.length} Dateien kamen nicht an`) : null, conflicts: seen.conflicts, links: seen.links, at: new Date().toISOString() }]);
 
   say(t(`Deployed: ${expected.length} files of this root into the root ${room.id} on ${plan.address}.`, `Ausgerollt: ${expected.length} Dateien dieser Wurzel in die Wurzel ${room.id} auf ${plan.address}.`));
@@ -1884,6 +2626,7 @@ async function doDeploy(args) {
     ? t(`  Checked against the room: ${missing.length} did not arrive: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`, `  Gegen den Raum geprüft: ${missing.length} kamen nicht an: ${missing.slice(0, 8).join(", ")}${missing.length > 8 ? ", ..." : ""}`)
     : t(`  Checked against the room: all ${expected.length} lie there, ${arrived.length} files in the room.`, `  Gegen den Raum geprüft: alle ${expected.length} liegen dort, ${arrived.length} Dateien im Raum.`));
   say(`  ${t("Kept home", "Bleibt zu Hause")}: ${excludes.join(", ")}`);
+  if (trash.gone.length) say(`  ${t(`${fileCount(trash.gone.length)} deleted on the device and so here, kept in the trash: ${trash.where}`, `${fileCount(trash.gone.length)} am Gerät gelöscht und darum hier, aufbewahrt im Papierkorb: ${trash.where}`)}`);
   if (seen.conflicts.length) say(`  ${seen.conflicts.length} ${t("conflicts in this root, the client kept both versions", "Konflikte in dieser Wurzel, der Klient hat beide Fassungen behalten")}: ${seen.conflicts.slice(0, 5).join(", ")}`);
   if (seen.links.length) say(`  ${seen.links.length} ${t("symbolic links in this root, the client does not sync them", "Symlinks in dieser Wurzel, die gleicht der Klient nicht ab")}: ${seen.links.slice(0, 5).join(", ")}`);
   say(t(
@@ -2079,6 +2822,7 @@ async function doStatus(args) {
  * with them is never asked for one.
  */
 async function doSync(args) {
+  if (args.flags.plan) return doPlan(args);
   const device = chooseDevice(args);
   const infos = await doApps(args, { write: true, quiet: true });
   const written = infos.filter((info) => info.state === "ok");
@@ -2100,6 +2844,8 @@ function usage() {
       "  login --withdraw               take back what approving entered",
       "  status                         device, credential, company folder, proposals",
       "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md and sicht.md",
+      "  sync --plan                    what a sync would move up and down, with count and size, writing nothing",
+      "  sync --keep-mine               where the files of the root differ, move the device's version aside there and sync this one",
       "  deploy [--client <path>]       put this root into the room of the root on the device, the check script first",
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
@@ -2116,6 +2862,8 @@ function usage() {
       "  login --withdraw               zurücknehmen, was das Freigeben eintrug",
       "  status                         Gerät, Ausweis, Firmenordner, Vorschläge",
       "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md und sicht.md schreiben",
+      "  sync --plan                    was ein Abgleich hoch und runter bewegte, mit Anzahl und Größe, ohne zu schreiben",
+      "  sync --keep-mine               wo die Dateien der Wurzel verschieden sind, die des Geräts dort zur Seite legen und diese abgleichen",
       "  deploy [--client <pfad>]       diese Wurzel in den Raum der Wurzel am Gerät legen, zuerst das Prüfskript",
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",

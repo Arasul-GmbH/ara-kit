@@ -123,6 +123,39 @@ repository with a first commit (`--no-git` leaves that out) and says how long it
 a fault of the scaffold, not of the human: report it with `gh issue create` against the kit
 if the human agrees.
 
+## Taking over a grown folder
+
+```
+node .ara/tools/root.mjs --adopt <folder> [--name "<house>"] [--language de|en]
+```
+
+A house that has worked in one folder for weeks does not want a fresh empty root next to it: the
+north goal comes only when exactly that folder goes to the device. `--adopt` makes a root of it
+and **overwrites nothing**. Exactly three files come into being, `.claude/root.json`,
+`.claude/places.json` and `arasul.mjs`; when one of them lies there already, nothing is written
+and the tool says which one. The house's `.claude/CLAUDE.md`, its skills, hooks and settings,
+its `.gitignore` and its version control stay as they are. The name is the folder's unless
+`--name` says another.
+
+What it finds, it says, and it writes nothing of that:
+
+- **A clone that the `.gitignore` at the top leaves out** is a place that lies here, and it is
+  entered as one: `github` with the address of its remote when that is GitHub, otherwise
+  `folder`, `local` as `./<path>`, read only. The purpose says that it was taken over; the
+  house writes a better sentence.
+- **A clone the `.gitignore` does not leave out** would go into the company folder as a copy.
+  It is not entered, and the tool proposes the line for the `.gitignore` and the `--place`
+  command.
+- **A source tree**, marked as check 17 marks one, goes into the company folder without what a
+  machine makes and without `.env`. The tool proposes either a repository and a place for it,
+  or a line in the `.gitignore` that keeps it home.
+- **Files of the kind `.env`** at any depth are named: they stay home at every sync.
+
+A root taken over carries no check script of the kit and no proposal, because both would lie
+where the house has its own. `--show` and `--place` work, `--check` says that there is no check
+script, `--enroll` that there is no proposal. What comes next is the bridge: `login`, then
+`sync --plan`, then `sync`.
+
 ## After laying out
 
 Say in three lines what lies where, and then the next steps the tool names. Offer to write
@@ -204,6 +237,8 @@ app offers. This file does that, and nothing else.
 | `login`, `login --approve <checksum>`, `login --withdraw` | Show the proposals, approve one by its checksum, take back everything the approving entered |
 | `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
 | `sync` | Syncs the company folder, the root of the device at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
+| `sync --plan` | Shows per folder what a sync would move: up and down with count and size, conflicts, what was deleted on one side, what stays home. Writes nothing and starts no client |
+| `sync --keep-mine` | Where the files that make the root differ on both sides, moves the device's version aside on the device and syncs this root's. Without it `sync` stops there |
 | `status` | The device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
 | `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
@@ -290,10 +325,23 @@ the connection to the device's interface is. That is the client's doing and not 
 it is written here so that nobody takes it for a decision.
 
 **What never goes into the company folder** stands in one list and goes to the client as a file:
-what a machine makes (`.git`, `node_modules`, `dist`, `build`, `.next`), what belongs to this
-computer (`.claude/hooks/`, `settings.json`, `.DS_Store`) and what the client writes itself. The
-last one is not a nicety: without its journal in the list the client reports conflicts about
-itself. Measured as of 2026-09-22 against the client, with a folder that carried every one of
+what a machine makes (`.git`, `node_modules`, `.next`, `.venv`, `__pycache__`),
+what belongs to this computer (`.claude/hooks/`, `settings.json`, `.DS_Store`), what holds a
+secret (`.env` and every `.env.*`, at every depth) and what the client writes itself. The last
+one is not a nicety: without its journal in the list the client reports conflicts about
+itself. **`build` and `dist` are made by a machine only in a source tree**, a folder with a
+manifest such as `package.json` next to them. There they go into the list as their paths; a
+folder of the house with that name elsewhere, a skill called `build` for instance, goes along.
+Up to 0.46.0 both stood in the list as names and kept every such folder home at every depth.
+
+**The `.gitignore` at the top of the root counts as well.** What the house keeps out of its
+version control, the clones of its products, what runs, its secrets, it keeps out of the company
+folder. The tool reads the file as git does and hands the client what it reads the same way: a
+name at every depth, a path with a slash inside from the top. A rule anchored with a leading
+slash, one with `**` and every rule of a file with a `!` go to the client as the paths they hit
+in the tree right now, because the client anchors no name and takes nothing back. A
+`.gitignore` further down does not count: it often keeps big media out of git that the house
+still shares. Measured as of 2026-09-22 against the client, with a folder that carried every one of
 these: everything on the list stayed out, at the top of the folder and three levels down, and
 `.claude/skills/` went through. The journal was called `.sync_journal.db`.
 
@@ -305,6 +353,57 @@ beginning of the relative path, and a bare name at the top has no slash to match
 2026-09-22, a name with a leading slash in the list kept nothing out, and read in the client's source. So the name
 of a room is kept out of the root's sync at every depth: a folder deep in the root that is named
 like a room stays home, and `sync` names what stayed home.
+
+**A plan before a sync.** `sync --plan` asks the device for the folders and the file service
+for what lies in each room, one folder deep per `PROPFIND`, and looks at this tree through the
+same list the client gets. It asks for the password, because the service shows its rooms to no
+one else, and it writes nothing: no file in the tree, no `APP.md`, no view, no state. Per
+folder it says how many files of what size would go up and down, which ones differ on both
+sides, what was deleted on one side, and what stays home, weighed per line of the list. What
+stays on the device because of the list is said too. **Without a state of the last sync
+nothing counts as deleted**: what lies on one side only goes to the other, and what lies on
+both and differs is a conflict. After every sync the tool lists the room again and keeps, next to
+the credential, size and time of every file per folder on both sides (`firmenordner-stand/`), so
+the next plan tells a new file from one that was deleted on the other side. Both sides, because
+the client sets the time of a file it moves to the other side's, but an empty file carries the
+time of its upload on the device. Names are compared composed (NFC): the client writes an
+umlaut decomposed on a Mac, the service answers it composed. Both measured on 2026-09-27.
+
+**The files that make the root win only when somebody says so.** Where a file differs on both
+sides, the client puts the device's version at its name and the house's next to it as a
+conflicted copy. For content that is a visible conflict. For `.gitignore`, `.claude/CLAUDE.md`,
+`.claude/root.json`, `.claude/places.json` and `arasul.mjs` it changes what holds: measured on
+2026-09-26 at a device whose root carried another house's scaffold, the first sync of a grown
+folder left the house's `.gitignore` as a conflicted copy, and the second one took the clones
+of four products up that the house's own `.gitignore` had kept home. So before the client runs,
+`sync` and `deploy` list the room and compare as the plan does, and when one of these files
+differs and this person writes the root, they stop for the root and name the files; the other
+folders are synced. `--keep-mine` moves the device's version aside on the device, to
+`<name> (Gerät <date> <time>)<ending>` with a WebDAV `MOVE` that overwrites nothing, and the
+house's takes the name: nothing of either side is lost, and the rules that hold are the house's.
+Whoever only reads the root gets the device's version, and that is right.
+
+**A name anchored at the top reaches further.** A rule with a leading slash, for a `notes.log`, means only
+the one at the top; the client keeps the name out at every depth. The plan names what that keeps home
+beyond what the `.gitignore` meant.
+
+**Nothing the client deletes here is lost.** The client deletes here what was deleted on the
+device, that is how a sync works. Before it runs, every file it may touch gets a second name in a
+trash next to the credential, `~/.config/arasul/papierkorb/`: a hard link, not a copy, so it
+costs no space. What still lies at its place afterwards loses that name again, what the client
+took away keeps it, and `sync` says how many and where. Where the computer cannot link into that
+folder, the trash lies in the root as `.arasul-papierkorb/`, which is never synced.
+
+**Measured on 2026-09-27 at a device** whose root carried the scaffold of a customer run, with a
+copy of a grown folder of about 800 files of the house's own and four product clones: `--adopt`
+wrote three files; the plan took 3 seconds and wrote nothing; `sync` stopped at the root over
+the five files that make it; `sync --keep-mine` took 122 MB up in under two minutes. On the Mac
+none of the 796 contents was missing, on the device none of the 15 files the room carried: ten
+at their name, five moved aside and equal byte for byte. On the device lay no `.git`, no `.env`,
+no `node_modules`, `.venv` or `.next`, no settings or hooks and no product clone, and the skill
+`build` did. A change on each side arrived on the other, a file changed on both sides came out
+as a conflicted copy with both versions, and a file deleted on the device lay in the trash on the
+Mac.
 
 **Conflicts and symbolic links** are counted out of the tree and not out of the client's report,
 because both also come into being between two syncs. A file the client could not merge carries
@@ -404,7 +503,8 @@ After that the root lives on the device. `--deploy` hands over to the bridge of 
    one is told to ask an administrator. With `lesen` alone nothing is deployed: on the root,
    writing is the administrators' right, by role, and no right per person is given on it.
 3. **The tree goes up through the client**, with the general list and the root's own list of
-   what stays home: `.git`, `node_modules`, `.claude/hooks/`, `settings.json`, `.DS_Store`, the
+   what stays home: `.git`, `node_modules`, `.env` at every depth, what the `.gitignore` at the
+   top leaves out, `.claude/hooks/`, `settings.json`, `.DS_Store`, the
    journal of the client, `apps/`, `sicht.md` and the rooms the device shares separately.
 4. **The room comes down again into a throwaway folder**, and what lies there is compared with
    what was meant to go: `deploy` says how many files went, how many lie in the room and which

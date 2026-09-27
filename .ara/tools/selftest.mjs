@@ -41,6 +41,7 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -8717,8 +8718,61 @@ const BRUECKE_AGENT = {
  * Das nachgestellte Gerät. `weiter` ist die Adresse eines echten Backends, an das
  * `/apps/selftest-bruecke/api/…` durchgereicht wird, wie es Traefik hinter der Forward-Auth tut.
  */
-async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null } = {}) {
+/** Die Adresse, die ein Test für den Dateidienst nennt; das nachgestellte Gerät setzt seine eigene ein. */
+const FO_ADRESSE = "https://dateidienst.probe:8443";
+
+/**
+ * Der Dateidienst des nachgestellten Geräts: ein Raum je Ordner im Lager, seine Liste über
+ * Graph, sein Inhalt über PROPFIND eine Ebene tief. Name und Passwort wie beim echten Dienst,
+ * der Basic-Auth nimmt. Die Antwort trägt das Präfix D: groß, wie manche Dienste es schreiben.
+ */
+function dateidienst(lager, basis, anfrage, antwort, pfad) {
+  const erwartet = `Basic ${Buffer.from(`anna:${BRUECKE_PASSWORT}`).toString("base64")}`;
+  if (anfrage.headers.authorization !== erwartet) {
+    antwort.writeHead(401);
+    return antwort.end();
+  }
+  if (pfad === "/graph/v1.0/me/drives") {
+    const raeume = existsSync(lager) ? readdirSync(lager) : [];
+    antwort.writeHead(200, { "Content-Type": "application/json" });
+    return antwort.end(JSON.stringify({ value: raeume.map((name) => ({ id: `sp$${name}`, name, driveType: name === "Shares" ? "virtual" : "project", root: { webDavUrl: `${basis}/dav/spaces/sp%24${encodeURIComponent(name)}` } })) }));
+  }
+  const treffer = pfad.match(/^\/dav\/spaces\/sp%24([^/]+)(\/.*)?$/);
+  // MOVE innerhalb eines Raums, ohne zu überschreiben: 412, wenn das Ziel schon liegt.
+  if (anfrage.method === "MOVE" && treffer) {
+    const ziel = new URL(anfrage.headers.destination).pathname.match(/^\/dav\/spaces\/sp%24([^/]+)(\/.*)?$/);
+    const von = join(lager, decodeURIComponent(treffer[1]), decodeURIComponent(treffer[2] || ""));
+    const nach = join(lager, decodeURIComponent(ziel[1]), decodeURIComponent(ziel[2] || ""));
+    if (!existsSync(von)) antwort.writeHead(404);
+    else if (existsSync(nach)) antwort.writeHead(412);
+    else {
+      renameSync(von, nach);
+      antwort.writeHead(201);
+    }
+    return antwort.end();
+  }
+  if (anfrage.method === "PROPFIND" && treffer) {
+    const rel = decodeURIComponent(treffer[2] || "/").replace(/^\/+|\/+$/g, "");
+    const dir = join(lager, decodeURIComponent(treffer[1]), rel);
+    if (!existsSync(dir)) {
+      antwort.writeHead(404);
+      return antwort.end();
+    }
+    const eintraege = [{ href: pfad, ordner: true, info: statSync(dir) }];
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const teile = [...(rel ? rel.split("/") : []), e.name].map(encodeURIComponent).join("/");
+      eintraege.push({ href: `/dav/spaces/sp%24${treffer[1]}/${teile}${e.isDirectory() ? "/" : ""}`, ordner: e.isDirectory(), info: statSync(join(dir, e.name)) });
+    }
+    antwort.writeHead(207, { "Content-Type": "application/xml; charset=utf-8" });
+    return antwort.end(`<?xml version="1.0"?><D:multistatus xmlns:D="DAV:">${eintraege.map((e) => `<D:response><D:href>${e.href}</D:href><D:propstat><D:prop><D:resourcetype>${e.ordner ? "<D:collection/>" : ""}</D:resourcetype>${e.ordner ? "" : `<D:getcontentlength>${e.info.size}</D:getcontentlength>`}<D:getlastmodified>${e.info.mtime.toUTCString()}</D:getlastmodified></D:prop></D:propstat></D:response>`).join("")}</D:multistatus>`);
+  }
+  antwort.writeHead(404);
+  return antwort.end();
+}
+
+async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null, lager = null } = {}) {
   const gesehen = [];
+  let basis = "";
   const handler = (anfrage, antwort) => {
     const teile = [];
     anfrage.on("data", (stueck) => teile.push(stueck));
@@ -8737,6 +8791,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
           ? senden(200, { token: BRUECKE_TOKEN, user: { id: 7, username: "anna", role: rolle } })
           : senden(401, { error: { message: "Anmeldung abgewiesen" } });
       }
+      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/"))) return dateidienst(lager, basis, anfrage, antwort, pfad);
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
       const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
       const gueltig = sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`;
@@ -8823,9 +8878,14 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
       return senden(404, { error: { message: "Weg nicht bekannt" } });
     });
   };
+  // Mit einem Firmenordner hat das Gerät einen Dateidienst: sync sieht vor jedem Lauf in den Raum
+  // der Wurzel. Ohne eigenes Lager ist er leer, und die Adresse ist die dieses Geräts.
+  if (firmenordner && !lager) lager = wegwerfordner("ara-lager-leer-");
   const server = tls ? createHttpsServer(tls, handler) : createServer(handler);
   await new Promise((bereit) => server.listen(tls?.port || 0, "127.0.0.1", bereit));
   const adresse = `${tls ? "https" : "http"}://127.0.0.1:${server.address().port}`;
+  basis = adresse;
+  if (firmenordner?.adresse === FO_ADRESSE) firmenordner.adresse = adresse;
   return { adresse, gesehen, port: server.address().port, schliessen: () => new Promise((fertig) => server.close(fertig)) };
 }
 
@@ -9040,6 +9100,11 @@ if (process.env.ARA_PROBE_AUTH && argv[1] === process.env.ARA_PROBE_AUTH) {
 }
 // Mit einem Lager je Raum geht es in beide Richtungen: was hier liegt, geht in den Raum, und was
 // im Raum liegt, kommt hierher. So laesst sich messen, dass das Ausgerollte wieder herunterkommt.
+// Was am Gerät gelöscht wurde, löscht der Klient hier: so wie der echte es tut.
+if (process.env.ARA_PROBE_LOESCHEN) {
+  const { rmSync } = require("node:fs");
+  rmSync(join(ziel, process.env.ARA_PROBE_LOESCHEN), { force: true });
+}
 if (process.env.ARA_PROBE_LAGER) {
   const raum = join(process.env.ARA_PROBE_LAGER, argv.includes("--remote-folder") ? argv[argv.indexOf("--remote-folder") + 1] : argv[1]);
   mkdirSync(raum, { recursive: true });
@@ -9058,7 +9123,6 @@ function klientRufe(protokoll) {
   return readFileSync(protokoll, "utf8").split("\n").filter(Boolean).map((zeile) => JSON.parse(zeile));
 }
 
-const FO_ADRESSE = "https://dateidienst.probe:8443";
 /** Was ein Gerät freigibt: ein Ordner der Ebene 1 und einer der Ebene 2 unter einem fremden Eltern. */
 const FO_ORDNER = [
   { kennung: "buchhaltung", name: "Buchhaltung", ebene: 1, eltern: null, pfad: "buchhaltung", recht: "lesen" },
@@ -9092,7 +9156,7 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     // Vor dem ersten Abgleich sagt status, dass noch nie abgeglichen wurde.
     lauf = await bruecke(w, ["status"], { env: umgebung });
     assert(/noch nie abgeglichen/.test(lauf.stdout), `status sagt vor dem ersten Abgleich nichts: ${lauf.stdout}`);
-    assert(lauf.stdout.includes(FO_ADRESSE), `status nennt die Adresse des Dienstes nicht: ${lauf.stdout}`);
+    assert(lauf.stdout.includes(geraet.adresse), `status nennt die Adresse des Dienstes nicht: ${lauf.stdout}`);
 
     lauf = await abgleichen();
     assert(lauf.status === 0, `sync endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
@@ -9108,7 +9172,7 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     const rufe = klientRufe(klient.protokoll);
     assert(rufe.length === 2, `der Klient wurde ${rufe.length} mal gerufen, nicht zweimal: ${JSON.stringify(rufe)}`);
     assert(rufe[0].argv[1] === "buchhaltung" && rufe[1].argv[1] === "Shares", `die Räume stimmen nicht: ${JSON.stringify(rufe.map((r) => r.argv[1]))}`);
-    assert(rufe[0].argv[0] === FO_ADRESSE, `die Adresse des Dienstes geht nicht mit: ${rufe[0].argv[0]}`);
+    assert(rufe[0].argv[0] === geraet.adresse, `die Adresse des Dienstes geht nicht mit: ${rufe[0].argv[0]}`);
     // Die Wurzel kennt sich unter ihrem echten Pfad, der Wegwerfordner liegt unter einem Verweis.
     const echt = realpathSync(w.root);
     assert(rufe[0].argv[2] === join(echt, "buchhaltung"), `der Ort der Ebene 1 stimmt nicht: ${rufe[0].argv[2]}`);
@@ -9130,9 +9194,12 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     // Die Ausschlussliste trägt, was nie in den Firmenordner geht, und die Journaldatei
     // des Klienten selbst: ohne sie meldet er Konflikte an sich.
     const liste = rufe[0].liste;
-    for (const muster of [".git", "node_modules", "dist", "build", ".claude/hooks", "settings.json"]) {
+    for (const muster of [".git", "node_modules", ".env", ".env.*", ".claude/hooks", "settings.json"]) {
       assert(liste.split("\n").includes(muster), `${muster} steht nicht in der Ausschlussliste:\n${liste}`);
     }
+    // build und dist sind keine Namen der Liste: als Namen hielten sie jeden Ordner des Hauses so
+    // zu Hause, in jeder Tiefe, etwa einen Skill build.
+    for (const muster of ["build", "dist"]) assert(!liste.split("\n").includes(muster), `${muster} steht als bloßer Name in der Liste:\n${liste}`);
     assert(/^\.sync_\*\.db$/m.test(liste), `die Journaldatei des Klienten steht nicht in der Ausschlussliste:\n${liste}`);
 
     // Weder Passwort noch Ausweis stehen in der Ausgabe oder im abgelegten Stand.
@@ -9478,6 +9545,163 @@ await checkAsync("root.mjs --deploy legt die Wurzel in die Wurzel des Geräts: P
     await mitarbeiter.schliessen();
   }
   return "Befund hält an, Raum mit Sitzung angelegt und Recht vergeben, Sitzung beendet, hinauf aus der Wurzel und herunter zur Probe, alte Brücke ersetzt, Mitarbeiter ohne Raum hört es";
+});
+
+/** Jede Datei eines Baums mit ihrem Inhalt, ohne das Innere von .git. */
+function inhalte(dir) {
+  const out = {};
+  for (const datei of dateien(dir)) out[datei] = readFileSync(join(dir, datei), "utf8");
+  return out;
+}
+
+/** Ein gewachsener Ordner, wie ein Haus ihn nach Wochen hat: eigene Regeln, Klone, ein Prototyp mit Geheimnis. */
+function gewachsenerOrdner() {
+  const haus = join(wegwerfordner("ara-adopt-"), "haus");
+  const git = (cwd, ...args) => spawnSync("git", args, { cwd, encoding: "utf8" });
+  const legen = (pfad, text) => {
+    mkdirSync(dirname(join(haus, pfad)), { recursive: true });
+    writeFileSync(join(haus, pfad), text);
+  };
+  legen(".claude/CLAUDE.md", "# Unser Haus\n");
+  legen(".claude/skills/build/SKILL.md", "bauen\n");
+  legen(".gitignore", "produkt/\n/oben.log\ngeheim/liste.md\n.env\n.env.*\n");
+  legen("README.md", "hallo\n");
+  legen("notizen/a.md", "aaaa\n");
+  legen("oben.log", "oben\n");
+  legen("tief/oben.log", "tief\n");
+  legen("geheim/liste.md", "liste\n");
+  legen(".env", "SCHLUESSEL=oben\n");
+  legen("tief/x/y/.env.production", "SCHLUESSEL=tief\n");
+  legen("proto/package.json", "{}\n");
+  legen("proto/src.js", "export {};\n");
+  legen("proto/build/out.js", "gebaut\n");
+  legen("produkt/code.js", "produkt\n");
+  git(join(haus, "produkt"), "init", "-q");
+  git(join(haus, "produkt"), "remote", "add", "origin", "git@github.com:acme/produkt.git");
+  legen("offen/datei.md", "offen\n");
+  git(join(haus, "offen"), "init", "-q");
+  return haus;
+}
+
+check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt drei Dateien und überschreibt nichts", () => {
+  const haus = gewachsenerOrdner();
+  const vorher = inhalte(haus);
+  const lauf = tool("root.mjs", ["--adopt", haus, "--language", "de"], "");
+  assert(lauf.status === 0, `--adopt endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+  const nachher = inhalte(haus);
+  const neu = Object.keys(nachher).filter((datei) => !(datei in vorher)).sort();
+  assert(JSON.stringify(neu) === JSON.stringify([".claude/places.json", ".claude/root.json", "arasul.mjs"]), `--adopt schrieb anderes als die drei Dateien: ${neu.join(", ")}`);
+  for (const [datei, text] of Object.entries(vorher)) assert(nachher[datei] === text, `--adopt hat ${datei} verändert oder gelöscht`);
+
+  const orte = JSON.parse(nachher[".claude/places.json"]).places;
+  assert(orte.length === 1 && orte[0].name === "produkt" && orte[0].kind === "github" && orte[0].where === "https://github.com/acme/produkt" && orte[0].local === "./produkt", `der Klon, den die .gitignore auslässt, ist nicht als Ort eingetragen: ${JSON.stringify(orte)}`);
+  assert(/offen\//.test(lauf.stdout) && /Nicht als Ort eingetragen/.test(lauf.stdout) && /\/offen\//.test(lauf.stdout), `der Klon, den die .gitignore nicht auslässt, wird nicht mit Vorschlag gemeldet: ${lauf.stdout}`);
+  assert(/proto\/ \(package\.json\)/.test(lauf.stdout) && /Vorschlag/.test(lauf.stdout), `der Quelltextbaum wird nicht mit Vorschlag gemeldet: ${lauf.stdout}`);
+  assert(lauf.stdout.includes("tief/x/y/.env.production") && lauf.stdout.includes(".env"), `die .env-Dateien werden nicht genannt: ${lauf.stdout}`);
+  const meta = JSON.parse(nachher[".claude/root.json"]);
+  assert(meta.name === "haus" && meta.language === "de" && meta.adopted, `root.json stimmt nicht: ${nachher[".claude/root.json"]}`);
+
+  // Ein zweites Mal, ein leerer Ordner, ein Ordner mit eigener arasul.mjs: nichts wird geschrieben.
+  const nochmal = tool("root.mjs", ["--adopt", haus, "--language", "de"], "");
+  assert(nochmal.status !== 0 && JSON.stringify(inhalte(haus)) === JSON.stringify(nachher), "ein zweites --adopt lief durch oder schrieb");
+  const leer = join(wegwerfordner("ara-adopt-leer-"), "leer");
+  mkdirSync(leer);
+  assert(tool("root.mjs", ["--adopt", leer], "").status !== 0 && !readdirSync(leer).length, "ein leerer Ordner wurde übernommen");
+  const eigen = join(wegwerfordner("ara-adopt-eigen-"), "eigen");
+  mkdirSync(eigen);
+  writeFileSync(join(eigen, "arasul.mjs"), "// die eigene\n");
+  const besetzt = tool("root.mjs", ["--adopt", eigen], "");
+  assert(besetzt.status !== 0 && readFileSync(join(eigen, "arasul.mjs"), "utf8") === "// die eigene\n" && !existsSync(join(eigen, ".claude")), `eine eigene arasul.mjs wurde überschrieben oder daneben geschrieben: ${besetzt.stderr}`);
+
+  const zeigen = tool("root.mjs", ["--path", haus, "--show", "--check"], "");
+  assert(zeigen.status === 0 && /produkt/.test(zeigen.stdout) && /kein Prüfskript/.test(zeigen.stdout), `--show und --check einer übernommenen Wurzel: ${zeigen.stdout}${zeigen.stderr}`);
+  return "drei Dateien, nichts verändert, Klon als Ort, offener Klon, Quelltextbaum und .env gemeldet, zweites Mal und besetzte Ziele abgewiesen";
+});
+
+await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und schreibt nichts, .env, .gitignore und Bauordner bleiben zu Hause, der Papierkorb hält, was der Klient löscht", async () => {
+  const root = gewachsenerOrdner();
+  const uebernommen = tool("root.mjs", ["--adopt", root, "--language", "de"], "");
+  assert(uebernommen.status === 0, `--adopt: ${uebernommen.stderr}`);
+  const eigen = wegwerfordner("ara-plan-ausweis-");
+  const ausweise = join(eigen, "ausweis");
+  const w = { root, env: { ARASUL_CONFIG_DIR: ausweise, CLAUDE_CONFIG_DIR: join(eigen, "claude") } };
+  const lager = wegwerfordner("ara-lager-");
+  mkdirSync(join(lager, "firma"));
+  writeFileSync(join(lager, "firma", "vom-geraet.md"), "vom Gerät\n");
+  writeFileSync(join(lager, "firma", ".env"), "GERAET=1\n");
+  const plan = { adresse: "", ordner: [{ ...FO_WURZEL, recht: "schreiben" }] };
+  const geraet = await brueckeGeraet({ firmenordner: plan, lager, rolle: "admin" });
+  plan.adresse = geraet.adresse;
+  const klient = attrappenKlient();
+  const passwort = `${BRUECKE_PASSWORT}\n`;
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+
+    // Der Plan: was hoch ginge, was runter, was zu Hause bleibt. Geschrieben wird nichts.
+    const vorher = JSON.stringify([inhalte(root), dateien(ausweise)]);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort, env: { ARA_PROBE_PROTOKOLL: klient.protokoll } });
+    assert(lauf.status === 0, `sync --plan endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    // tief/oben.log geht nicht: die .gitignore meint mit /oben.log nur die oben, der Klient verankert
+    // keinen Namen oben. Der Plan sagt das, statt es still zu tun.
+    const hoch = [".claude/CLAUDE.md", ".claude/places.json", ".claude/root.json", ".claude/skills/build/SKILL.md", ".gitignore", "README.md", "arasul.mjs", "notizen/a.md", "offen/datei.md", "proto/package.json", "proto/src.js"];
+    assert(/Bleibt auch zu Hause, obwohl die \.gitignore nur den oben meint.*tief\/oben\.log/.test(lauf.stdout), `der Plan sagt nicht, dass tief/oben.log mit zu Hause bleibt: ${lauf.stdout}`);
+    const bytes = hoch.reduce((summe, datei) => summe + statSync(join(root, datei)).size, 0);
+    assert(new RegExp(`Hoch:\\s+${hoch.length} Dateien, ${bytes >= 1000 ? "[\\d,]+ KB" : `${bytes} B`}`).test(lauf.stdout), `Hoch nennt nicht ${hoch.length} Dateien mit ${bytes} B: ${lauf.stdout}`);
+    assert(/Runter:\s+1 Datei, 11 B/.test(lauf.stdout), `Runter nennt nicht die eine Datei vom Gerät: ${lauf.stdout}`);
+    for (const muster of [".env", ".env.*", "produkt", "oben.log", "geheim/liste.md", "proto/build", ".git"]) {
+      assert(new RegExp(`^\\s+${muster.replace(/[.*]/g, "\\$&")}\\s+\\d+ Datei`, "m").test(lauf.stdout), `${muster} steht nicht unter Bleibt zu Hause: ${lauf.stdout}`);
+    }
+    assert(/Bleibt am Gerät, kommt nicht herunter:\s+\.env\s+1 Datei/.test(lauf.stdout), `die .env am Gerät steht nicht als bleibt dort: ${lauf.stdout}`);
+    assert(/noch nie abgeglichen/.test(lauf.stdout), `der Plan sagt nicht, dass noch nie abgeglichen wurde: ${lauf.stdout}`);
+    assert(JSON.stringify([inhalte(root), dateien(ausweise)]) === vorher, "sync --plan hat etwas geschrieben");
+    assert(!klientRufe(klient.protokoll).length, "sync --plan hat den Klienten gestartet");
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: "falsch\n" });
+    assert(lauf.status !== 0 && /nimmt das Passwort/.test(lauf.stderr), `ein falsches Passwort wird im Plan nicht gesagt: ${lauf.stderr}`);
+
+    // Die .gitignore ist am Gerät eine andere: sync hält vor dem Klienten an, gemessen am 26.09.2026,
+    // als die Fassung des Geräts die des Hauses verdrängte und der nächste Abgleich die Klone hochnahm.
+    const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+    writeFileSync(join(lager, "firma", ".gitignore"), "die des Geräts\n");
+    const eigeneRegeln = readFileSync(join(root, ".gitignore"), "utf8");
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(/Konflikte:.*\.gitignore/.test(lauf.stdout) && /sync hält hier an: \.gitignore/.test(lauf.stdout), `der Plan nennt den Konflikt der .gitignore nicht: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+    assert(lauf.status !== 0 && /Nicht abgeglichen: \.gitignore sind hier und am Gerät verschieden/.test(lauf.stdout), `sync hält bei einer anderen .gitignore am Gerät nicht an: ${lauf.stdout}${lauf.stderr}`);
+    assert(!klientRufe(klient.protokoll).length && readFileSync(join(root, ".gitignore"), "utf8") === eigeneRegeln, "trotz Konflikt der .gitignore lief der Klient oder die eigene .gitignore ist weg");
+
+    // --keep-mine: die Fassung des Geräts geht am Gerät zur Seite, die des Hauses nimmt den Namen.
+    // Der Abgleich: die Liste trägt .env, die .gitignore und den Bauordner des Prototyps, nicht den Skill.
+    lauf = await bruecke(w, ["sync", "--keep-mine", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+    assert(lauf.status === 0, `sync --keep-mine endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    const beiseite = readdirSync(join(lager, "firma")).find((name) => name.startsWith(".gitignore (Gerät "));
+    assert(beiseite && readFileSync(join(lager, "firma", beiseite), "utf8") === "die des Geräts\n" && /Am Gerät zur Seite gelegt/.test(lauf.stdout), `die Fassung des Geräts wurde nicht zur Seite gelegt: ${readdirSync(join(lager, "firma")).join(", ")} ${lauf.stdout}`);
+    assert(readFileSync(join(root, ".gitignore"), "utf8") === eigeneRegeln && readFileSync(join(lager, "firma", ".gitignore"), "utf8") === eigeneRegeln, "nach --keep-mine gilt nicht die .gitignore des Hauses");
+    assert(readFileSync(join(root, beiseite), "utf8") === "die des Geräts\n", "die zur Seite gelegte Fassung kam nicht herunter");
+    const liste = klientRufe(klient.protokoll)[0].liste.split("\n");
+    for (const muster of [".env", ".env.*", "produkt", "oben.log", "geheim/liste.md", "proto/build"]) assert(liste.includes(muster), `${muster} fehlt in der Liste:\n${liste.join("\n")}`);
+    assert(!liste.includes("build") && !liste.includes("dist"), `build oder dist stehen als Name in der Liste:\n${liste.join("\n")}`);
+
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(/Verglichen mit dem letzten Abgleich/.test(lauf.stdout) && /Hoch:\s+0 Dateien/.test(lauf.stdout) && /Runter:\s+0 Dateien/.test(lauf.stdout), `nach dem Abgleich ist der Plan nicht leer: ${lauf.stdout}`);
+
+    // Am Gerät gelöscht, hier geändert: der Plan sagt beides, bevor sich etwas bewegt.
+    rmSync(join(lager, "firma", "notizen", "a.md"));
+    writeFileSync(join(root, "README.md"), "geändert und länger\n");
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(/Am Gerät gelöscht: 1 Datei, 5 B, ginge hier auch, zuerst in den Papierkorb: notizen\/a\.md/.test(lauf.stdout), `der Plan nennt die am Gerät gelöschte Datei nicht: ${lauf.stdout}`);
+    assert(/Hoch:\s+1 Datei/.test(lauf.stdout), `der Plan nennt die geänderte Datei nicht: ${lauf.stdout}`);
+
+    // Der Klient löscht sie hier: sie liegt danach im Papierkorb, und nur sie.
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: { ...umgebung, ARA_PROBE_LOESCHEN: "notizen/a.md" } });
+    assert(!existsSync(join(root, "notizen", "a.md")), "die Attrappe hat nicht gelöscht");
+    const ort = lauf.stdout.match(/aufbewahrt im Papierkorb: (\S+)/)?.[1];
+    assert(ort && readFileSync(join(ort, "notizen", "a.md"), "utf8") === "aaaa\n", `die gelöschte Datei liegt nicht im Papierkorb: ${lauf.stdout}`);
+    assert(ort.startsWith(ausweise) && dateien(ort).length === 1, `im Papierkorb liegt mehr als die gelöschte Datei oder er liegt nicht neben dem Ausweis: ${ort} ${dateien(ort ?? eigen).join(", ")}`);
+    return `Plan ${hoch.length} hoch und 1 runter ohne zu schreiben, Liste mit .env, .gitignore und proto/build, Skill build geht mit, Löschung am Gerät im Plan und im Papierkorb`;
+  } finally {
+    await geraet.schliessen();
+  }
 });
 
 await checkAsync("Die Brücke spricht mit dem Backend der Vorlage: agent kommt aus app.json, call liest und schreibt", async () => {

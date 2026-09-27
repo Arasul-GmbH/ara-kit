@@ -33,6 +33,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ROOT, day, today } from "./kit.mjs";
 import { isVariant, t, variantOf } from "./i18n.mjs";
+import { ignoredBy, parseGitignore } from "../../templates/root/arasul.mjs";
 
 export const TEMPLATE = join(ROOT, ".ara", "templates", "root");
 export const METHOD = join(ROOT, ".ara", "templates", "root-method");
@@ -387,6 +388,8 @@ export function layOut({ root, name, language, places, folders = [], method = fa
  */
 function mergeRules(root, ...changes) {
   const file = join(root, PROPOSAL);
+  // A root taken over from a grown folder carries no proposal: its house has settings of its own.
+  if (!existsSync(file)) return;
   const proposal = JSON.parse(readFileSync(file, "utf8"));
   proposal.permissions ||= {};
   for (const change of changes) {
@@ -459,4 +462,140 @@ export function runCheck(root) {
     cwd: root,
     encoding: "utf8",
   });
+}
+
+// --- Adopting a grown folder ------------------------------------------------------------------
+
+// The same marks of a source tree as the root's check script, check 17: a manifest, a src/ with
+// code, a node_modules. Kept equal by hand, the check script runs without the kit.
+const MANIFESTS = ["package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "composer.json", "Gemfile"];
+const CODE_EXT = [".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".go", ".rs", ".java", ".rb", ".php", ".c", ".cpp", ".cs", ".swift", ".kt"];
+const SECRET_FILE = /^\.env(\..+)?$/;
+// What a machine makes: not looked into, a clone or a secret does not lie there.
+const MADE = new Set([".git", "node_modules", ".next", ".venv", "__pycache__"]);
+/** What adopting writes, and nothing else. */
+export const ADOPT_TARGETS = Object.freeze([".claude/root.json", ".claude/places.json", "arasul.mjs"]);
+
+const posix = (path) => path.split(sep).join("/");
+
+function hasCode(dir, deep = 0) {
+  if (deep > 6) return false;
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+  return entries.some((entry) => {
+    if (entry.isSymbolicLink() || entry.name === "node_modules") return false;
+    if (entry.isDirectory()) return hasCode(join(dir, entry.name), deep + 1);
+    return CODE_EXT.some((ext) => entry.name.endsWith(ext));
+  });
+}
+
+/** Where a clone lives, out of its remote: a GitHub address as a page, anything else as it stands. */
+function remoteOf(dir) {
+  const run = spawnSync("git", ["-C", dir, "config", "--get", "remote.origin.url"], { encoding: "utf8" });
+  const url = run.status === 0 ? run.stdout.trim() : "";
+  const github = url.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/);
+  if (github) return { kind: "github", where: `https://github.com/${github[1]}/${github[2]}` };
+  return url ? { kind: "folder", where: url } : null;
+}
+
+/**
+ * What lies in a grown folder: the clones in it, the source trees, the files that hold secrets.
+ *
+ * A clone is a folder with its own .git below the top. Whether the .gitignore at the top leaves it
+ * out decides what it is: left out, it is a place that lies here, and it is entered as one; not
+ * left out, it would go into the company folder as a copy, and it is named instead. A source tree
+ * is what check 17 of a laid out root calls one. Nothing is written here.
+ */
+export function survey(root, rules) {
+  const clones = [];
+  const sources = [];
+  const secrets = [];
+  const left = (rel, dir) => {
+    const parts = rel.split("/");
+    for (let i = 1; i <= parts.length; i += 1) {
+      if (ignoredBy(rules, parts.slice(0, i).join("/"), i < parts.length || dir)) return true;
+    }
+    return false;
+  };
+  const walk = (dir, deep, inSource = false) => {
+    if (deep > 30) return;
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    const names = new Set(entries.map((entry) => entry.name));
+    const rel = posix(relative(root, dir));
+    if (dir !== root && names.has(".git")) {
+      clones.push({ rel, ignored: left(rel, true), ...(remoteOf(dir) || {}) });
+      return;
+    }
+    let source = inSource;
+    if (!inSource && dir !== root && rel.split("/")[0] !== ".claude") {
+      const manifest = MANIFESTS.find((name) => names.has(name)) || [...names].find((name) => /\.(csproj|sln)$/.test(name));
+      const code = names.has("src") && hasCode(join(dir, "src"));
+      if (manifest || code || names.has("node_modules")) {
+        sources.push({ rel, why: manifest || (code ? "src/" : "node_modules/"), ignored: left(rel, true) });
+        source = true;
+      }
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink() || MADE.has(entry.name)) continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path, deep + 1, source);
+      else if (SECRET_FILE.test(entry.name)) {
+        const file = posix(relative(root, path));
+        secrets.push({ rel: file, ignored: left(file, false) });
+      }
+    }
+  };
+  walk(root, 0);
+  return { clones, sources, secrets };
+}
+
+/** A name for a place out of the name of its folder: lower case with hyphens, never one of the root's own. */
+function placeName(folder, taken) {
+  let name = folder.toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-") || "place";
+  if (!/^[a-z0-9]/.test(name)) name = `p-${name}`;
+  if (["root", "place", "readme"].includes(name)) name = `${name}-repo`;
+  let unique = name;
+  for (let n = 2; taken.has(unique); n += 1) unique = `${name}-${n}`;
+  taken.add(unique);
+  return unique;
+}
+
+/**
+ * Takes a grown folder over as a root, and overwrites nothing.
+ *
+ * Exactly three files come into being: `.claude/root.json`, `.claude/places.json` and the bridge
+ * `arasul.mjs`. Everything else stays as the house has it: its rules, its skills, its settings,
+ * its .gitignore, its version control. The caller has checked that none of the three lies there.
+ */
+export function adopt({ root, name, language, kitVersion }) {
+  const file = join(root, ".gitignore");
+  const rules = parseGitignore(existsSync(file) ? readFileSync(file, "utf8") : "");
+  const found = survey(root, rules);
+  const taken = new Set();
+  const places = [];
+  for (const clone of found.clones.filter((entry) => entry.ignored)) {
+    const local = `./${clone.rel}`;
+    const where = clone.where || local;
+    places.push({
+      name: placeName(clone.rel.split("/").pop(), taken),
+      kind: clone.kind || "folder",
+      where,
+      local,
+      purpose: t(`a repository of its own in this folder, taken over as a place on ${today()}`, `ein eigenes Repository in diesem Ordner, übernommen als Ort am ${today()}`, language),
+    });
+  }
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  writeJson(join(root, ".claude", "root.json"), { name, language, created: today(), kit: kitVersion, method: false, example: false, adopted: today() });
+  writeJson(join(root, ".claude", "places.json"), { note: placesNote(language), places });
+  copyFileSync(join(TEMPLATE, "arasul.mjs"), join(root, "arasul.mjs"));
+  return { places, ...found, gitignore: existsSync(file) };
 }
