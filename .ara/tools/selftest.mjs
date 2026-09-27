@@ -34,6 +34,7 @@ import { spawn, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   chmodSync,
+  copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
@@ -49,7 +50,7 @@ import {
 } from "node:fs";
 import { platform, tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   PROBE,
   arasulRunning,
@@ -78,7 +79,7 @@ import {
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
-import { EXAMPLE as ROOT_EXAMPLE, METHOD as ROOT_METHOD, METHOD_FOLDERS as ROOT_FOLDERS, METHOD_TARGETS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE } from "./lib/root.mjs";
+import { EXAMPLE as ROOT_EXAMPLE, METHOD as ROOT_METHOD, METHOD_FOLDERS as ROOT_FOLDERS, METHOD_TARGETS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE, languageOf } from "./lib/root.mjs";
 import {
   EXTERNAL_PREFIX,
   bareApiPaths,
@@ -103,6 +104,7 @@ import {
   movePort,
   releaseVersion,
   runInstaller,
+  existingData,
   scrub,
   settleDeployKey,
   ship,
@@ -5658,6 +5660,10 @@ check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --
     );
     writeFileSync(join(dir, "backend", "kern", "satz.mjs"), 'const dir = "/tmp";\nexport const satz = `Das kannst du nicht.`;\n');
     writeFileSync(join(dir, "flows", "freigabe.md"), "---\ntitel: x\nzusammenhang: Bitte lies du das.\n---\n");
+    // Gebaute Dateien zählen nicht, Durchlauf 3: ein „dir" aus pdf.js im Paket.
+    mkdirSync(join(dir, "frontend", "assets"), { recursive: true });
+    writeFileSync(join(dir, "frontend", "assets", "pdf-DozoEV77.js"), 'const a = "Sieh dir das an";\n');
+    writeFileSync(join(dir, "frontend", "src", "fremd.js"), `const b = "Lies du das";${" ".repeat(1200)}\n`);
     const gefunden = addressFindings(dir).map((b) => `${b.datei}:${b.zeile}:${b.wort}`);
     assert(
       gefunden.length === 3 &&
@@ -5671,6 +5677,64 @@ check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --
     rmSync(dir, { recursive: true, force: true });
   }
   return "Vorlage und alle Muster ohne du und dir, die Prüfung trifft Oberfläche, Backend und Flow und lässt Code und Pfade";
+});
+
+check("Kleinkram nach Durchlauf 3: Abbruch über vorhandene Daten, JSON aus fragen, Sprache von adopt und Brücke", () => {
+  // Der Installer hält an, weil Daten des Projekts liegen: das Kit liest seine
+  // Wege, statt --despite-traces vorzuschlagen.
+  const abbruch =
+    "\x1b[31m[INSTALL]\x1b[0m Auf diesem Rechner liegen schon Daten des Projekts arasul-platform:\n" +
+    "    arasul-platform_arasul-llm-models\n" +
+    "\x1b[31m[INSTALL]\x1b[0m   Wo das zugehoerige Verzeichnis steht, ist nicht zu ermitteln.\n" +
+    "\x1b[31m[INSTALL]\x1b[0m   Das Verzeichnis von Hand nennen:   ./install.sh --uebernehmen /pfad\n" +
+    "\x1b[31m[INSTALL]\x1b[0m   Oder das Geraet wirklich leeren:   sudo bash reset.sh\nConnection closed.\n";
+  const daten = existingData(abbruch);
+  assert(daten?.project === "arasul-platform", `Projekt nicht erkannt: ${JSON.stringify(daten)}`);
+  assert(daten.volumes.join() === "arasul-platform_arasul-llm-models", `Volumes: ${daten.volumes.join()}`);
+  assert(daten.ways.length === 2 && daten.ways[0].command.includes("--uebernehmen"), `Wege: ${JSON.stringify(daten.ways)}`);
+  assert(existingData("ARASUL 1.0 ist installiert") === null, "ein gelungener Lauf gilt als Abbruch");
+  const geraet = readFileSync(join(ROOT, ".ara", "tools", "device.mjs"), "utf8");
+  assert(!/Dieses Gerät trägt Arasul, und es ist kein Token/.test(geraet), "der Kaufschritt behauptet wieder, das Gerät trage Arasul");
+  assert(/arasul\.ok && arasulRunning\(svc\.arasul\.state\) \? "installed" : "installing"/.test(geraet), "die Akte bekommt nach der Installation nicht den erreichten Stand");
+
+  // JSON aus der Antwort von fragen: gelesen oder mit Grund, nie repariert.
+  const vorlage = join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs");
+  const probe = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    import { jsonAusAntwort as j } from ${JSON.stringify(pathToFileURL(vorlage).href)};
+    console.log(JSON.stringify([j('Hier \\u0060\\u0060\\u0060json\\n{"jahr": 2026}\\n\\u0060\\u0060\\u0060'), j('{"betrag": 12,50}'), j("nichts")]));
+  `], { encoding: "utf8" });
+  const [gut, komma, nichts] = JSON.parse(probe.stdout || "[]");
+  assert(gut?.daten?.jahr === 2026 && !gut.fehler, `JSON im Block nicht gelesen: ${probe.stdout}${probe.stderr}`);
+  assert(komma?.daten === null && /Dezimalkomma/.test(komma.fehler), `Dezimalkomma nicht benannt: ${JSON.stringify(komma)}`);
+  assert(nichts?.daten === null && nichts.fehler, "ohne JSON kein Grund");
+
+  // Die Sprache eines gewachsenen Ordners kommt aus seiner CLAUDE.md.
+  const haus = mkdtempSync(join(tmpdir(), "ara-sprache-"));
+  try {
+    mkdirSync(join(haus, ".claude"));
+    writeFileSync(join(haus, ".claude", "CLAUDE.md"), "# Haus\n\nDas ist der Ordner der Firma. Hier liegt, was für die Kunden wichtig ist, und das wird nicht gelöscht.\n");
+    assert(languageOf(haus) === "de", `deutsche CLAUDE.md nicht erkannt: ${languageOf(haus)}`);
+    writeFileSync(join(haus, ".claude", "CLAUDE.md"), "# House\n\nThis is the folder of the company. Here lies what matters for the customers, and it is not deleted.\n");
+    assert(languageOf(haus) === "en", `englische CLAUDE.md nicht erkannt: ${languageOf(haus)}`);
+    rmSync(join(haus, ".claude"), { recursive: true });
+
+    // Die Brücke allein in einem leeren Ordner: LANG sagt en, der Rechner hat sich de gemerkt.
+    const konfig = join(haus, "konfig");
+    const leer = join(haus, "leer");
+    mkdirSync(konfig);
+    mkdirSync(leer);
+    writeFileSync(join(konfig, "credentials.json"), '{"version":1,"devices":{},"language":"de"}\n', { mode: 0o600 });
+    copyFileSync(join(ROOT, ".ara", "templates", "root", "arasul.mjs"), join(leer, "arasul.mjs"));
+    const env = { ...process.env, LANG: "en_US.UTF-8", ARASUL_CONFIG_DIR: konfig };
+    delete env.ARASUL_LANGUAGE;
+    const gemerkt = spawnSync(process.execPath, ["arasul.mjs", "status"], { cwd: leer, env, encoding: "utf8" });
+    assert(/Gerät: keines angemeldet/.test(gemerkt.stdout), `die Brücke spricht nicht die gemerkte Sprache: ${gemerkt.stdout}${gemerkt.stderr}`);
+    const gesagt = spawnSync(process.execPath, ["arasul.mjs", "status", "--language", "en"], { cwd: leer, env, encoding: "utf8" });
+    assert(/Device: none logged in/.test(gesagt.stdout), `--language überstimmt nicht: ${gesagt.stdout}${gesagt.stderr}`);
+  } finally {
+    rmSync(haus, { recursive: true, force: true });
+  }
+  return "Abbruch mit zwei Wegen, Akte, Kaufsatz, JSON dreimal, Sprache aus CLAUDE.md und in der Brücke";
 });
 
 await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zeichen Titel und 200 Zeilen", async () => {
@@ -6093,6 +6157,11 @@ check("Die Vereinbarung für eine App kommt aus dem Kontrakt, und was fehlt, wir
   );
   assert(mitProtokoll.wege.modell_fragen?.pfad.endsWith("/llm/chat"), "der Weg, ein Modell zu fragen, fehlt, obwohl das Gerät ihn nennt");
   assert(arrangementLines(mitProtokoll).some((zeile) => zeile.includes("x-geraet-fuer")), "die Vereinbarung nennt die Kopfzeile für den Menschen nicht");
+  // Ob Flow-Schritte im Protokoll stehen, sagt protokoll.wege, nicht ein fester Satz.
+  const flowZeile = (wege) =>
+    arrangementLines({ ...mitProtokoll, protokoll: { ...mitProtokoll.protokoll, wege } }).find((z) => /Flow|flow/.test(z) && /Protokoll|log/.test(z)) || "";
+  assert(/stehen auch darin|stand there too/.test(flowZeile(["llm/chat", "flows/:name/run"])), `mit dem Weg der Flows: ${flowZeile(["llm/chat", "flows/:name/run"])}`);
+  assert(/steht nicht darin|is not in that log/.test(flowZeile(["llm/chat"])), `ohne den Weg der Flows: ${flowZeile(["llm/chat"])}`);
 
   // Ein Gerät, das nichts davon verspricht: das Kit erfindet nichts, es zählt
   // auf, was fehlt, und jeder Weg steht als null in der Datei.
