@@ -12,14 +12,16 @@
  *   node arasul.mjs login                              only the proposals and the places, no new login
  *   node arasul.mjs login --approve <checksum>         approve one proposal, per proposal
  *   node arasul.mjs login --withdraw                   take back what approving entered
- *   node arasul.mjs status                             device, credential, company folder, proposals
+ *   node arasul.mjs status                             one line on the sync, device, credential, folder, proposals
  *   node arasul.mjs sync                               sync the company folder, write apps/<id>/APP.md
  *   node arasul.mjs sync --plan                        what a sync would move up and down, writing nothing
+ *   node arasul.mjs sync --install [--every <min>]     on a Mac: sync in the background, password in the keychain
+ *   node arasul.mjs sync --uninstall                   take the agent and the password back
  *   node arasul.mjs apps                               the assigned apps with their routes, writes APP.md
  *   node arasul.mjs call <app> <route> [name=value ...] [--write] [--method <verb>]
  *
  * The credential lies in ~/.config/arasul/credentials.json (0600), one entry per device with its
- * address and credential. Never in this folder, never in the keychain. The login takes a name and
+ * address and credential. Never in this folder. The login takes a name and
  * a password, has the device issue a credential for this computer with it, and keeps only that:
  * the session of the login has an end and carries everything the human may do, a credential says
  * who somebody is and opens no administration. Neither the password nor anything of it is stored.
@@ -30,10 +32,18 @@
  * a folder of level 1 as a folder at the top, one of level 2 below its parent. The syncing itself
  * is done by the command line client of the file service, unpacked out of its desktop package;
  * --client names where it lies. The client logs in with the same password as the device, so `sync`
- * asks for it and stores it nowhere. What a machine makes, what belongs to this computer and what
+ * asks for it and stores it nowhere, the sync in the background aside. What a machine makes, what belongs to this computer and what
  * the client writes itself stays out. `sync` also writes sicht.md, the view of this person: from
  * the device as soon as it delivers one, until then out of what the device says about folders and
  * apps. The state of the last sync lies next to the credential, in firmenordner.json.
+ *
+ * `sync --install` hands the sync to launchd on a Mac: an agent of the person logged in runs
+ * `sync --background` every five minutes (--every names another interval), and the password of the
+ * file service lies in the keychain for it, checked once against the service and in no file. The
+ * credential is asked first at every run, so revoking it on the device stops the sync. A conflict
+ * or an error comes as a notification of macOS, once per state. `status` says in its first line
+ * when the last sync went through, how much changed here since, and how many conflicts lie in the
+ * tree. `sync --uninstall` takes the agent and the password back.
  *
  * What never goes along: what a machine makes, what belongs to this computer, `.env` and `.env.*`
  * at every depth, and what the .gitignore at the top of this root leaves out. `sync --plan` shows
@@ -71,14 +81,16 @@
  *   node arasul.mjs login                              nur Vorschläge und Orte, keine neue Anmeldung
  *   node arasul.mjs login --approve <prüfsumme>        einen Vorschlag freigeben, je Vorschlag
  *   node arasul.mjs login --withdraw                   zurücknehmen, was das Freigeben eintrug
- *   node arasul.mjs status                             Gerät, Ausweis, Firmenordner, Vorschläge
+ *   node arasul.mjs status                             eine Zeile zum Abgleich, Gerät, Ausweis, Ordner, Vorschläge
  *   node arasul.mjs sync                               den Firmenordner abgleichen, apps/<id>/APP.md schreiben
  *   node arasul.mjs sync --plan                        was ein Abgleich hoch und runter bewegte, ohne zu schreiben
+ *   node arasul.mjs sync --install [--every <min>]     am Mac: Abgleich im Hintergrund, Passwort im Schlüsselbund
+ *   node arasul.mjs sync --uninstall                   Agent und Passwort zurücknehmen
  *   node arasul.mjs apps                               die zugewiesenen Apps mit ihren Routen, schreibt APP.md
  *   node arasul.mjs call <app> <route> [name=wert ...] [--write] [--method <verb>]
  *
  * Der Ausweis liegt in ~/.config/arasul/credentials.json (0600), je Gerät ein Eintrag mit Adresse
- * und Ausweis. Nie in diesem Ordner, nie im Schlüsselbund. Die Anmeldung nimmt Name und Passwort,
+ * und Ausweis. Nie in diesem Ordner. Die Anmeldung nimmt Name und Passwort,
  * lässt sich damit vom Gerät einen Ausweis für diesen Rechner ausstellen und behält nur den: die
  * Sitzung der Anmeldung hat ein Ende und trägt alles, was der Mensch darf, ein Ausweis sagt, wer
  * jemand ist, und öffnet keine Verwaltung. Weder das Passwort noch etwas davon wird abgelegt.
@@ -89,11 +101,20 @@
  * Ordner der Ebene 1 als Ordner oben, einen der Ebene 2 unter seinen Eltern. Das Abgleichen
  * selbst tut der Kommandozeilen-Klient des Dateidienstes, entpackt aus seinem Desktop-Paket;
  * --client nennt, wo er liegt. Der Klient meldet sich mit demselben Passwort an wie das Gerät,
- * also fragt `sync` danach und legt es nirgends ab. Was eine Maschine macht, was zu diesem Rechner
+ * also fragt `sync` danach und legt es nirgends ab, den Abgleich im Hintergrund ausgenommen. Was eine Maschine macht, was zu diesem Rechner
  * gehört und was der Klient selbst schreibt, bleibt draußen. `sync` schreibt außerdem sicht.md,
  * die Sicht dieses Menschen: vom Gerät, sobald es eine liefert, bis dahin aus dem, was das Gerät
  * über Ordner und Apps sagt. Der Stand des letzten Abgleichs liegt neben dem Ausweis, in
  * firmenordner.json.
+ *
+ * `sync --install` übergibt den Abgleich am Mac an launchd: ein Agent des angemeldeten Menschen
+ * führt alle fünf Minuten `sync --background` aus (--every nennt einen anderen Abstand), und das
+ * Passwort des Dateidienstes liegt dafür im Schlüsselbund, einmal am Dienst geprüft und in keiner
+ * Datei. Der Ausweis wird bei jedem Lauf zuerst gefragt, ein am Gerät widerrufener Ausweis hält den
+ * Abgleich also an. Ein Konflikt oder ein Fehler kommt als Mitteilung von macOS, einmal je Stand.
+ * `status` sagt in seiner ersten Zeile, wann der letzte Abgleich durchging, wie viel sich hier
+ * seitdem geändert hat und wie viele Konflikte im Baum liegen. `sync --uninstall` nimmt Agent und
+ * Passwort zurück.
  *
  * Was nie mitgeht: was eine Maschine macht, was zu diesem Rechner gehört, `.env` und `.env.*` in
  * jeder Tiefe, und was die .gitignore oben in dieser Wurzel auslässt. `sync --plan` zeigt vorher je
@@ -324,8 +345,8 @@ const stop = (message, code = 1) => {
   throw new Stop(message, code);
 };
 
-const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name"];
-const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine"];
+const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name", "every"];
+const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine", "install", "uninstall", "background"];
 
 function parseArgs(argv) {
   const out = { _: [], flags: {} };
@@ -511,7 +532,11 @@ async function ask(target, options) {
     return await send(target, options);
   } catch (error) {
     if (error instanceof Stop) throw error;
-    stop(explain(error, target.address));
+    // Not reached is a state that passes, a reboot of the device for instance, and the sync in the
+    // background says it later than a refusal.
+    const failure = new Stop(explain(error, target.address));
+    failure.unreachable = !TLS_CODES.has(error.code);
+    throw failure;
   }
 }
 
@@ -1500,8 +1525,8 @@ async function spacesOf(plan, device, password) {
   const answer = await ask(target, { path: "graph/v1.0/me/drives", basic, timeout: 60_000 });
   if (answer.status === 401 || answer.status === 403) {
     stop(t(
-      `The file service does not take the password of ${plan.user} (${answer.status}). Nothing was written.`,
-      `Der Dateidienst nimmt das Passwort von ${plan.user} nicht an (${answer.status}). Nichts wurde geschrieben.`
+      `The file service does not take the password of ${plan.user} (${answer.status}). Nothing was written.${inBackground ? " The password in the keychain no longer holds: node arasul.mjs sync --install stores the new one." : ""}`,
+      `Der Dateidienst nimmt das Passwort von ${plan.user} nicht an (${answer.status}). Nichts wurde geschrieben.${inBackground ? " Das Passwort im Schlüsselbund gilt nicht mehr: node arasul.mjs sync --install legt das neue ab." : ""}`
     ));
   }
   if (answer.status < 200 || answer.status >= 300) {
@@ -2069,8 +2094,11 @@ function clientFailed(run) {
 /**
  * The password for the file service. It is the one of the device, because the device mirrors it
  * there: asked for at every run, at the terminal or with --password-stdin, and stored nowhere.
+ * The one exception is the sync in the background, which nobody is there to type for: it takes the
+ * password out of the keychain, where `sync --install` put it, and out of no file.
  */
 async function askPassword(args, plan, device) {
+  if (args.flags.background) return keychainPassword(plan, device);
   const password = args.flags["password-stdin"]
     ? (await readAllStdin()).split(/\r?\n/)[0].trim()
     : await secretLine(t(`Password of ${plan.user} on ${device.name} (the file service takes the same one): `, `Passwort von ${plan.user} auf ${device.name} (der Dateidienst nimmt dasselbe): `));
@@ -2268,11 +2296,406 @@ function bootstrapBridge() {
   };
 }
 
+// --- In the background: launchd, the keychain, a notification ---------------------------------
+// Working out of the company folder every day means the sync runs without anybody thinking of it:
+// a command with a password per run is forgotten after three days. So on a Mac `sync --install`
+// hands the sync of this root to launchd, as an agent of the person logged in, and the password of
+// the file service to the keychain, never to a file. The agent runs `sync --background` at an
+// interval, takes the password out of the keychain, and says a conflict or an error as a
+// notification, once per state and not at every run. launchd starts it again at every login, so it
+// outlives a logout. `sync --uninstall` takes the agent and the password back.
+//
+// The credential stays where it lies, in credentials.json, and it is asked first at every run: a
+// credential revoked in the device's front end stops the sync before the client ever starts.
+
+let inBackground = false;
+
+const IS_MAC = process.platform === "darwin";
+const SECURITY = "/usr/bin/security";
+const KEYCHAIN_SERVICE = "Arasul Firmenordner";
+// A keychain file of its own instead of the login keychain, for a test. Never needed otherwise.
+const KEYCHAIN_FILE = process.env.ARASUL_KEYCHAIN ? resolve(process.env.ARASUL_KEYCHAIN) : null;
+const LAUNCH_AGENTS = process.env.ARASUL_LAUNCH_AGENTS ? resolve(process.env.ARASUL_LAUNCH_AGENTS) : join(homedir(), "Library", "LaunchAgents");
+const LAUNCHCTL = process.env.ARASUL_LAUNCHCTL || "/bin/launchctl";
+const BACKGROUND_DIR = join(CONFIG_DIR, "abgleich");
+const EVERY_DEFAULT = 5;
+/** A device that does not answer is often one that restarts. Said only when it lasts this long. */
+const QUIET_UNREACHABLE = 15 * 60_000;
+
+/** One agent per root: its name carries the root's folder name and a checksum of its path. */
+const AGENT_LABEL = `de.arasul.abgleich.${basename(ROOT).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "wurzel"}-${createHash("sha256").update(ROOT).digest("hex").slice(0, 8)}`;
+const AGENT_PLIST = join(LAUNCH_AGENTS, `${AGENT_LABEL}.plist`);
+const AGENT_LOG = join(BACKGROUND_DIR, `${AGENT_LABEL}.log`);
+const AGENT_LOCK = join(BACKGROUND_DIR, `${AGENT_LABEL}.lock`);
+const domain = () => `gui/${process.getuid()}`;
+
+const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+/** A value for the command line of `security -i`, which reads double quotes and backslashes. */
+const quoted = (value) => `"${String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+const inKeychain = () => (KEYCHAIN_FILE ? [KEYCHAIN_FILE] : []);
+
+/**
+ * What the keychain holds for this root, or null when it holds nothing.
+ *
+ * Kept in base64: `security` gives a value with a character beyond ASCII back as hex, and an ASCII
+ * password could be read as hex just as well (measured on 2026-09-27 with an umlaut).
+ */
+function keychainRead() {
+  const run = spawnSync(SECURITY, ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", AGENT_LABEL, "-w", ...inKeychain()], { encoding: "utf8", timeout: 30_000 });
+  if (run.status === 44) return null;
+  if (run.status !== 0) {
+    stop(t(
+      `The keychain did not hand out the password for the sync of this root: ${clientSaid(run)}. A locked keychain opens with the next login.`,
+      `Der Schlüsselbund hat das Passwort für den Abgleich dieser Wurzel nicht herausgegeben: ${clientSaid(run)}. Ein gesperrter Schlüsselbund öffnet sich mit der nächsten Anmeldung.`
+    ));
+  }
+  return Buffer.from(run.stdout.trim(), "base64").toString("utf8");
+}
+
+/** Into the keychain, through the input of `security` and never as an argument: the process list shows arguments. */
+function keychainStore(secret) {
+  const line = [
+    "add-generic-password", "-U",
+    "-s", quoted(KEYCHAIN_SERVICE),
+    "-a", quoted(AGENT_LABEL),
+    "-l", quoted(`${KEYCHAIN_SERVICE} ${basename(ROOT)}`),
+    "-j", quoted(t(`Password of the file service for the sync in the background of ${ROOT}. Taken back by node arasul.mjs sync --uninstall.`, `Passwort des Dateidienstes für den Abgleich im Hintergrund von ${ROOT}. Zurückgenommen mit node arasul.mjs sync --uninstall.`)),
+    "-w", quoted(Buffer.from(secret, "utf8").toString("base64")),
+    ...inKeychain().map(quoted),
+  ].join(" ");
+  const run = spawnSync(SECURITY, ["-i"], { input: `${line}\n`, encoding: "utf8", timeout: 30_000 });
+  if (run.status !== 0 || keychainRead() !== secret) {
+    stop(t(`The keychain did not take the password: ${clientSaid(run)}. Nothing was set up.`, `Der Schlüsselbund hat das Passwort nicht angenommen: ${clientSaid(run)}. Nichts wurde eingerichtet.`));
+  }
+}
+
+/** Take the password of this root out of the keychain. True when one lay there. */
+function keychainForget() {
+  return spawnSync(SECURITY, ["delete-generic-password", "-s", KEYCHAIN_SERVICE, "-a", AGENT_LABEL, ...inKeychain()], { encoding: "utf8", timeout: 30_000 }).status === 0;
+}
+
+/** The password of the sync in the background, out of the keychain and out of nothing else. */
+function keychainPassword() {
+  if (!IS_MAC && !KEYCHAIN_FILE) stop(t("The sync in the background takes its password out of the keychain of a Mac, and this is no Mac.", "Der Abgleich im Hintergrund nimmt sein Passwort aus dem Schlüsselbund eines Mac, und das hier ist keiner."));
+  const password = keychainRead();
+  if (!password) {
+    stop(t(
+      "No password for the sync in the background lies in the keychain. node arasul.mjs sync --install stores it, once.",
+      "Im Schlüsselbund liegt kein Passwort für den Abgleich im Hintergrund. node arasul.mjs sync --install legt es ab, einmal."
+    ));
+  }
+  return password;
+}
+
+const launchctl = (args) => spawnSync(LAUNCHCTL, args, { encoding: "utf8", timeout: 30_000 });
+
+/** The node the agent starts: the one on the path when it is this one, so that an update of node does not break it. */
+function nodePath() {
+  const real = realpathSync(process.execPath);
+  for (const part of (process.env.PATH || "").split(":")) {
+    if (!part) continue;
+    try {
+      if (realpathSync(join(part, "node")) === real) return join(part, "node");
+    } catch {
+      // Not there.
+    }
+  }
+  return process.execPath;
+}
+
+const xml = (value) => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** The agent's file for launchd. No secret stands in it. */
+function plistOf(program, every, env) {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
+    '<plist version="1.0">',
+    "<dict>",
+    `  <key>Label</key><string>${xml(AGENT_LABEL)}</string>`,
+    "  <key>ProgramArguments</key>",
+    "  <array>",
+    ...program.map((part) => `    <string>${xml(part)}</string>`),
+    "  </array>",
+    `  <key>WorkingDirectory</key><string>${xml(ROOT)}</string>`,
+    `  <key>StartInterval</key><integer>${every * 60}</integer>`,
+    "  <key>RunAtLoad</key><true/>",
+    "  <key>ProcessType</key><string>Background</string>",
+    `  <key>StandardOutPath</key><string>${xml(AGENT_LOG)}</string>`,
+    `  <key>StandardErrorPath</key><string>${xml(AGENT_LOG)}</string>`,
+    "  <key>EnvironmentVariables</key>",
+    "  <dict>",
+    ...Object.entries(env).map(([name, value]) => `    <key>${xml(name)}</key><string>${xml(value)}</string>`),
+    "  </dict>",
+    "</dict>",
+    "</plist>",
+    "",
+  ].join("\n");
+}
+
+/** What is set up for this root: the agent's file, its interval and program, and whether launchd holds it. */
+function agentState() {
+  if (!existsSync(AGENT_PLIST)) return null;
+  const text = readFileSync(AGENT_PLIST, "utf8");
+  const every = Math.round(Number(text.match(/<key>StartInterval<\/key>\s*<integer>(\d+)</)?.[1] || 0) / 60);
+  const program = text.match(/<key>ProgramArguments<\/key>\s*<array>\s*<string>([^<]*)</)?.[1]?.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&") || "";
+  return { every, program, loaded: launchctl(["print", `${domain()}/${AGENT_LABEL}`]).status === 0 };
+}
+
+/**
+ * One sync of this root at a time. The agent and a human at the terminal share the same lock: two
+ * clients in one folder would each take the other's half-written files for changes.
+ */
+function takeLock() {
+  mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
+  try {
+    writeFileSync(AGENT_LOCK, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
+  } catch (error) {
+    if (error.code !== "EEXIST") throw error;
+    const holder = Number(readJson(AGENT_LOCK, 0));
+    let alive = false;
+    try {
+      process.kill(holder, 0);
+      alive = true;
+    } catch (gone) {
+      alive = gone.code === "EPERM";
+    }
+    if (alive && holder !== process.pid) return null;
+    // Left by a run that was stopped: the process is gone.
+    writeFileSync(AGENT_LOCK, `${process.pid}\n`, { mode: 0o600 });
+  }
+  return () => {
+    if (Number(readJson(AGENT_LOCK, 0)) === process.pid) rmSync(AGENT_LOCK, { force: true });
+  };
+}
+
+/** A notification of macOS, or of the program ARASUL_NOTIFY names. The text goes as an argument of the script, never into its source. */
+function notify(title, message) {
+  const text = oneLine(message, 400);
+  say(`${t("Notification", "Mitteilung")}: ${title}: ${text}`);
+  const custom = process.env.ARASUL_NOTIFY;
+  if (custom) return spawnSync(custom, [title, text], { timeout: 15_000 });
+  if (!IS_MAC) return null;
+  return spawnSync("/usr/bin/osascript", ["-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)", "-e", "end run", title, text], { timeout: 15_000 });
+}
+
+/** The log of the agent stays small: past a megabyte it starts again. */
+function trimLog() {
+  try {
+    if (statSync(AGENT_LOG).size > 1024 * 1024) writeFileSync(AGENT_LOG, "");
+  } catch {
+    // No log yet.
+  }
+}
+
+/**
+ * What a run in the background leaves behind, next to the state of the sync, and the one
+ * notification that belongs to it. A problem is said once, when it comes about or changes, and its
+ * end once more, when it was said. A device that does not answer is said only after a quarter of
+ * an hour: a restart takes a few minutes and is no problem.
+ */
+function noteBackground(problem) {
+  const state = readFolderState();
+  const mine = state.roots[ROOT] || (state.roots[ROOT] = { folders: {} });
+  const before = mine.background || {};
+  const now = new Date();
+  const entry = { at: now.toISOString() };
+  if (!problem) {
+    if (before.problem && before.notified) notify(t("Company folder synced again", "Firmenordner wieder abgeglichen"), t(`${basename(ROOT)} is synced again.`, `${basename(ROOT)} ist wieder abgeglichen.`));
+  } else {
+    // A device that does not answer says it with another code now and then, and stays the same problem.
+    const same = problem.kind === "unreachable" ? before.problem?.kind === "unreachable" : before.problem?.text === problem.text;
+    Object.assign(entry, { problem, since: same && before.since ? before.since : entry.at, notified: Boolean(same && before.notified) });
+    const lasting = now.getTime() - Date.parse(entry.since) >= QUIET_UNREACHABLE;
+    if (!entry.notified && (problem.kind !== "unreachable" || lasting)) {
+      const title = problem.kind === "conflict" ? t("Conflict in the company folder", "Konflikt im Firmenordner") : t("Company folder not synced", "Firmenordner nicht abgeglichen");
+      notify(title, problem.text);
+      entry.notified = true;
+    }
+  }
+  mine.background = entry;
+  writeFolderState(state);
+}
+
+/** `sync --background`: what the agent runs. The password comes from the keychain, the result goes to the state and, when it is a problem, to a notification. */
+async function doBackground(args) {
+  inBackground = true;
+  trimLog();
+  const started = new Date().toISOString();
+  say(`--- ${started} ${t("sync in the background", "Abgleich im Hintergrund")}`);
+  let problem = null;
+  try {
+    await runSync(args);
+    const fresh = Object.entries(readFolderState().roots[ROOT]?.folders || {}).filter(([, folder]) => folder.at >= started);
+    const failed = fresh.filter(([, folder]) => folder.result === "error");
+    const conflicts = fresh.reduce((sum, [, folder]) => sum + (folder.conflicts || 0), 0);
+    if (failed.length) problem = { kind: "error", text: failed.map(([path, folder]) => `${path === "." ? folder.id : path}: ${folder.message}`).join(" ") };
+    else if (conflicts) {
+      problem = {
+        kind: "conflict",
+        text: t(
+          `${conflicts} ${conflicts === 1 ? "file differs" : "files differ"} on both sides in ${basename(ROOT)}, the client kept both versions. node arasul.mjs status says where.`,
+          `${conflicts} ${conflicts === 1 ? "Datei ist" : "Dateien sind"} in ${basename(ROOT)} auf beiden Seiten verschieden, der Klient hat beide Fassungen behalten. node arasul.mjs status sagt, wo.`
+        ),
+      };
+    }
+  } catch (error) {
+    problem = { kind: error.unreachable ? "unreachable" : "error", text: oneLine(error.message, 400) };
+    warn(error.message);
+  }
+  noteBackground(problem);
+  return !problem;
+}
+
+/** A place a program in the background reaches only with the approval of macOS. */
+function guardedByMacos(path) {
+  const home = homedir();
+  return ["Desktop", "Documents", "Downloads", join("Library", "Mobile Documents")].some((part) => path === join(home, part) || path.startsWith(`${join(home, part)}/`));
+}
+
+/** `sync --install`: the password into the keychain, proven first, and an agent to launchd. */
+async function doInstall(args) {
+  if (!IS_MAC && !process.env.ARASUL_LAUNCH_AGENTS) {
+    stop(t(
+      "The sync in the background is built on launchd and the keychain of a Mac. Here: node arasul.mjs sync, by hand or out of a timer of this computer.",
+      "Der Abgleich im Hintergrund baut auf launchd und den Schlüsselbund eines Mac. Hier: node arasul.mjs sync, von Hand oder aus einem Zeitgeber dieses Rechners."
+    ), 2);
+  }
+  const every = Number(one(args, "every") ?? EVERY_DEFAULT);
+  if (!Number.isInteger(every) || every < 1 || every > 1440) stop(t("--every takes minutes, a whole number from 1 to 1440.", "--every nimmt Minuten, eine ganze Zahl von 1 bis 1440."), 2);
+  const device = chooseDevice(args);
+  const plan = await askFolders(device);
+  if (!plan.service) stop(`${plan.reason} ${t("Nothing was set up.", "Nichts wurde eingerichtet.")}`);
+  if (!plan.folders.length) stop(t("No folder is shared with you: a sync in the background would have nothing to do. Nothing was set up.", "Dir ist kein Ordner freigegeben: ein Abgleich im Hintergrund hätte nichts zu tun. Nichts wurde eingerichtet."));
+  if (!plan.address || !plan.user) stop(t("The device names no address or no user of the file service. Nothing was set up.", "Das Gerät nennt keine Adresse oder keinen Benutzer des Dateidienstes. Nichts wurde eingerichtet."));
+  const client = clientPath(args);
+  const password = await askPassword({ ...args, flags: { ...args.flags, background: false } }, plan, device);
+  // Proven before it is stored: a password the service does not take would fail at every run.
+  await spacesOf(plan, device, password);
+  keychainStore(password);
+
+  mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
+  mkdirSync(LAUNCH_AGENTS, { recursive: true });
+  const program = [nodePath(), join(ROOT, "arasul.mjs"), "sync", "--background", "--device", device.name, "--client", client];
+  const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
+  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
+  writeFileSync(AGENT_PLIST, plistOf(program, every, env), { mode: 0o644 });
+  launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]);
+  let run;
+  // launchd lets go of an agent a moment after bootout, and refuses it until then.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    run = launchctl(["bootstrap", domain(), AGENT_PLIST]);
+    if (run.status === 0) break;
+    pause(1000);
+  }
+  if (run.status !== 0) {
+    stop(t(
+      `launchd did not take the agent: ${clientSaid(run)}. The password lies in the keychain and the agent at ${AGENT_PLIST}: node arasul.mjs sync --uninstall takes both back.`,
+      `launchd hat den Agenten nicht angenommen: ${clientSaid(run)}. Das Passwort liegt im Schlüsselbund und der Agent unter ${AGENT_PLIST}: node arasul.mjs sync --uninstall nimmt beides zurück.`
+    ));
+  }
+  say(t(`Sync in the background set up: ${plan.user} on ${device.name}, every ${every} minutes, starting now.`, `Abgleich im Hintergrund eingerichtet: ${plan.user} auf ${device.name}, alle ${every} Minuten, ab jetzt.`));
+  say(`  ${t("Agent", "Agent")}: ${AGENT_PLIST} (${AGENT_LABEL}), ${t("started again by launchd at every login", "von launchd bei jeder Anmeldung neu gestartet")}`);
+  say(`  ${t("Password", "Passwort")}: ${t(`in the keychain, '${KEYCHAIN_SERVICE}', checked against the file service. In no file.`, `im Schlüsselbund, '${KEYCHAIN_SERVICE}', am Dateidienst geprüft. In keiner Datei.`)}`);
+  say(`  ${t("Log", "Protokoll")}: ${AGENT_LOG}`);
+  say(`  ${t(
+    "A conflict or an error comes as a notification. node arasul.mjs status says in one line how things stand. Revoking the credential in the device's front end stops the sync at its next run.",
+    "Ein Konflikt oder ein Fehler kommt als Mitteilung. node arasul.mjs status sagt in einer Zeile, wie es steht. Wird der Ausweis in der Oberfläche des Geräts widerrufen, hält der Abgleich beim nächsten Lauf an."
+  )}`);
+  if (guardedByMacos(ROOT)) {
+    say(`  ${t(
+      `${ROOT} lies in a folder macOS guards: a program in the background gets in only when node has full disk access in the system settings, under privacy and security. Without it every run ends with 'Operation not permitted'.`,
+      `${ROOT} liegt in einem Ordner, den macOS bewacht: ein Programm im Hintergrund kommt nur hinein, wenn node in den Systemeinstellungen unter Datenschutz und Sicherheit vollen Festplattenzugriff hat. Ohne ihn endet jeder Lauf mit 'Operation not permitted'.`
+    )}`);
+  }
+  return true;
+}
+
+/** `sync --uninstall`: the agent out of launchd, its file away, the password out of the keychain. */
+function doUninstall() {
+  const loaded = launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]).status === 0;
+  const had = existsSync(AGENT_PLIST);
+  rmSync(AGENT_PLIST, { force: true });
+  const forgot = IS_MAC || KEYCHAIN_FILE ? keychainForget() : false;
+  const state = readFolderState();
+  if (state.roots[ROOT]?.background) {
+    delete state.roots[ROOT].background;
+    writeFolderState(state);
+  }
+  if (!loaded && !had && !forgot) {
+    say(t("No sync in the background was set up for this root. Nothing was changed.", "Für diese Wurzel war kein Abgleich im Hintergrund eingerichtet. Nichts wurde geändert."));
+    return true;
+  }
+  say(t("Sync in the background taken back:", "Abgleich im Hintergrund zurückgenommen:"));
+  say(`  ${t("Agent", "Agent")}: ${loaded ? t("taken out of launchd", "aus launchd genommen") : t("was not loaded", "war nicht geladen")}${had ? t(`, ${AGENT_PLIST} deleted`, `, ${AGENT_PLIST} gelöscht`) : ""}`);
+  say(`  ${t("Password", "Passwort")}: ${forgot ? t("taken out of the keychain", "aus dem Schlüsselbund genommen") : t("none lay in the keychain", "im Schlüsselbund lag keines")}`);
+  say(`  ${t("What was synced stays here. The log stays for reading", "Was abgeglichen wurde, bleibt hier. Das Protokoll bleibt zum Lesen")}: ${AGENT_LOG}`);
+  return true;
+}
+
+/** What changed here since the last sync, out of this tree and the state, without asking anybody. */
+function openHere(here, base) {
+  let count = 0;
+  for (const [path, file] of here) {
+    if (CONFLICT_MARK.test(path.split("/").pop())) continue;
+    const was = base.get(path);
+    if (!was || !alike(file, was)) count += 1;
+  }
+  for (const path of base.keys()) if (!here.has(path)) count += 1;
+  return count;
+}
+
+/**
+ * The one line of `status`: when the last sync went through, how much is open here, how many
+ * conflicts lie in the tree, and whether it runs in the background. Out of this computer alone, so
+ * it also stands when the device does not answer. Open counts what changed here since the last
+ * sync; what changed on the device only the next sync sees.
+ */
+function syncLine() {
+  const head = t("Sync", "Abgleich");
+  const mine = readFolderState().roots[ROOT];
+  const folders = Object.entries(mine?.folders || {}).map(([path, folder]) => ({ ...folder, path, root: Boolean(folder.root) }));
+  const agent = agentState();
+  const where = !agent
+    ? t("not in the background (node arasul.mjs sync --install)", "nicht im Hintergrund (node arasul.mjs sync --install)")
+    : !existsSync(agent.program)
+      ? t(`in the background, but ${agent.program} is gone: node arasul.mjs sync --install again`, `im Hintergrund, aber ${agent.program} ist weg: node arasul.mjs sync --install noch einmal`)
+      : agent.loaded
+        ? t(`in the background every ${agent.every} minutes`, `im Hintergrund alle ${agent.every} Minuten`)
+        : t(`set up every ${agent.every} minutes, but launchd does not hold it: log in again or node arasul.mjs sync --install`, `alle ${agent.every} Minuten eingerichtet, aber launchd hält es nicht: neu anmelden oder node arasul.mjs sync --install`);
+  const problem = mine?.background?.problem || null;
+  if (!folders.length) return { line: `${head}: ${t("never synced", "noch nie abgeglichen")}, ${where}`, problem, fine: false };
+  const plan = { folders };
+  const tops = topNames(plan);
+  let open = 0;
+  let conflicts = 0;
+  let unknown = false;
+  const failed = [];
+  for (const folder of folders) {
+    if (folder.result !== "ok") failed.push(folder.path === "." ? folder.id : folder.path);
+    const local = join(ROOT, ...folder.path.split("/"));
+    if (!existsSync(local)) continue;
+    const excludes = excludesFor(plan, folder, local);
+    const base = readBase(local);
+    if (base) open += openHere(localTree(local, excludes, { weighHome: false }).files, base);
+    else unknown = true;
+    conflicts += inspectFolder(local, folder.root ? tops : new Set(), excludes).conflicts.length;
+  }
+  const done = folders.filter((folder) => folder.result === "ok").map((folder) => folder.at).sort();
+  const last = done.length ? `${t("last synced", "zuletzt abgeglichen")} ${stamp(done[done.length - 1])}` : t("never synced through", "noch nie durchgegangen");
+  const parts = [last, `${t("open", "offen")} ${open}${unknown ? "+" : ""}`, `${t("conflicts", "Konflikte")} ${conflicts}`];
+  if (failed.length) parts.push(`${t("not through", "nicht durch")}: ${failed.join(", ")}`);
+  parts.push(where);
+  return { line: `${head}: ${parts.join(", ")}`, problem, fine: !conflicts && !failed.length && !problem };
+}
+
 /** The state of one sync, next to the credential. What was known about other folders stays. */
 function recordSync(device, plan, results) {
   const state = readFolderState();
   const before = state.roots[ROOT]?.folders || {};
   const mine = { device: device.name, address: plan.address, user: plan.user, at: new Date().toISOString(), folders: { ...before } };
+  if (state.roots[ROOT]?.background) mine.background = state.roots[ROOT].background;
   for (const result of results) {
     mine.folders[result.path] = {
       id: result.id,
@@ -2784,7 +3207,10 @@ async function doLogin(args) {
 async function doStatus(args) {
   const data = readCredentials();
   const names = Object.keys(data.devices);
-  let fine = true;
+  const summary = syncLine();
+  say(summary.line);
+  if (summary.problem) say(`  ${t("Last run in the background", "Letzter Lauf im Hintergrund")}: ${summary.problem.text}`);
+  let fine = summary.fine;
   if (!names.length) {
     say(t("Device: none logged in.", "Gerät: keines angemeldet."));
     fine = false;
@@ -2822,7 +3248,26 @@ async function doStatus(args) {
  * with them is never asked for one.
  */
 async function doSync(args) {
+  const modes = ["plan", "install", "uninstall", "background"].filter((mode) => args.flags[mode]);
+  if (modes.length > 1) stop(t(`${modes.map((mode) => `--${mode}`).join(" and ")} do not go together.`, `${modes.map((mode) => `--${mode}`).join(" und ")} gehen nicht zusammen.`), 2);
+  if (args.flags.every && !args.flags.install) stop(t("--every belongs to --install.", "--every gehört zu --install."), 2);
   if (args.flags.plan) return doPlan(args);
+  if (args.flags.install) return doInstall(args);
+  if (args.flags.uninstall) return doUninstall();
+  const release = takeLock();
+  if (!release) {
+    say(t("A sync of this root is running already, in the background or at another terminal. Nothing was started.", "Ein Abgleich dieser Wurzel läuft schon, im Hintergrund oder an einem anderen Terminal. Nichts wurde gestartet."));
+    return Boolean(args.flags.background);
+  }
+  try {
+    return args.flags.background ? await doBackground(args) : await runSync(args);
+  } finally {
+    release();
+  }
+}
+
+/** One sync: the apps first, then the folders. */
+async function runSync(args) {
   const device = chooseDevice(args);
   const infos = await doApps(args, { write: true, quiet: true });
   const written = infos.filter((info) => info.state === "ok");
@@ -2842,10 +3287,12 @@ function usage() {
       "        [--credential-name <name>]     the name the device files the credential under",
       "  login --approve <checksum>     approve one proposal, once per proposal",
       "  login --withdraw               take back what approving entered",
-      "  status                         device, credential, company folder, proposals",
+      "  status                         one line on the sync, then device, credential, company folder, proposals",
       "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md and sicht.md",
       "  sync --plan                    what a sync would move up and down, with count and size, writing nothing",
       "  sync --keep-mine               where the files of the root differ, move the device's version aside there and sync this one",
+      "  sync --install [--every <min>] on a Mac: sync in the background, password in the keychain, every 5 minutes",
+      "  sync --uninstall               take the agent and the password back",
       "  deploy [--client <path>]       put this root into the room of the root on the device, the check script first",
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
@@ -2860,10 +3307,12 @@ function usage() {
       "        [--credential-name <name>]     unter welchem Namen das Gerät den Ausweis führt",
       "  login --approve <prüfsumme>    einen Vorschlag freigeben, einmal je Vorschlag",
       "  login --withdraw               zurücknehmen, was das Freigeben eintrug",
-      "  status                         Gerät, Ausweis, Firmenordner, Vorschläge",
+      "  status                         eine Zeile zum Abgleich, dann Gerät, Ausweis, Firmenordner, Vorschläge",
       "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md und sicht.md schreiben",
       "  sync --plan                    was ein Abgleich hoch und runter bewegte, mit Anzahl und Größe, ohne zu schreiben",
       "  sync --keep-mine               wo die Dateien der Wurzel verschieden sind, die des Geräts dort zur Seite legen und diese abgleichen",
+      "  sync --install [--every <min>] am Mac: Abgleich im Hintergrund, Passwort im Schlüsselbund, alle 5 Minuten",
+      "  sync --uninstall               Agent und Passwort zurücknehmen",
       "  deploy [--client <pfad>]       diese Wurzel in den Raum der Wurzel am Gerät legen, zuerst das Prüfskript",
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",

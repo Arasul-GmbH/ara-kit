@@ -247,7 +247,9 @@ nichts.
 | `sync` | Gleicht den Firmenordner ab, die Wurzel des Geräts oben in diesem Ordner eingeschlossen, schreibt dieselben Dateien und `sicht.md`, die Sicht dieses Menschen. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
 | `sync --plan` | Zeigt je Ordner, was ein Abgleich bewegte: hoch und runter mit Anzahl und Größe, Konflikte, was auf einer Seite gelöscht wurde, was zu Hause bleibt. Schreibt nichts und startet keinen Klienten |
 | `sync --keep-mine` | Wo die Dateien, die die Wurzel ausmachen, auf beiden Seiten verschieden sind, legt es die Fassung des Geräts am Gerät zur Seite und gleicht die dieser Wurzel ab. Ohne den Schalter hält `sync` dort an |
-| `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge |
+| `sync --install` | Am Mac: der Abgleich im Hintergrund. Prüft das Passwort am Dateidienst, legt es in den Schlüsselbund und übergibt launchd einen Agenten, der alle fünf Minuten abgleicht, `--every <minuten>` einen anderen Abstand |
+| `sync --uninstall` | Nimmt den Agenten aus launchd und das Passwort aus dem Schlüsselbund. Was abgeglichen wurde, bleibt |
+| `status` | Zuerst eine Zeile: wann der letzte Abgleich durchging, wie viel hier offen ist, wie viele Konflikte, ob er im Hintergrund läuft. Dann das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge |
 | `deploy` | Legt diese Wurzel in die Wurzel des Geräts: zuerst das Prüfskript, die Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
 
@@ -418,6 +420,30 @@ Raum trug: zehn an ihrem Namen, fünf zur Seite gelegt und byteweise gleich. Am 
 kein Produktklon, und der Skill `build` lag dort. Eine Änderung auf jeder Seite kam auf der anderen
 an, eine auf beiden Seiten geänderte Datei kam als Konfliktkopie mit beiden Fassungen heraus, und
 eine am Gerät gelöschte Datei lag am Mac im Papierkorb.
+
+**Der Abgleich im Hintergrund.** Täglich aus dem Firmenordner zu arbeiten heißt, dass der Abgleich
+läuft, ohne dass jemand daran denkt; ein Befehl mit Passwort je Lauf wird nach drei Tagen
+vergessen. `sync --install` fragt das Passwort einmal, prüft es am Dateidienst und legt es in den
+Schlüsselbund des Mac, Dienst `Arasul Firmenordner`, ein Eintrag je Wurzel und über die Eingabe
+von `security`, nie als Argument. In keiner Datei steht es. Dann schreibt es einen Agenten für
+launchd nach `~/Library/LaunchAgents/de.arasul.abgleich.<ordner>-<prüfsumme>.plist` und lädt ihn
+in die Sitzung des angemeldeten Menschen: er läuft sofort und dann alle fünf Minuten, und launchd
+startet ihn bei jeder Anmeldung neu. Der Agent führt `sync --background` aus, das das Passwort aus
+dem Schlüsselbund nimmt und wie `sync` arbeitet; seine Ausgabe geht nach
+`~/.config/arasul/abgleich/<agent>.log`. Je Wurzel ein Abgleich zur Zeit: Agent und Terminal
+teilen eine Sperre, und wer als zweiter kommt, startet nichts. Ein Konflikt oder ein Fehler kommt
+als Mitteilung von macOS, einmal, wenn er entsteht, und einmal, wenn er vorbei ist, nicht bei
+jedem Lauf. Ein Gerät, das nicht antwortet, wird erst nach einer Viertelstunde gesagt, weil ein
+Neustart Minuten dauert. **Widerruft** jemand den Ausweis in der Oberfläche des Geräts, hält der
+Abgleich beim nächsten Lauf mit einem Satz an, bevor der Klient startet: der Ausweis wird bei
+jedem Lauf zuerst gefragt. Ein am Gerät geändertes Passwort hält ihn ebenso an, und
+`sync --install` legt das neue ab. `sync --uninstall` nimmt Agent und Passwort zurück. Eine
+Wurzel unter Schreibtisch, Dokumente, Downloads oder iCloud bewacht macOS: ein Programm im
+Hintergrund kommt nur mit vollem Festplattenzugriff für node hinein, und `--install` sagt das.
+
+**Offen** in der Zeile von `status` zählt, was sich hier seit dem letzten Abgleich geändert hat,
+gegen den je Ordner abgelegten Stand; was sich am Gerät geändert hat, sieht erst der nächste
+Abgleich. Ein `+` dahinter heißt, ein Ordner hat noch keinen Stand.
 
 **Konflikte und Symlinks** werden aus dem Baum gezählt und nicht aus dem Bericht des Klienten,
 weil beide auch zwischen zwei Abgleichen entstehen. Eine Datei, die der Klient nicht

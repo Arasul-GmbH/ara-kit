@@ -48,7 +48,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { platform, tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   PROBE,
@@ -9265,6 +9265,170 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     return "Ebene 1 als Raum, Ebene 2 über Shares mit --remote-folder, Kette lokal angelegt, Liste und Schalter geprüft, Passwort nur in der Umgebung, Konflikt und Symlink gemeldet";
   } finally {
     await geraet.schliessen();
+  }
+});
+
+/**
+ * Attrappen für den Abgleich im Hintergrund: launchctl schreibt auf und merkt sich, was geladen
+ * ist, die Mitteilung schreibt auf. Der Schlüsselbund ist echt, aber ein eigener in einem
+ * Wegwerfordner: der des Menschen an diesem Rechner wird nie berührt.
+ */
+function hintergrundAttrappen() {
+  const dir = wegwerfordner("ara-hintergrund-");
+  const launchctl = join(dir, "launchctl");
+  writeFileSync(launchctl, `#!/usr/bin/env node
+const { appendFileSync, existsSync, rmSync, writeFileSync } = require("node:fs");
+const argv = process.argv.slice(2);
+appendFileSync(${JSON.stringify(join(dir, "launchctl.jsonl"))}, JSON.stringify(argv) + "\\n");
+const geladen = ${JSON.stringify(join(dir, "geladen"))};
+if (argv[0] === "print") process.exit(existsSync(geladen) ? 0 : 113);
+if (argv[0] === "bootstrap") { writeFileSync(geladen, argv[2]); process.exit(0); }
+if (argv[0] === "bootout") { if (!existsSync(geladen)) process.exit(3); rmSync(geladen); process.exit(0); }
+process.exit(1);
+`);
+  chmodSync(launchctl, 0o755);
+  const mitteilung = join(dir, "mitteilung");
+  writeFileSync(mitteilung, `#!/usr/bin/env node
+require("node:fs").appendFileSync(${JSON.stringify(join(dir, "mitteilungen.jsonl"))}, JSON.stringify(process.argv.slice(2)) + "\\n");
+`);
+  chmodSync(mitteilung, 0o755);
+  const schluesselbund = join(dir, "probe.keychain-db");
+  const lesen = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8").split("\n").filter(Boolean).map((zeile) => JSON.parse(zeile)) : []);
+  return {
+    dir,
+    agenten: join(dir, "LaunchAgents"),
+    schluesselbund,
+    env: { ARASUL_LAUNCHCTL: launchctl, ARASUL_NOTIFY: mitteilung, ARASUL_KEYCHAIN: schluesselbund, ARASUL_LAUNCH_AGENTS: join(dir, "LaunchAgents") },
+    rufe: () => lesen("launchctl.jsonl"),
+    mitteilungen: () => lesen("mitteilungen.jsonl"),
+  };
+}
+
+await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schlüsselbund, Agent bei launchd, eine Zeile in status", async () => {
+  if (platform() !== "darwin") return "übersprungen: launchd und Schlüsselbund gibt es nur am Mac";
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const lager = wegwerfordner("ara-lager-hintergrund-");
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_ORDNER[0]]), lager });
+  const h = hintergrundAttrappen();
+  const angelegt = spawnSync("/usr/bin/security", ["create-keychain", "-p", "probe", h.schluesselbund], { encoding: "utf8" });
+  assert(angelegt.status === 0, `der Probe-Schlüsselbund ließ sich nicht anlegen: ${angelegt.stderr}`);
+  const umgebung = { ...h.env, ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const agent = () => readdirSync(h.agenten).filter((name) => name.endsWith(".plist")).map((name) => join(h.agenten, name))[0];
+  // So wie launchd den Agenten startet: mit dem Programm aus seiner Datei, ohne Terminal und ohne Eingabe.
+  const alsAgent = () => {
+    const programm = [...readFileSync(agent(), "utf8").split("<key>ProgramArguments</key>")[1].split("</array>")[0].matchAll(/<string>([^<]*)<\/string>/g)].map((treffer) => treffer[1]);
+    return new Promise((fertig) => {
+      const kind = spawn(programm[0], programm.slice(1), { cwd: w.root, env: { ...process.env, ...w.env, ...umgebung } });
+      let stdout = "";
+      let stderr = "";
+      kind.stdout.on("data", (stueck) => (stdout += stueck));
+      kind.stderr.on("data", (stueck) => (stderr += stueck));
+      kind.stdin.end();
+      kind.on("close", (status) => fertig({ status, stdout, stderr, programm }));
+    });
+  };
+  const status = async () => (await bruecke(w, ["status"], { env: umgebung })).stdout.split("\n")[0];
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    assert(/^Abgleich: noch nie abgeglichen, nicht im Hintergrund/.test(await status()), `status sagt vor dem ersten Abgleich nicht, wie es steht: ${await status()}`);
+
+    // Ein Passwort, das der Dateidienst nicht nimmt, kommt nicht in den Schlüsselbund, und es entsteht kein Agent.
+    lauf = await bruecke(w, ["sync", "--install", "--client", klient.pfad, "--password-stdin"], { input: "falsch\n", env: umgebung });
+    assert(lauf.status !== 0 && /nimmt das Passwort von anna nicht an/.test(lauf.stderr), `ein falsches Passwort wird eingerichtet: ${lauf.stderr}${lauf.stdout}`);
+    assert(!existsSync(h.agenten) || !agent(), "trotz falschem Passwort liegt ein Agent da");
+    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "ein falsches Passwort liegt im Schlüsselbund");
+
+    lauf = await bruecke(w, ["sync", "--install", "--every", "7", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0, `sync --install endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    assert(/alle 7 Minuten/.test(lauf.stdout) && /Schlüsselbund/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
+    const plist = readFileSync(agent(), "utf8");
+    assert(plist.includes("<integer>420</integer>") && plist.includes("<string>--background</string>") && plist.includes("<key>RunAtLoad</key><true/>"), `die Datei des Agenten stimmt nicht:\n${plist}`);
+    assert(!plist.includes(BRUECKE_PASSWORT) && !plist.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis steht in der Datei des Agenten");
+    assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_PASSWORT), "das Passwort steht in der Ausgabe von --install");
+    const geladen = h.rufe().find((ruf) => ruf[0] === "bootstrap");
+    assert(geladen && /^gui\/\d+$/.test(geladen[1]) && geladen[2] === agent(), `der Agent wurde nicht in die Sitzung des Menschen geladen: ${JSON.stringify(h.rufe())}`);
+    const gelesen = spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", "-w", h.schluesselbund], { encoding: "utf8" });
+    assert(Buffer.from(gelesen.stdout.trim(), "base64").toString("utf8") === BRUECKE_PASSWORT, "im Schlüsselbund liegt nicht das geprüfte Passwort");
+    const dateien = readdirSync(w.ausweise, { recursive: true }).map((name) => join(w.ausweise, String(name))).filter((pfad) => statSync(pfad).isFile());
+    assert(!dateien.some((pfad) => readFileSync(pfad, "utf8").includes(BRUECKE_PASSWORT)), "das Passwort liegt in einer Datei neben dem Ausweis");
+
+    // Der Agent läuft ohne Terminal und ohne Eingabe, und der Klient bekommt das Passwort aus dem Schlüsselbund.
+    lauf = await alsAgent();
+    assert(lauf.status === 0, `der Lauf im Hintergrund endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    const ruf = klientRufe(klient.protokoll).at(-1);
+    assert(ruf?.token === BRUECKE_PASSWORT && !ruf.argv.some((teil) => teil.includes(BRUECKE_PASSWORT)), "der Klient bekommt im Hintergrund das Passwort nicht über die Umgebung");
+    assert(!h.mitteilungen().length, `ein sauberer Lauf meldet sich: ${JSON.stringify(h.mitteilungen())}`);
+    let zeile = await status();
+    assert(/^Abgleich: zuletzt abgeglichen \d{4}-\d\d-\d\d \d\d:\d\d UTC, offen 0, Konflikte 0, im Hintergrund alle 7 Minuten$/.test(zeile), `die Zeile von status stimmt nicht: ${zeile}`);
+    writeFileSync(join(w.root, "buchhaltung", "neu.md"), "hier geschrieben\n");
+    assert(/offen 1, Konflikte 0/.test(await status()), `eine Änderung hier zählt nicht als offen: ${await status()}`);
+
+    // Ein Konflikt meldet sich einmal, nicht bei jedem Lauf, und sein Ende einmal.
+    writeFileSync(join(w.root, "buchhaltung", "plan_conflict-20260927-101500.md"), "zweimal geändert\n");
+    await alsAgent();
+    await alsAgent();
+    let mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 1 && mitteilungen[0][0] === "Konflikt im Firmenordner" && /1 Datei ist/.test(mitteilungen[0][1]), `der Konflikt meldet sich nicht genau einmal: ${JSON.stringify(mitteilungen)}`);
+    assert(/Konflikte 1/.test(await status()), `status zählt den Konflikt nicht: ${await status()}`);
+    rmSync(join(w.root, "buchhaltung", "plan_conflict-20260927-101500.md"));
+    rmSync(join(lager, "buchhaltung", "plan_conflict-20260927-101500.md"), { force: true });
+    await alsAgent();
+    mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 2 && /wieder abgeglichen/.test(mitteilungen[1][0]), `das Ende des Konflikts meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
+
+    // Eine Sperre: läuft schon ein Abgleich, startet keiner daneben.
+    const sperrdatei = join(w.ausweise, "abgleich", `${basename(agent(), ".plist")}.lock`);
+    writeFileSync(sperrdatei, `${process.pid}\n`);
+    const vorSperre = klientRufe(klient.protokoll).length;
+    lauf = await alsAgent();
+    assert(lauf.status === 0 && /läuft schon/.test(lauf.stdout), `ein zweiter Lauf neben einem ersten wird nicht abgewiesen: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status !== 0 && /läuft schon/.test(lauf.stdout), `von Hand startet ein Abgleich neben dem im Hintergrund: ${lauf.stdout}`);
+    assert(klientRufe(klient.protokoll).length === vorSperre, "neben einem laufenden Abgleich wurde der Klient gerufen");
+    rmSync(sperrdatei);
+
+    // Der Ausweis wird am Gerät widerrufen: der nächste Lauf hält mit einem Satz an, bevor der Klient läuft.
+    const ausweise = JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8"));
+    const echt = ausweise.devices[ausweise.default].token;
+    ausweise.devices[ausweise.default].token = "ausweis_widerrufen";
+    writeFileSync(join(w.ausweise, "credentials.json"), JSON.stringify(ausweise), { mode: 0o600 });
+    const vorWiderruf = klientRufe(klient.protokoll).length;
+    lauf = await alsAgent();
+    assert(lauf.status !== 0 && /weist den Ausweis ab/.test(lauf.stderr), `ein widerrufener Ausweis hält den Abgleich nicht an: ${lauf.stderr}${lauf.stdout}`);
+    assert(klientRufe(klient.protokoll).length === vorWiderruf, "nach dem Widerruf lief der Klient");
+    mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 3 && mitteilungen[2][0] === "Firmenordner nicht abgeglichen" && /weist den Ausweis ab/.test(mitteilungen[2][1]), `der Widerruf meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
+    ausweise.devices[ausweise.default].token = echt;
+    writeFileSync(join(w.ausweise, "credentials.json"), JSON.stringify(ausweise), { mode: 0o600 });
+
+    // Ein Gerät, das nicht antwortet, startet oft neu: erst nach einer Viertelstunde meldet es sich.
+    await geraet.schliessen();
+    writeFileSync(join(w.root, "buchhaltung", "waehrend-neustart.md"), "geschrieben, während das Gerät neu startet\n");
+    lauf = await alsAgent();
+    assert(lauf.status !== 0 && /antwortet nicht/.test(lauf.stderr), `ein Gerät, das nicht antwortet, wird nicht gesagt: ${lauf.stderr}`);
+    assert(h.mitteilungen().length === 3, `ein Neustart des Geräts meldet sich sofort: ${JSON.stringify(h.mitteilungen())}`);
+    assert(/offen 1, Konflikte 0/.test(await status()), `status steht nicht, wenn das Gerät nicht antwortet: ${await status()}`);
+    const stand = JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8"));
+    const eintrag = stand.roots[realpathSync(w.root)].background;
+    eintrag.since = new Date(Date.now() - 20 * 60_000).toISOString();
+    writeFileSync(join(w.ausweise, "firmenordner.json"), JSON.stringify(stand));
+    await alsAgent();
+    mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 4 && /antwortet nicht/.test(mitteilungen[3][1]), `ein Gerät, das länger nicht antwortet, meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
+
+    lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
+    assert(lauf.status === 0 && /zurückgenommen/.test(lauf.stdout), `sync --uninstall: ${lauf.stdout}${lauf.stderr}`);
+    assert(!agent() && h.rufe().some((r) => r[0] === "bootout"), "der Agent liegt nach --uninstall noch da");
+    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "das Passwort liegt nach --uninstall noch im Schlüsselbund");
+    assert(/nicht im Hintergrund/.test(await status()), `status sagt nach --uninstall noch Hintergrund: ${await status()}`);
+    lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
+    assert(lauf.status === 0 && /war kein Abgleich im Hintergrund eingerichtet/.test(lauf.stdout), `ein zweites --uninstall sagt nicht, dass nichts da war: ${lauf.stdout}`);
+    return "falsches Passwort nicht abgelegt, Agent geladen, Lauf ohne Terminal aus dem Schlüsselbund, Konflikt einmal gemeldet, Sperre, Widerruf hält an, Neustart still, --uninstall räumt";
+  } finally {
+    await geraet.schliessen().catch(() => {});
+    spawnSync("/usr/bin/security", ["delete-keychain", h.schluesselbund]);
   }
 });
 

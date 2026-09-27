@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.48.0 (2026-09-27)
+
+Kontrakt: bis 6
+
+- **`arasul.mjs sync --install` gleicht den Firmenordner am Mac im Hintergrund ab.** Es prüft das Passwort einmal am Dateidienst, legt es in den Schlüsselbund (`Arasul Firmenordner`, ein Eintrag je Wurzel, über die Eingabe von `security` und nie als Argument, in keiner Datei) und übergibt launchd einen Agenten, der `sync --background` sofort und alle fünf Minuten ausführt, `--every <minuten>` einen anderen Abstand. launchd startet ihn bei jeder Anmeldung neu. `sync --uninstall` nimmt Agent und Passwort zurück.
+- **Ein Konflikt oder ein Fehler kommt als Mitteilung von macOS**, einmal, wenn er entsteht, und einmal, wenn er vorbei ist. Ein Gerät, das nicht antwortet, wird erst nach einer Viertelstunde gesagt: ein Neustart dauert Minuten.
+- **Der Ausweis wird bei jedem Lauf zuerst gefragt**, ein in der Oberfläche des Geräts widerrufener Ausweis hält den Abgleich im Hintergrund also mit einem Satz an, bevor der Klient startet. Je Wurzel ein Abgleich zur Zeit: Agent und Terminal teilen eine Sperre.
+- **`status` beginnt mit einer Zeile**: zuletzt abgeglichen, seitdem hier offen, Konflikte, und ob er im Hintergrund läuft. Sie kommt aus diesem Rechner und steht auch, wenn das Gerät nicht antwortet.
+
 ## 0.47.0 (2026-09-26)
 
 Kontrakt: bis 6

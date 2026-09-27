@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.48.0 (2026-09-27)
+
+Contract: up to 6
+
+- **`arasul.mjs sync --install` syncs the company folder in the background on a Mac.** It checks the password against the file service once, puts it into the keychain (`Arasul Firmenordner`, one entry per root, through the input of `security` and never as an argument, in no file) and hands launchd an agent that runs `sync --background` at once and every five minutes, `--every <minutes>` another interval. launchd starts it again at every login. `sync --uninstall` takes agent and password back.
+- **A conflict or an error comes as a notification of macOS**, once when it comes about and once when it is over. A device that does not answer is said only after a quarter of an hour: a restart takes minutes.
+- **The credential is asked first at every run**, so revoking it in the device's front end stops the sync in the background with one sentence before the client starts. One sync per root at a time: agent and terminal share a lock.
+- **`status` starts with one line**: last synced, open here since then, conflicts, and whether it runs in the background. It comes out of this computer and stands when the device does not answer.
+
 ## 0.47.0 (2026-09-26)
 
 Contract: up to 6

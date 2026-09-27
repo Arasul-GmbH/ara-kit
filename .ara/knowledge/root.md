@@ -239,7 +239,9 @@ app offers. This file does that, and nothing else.
 | `sync` | Syncs the company folder, the root of the device at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
 | `sync --plan` | Shows per folder what a sync would move: up and down with count and size, conflicts, what was deleted on one side, what stays home. Writes nothing and starts no client |
 | `sync --keep-mine` | Where the files that make the root differ on both sides, moves the device's version aside on the device and syncs this root's. Without it `sync` stops there |
-| `status` | The device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
+| `sync --install` | On a Mac: the sync in the background. Checks the password against the file service, puts it into the keychain and hands an agent to launchd that syncs every five minutes, `--every <minutes>` another interval |
+| `sync --uninstall` | Takes the agent out of launchd and the password out of the keychain. What was synced stays |
+| `status` | First one line: when the last sync went through, how much is open here, how many conflicts, whether it runs in the background. Then the device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
 | `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
 
@@ -404,6 +406,29 @@ no `node_modules`, `.venv` or `.next`, no settings or hooks and no product clone
 `build` did. A change on each side arrived on the other, a file changed on both sides came out
 as a conflicted copy with both versions, and a file deleted on the device lay in the trash on the
 Mac.
+
+**The sync in the background.** Working out of the company folder every day means the sync runs
+without anybody thinking of it; a command with a password per run is forgotten after three days.
+`sync --install` asks for the password once, checks it against the file service and puts it into
+the keychain of the Mac, service `Arasul Firmenordner`, one entry per root and through the input
+of `security`, never as an argument. It stands in no file. Then it writes an agent for launchd to
+`~/Library/LaunchAgents/de.arasul.abgleich.<folder>-<checksum>.plist` and loads it into the
+session of the person logged in: it runs at once and then every five minutes, and launchd starts
+it again at every login. The agent runs `sync --background`, which takes the password out of the
+keychain and works like `sync`; its output goes to `~/.config/arasul/abgleich/<agent>.log`.
+One sync of a root at a time: the agent and a terminal share a lock, and whoever comes second
+starts nothing. A conflict or an error comes as a notification of macOS, once when it comes
+about and once when it is over, not at every run. A device that does not answer is said only
+after a quarter of an hour, because a restart takes minutes. **Revoking** the credential in the
+device's front end stops the sync at its next run with one sentence, before the client starts:
+the credential is asked first at every run. A password changed on the device stops it as well,
+and `sync --install` stores the new one. `sync --uninstall` takes agent and password back. A
+root under Desktop, Documents, Downloads or iCloud is guarded by macOS: a program in the
+background gets in only with full disk access for node, and `--install` says so.
+
+**Open** in the line of `status` counts what changed here since the last sync, against the state
+kept per folder; what changed on the device only the next sync sees. A `+` behind it means a
+folder has no state yet.
 
 **Conflicts and symbolic links** are counted out of the tree and not out of the client's report,
 because both also come into being between two syncs. A file the client could not merge carries
