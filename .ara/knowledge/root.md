@@ -131,8 +131,9 @@ node .ara/tools/root.mjs --adopt <folder> [--name "<house>"] [--language de|en]
 
 A house that has worked in one folder for weeks does not want a fresh empty root next to it: the
 north goal comes only when exactly that folder goes to the device. `--adopt` makes a root of it
-and **overwrites nothing**. Exactly three files come into being, `.claude/root.json`,
-`.claude/places.json` and `arasul.mjs`; when one of them lies there already, nothing is written
+and **overwrites nothing**. Exactly four files come into being, `.claude/root.json`,
+`.claude/places.json`, `arasul.mjs` and the proposal `.claude/proposal/proposal.json`; when one
+of them lies there already, nothing is written
 and the tool says which one. The house's `.claude/CLAUDE.md`, its skills, hooks and settings,
 its `.gitignore` and its version control stay as they are. The name is the folder's unless
 `--name` says another. **The language is the one its `.claude/CLAUDE.md` speaks** (or a
@@ -152,11 +153,24 @@ What it finds, it says, and it writes nothing of that:
   machine makes and without `.env`. The tool proposes either a repository and a place for it,
   or a line in the `.gitignore` that keeps it home.
 - **Files of the kind `.env`** at any depth are named: they stay home at every sync.
+- **Every folder of level 1** that a sync of the root would take along is named, because every
+  account of the device reads the root: measured on 2026-09-27, a second account read `kunden/`
+  and `company/core.md` of an adopted root. Folders whose names look like data of customers or
+  like the inside of the company stand first. The tool proposes, before the first sync, to make
+  each folder not everybody should read an area on the device, with the folder's name as its id,
+  and names the way there (front end, Settings, Company folder, Create folder, kind area). An
+  area is synced on its own, only to the people with a right on it, and the root leaves it out.
+  A name that is no id of the device is said with it.
 
-A root taken over carries no check script of the kit and no proposal, because both would lie
-where the house has its own. `--show` and `--place` work, `--check` says that there is no check
-script, `--enroll` that there is no proposal. What comes next is the bridge: `login`, then
-`sync --plan`, then `sync`.
+A root taken over carries no check script of the kit, because it would lie where the house has
+its own. **Its proposal carries no hook**, only what the bridge needs: `apps` and the reading
+form of `call` without asking, `call ... --write` asks, and two lines for the house's
+`CLAUDE.md`, one on `sicht.md` and one on `apps/<id>/APP.md`, so that a new session finds both
+without a word. `login` shows it with its checksum, `login --approve <checksum>` writes the rules
+into the user's own settings and appends the two lines, `login --withdraw` takes both back.
+`root.mjs --enroll` points to the bridge for it. `--show` and `--place` work, `--check` says that
+there is no check script. What comes next is the bridge: `login`, then `sync --plan`, then
+`sync`.
 
 ## After laying out
 
@@ -240,8 +254,8 @@ app offers. This file does that, and nothing else.
 | `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
 | `sync` | Syncs the company folder, the root of the device at the top of this folder included, writes the same files and `sicht.md`, the view of this person. `--client` names the command line client of the file service |
 | `sync --plan` | Shows per folder what a sync would move: up and down with count and size, conflicts, what was deleted on one side, what stays home. Writes nothing and starts no client |
-| `sync --keep-mine` | Where the files that make the root differ on both sides, moves the device's version aside on the device and syncs this root's. Without it `sync` stops there |
-| `sync --install` | On a Mac: the sync in the background. Checks the password against the file service, has it issue an app token for this computer, puts the token into the keychain and hands an agent to launchd that syncs every five minutes, `--every <minutes>` another interval |
+| `sync --keep-mine` | Moves the device's version of every file that differs, and at the first sync of a root that is one here also every file only the device has, on the device into `.claude/device-old/<time>/` (`geraet-alt` in a German root) and syncs this root's. Without it `sync` stops at the files that make the root |
+| `sync --install` | On a Mac: the sync in the background. Lets launchd run a check once and stops with one line when launchd's node does not reach the device. Checks the password against the file service, has it issue an app token for this computer, puts the token into the keychain and hands an agent to launchd that syncs every five minutes, `--every <minutes>` another interval |
 | `sync --uninstall` | Takes the agent out of launchd, revokes the app token and takes it out of the keychain. What was synced stays |
 | `status` | First one line: when the last sync went through, how much is open here, how many conflicts, whether it runs in the background. Then the device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals |
 | `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
@@ -397,10 +411,24 @@ folder left the house's `.gitignore` as a conflicted copy, and the second one to
 of four products up that the house's own `.gitignore` had kept home. So before the client runs,
 `sync` and `deploy` list the room and compare as the plan does, and when one of these files
 differs and this person writes the root, they stop for the root and name the files; the other
-folders are synced. `--keep-mine` moves the device's version aside on the device, to
-`<name> (Gerät <date> <time>)<ending>` with a WebDAV `MOVE` that overwrites nothing, and the
-house's takes the name: nothing of either side is lost, and the rules that hold are the house's.
-Whoever only reads the root gets the device's version, and that is right.
+folders are synced. `--keep-mine` moves the device's version on the device into one folder,
+`.claude/device-old/<date> <time>/` (`geraet-alt` in a German root), at its path below it, with
+WebDAV `MOVE` that overwrites nothing; a folder whose files all go moves as a whole. It moves
+every file that differs, and at the first sync of a root that is one here already also every file
+only the device has, the root of another house for instance. The house's takes the names, and the
+device's comes down in that one folder and nowhere else. Measured on 2026-09-27: moved next to
+each file, the device's rules and nine files of another root came into the house's `.claude/`,
+and a conflicted copy of the README counted at every run. **`sync --plan` names every such file
+beforehand**, one per line. Whoever only reads the root gets the device's version, and that is
+right: the plan says "sync stops here" only to a person who writes the root.
+
+**A newer bridge takes the place of an older one by itself.** `arasul.mjs` carries the kit version
+it came with. Where it differs on both sides and one is newer, the newer one goes to the other
+side before the client runs, with its time, and nothing stops: up with a WebDAV `PUT`, down by
+writing the room's version here. So a new bridge comes into an existing room when one
+administrator syncs with it, and everybody else gets it at their next sync; nobody deploys by
+hand. The same holds in an empty folder that holds the bridge alone. A bridge from before 0.51.0
+carries no version and counts as the older one.
 
 **A name anchored at the top reaches further.** A rule with a leading slash, for a `notes.log`, means only
 the one at the top; the client keeps the name out at every depth. The plan names what that keeps home
@@ -472,6 +500,28 @@ changed stops it as well, and `sync --install` issues a new one. `sync --uninsta
 and token back and revokes the token at the service. A
 root under Desktop, Documents, Downloads or iCloud is guarded by macOS: a program in the
 background gets in only with full disk access for node, and `--install` says so.
+
+**Checked from where it runs.** Measured on 2026-09-27 at a Mac: node started by launchd did not
+reach the device under its LAN address (`EHOSTUNREACH`), from the terminal it did, and the
+device's Tailscale address answered from both; it showed only in the agent's log. macOS lets a
+program into the local network only with the approval Local Network, and node in launchd does not
+get it. So before `--install` stores anything, it lets launchd run `sync --reach` once as an agent
+of its own (`<agent>.pruefung`), reads which addresses answered and removes that agent again.
+When the device or every address of the file service does not answer from there, it stops with
+one line: the cause and the way out, `login` under an address that answered from the background.
+
+**Every address of the file service.** Since 2026-09-27 the device names `adressen` next to
+`adresse`, the one to take first; the bridge takes the first that answers from here, in the plan,
+the sync and the background, and says which it skipped.
+
+**The client is offered, not presupposed.** When the vendor's command line client is missing,
+`login` and `sync --install` offer it, at a terminal with a question, otherwise with one sentence.
+`--fetch-client` fetches the macOS package from the vendor's releases on GitHub, checks it against
+the SHA-256 published next to it, unpacks it with `pkgutil` and keeps only the app in
+`~/.config/arasul/klient/`; nothing is installed, deleting that folder takes it back. Measured on
+2026-09-27 with version 4.0.0: the client runs out of the unpacked package.
+
+**Times in `status`** are the clock of this computer, not UTC.
 
 **A folder named like a person** has two spaces of that name in the file service: the person's own
 and the folder's. The tool takes the project space. Measured on 2026-09-27: the service listed the

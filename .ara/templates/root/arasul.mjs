@@ -37,13 +37,24 @@
  * the device as soon as it delivers one, until then out of what the device says about folders and
  * apps. The state of the last sync lies next to the credential, in firmenordner.json.
  *
+ * The vendor's client is offered by `login` and `sync --install` when it is missing, and
+ * `--fetch-client` fetches it from the vendor's releases, checked against its checksum, unpacked next
+ * to the credential and installed nowhere. The device names every address of its file service; the
+ * first one that answers from here is taken.
+ *
  * `sync --install` hands the sync to launchd on a Mac: an agent of the person logged in runs
  * `sync --background` every five minutes (--every names another interval), and an app token of the
  * file service, issued once with the password, lies in the keychain for it and in no file. The
  * credential is asked first at every run, so revoking it on the device stops the sync. A conflict
  * or an error comes as a notification of macOS, once per state. `status` says in its first line
  * when the last sync went through, how much changed here since, and how many conflicts lie in the
- * tree. `sync --uninstall` takes the agent back and revokes the token.
+ * tree. `sync --uninstall` takes the agent back and revokes the token. Before it sets anything up,
+ * `--install` lets launchd run a check once and reads what launchd's node reaches: on a Mac it does
+ * not get into the local network, and the line says so with the way out.
+ *
+ * Where the files that make the root differ, a newer bridge takes the place of an older one on both
+ * sides by itself. Everything else stops sync for a person who writes the root, until `--keep-mine`
+ * moves the device's version into `.claude/device-old/<time>/` on the device.
  *
  * What never goes along: what a machine makes, what belongs to this computer, `.env` and `.env.*`
  * at every depth, and what the .gitignore at the top of this root leaves out. `sync --plan` shows
@@ -109,6 +120,11 @@
  * über Ordner und Apps sagt. Der Stand des letzten Abgleichs liegt neben dem Ausweis, in
  * firmenordner.json.
  *
+ * Den Klienten des Herstellers bieten `login` und `sync --install` an, wenn er fehlt, und
+ * `--fetch-client` holt ihn aus den Veröffentlichungen des Herstellers, geprüft an seiner
+ * Prüfsumme, entpackt neben den Ausweis und nirgends installiert. Das Gerät nennt jede Adresse
+ * seines Dateidienstes; genommen wird die erste, die von hier antwortet.
+ *
  * `sync --install` übergibt den Abgleich am Mac an launchd: ein Agent des angemeldeten Menschen
  * führt alle fünf Minuten `sync --background` aus (--every nennt einen anderen Abstand), und ein
  * App-Token des Dateidienstes, einmal mit dem Passwort ausgestellt, liegt dafür im Schlüsselbund
@@ -116,7 +132,13 @@
  * Abgleich also an. Ein Konflikt oder ein Fehler kommt als Mitteilung von macOS, einmal je Stand.
  * `status` sagt in seiner ersten Zeile, wann der letzte Abgleich durchging, wie viel sich hier
  * seitdem geändert hat und wie viele Konflikte im Baum liegen. `sync --uninstall` nimmt den Agenten
- * zurück und widerruft das Token.
+ * zurück und widerruft das Token. Bevor es etwas einrichtet, lässt `--install` launchd einmal
+ * prüfen und liest, was node aus launchd erreicht: am Mac kommt es nicht ins lokale Netz, und die
+ * Zeile sagt das mit dem Ausweg.
+ *
+ * Wo die Dateien, die die Wurzel ausmachen, verschieden sind, löst eine neuere Brücke die ältere auf
+ * beiden Seiten von selbst ab. Alles andere hält sync für jemanden an, der die Wurzel schreibt, bis
+ * `--keep-mine` die Fassung des Geräts am Gerät nach `.claude/geraet-alt/<zeit>/` legt.
  *
  * Was nie mitgeht: was eine Maschine macht, was zu diesem Rechner gehört, `.env` und `.env.*` in
  * jeder Tiefe, und was die .gitignore oben in dieser Wurzel auslässt. `sync --plan` zeigt vorher je
@@ -149,6 +171,7 @@ import { createHash } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
+  createWriteStream,
   existsSync,
   linkSync,
   lstatSync,
@@ -160,6 +183,7 @@ import {
   renameSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { request as httpRequest } from "node:http";
@@ -169,6 +193,13 @@ import { basename, dirname, isAbsolute, join, relative, resolve } from "node:pat
 import { createInterface } from "node:readline";
 import { connect as tlsConnect } from "node:tls";
 import { fileURLToPath, pathToFileURL } from "node:url";
+
+/**
+ * The kit version this bridge came with. Where two bridges meet in the room of the root, the newer
+ * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
+ * kit's own version.
+ */
+const BRIDGE = "0.51.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -350,7 +381,7 @@ const stop = (message, code = 1) => {
 };
 
 const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name", "every", "language"];
-const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine", "install", "uninstall", "background"];
+const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine", "install", "uninstall", "background", "reach", "fetch-client"];
 
 function parseArgs(argv) {
   const out = { _: [], flags: {} };
@@ -686,14 +717,54 @@ function loadProposal(dir) {
     hash.update("\n");
   }
   const permissions = proposal.permissions || {};
+  // Lines for the house's CLAUDE.md: only into one of the two files a session loads, only text.
+  let lines = null;
+  if (proposal.lines !== undefined) {
+    const file = proposal.lines?.file;
+    const text = proposal.lines?.lines;
+    if (!LINE_FILES.includes(file) || !Array.isArray(text) || !text.length || !text.every((line) => typeof line === "string" && line.trim() && !/[\r\n]/.test(line))) {
+      problems.push(t(`the lines name a file other than ${LINE_FILES.join(" or ")}, or are no lines of text`, `die Zeilen nennen eine andere Datei als ${LINE_FILES.join(" oder ")}, oder sind keine Textzeilen`));
+    } else {
+      lines = { file, lines: text };
+    }
+  }
   return {
     dir,
     label,
     problems,
+    lines,
     sum: hash.digest("hex"),
     hook: proposal.hook && !problems.length ? { event: proposal.hook.event || "PreToolUse", matcher: proposal.hook.matcher || "Write|Edit|NotebookEdit|Bash", script } : null,
     rules: Object.fromEntries(SIDES.map((side) => [side, list(permissions[side])])),
   };
+}
+
+/** Where lines of a proposal may go: the CLAUDE.md a session in this folder loads. */
+const LINE_FILES = Object.freeze([".claude/CLAUDE.md", "CLAUDE.md"]);
+
+/** Append the lines that are not there yet, after an empty line. What was appended is what is taken back. */
+function appendLines(dir, lines) {
+  const file = join(dir, ...lines.file.split("/"));
+  const text = existsSync(file) ? readFileSync(file, "utf8") : "";
+  const have = new Set(text.split(/\r?\n/));
+  const fresh = lines.lines.filter((line) => !have.has(line));
+  if (!fresh.length) return { file: lines.file, lines: [] };
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${text.replace(/\n*$/, text ? "\n\n" : "")}${fresh.join("\n")}\n`);
+  return { file: lines.file, lines: fresh };
+}
+
+/** Take appended lines out again, exactly those, and the empty line before them when it is left alone. */
+function removeLines(dir, added) {
+  if (!added?.lines?.length || !LINE_FILES.includes(added.file)) return;
+  const file = join(dir, ...added.file.split("/"));
+  if (!existsSync(file)) return;
+  const gone = new Set(added.lines);
+  const kept = readFileSync(file, "utf8").split("\n").filter((line) => !gone.has(line.replace(/\r$/, "")));
+  const rest = kept.join("\n").replace(/\n*$/, "");
+  // A file the approval made for the lines alone goes with them.
+  if (!rest.trim()) rmSync(file, { force: true });
+  else writeFileSync(file, `${rest}\n`);
 }
 
 /** `{root}` becomes the written-out path, in the way the rule wants it: a shell rule as it is typed. */
@@ -762,7 +833,10 @@ function approve(item, settingsPath) {
   const settings = readSettings(settingsPath);
   const before = readJson(join(dir, "consent.json"), null);
   // A new approval replaces the old one entirely: first away what it entered.
-  if (before) removeRecorded(settings, before.added);
+  if (before) {
+    removeRecorded(settings, before.added);
+    removeLines(item.dir, before.added?.lines);
+  }
 
   const added = { allow: [], deny: [], ask: [], additionalDirectories: [] };
   settings.permissions ||= {};
@@ -788,6 +862,7 @@ function approve(item, settingsPath) {
     mkdirSync(dir, { recursive: true });
   }
   writeSettings(settingsPath, settings);
+  if (item.lines) added.lines = appendLines(item.dir, item.lines);
   const today = new Date().toISOString().slice(0, 10);
   writeFileSync(join(dir, "consent.json"), `${JSON.stringify({ root: abs, sum: item.sum, at: today, settings: settingsPath, added }, null, 2)}\n`);
   return { renewed: Boolean(before) };
@@ -804,6 +879,7 @@ function withdrawAll(settingsPath) {
     const ledger = readJson(join(base, name, "consent.json"), null);
     if (!ledger?.root || (ledger.root !== here && !ledger.root.startsWith(`${here}/`))) continue;
     removeRecorded(settings, ledger.added);
+    if (existsSync(ledger.root)) removeLines(ledger.root, ledger.added?.lines);
     rmSync(join(base, name), { recursive: true, force: true });
     taken.push(relative(here, ledger.root) || ".");
   }
@@ -836,6 +912,10 @@ function showProposal(item, index, total, settingsPath) {
     say(`  ${side}:`);
     for (const entry of rules[side]) say(`    ${entry}`);
   }
+  if (item.lines) {
+    say(`  ${t(`Lines for ${item.lines.file}, appended at its end`, `Zeilen für ${item.lines.file}, an ihr Ende gehängt`)}:`);
+    for (const line of item.lines.lines) say(`    ${line}`);
+  }
   say(`  ${t("Checksum", "Prüfsumme")}: ${item.sum}`);
   return state.state;
 }
@@ -846,7 +926,7 @@ async function doProposals(args) {
   if (args.flags.withdraw) {
     const taken = withdrawAll(settingsPath);
     say(taken.length
-      ? t(`Taken back: what approving entered for ${taken.join(", ")} is gone from ${settingsPath}, the copies of the hooks with it.`, `Zurückgenommen: was das Freigeben für ${taken.join(", ")} eintrug, ist aus ${settingsPath}, die Kopien der Hooks mit ihnen.`)
+      ? t(`Taken back: what approving entered for ${taken.join(", ")} is gone from ${settingsPath}, the copies of the hooks and lines it appended with it.`, `Zurückgenommen: was das Freigeben für ${taken.join(", ")} eintrug, ist aus ${settingsPath}, die Kopien der Hooks und angehängte Zeilen mit ihnen.`)
       : t("Nothing was approved for this root, nothing to take back.", "Für diese Wurzel wurde nichts freigegeben, nichts zurückzunehmen."));
     return true;
   }
@@ -1175,11 +1255,23 @@ const VIEW_FILE = "sicht.md";
 /** Is this folder of the device the root? Level 0 with the kind `wurzel`, and nothing else. */
 const isRootRoom = (level, kind) => Number(level) === 0 && String(kind ?? "") === SERVICE.rootKind;
 
+/** Where a client fetched by this file lies: next to the credential, per person, in no synced tree. */
+const CLIENT_HOME = join(CONFIG_DIR, "klient");
+const CLIENT_FETCHED = join(CLIENT_HOME, "OpenCloud.app", "Contents", "MacOS", "opencloudcmd");
+
 /** Where the vendor's client lies when nobody says otherwise. It runs unpacked, without installing. */
 const CLIENT_PLACES = Object.freeze([
   "/Applications/OpenCloud.app/Contents/MacOS/opencloudcmd",
   join(homedir(), "Applications", "OpenCloud.app", "Contents", "MacOS", "opencloudcmd"),
+  CLIENT_FETCHED,
 ]);
+
+/**
+ * Where the vendor publishes its desktop package, as of 2026-09-27: the releases of this repository
+ * on GitHub, one package per processor for macOS, each with a file that holds its SHA-256. The
+ * command line client lies in the package and runs unpacked (measured with version 4.0.0).
+ */
+const CLIENT_RELEASES = process.env.ARASUL_CLIENT_RELEASE || "https://api.github.com/repos/opencloud-eu/desktop/releases/latest";
 
 /**
  * Where a file goes that the client deleted here because it was deleted on the device: into a
@@ -1520,6 +1612,40 @@ function localTree(dir, excludes, { weighHome = true } = {}) {
   return { files, home, over };
 }
 
+/** The codes of an address that is not reached at all, as opposed to one that answers with an error. */
+const NOT_REACHED = new Set(["ECONNREFUSED", "EHOSTUNREACH", "ENETUNREACH", "ENOTFOUND", "EAI_AGAIN", "ETIMEDOUT", "ECONNRESET", "EADDRNOTAVAIL"]);
+
+/** Does an address answer at all? Any answer counts, an error of the certificate too: the network got there. */
+async function reaches(address, ca, timeout = 8_000) {
+  try {
+    await send({ address, ca }, { path: "", timeout, limit: 64 * 1024 });
+    return { address, ok: true };
+  } catch (error) {
+    if (TLS_CODES.has(error.code) || !NOT_REACHED.has(error.code)) return { address, ok: true };
+    return { address, ok: false, code: error.code || "?" };
+  }
+}
+
+/**
+ * The address of the file service that answers from here. The first one the device names, and only
+ * when it does not answer, the next. Measured on 2026-09-27: the device named `https://arasul:8443`,
+ * and that name resolved on a Mac only through Tailscale; the device's LAN address answered.
+ */
+async function pickAddress(plan, device) {
+  if (!plan.addresses || plan.addresses.length < 2) return plan.address;
+  const tried = [];
+  for (const address of plan.addresses) {
+    const result = await reaches(address, device.entry.ca, 5_000);
+    if (result.ok) {
+      if (tried.length) say(`  ${t(`${tried.map((item) => `${item.address} (${item.code})`).join(", ")} does not answer from here, taking ${address}.`, `${tried.map((item) => `${item.address} (${item.code})`).join(", ")} antwortet von hier nicht, genommen wird ${address}.`)}`);
+      plan.address = address;
+      return address;
+    }
+    tried.push(result);
+  }
+  return plan.address;
+}
+
 /**
  * The spaces of the file service this person sees.
  *
@@ -1758,6 +1884,7 @@ async function doPlan(args) {
   if (!plan.address) stop(t("The device names no address of the file service.", "Das Gerät nennt keine Adresse des Dateidienstes."));
   if (!plan.user) stop(t("The device names no user for the file service.", "Das Gerät nennt keinen Benutzer für den Dateidienst."));
   const password = await askPassword(args, plan, device);
+  await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
   const rank = (folder) => (folder.root ? 0 : folder.level);
   const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
@@ -1780,8 +1907,18 @@ async function doPlan(args) {
     say(`    ${t("Unchanged", "Unverändert")}:         ${fileCount(result.same)}`);
     if (result.conflict.length) {
       say(`    ${t("Conflicts", "Konflikte")}:         ${fileCount(result.conflict.length)}, ${t("different on both sides, the client keeps both", "auf beiden Seiten anders, der Klient behält beide")}: ${some(result.conflict)}`);
-      const rules = folder.root ? result.conflict.map((item) => item.path).filter((path) => RULE_FILES.includes(path)) : [];
-      if (rules.length) say(`    ${t(`sync stops here: ${rules.join(", ")} make this root, keep one version on both sides first.`, `sync hält hier an: ${rules.join(", ")} machen diese Wurzel aus, behalte zuerst eine Fassung auf beiden Seiten.`)}`);
+    }
+    // Only for whoever writes the root: a reader gets the device's version, and sync goes through.
+    const rules = dav ? await rootRules(service, folder, local, excludes, { here, there, base, result }) : { stop: [], bridge: null, foreign: [] };
+    if (rules.stop.length) say(`    ${t(`sync stops here: ${rules.stop.join(", ")} make this root and differ on both sides. Keep one version on both sides first, or sync --keep-mine.`, `sync hält hier an: ${rules.stop.join(", ")} machen diese Wurzel aus und sind auf beiden Seiten verschieden. Behalte zuerst eine Fassung auf beiden Seiten, oder sync --keep-mine.`)}`);
+    if (rules.bridge?.way === "up") say(`    ${t(`arasul.mjs: this bridge (${versionText(rules.bridge.ours)}) is newer than the one in the room (${versionText(rules.bridge.theirs)}), sync puts it into the room without asking.`, `arasul.mjs: diese Brücke (${versionText(rules.bridge.ours)}) ist neuer als die im Raum (${versionText(rules.bridge.theirs)}), sync legt sie ohne Rückfrage in den Raum.`)}`);
+    if (rules.bridge?.way === "down") say(`    ${t(`arasul.mjs: the bridge in the room (${versionText(rules.bridge.theirs)}) is newer than this one (${versionText(rules.bridge.ours)}), sync takes it.`, `arasul.mjs: die Brücke im Raum (${versionText(rules.bridge.theirs)}) ist neuer als diese (${versionText(rules.bridge.ours)}), sync nimmt sie.`)}`);
+    if (rules.foreign.length && (rules.first || rules.stop.length)) {
+      say(`    ${t(
+        `Foreign in the room of the root, ${fileCount(rules.foreign.length)} the device has and this root has not, or has otherwise. Without --keep-mine they come down at their names or as conflicts; with --keep-mine they go on the device into ${ASIDE()}/<time>/ and come down there only:`,
+        `Fremd im Raum der Wurzel, ${fileCount(rules.foreign.length)}, die das Gerät hat und diese Wurzel nicht oder anders. Ohne --keep-mine kämen sie an ihren Namen oder als Konflikt herunter; mit --keep-mine gingen sie am Gerät nach ${ASIDE()}/<zeit>/ und kämen nur dort herunter:`
+      )}`);
+      for (const path of rules.foreign) say(`      ${path}`);
     }
     if (result.deleteHere.length) say(`    ${t("Deleted on the device", "Am Gerät gelöscht")}: ${fileCount(result.deleteHere.length)}, ${sized(total(result.deleteHere))}, ${t("would go here too, into the trash first", "ginge hier auch, zuerst in den Papierkorb")}: ${some(result.deleteHere)}`);
     if (result.deleteThere.length) say(`    ${t("Deleted here", "Hier gelöscht")}:     ${fileCount(result.deleteThere.length)}, ${sized(total(result.deleteThere))}, ${t("would go on the device too", "ginge am Gerät auch")}: ${some(result.deleteThere)}`);
@@ -1812,58 +1949,154 @@ async function doPlan(args) {
  */
 const RULE_FILES = Object.freeze([".gitignore", ".claude/CLAUDE.md", ".claude/root.json", ".claude/places.json", "arasul.mjs"]);
 
+/** The kit version a bridge came with, out of its text, or null for one from before 0.51.0. */
+export function bridgeVersion(text) {
+  const found = String(text).match(/^const BRIDGE = "(\d+)\.(\d+)\.(\d+)";$/m);
+  return found ? found.slice(1).map(Number) : null;
+}
+
+/** Above zero when `a` is the newer one. A bridge without a version is older than any with one. */
+function newer(a, b) {
+  if (!a || !b) return (a ? 1 : 0) - (b ? 1 : 0);
+  for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+
+const versionText = (version) => (version ? version.join(".") : t("from before 0.51.0", "von vor 0.51.0"));
+
+/** Where `--keep-mine` puts the device's version of a root, on the device and so here. */
+const ASIDE = () => `.claude/${t("device-old", "geraet-alt")}`;
+
 /**
- * The files of the root that differ on both sides, looked at before the client runs. An empty
- * list means: go. The room is listed through the same list the client gets, and the comparison
- * is the one of the plan.
+ * What the root's own files say before the client runs, for a person who writes the root.
+ *
+ * `stop`: files that make the root and differ on both sides; a sync stops at them unless the
+ * person says `--keep-mine`. `bridge`: the bridge differs, and one side is the newer version; the
+ * newer one takes the place of the older one on both sides, without anybody deciding it, because
+ * the bridge is a file of the kit and not of the house. `foreign`: what `--keep-mine` moves aside,
+ * the device's version of every file that conflicts and, at the first sync of a root that is one
+ * already here, every file only the device has: that is the root of another house, or an older one
+ * of this. Readers get the device's version, and that is right: the rules are the house's.
  */
-async function ruleConflicts(service, folder, local, excludes) {
-  // Who only reads the root gets the device's version, and that is right: the rules are the house's.
-  if (!folder.root || folder.right !== "schreiben") return [];
+async function rootRules(service, folder, local, excludes, known = null) {
+  const none = { stop: [], bridge: null, foreign: [], there: null };
+  if (!folder.root || folder.right !== "schreiben") return none;
   const dav = davOf(service, folder);
-  if (!dav) return [];
-  const there = await remoteTree(service, dav, excludes);
-  const here = localTree(local, excludes, { weighHome: false });
-  return comparePlan(here.files, there.files, readBase(local)).conflict.map((item) => item.path).filter((path) => RULE_FILES.includes(path));
+  if (!dav) return none;
+  const there = known?.there || (await remoteTree(service, dav, excludes));
+  const here = known?.here || localTree(local, excludes, { weighHome: false });
+  const base = known ? known.base : readBase(local);
+  const result = known?.result || comparePlan(here.files, there.files, base);
+  const isRoot = existsSync(join(local, ".claude", "root.json"));
+  const conflicts = result.conflict.map((item) => item.path);
+  let stops = conflicts.filter((path) => RULE_FILES.includes(path));
+  let bridge = null;
+  if (conflicts.includes("arasul.mjs") && existsSync(join(local, "arasul.mjs"))) {
+    const answer = await ask(service.target, { path: `${dav}/arasul.mjs`, basic: service.basic, timeout: 60_000 });
+    const theirs = answer.status === 200 ? answer.body : null;
+    const ours = readFileSync(join(local, "arasul.mjs"));
+    const order = theirs ? newer(bridgeVersion(ours), bridgeVersion(theirs)) : 0;
+    if (order > 0) bridge = { way: "up", ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), dav, body: ours, mtime: Math.floor(statSync(join(local, "arasul.mjs")).mtimeMs / 1000) };
+    else if (order < 0 && isRoot) bridge = { way: "down", ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), body: theirs, mtime: there.files.get("arasul.mjs")?.mtime };
+    // A folder that becomes a root takes the room's bridge anyway, see bootstrapBridge.
+    if (bridge || !isRoot) stops = stops.filter((path) => path !== "arasul.mjs");
+  }
+  const handled = new Set(bridge ? ["arasul.mjs"] : []);
+  const foreign = isRoot
+    ? [...conflicts, ...(base ? [] : result.down.map((item) => item.path))].filter((path) => !handled.has(path)).sort()
+    : [];
+  return { stop: stops, bridge, foreign, there, first: !base };
 }
 
 /** Why a sync or a deploy stopped at the rules of the root, in one sentence with the way out. */
 function ruleStop(paths) {
   return t(
-    `Not synced: ${paths.join(", ")} differ here and on the device. The client would put the device's version at the name and this one next to it, and the rules of this root would change without anybody deciding it. Keep one version on both sides and sync again, or sync with --keep-mine: the device's version is moved aside on the device, stays there to be read, and this one takes its name.`,
-    `Nicht abgeglichen: ${paths.join(", ")} sind hier und am Gerät verschieden. Der Klient legte die Fassung des Geräts an den Namen und diese daneben, und die Regeln dieser Wurzel änderten sich, ohne dass jemand es entschieden hat. Behalte eine Fassung auf beiden Seiten und gleiche neu ab, oder gleiche mit --keep-mine ab: die Fassung des Geräts wird am Gerät zur Seite gelegt, bleibt dort lesbar, und diese nimmt ihren Namen.`
+    `Not synced: ${paths.join(", ")} differ here and on the device. The client would put the device's version at the name and this one next to it, and the rules of this root would change without anybody deciding it. Keep one version on both sides and sync again, or sync with --keep-mine: the device's version goes on the device into ${ASIDE()}/<time>/, stays there to be read, and this one takes its name. sync --plan names every file that would go there.`,
+    `Nicht abgeglichen: ${paths.join(", ")} sind hier und am Gerät verschieden. Der Klient legte die Fassung des Geräts an den Namen und diese daneben, und die Regeln dieser Wurzel änderten sich, ohne dass jemand es entschieden hat. Behalte eine Fassung auf beiden Seiten und gleiche neu ab, oder gleiche mit --keep-mine ab: die Fassung des Geräts geht am Gerät nach ${ASIDE()}/<zeit>/, bleibt dort lesbar, und diese nimmt ihren Namen. sync --plan nennt jede Datei, die dorthin ginge.`
   );
 }
 
+const encoded = (rel) => rel.split("/").map(encodeURIComponent).join("/");
+
 /**
- * `--keep-mine`: the device's version of each file moves aside on the device, to
- * `<name> (Gerät <date> <time>)<ending>` next to it, with a WebDAV MOVE that overwrites nothing.
- * Then nothing conflicts, the client takes this version up, and the other one comes down as a file
- * everybody sees. Nothing of either side is lost, and the rules that hold are the house's.
+ * The newer bridge takes the place of the older one, before the client runs, so that nothing
+ * conflicts: up with a PUT that carries this file's time, down by writing the room's version here
+ * with its time. Both sides then carry the same file at the same time.
  */
-async function moveAside(service, folder, paths) {
+async function settleBridge(service, local, bridge) {
+  if (bridge.way === "up") {
+    const answer = await ask(service.target, { method: "PUT", path: `${bridge.dav}/arasul.mjs`, basic: service.basic, body: bridge.body, headers: { "Content-Type": "application/octet-stream", "X-OC-Mtime": String(bridge.mtime) }, timeout: 120_000 });
+    if (answer.status < 200 || answer.status >= 300) stop(t(`The file service did not take this bridge (status ${answer.status}). Nothing more was changed.`, `Der Dateidienst hat diese Brücke nicht angenommen (Status ${answer.status}). Sonst wurde nichts geändert.`));
+    say(`  ${t(`arasul.mjs: this bridge (${versionText(bridge.ours)}) is newer than the one in the room (${versionText(bridge.theirs)}) and takes its place; everybody else gets it at their next sync.`, `arasul.mjs: diese Brücke (${versionText(bridge.ours)}) ist neuer als die im Raum (${versionText(bridge.theirs)}) und nimmt ihren Platz; alle anderen bekommen sie beim nächsten Abgleich.`)}`);
+  } else {
+    const file = join(local, "arasul.mjs");
+    writeFileSync(file, bridge.body);
+    if (bridge.mtime) utimesSync(file, bridge.mtime, bridge.mtime);
+    say(`  ${t(`arasul.mjs: the bridge in the room (${versionText(bridge.theirs)}) is newer than this one (${versionText(bridge.ours)}) and takes its place here.`, `arasul.mjs: die Brücke im Raum (${versionText(bridge.theirs)}) ist neuer als diese (${versionText(bridge.ours)}) und nimmt hier ihren Platz.`)}`);
+  }
+}
+
+/**
+ * `--keep-mine`: the device's version of every foreign file moves on the device into one folder,
+ * `.claude/geraet-alt/<date> <time>/` (`device-old` in an English root), at its path below it,
+ * with WebDAV MOVE that overwrites nothing; a folder whose files all go moves as a whole. Then
+ * nothing conflicts, the client takes this root up, and the other one comes down in that one
+ * folder and nowhere else. Measured on 2026-09-27: moved next to each file, the device's rules and
+ * nine files of another root came into every folder of the house's tree, and a conflicted copy of
+ * the README stayed and counted at every run.
+ */
+async function moveForeign(service, folder, paths, remote) {
   const dav = davOf(service, folder);
   const now = new Date();
   const two = (n) => String(n).padStart(2, "0");
-  const stamp = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())} ${two(now.getHours())}${two(now.getMinutes())}`;
-  const moved = [];
+  const into = `${ASIDE()}/${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())} ${two(now.getHours())}${two(now.getMinutes())}`;
+  const chosen = new Set(paths);
+  const above = new Set();
   for (const path of paths) {
-    const cut = path.lastIndexOf(".") > path.lastIndexOf("/") + 1 ? path.lastIndexOf(".") : path.length;
-    const aside = `${path.slice(0, cut)} (${t("device", "Gerät")} ${stamp})${path.slice(cut)}`;
-    const encoded = (rel) => rel.split("/").map(encodeURIComponent).join("/");
+    const parts = path.split("/");
+    for (let i = 1; i < parts.length; i += 1) above.add(parts.slice(0, i).join("/"));
+  }
+  const all = [...remote.keys()];
+  const whole = [...above]
+    .filter((dir) => !`${into}/`.startsWith(`${dir}/`) && all.filter((file) => file.startsWith(`${dir}/`)).every((file) => chosen.has(file)))
+    .sort();
+  const units = [];
+  for (const dir of whole) if (!units.some((unit) => dir.startsWith(`${unit}/`))) units.push(dir);
+  for (const path of paths) if (!units.some((unit) => path.startsWith(`${unit}/`))) units.push(path);
+  const made = new Set();
+  const collection = async (rel) => {
+    const parts = rel.split("/");
+    for (let i = 1; i <= parts.length; i += 1) {
+      const sub = parts.slice(0, i).join("/");
+      if (made.has(sub)) continue;
+      const answer = await ask(service.target, { method: "MKCOL", path: `${dav}/${encoded(sub)}`, basic: service.basic });
+      if (answer.status !== 201 && answer.status !== 405) {
+        stop(t(`The file service did not make ${sub} (status ${answer.status}). Nothing more was moved.`, `Der Dateidienst hat ${sub} nicht angelegt (Status ${answer.status}). Sonst wurde nichts verschoben.`));
+      }
+      made.add(sub);
+    }
+  };
+  for (const unit of units.sort()) {
+    const target = `${into}/${unit}`;
+    await collection(target.slice(0, target.lastIndexOf("/")));
     const answer = await ask(service.target, {
       method: "MOVE",
-      path: `${dav}/${encoded(path)}`,
+      path: `${dav}/${encoded(unit)}`,
       basic: service.basic,
-      headers: { Destination: new URL(`${dav}/${encoded(aside)}`, service.target.address).href, Overwrite: "F" },
+      headers: { Destination: new URL(`${dav}/${encoded(target)}`, service.target.address).href, Overwrite: "F" },
     });
     if (answer.status !== 201 && answer.status !== 204) {
-      stop(t(`The file service did not move ${path} aside (status ${answer.status}). Nothing more was changed.`, `Der Dateidienst hat ${path} nicht zur Seite gelegt (Status ${answer.status}). Sonst wurde nichts geändert.`));
+      stop(t(`The file service did not move ${unit} aside (status ${answer.status}). Nothing more was changed.`, `Der Dateidienst hat ${unit} nicht zur Seite gelegt (Status ${answer.status}). Sonst wurde nichts geändert.`));
     }
-    moved.push(aside);
   }
-  return moved;
+  return { into, files: paths.length };
 }
+
+/** One line after the move, in the output of sync and deploy. */
+const sayMoved = (moved) => say(`  ${t(
+  `The device's version, ${fileCount(moved.files)}, moved on the device into ${moved.into}/ and comes down there only; this root takes the names.`,
+  `Die Fassung des Geräts, ${fileCount(moved.files)}, am Gerät nach ${moved.into}/ gelegt, sie kommt nur dort herunter; diese Wurzel nimmt die Namen.`
+)}`);
 
 /**
  * Nothing the client deletes here is lost.
@@ -1925,8 +2158,8 @@ function guardDeletions(local, excludes) {
   };
 }
 
-/** The client of the vendor: named, or where it lies after unpacking, or on the path. */
-function clientPath(args) {
+/** The client of the vendor: named, or where it lies after unpacking, or on the path, or null. */
+function findClient(args) {
   const given = one(args, "client") || process.env.ARASUL_OPENCLOUD_CMD;
   if (given) {
     const path = resolve(given);
@@ -1939,10 +2172,130 @@ function clientPath(args) {
     const path = join(part, SERVICE.client);
     if (existsSync(path)) return path;
   }
-  stop(t(
-    `The command line client ${SERVICE.client} is not on this computer. It lies in the desktop package of the file service and runs unpacked, without installing. Looked in: ${CLIENT_PLACES.join(", ")} and on the path. --client names another place.`,
-    `Der Kommandozeilen-Klient ${SERVICE.client} ist nicht auf diesem Rechner. Er liegt im Desktop-Paket des Dateidienstes und läuft entpackt, ohne Installation. Gesucht in: ${CLIENT_PLACES.join(", ")} und auf dem Pfad. --client nennt eine andere Stelle.`
-  ));
+  return null;
+}
+
+const clientMissing = () => t(
+  `The command line client ${SERVICE.client} is not on this computer. It lies in the desktop package of the file service and runs unpacked, without installing. Looked in: ${CLIENT_PLACES.join(", ")} and on the path. ${IS_MAC ? "--fetch-client fetches it, checked against its checksum, into " + CLIENT_HOME + "; " : ""}--client names another place.`,
+  `Der Kommandozeilen-Klient ${SERVICE.client} ist nicht auf diesem Rechner. Er liegt im Desktop-Paket des Dateidienstes und läuft entpackt, ohne Installation. Gesucht in: ${CLIENT_PLACES.join(", ")} und auf dem Pfad. ${IS_MAC ? "--fetch-client holt ihn, geprüft an seiner Prüfsumme, nach " + CLIENT_HOME + "; " : ""}--client nennt eine andere Stelle.`
+);
+
+/** An address fetched with its redirects, into memory or, with `file`, onto the disk with its SHA-256. */
+function fetchUrl(url, { file = null, hops = 5 } = {}) {
+  return new Promise((done, failed) => {
+    const target = new URL(url);
+    const req = (target.protocol === "https:" ? httpsRequest : httpRequest)(target, { headers: { "User-Agent": "arasul.mjs", Accept: "*/*" } }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && hops > 0) {
+        res.resume();
+        return fetchUrl(new URL(res.headers.location, target).href, { file, hops: hops - 1 }).then(done, failed);
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return failed(new Error(t(`${target.host} answers ${res.statusCode}`, `${target.host} antwortet ${res.statusCode}`)));
+      }
+      const hash = createHash("sha256");
+      const parts = [];
+      const out = file ? createWriteStream(file, { mode: 0o600 }) : null;
+      res.on("data", (chunk) => {
+        hash.update(chunk);
+        if (out) out.write(chunk);
+        else parts.push(chunk);
+      });
+      res.on("end", () => {
+        const sum = hash.digest("hex");
+        if (!out) return done({ body: Buffer.concat(parts), sum });
+        out.end(() => done({ sum }));
+      });
+      res.on("error", failed);
+    });
+    req.setTimeout(120_000, () => req.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" })));
+    req.on("error", failed);
+    req.end();
+  });
+}
+
+/** The file of this name below a folder, or null. */
+function findBelow(dir, name, deep = 0) {
+  if (deep > 8) return null;
+  for (const entry of entriesOf(dir)) {
+    const path = join(dir, entry.name);
+    if (entry.isFile() && entry.name === name) return path;
+    if (entry.isDirectory()) {
+      const found = findBelow(path, name, deep + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Fetch the vendor's desktop package for this Mac, check it against the checksum the vendor
+ * publishes next to it, unpack it with pkgutil and keep only the app, next to the credential.
+ * Nothing is installed, nothing asks for an administrator. Measured on 2026-09-27: the command
+ * line client of version 4.0.0 runs out of the unpacked package.
+ */
+async function fetchClient() {
+  if (!IS_MAC && !process.env.ARASUL_CLIENT_RELEASE) {
+    stop(t(
+      `Fetching the client is built for a Mac. Here: the desktop package of the file service for this system, from the vendor's releases, then --client <path to ${SERVICE.client}>.`,
+      `Das Holen des Klienten ist für einen Mac gebaut. Hier: das Desktop-Paket des Dateidienstes für dieses System, aus den Veröffentlichungen des Herstellers, dann --client <pfad zu ${SERVICE.client}>.`
+    ));
+  }
+  const arch = process.arch === "arm64" ? "arm64" : "x86_64";
+  let release;
+  try {
+    release = JSON.parse((await fetchUrl(CLIENT_RELEASES)).body.toString("utf8"));
+  } catch (error) {
+    stop(t(`The list of the client's releases did not come: ${error.message}. Nothing was fetched.`, `Die Liste der Veröffentlichungen des Klienten kam nicht: ${error.message}. Nichts wurde geholt.`));
+  }
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
+  const pkg = assets.find((asset) => new RegExp(`macos.*${arch}\\.pkg$`).test(String(asset?.name)));
+  const check = pkg && assets.find((asset) => asset?.name === `${pkg.name}.sha256`);
+  if (!pkg || !check) stop(t(`The release ${oneLine(release?.tag_name, 40)} carries no package for macOS ${arch} with a checksum. Nothing was fetched.`, `Die Veröffentlichung ${oneLine(release?.tag_name, 40)} trägt kein Paket für macOS ${arch} mit Prüfsumme. Nichts wurde geholt.`));
+  say(t(`Fetching ${pkg.name} (${sized(Number(pkg.size) || 0)}) from the vendor's releases ...`, `Hole ${pkg.name} (${sized(Number(pkg.size) || 0)}) aus den Veröffentlichungen des Herstellers ...`));
+  mkdirSync(CLIENT_HOME, { recursive: true, mode: 0o700 });
+  const work = mkdtempSync(join(CLIENT_HOME, ".laden-"));
+  try {
+    const file = join(work, basename(pkg.name));
+    const expected = (await fetchUrl(check.browser_download_url)).body.toString("utf8").trim().split(/\s+/)[0].toLowerCase();
+    const got = await fetchUrl(pkg.browser_download_url, { file });
+    if (!/^[0-9a-f]{64}$/.test(expected) || got.sum !== expected) {
+      stop(t(`The package does not carry the checksum the vendor names (${got.sum.slice(0, 16)} against ${expected.slice(0, 16)}). Deleted, nothing was unpacked.`, `Das Paket trägt nicht die Prüfsumme, die der Hersteller nennt (${got.sum.slice(0, 16)} gegen ${expected.slice(0, 16)}). Gelöscht, nichts wurde entpackt.`));
+    }
+    const unpacked = join(work, "entpackt");
+    const run = spawnSync(process.env.ARASUL_PKGUTIL || "/usr/sbin/pkgutil", ["--expand-full", file, unpacked], { encoding: "utf8", timeout: 300_000 });
+    const found = run.status === 0 ? findBelow(unpacked, SERVICE.client) : null;
+    if (!found) stop(t(`pkgutil did not unpack ${SERVICE.client} out of the package: ${clientSaid(run)}`, `pkgutil hat ${SERVICE.client} nicht aus dem Paket entpackt: ${clientSaid(run)}`));
+    const app = dirname(dirname(dirname(found)));
+    rmSync(join(CLIENT_HOME, "OpenCloud.app"), { recursive: true, force: true });
+    renameSync(app, join(CLIENT_HOME, "OpenCloud.app"));
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  const proof = spawnSync(CLIENT_FETCHED, ["--version"], { encoding: "utf8", timeout: 30_000 });
+  if (proof.status !== 0) stop(t(`The unpacked client does not start: ${clientSaid(proof)}`, `Der entpackte Klient startet nicht: ${clientSaid(proof)}`));
+  say(t(`Client fetched and checked: ${oneLine(proof.stdout.split("\n")[0], 80)}, in ${CLIENT_FETCHED}. Nothing was installed; deleting ${CLIENT_HOME} takes it back.`, `Klient geholt und geprüft: ${oneLine(proof.stdout.split("\n")[0], 80)}, in ${CLIENT_FETCHED}. Installiert wurde nichts; ${CLIENT_HOME} zu löschen nimmt ihn zurück.`));
+  return CLIENT_FETCHED;
+}
+
+/**
+ * The client, and when it is missing, the offer to fetch it: with --fetch-client at once, at a
+ * terminal after a question, otherwise one sentence with the way. `need` false only offers.
+ */
+async function ensureClient(args, { need = true } = {}) {
+  const found = findClient(args);
+  if (found) return found;
+  if (args.flags["fetch-client"]) return fetchClient();
+  if (IS_MAC && interactive()) {
+    const answer = await visibleLine(t(
+      `The client of the file service, ${SERVICE.client}, is not on this computer, and sync needs it. Fetch it now from the vendor's releases, checked against its checksum, into ${CLIENT_HOME}? [y/N] `,
+      `Der Klient des Dateidienstes, ${SERVICE.client}, ist nicht auf diesem Rechner, und sync braucht ihn. Jetzt aus den Veröffentlichungen des Herstellers holen, geprüft an seiner Prüfsumme, nach ${CLIENT_HOME}? [j/N] `
+    ));
+    if (/^(y|yes|j|ja)$/i.test((answer || "").trim())) return fetchClient();
+  }
+  if (need) stop(clientMissing());
+  say(clientMissing());
+  return null;
 }
 
 /**
@@ -1997,13 +2350,18 @@ async function askFolders(device) {
     });
   }
   const address = oneLine(String(data.adresse ?? ""), 200);
+  // Since 2026-09-27 the device names every address of its file service it knows, the one to take
+  // first; this file tries them in that order when the first does not answer from here.
+  const addresses = [...new Set([address, ...(Array.isArray(data.adressen) ? data.adressen : []).map((item) => oneLine(String(item ?? ""), 200))].filter((item) => /^https?:\/\/[^\s/]+/i.test(item)))];
   return {
     service: true,
     address,
+    named: address,
+    addresses,
     reachable: data.erreichbar !== false,
     user: oneLine(String(data.benutzer ?? ""), 80),
     folders,
-    gone: goneFolders(folders, address),
+    gone: goneFolders(folders, addresses.length ? addresses : [address]),
     refused: refusedFolders,
     notes: (Array.isArray(data.nicht_abgeglichen) ? data.nicht_abgeglichen : []).map((note) => oneLine(note?.text, 300)).filter(Boolean),
   };
@@ -2221,11 +2579,11 @@ const awayDir = () => join(dirname(ROOT), `${basename(ROOT)}-${t("withdrawn", "e
  * holds another one goes alone; otherwise its whole chain at the top goes. What lies below a folder
  * of level 1 the person still has is that folder's, and its own sync takes care of it.
  */
-function goneFolders(folders, address) {
+function goneFolders(folders, addresses) {
   // An empty list says nothing about this tree, and a state of another file service nothing about this one.
   if (!folders.length) return [];
   const mine = readFolderState().roots[ROOT];
-  if (mine?.address && mine.address !== address) return [];
+  if (mine?.address && !addresses.includes(mine.address)) return [];
   const now = new Set(folders.map((folder) => folder.path));
   const tops = new Set(folders.filter((folder) => !folder.root).map((folder) => folder.path.split("/")[0]));
   const levelOne = new Set(folders.filter((folder) => !folder.root && folder.level === 1).map((folder) => folder.path));
@@ -2355,7 +2713,7 @@ async function syncFolders(args, device, apps = []) {
   }
   if (!plan.address) stop(t("The device names no address of the file service. Nothing was synced.", "Das Gerät nennt keine Adresse des Dateidienstes. Es wurde nichts abgeglichen."));
   if (!plan.user) stop(t("The device names no user for the file service. Nothing was synced.", "Das Gerät nennt keinen Benutzer für den Dateidienst. Es wurde nichts abgeglichen."));
-  const client = clientPath(args);
+  const client = await ensureClient(args);
   const password = await askPassword(args, plan, device);
 
   // The root first, then level 1: the root is the folder everything lies in, and level 1 makes the
@@ -2364,6 +2722,7 @@ async function syncFolders(args, device, apps = []) {
   const rank = (folder) => (folder.root ? 0 : folder.level);
   const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
   const tops = topNames(plan);
+  await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
   const lists = excludeFiles();
   const results = [];
@@ -2372,16 +2731,14 @@ async function syncFolders(args, device, apps = []) {
       const local = placeOf(folder);
       mkdirSync(local, { recursive: true });
       const excludes = excludesFor(plan, folder, local);
-      const clash = service ? await ruleConflicts(service, folder, local, excludes) : [];
-      if (clash.length && !args.flags["keep-mine"]) {
-        results.push({ ...folder, ok: false, message: ruleStop(clash), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
+      const rules = service ? await rootRules(service, folder, local, excludes) : { stop: [], bridge: null, foreign: [] };
+      if (rules.stop.length && !args.flags["keep-mine"]) {
+        results.push({ ...folder, ok: false, message: ruleStop(rules.stop), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
         continue;
       }
-      if (clash.length) {
-        const moved = await moveAside(service, folder, clash);
-        say(`  ${t(`Moved aside on the device, this root's version takes the name: ${moved.join(", ")}`, `Am Gerät zur Seite gelegt, die Fassung dieser Wurzel nimmt den Namen: ${moved.join(", ")}`)}`);
-      }
-      const bootstrap = folder.root ? bootstrapBridge() : null;
+      if (rules.bridge) await settleBridge(service, local, rules.bridge);
+      if (args.flags["keep-mine"] && rules.foreign.length) sayMoved(await moveForeign(service, folder, rules.foreign, rules.there.files));
+      const bootstrap = folder.root ? bootstrapBridge(rules.bridge?.way === "up") : null;
       const guard = guardDeletions(local, excludes);
       const run = runClient({ client, plan, folder, local, excludes: lists.write(excludes), password });
       if (bootstrap) bootstrap.settle();
@@ -2454,11 +2811,13 @@ async function syncFolders(args, device, apps = []) {
  * room carries this file too, the one the house deployed, and the client cannot merge two
  * versions of it: measured on 2026-09-22, it kept both and named the second one a conflicted
  * copy. So in a folder that is not a root yet this file goes out of the way before the client
- * runs: Node holds it in memory already. The one from the room is the house's and wins. Should
+ * runs: Node holds it in memory already. The one from the room is the house's and wins, unless
+ * this one is the newer version: then it went into the room before the client, and stays. Should
  * the room carry none, the file is put back as it was.
  */
-function bootstrapBridge() {
-  if (existsSync(join(ROOT, ".claude", "root.json"))) return null;
+function bootstrapBridge(newest = false) {
+  // This bridge is newer than the room's and went up already: it stays, and both sides are equal.
+  if (newest || existsSync(join(ROOT, ".claude", "root.json"))) return null;
   const self = fileURLToPath(import.meta.url);
   if (dirname(self) !== ROOT) return null;
   const source = readFileSync(self);
@@ -2621,20 +2980,20 @@ function nodePath() {
 
 const xml = (value) => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** The agent's file for launchd. No secret stands in it. */
-function plistOf(program, every, env) {
+/** The agent's file for launchd. No secret stands in it. Without an interval it runs once, at loading. */
+function plistOf(program, every, env, label = AGENT_LABEL) {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">',
     '<plist version="1.0">',
     "<dict>",
-    `  <key>Label</key><string>${xml(AGENT_LABEL)}</string>`,
+    `  <key>Label</key><string>${xml(label)}</string>`,
     "  <key>ProgramArguments</key>",
     "  <array>",
     ...program.map((part) => `    <string>${xml(part)}</string>`),
     "  </array>",
     `  <key>WorkingDirectory</key><string>${xml(ROOT)}</string>`,
-    `  <key>StartInterval</key><integer>${every * 60}</integer>`,
+    ...(every ? [`  <key>StartInterval</key><integer>${every * 60}</integer>`] : []),
     "  <key>RunAtLoad</key><true/>",
     "  <key>ProcessType</key><string>Background</string>",
     `  <key>StandardOutPath</key><string>${xml(AGENT_LOG)}</string>`,
@@ -2771,6 +3130,78 @@ function guardedByMacos(path) {
   return ["Desktop", "Documents", "Downloads", join("Library", "Mobile Documents")].some((part) => path === join(home, part) || path.startsWith(`${join(home, part)}/`));
 }
 
+// --- Seen from the background: what launchd's node reaches ----------------------------------
+// Measured on 2026-09-27 at a Mac with macOS 15: node started by launchd did not reach the device
+// under its LAN address, EHOSTUNREACH, while the same node reached it from the terminal and reached
+// the device's Tailscale address from launchd as well. macOS lets a program into the local network
+// only with the approval Local Network, and a node without a window started by launchd never gets
+// asked. It showed only in the agent's log. So --install asks launchd itself before it sets up.
+
+const PROBE_LABEL = `${AGENT_LABEL}.pruefung`;
+const PROBE_PLIST = join(LAUNCH_AGENTS, `${PROBE_LABEL}.plist`);
+const PROBE_FILE = join(BACKGROUND_DIR, `${PROBE_LABEL}.json`);
+const PROBE_WAIT = Number(process.env.ARASUL_PROBE_WAIT || 30_000);
+
+/** `sync --reach`: what launchd runs once for --install. Which addresses answer from the background, and nothing more. */
+async function doReach(args) {
+  const device = chooseDevice(args);
+  const list = [device.entry.address, ...(process.env.ARASUL_REACH || "").split(/\s+/).filter(Boolean)];
+  const results = [];
+  for (const address of [...new Set(list)]) results.push(await reaches(address, device.entry.ca));
+  mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
+  writeFileSync(PROBE_FILE, `${JSON.stringify({ at: new Date().toISOString(), results })}\n`, { mode: 0o600 });
+  return true;
+}
+
+/**
+ * Let launchd run `sync --reach` once, as an agent of this person like the real one, and read what
+ * it saw: the device's address and every address of the file service, and each host of those on
+ * the port of the device, as a way to log in instead. Null when launchd said nothing in time.
+ */
+function probeFromBackground(device, plan, env) {
+  const hosts = plan.addresses.map((address) => {
+    const url = new URL(address);
+    return `${url.protocol}//${url.host.replace(/:\d+$/, "")}${new URL(device.entry.address).port ? `:${new URL(device.entry.address).port}` : ""}`;
+  });
+  const list = [...new Set([...plan.addresses, ...hosts])].filter((address) => address !== device.entry.address);
+  const program = [nodePath(), fileURLToPath(import.meta.url), "sync", "--reach", "--device", device.name];
+  mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
+  mkdirSync(LAUNCH_AGENTS, { recursive: true });
+  rmSync(PROBE_FILE, { force: true });
+  writeFileSync(PROBE_PLIST, plistOf(program, 0, { ...env, ARASUL_REACH: list.join(" ") }, PROBE_LABEL), { mode: 0o644 });
+  launchctl(["bootout", `${domain()}/${PROBE_LABEL}`]);
+  const run = launchctl(["bootstrap", domain(), PROBE_PLIST]);
+  let seen = null;
+  const until = Date.now() + PROBE_WAIT;
+  while (run.status === 0 && Date.now() < until) {
+    seen = readJson(PROBE_FILE, null);
+    if (seen) break;
+    pause(250);
+  }
+  launchctl(["bootout", `${domain()}/${PROBE_LABEL}`]);
+  rmSync(PROBE_PLIST, { force: true });
+  rmSync(PROBE_FILE, { force: true });
+  return seen && Array.isArray(seen.results) ? { seen: new Map(seen.results.map((item) => [item.address, item])), hosts } : null;
+}
+
+/** Why the background does not get there, in one line with the cause and the way out. */
+function backgroundStop(failed, device, instead) {
+  const local = ["EHOSTUNREACH", "ENETUNREACH"].includes(failed.code);
+  const user = device.entry.user ? ` --user ${device.entry.user}` : "";
+  const way = instead
+    ? t(`log in under ${instead}, which answers from the background: node arasul.mjs login ${instead}${user}, then sync --install again`, `melde dich unter ${instead} an, das aus dem Hintergrund antwortet: node arasul.mjs login ${instead}${user}, dann sync --install noch einmal`)
+    : t("log in under an address of the device outside the local network, its Tailscale name for instance, then sync --install again", "melde dich unter einer Adresse des Geräts außerhalb des lokalen Netzes an, etwa seinem Tailscale-Namen, dann sync --install noch einmal");
+  return local
+    ? t(
+        `From the background node does not reach ${failed.address} (${failed.code}): macOS lets a program started by launchd into the local network only with the approval Local Network, and node does not get it. Way out: ${way}. Nothing was set up.`,
+        `Aus dem Hintergrund erreicht node ${failed.address} nicht (${failed.code}): macOS lässt ein von launchd gestartetes Programm nur mit der Freigabe Lokales Netzwerk ins lokale Netz, und node bekommt sie nicht. Ausweg: ${way}. Nichts wurde eingerichtet.`
+      )
+    : t(
+        `From the background node does not reach ${failed.address} (${failed.code}), from this terminal it does. Way out: ${way}. Nothing was set up.`,
+        `Aus dem Hintergrund erreicht node ${failed.address} nicht (${failed.code}), aus diesem Terminal schon. Ausweg: ${way}. Nichts wurde eingerichtet.`
+      );
+}
+
 /** `sync --install`: the password into the keychain, proven first, and an agent to launchd. */
 async function doInstall(args) {
   if (!IS_MAC && !process.env.ARASUL_LAUNCH_AGENTS) {
@@ -2786,10 +3217,26 @@ async function doInstall(args) {
   if (!plan.service) stop(`${plan.reason} ${t("Nothing was set up.", "Nichts wurde eingerichtet.")}`);
   if (!plan.folders.length) stop(t("No folder is shared with you: a sync in the background would have nothing to do. Nothing was set up.", "Dir ist kein Ordner freigegeben: ein Abgleich im Hintergrund hätte nichts zu tun. Nichts wurde eingerichtet."));
   if (!plan.address || !plan.user) stop(t("The device names no address or no user of the file service. Nothing was set up.", "Das Gerät nennt keine Adresse oder keinen Benutzer des Dateidienstes. Nichts wurde eingerichtet."));
-  const client = clientPath(args);
+  const client = await ensureClient(args);
   const password = await askPassword({ ...args, flags: { ...args.flags, background: false } }, plan, device);
   // Proven before it is stored: a password the service does not take would fail at every run.
+  await pickAddress(plan, device);
   await spacesOf(plan, device, password);
+  const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
+  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "ARASUL_LANGUAGE", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
+  // Proven from where it will run: launchd's node does not reach what this terminal reaches.
+  const probe = probeFromBackground(device, plan, env);
+  if (probe) {
+    const { seen, hosts } = probe;
+    const there = seen.get(device.entry.address);
+    const service = plan.addresses.filter((address) => seen.get(address)?.ok);
+    const instead = hosts.find((address) => address !== device.entry.address && seen.get(address)?.ok);
+    if (!there?.ok) stop(backgroundStop(there || { address: device.entry.address, code: "?" }, device, instead));
+    if (!service.length) stop(backgroundStop(seen.get(plan.address) || { address: plan.address, code: "?" }, device, null));
+    say(t(`Checked from the background: ${device.entry.address} answers, the file service under ${service[0]}.`, `Aus dem Hintergrund geprüft: ${device.entry.address} antwortet, der Dateidienst unter ${service[0]}.`));
+  } else {
+    say(t(`launchd did not report the check from the background within ${Math.round(PROBE_WAIT / 1000)} seconds. Set up anyway; status says after the first run whether it got through.`, `launchd hat die Prüfung aus dem Hintergrund nicht binnen ${Math.round(PROBE_WAIT / 1000)} Sekunden gemeldet. Trotzdem eingerichtet; status sagt nach dem ersten Lauf, ob er durchkam.`));
+  }
   const token = await issueAppToken(plan, device, password);
   if (token) await spacesOf(plan, device, token.value);
   const before = keychainRead();
@@ -2802,8 +3249,6 @@ async function doInstall(args) {
   // This very file, by its path: whoever installs runs the bridge they mean, and a root that is still
   // to become one carries the house's arasul.mjs after its first sync.
   const program = [nodePath(), fileURLToPath(import.meta.url), "sync", "--background", "--device", device.name, "--client", client];
-  const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
-  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "ARASUL_LANGUAGE", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
   writeFileSync(AGENT_PLIST, plistOf(program, every, env), { mode: 0o644 });
   launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]);
   let run;
@@ -2941,7 +3386,7 @@ function syncLine() {
 function recordSync(device, plan, results) {
   const state = readFolderState();
   const before = state.roots[ROOT]?.folders || {};
-  const mine = { device: device.name, address: plan.address, user: plan.user, at: new Date().toISOString(), folders: { ...before } };
+  const mine = { device: device.name, address: plan.named || plan.address, user: plan.user, at: new Date().toISOString(), folders: { ...before } };
   if (state.roots[ROOT]?.background) mine.background = state.roots[ROOT].background;
   if (state.roots[ROOT]?.setAside) mine.setAside = state.roots[ROOT].setAside;
   for (const result of results) {
@@ -2968,7 +3413,13 @@ function recordSync(device, plan, results) {
 // deliver it one day; until it does, the sheet is written out of what the device says about
 // folders and apps. Per person, so it never goes into the room of the root.
 
-const stamp = (iso) => `${String(iso).slice(0, 16).replace("T", " ")} UTC`;
+/** A time for a human: the clock of this computer, not UTC. At the Mac measured 13:15 UTC read as a quarter past one, and it was 15:15. */
+function stamp(iso) {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return String(iso);
+  const two = (n) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())} ${two(at.getHours())}:${two(at.getMinutes())}`;
+}
 
 /** The view out of what the device says, in the language of the root. */
 function ownView(device, plan, results, apps) {
@@ -3239,7 +3690,7 @@ async function doDeploy(args) {
   say(`${t("Company folder", "Firmenordner")}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}`);
   if (!plan.address) stop(t("The device names no address of the file service. Nothing was deployed.", "Das Gerät nennt keine Adresse des Dateidienstes. Nichts wurde ausgerollt."));
   if (!plan.user) stop(t("The device names no user for the file service. Nothing was deployed.", "Das Gerät nennt keinen Benutzer für den Dateidienst. Nichts wurde ausgerollt."));
-  const client = clientPath(args);
+  const client = await ensureClient(args);
   const password = await askPassword(args, plan, device);
 
   // The root the device names, and only when it names none is one made. Its id is the device's.
@@ -3258,14 +3709,13 @@ async function doDeploy(args) {
 
   setAside(plan);
   const excludes = excludesFor(plan, room, ROOT);
+  await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
   {
-    const clash = await ruleConflicts(service, room, ROOT, excludes);
-    if (clash.length && !args.flags["keep-mine"]) stop(`${ruleStop(clash)} ${t("Nothing was deployed.", "Nichts wurde ausgerollt.")}`);
-    if (clash.length) {
-      const moved = (await moveAside(service, room, clash)).join(", ");
-      say(t(`Moved aside on the device, this root's version takes the name: ${moved}`, `Am Gerät zur Seite gelegt, die Fassung dieser Wurzel nimmt den Namen: ${moved}`));
-    }
+    const rules = await rootRules(service, room, ROOT, excludes);
+    if (rules.stop.length && !args.flags["keep-mine"]) stop(`${ruleStop(rules.stop)} ${t("Nothing was deployed.", "Nichts wurde ausgerollt.")}`);
+    if (rules.bridge) await settleBridge(service, ROOT, rules.bridge);
+    if (args.flags["keep-mine"] && rules.foreign.length) sayMoved(await moveForeign(service, room, rules.foreign, rules.there.files));
   }
   const expected = filesThrough(ROOT, excludes);
   const lists = excludeFiles();
@@ -3442,7 +3892,7 @@ async function doLogin(args) {
         "Das Gerät hat ihn für diesen Rechner ausgestellt und seinen Wert einmal gezeigt. Die Sitzung der Anmeldung wurde nicht behalten: ein Ausweis läuft nicht ab und öffnet keine Verwaltung."
       ));
     } else if (expires) {
-      say(t(`What you pasted in is a session, and it holds until ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC. A credential out of the device's front end has no end.`, `Was du eingefügt hast, ist eine Sitzung, und sie hält bis ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC. Ein Ausweis aus der Oberfläche des Geräts läuft nicht ab.`));
+      say(t(`What you pasted in is a session, and it holds until ${stamp(expires)}. A credential out of the device's front end has no end.`, `Was du eingefügt hast, ist eine Sitzung, und sie hält bis ${stamp(expires)}. Ein Ausweis aus der Oberfläche des Geräts läuft nicht ab.`));
     }
     say();
   } else if (!Object.keys(readCredentials().devices).length && !args.flags.withdraw && !args.flags.approve) {
@@ -3451,6 +3901,12 @@ async function doLogin(args) {
   }
   const clean = await doProposals(args);
   if (!args.flags.withdraw) doPlaces();
+  // sync needs the vendor's client: offered here, once, instead of found missing at the first sync.
+  if (!args.flags.withdraw && !args.flags.approve && Object.keys(readCredentials().devices).length) {
+    say();
+    const client = await ensureClient(args, { need: false });
+    if (client) say(`${t("Client of the file service", "Klient des Dateidienstes")}: ${client}`);
+  }
   return clean;
 }
 
@@ -3470,7 +3926,7 @@ async function doStatus(args) {
     const entry = data.devices[name];
     const expires = expiryOf(entry.token);
     say(`${t("Device", "Gerät")}: ${name}${data.default === name ? ` (${t("last logged in", "zuletzt angemeldet")})` : ""}, ${entry.address}`);
-    say(`  ${t("Credential", "Ausweis")}: ${entry.kind === "pasted" ? t("pasted in", "eingefügt") : t("issued by the device", "vom Gerät ausgestellt")}${entry.user ? `, ${entry.user}` : ""}, ${t("since", "seit")} ${entry.since}${expires ? `, ${expires < Date.now() ? t("ended", "zu Ende") : t("holds until", "hält bis")} ${new Date(expires).toISOString().slice(0, 16).replace("T", " ")} UTC` : ""}`);
+    say(`  ${t("Credential", "Ausweis")}: ${entry.kind === "pasted" ? t("pasted in", "eingefügt") : t("issued by the device", "vom Gerät ausgestellt")}${entry.user ? `, ${entry.user}` : ""}, ${t("since", "seit")} ${entry.since}${expires ? `, ${expires < Date.now() ? t("ended", "zu Ende") : t("holds until", "hält bis")} ${stamp(expires)}` : ""}`);
     try {
       const answer = await send(entry, { path: DEVICE.session, token: entry.token, timeout: 10_000 });
       const body = inner(jsonOf(answer));
@@ -3499,10 +3955,11 @@ async function doStatus(args) {
  * with them is never asked for one.
  */
 async function doSync(args) {
-  const modes = ["plan", "install", "uninstall", "background"].filter((mode) => args.flags[mode]);
+  const modes = ["plan", "install", "uninstall", "background", "reach"].filter((mode) => args.flags[mode]);
   if (modes.length > 1) stop(t(`${modes.map((mode) => `--${mode}`).join(" and ")} do not go together.`, `${modes.map((mode) => `--${mode}`).join(" und ")} gehen nicht zusammen.`), 2);
   if (args.flags.every && !args.flags.install) stop(t("--every belongs to --install.", "--every gehört zu --install."), 2);
   if (args.flags.plan) return doPlan(args);
+  if (args.flags.reach) return doReach(args);
   if (args.flags.install) return doInstall(args);
   if (args.flags.uninstall) return await doUninstall();
   const release = takeLock();
@@ -3531,7 +3988,7 @@ async function runSync(args) {
 function usage() {
   say(t(
     [
-      "node arasul.mjs <command>",
+      `node arasul.mjs <command>   (bridge ${BRIDGE})`,
       "",
       "  login [<address>] [--user <name>] [--token-stdin | --password-stdin] [--insecure] [--name <label>]",
       "        log in, then show the proposals for hooks and rules and the places on this computer",
@@ -3541,7 +3998,8 @@ function usage() {
       "  status                         one line on the sync, then device, credential, company folder, proposals",
       "  sync [--client <path>]         sync the company folder, write apps/<id>/APP.md and sicht.md",
       "  sync --plan                    what a sync would move up and down, with count and size, writing nothing",
-      "  sync --keep-mine               where the files of the root differ, move the device's version aside there and sync this one",
+      "  sync --keep-mine               the device's version of what differs, at the first sync of what only it has, into .claude/device-old/ there",
+      "  --fetch-client                 with login, sync or sync --install: fetch the file service's client when it is missing",
       "  sync --install [--every <min>] on a Mac: sync in the background, an app token in the keychain, every 5 minutes",
       "  sync --uninstall               take the agent back and revoke the token",
       "  deploy [--client <path>]       put this root into the room of the root on the device, the check script first",
@@ -3552,7 +4010,7 @@ function usage() {
       "  --language de|en  the language of the output, before the root's .claude/root.json has one",
     ].join("\n"),
     [
-      "node arasul.mjs <befehl>",
+      `node arasul.mjs <befehl>   (Brücke ${BRIDGE})`,
       "",
       "  login [<adresse>] [--user <name>] [--token-stdin | --password-stdin] [--insecure] [--name <bezeichnung>]",
       "        anmelden, danach die Vorschläge für Hooks und Regeln und die Orte auf diesem Rechner zeigen",
@@ -3562,7 +4020,8 @@ function usage() {
       "  status                         eine Zeile zum Abgleich, dann Gerät, Ausweis, Firmenordner, Vorschläge",
       "  sync [--client <pfad>]         den Firmenordner abgleichen, apps/<id>/APP.md und sicht.md schreiben",
       "  sync --plan                    was ein Abgleich hoch und runter bewegte, mit Anzahl und Größe, ohne zu schreiben",
-      "  sync --keep-mine               wo die Dateien der Wurzel verschieden sind, die des Geräts dort zur Seite legen und diese abgleichen",
+      "  sync --keep-mine               die Fassung des Geräts von allem, was verschieden ist, beim ersten Abgleich auch was nur es hat, dort nach .claude/geraet-alt/",
+      "  --fetch-client                 mit login, sync oder sync --install: den Klienten des Dateidienstes holen, wenn er fehlt",
       "  sync --install [--every <min>] am Mac: Abgleich im Hintergrund, ein App-Token im Schlüsselbund, alle 5 Minuten",
       "  sync --uninstall               Agent zurücknehmen und Token widerrufen",
       "  deploy [--client <pfad>]       diese Wurzel in den Raum der Wurzel am Gerät legen, zuerst das Prüfskript",

@@ -135,8 +135,9 @@ node .ara/tools/root.mjs --adopt <ordner> [--name "<haus>"] [--language de|en]
 
 Ein Haus, das seit Wochen in einem Ordner arbeitet, will keine frische leere Wurzel daneben: das
 Nordziel kommt nur, wenn genau dieser Ordner ans Gerät geht. `--adopt` macht aus ihm eine Wurzel
-und **überschreibt nichts**. Genau drei Dateien entstehen, `.claude/root.json`,
-`.claude/places.json` und `arasul.mjs`; liegt eine davon schon da, wird nichts geschrieben, und
+und **überschreibt nichts**. Genau vier Dateien entstehen, `.claude/root.json`,
+`.claude/places.json`, `arasul.mjs` und der Vorschlag `.claude/proposal/proposal.json`; liegt
+eine davon schon da, wird nichts geschrieben, und
 das Werkzeug sagt, welche. Die `.claude/CLAUDE.md` des Hauses, seine Skills, Hooks und
 Einstellungen, seine `.gitignore` und seine Versionsverwaltung bleiben, wie sie sind. Der Name ist
 der des Ordners, wenn `--name` keinen anderen sagt. **Die Sprache ist die seiner
@@ -156,11 +157,24 @@ Was es findet, sagt es, und davon schreibt es nichts:
   ohne `.env` in den Firmenordner. Das Werkzeug schlägt vor: ein Repository und einen Ort daraus,
   oder eine Zeile in der `.gitignore`, die ihn zu Hause hält.
 - **Dateien der Art `.env`** in jeder Tiefe werden benannt: sie bleiben bei jedem Abgleich zu Hause.
+- **Jeder Ordner der Ebene 1**, den ein Abgleich der Wurzel mitnähme, wird genannt, weil jedes
+  Konto am Gerät die Wurzel liest: gemessen am 27.09.2026 las ein zweites Konto `kunden/` und
+  `company/core.md` einer übernommenen Wurzel. Ordner, deren Namen nach Kundendaten oder
+  Firmeninterna aussehen, stehen zuerst. Das Werkzeug schlägt vor, vor dem ersten Abgleich jeden
+  Ordner, den nicht alle lesen sollen, am Gerät als Bereich anzulegen, mit dem Namen des Ordners
+  als Kennung, und nennt den Weg dorthin (Oberfläche, Einstellungen, Firmenordner, Ordner anlegen,
+  Art Bereich). Ein Bereich wird für sich abgeglichen, nur zu den Menschen mit einem Recht darauf,
+  und die Wurzel lässt ihn aus. Ein Name, der keine Kennung des Geräts ist, wird dazu gesagt.
 
-Eine übernommene Wurzel trägt kein Prüfskript des Kits und keinen Vorschlag, weil beide dort
-lägen, wo das Haus seine eigenen hat. `--show` und `--place` gehen, `--check` sagt, dass kein
-Prüfskript da ist, `--enroll`, dass kein Vorschlag da ist. Als Nächstes kommt die Brücke:
-`login`, dann `sync --plan`, dann `sync`.
+Eine übernommene Wurzel trägt kein Prüfskript des Kits, weil es dort läge, wo das Haus sein
+eigenes hat. **Ihr Vorschlag trägt keinen Hook**, nur was die Brücke braucht: `apps` und die
+lesende Form von `call` ohne Rückfrage, `call ... --write` fragt, und zwei Zeilen für die
+`CLAUDE.md` des Hauses, eine zu `sicht.md` und eine zu `apps/<id>/APP.md`, damit eine neue
+Sitzung beides ohne Hinweis findet. `login` zeigt ihn mit seiner Prüfsumme,
+`login --approve <prüfsumme>` schreibt die Regeln in die eigenen Einstellungen und hängt die zwei
+Zeilen an, `login --withdraw` nimmt beides zurück. `root.mjs --enroll` verweist dafür auf die
+Brücke. `--show` und `--place` gehen, `--check` sagt, dass kein Prüfskript da ist. Als Nächstes
+kommt die Brücke: `login`, dann `sync --plan`, dann `sync`.
 
 ## Nach dem Anlegen
 
@@ -248,8 +262,8 @@ nichts.
 | `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
 | `sync` | Gleicht den Firmenordner ab, die Wurzel des Geräts oben in diesem Ordner eingeschlossen, schreibt dieselben Dateien und `sicht.md`, die Sicht dieses Menschen. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
 | `sync --plan` | Zeigt je Ordner, was ein Abgleich bewegte: hoch und runter mit Anzahl und Größe, Konflikte, was auf einer Seite gelöscht wurde, was zu Hause bleibt. Schreibt nichts und startet keinen Klienten |
-| `sync --keep-mine` | Wo die Dateien, die die Wurzel ausmachen, auf beiden Seiten verschieden sind, legt es die Fassung des Geräts am Gerät zur Seite und gleicht die dieser Wurzel ab. Ohne den Schalter hält `sync` dort an |
-| `sync --install` | Am Mac: der Abgleich im Hintergrund. Prüft das Passwort am Dateidienst, lässt sich damit ein App-Token für diesen Rechner ausstellen, legt das Token in den Schlüsselbund und übergibt launchd einen Agenten, der alle fünf Minuten abgleicht, `--every <minuten>` einen anderen Abstand |
+| `sync --keep-mine` | Legt die Fassung des Geräts von jeder Datei, die verschieden ist, und beim ersten Abgleich einer Wurzel, die hier schon eine ist, auch von jeder Datei, die nur das Gerät hat, am Gerät nach `.claude/geraet-alt/<zeit>/` (`device-old` in einer englischen Wurzel) und gleicht die dieser Wurzel ab. Ohne den Schalter hält `sync` an den Dateien an, die die Wurzel ausmachen |
+| `sync --install` | Am Mac: der Abgleich im Hintergrund. Lässt launchd einmal prüfen und hält mit einer Zeile an, wenn node aus launchd das Gerät nicht erreicht. Prüft das Passwort am Dateidienst, lässt sich damit ein App-Token für diesen Rechner ausstellen, legt das Token in den Schlüsselbund und übergibt launchd einen Agenten, der alle fünf Minuten abgleicht, `--every <minuten>` einen anderen Abstand |
 | `sync --uninstall` | Nimmt den Agenten aus launchd, widerruft das App-Token und nimmt es aus dem Schlüsselbund. Was abgeglichen wurde, bleibt |
 | `status` | Zuerst eine Zeile: wann der letzte Abgleich durchging, wie viel hier offen ist, wie viele Konflikte, ob er im Hintergrund läuft. Dann das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge |
 | `deploy` | Legt diese Wurzel in die Wurzel des Geräts: zuerst das Prüfskript, die Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
@@ -410,10 +424,26 @@ zurück, und der zweite nahm die Klone von vier Produkten hoch, die die eigene `
 Hauses zu Hause gehalten hatte. Darum listen `sync` und `deploy` vor dem Klienten den Raum und
 vergleichen wie der Plan, und ist eine dieser Dateien verschieden und schreibt dieser Mensch die
 Wurzel, halten sie für die Wurzel an und nennen die Dateien; die anderen Ordner werden
-abgeglichen. `--keep-mine` legt die Fassung des Geräts am Gerät zur Seite, nach
-`<name> (Gerät <datum> <uhrzeit>)<endung>`, mit einem WebDAV-`MOVE`, das nichts überschreibt, und
-die des Hauses nimmt den Namen: keine Seite verliert etwas, und es gelten die Regeln des Hauses.
-Wer die Wurzel nur liest, bekommt die Fassung des Geräts, und das ist richtig.
+abgeglichen. `--keep-mine` legt die Fassung des Geräts am Gerät in einen Ordner,
+`.claude/geraet-alt/<datum> <uhrzeit>/` (`device-old` in einer englischen Wurzel), an ihrem Pfad
+darunter, mit WebDAV-`MOVE`, das nichts überschreibt; ein Ordner, dessen Dateien alle gehen, geht
+als Ganzes. Es legt jede Datei dorthin, die verschieden ist, und beim ersten Abgleich einer
+Wurzel, die hier schon eine ist, auch jede, die nur das Gerät hat, etwa die Wurzel eines anderen
+Hauses. Die des Hauses nimmt die Namen, und die des Geräts kommt in diesem einen Ordner herunter
+und nirgends sonst. Gemessen am 27.09.2026: neben jede Datei gelegt, kamen die Regeln des Geräts
+und neun Dateien einer fremden Wurzel in die `.claude/` des Hauses, und eine Konfliktkopie der
+README zählte bei jedem Lauf. **`sync --plan` nennt jede solche Datei vorher**, eine je Zeile.
+Wer die Wurzel nur liest, bekommt die Fassung des Geräts, und das ist richtig: „sync hält hier
+an“ sagt der Plan nur jemandem, der die Wurzel schreibt.
+
+**Eine neuere Brücke löst eine ältere von selbst ab.** `arasul.mjs` trägt die Fassung des Kits,
+mit der sie kam. Ist sie auf beiden Seiten verschieden und eine die neuere, geht die neuere vor
+dem Klienten auf die andere Seite, mit ihrer Zeit, und nichts hält an: hoch mit einem
+WebDAV-`PUT`, herunter, indem die Fassung des Raums hier geschrieben wird. So kommt eine neue
+Brücke in einen bestehenden Raum, wenn ein Administrator mit ihr abgleicht, und alle anderen
+bekommen sie beim nächsten Abgleich; niemand rollt von Hand aus. Dasselbe gilt in einem leeren
+Ordner, der nur die Brücke trägt. Eine Brücke von vor 0.51.0 trägt keine Fassung und gilt als die
+ältere.
 
 **Ein oben verankerter Name reicht weiter.** Eine Regel mit führendem Schrägstrich, für eine `notizen.log`, meint nur die oben;
 der Klient hält den Namen in jeder Tiefe draußen. Der Plan nennt, was das über das hinaus zu
@@ -488,6 +518,29 @@ Passwort hält ihn ebenso an, und `sync --install` stellt ein neues aus. `sync -
 Agent und Token zurück und widerruft das Token am Dienst. Eine
 Wurzel unter Schreibtisch, Dokumente, Downloads oder iCloud bewacht macOS: ein Programm im
 Hintergrund kommt nur mit vollem Festplattenzugriff für node hinein, und `--install` sagt das.
+
+**Geprüft von dort, wo er läuft.** Gemessen am 27.09.2026 an einem Mac: node aus launchd
+erreichte das Gerät unter seiner LAN-Adresse nicht (`EHOSTUNREACH`), aus dem Terminal schon, und
+die Tailscale-Adresse des Geräts antwortete aus beiden; zu sehen war es nur im Protokoll des
+Agenten. macOS lässt ein Programm nur mit der Freigabe Lokales Netzwerk ins lokale Netz, und node
+aus launchd bekommt sie nicht. Darum lässt `--install`, bevor es etwas ablegt, launchd einmal
+`sync --reach` als eigenen Agenten laufen (`<agent>.pruefung`), liest, welche Adressen
+antworteten, und nimmt diesen Agenten wieder weg. Antwortet von dort das Gerät nicht oder keine
+Adresse des Dateidienstes, hält es mit einer Zeile an: die Ursache und der Ausweg, `login` unter
+einer Adresse, die aus dem Hintergrund antwortete.
+
+**Jede Adresse des Dateidienstes.** Seit dem 27.09.2026 nennt das Gerät neben `adresse` auch
+`adressen`, die zu nehmende zuerst; die Brücke nimmt die erste, die von hier antwortet, im Plan,
+im Abgleich und im Hintergrund, und sagt, welche sie übersprungen hat.
+
+**Der Klient wird angeboten, nicht vorausgesetzt.** Fehlt der Kommandozeilen-Klient des
+Herstellers, bieten `login` und `sync --install` ihn an, am Terminal mit einer Frage, sonst mit
+einem Satz. `--fetch-client` holt das macOS-Paket aus den Veröffentlichungen des Herstellers auf
+GitHub, prüft es an der daneben veröffentlichten SHA-256, entpackt es mit `pkgutil` und behält
+nur die App in `~/.config/arasul/klient/`; installiert wird nichts, den Ordner zu löschen nimmt
+ihn zurück. Gemessen am 27.09.2026 mit Fassung 4.0.0: der Klient läuft aus dem entpackten Paket.
+
+**Uhrzeiten in `status`** sind die Uhr dieses Rechners, nicht UTC.
 
 **Ein Ordner, der heißt wie ein Mensch,** hat im Dateidienst zwei Räume dieses Namens: den eigenen
 des Menschen und den des Ordners. Das Werkzeug nimmt den Projektraum. Gemessen am 27.09.2026: der

@@ -15,6 +15,19 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.51.0 (2026-09-28)
+
+Kontrakt: bis 6
+
+- **`root.mjs --adopt` nennt jeden Ordner der Ebene 1, den jedes Konto läse**, Kunden und Firmeninterna zuerst, und schlägt vor, jeden vor dem ersten Abgleich am Gerät als Bereich anzulegen, mit dem Weg dorthin. Es schreibt eine vierte Datei, einen Vorschlag ohne Hook: `apps` und die lesende Form von `call` ohne Rückfrage, `--write` fragt, und zwei Zeilen zu `sicht.md` und `APP.md` für die `CLAUDE.md` des Hauses. `arasul.mjs login` zeigt ihn, `login --approve` trägt die Regeln ein und hängt die Zeilen an, `login --withdraw` nimmt beides zurück.
+- **`sync --install` prüft aus launchd selbst**, bevor es etwas ablegt: ein Agent läuft einmal und sagt, welche Adressen aus dem Hintergrund antworten. Erreicht node dort das Gerät nicht, nennt eine Zeile die Ursache, das lokale Netz von macOS, und den Ausweg, `login` unter einer Adresse, die antwortete.
+- **Das Gerät nennt jede Adresse seines Dateidienstes** (`adressen`); die Brücke nimmt die erste, die von hier antwortet, im Plan, im Abgleich und im Hintergrund.
+- **`--keep-mine` legt die Fassung des Geräts in einen Ordner**, `.claude/geraet-alt/<zeit>/` (`device-old` in einer englischen Wurzel), und beim ersten Abgleich auch jede Datei, die nur das Gerät hat. `sync --plan` nennt jede solche Datei vorher.
+- **Eine neuere Brücke löst eine ältere ab**, im Raum der Wurzel und hier, ohne `--keep-mine`, auch aus einem leeren Ordner. Die Brücke trägt die Fassung des Kits, mit der sie kam.
+- **Der Plan sagt „sync hält hier an“ nur dem, der die Wurzel schreibt.** Der Abgleich eines Lesers läuft durch.
+- **`login` und `sync --install` bieten den Klienten des Dateidienstes an**, wenn er fehlt; `--fetch-client` holt ihn aus den Veröffentlichungen des Herstellers, geprüft an seiner Prüfsumme, entpackt nach `~/.config/arasul/klient/`, nirgends installiert.
+- **`status` zeigt Uhrzeiten nach der Uhr dieses Rechners**, nicht in UTC.
+
 ## 0.50.0 (2026-09-27)
 
 Kontrakt: bis 6

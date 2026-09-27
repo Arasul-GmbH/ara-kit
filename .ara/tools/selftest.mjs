@@ -46,9 +46,10 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
-import { platform, tmpdir } from "node:os";
+import { homedir, platform, tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
@@ -8799,7 +8800,7 @@ const FO_ADRESSE = "https://dateidienst.probe:8443";
 const APP_TOKENS = new Set();
 const APP_TOKEN = "apptoken_probe_0123456789";
 
-function dateidienst(lager, basis, anfrage, antwort, pfad) {
+function dateidienst(lager, basis, anfrage, antwort, pfad, roh = Buffer.alloc(0)) {
   const mitPasswort = anfrage.headers.authorization === `Basic ${Buffer.from(`anna:${BRUECKE_PASSWORT}`).toString("base64")}`;
   const mitToken = [...APP_TOKENS].some((token) => anfrage.headers.authorization === `Basic ${Buffer.from(`anna:${token}`).toString("base64")}`);
   if (!mitPasswort && !mitToken) {
@@ -8835,6 +8836,37 @@ function dateidienst(lager, basis, anfrage, antwort, pfad) {
       renameSync(von, nach);
       antwort.writeHead(201);
     }
+    return antwort.end();
+  }
+  // Ein Ordner im Raum: 201 neu, 405 wenn er schon liegt, wie WebDAV es sagt.
+  if (anfrage.method === "MKCOL" && treffer) {
+    const dir = join(lager, decodeURIComponent(treffer[1]), decodeURIComponent(treffer[2] || ""));
+    if (existsSync(dir)) antwort.writeHead(405);
+    else if (!existsSync(dirname(dir))) antwort.writeHead(409);
+    else {
+      mkdirSync(dir);
+      antwort.writeHead(201);
+    }
+    return antwort.end();
+  }
+  // Eine Datei holen oder legen; X-OC-Mtime setzt ihre Zeit, wie der echte Dienst es tut.
+  if (anfrage.method === "GET" && treffer) {
+    const datei = join(lager, decodeURIComponent(treffer[1]), decodeURIComponent(treffer[2] || ""));
+    if (!existsSync(datei) || !statSync(datei).isFile()) antwort.writeHead(404);
+    else {
+      antwort.writeHead(200, { "Content-Type": "application/octet-stream" });
+      return antwort.end(readFileSync(datei));
+    }
+    return antwort.end();
+  }
+  if (anfrage.method === "PUT" && treffer) {
+    const datei = join(lager, decodeURIComponent(treffer[1]), decodeURIComponent(treffer[2] || ""));
+    mkdirSync(dirname(datei), { recursive: true });
+    const da = existsSync(datei);
+    writeFileSync(datei, roh);
+    const zeit = Number(anfrage.headers["x-oc-mtime"]);
+    if (zeit) utimesSync(datei, zeit, zeit);
+    antwort.writeHead(da ? 204 : 201, zeit ? { "X-OC-Mtime": "accepted" } : {});
     return antwort.end();
   }
   if (anfrage.method === "PROPFIND" && treffer) {
@@ -8877,7 +8909,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
           ? senden(200, { token: BRUECKE_TOKEN, user: { id: 7, username: "anna", role: rolle } })
           : senden(401, { error: { message: "Anmeldung abgewiesen" } });
       }
-      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/") || pfad.startsWith("/auth-app/"))) return dateidienst(lager, basis, anfrage, antwort, pfad);
+      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/") || pfad.startsWith("/auth-app/"))) return dateidienst(lager, basis, anfrage, antwort, pfad, Buffer.concat(teile));
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
       const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
       const gueltig = sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`;
@@ -9373,13 +9405,44 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
 function hintergrundAttrappen() {
   const dir = wegwerfordner("ara-hintergrund-");
   const launchctl = join(dir, "launchctl");
+  // Die Prüfung aus dem Hintergrund führt die Attrappe wirklich aus, so wie launchd sie einmal
+  // startet: mit dem Programm und der Umgebung aus ihrer Datei. ARA_GESPERRT nennt Adressen
+  // (host:port), die node dort nicht erreicht, EHOSTUNREACH wie am Mac gemessen (27.09.2026).
+  const sperre = join(dir, "sperre.cjs");
+  writeFileSync(sperre, `const net = require("node:net");
+const gesperrt = (process.env.ARA_GESPERRT || "").split(",").filter(Boolean);
+const verbinden = net.Socket.prototype.connect;
+net.Socket.prototype.connect = function (...args) {
+  const o = Array.isArray(args[0]) ? args[0][0] : args[0];
+  const ziel = o && typeof o === "object" ? \`\${o.host}:\${o.port}\` : "";
+  if (gesperrt.includes(ziel)) {
+    process.nextTick(() => this.destroy(Object.assign(new Error("connect EHOSTUNREACH " + ziel), { code: "EHOSTUNREACH" })));
+    return this;
+  }
+  return verbinden.apply(this, args);
+};
+`);
   writeFileSync(launchctl, `#!/usr/bin/env node
-const { appendFileSync, existsSync, rmSync, writeFileSync } = require("node:fs");
+const { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } = require("node:fs");
+const { spawnSync } = require("node:child_process");
+const { basename } = require("node:path");
 const argv = process.argv.slice(2);
 appendFileSync(${JSON.stringify(join(dir, "launchctl.jsonl"))}, JSON.stringify(argv) + "\\n");
 const geladen = ${JSON.stringify(join(dir, "geladen"))};
+const pruefung = (name) => name.endsWith(".pruefung") || name.endsWith(".pruefung.plist");
 if (argv[0] === "print") process.exit(existsSync(geladen) ? 0 : 113);
+if (argv[0] === "bootstrap" && pruefung(argv[2])) {
+  const text = readFileSync(argv[2], "utf8");
+  const teile = (block) => [...block.matchAll(/<string>([^<]*)<\\/string>/g)].map((t) => t[1].replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"));
+  const programm = teile(text.split("<key>ProgramArguments</key>")[1].split("</array>")[0]);
+  const umgebung = {};
+  for (const t of text.split("<key>EnvironmentVariables</key>")[1].split("</dict>")[0].matchAll(/<key>([^<]*)<\\/key><string>([^<]*)<\\/string>/g)) umgebung[t[1]] = t[2].replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  if (process.env.ARA_GESPERRT) Object.assign(umgebung, { NODE_OPTIONS: "--require " + ${JSON.stringify(sperre)}, ARA_GESPERRT: process.env.ARA_GESPERRT });
+  if (!process.env.ARA_STUMM) spawnSync(programm[0], programm.slice(1), { env: umgebung, stdio: "ignore" });
+  process.exit(0);
+}
 if (argv[0] === "bootstrap") { writeFileSync(geladen, argv[2]); process.exit(0); }
+if (argv[0] === "bootout" && pruefung(argv[1])) process.exit(0);
 if (argv[0] === "bootout") { if (!existsSync(geladen)) process.exit(3); rmSync(geladen); process.exit(0); }
 process.exit(1);
 `);
@@ -9440,6 +9503,9 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     lauf = await bruecke(w, ["sync", "--install", "--every", "7", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
     assert(lauf.status === 0, `sync --install endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
     assert(/alle 7 Minuten/.test(lauf.stdout) && /App-Token des Dateidienstes.*gilt bis 2027-09-27.*Dein Passwort liegt nirgends/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
+    // Geprüft aus launchd selbst, bevor etwas eingerichtet wird, und die Prüfung räumt hinter sich auf.
+    assert(/Aus dem Hintergrund geprüft: \S+ antwortet, der Dateidienst unter \S+\./.test(lauf.stdout), `sync --install prüft nicht aus dem Hintergrund: ${lauf.stdout}`);
+    assert(h.rufe().some((ruf) => ruf[0] === "bootstrap" && ruf[2].endsWith(".pruefung.plist")) && readdirSync(h.agenten).filter((name) => name.includes(".pruefung")).length === 0, `die Prüfung lief nicht über launchd oder ihre Datei blieb liegen: ${JSON.stringify(h.rufe())}`);
     // Beim Einrichten geht eine Mitteilung hinaus: wer sie nicht sieht, erfährt, wo sie erlaubt wird.
     const probe = h.mitteilungen();
     assert(probe.length === 1 && probe[0][0] === "Firmenordner im Hintergrund" && /Skripteditor/.test(lauf.stdout), `beim Einrichten kommt keine Probemitteilung: ${JSON.stringify(probe)}`);
@@ -9448,7 +9514,7 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     assert(plist.includes("<integer>420</integer>") && plist.includes("<string>--background</string>") && plist.includes("<key>RunAtLoad</key><true/>"), `die Datei des Agenten stimmt nicht:\n${plist}`);
     assert(!plist.includes(BRUECKE_PASSWORT) && !plist.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis steht in der Datei des Agenten");
     assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_PASSWORT), "das Passwort steht in der Ausgabe von --install");
-    const geladen = h.rufe().find((ruf) => ruf[0] === "bootstrap");
+    const geladen = h.rufe().find((ruf) => ruf[0] === "bootstrap" && !ruf[2].includes(".pruefung"));
     assert(geladen && /^gui\/\d+$/.test(geladen[1]) && geladen[2] === agent(), `der Agent wurde nicht in die Sitzung des Menschen geladen: ${JSON.stringify(h.rufe())}`);
     const gelesen = spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", "-w", h.schluesselbund], { encoding: "utf8" });
     const eintrag0 = JSON.parse(Buffer.from(gelesen.stdout.trim(), "base64").toString("utf8"));
@@ -9463,7 +9529,11 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     assert(ruf?.token === APP_TOKEN && !ruf.argv.some((teil) => teil.includes(APP_TOKEN)), "der Klient bekommt im Hintergrund das App-Token nicht über die Umgebung");
     assert(!h.mitteilungen().length, `ein sauberer Lauf meldet sich: ${JSON.stringify(h.mitteilungen())}`);
     let zeile = await status();
-    assert(/^Abgleich: zuletzt abgeglichen \d{4}-\d\d-\d\d \d\d:\d\d UTC, offen 0, Konflikte 0, im Hintergrund alle 7 Minuten$/.test(zeile), `die Zeile von status stimmt nicht: ${zeile}`);
+    // Die Uhrzeit dieses Rechners, nicht UTC: am Mac stand 13:15 UTC, und es war 15:15.
+    const zuletzt = JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots[w.root] ?? Object.values(JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots)[0];
+    const ortszeit = new Date(Object.values(zuletzt.folders).map((ordner) => ordner.at).sort().at(-1));
+    const erwartet = `${ortszeit.getFullYear()}-${String(ortszeit.getMonth() + 1).padStart(2, "0")}-${String(ortszeit.getDate()).padStart(2, "0")} ${String(ortszeit.getHours()).padStart(2, "0")}:${String(ortszeit.getMinutes()).padStart(2, "0")}`;
+    assert(zeile === `Abgleich: zuletzt abgeglichen ${erwartet}, offen 0, Konflikte 0, im Hintergrund alle 7 Minuten`, `die Zeile von status stimmt nicht oder nennt nicht die Ortszeit ${erwartet}: ${zeile}`);
     writeFileSync(join(w.root, "buchhaltung", "neu.md"), "hier geschrieben\n");
     assert(/offen 1, Konflikte 0/.test(await status()), `eine Änderung hier zählt nicht als offen: ${await status()}`);
 
@@ -9539,6 +9609,52 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
     assert(lauf.status === 0 && /war kein Abgleich im Hintergrund eingerichtet/.test(lauf.stdout), `ein zweites --uninstall sagt nicht, dass nichts da war: ${lauf.stdout}`);
     return "falsches Passwort nicht abgelegt, Agent geladen, Lauf ohne Terminal aus dem Schlüsselbund, Konflikt einmal gemeldet, Sperre, Widerruf hält an, Neustart still, --uninstall räumt";
+  } finally {
+    await geraet.schliessen().catch(() => {});
+    spawnSync("/usr/bin/security", ["delete-keychain", h.schluesselbund]);
+  }
+});
+
+await checkAsync("sync --install prüft aus launchd selbst: ohne lokales Netz eine Zeile mit Ursache und Ausweg, eine zweite Adresse des Dateidienstes springt ein", async () => {
+  if (platform() !== "darwin") return "übersprungen: launchd und Schlüsselbund gibt es nur am Mac";
+  // Gemessen am 27.09.2026: node aus launchd erreichte 192.168.0.197 nicht (EHOSTUNREACH), aus dem
+  // Terminal schon, und die Tailscale-Adresse aus beiden. Das stand nur im Protokoll des Agenten.
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const lager = wegwerfordner("ara-lager-lan-");
+  const plan = firmenordnerPlan([FO_ORDNER[0]]);
+  const geraet = await brueckeGeraet({ firmenordner: plan, lager });
+  const h = hintergrundAttrappen();
+  const angelegt = spawnSync("/usr/bin/security", ["create-keychain", "-p", "probe", h.schluesselbund], { encoding: "utf8" });
+  assert(angelegt.status === 0, `der Probe-Schlüsselbund ließ sich nicht anlegen: ${angelegt.stderr}`);
+  const umgebung = { ...h.env, ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const einrichten = (mehr = {}) => bruecke(w, ["sync", "--install", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: { ...umgebung, ...mehr } });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+
+    // Aus launchd kommt node nicht an die Adresse der Anmeldung, an einen anderen Namen des Geräts schon.
+    plan.adressen = [geraet.adresse, `http://localhost:${geraet.port}`];
+    lauf = await einrichten({ ARA_GESPERRT: `127.0.0.1:${geraet.port}` });
+    const zeilen = lauf.stderr.trim().split("\n");
+    assert(lauf.status !== 0 && zeilen.length === 1, `ohne lokales Netz endet --install nicht mit einer Zeile: ${lauf.status} ${lauf.stderr}${lauf.stdout}`);
+    assert(new RegExp(`^Aus dem Hintergrund erreicht node http://127\\.0\\.0\\.1:${geraet.port} nicht \\(EHOSTUNREACH\\): macOS lässt .*Freigabe Lokales Netzwerk.*Ausweg: melde dich unter http://localhost:${geraet.port} an, .*node arasul\\.mjs login http://localhost:${geraet.port} --user anna, dann sync --install noch einmal\\. Nichts wurde eingerichtet\\.$`).test(zeilen[0]), `die Zeile nennt Ursache oder Ausweg nicht: ${zeilen[0]}`);
+    assert(!readdirSync(h.agenten).length, `trotz der Sperre liegt ein Agent da: ${readdirSync(h.agenten).join(", ")}`);
+    assert(!h.rufe().some((ruf) => ruf[0] === "bootstrap" && !ruf[2].includes(".pruefung")), "trotz der Sperre wurde ein Agent geladen");
+    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "trotz der Sperre liegt ein Zugang im Schlüsselbund");
+
+    // Die erste Adresse, die das Gerät nennt, antwortet von hier nicht: die nächste springt ein, im Plan, im Abgleich, im Hintergrund.
+    plan.adresse = "http://127.0.0.1:1";
+    plan.adressen = ["http://127.0.0.1:1", geraet.adresse];
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0 && lauf.stdout.includes(`http://127.0.0.1:1 (ECONNREFUSED) antwortet von hier nicht, genommen wird ${geraet.adresse}.`), `der Plan springt nicht auf die zweite Adresse: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0 && klientRufe(klient.protokoll).at(-1)?.argv[0] === geraet.adresse, `der Klient bekommt nicht die Adresse, die antwortet: ${JSON.stringify(klientRufe(klient.protokoll).at(-1)?.argv)} ${lauf.stdout}${lauf.stderr}`);
+    lauf = await einrichten();
+    assert(lauf.status === 0 && lauf.stdout.includes(`der Dateidienst unter ${geraet.adresse}.`), `--install nimmt nicht die Adresse, die aus dem Hintergrund antwortet: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
+    assert(lauf.status === 0, `sync --uninstall: ${lauf.stdout}${lauf.stderr}`);
+    return "EHOSTUNREACH aus launchd: eine Zeile mit Lokales Netzwerk und login unter dem anderen Namen, nichts eingerichtet; erste Adresse tot, zweite in Plan, Abgleich und Hintergrund";
   } finally {
     await geraet.schliessen().catch(() => {});
     spawnSync("/usr/bin/security", ["delete-keychain", h.schluesselbund]);
@@ -9877,15 +9993,36 @@ function gewachsenerOrdner() {
   return haus;
 }
 
-check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt drei Dateien und überschreibt nichts", () => {
+check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt vier Dateien, überschreibt nichts und nennt die Ordner, die jedes Konto läse", () => {
   const haus = gewachsenerOrdner();
+  // Gemessen am 27.09.2026: ein zweites Konto las kunden/ und company/core.md einer übernommenen Wurzel.
+  for (const [pfad, text] of [["kunden/mueller/akte.md", "Akte\n"], ["company/core.md", "Kern\n"], ["Alte Sachen/x.md", "alt\n"]]) {
+    mkdirSync(dirname(join(haus, pfad)), { recursive: true });
+    writeFileSync(join(haus, pfad), text);
+  }
   const vorher = inhalte(haus);
   const lauf = tool("root.mjs", ["--adopt", haus, "--language", "de"], "");
   assert(lauf.status === 0, `--adopt endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
   const nachher = inhalte(haus);
   const neu = Object.keys(nachher).filter((datei) => !(datei in vorher)).sort();
-  assert(JSON.stringify(neu) === JSON.stringify([".claude/places.json", ".claude/root.json", "arasul.mjs"]), `--adopt schrieb anderes als die drei Dateien: ${neu.join(", ")}`);
+  assert(JSON.stringify(neu) === JSON.stringify([".claude/places.json", ".claude/proposal/proposal.json", ".claude/root.json", "arasul.mjs"]), `--adopt schrieb anderes als die vier Dateien: ${neu.join(", ")}`);
   for (const [datei, text] of Object.entries(vorher)) assert(nachher[datei] === text, `--adopt hat ${datei} verändert oder gelöscht`);
+
+  // Die Ordner der Ebene 1, die in die Wurzel gingen: Kunden und Interna zuerst, mit dem Weg zum Bereich.
+  const ebene1 = lauf.stdout.split("Die Wurzel liest jedes Konto am Gerät.")[1] || "";
+  assert(/^  kunden\/  sieht nach Kundendaten aus$/m.test(ebene1) && /^  company\/  sieht nach Firmeninterna aus$/m.test(ebene1), `--adopt nennt kunden/ und company/ nicht als heikel: ${lauf.stdout}`);
+  assert(ebene1.indexOf("kunden/") < ebene1.indexOf("company/") && ebene1.indexOf("company/") < ebene1.indexOf("notizen/"), `die heiklen Ordner stehen nicht zuerst: ${ebene1}`);
+  assert(/^  notizen\/$/m.test(ebene1) && /^  Alte Sachen\/  sein Name ist keine Kennung des Geräts/m.test(ebene1), `die übrigen Ordner der Ebene 1 fehlen oder der Name ohne Kennung wird nicht gesagt: ${ebene1}`);
+  assert(!/^  (produkt|offen|\.claude)\//m.test(ebene1), `ein Klon, ein ausgelassener Ordner oder .claude steht unter Ebene 1: ${ebene1}`);
+  assert(/Vorschlag: bevor du zum ersten Mal abgleichst, lege jeden Ordner, den nicht alle lesen sollen, am Gerät als Bereich an, mit dem Namen des Ordners als Kennung \(kunden, company\).*Einstellungen, Firmenordner, Ordner anlegen, Art Bereich/.test(ebene1), `der Vorschlag mit dem Weg zum Bereich fehlt: ${ebene1}`);
+  assert(/2\. Vor dem ersten Abgleich: die Ordner oben, die nicht alle lesen sollen, als Bereich am Gerät anlegen/.test(lauf.stdout), `die nächsten Schritte nennen den Bereich nicht vor dem Abgleich: ${lauf.stdout}`);
+
+  // Der Vorschlag: apps und die lesende Form von call ohne Rückfrage, --write fragt, zwei Zeilen, kein Hook.
+  const vorschlag = JSON.parse(nachher[".claude/proposal/proposal.json"]);
+  assert(!vorschlag.hook && vorschlag.permissions.allow.includes("Bash(node {root}/arasul.mjs apps:*)") && vorschlag.permissions.allow.includes("Bash(node {root}/arasul.mjs call:*)") && vorschlag.permissions.ask.includes("Bash(node {root}/arasul.mjs call*--write*)"), `der Vorschlag der übernommenen Wurzel stimmt nicht: ${JSON.stringify(vorschlag)}`);
+  assert(vorschlag.lines.file === ".claude/CLAUDE.md" && vorschlag.lines.lines.length === 2 && /sicht\.md/.test(vorschlag.lines.lines[0]) && /apps\/<id>\/APP\.md/.test(vorschlag.lines.lines[1]), `die zwei Zeilen zu sicht.md und APP.md fehlen: ${JSON.stringify(vorschlag.lines)}`);
+  const anmelden = tool("root.mjs", ["--path", haus, "--enroll"], "");
+  assert(anmelden.status === 0 && /mit der Brücke freigegeben: .*node arasul\.mjs login/.test(anmelden.stdout), `--enroll verweist bei einem Vorschlag ohne Hook nicht auf die Brücke: ${anmelden.stdout}${anmelden.stderr}`);
 
   const orte = JSON.parse(nachher[".claude/places.json"]).places;
   assert(orte.length === 1 && orte[0].name === "produkt" && orte[0].kind === "github" && orte[0].where === "https://github.com/acme/produkt" && orte[0].local === "./produkt", `der Klon, den die .gitignore auslässt, ist nicht als Ort eingetragen: ${JSON.stringify(orte)}`);
@@ -9909,7 +10046,43 @@ check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt drei Datei
 
   const zeigen = tool("root.mjs", ["--path", haus, "--show", "--check"], "");
   assert(zeigen.status === 0 && /produkt/.test(zeigen.stdout) && /kein Prüfskript/.test(zeigen.stdout), `--show und --check einer übernommenen Wurzel: ${zeigen.stdout}${zeigen.stderr}`);
-  return "drei Dateien, nichts verändert, Klon als Ort, offener Klon, Quelltextbaum und .env gemeldet, zweites Mal und besetzte Ziele abgewiesen";
+  return "vier Dateien, nichts verändert, Klon als Ort, offener Klon, Quelltextbaum und .env gemeldet, Ebene 1 mit Kunden und Interna zuerst, Vorschlag ohne Hook, zweites Mal und besetzte Ziele abgewiesen";
+});
+
+check("Nach --adopt zeigt login einen Vorschlag für apps und call ohne --write, gibt ihn frei samt zwei Zeilen in der CLAUDE.md des Hauses und nimmt beides zurück", () => {
+  // Gemessen am 27.09.2026: login meldete in einer übernommenen Wurzel „Vorschläge: keine“, und
+  // Claude Code fragte bei jedem call nach.
+  const haus = gewachsenerOrdner();
+  assert(tool("root.mjs", ["--adopt", haus, "--language", "de"], "").status === 0, "--adopt lief nicht");
+  const regeln = readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8");
+  const eigen = wegwerfordner("ara-adopt-vorschlag-");
+  const env = { ...process.env, ARASUL_CONFIG_DIR: join(eigen, "ausweis"), CLAUDE_CONFIG_DIR: join(eigen, "claude") };
+  const bruecke = (...args) => spawnSync(process.execPath, [join(haus, "arasul.mjs"), ...args], { cwd: haus, env, encoding: "utf8" });
+  let lauf = bruecke("login");
+  const summe = lauf.stdout.match(/Prüfsumme: ([0-9a-f]{64})/)?.[1];
+  assert(lauf.status === 0 && summe && /Vorschlag 1 von 1: diese Wurzel/.test(lauf.stdout) && /Hook: keiner, nur Regeln/.test(lauf.stdout), `login zeigt den Vorschlag nicht: ${lauf.stdout}${lauf.stderr}`);
+  const echt = realpathSync(haus);
+  assert(lauf.stdout.includes(`Bash(node ${echt}/arasul.mjs apps:*)`) && lauf.stdout.includes(`Bash(node ${echt}/arasul.mjs call:*)`) && lauf.stdout.includes(`Bash(node ${echt}/arasul.mjs call*--write*)`), `die Regeln für apps, call und --write fehlen: ${lauf.stdout}`);
+  assert(/Zeilen für \.claude\/CLAUDE\.md, an ihr Ende gehängt:\n    - `sicht\.md`.*\n    - Was eine App kann, steht in `apps\/<id>\/APP\.md`/.test(lauf.stdout), `login zeigt die zwei Zeilen nicht: ${lauf.stdout}`);
+  assert(readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8") === regeln, "login ohne Freigabe hat die CLAUDE.md verändert");
+
+  lauf = bruecke("login", "--approve", summe.slice(0, 16));
+  assert(lauf.status === 0 && /Freigegeben: diese Wurzel/.test(lauf.stdout), `die Freigabe ging nicht: ${lauf.stdout}${lauf.stderr}`);
+  const settings = JSON.parse(readFileSync(join(eigen, "claude", "settings.json"), "utf8"));
+  assert(settings.permissions.allow.includes(`Bash(node ${echt}/arasul.mjs call:*)`) && settings.permissions.ask.includes(`Bash(node ${echt}/arasul.mjs call*--write*)`) && !settings.hooks, `die Einstellungen tragen die Regeln nicht oder einen Hook: ${JSON.stringify(settings)}`);
+  const mit = readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8");
+  assert(mit.startsWith(regeln) && /\n\n- `sicht\.md` oben in dieser Wurzel.*\n- Was eine App kann, steht in `apps\/<id>\/APP\.md`.*\n$/.test(mit.slice(regeln.length - 1)), `die zwei Zeilen stehen nicht am Ende der CLAUDE.md: ${mit}`);
+  lauf = bruecke("status");
+  assert(/Vorschläge: 1, freigegeben 1/.test(lauf.stdout), `status sieht die Freigabe nicht: ${lauf.stdout}`);
+  // Ein zweites Freigeben hängt nichts doppelt an.
+  bruecke("login", "--approve", summe.slice(0, 16));
+  assert(readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8") === mit, "ein zweites Freigeben hat die Zeilen doppelt angehängt");
+
+  lauf = bruecke("login", "--withdraw");
+  assert(lauf.status === 0 && readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8") === regeln, `--withdraw nimmt die Zeilen nicht zurück: ${readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8")}`);
+  const danach = JSON.parse(readFileSync(join(eigen, "claude", "settings.json"), "utf8"));
+  assert(!danach.permissions, `--withdraw lässt Regeln liegen: ${JSON.stringify(danach)}`);
+  return "Vorschlag ohne Hook in login, Regeln für apps und call, --write fragt, zwei Zeilen angehängt und zurückgenommen";
 });
 
 await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und schreibt nichts, .env, .gitignore und Bauordner bleiben zu Hause, der Papierkorb hält, was der Klient löscht", async () => {
@@ -9938,11 +10111,13 @@ await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und s
     assert(lauf.status === 0, `sync --plan endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
     // tief/oben.log geht nicht: die .gitignore meint mit /oben.log nur die oben, der Klient verankert
     // keinen Namen oben. Der Plan sagt das, statt es still zu tun.
-    const hoch = [".claude/CLAUDE.md", ".claude/places.json", ".claude/root.json", ".claude/skills/build/SKILL.md", ".gitignore", "README.md", "arasul.mjs", "notizen/a.md", "offen/datei.md", "proto/package.json", "proto/src.js"];
+    const hoch = [".claude/CLAUDE.md", ".claude/places.json", ".claude/proposal/proposal.json", ".claude/root.json", ".claude/skills/build/SKILL.md", ".gitignore", "README.md", "arasul.mjs", "notizen/a.md", "offen/datei.md", "proto/package.json", "proto/src.js"];
     assert(/Bleibt auch zu Hause, obwohl die \.gitignore nur den oben meint.*tief\/oben\.log/.test(lauf.stdout), `der Plan sagt nicht, dass tief/oben.log mit zu Hause bleibt: ${lauf.stdout}`);
     const bytes = hoch.reduce((summe, datei) => summe + statSync(join(root, datei)).size, 0);
     assert(new RegExp(`Hoch:\\s+${hoch.length} Dateien, ${bytes >= 1000 ? "[\\d,]+ KB" : `${bytes} B`}`).test(lauf.stdout), `Hoch nennt nicht ${hoch.length} Dateien mit ${bytes} B: ${lauf.stdout}`);
     assert(/Runter:\s+1 Datei, 11 B/.test(lauf.stdout), `Runter nennt nicht die eine Datei vom Gerät: ${lauf.stdout}`);
+    // Beim ersten Abgleich einer Wurzel, die hier schon eine ist, nennt der Plan jede fremde Datei.
+    assert(/Fremd im Raum der Wurzel, 1 Datei, die das Gerät hat und diese Wurzel nicht oder anders\. .*mit --keep-mine gingen sie am Gerät nach \.claude\/geraet-alt\/<zeit>\/ und kämen nur dort herunter:\n      vom-geraet\.md\n/.test(lauf.stdout), `der Plan nennt die fremde Datei nicht: ${lauf.stdout}`);
     for (const muster of [".env", ".env.*", "produkt", "oben.log", "geheim/liste.md", "proto/build", ".git"]) {
       assert(new RegExp(`^\\s+${muster.replace(/[.*]/g, "\\$&")}\\s+\\d+ Datei`, "m").test(lauf.stdout), `${muster} steht nicht unter Bleibt zu Hause: ${lauf.stdout}`);
     }
@@ -9960,18 +10135,26 @@ await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und s
     const eigeneRegeln = readFileSync(join(root, ".gitignore"), "utf8");
     lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
     assert(/Konflikte:.*\.gitignore/.test(lauf.stdout) && /sync hält hier an: \.gitignore/.test(lauf.stdout), `der Plan nennt den Konflikt der .gitignore nicht: ${lauf.stdout}`);
+    assert(/Fremd im Raum der Wurzel, 2 Dateien.*:\n      \.gitignore\n      vom-geraet\.md\n/.test(lauf.stdout), `der Plan nennt nicht jede fremde Datei: ${lauf.stdout}`);
     lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
     assert(lauf.status !== 0 && /Nicht abgeglichen: \.gitignore sind hier und am Gerät verschieden/.test(lauf.stdout), `sync hält bei einer anderen .gitignore am Gerät nicht an: ${lauf.stdout}${lauf.stderr}`);
     assert(!klientRufe(klient.protokoll).length && readFileSync(join(root, ".gitignore"), "utf8") === eigeneRegeln, "trotz Konflikt der .gitignore lief der Klient oder die eigene .gitignore ist weg");
 
-    // --keep-mine: die Fassung des Geräts geht am Gerät zur Seite, die des Hauses nimmt den Namen.
-    // Der Abgleich: die Liste trägt .env, die .gitignore und den Bauordner des Prototyps, nicht den Skill.
+    // --keep-mine: die Fassung des Geräts geht am Gerät nach .claude/geraet-alt/<zeit>/, die des
+    // Hauses nimmt den Namen, und was nur das Gerät hatte, kommt nur dort herunter. Gemessen am
+    // 27.09.2026: neben jede Datei gelegt, kamen die Regeln und neun Dateien einer fremden Wurzel in
+    // jeden Ordner des Hauses. Der Abgleich: die Liste trägt .env, die .gitignore und den Bauordner
+    // des Prototyps, nicht den Skill.
     lauf = await bruecke(w, ["sync", "--keep-mine", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
     assert(lauf.status === 0, `sync --keep-mine endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
-    const beiseite = readdirSync(join(lager, "firma")).find((name) => name.startsWith(".gitignore (Gerät "));
-    assert(beiseite && readFileSync(join(lager, "firma", beiseite), "utf8") === "die des Geräts\n" && /Am Gerät zur Seite gelegt/.test(lauf.stdout), `die Fassung des Geräts wurde nicht zur Seite gelegt: ${readdirSync(join(lager, "firma")).join(", ")} ${lauf.stdout}`);
+    const alt = join(lager, "firma", ".claude", "geraet-alt");
+    const stempel = existsSync(alt) ? readdirSync(alt) : [];
+    assert(stempel.length === 1 && /^\d{4}-\d\d-\d\d \d{4}$/.test(stempel[0]), `am Gerät liegt kein Ordner .claude/geraet-alt/<zeit>/: ${stempel.join(", ")}`);
+    assert(readFileSync(join(alt, stempel[0], ".gitignore"), "utf8") === "die des Geräts\n" && readFileSync(join(alt, stempel[0], "vom-geraet.md"), "utf8") === "vom Gerät\n", `die Fassung des Geräts liegt nicht unter geraet-alt: ${dateien(alt).join(", ")}`);
+    assert(/Die Fassung des Geräts, 2 Dateien, am Gerät nach \.claude\/geraet-alt\/\d{4}-\d\d-\d\d \d{4}\/ gelegt/.test(lauf.stdout), `sync sagt nicht, wohin die Fassung des Geräts ging: ${lauf.stdout}`);
+    assert(!readdirSync(join(lager, "firma")).some((name) => /\(Gerät /.test(name)) && !existsSync(join(lager, "firma", "vom-geraet.md")), `am Gerät liegt noch etwas neben den Dateien: ${readdirSync(join(lager, "firma")).join(", ")}`);
     assert(readFileSync(join(root, ".gitignore"), "utf8") === eigeneRegeln && readFileSync(join(lager, "firma", ".gitignore"), "utf8") === eigeneRegeln, "nach --keep-mine gilt nicht die .gitignore des Hauses");
-    assert(readFileSync(join(root, beiseite), "utf8") === "die des Geräts\n", "die zur Seite gelegte Fassung kam nicht herunter");
+    assert(readFileSync(join(root, ".claude", "geraet-alt", stempel[0], ".gitignore"), "utf8") === "die des Geräts\n" && !existsSync(join(root, "vom-geraet.md")), "die Fassung des Geräts kam nicht nur unter .claude/geraet-alt/ herunter");
     const liste = klientRufe(klient.protokoll)[0].liste.split("\n");
     for (const muster of [".env", ".env.*", "produkt", "oben.log", "geheim/liste.md", "proto/build"]) assert(liste.includes(muster), `${muster} fehlt in der Liste:\n${liste.join("\n")}`);
     assert(!liste.includes("build") && !liste.includes("dist"), `build oder dist stehen als Name in der Liste:\n${liste.join("\n")}`);
@@ -9996,6 +10179,138 @@ await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und s
   } finally {
     await geraet.schliessen();
   }
+});
+
+check("Die Brücke trägt die Fassung des Kits, und bridgeVersion liest sie", () => {
+  const quelle = readFileSync(join(ROOT, ".ara", "templates", "root", "arasul.mjs"), "utf8");
+  const kit = readFileSync(join(ROOT, ".ara", "VERSION"), "utf8").trim();
+  const fassung = quelle.match(/^const BRIDGE = "([\d.]+)";$/m)?.[1];
+  assert(fassung === kit, `die Brücke trägt ${fassung}, das Kit ${kit}: zwei Fassungen im Raum würden falsch verglichen`);
+  return `Brücke ${fassung}`;
+});
+
+await checkAsync("Eine neuere Brücke löst die ältere im Raum ab, ohne --keep-mine, auch aus einem leeren Ordner; eine neuere im Raum kommt herunter; ein Leser hält im Plan nie an", async () => {
+  // Nachtrag 27.09.2026: ein Admin mit der Brücke allein in einem leeren Ordner hielt am Regelkonflikt
+  // arasul.mjs an, und die Brücke im Raum firma war älter als 0.47 und kannte --plan nicht.
+  const vorlage = readFileSync(join(ROOT, ".ara", "templates", "root", "arasul.mjs"), "utf8");
+  const alte = "#!/usr/bin/env node\n// eine Brücke von vor 0.51.0\n";
+  const neuere = vorlage.replace(/^const BRIDGE = "[\d.]+";$/m, 'const BRIDGE = "9.9.9";');
+  const passwort = `${BRUECKE_PASSWORT}\n`;
+  const klient = attrappenKlient();
+
+  // 1. Eine Wurzel hier, die ältere Brücke im Raum: der Plan sagt es, sync legt diese hinein.
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-bruecke-");
+  mkdirSync(join(lager, "firma"));
+  writeFileSync(join(lager, "firma", "arasul.mjs"), alte);
+  const plan = { adresse: FO_ADRESSE, ordner: [{ ...FO_WURZEL, recht: "schreiben" }] };
+  const geraet = await brueckeGeraet({ firmenordner: plan, lager, rolle: "admin" });
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort, env: umgebung });
+    assert(!/hält hier an/.test(lauf.stdout) && /arasul\.mjs: diese Brücke \([\d.]+\) ist neuer als die im Raum \(von vor 0\.51\.0\), sync legt sie ohne Rückfrage in den Raum/.test(lauf.stdout), `der Plan sagt die neuere Brücke nicht oder hält an: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+    assert(lauf.status === 0 && readFileSync(join(lager, "firma", "arasul.mjs"), "utf8") === vorlage && readFileSync(join(w.root, "arasul.mjs"), "utf8") === vorlage, `die neuere Brücke hat die ältere im Raum nicht abgelöst: ${lauf.stdout}${lauf.stderr}`);
+    assert(!readdirSync(w.root).some((name) => /conflict|Gerät/.test(name)), `neben der Brücke liegt eine Konfliktkopie: ${readdirSync(w.root).join(", ")}`);
+
+    // 2. Im Raum liegt eine neuere: sie nimmt hier den Platz, ohne Anhalten.
+    writeFileSync(join(lager, "firma", "arasul.mjs"), neuere);
+    writeFileSync(join(w.root, "arasul.mjs"), `${vorlage}// hier geändert\n`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+    assert(lauf.status === 0 && /die Brücke im Raum \(9\.9\.9\) ist neuer als diese/.test(lauf.stdout) && readFileSync(join(w.root, "arasul.mjs"), "utf8") === neuere, `die neuere Brücke im Raum kam nicht herunter: ${lauf.stdout}${lauf.stderr}`);
+
+    // 3. Ein Admin mit der Brücke allein in einem leeren Ordner, im Raum die ältere: kein Anhalten, diese geht hinein.
+    writeFileSync(join(lager, "firma", "arasul.mjs"), alte);
+    const leer = join(wegwerfordner("ara-leer-bruecke-"), "neu");
+    mkdirSync(leer);
+    writeFileSync(join(leer, "arasul.mjs"), vorlage);
+    const w2 = { root: leer, env: w.env };
+    lauf = await bruecke(w2, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+    assert(lauf.status === 0 && !/Nicht abgeglichen/.test(lauf.stdout), `aus dem leeren Ordner hält sync an der Brücke an: ${lauf.stdout}${lauf.stderr}`);
+    assert(readFileSync(join(lager, "firma", "arasul.mjs"), "utf8") === vorlage && readFileSync(join(leer, "arasul.mjs"), "utf8") === vorlage && existsSync(join(leer, ".claude", "root.json")), `aus dem leeren Ordner löste die Brücke die ältere nicht ab oder die Wurzel kam nicht herunter: ${readdirSync(leer).join(", ")}`);
+  } finally {
+    await geraet.schliessen();
+  }
+
+  // 4. Ein Leser: eine andere .gitignore im Raum, und der Plan sagt nirgends, dass sync anhielte.
+  const leser = brueckeWurzel();
+  const lager2 = wegwerfordner("ara-lager-leser-");
+  mkdirSync(join(lager2, "firma"));
+  writeFileSync(join(lager2, "firma", ".gitignore"), "die des Geräts\n");
+  const geraet2 = await brueckeGeraet({ firmenordner: { adresse: FO_ADRESSE, ordner: [{ ...FO_WURZEL, recht: "lesen" }] }, lager: lager2 });
+  try {
+    let lauf = await bruecke(leser, ["login", geraet2.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung des Lesers: ${lauf.stderr}`);
+    lauf = await bruecke(leser, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0 && /Konflikte:.*\.gitignore/.test(lauf.stdout) && !/hält hier an/.test(lauf.stdout), `der Plan eines Lesers sagt „hält hier an“: ${lauf.stdout}`);
+  } finally {
+    await geraet2.schliessen();
+  }
+  return "ältere im Raum abgelöst, neuere aus dem Raum geholt, leerer Ordner ohne Anhalten, Leser ohne „hält hier an“";
+});
+
+await checkAsync("login bietet den Klienten des Dateidienstes an und holt ihn mit --fetch-client, geprüft an seiner Prüfsumme, entpackt ohne Installation", async () => {
+  if (platform() !== "darwin") return "übersprungen: das Paket des Klienten ist eines für macOS";
+  if (["/Applications/OpenCloud.app", join(homedir(), "Applications", "OpenCloud.app")].some((pfad) => existsSync(pfad))) return "übersprungen: auf diesem Rechner liegt der Klient schon";
+  // Ein Paket wie das des Herstellers, aus pkgbuild: darin OpenCloud.app mit opencloudcmd.
+  const bau = wegwerfordner("ara-klientpaket-");
+  const app = join(bau, "wurzel", "OpenCloud.app", "Contents", "MacOS");
+  mkdirSync(app, { recursive: true });
+  writeFileSync(join(app, "opencloudcmd"), "#!/bin/sh\necho 'OpenCloud Desktop Probe 4.0.0'\n");
+  chmodSync(join(app, "opencloudcmd"), 0o755);
+  const paket = join(bau, `OpenCloud_Desktop-v4.0.0-macos-clang-${process.arch === "arm64" ? "arm64" : "x86_64"}.pkg`);
+  const gebaut = spawnSync("/usr/bin/pkgbuild", ["--root", join(bau, "wurzel"), "--identifier", "de.arasul.probe.klient", "--version", "4.0.0", "--install-location", "/Applications", paket], { encoding: "utf8" });
+  if (gebaut.status !== 0) return `übersprungen: pkgbuild baut hier kein Paket: ${gebaut.stderr}`;
+  const inhalt = readFileSync(paket);
+  let summe = createHash("sha256").update(inhalt).digest("hex");
+  const server = createServer((anfrage, antwort) => {
+    const basis = `http://127.0.0.1:${server.address().port}`;
+    if (anfrage.url === "/latest") {
+      antwort.writeHead(200, { "Content-Type": "application/json" });
+      return antwort.end(JSON.stringify({ tag_name: "v4.0.0", assets: [
+        { name: "OpenCloud_Desktop-v4.0.0-linux-gcc-x86_64.AppImage", size: 1, browser_download_url: `${basis}/nichts` },
+        { name: basename(paket), size: inhalt.length, browser_download_url: `${basis}/umweg` },
+        { name: `${basename(paket)}.sha256`, size: 65, browser_download_url: `${basis}/summe` },
+      ] }));
+    }
+    // Wie GitHub: das Paket kommt über eine Umleitung.
+    if (anfrage.url === "/umweg") {
+      antwort.writeHead(302, { Location: "/paket" });
+      return antwort.end();
+    }
+    if (anfrage.url === "/paket") return antwort.end(inhalt);
+    if (anfrage.url === "/summe") return antwort.end(`${summe}\n`);
+    antwort.writeHead(404);
+    return antwort.end();
+  });
+  await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
+  const w = brueckeWurzel();
+  const geraet = await brueckeGeraet();
+  const umgebung = { ARASUL_CLIENT_RELEASE: `http://127.0.0.1:${server.address().port}/latest`, PATH: `${dirname(process.execPath)}:/usr/bin:/bin:/usr/sbin:/sbin` };
+  const geholt = join(w.ausweise, "klient", "OpenCloud.app", "Contents", "MacOS", "opencloudcmd");
+  try {
+    // Ohne Terminal und ohne Schalter: ein Satz mit dem Weg, geholt wird nichts.
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0 && /Der Kommandozeilen-Klient opencloudcmd ist nicht auf diesem Rechner\..*--fetch-client holt ihn/.test(lauf.stdout) && !existsSync(geholt), `login bietet den Klienten nicht an oder holt ungefragt: ${lauf.stdout}${lauf.stderr}`);
+
+    // Eine falsche Prüfsumme: nichts wird entpackt.
+    summe = "0".repeat(64);
+    lauf = await bruecke(w, ["login", "--fetch-client"], { env: umgebung });
+    assert(lauf.status !== 0 && /trägt nicht die Prüfsumme, die der Hersteller nennt/.test(lauf.stderr) && !existsSync(join(w.ausweise, "klient", "OpenCloud.app")), `ein Paket mit falscher Prüfsumme wurde entpackt: ${lauf.stdout}${lauf.stderr}`);
+
+    summe = createHash("sha256").update(inhalt).digest("hex");
+    lauf = await bruecke(w, ["login", "--fetch-client"], { env: umgebung });
+    assert(lauf.status === 0 && /Klient geholt und geprüft: OpenCloud Desktop Probe 4\.0\.0/.test(lauf.stdout) && existsSync(geholt), `--fetch-client holt den Klienten nicht: ${lauf.stdout}${lauf.stderr}`);
+    assert(!readdirSync(join(w.ausweise, "klient")).some((name) => name.startsWith(".laden-")), "der Arbeitsordner des Holens blieb liegen");
+    lauf = await bruecke(w, ["login"], { env: umgebung });
+    assert(lauf.stdout.includes(`Klient des Dateidienstes: ${geholt}`), `login findet den geholten Klienten nicht: ${lauf.stdout}`);
+  } finally {
+    await geraet.schliessen();
+    await new Promise((fertig) => server.close(fertig));
+  }
+  return "angeboten ohne zu holen, falsche Prüfsumme abgewiesen, über Umleitung geholt, entpackt und gefunden";
 });
 
 await checkAsync("Ein weggeworfener oder entzogener Ordner landet nie in der Wurzel: der Plan zeigt 0 hoch, sync legt ihn neben die Wurzel, status sagt es, der Abgleich bleibt grün", async () => {
@@ -10768,7 +11083,7 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
   // Wörter, die die Muster tragen und trotzdem richtig sind: Fremdnamen,
   // Bezeichner aus Kontrakt und Vorlage, Beispiel-Slugs und Fugen wie zuerst.
   const erlaubt =
-    /^(?:issues?|true|traefik|bluetooth|due|oem(?:-config)?|mueller(?:-metallbau)?|ohne-schluessel|menue|(?:akt|event|man|individ|virt|vis|punkt)uell\w*|\w*zu(?:ent|erkenn|eign|erst|einander)\w*)$/;
+    /^(?:issues?|true|traefik|bluetooth|due|geraet-alt|oem(?:-config)?|mueller(?:-metallbau)?|ohne-schluessel|menue|(?:akt|event|man|individ|virt|vis|punkt)uell\w*|\w*zu(?:ent|erkenn|eign|erst|einander)\w*)$/;
 
   const verdaechtig = (text) => {
     const funde = [];
