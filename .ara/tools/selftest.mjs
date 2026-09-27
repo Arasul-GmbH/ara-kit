@@ -9200,8 +9200,13 @@ if (process.env.ARA_PROBE_LOESCHEN) {
 if (process.env.ARA_PROBE_LAGER) {
   const raum = join(process.env.ARA_PROBE_LAGER, argv.includes("--remote-folder") ? argv[argv.indexOf("--remote-folder") + 1] : argv[1]);
   mkdirSync(raum, { recursive: true });
-  cpSync(ziel, raum, { recursive: true });
-  cpSync(raum, ziel, { recursive: true });
+  // Mit ARA_PROBE_LISTE hält die Attrappe die bloßen Namen der Liste in jeder Tiefe draußen, wie der
+  // echte Klient: so lässt sich messen, was in einen Raum ginge.
+  const namen = process.env.ARA_PROBE_LISTE && liste ? liste.split("\\n").filter((zeile) => zeile && !/[/*?]/.test(zeile)) : [];
+  const { relative, sep } = require("node:path");
+  const durch = (von) => (quelle) => !relative(von, quelle).split(sep).some((teil) => namen.includes(teil));
+  cpSync(ziel, raum, { recursive: true, filter: durch(ziel) });
+  cpSync(raum, ziel, { recursive: true, filter: durch(raum) });
 }
 process.exit(0);
 `);
@@ -9988,6 +9993,97 @@ await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und s
     assert(ort && readFileSync(join(ort, "notizen", "a.md"), "utf8") === "aaaa\n", `die gelöschte Datei liegt nicht im Papierkorb: ${lauf.stdout}`);
     assert(ort.startsWith(ausweise) && dateien(ort).length === 1, `im Papierkorb liegt mehr als die gelöschte Datei oder er liegt nicht neben dem Ausweis: ${ort} ${dateien(ort ?? eigen).join(", ")}`);
     return `Plan ${hoch.length} hoch und 1 runter ohne zu schreiben, Liste mit .env, .gitignore und proto/build, Skill build geht mit, Löschung am Gerät im Plan und im Papierkorb`;
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Ein weggeworfener oder entzogener Ordner landet nie in der Wurzel: der Plan zeigt 0 hoch, sync legt ihn neben die Wurzel, status sagt es, der Abgleich bleibt grün", async () => {
+  // Gemessen am 27.09.2026 am Orin: nach dem Wegwerfen von gp-0927 zeigte der Plan von admin
+  // gp-0927/gp-0927-geheim/geheim.md als Upload in die Wurzel, die jedes Konto liest.
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-");
+  mkdirSync(join(lager, "firma"));
+  writeFileSync(join(lager, "firma", "liesmich.md"), "für alle\n");
+  mkdirSync(join(lager, "bereich"));
+  writeFileSync(join(lager, "bereich", "geheim.md"), "nur für den Bereich\n");
+  mkdirSync(join(lager, "lesbar"));
+  writeFileSync(join(lager, "lesbar", "lies-mich.md"), "für den Leser\n");
+  const bereich = { kennung: "bereich", name: "Bereich", ebene: 1, eltern: null, pfad: "bereich", recht: "schreiben" };
+  const lesbar = { kennung: "lesbar", name: "Lesbar", ebene: 2, eltern: "projekt", pfad: "projekt/lesbar", recht: "lesen" };
+  const plan = { adresse: "", ordner: [{ ...FO_WURZEL, recht: "schreiben" }, bereich, lesbar] };
+  const geraet = await brueckeGeraet({ firmenordner: plan, lager, rolle: "admin" });
+  plan.adresse = geraet.adresse;
+  const klient = attrappenKlient();
+  const passwort = `${BRUECKE_PASSWORT}\n`;
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager, ARA_PROBE_LISTE: "1" };
+  const abgleichen = () => bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+  const planen = () => bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+  const echt = realpathSync(w.root);
+  const daneben = `${echt}-entzogen`;
+  const inFirma = () => dateien(join(lager, "firma"));
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await abgleichen();
+    assert(lauf.status === 0, `der erste Abgleich endet mit ${lauf.status}: ${lauf.stdout}${lauf.stderr}`);
+    assert(existsSync(join(w.root, "bereich", "geheim.md")) && existsSync(join(w.root, "projekt", "lesbar", "lies-mich.md")), "die beiden Ordner kamen nicht an ihre Stelle");
+    // Der Klient legt sein Journal in jeden Ordner, den er abgleicht; hier von Hand, die Attrappe tut es nicht.
+    writeFileSync(join(w.root, "bereich", ".sync_1a2b3c.db"), "");
+    writeFileSync(join(w.root, "bereich", "hier-neu.md"), "hier geändert, nie hochgegangen\n");
+    assert(!inFirma().some((datei) => /^(bereich|projekt)\//.test(datei)), `schon der erste Abgleich trug einen Ordner in die Wurzel: ${inFirma().join(", ")}`);
+
+    // Der Bereich wird im Frontend weggeworfen, das Projekt dem Leser entzogen.
+    plan.ordner = plan.ordner.filter((ordner) => ordner !== bereich && ordner !== lesbar);
+    rmSync(join(lager, "bereich"), { recursive: true });
+    const vorher = JSON.stringify([inhalte(w.root), dateien(w.ausweise)]);
+    lauf = await planen();
+    assert(lauf.status === 0, `sync --plan endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    assert(/Hoch:\s+0 Dateien/.test(lauf.stdout) && /hoch 0 Dateien/.test(lauf.stdout), `der Plan zeigt nach dem Wegwerfen Dateien hoch in die Wurzel: ${lauf.stdout}`);
+    assert(!/geheim\.md|hier-neu\.md|lies-mich\.md/.test(lauf.stdout.split("Insgesamt")[0].split("Hoch:")[1] || ""), `eine Datei der Ordner steht unter Hoch: ${lauf.stdout}`);
+    assert(/Dir nicht mehr freigegeben oder am Gerät weggeworfen: bereich\/ \(3 Dateien.*projekt\/ \(2 Dateien.*Bleibt aus der Wurzel draußen/.test(lauf.stdout), `der Plan nennt die beiden Ordner nicht: ${lauf.stdout}`);
+    assert(JSON.stringify([inhalte(w.root), dateien(w.ausweise)]) === vorher, "sync --plan hat etwas geschrieben oder verschoben");
+
+    // Der Abgleich: beide Ordner gehen neben die Wurzel, nichts davon in den Raum, und er ist grün.
+    const rufeVorher = klientRufe(klient.protokoll).length;
+    lauf = await abgleichen();
+    assert(lauf.status === 0, `der Abgleich nach dem Entzug endet mit ${lauf.status}: ${lauf.stdout}${lauf.stderr}`);
+    const rufe = klientRufe(klient.protokoll).slice(rufeVorher);
+    assert(rufe.length === 1 && rufe[0].argv[1] === "firma", `gerufen wurde nicht nur die Wurzel: ${JSON.stringify(rufe.map((r) => r.argv[1]))}`);
+    const liste = rufe[0].liste.split("\n");
+    assert(liste.includes("bereich") && liste.includes("projekt"), `die Liste der Wurzel hält die entzogenen Namen nicht draußen:\n${rufe[0].liste}`);
+    assert(!existsSync(join(w.root, "bereich")) && !existsSync(join(w.root, "projekt")), "die entzogenen Ordner liegen noch in der Wurzel");
+    assert(!inFirma().some((datei) => /^(bereich|projekt)\/|geheim|lies-mich|hier-neu/.test(datei)), `eine Datei der entzogenen Ordner liegt im Raum der Wurzel: ${inFirma().join(", ")}`);
+    const stapel = readdirSync(daneben);
+    assert(stapel.length === 1, `neben der Wurzel liegt nicht genau ein Stapel: ${stapel.join(", ")}`);
+    const weg = join(daneben, stapel[0]);
+    assert(readFileSync(join(weg, "bereich", "hier-neu.md"), "utf8") === "hier geändert, nie hochgegangen\n" && existsSync(join(weg, "bereich", "geheim.md")) && existsSync(join(weg, "projekt", "lesbar", "lies-mich.md")), `nicht alles liegt neben der Wurzel: ${dateien(weg).join(", ")}`);
+    assert(/Neben die Wurzel verschoben, nicht gelöscht/.test(lauf.stdout), `sync sagt nicht, wohin die Ordner gingen: ${lauf.stdout}`);
+    const stand = JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots[echt];
+    assert(!Object.keys(stand.folders).some((pfad) => pfad !== "."), `der Stand kennt die entzogenen Ordner noch: ${Object.keys(stand.folders).join(", ")}`);
+
+    // status sagt es in einem Satz, und der nächste Plan und Abgleich sind leer und grün.
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    const satz = lauf.stdout.split("\n").filter((zeile) => /darum aus dieser Wurzel verschoben und nicht gelöscht: bereich\/ \(3 Dateien\), projekt\/ \(2 Dateien\), seit .* in /.test(zeile));
+    assert(satz.length === 1 && satz[0].includes(weg), `status sagt den Verbleib nicht in einem Satz: ${lauf.stdout}`);
+    assert(!/nicht mehr freigegeben, bleibt aus der Wurzel/.test(lauf.stdout), `status nennt die verschobenen Ordner noch als liegend: ${lauf.stdout}`);
+    lauf = await planen();
+    assert(/Hoch:\s+0 Dateien/.test(lauf.stdout) && !/nicht mehr freigegeben/.test(lauf.stdout), `der Plan nach dem Verschieben ist nicht leer: ${lauf.stdout}`);
+    lauf = await abgleichen();
+    assert(lauf.status === 0 && !/verschoben/.test(lauf.stdout) && readdirSync(daneben).length === 1, `der zweite Abgleich ist nicht grün oder verschiebt wieder: ${lauf.stdout}${lauf.stderr}`);
+
+    // Ohne Stand, etwa auf einem Rechner, der ihn verloren hat, erkennt das Journal des Klienten den Ordner.
+    mkdirSync(join(w.root, "alt"));
+    writeFileSync(join(w.root, "alt", ".sync_9f8e7d.db"), "");
+    writeFileSync(join(w.root, "alt", "rest.md"), "aus einem alten Bereich\n");
+    mkdirSync(join(w.root, "eigenes"));
+    writeFileSync(join(w.root, "eigenes", "notiz.md"), "gehört dem Haus\n");
+    lauf = await planen();
+    assert(/weggeworfen: alt\/ \(1 Datei/.test(lauf.stdout) && !/eigenes\/ \(/.test(lauf.stdout), `der Plan erkennt den Ordner mit Journal nicht oder nimmt einen eigenen mit: ${lauf.stdout}`);
+    lauf = await abgleichen();
+    assert(lauf.status === 0 && !existsSync(join(w.root, "alt")) && existsSync(join(w.root, "eigenes", "notiz.md")), `der Ordner mit Journal blieb liegen oder ein eigener ging: ${lauf.stdout}`);
+    assert(!inFirma().some((datei) => datei.startsWith("alt/")) && inFirma().includes(join("eigenes", "notiz.md")), `im Raum der Wurzel: ${inFirma().join(", ")}`);
+    return "Bereich weggeworfen und Projekt entzogen: Plan 0 hoch ohne zu schreiben, beide neben der Wurzel mit der nie hochgegangenen Datei, Raum der Wurzel ohne sie, status in einem Satz, zweiter Lauf grün, Journal ohne Stand erkannt";
   } finally {
     await geraet.schliessen();
   }

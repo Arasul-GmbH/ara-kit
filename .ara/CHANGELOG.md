@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.50.0 (2026-09-27)
+
+Contract: up to 6
+
+- **A folder thrown away in the front end or withdrawn from a person never goes into the root.** Until now the root's sync left out only what the device named at that moment: measured at a device, after throwing a folder away the next sync of an administrator took its files up into the root every account reads, and the sync of a reader stopped at every run. `arasul.mjs sync` now knows such a folder out of the state of the last syncs and out of the client's journal, keeps its name out of the root and moves it next to the root, into `<root>-withdrawn/<time>/` (`<root>-entzogen/` in a German root), before any client runs. Moved, not deleted. `sync --plan` shows it and moves nothing, `status` says in one sentence where it went. An empty list of folders or a state of another file service moves nothing.
+
 ## 0.49.0 (2026-09-27)
 
 Contract: up to 6

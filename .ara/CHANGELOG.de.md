@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.50.0 (2026-09-27)
+
+Kontrakt: bis 6
+
+- **Ein in der Oberfläche weggeworfener oder einem Menschen entzogener Ordner geht nie in die Wurzel.** Bisher ließ der Abgleich der Wurzel nur aus, was das Gerät gerade nannte: gemessen an einem Gerät nahm nach dem Wegwerfen eines Ordners der nächste Abgleich eines Administrators seine Dateien in die Wurzel hoch, die jedes Konto liest, und der Abgleich eines Lesers brach bei jedem Lauf ab. `arasul.mjs sync` kennt einen solchen Ordner jetzt aus dem Stand der letzten Abgleiche und aus dem Journal des Klienten, hält seinen Namen aus der Wurzel draußen und verschiebt ihn, bevor ein Klient läuft, neben die Wurzel, nach `<wurzel>-entzogen/<zeit>/`. Verschoben, nicht gelöscht. `sync --plan` zeigt ihn und verschiebt nichts, `status` sagt in einem Satz, wohin er ging. Eine leere Ordnerliste oder ein Stand eines anderen Dateidienstes verschiebt nichts.
+
 ## 0.49.0 (2026-09-27)
 
 Kontrakt: bis 6
