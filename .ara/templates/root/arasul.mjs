@@ -2072,12 +2072,20 @@ function placeOf(folder) {
   return local;
 }
 
+/**
+ * Did the client lose the service on the way? Measured on 2026-09-27 with a restart of the device
+ * in the middle of a sync: `Fatal: Failed to resolve "<address>" Error: "Connection timed out"`,
+ * and "Connection refused" for the next folder. That is a device away, not a finding.
+ */
+const clientLostDevice = (run) => /Connection (timed out|refused|closed)|Host (is )?unreachable|Network is unreachable|Could not resolve host|Host not found/i.test(`${run.stderr || ""}\n${run.stdout || ""}`);
+
 /** The last lines the client wrote, as the reason for a run that did not work out. */
 function clientSaid(run) {
   const text = `${run.stderr || ""}\n${run.stdout || ""}`
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
+    // The Mac's proxy lookup that fails in every network without one, measured on 2026-09-27: noise.
+    .filter((line) => line && !/^Warning: Execution of PAC script/.test(line));
   return oneLine(text.slice(-3).join(" / ") || (run.error ? run.error.message : t("no output", "keine Ausgabe")), 300);
 }
 
@@ -2089,6 +2097,12 @@ function clientSaid(run) {
  * company folder was switched on has none there, and gets in after a password change.
  */
 function clientFailed(run) {
+  if (clientLostDevice(run)) {
+    return t(
+      `The file service did not answer during the sync (${clientSaid(run)}). The device restarts or is off the network; the next sync takes up what is open.`,
+      `Der Dateidienst hat während des Abgleichs nicht geantwortet (${clientSaid(run)}). Das Gerät startet neu oder ist nicht im Netz; der nächste Abgleich nimmt auf, was offen ist.`
+    );
+  }
   const said = clientSaid(run);
   if (!/Fatal: Authentication/i.test(`${run.stderr || ""}\n${run.stdout || ""}`)) return said;
   return `${said} ${t(
@@ -2229,6 +2243,7 @@ async function syncFolders(args, device, apps = []) {
         ...folder,
         ok: run.status === 0,
         message: run.status === 0 ? null : clientFailed(run),
+        unreachable: run.status !== 0 && clientLostDevice(run),
         conflicts: seen.conflicts,
         links: seen.links,
         trashed: trash.gone,
@@ -2536,7 +2551,9 @@ async function doBackground(args) {
     const fresh = Object.entries(readFolderState().roots[ROOT]?.folders || {}).filter(([, folder]) => folder.at >= started);
     const failed = fresh.filter(([, folder]) => folder.result === "error");
     const conflicts = fresh.reduce((sum, [, folder]) => sum + (folder.conflicts || 0), 0);
-    if (failed.length) problem = { kind: "error", text: failed.map(([path, folder]) => `${path === "." ? folder.id : path}: ${folder.message}`).join(" ") };
+    if (failed.length && failed.every(([, folder]) => folder.unreachable)) {
+      problem = { kind: "unreachable", text: t(`The file service stopped answering during the sync of ${basename(ROOT)}. The device restarts or is off the network; the next sync takes up what is open.`, `Der Dateidienst hat während des Abgleichs von ${basename(ROOT)} nicht mehr geantwortet. Das Gerät startet neu oder ist nicht im Netz; der nächste Abgleich nimmt auf, was offen ist.`) };
+    } else if (failed.length) problem = { kind: "error", text: failed.map(([path, folder]) => `${path === "." ? folder.id : path}: ${folder.message}`).join(" ") };
     else if (conflicts) {
       problem = {
         kind: "conflict",
@@ -2721,6 +2738,7 @@ function recordSync(device, plan, results) {
       at: result.at,
       result: result.ok ? "ok" : "error",
       ...(result.message ? { message: result.message } : {}),
+      ...(result.unreachable ? { unreachable: true } : {}),
       conflicts: result.conflicts.length,
       links: result.links.length,
       ...(result.trashed?.length ? { trashed: result.trashed.length, trash: result.trash } : {}),

@@ -9095,6 +9095,12 @@ if (process.env.ARA_PROBE_FEHLER && argv[1] === process.env.ARA_PROBE_FEHLER) {
   process.stderr.write("Der Dienst antwortet nicht\\n");
   process.exit(3);
 }
+// Was der echte Klient sagt, wenn das Gerät mitten im Abgleich neu startet (gemessen am 27.09.2026).
+if (process.env.ARA_PROBE_WEG) {
+  process.stderr.write('Warning: Execution of PAC script at "http://wpad/wpad.dat" failed: The operation couldn’t be completed. (kCFErrorDomainCFNetwork error 308.)\\n');
+  process.stderr.write('Fatal: Failed to resolve "' + argv[0] + '" Error: "Connection refused"\\n');
+  process.exit(1);
+}
 // Was der echte Klient sagt, wenn der Dienst das Passwort nicht kennt (gemessen am 22.09.2026).
 if (process.env.ARA_PROBE_AUTH && argv[1] === process.env.ARA_PROBE_AUTH) {
   process.stderr.write("Fatal: Authentication failed please verify your credentials\\n");
@@ -9318,10 +9324,10 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
   const umgebung = { ...h.env, ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
   const agent = () => readdirSync(h.agenten).filter((name) => name.endsWith(".plist")).map((name) => join(h.agenten, name))[0];
   // So wie launchd den Agenten startet: mit dem Programm aus seiner Datei, ohne Terminal und ohne Eingabe.
-  const alsAgent = () => {
+  const alsAgent = (mehr = {}) => {
     const programm = [...readFileSync(agent(), "utf8").split("<key>ProgramArguments</key>")[1].split("</array>")[0].matchAll(/<string>([^<]*)<\/string>/g)].map((treffer) => treffer[1]);
     return new Promise((fertig) => {
-      const kind = spawn(programm[0], programm.slice(1), { cwd: w.root, env: { ...process.env, ...w.env, ...umgebung } });
+      const kind = spawn(programm[0], programm.slice(1), { cwd: w.root, env: { ...process.env, ...w.env, ...umgebung, ...mehr } });
       let stdout = "";
       let stderr = "";
       kind.stdout.on("data", (stueck) => (stdout += stueck));
@@ -9362,7 +9368,7 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
 
     // Der Agent läuft ohne Terminal und ohne Eingabe, und der Klient bekommt das Passwort aus dem Schlüsselbund.
     lauf = await alsAgent();
-    assert(lauf.status === 0, `der Lauf im Hintergrund endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    assert(lauf.status === 0, `der Lauf im Hintergrund endet mit ${lauf.status}: ${lauf.stdout} ${lauf.stderr}`);
     const ruf = klientRufe(klient.protokoll).at(-1);
     assert(ruf?.token === BRUECKE_PASSWORT && !ruf.argv.some((teil) => teil.includes(BRUECKE_PASSWORT)), "der Klient bekommt im Hintergrund das Passwort nicht über die Umgebung");
     assert(!h.mitteilungen().length, `ein sauberer Lauf meldet sich: ${JSON.stringify(h.mitteilungen())}`);
@@ -9408,6 +9414,15 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     assert(mitteilungen.length === 3 && mitteilungen[2][0] === "Firmenordner nicht abgeglichen" && /weist den Ausweis ab/.test(mitteilungen[2][1]), `der Widerruf meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
     ausweise.devices[ausweise.default].token = echt;
     writeFileSync(join(w.ausweise, "credentials.json"), JSON.stringify(ausweise), { mode: 0o600 });
+
+    // Das Gerät startet mitten im Abgleich neu: der Klient verliert den Dienst. Das ist kein Befund
+    // und meldet sich nicht sofort, und die Zeile des Mac-Proxys steht nicht im Satz.
+    lauf = await alsAgent({ ARA_PROBE_WEG: "1" });
+    assert(lauf.status !== 0 && h.mitteilungen().length === 3, `ein Neustart mitten im Abgleich meldet sich sofort: ${JSON.stringify(h.mitteilungen())}`);
+    const weg = JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots[realpathSync(w.root)];
+    assert(weg.background.problem.kind === "unreachable" && !/PAC script/.test(JSON.stringify(weg)), `der verlorene Dienst gilt als Fehler oder trägt die Proxyzeile: ${JSON.stringify(weg.background)}`);
+    await alsAgent();
+    assert(h.mitteilungen().length === 3, `nach dem Neustart meldet sich ein Ende, das nie gemeldet war: ${JSON.stringify(h.mitteilungen())}`);
 
     // Ein Gerät, das nicht antwortet, startet oft neu: erst nach einer Viertelstunde meldet es sich.
     await geraet.schliessen();
