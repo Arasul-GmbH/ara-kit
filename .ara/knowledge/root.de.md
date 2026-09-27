@@ -427,6 +427,18 @@ verliert den Namen wieder, was der Klient weggenommen hat, behält ihn, und `syn
 und wo. Kann der Rechner nicht in diesen Ordner verlinken, liegt der Papierkorb in der Wurzel als
 `.arasul-papierkorb/`, der nie abgeglichen wird.
 
+**Ein entzogener oder weggeworfener Ordner geht nie in die Wurzel.** Ein Ordner der Ebene 1 oder 2
+liegt im Baum an seiner Stelle, und der Abgleich der Wurzel lässt seinen Namen aus, solange das
+Gerät ihn nennt. Ist er in der Oberfläche weggeworfen oder einem Menschen entzogen, nennt das Gerät
+ihn nicht mehr. `sync` kennt ihn trotzdem, aus dem Stand der letzten Abgleiche und aus dem Journal
+des Klienten `.sync_*.db` im Ordner, hält seinen Namen aus der Wurzel draußen und verschiebt ihn,
+bevor ein Klient läuft, neben die Wurzel, nach `<wurzel>-entzogen/<zeit>/` (`<wurzel>-withdrawn/`
+in einer englischen Wurzel). Verschoben, nicht gelöscht: was hier geändert wurde und nie
+hochging, ist noch zu lesen. `sync --plan` nennt einen solchen Ordner mit seinen Dateien und
+verschiebt nichts, `status` sagt in einem Satz, wohin er ging. Kann der Rechner ihn dort nicht
+hinlegen, geht er in `.arasul-papierkorb/`. Eine leere Ordnerliste oder ein Stand eines anderen
+Dateidienstes verschiebt nichts.
+
 **Gemessen am 27.09.2026 an einem Gerät**, dessen Wurzel das Gerüst eines Kundendurchlaufs trug,
 mit einer Kopie eines gewachsenen Ordners mit rund 800 eigenen Dateien und vier Produktklonen:
 `--adopt` schrieb drei Dateien; der Plan brauchte 3 Sekunden und schrieb nichts; `sync` hielt an

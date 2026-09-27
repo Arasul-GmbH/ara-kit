@@ -49,7 +49,9 @@
  * at every depth, and what the .gitignore at the top of this root leaves out. `sync --plan` shows
  * beforehand, per folder, how many files of what size would go up and down, which ones conflict
  * and what stays home, and writes nothing. What the client deletes here because it was deleted on
- * the device is kept in a trash next to the credential, and the output says where.
+ * the device is kept in a trash next to the credential, and the output says where. A folder the
+ * device no longer names, withdrawn from this person or thrown away, never goes into the root: sync
+ * moves it next to the root, into `<root>-withdrawn/`, before the client runs, and deletes nothing.
  *
  * `deploy` puts this root onto the device: the check script runs first and a finding stops it,
  * then the tree goes into the room of the root through the same client, and a download into a
@@ -120,7 +122,9 @@
  * jeder Tiefe, und was die .gitignore oben in dieser Wurzel auslässt. `sync --plan` zeigt vorher je
  * Ordner, wie viele Dateien welcher Größe hoch und runter gingen, welche in Konflikt stehen und was
  * zu Hause bleibt, und schreibt nichts. Was der Klient hier löscht, weil es am Gerät gelöscht
- * wurde, bleibt in einem Papierkorb neben dem Ausweis, und die Ausgabe sagt, wo.
+ * wurde, bleibt in einem Papierkorb neben dem Ausweis, und die Ausgabe sagt, wo. Ein Ordner, den
+ * das Gerät nicht mehr nennt, entzogen oder weggeworfen, geht nie in die Wurzel: sync verschiebt
+ * ihn vor dem Klienten neben die Wurzel, nach `<wurzel>-entzogen/`, und löscht nichts.
  *
  * `deploy` legt diese Wurzel aufs Gerät: zuerst läuft das Prüfskript, und ein Befund hält an,
  * dann geht der Baum über denselben Klienten in den Raum der Wurzel, und ein Herunterladen in
@@ -1245,6 +1249,8 @@ const NEVER_SYNCED = Object.freeze([
 function rootExcludes(plan) {
   const names = new Set(["apps", VIEW_FILE]);
   for (const folder of plan.folders) if (!folder.root) names.add(folder.path.split("/")[0]);
+  // A folder the device no longer names stays out as well, until it lies next to the root.
+  for (const item of plan.gone || []) if (item.top) names.add(item.path);
   return [...NEVER_SYNCED, ...[...names].sort()];
 }
 
@@ -1744,6 +1750,7 @@ async function doPlan(args) {
   }
   say(`${head}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}. ${t("Plan only, nothing is written.", "Nur der Plan, nichts wird geschrieben.")}`);
   for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
+  sayGone(plan.gone);
   if (!plan.folders.length) {
     say(`  ${t("No folder is shared with you. A sync would move nothing.", "Dir ist kein Ordner freigegeben. Ein Abgleich bewegte nichts.")}`);
     return !plan.refused.length;
@@ -1989,12 +1996,14 @@ async function askFolders(device) {
       path: root ? "." : level === 1 ? id : `${parent}/${id}`,
     });
   }
+  const address = oneLine(String(data.adresse ?? ""), 200);
   return {
     service: true,
-    address: oneLine(String(data.adresse ?? ""), 200),
+    address,
     reachable: data.erreichbar !== false,
     user: oneLine(String(data.benutzer ?? ""), 80),
     folders,
+    gone: goneFolders(folders, address),
     refused: refusedFolders,
     notes: (Array.isArray(data.nicht_abgeglichen) ? data.nicht_abgeglichen : []).map((note) => oneLine(note?.text, 300)).filter(Boolean),
   };
@@ -2178,7 +2187,147 @@ const labelOf = (folder) => (folder.root ? `${folder.id} (${t("this root, at the
 
 /** The names at the top of the root that are folders of their own, and not the root's. */
 function topNames(plan) {
-  return new Set(["apps", ...plan.folders.filter((folder) => !folder.root).map((folder) => folder.path.split("/")[0])]);
+  return new Set([
+    "apps",
+    ...plan.folders.filter((folder) => !folder.root).map((folder) => folder.path.split("/")[0]),
+    ...(plan.gone || []).filter((item) => item.top).map((item) => item.path),
+  ]);
+}
+
+// --- Withdrawn and thrown away: what the device no longer names stays out of the root -----------
+// A folder of level 1 or 2 lies in this tree at its place, and the root's own sync leaves its name
+// out because the device names it. Measured on 2026-09-27 at a device: once the folder was thrown
+// away in the front end, or withdrawn from a person, the device named it no more, the name fell off
+// the root's list, and the next sync of an administrator took gp-0927/gp-0927-geheim/geheim.md up
+// into the root, which every account reads. A person who only reads the root got "no permission to
+// add subfolders" at every run instead, and kept the withdrawn files. The front end promises that
+// the folder goes on every computer that had it. So what this root once synced as a folder of its
+// own and the device no longer names stays out of the root, and sync moves it next to the root,
+// into a folder that is no part of any sync. Moved, not deleted: what was changed here and never
+// went up is still there to be read.
+
+/** The client's journal in a folder it syncs, measured on 2026-09-22: `.sync_<hash>.db`. */
+const JOURNAL = /^\.sync_.*\.db$/;
+
+/** Where withdrawn folders go: next to the root, in a folder named after it. */
+const awayDir = () => join(dirname(ROOT), `${basename(ROOT)}-${t("withdrawn", "entzogen")}`);
+
+/**
+ * The folders this root synced on their own and the device no longer names.
+ *
+ * Two witnesses, and either one is enough: the state of the last syncs, which keeps every folder it
+ * ever synced, and the client's journal, which lies in every folder the client synced, so that a
+ * computer whose state was lost still knows. A folder of level 2 that goes while its parent still
+ * holds another one goes alone; otherwise its whole chain at the top goes. What lies below a folder
+ * of level 1 the person still has is that folder's, and its own sync takes care of it.
+ */
+function goneFolders(folders, address) {
+  // An empty list says nothing about this tree, and a state of another file service nothing about this one.
+  if (!folders.length) return [];
+  const mine = readFolderState().roots[ROOT];
+  if (mine?.address && mine.address !== address) return [];
+  const now = new Set(folders.map((folder) => folder.path));
+  const tops = new Set(folders.filter((folder) => !folder.root).map((folder) => folder.path.split("/")[0]));
+  const levelOne = new Set(folders.filter((folder) => !folder.root && folder.level === 1).map((folder) => folder.path));
+  const once = new Set(Object.keys(mine?.folders || {}).filter((path) => path !== "."));
+  const journal = (dir) => entriesOf(dir).some((entry) => entry.isFile() && JOURNAL.test(entry.name));
+  for (const top of entriesOf(ROOT)) {
+    if (!top.isDirectory() || ROOT_OWN.includes(top.name) || NOT_WALKED.has(top.name) || levelOne.has(top.name)) continue;
+    const dir = join(ROOT, top.name);
+    if (journal(dir)) once.add(top.name);
+    for (const below of entriesOf(dir)) if (below.isDirectory() && journal(join(dir, below.name))) once.add(`${top.name}/${below.name}`);
+  }
+  const gone = new Map();
+  for (const path of [...once].sort()) {
+    const top = path.split("/")[0];
+    if (now.has(path) || levelOne.has(top) || ROOT_OWN.includes(top)) continue;
+    const unit = tops.has(top) ? path : top;
+    if (gone.has(unit) || [...gone.keys()].some((known) => unit.startsWith(`${known}/`))) continue;
+    // What still is shared below it stays at its place.
+    const keep = folders.filter((folder) => folder.path.startsWith(`${unit}/`)).map((folder) => folder.path.slice(unit.length + 1).split("/")[0]);
+    gone.set(unit, { path: unit, top: unit === top, keep, local: join(ROOT, ...unit.split("/")) });
+  }
+  for (const item of gone.values()) {
+    const files = existsSync(item.local) ? [...localTree(item.local, [...NEVER_SYNCED], { weighHome: false }).files.values()].filter((file) => !item.keep.includes(file.path.split("/")[0])) : [];
+    item.here = existsSync(item.local);
+    item.files = files.length;
+    item.bytes = files.reduce((sum, file) => sum + file.size, 0);
+  }
+  return [...gone.values()];
+}
+
+/** One line on the folders the device no longer names, for the plan and the sync. */
+function sayGone(gone, done) {
+  const here = gone.filter((item) => item.here);
+  if (!here.length) return;
+  const list = here.map((item) => `${item.path}/ (${fileCount(item.files)}, ${sized(item.bytes)})`).join(", ");
+  say(done
+    ? `  ${t(`No longer shared with you or thrown away on the device: ${list}. Moved next to the root, not deleted: ${done}`, `Dir nicht mehr freigegeben oder am Gerät weggeworfen: ${list}. Neben die Wurzel verschoben, nicht gelöscht: ${done}`)}`
+    : `  ${t(`No longer shared with you or thrown away on the device: ${list}. Stays out of the root; a sync moves it next to the root, into ${awayDir()}, and deletes nothing.`, `Dir nicht mehr freigegeben oder am Gerät weggeworfen: ${list}. Bleibt aus der Wurzel draußen; ein Abgleich verschiebt es neben die Wurzel, nach ${awayDir()}, und löscht nichts.`)}`);
+}
+
+/**
+ * Move what the device no longer names next to the root, before any client runs.
+ *
+ * Into `<root>-entzogen/<time>/<path>`, next to the root. Where this computer cannot put it there,
+ * a root on a volume of its own for instance, it goes into the root's own folder that is never
+ * synced. A folder that cannot be moved at all stays where it is and stays out of the root's
+ * sync, and the output says so. The state of the last sync forgets what went, and so does the
+ * comparison of the plan: should the folder be shared again, it comes down as new.
+ */
+function setAside(plan) {
+  const at = new Date().toISOString().replace(/[:.]/g, "-");
+  const result = { moved: [], stuck: [], where: null };
+  for (const item of plan.gone || []) {
+    if (!item.here) {
+      result.moved.push(item);
+      continue;
+    }
+    const names = entriesOf(item.local).map((entry) => entry.name).filter((name) => !item.keep.includes(name));
+    const into = (base) => {
+      const target = join(base, at, ...item.path.split("/"));
+      mkdirSync(item.keep.length ? target : dirname(target), { recursive: true });
+      if (item.keep.length) for (const name of names) renameSync(join(item.local, name), join(target, name));
+      else renameSync(item.local, target);
+      return join(base, at);
+    };
+    try {
+      result.where = into(awayDir());
+    } catch {
+      try {
+        result.where = into(join(ROOT, TRASH_IN_ROOT, t("withdrawn", "entzogen")));
+      } catch (error) {
+        result.stuck.push({ ...item, why: oneLine(error.message, 160) });
+        continue;
+      }
+    }
+    result.moved.push(item);
+  }
+  if (result.stuck.length) {
+    say(`  ${t(
+      `Could not be moved next to the root, stays where it is and out of the root's sync: ${result.stuck.map((item) => `${item.path}/ (${item.why})`).join(", ")}`,
+      `Ließ sich nicht neben die Wurzel verschieben, bleibt liegen und aus dem Abgleich der Wurzel draußen: ${result.stuck.map((item) => `${item.path}/ (${item.why})`).join(", ")}`
+    )}`);
+  }
+  if (result.where) sayGone(result.moved, result.where);
+  // The state forgets what went, and remembers where it went, for status.
+  if (result.moved.length) {
+    const state = readFolderState();
+    const mine = state.roots[ROOT] || (state.roots[ROOT] = { folders: {} });
+    mine.folders ||= {};
+    for (const item of result.moved) {
+      const went = [item.path, ...Object.keys(mine.folders).filter((path) => path.startsWith(`${item.path}/`))];
+      for (const path of went) {
+        delete mine.folders[path];
+        rmSync(baseFile(join(ROOT, ...path.split("/"))), { force: true });
+      }
+    }
+    if (result.where) {
+      mine.setAside = { at: new Date().toISOString(), where: result.where, folders: result.moved.filter((item) => item.here).map((item) => ({ path: item.path, files: item.files })) };
+    }
+    writeFolderState(state);
+  }
+  return result;
 }
 
 /**
@@ -2197,6 +2346,8 @@ async function syncFolders(args, device, apps = []) {
   }
   say(`${head}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}${plan.reachable ? "" : t(", the device cannot reach it right now", ", das Gerät erreicht ihn gerade nicht")}`);
   for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
+  // What the device no longer names goes next to the root before any client runs.
+  setAside(plan);
   if (!plan.folders.length) {
     say(`  ${t("No folder is shared with you. Nothing was synced.", "Dir ist kein Ordner freigegeben. Es wurde nichts abgeglichen.")}`);
     sayView(await writeView(device, plan, [], apps));
@@ -2753,7 +2904,15 @@ function syncLine() {
         ? t(`in the background every ${agent.every} minutes`, `im Hintergrund alle ${agent.every} Minuten`)
         : t(`set up every ${agent.every} minutes, but launchd does not hold it: log in again or node arasul.mjs sync --install`, `alle ${agent.every} Minuten eingerichtet, aber launchd hält es nicht: neu anmelden oder node arasul.mjs sync --install`);
   const problem = mine?.background?.problem || null;
-  if (!folders.length) return { line: `${head}: ${t("never synced", "noch nie abgeglichen")}, ${where}`, problem, fine: false };
+  // What went next to the root, in one sentence, as long as it lies there.
+  const went = mine?.setAside;
+  const aside = went && existsSync(went.where) && went.folders?.length
+    ? t(
+        `No longer shared or thrown away on the device, so moved out of this root and not deleted: ${went.folders.map((item) => `${item.path}/ (${fileCount(item.files)})`).join(", ")}, since ${stamp(went.at)} in ${went.where}.`,
+        `Nicht mehr freigegeben oder am Gerät weggeworfen, darum aus dieser Wurzel verschoben und nicht gelöscht: ${went.folders.map((item) => `${item.path}/ (${fileCount(item.files)})`).join(", ")}, seit ${stamp(went.at)} in ${went.where}.`
+      )
+    : null;
+  if (!folders.length) return { line: `${head}: ${t("never synced", "noch nie abgeglichen")}, ${where}`, problem, aside, fine: false };
   const plan = { folders };
   const tops = topNames(plan);
   let open = 0;
@@ -2775,7 +2934,7 @@ function syncLine() {
   const parts = [last, `${t("open", "offen")} ${open}${unknown ? "+" : ""}`, `${t("conflicts", "Konflikte")} ${conflicts}`];
   if (failed.length) parts.push(`${t("not through", "nicht durch")}: ${failed.join(", ")}`);
   parts.push(where);
-  return { line: `${head}: ${parts.join(", ")}`, problem, fine: !conflicts && !failed.length && !problem };
+  return { line: `${head}: ${parts.join(", ")}`, problem, aside, fine: !conflicts && !failed.length && !problem };
 }
 
 /** The state of one sync, next to the credential. What was known about other folders stays. */
@@ -2784,6 +2943,7 @@ function recordSync(device, plan, results) {
   const before = state.roots[ROOT]?.folders || {};
   const mine = { device: device.name, address: plan.address, user: plan.user, at: new Date().toISOString(), folders: { ...before } };
   if (state.roots[ROOT]?.background) mine.background = state.roots[ROOT].background;
+  if (state.roots[ROOT]?.setAside) mine.setAside = state.roots[ROOT].setAside;
   for (const result of results) {
     mine.folders[result.path] = {
       id: result.id,
@@ -2945,7 +3105,7 @@ async function folderStatus(args, device) {
   }
   for (const path of Object.keys(known).sort()) {
     if (plan.folders.some((folder) => folder.path === path)) continue;
-    say(`  ${path === "." ? known[path].id || path : path}   ${t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen")}`);
+    say(`  ${path === "." ? known[path].id || path : path}   ${path === "." ? t("not shared with you any more, what lies here stays", "dir nicht mehr freigegeben, was hier liegt, bleibt liegen") : t("not shared with you any more, stays out of the root, the next sync moves it next to the root", "dir nicht mehr freigegeben, bleibt aus der Wurzel draußen, der nächste Abgleich verschiebt es neben die Wurzel")}`);
   }
   const view = join(ROOT, VIEW_FILE);
   say(`  ${VIEW_FILE}: ${existsSync(view) ? t(`there, written ${stamp(statSync(view).mtime.toISOString())}`, `da, geschrieben ${stamp(statSync(view).mtime.toISOString())}`) : t("not written yet, sync writes it", "noch nicht geschrieben, sync schreibt sie")}`);
@@ -3096,6 +3256,7 @@ async function doDeploy(args) {
     stop(t(`${plan.user} has '${room.right}' on the root ${room.id}, and deploying needs 'schreiben': on the root that is the administrators' right, by role. Ask one. Nothing was deployed.`, `${plan.user} hat auf der Wurzel ${room.id} '${room.right}', und Ausrollen braucht 'schreiben': auf der Wurzel ist das das Recht der Administratoren, nach Rolle. Bitte einen. Nichts wurde ausgerollt.`));
   }
 
+  setAside(plan);
   const excludes = excludesFor(plan, room, ROOT);
   const service = await spacesOf(plan, device, password);
   {
@@ -3299,6 +3460,7 @@ async function doStatus(args) {
   const summary = syncLine();
   say(summary.line);
   if (summary.problem) say(`  ${t("Last run in the background", "Letzter Lauf im Hintergrund")}: ${summary.problem.text}`);
+  if (summary.aside) say(`  ${summary.aside}`);
   let fine = summary.fine;
   if (!names.length) {
     say(t("Device: none logged in.", "Gerät: keines angemeldet."));
