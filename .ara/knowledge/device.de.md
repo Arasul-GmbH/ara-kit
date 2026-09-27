@@ -197,7 +197,8 @@ Die Phasen des Laufzettels und was in jeder gilt:
 - **3 Arasul installieren.** Ein Aufruf, siehe „Arasul installieren" weiter unten:
   `node .ara/tools/device.mjs --name <gerät> --install arasul`, mit `--keep-ssh`, wenn SSH
   bleiben muss, wie es ist. Ausgabe mitlesen, bei Fehlern anhalten. Nachweis: der Kontrakt des Geräts lässt sich lesen und passt zum Kit,
-  `node .ara/tools/app.mjs --device <gerät> --contract`.
+  `node .ara/tools/app.mjs --device <gerät> --contract`. Ist der Installer durch und läuft die
+  Plattform, setzt das Werkzeug `status: installed`; nach einem abgebrochenen Versuch bleibt `installing`.
 - **4 Nachbereitung.** Erst prüfen, ob etwas fehlt, das Produkt erledigt manches
   selbst. Das Standardmodell: der Installer holt es im Hintergrund, ob es kam und wie lange
   das dauert, steht unten unter „Das Standardmodell", Namensauflösung, Zugang härten (erst wenn die
@@ -406,6 +407,13 @@ dem etwas stehen geblieben ist. **Sieh vorher nach, was da liegt** (`node
 gefunden hast, und lass dir das Darüberhinweg bestätigen. Eine Installation über Reste
 kann auf Vorhandenes treffen, und das ist kein Fall für ein stilles Ja.
 
+**Hält der Installer selbst an, weil Daten des Projekts am Gerät liegen, hilft
+`--despite-traces` nicht.** Der Schalter geht über die Reste, die das Kit sieht; die Volumes
+prüft der Installer danach selbst und hält wieder an. Das Kit erkennt diesen Abbruch, nennt
+die Volumes und gibt die Wege wörtlich weiter, die der Installer dazu nennt: das alte
+Verzeichnis übernehmen oder das Gerät leeren. Welcher passt, fragst du den Menschen, nachdem
+du nachgesehen hast, was in den Volumes liegt. Leeren ist nicht umkehrbar.
+
 ### Der Kit-Schlüssel
 
 Damit rollt das Kit später Apps auf das Gerät: **kein SSH, kein Passwort, keine Sitzung,
@@ -551,6 +559,30 @@ bei der nächsten wieder, dann wieder in Sekunden.
 
 **Nachweis** ist Phase 5: die Oberfläche zeigt das Modell als vorhanden, und eine echte
 Frage im Chat bekommt eine sinnvolle Antwort.
+
+### Ein Modell aus der eigenen Sicherung
+
+Wer die Modelle eines Geräts selbst gesichert hat, spart auf einem frischen Gerät den
+Download. Ein Knopf dafür steht weder im Kit noch im Produkt; der Weg ist Handarbeit am
+Gerät und wurde am 26.09.2026 am Orin einmal ganz gegangen. Jeder Schritt am Gerät ist eine
+Änderung und braucht vorher die Bestätigung.
+
+1. **Erst installieren, dann zurücklegen.** Lag das Modell-Volume schon vor der Installation
+   da, kann der Installer es für Daten eines früheren Geräts halten und anhalten, so am
+   26.09.2026 (siehe „Reste, aber nichts läuft“).
+2. **Der Download im Hintergrund darf nicht gleichzeitig schreiben.** Steht das Modell in
+   der Sicherung, das der Installer gerade holt, beende diesen Download zuerst, nach dem Weg,
+   den das Admin-Handbuch im Spiegel dafür nennt, und verwirf seine halben Dateien.
+3. **Kopieren**: Manifeste und Blobs der Sicherung in den Modellspeicher des
+   Sprachmodell-Dienstes, vorhandene Dateien überspringen, Besitzer so, wie die übrigen
+   Dateien dort ihn tragen. Wo der Speicher liegt, sagt das Gerät (`docker volume inspect`),
+   nicht das Kit.
+4. **Prüfen und abgleichen**: die Prüfung des Standardmodells, die das Admin-Handbuch nennt,
+   vergleicht den Digest; danach macht der Abgleich aus der API-Referenz das Modell für die
+   Plattform sichtbar. Ohne ihn bleibt es unsichtbar, wie nach einem Pull von Hand.
+
+**Nachweis** wie oben: die Oberfläche führt das Modell als vorhanden, und eine echte Frage
+bekommt eine Antwort.
 
 ### Der Nachweis
 

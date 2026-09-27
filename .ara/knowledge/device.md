@@ -186,7 +186,8 @@ The phases of the runsheet and what applies in each:
 - **3 Install Arasul.** One call, see "Installing Arasul" further down:
   `node .ara/tools/device.mjs --name <device> --install arasul`, with `--keep-ssh` when SSH has
   to stay as it is. Read the output along, stop at errors. Evidence: the device's contract can be read and fits the kit,
-  `node .ara/tools/app.mjs --device <device> --contract`.
+  `node .ara/tools/app.mjs --device <device> --contract`. When the installer went through and the
+  platform runs, the tool sets `status: installed`; after an aborted attempt it stays `installing`.
 - **4 Follow-up.** First check whether something is missing, the product handles some of it
   itself. The default model: the installer fetches it in the background, whether it came and how long
   it takes stands under "The default model" below, name resolution, harden access (only once key login demonstrably works,
@@ -381,6 +382,13 @@ behind. **Look first at what lies there** (`node .ara/tools/remote.mjs --device 
 "ls -la ~"`), tell the human what you found, and have going ahead confirmed. An installation over
 traces can meet what is already there, and that is not a case for a silent yes.
 
+**If the installer stops by itself because data of the project lies on the device,
+`--despite-traces` does not help.** The switch goes over the traces the kit sees; the installer
+checks the volumes itself afterwards and stops again. The kit recognises this stop, names the
+volumes and passes on word for word the ways the installer names for it: take over the old
+directory or empty the device. Which one fits, you ask the human after looking at what the
+volumes hold. Emptying cannot be undone.
+
 ### The kit key
 
 With it the kit later rolls apps onto the device: **no SSH, no password, no session, only a key
@@ -518,6 +526,29 @@ seconds.
 
 **Evidence** is phase 5: the interface shows the model as present, and a real question in the chat
 gets a sensible answer.
+
+### A model from your own backup
+
+Whoever backed up a device's models themselves saves the download on a fresh device. There is
+no button for it, neither in the kit nor in the product; the way is handwork on the device and
+was walked once end to end on the Orin on 26.09.2026. Every step on the device is a change and
+needs the confirmation beforehand.
+
+1. **Install first, lay back afterwards.** If the model volume lay there before the
+   installation, the installer can take it for data of an earlier device and stop, as on
+   26.09.2026 (see "Traces, but nothing runs").
+2. **The background download must not write at the same time.** If the backup holds the model
+   the installer is fetching right now, end that download first, the way the admin handbook in
+   the mirror names for it, and discard its half files.
+3. **Copy**: manifests and blobs of the backup into the model store of the language model
+   service, skipping files that are there, owner as the other files there carry it. Where the
+   store lies, the device says (`docker volume inspect`), not the kit.
+4. **Check and sync**: the check of the default model the admin handbook names compares the
+   digest; after it the sync from the API reference makes the model visible to the platform.
+   Without it the model stays invisible, as after a pull by hand.
+
+**Evidence** as above: the interface lists the model as present, and a real question gets an
+answer.
 
 ### The evidence
 

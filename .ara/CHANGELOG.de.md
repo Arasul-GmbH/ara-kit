@@ -15,6 +15,20 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.49.0 (2026-09-27)
+
+Kontrakt: bis 6
+
+- **Nach einer Installation sagt die Akte, was erreicht ist.** Ist der Installer durch und sieht die zweite Prüfung die Plattform laufen, setzt `device.mjs` `status: installed`, einen neuen Stand zwischen `installing` und `live`; nach einem abgebrochenen Versuch bleibt `installing`. `live` bleibt der Abnahme vorbehalten.
+- **Hält der Installer an, weil Daten des Projekts am Gerät liegen, schlägt das Kit nicht mehr `--despite-traces` vor.** Es erkennt den Abbruch, nennt die Volumes und gibt die Wege wörtlich weiter, die der Installer nennt: das alte Verzeichnis übernehmen oder das Gerät leeren. Tragen alle Volumes Modelle, sagt es, dass die Reihenfolge erst installieren, dann zurücklegen ist. `.ara/knowledge/device.de.md` hat den neuen Abschnitt „Ein Modell aus der eigenen Sicherung“.
+- **Der Kaufschritt sagt „Auf dieses Gerät passt Arasul“**, statt zu behaupten, das Gerät trage Arasul, während zwei Zeilen darüber „keine Hinweise“ stand.
+- **Ob die Modellschritte eines Flows im KI-Protokoll des Geräts stehen, sagt der Kontrakt.** `app.mjs --check` und der Kopf der `arasul.mjs` der Vorlage lesen es aus `protokoll.wege`; bisher sagten beide pauschal, sie stünden nicht darin, und das ist falsch, seit das Produkt sie führt.
+- **`jsonAusAntwort` in der Vorlage** holt JSON aus dem Text, den `fragen` liefert, oder sagt, warum keines darin steht, etwa ein Dezimalkomma. `app-professional.de.md` sagt, dass ein Bildmodell Text liefert und die App Jahr, Betrag und jedes Feld selbst prüft.
+- **Die Anrede-Prüfung übergeht gebaute Dateien**: Namen mit dem Fingerabdruck eines Baus und minifizierte Zeilen. Auf einem gebauten Paket meldete sie ein „dir“ aus pdf.js.
+- **`arasul.mjs` spricht die Sprache des Hauses, bevor seine `root.json` da ist**: `--language`, `ARASUL_LANGUAGE`, dann die Sprache, die dieser Rechner sich von der letzten Wurzel gemerkt hat, erst dann `LANG`. Bisher sprach `login` in einem leeren Ordner Englisch bei einem deutschen Haus.
+- **`root.mjs --adopt` nimmt die Sprache der `CLAUDE.md` des Ordners**, nicht die des Kit-Profils; `--language` überstimmt.
+- **`root.de.md` sagt, wie der Firmenordner eingeschaltet wird**, aus dem Handbuch des Produkts im Spiegel, und dass eine Probe nie in einen Raum kommt, der bleibt: seinen Papierkorb kann der Administrator von Arasul nicht leeren.
+
 ## 0.48.0 (2026-09-27)
 
 Kontrakt: bis 6

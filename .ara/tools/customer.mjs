@@ -95,6 +95,7 @@ const DEVICE_STATUS = t(
     planned: "planned",
     delivered: "delivered",
     installing: "being set up",
+    installed: "installed, handover open",
     live: "in operation",
     retired: "retired",
   },
@@ -102,6 +103,7 @@ const DEVICE_STATUS = t(
     planned: "geplant",
     delivered: "geliefert",
     installing: "in Einrichtung",
+    installed: "installiert, Abnahme offen",
     live: "im Betrieb",
     retired: "ausgemustert",
   }

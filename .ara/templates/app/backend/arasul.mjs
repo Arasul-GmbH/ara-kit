@@ -28,11 +28,12 @@
  * und ein eigener Aufruf über `fuer`. Dort steht jeder Aufruf mit App, Weg,
  * Modell und Dauer, den Menschen aber nur, wenn die App ihn nennt: wer
  * `auslesen` oder `fragen` ruft, gibt `nutzer` mit, den Namen aus
- * `angemeldet`. **Der Modellschritt eines Flows steht nicht darin.** Er
- * gehört zum Lauf, und der Mensch eines Laufs ist sein Einreicher, den
- * `flowStarten` mitgibt; nachlesen lässt er sich am Lauf in der Oberfläche
- * von Arasul, nicht im KI-Protokoll. Wer einer Kanzlei eine
- * Verfahrensdokumentation schreibt, schreibt beides so hin.
+ * `angemeldet`. **Die Modellschritte eines Flows stehen darin, wenn
+ * `protokoll.wege` den Weg der Flows nennt**: jede Runde mit dem Lauf, und
+ * als Mensch sein Einreicher, den `flowStarten` mitgibt. Nennt die Liste ihn
+ * nicht, steht der Schritt nur am Lauf in der Oberfläche von Arasul. Welcher
+ * Fall gilt, sagt `app.mjs --check`. Wer einer Kanzlei eine
+ * Verfahrensdokumentation schreibt, schreibt es so hin, wie das Gerät es sagt.
  *
  * **Ein Auslesen geht nicht verloren, weil es lange rechnet.** Wartet das
  * Gerät nicht mehr, antwortet es mit dem Auftrag und rechnet weiter; die App
@@ -167,6 +168,29 @@ export function liste(daten, name) {
   if (Array.isArray(feld)) return feld;
   if (Array.isArray(daten)) return daten;
   return [];
+}
+
+/**
+ * JSON aus der Antwort von `fragen`, oder der Grund, warum keines darin steht.
+ *
+ * `fragen` liefert Text, keine Felder. Am Orin gab ein Bildmodell am
+ * 26.09.2026 für dasselbe Foto einmal JSON mit Dezimalkomma, also kein
+ * gültiges, und einmal ein falsches Jahr. Repariert wird hier nichts: ein
+ * geratener Betrag wäre schlimmer als keiner. Die App prüft danach die Felder
+ * gegen ihre Regeln, das Jahr eingeschlossen, und legt den Rest einem Menschen
+ * vor.
+ */
+export function jsonAusAntwort(antwort) {
+  const text = typeof antwort === "string" ? antwort : "";
+  const block = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const roh = block ? block[1] : text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
+  if (!roh.trim()) return { daten: null, fehler: "In der Antwort des Modells steht kein JSON." };
+  try {
+    return { daten: JSON.parse(roh), fehler: null };
+  } catch {
+    const komma = /\d,\d/.test(roh) ? " Eine Zahl trägt ein Dezimalkomma." : "";
+    return { daten: null, fehler: `Die Antwort des Modells ist kein gültiges JSON.${komma}` };
+  }
 }
 
 /** Wie oft die App ein Auslesen abholt, das noch rechnet. */

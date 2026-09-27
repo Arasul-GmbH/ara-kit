@@ -48,7 +48,11 @@ Handschrift, ein Stempel über der Zahl kosten Felder.
 **Die Form der Antwort steht im Kontrakt**: `--contract` nennt unter „Was
 `document/extract-structured` antwortet" jedes Feld mit Typ; `data` ist ein Objekt oder null, nicht
 gegen dein Schema geprüft. Ein Foto kann die App auch selbst einem Bildmodell geben („Ein Bild an
-ein Modell" im Kontrakt); Bildmodelle unterscheiden sich stark, darum miss beide Wege. **Versprich
+ein Modell" im Kontrakt); Bildmodelle unterscheiden sich stark, darum miss beide Wege. **Was
+`fragen` liefert, ist Text, keine Felder**: `jsonAusAntwort` in der Vorlage holt das JSON heraus
+oder sagt, warum keines darin steht, etwa ein Dezimalkomma; Jahr, Betrag und jedes Feld prüft die
+App danach selbst. Was der Kontrakt über ein Modell sagt, ist eine Messung, kein Versprechen für
+jedes Foto. **Versprich
 kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor du es am Gerät des Kunden gesehen
 hast.
 
