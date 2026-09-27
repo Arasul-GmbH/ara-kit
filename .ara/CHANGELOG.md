@@ -13,6 +13,18 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.47.0 (2026-09-26)
+
+Contract: up to 6
+
+- **`root.mjs --adopt <folder>` takes a grown folder over as a root and overwrites nothing.** It writes `root.json` and `places.json` into the folder's `.claude` and `arasul.mjs` at its top, and stops without writing when one of them lies there. Clones that the `.gitignore` at the top leaves out become places, with the GitHub address of their remote; a clone it does not leave out, a source tree and every `.env` file are named with a proposal. `/root` offers it for a folder that is full and no root.
+- **`.env` and `.env.*` never go into the company folder, at any depth**, nor do `.venv` and `__pycache__`. **The `.gitignore` at the top of the root counts as well**: read as git reads it, and handed to the client as names and paths it reads the same way.
+- **`build` and `dist` stay home only in a source tree**, a folder with `package.json` or another manifest. Up to 0.46.0 they stood in the list as names and kept every such folder home, a skill called build for instance.
+- **`arasul.mjs sync --plan`** shows per folder what a sync would move up and down, with count and size, the conflicts, what was deleted on one side and what stays home, and writes nothing. It lists the room over the file service and compares with the state of the last sync, which `sync` now keeps per folder next to the credential.
+- **The plan compares with both sides of the last sync and with composed names**: an empty file carries the time of its upload on the device, and the client writes an umlaut decomposed on a Mac. Both measured on 27.09.2026.
+- **What the client deletes here lands in a trash** next to the credential first, as a hard link, and `sync` says where.
+- **`sync` and `deploy` stop before the client when a file that makes the root differs on both sides** (`.gitignore`, `.claude/CLAUDE.md`, `root.json`, `places.json`, `arasul.mjs`) and the person writes the root. Measured at a device on 26.09.2026: the client put the device's `.gitignore` at the name, and the next sync took four product clones up. `--keep-mine` moves the device's version aside on the device and syncs the house's.
+
 ## 0.46.0 (2026-09-26)
 
 Contract: up to 6

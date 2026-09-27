@@ -127,6 +127,39 @@ gedauert hat. **Die Prüfung endet ohne Befund, oder du sagst, was sie gefunden 
 Befund in einer frischen Wurzel ist ein Fehler des Gerüsts, nicht des Menschen: melde ihn mit
 `gh issue create` an das Kit, wenn der Mensch einverstanden ist.
 
+## Einen gewachsenen Ordner übernehmen
+
+```
+node .ara/tools/root.mjs --adopt <ordner> [--name "<haus>"] [--language de|en]
+```
+
+Ein Haus, das seit Wochen in einem Ordner arbeitet, will keine frische leere Wurzel daneben: das
+Nordziel kommt nur, wenn genau dieser Ordner ans Gerät geht. `--adopt` macht aus ihm eine Wurzel
+und **überschreibt nichts**. Genau drei Dateien entstehen, `.claude/root.json`,
+`.claude/places.json` und `arasul.mjs`; liegt eine davon schon da, wird nichts geschrieben, und
+das Werkzeug sagt, welche. Die `.claude/CLAUDE.md` des Hauses, seine Skills, Hooks und
+Einstellungen, seine `.gitignore` und seine Versionsverwaltung bleiben, wie sie sind. Der Name ist
+der des Ordners, wenn `--name` keinen anderen sagt.
+
+Was es findet, sagt es, und davon schreibt es nichts:
+
+- **Ein Klon, den die `.gitignore` oben auslässt**, ist ein Ort, der hier liegt, und wird als
+  einer eingetragen: `github` mit der Adresse seines Remotes, wenn das GitHub ist, sonst
+  `folder`, `local` als `./<pfad>`, nur lesen. Der Zweck sagt, dass er übernommen wurde; das Haus
+  schreibt einen besseren Satz.
+- **Ein Klon, den die `.gitignore` nicht auslässt**, ginge als Kopie in den Firmenordner. Er wird
+  nicht eingetragen, und das Werkzeug schlägt die Zeile für die `.gitignore` und den Befehl mit
+  `--place` vor.
+- **Ein Quelltextbaum**, erkannt wie in Prüfung 17, geht ohne das, was eine Maschine macht, und
+  ohne `.env` in den Firmenordner. Das Werkzeug schlägt vor: ein Repository und einen Ort daraus,
+  oder eine Zeile in der `.gitignore`, die ihn zu Hause hält.
+- **Dateien der Art `.env`** in jeder Tiefe werden benannt: sie bleiben bei jedem Abgleich zu Hause.
+
+Eine übernommene Wurzel trägt kein Prüfskript des Kits und keinen Vorschlag, weil beide dort
+lägen, wo das Haus seine eigenen hat. `--show` und `--place` gehen, `--check` sagt, dass kein
+Prüfskript da ist, `--enroll`, dass kein Vorschlag da ist. Als Nächstes kommt die Brücke:
+`login`, dann `sync --plan`, dann `sync`.
+
 ## Nach dem Anlegen
 
 Sag in drei Zeilen, was wo liegt, und dann die nächsten Schritte, die das Werkzeug nennt.
@@ -212,6 +245,8 @@ nichts.
 | `login`, `login --approve <prüfsumme>`, `login --withdraw` | Die Vorschläge zeigen, einen mit seiner Prüfsumme freigeben, alles zurücknehmen, was das Freigeben eintrug |
 | `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
 | `sync` | Gleicht den Firmenordner ab, die Wurzel des Geräts oben in diesem Ordner eingeschlossen, schreibt dieselben Dateien und `sicht.md`, die Sicht dieses Menschen. `--client` nennt den Kommandozeilen-Klienten des Dateidienstes |
+| `sync --plan` | Zeigt je Ordner, was ein Abgleich bewegte: hoch und runter mit Anzahl und Größe, Konflikte, was auf einer Seite gelöscht wurde, was zu Hause bleibt. Schreibt nichts und startet keinen Klienten |
+| `sync --keep-mine` | Wo die Dateien, die die Wurzel ausmachen, auf beiden Seiten verschieden sind, legt es die Fassung des Geräts am Gerät zur Seite und gleicht die dieser Wurzel ab. Ohne den Schalter hält `sync` dort an |
 | `status` | Das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge |
 | `deploy` | Legt diese Wurzel in die Wurzel des Geräts: zuerst das Prüfskript, die Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
@@ -301,10 +336,22 @@ festgelegt wie die Verbindung zur Oberfläche des Geräts. Das ist Sache des Kli
 Kits, und es steht hier, damit es niemand für eine Entscheidung hält.
 
 **Was nie in den Firmenordner geht**, steht in einer Liste und geht dem Klienten als Datei mit:
-was eine Maschine macht (`.git`, `node_modules`, `dist`, `build`, `.next`), was zu diesem Rechner
-gehört (`.claude/hooks/`, `settings.json`, `.DS_Store`) und was der Klient selbst schreibt. Das
-Letzte ist keine Feinheit: ohne seine Journaldatei in der Liste meldet der Klient Konflikte an
-sich selbst. Gemessen, Stand 22.09.2026, gegen den Klienten, mit einem Ordner, der jedes davon
+was eine Maschine macht (`.git`, `node_modules`, `.next`, `.venv`, `__pycache__`), was zu diesem Rechner gehört (`.claude/hooks/`, `settings.json`, `.DS_Store`), was
+ein Geheimnis trägt (`.env` und jede `.env.*`, in jeder Tiefe) und was der Klient selbst schreibt.
+Das Letzte ist keine Feinheit: ohne seine Journaldatei in der Liste meldet der Klient Konflikte an
+sich selbst. **`build` und `dist` macht eine Maschine nur in einem Quelltextbaum**, einem Ordner
+mit einem Manifest wie `package.json` daneben. Dort gehen sie als ihre Pfade in die Liste; ein
+Ordner des Hauses dieses Namens anderswo, etwa ein Skill `build`, geht mit. Bis 0.46.0 standen
+beide als Namen in der Liste und hielten jeden solchen Ordner in jeder Tiefe zu Hause.
+
+**Die `.gitignore` oben in der Wurzel zählt auch.** Was das Haus aus seiner Versionsverwaltung
+heraushält, die Klone seiner Produkte, was läuft, seine Geheimnisse, hält es aus dem Firmenordner
+heraus. Das Werkzeug liest die Datei wie git und gibt dem Klienten, was er genauso liest: einen
+Namen in jeder Tiefe, einen Pfad mit Schrägstrich in der Mitte von oben. Eine Regel mit führendem
+Schrägstrich, eine mit `**` und jede Regel einer Datei mit `!` gehen als die Pfade mit, die sie
+gerade im Baum treffen, weil der Klient keinen Namen verankert und nichts zurücknimmt. Eine
+`.gitignore` weiter unten zählt nicht: sie hält oft große Medien aus git heraus, die das Haus
+trotzdem teilt. Gemessen, Stand 22.09.2026, gegen den Klienten, mit einem Ordner, der jedes davon
 trug: alles auf der Liste blieb draußen, oben im Ordner und drei Ebenen tiefer, und
 `.claude/skills/` ging durch. Die Journaldatei hieß `.sync_journal.db`.
 
@@ -317,6 +364,60 @@ keinen Schrägstrich, der passen könnte. Gemessen am 22.09.2026, ein Name mit f
 Liste hielt nichts draußen, und im Quelltext des Klienten nachgelesen. Der Name eines Raums bleibt also in jeder
 Tiefe aus dem Abgleich der Wurzel draußen: ein Ordner tief in der Wurzel, der wie ein Raum heißt,
 bleibt zu Hause, und `sync` nennt, was zu Hause blieb.
+
+**Ein Plan vor dem Abgleich.** `sync --plan` fragt das Gerät nach den Ordnern und den
+Dateidienst, was in jedem Raum liegt, eine Ebene je `PROPFIND`, und sieht diesen Baum durch
+dieselbe Liste an, die der Klient bekommt. Es fragt nach dem Passwort, weil der Dienst seine Räume
+niemandem sonst zeigt, und schreibt nichts: keine Datei im Baum, kein `APP.md`, keine Sicht,
+keinen Stand. Je Ordner sagt es, wie viele Dateien welcher Größe hoch und runter gingen, welche
+auf beiden Seiten verschieden sind, was auf einer Seite gelöscht wurde und was zu Hause bleibt,
+gewogen je Zeile der Liste. Was wegen der Liste am Gerät bleibt, sagt es auch. **Ohne Stand des
+letzten Abgleichs gilt nichts als gelöscht**: was nur auf einer Seite liegt, geht auf die andere,
+und was auf beiden liegt und verschieden ist, ist ein Konflikt. Nach jedem Abgleich listet das
+Werkzeug den Raum noch einmal und hält neben dem Ausweis je Ordner Größe und Zeit jeder Datei auf
+beiden Seiten fest (`firmenordner-stand/`), also unterscheidet der nächste Plan eine neue Datei
+von einer, die auf der anderen Seite gelöscht wurde. Beide Seiten, weil der Klient die Zeit einer
+Datei, die er bewegt, auf die der anderen Seite setzt, eine leere Datei am Gerät aber die Zeit
+ihres Hochladens trägt. Namen werden zusammengesetzt (NFC) verglichen: der Klient schreibt einen
+Umlaut am Mac zerlegt, der Dienst nennt ihn zusammengesetzt. Beides gemessen am 27.09.2026.
+
+**Die Dateien, die die Wurzel ausmachen, gewinnen nur, wenn jemand es sagt.** Wo eine Datei auf
+beiden Seiten verschieden ist, legt der Klient die Fassung des Geräts an ihren Namen und die des
+Hauses als Konfliktkopie daneben. Für Inhalt ist das ein sichtbarer Konflikt. Für `.gitignore`,
+`.claude/CLAUDE.md`, `.claude/root.json`, `.claude/places.json` und `arasul.mjs` ändert es, was
+gilt: gemessen am 26.09.2026 an einem Gerät, dessen Wurzel das Gerüst eines anderen Hauses trug,
+ließ der erste Abgleich eines gewachsenen Ordners die `.gitignore` des Hauses als Konfliktkopie
+zurück, und der zweite nahm die Klone von vier Produkten hoch, die die eigene `.gitignore` des
+Hauses zu Hause gehalten hatte. Darum listen `sync` und `deploy` vor dem Klienten den Raum und
+vergleichen wie der Plan, und ist eine dieser Dateien verschieden und schreibt dieser Mensch die
+Wurzel, halten sie für die Wurzel an und nennen die Dateien; die anderen Ordner werden
+abgeglichen. `--keep-mine` legt die Fassung des Geräts am Gerät zur Seite, nach
+`<name> (Gerät <datum> <uhrzeit>)<endung>`, mit einem WebDAV-`MOVE`, das nichts überschreibt, und
+die des Hauses nimmt den Namen: keine Seite verliert etwas, und es gelten die Regeln des Hauses.
+Wer die Wurzel nur liest, bekommt die Fassung des Geräts, und das ist richtig.
+
+**Ein oben verankerter Name reicht weiter.** Eine Regel mit führendem Schrägstrich, für eine `notizen.log`, meint nur die oben;
+der Klient hält den Namen in jeder Tiefe draußen. Der Plan nennt, was das über das hinaus zu
+Hause hält, was die `.gitignore` meinte.
+
+**Nichts, was der Klient hier löscht, geht verloren.** Der Klient löscht hier, was am Gerät
+gelöscht wurde, so geht ein Abgleich. Bevor er läuft, bekommt jede Datei, die er anfassen kann,
+einen zweiten Namen in einem Papierkorb neben dem Ausweis, `~/.config/arasul/papierkorb/`: einen
+harten Link, keine Kopie, er kostet also keinen Platz. Was danach noch an seiner Stelle liegt,
+verliert den Namen wieder, was der Klient weggenommen hat, behält ihn, und `sync` sagt, wie viele
+und wo. Kann der Rechner nicht in diesen Ordner verlinken, liegt der Papierkorb in der Wurzel als
+`.arasul-papierkorb/`, der nie abgeglichen wird.
+
+**Gemessen am 27.09.2026 an einem Gerät**, dessen Wurzel das Gerüst eines Kundendurchlaufs trug,
+mit einer Kopie eines gewachsenen Ordners mit rund 800 eigenen Dateien und vier Produktklonen:
+`--adopt` schrieb drei Dateien; der Plan brauchte 3 Sekunden und schrieb nichts; `sync` hielt an
+der Wurzel an, wegen der fünf Dateien, die sie ausmachen; `sync --keep-mine` nahm 122 MB in unter
+zwei Minuten hoch. Am Mac fehlte keiner der 796 Inhalte, am Gerät keine der 15 Dateien, die der
+Raum trug: zehn an ihrem Namen, fünf zur Seite gelegt und byteweise gleich. Am Gerät lagen kein
+`.git`, keine `.env`, kein `node_modules`, `.venv` oder `.next`, keine Einstellungen oder Hooks und
+kein Produktklon, und der Skill `build` lag dort. Eine Änderung auf jeder Seite kam auf der anderen
+an, eine auf beiden Seiten geänderte Datei kam als Konfliktkopie mit beiden Fassungen heraus, und
+eine am Gerät gelöschte Datei lag am Mac im Papierkorb.
 
 **Konflikte und Symlinks** werden aus dem Baum gezählt und nicht aus dem Bericht des Klienten,
 weil beide auch zwischen zwei Abgleichen entstehen. Eine Datei, die der Klient nicht
@@ -421,7 +522,8 @@ kennt: sie ist eine Datei des Kits, nichts vom Haus steht darin. Dann, in dieser
    `lesen` allein wird nichts ausgerollt: auf der Wurzel ist Schreiben das Recht der
    Administratoren, nach Rolle, und ein Recht je Person gibt es darauf nicht.
 3. **Der Baum geht über den Klienten hinauf**, mit der allgemeinen Liste und der eigenen Liste
-   der Wurzel, was zu Hause bleibt: `.git`, `node_modules`, `.claude/hooks/`, `settings.json`,
+   der Wurzel, was zu Hause bleibt: `.git`, `node_modules`, `.env` in jeder Tiefe, was die
+   `.gitignore` oben auslässt, `.claude/hooks/`, `settings.json`,
    `.DS_Store`, die Journaldatei des Klienten, `apps/`, `sicht.md` und die Räume, die das Gerät
    einzeln freigibt.
 4. **Der Raum kommt in einen Wegwerfordner wieder herunter**, und was dort liegt, wird mit dem

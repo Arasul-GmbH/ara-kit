@@ -30,6 +30,20 @@ them (default is no), and whether the method is wanted as an addition (default i
 you can find out yourself, a path, a remote, you look up instead of asking. **In the places you
 only read.**
 
+**A folder that is full and no root** is a house that has grown: it is taken over, not laid
+out. Say what lies there and ask once, through the interview tool, whether it should become the
+root as it is, with its name. The tool then writes exactly three files and nothing else, and
+says which clones it entered as places, which source trees and `.env` files it found and what
+it proposes for each:
+
+```
+node .ara/tools/root.mjs --adopt <path> [--name "<house>"]
+```
+
+Read out what it says, and name the next step: `node arasul.mjs sync --plan` in the root shows
+what would move, with count and size, before anything moves. The human runs it, it asks for the
+password of the device.
+
 **Then the tool lays out:**
 
 ```

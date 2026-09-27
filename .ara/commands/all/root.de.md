@@ -32,6 +32,20 @@ Pfad, Zweck und ob die Wurzel in sie schreiben darf (Vorgabe ist nein), und ob d
 Zusatz gewünscht ist (Vorgabe ist nein). Was du selbst herausfinden kannst, einen Pfad, ein
 Remote, schlägst du nach, statt zu fragen. **In den Orten liest du nur.**
 
+**Ein Ordner, der voll und keine Wurzel ist**, ist ein gewachsenes Haus: er wird übernommen,
+nicht angelegt. Sag, was dort liegt, und frag einmal über das Interview-Werkzeug, ob er so, wie
+er ist, mit seinem Namen die Wurzel werden soll. Das Werkzeug schreibt dann genau drei Dateien
+und sonst nichts, und sagt, welche Klone es als Orte eingetragen hat, welche Quelltextbäume und
+`.env`-Dateien es gefunden hat und was es für jedes vorschlägt:
+
+```
+node .ara/tools/root.mjs --adopt <pfad> [--name "<haus>"]
+```
+
+Lies vor, was es sagt, und nenne den nächsten Schritt: `node arasul.mjs sync --plan` in der
+Wurzel zeigt, was sich bewegte, mit Anzahl und Größe, bevor sich etwas bewegt. Der Mensch führt
+es aus, es fragt nach dem Passwort des Geräts.
+
 **Dann legt das Werkzeug aus:**
 
 ```
