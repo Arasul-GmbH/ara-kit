@@ -48,7 +48,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { platform, tmpdir } from "node:os";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   PROBE,
@@ -8726,16 +8726,33 @@ const FO_ADRESSE = "https://dateidienst.probe:8443";
  * Graph, sein Inhalt über PROPFIND eine Ebene tief. Name und Passwort wie beim echten Dienst,
  * der Basic-Auth nimmt. Die Antwort trägt das Präfix D: groß, wie manche Dienste es schreiben.
  */
+/** App-Tokens des Dateidienstes, wie am Orin gemessen (27.09.2026): mit dem Passwort ausgestellt, wie ein Passwort angenommen, nach dem Widerruf abgewiesen. */
+const APP_TOKENS = new Set();
+const APP_TOKEN = "apptoken_probe_0123456789";
+
 function dateidienst(lager, basis, anfrage, antwort, pfad) {
-  const erwartet = `Basic ${Buffer.from(`anna:${BRUECKE_PASSWORT}`).toString("base64")}`;
-  if (anfrage.headers.authorization !== erwartet) {
+  const mitPasswort = anfrage.headers.authorization === `Basic ${Buffer.from(`anna:${BRUECKE_PASSWORT}`).toString("base64")}`;
+  const mitToken = [...APP_TOKENS].some((token) => anfrage.headers.authorization === `Basic ${Buffer.from(`anna:${token}`).toString("base64")}`);
+  if (!mitPasswort && !mitToken) {
     antwort.writeHead(401);
+    return antwort.end();
+  }
+  if (pfad === "/auth-app/tokens" && anfrage.method === "POST") {
+    APP_TOKENS.add(APP_TOKEN);
+    antwort.writeHead(200, { "Content-Type": "application/json" });
+    return antwort.end(JSON.stringify({ token: APP_TOKEN, expiration_date: "2027-09-27T08:47:05.361473851Z", created_date: "2026-09-27T08:47:05Z", label: "" }));
+  }
+  if (pfad === "/auth-app/tokens" && anfrage.method === "DELETE") {
+    APP_TOKENS.delete(new URLSearchParams(anfrage.url.split("?")[1] || "").get("token"));
+    antwort.writeHead(200);
     return antwort.end();
   }
   if (pfad === "/graph/v1.0/me/drives") {
     const raeume = existsSync(lager) ? readdirSync(lager) : [];
     antwort.writeHead(200, { "Content-Type": "application/json" });
-    return antwort.end(JSON.stringify({ value: raeume.map((name) => ({ id: `sp$${name}`, name, driveType: name === "Shares" ? "virtual" : "project", root: { webDavUrl: `${basis}/dav/spaces/sp%24${encodeURIComponent(name)}` } })) }));
+    // Wie der echte Dienst: zuerst der persönliche Raum, benannt nach dem Menschen, und er ist leer.
+    const persoenlich = { id: "sp$persoenlich-anna", name: "anna", driveType: "personal", root: { webDavUrl: `${basis}/dav/spaces/sp%24persoenlich-anna` } };
+    return antwort.end(JSON.stringify({ value: [persoenlich, ...raeume.map((name) => ({ id: `sp$${name}`, name, driveType: name === "Shares" ? "virtual" : "project", root: { webDavUrl: `${basis}/dav/spaces/sp%24${encodeURIComponent(name)}` } }))] }));
   }
   const treffer = pfad.match(/^\/dav\/spaces\/sp%24([^/]+)(\/.*)?$/);
   // MOVE innerhalb eines Raums, ohne zu überschreiben: 412, wenn das Ziel schon liegt.
@@ -8791,7 +8808,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
           ? senden(200, { token: BRUECKE_TOKEN, user: { id: 7, username: "anna", role: rolle } })
           : senden(401, { error: { message: "Anmeldung abgewiesen" } });
       }
-      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/"))) return dateidienst(lager, basis, anfrage, antwort, pfad);
+      if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/") || pfad.startsWith("/auth-app/"))) return dateidienst(lager, basis, anfrage, antwort, pfad);
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
       const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
       const gueltig = sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`;
@@ -9093,6 +9110,12 @@ if (process.env.ARA_PROBE_FEHLER && argv[1] === process.env.ARA_PROBE_FEHLER) {
   process.stderr.write("Der Dienst antwortet nicht\\n");
   process.exit(3);
 }
+// Was der echte Klient sagt, wenn das Gerät mitten im Abgleich neu startet (gemessen am 27.09.2026).
+if (process.env.ARA_PROBE_WEG) {
+  process.stderr.write('Warning: Execution of PAC script at "http://wpad/wpad.dat" failed: The operation couldn’t be completed. (kCFErrorDomainCFNetwork error 308.)\\n');
+  process.stderr.write('Fatal: Failed to resolve "' + argv[0] + '" Error: "Connection refused"\\n');
+  process.exit(1);
+}
 // Was der echte Klient sagt, wenn der Dienst das Passwort nicht kennt (gemessen am 22.09.2026).
 if (process.env.ARA_PROBE_AUTH && argv[1] === process.env.ARA_PROBE_AUTH) {
   process.stderr.write("Fatal: Authentication failed please verify your credentials\\n");
@@ -9263,6 +9286,203 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     assert(lauf.status !== 0 && /--password-stdin/.test(lauf.stderr), `ohne Terminal wird nicht erklärt, woher das Passwort kommt: ${lauf.stderr}`);
     assert(klientRufe(klient.protokoll).length === vorFehler, "ohne Klient oder ohne Passwort wurde abgeglichen");
     return "Ebene 1 als Raum, Ebene 2 über Shares mit --remote-folder, Kette lokal angelegt, Liste und Schalter geprüft, Passwort nur in der Umgebung, Konflikt und Symlink gemeldet";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+/**
+ * Attrappen für den Abgleich im Hintergrund: launchctl schreibt auf und merkt sich, was geladen
+ * ist, die Mitteilung schreibt auf. Der Schlüsselbund ist echt, aber ein eigener in einem
+ * Wegwerfordner: der des Menschen an diesem Rechner wird nie berührt.
+ */
+function hintergrundAttrappen() {
+  const dir = wegwerfordner("ara-hintergrund-");
+  const launchctl = join(dir, "launchctl");
+  writeFileSync(launchctl, `#!/usr/bin/env node
+const { appendFileSync, existsSync, rmSync, writeFileSync } = require("node:fs");
+const argv = process.argv.slice(2);
+appendFileSync(${JSON.stringify(join(dir, "launchctl.jsonl"))}, JSON.stringify(argv) + "\\n");
+const geladen = ${JSON.stringify(join(dir, "geladen"))};
+if (argv[0] === "print") process.exit(existsSync(geladen) ? 0 : 113);
+if (argv[0] === "bootstrap") { writeFileSync(geladen, argv[2]); process.exit(0); }
+if (argv[0] === "bootout") { if (!existsSync(geladen)) process.exit(3); rmSync(geladen); process.exit(0); }
+process.exit(1);
+`);
+  chmodSync(launchctl, 0o755);
+  const mitteilung = join(dir, "mitteilung");
+  writeFileSync(mitteilung, `#!/usr/bin/env node
+require("node:fs").appendFileSync(${JSON.stringify(join(dir, "mitteilungen.jsonl"))}, JSON.stringify(process.argv.slice(2)) + "\\n");
+`);
+  chmodSync(mitteilung, 0o755);
+  const schluesselbund = join(dir, "probe.keychain-db");
+  const lesen = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8").split("\n").filter(Boolean).map((zeile) => JSON.parse(zeile)) : []);
+  return {
+    dir,
+    agenten: join(dir, "LaunchAgents"),
+    schluesselbund,
+    env: { ARASUL_LAUNCHCTL: launchctl, ARASUL_NOTIFY: mitteilung, ARASUL_KEYCHAIN: schluesselbund, ARASUL_LAUNCH_AGENTS: join(dir, "LaunchAgents") },
+    rufe: () => lesen("launchctl.jsonl"),
+    mitteilungen: () => lesen("mitteilungen.jsonl"),
+  };
+}
+
+await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schlüsselbund, Agent bei launchd, eine Zeile in status", async () => {
+  if (platform() !== "darwin") return "übersprungen: launchd und Schlüsselbund gibt es nur am Mac";
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const lager = wegwerfordner("ara-lager-hintergrund-");
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_ORDNER[0]]), lager });
+  const h = hintergrundAttrappen();
+  const angelegt = spawnSync("/usr/bin/security", ["create-keychain", "-p", "probe", h.schluesselbund], { encoding: "utf8" });
+  assert(angelegt.status === 0, `der Probe-Schlüsselbund ließ sich nicht anlegen: ${angelegt.stderr}`);
+  const umgebung = { ...h.env, ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const agent = () => readdirSync(h.agenten).filter((name) => name.endsWith(".plist")).map((name) => join(h.agenten, name))[0];
+  // So wie launchd den Agenten startet: mit dem Programm aus seiner Datei, ohne Terminal und ohne Eingabe.
+  const alsAgent = (mehr = {}) => {
+    const programm = [...readFileSync(agent(), "utf8").split("<key>ProgramArguments</key>")[1].split("</array>")[0].matchAll(/<string>([^<]*)<\/string>/g)].map((treffer) => treffer[1]);
+    return new Promise((fertig) => {
+      const kind = spawn(programm[0], programm.slice(1), { cwd: w.root, env: { ...process.env, ...w.env, ...umgebung, ...mehr } });
+      let stdout = "";
+      let stderr = "";
+      kind.stdout.on("data", (stueck) => (stdout += stueck));
+      kind.stderr.on("data", (stueck) => (stderr += stueck));
+      kind.stdin.end();
+      kind.on("close", (status) => fertig({ status, stdout, stderr, programm }));
+    });
+  };
+  const status = async () => (await bruecke(w, ["status"], { env: umgebung })).stdout.split("\n")[0];
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    assert(/^Abgleich: noch nie abgeglichen, nicht im Hintergrund/.test(await status()), `status sagt vor dem ersten Abgleich nicht, wie es steht: ${await status()}`);
+
+    // Ein Passwort, das der Dateidienst nicht nimmt, kommt nicht in den Schlüsselbund, und es entsteht kein Agent.
+    lauf = await bruecke(w, ["sync", "--install", "--client", klient.pfad, "--password-stdin"], { input: "falsch\n", env: umgebung });
+    assert(lauf.status !== 0 && /nimmt das Passwort von anna nicht an/.test(lauf.stderr), `ein falsches Passwort wird eingerichtet: ${lauf.stderr}${lauf.stdout}`);
+    assert(!existsSync(h.agenten) || !agent(), "trotz falschem Passwort liegt ein Agent da");
+    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "ein falsches Passwort liegt im Schlüsselbund");
+
+    lauf = await bruecke(w, ["sync", "--install", "--every", "7", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0, `sync --install endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    assert(/alle 7 Minuten/.test(lauf.stdout) && /App-Token des Dateidienstes.*gilt bis 2027-09-27.*Dein Passwort liegt nirgends/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
+    // Beim Einrichten geht eine Mitteilung hinaus: wer sie nicht sieht, erfährt, wo sie erlaubt wird.
+    const probe = h.mitteilungen();
+    assert(probe.length === 1 && probe[0][0] === "Firmenordner im Hintergrund" && /Skripteditor/.test(lauf.stdout), `beim Einrichten kommt keine Probemitteilung: ${JSON.stringify(probe)}`);
+    rmSync(join(h.dir, "mitteilungen.jsonl"));
+    const plist = readFileSync(agent(), "utf8");
+    assert(plist.includes("<integer>420</integer>") && plist.includes("<string>--background</string>") && plist.includes("<key>RunAtLoad</key><true/>"), `die Datei des Agenten stimmt nicht:\n${plist}`);
+    assert(!plist.includes(BRUECKE_PASSWORT) && !plist.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis steht in der Datei des Agenten");
+    assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_PASSWORT), "das Passwort steht in der Ausgabe von --install");
+    const geladen = h.rufe().find((ruf) => ruf[0] === "bootstrap");
+    assert(geladen && /^gui\/\d+$/.test(geladen[1]) && geladen[2] === agent(), `der Agent wurde nicht in die Sitzung des Menschen geladen: ${JSON.stringify(h.rufe())}`);
+    const gelesen = spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", "-w", h.schluesselbund], { encoding: "utf8" });
+    const eintrag0 = JSON.parse(Buffer.from(gelesen.stdout.trim(), "base64").toString("utf8"));
+    assert(eintrag0.kind === "token" && eintrag0.value === APP_TOKEN && !JSON.stringify(eintrag0).includes(BRUECKE_PASSWORT), `im Schlüsselbund liegt nicht das App-Token, oder das Passwort liegt dort: ${eintrag0.kind}`);
+    const dateien = readdirSync(w.ausweise, { recursive: true }).map((name) => join(w.ausweise, String(name))).filter((pfad) => statSync(pfad).isFile());
+    assert(!dateien.some((pfad) => readFileSync(pfad, "utf8").includes(BRUECKE_PASSWORT)), "das Passwort liegt in einer Datei neben dem Ausweis");
+
+    // Der Agent läuft ohne Terminal und ohne Eingabe, und der Klient bekommt das App-Token aus dem Schlüsselbund.
+    lauf = await alsAgent();
+    assert(lauf.status === 0, `der Lauf im Hintergrund endet mit ${lauf.status}: ${lauf.stdout} ${lauf.stderr}`);
+    const ruf = klientRufe(klient.protokoll).at(-1);
+    assert(ruf?.token === APP_TOKEN && !ruf.argv.some((teil) => teil.includes(APP_TOKEN)), "der Klient bekommt im Hintergrund das App-Token nicht über die Umgebung");
+    assert(!h.mitteilungen().length, `ein sauberer Lauf meldet sich: ${JSON.stringify(h.mitteilungen())}`);
+    let zeile = await status();
+    assert(/^Abgleich: zuletzt abgeglichen \d{4}-\d\d-\d\d \d\d:\d\d UTC, offen 0, Konflikte 0, im Hintergrund alle 7 Minuten$/.test(zeile), `die Zeile von status stimmt nicht: ${zeile}`);
+    writeFileSync(join(w.root, "buchhaltung", "neu.md"), "hier geschrieben\n");
+    assert(/offen 1, Konflikte 0/.test(await status()), `eine Änderung hier zählt nicht als offen: ${await status()}`);
+
+    // Ein Konflikt meldet sich einmal, nicht bei jedem Lauf, und sein Ende einmal.
+    writeFileSync(join(w.root, "buchhaltung", "plan_conflict-20260927-101500.md"), "zweimal geändert\n");
+    await alsAgent();
+    await alsAgent();
+    let mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 1 && mitteilungen[0][0] === "Konflikt im Firmenordner" && /1 Datei ist/.test(mitteilungen[0][1]), `der Konflikt meldet sich nicht genau einmal: ${JSON.stringify(mitteilungen)}`);
+    assert(/Konflikte 1/.test(await status()), `status zählt den Konflikt nicht: ${await status()}`);
+    rmSync(join(w.root, "buchhaltung", "plan_conflict-20260927-101500.md"));
+    rmSync(join(lager, "buchhaltung", "plan_conflict-20260927-101500.md"), { force: true });
+    await alsAgent();
+    mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 2 && /wieder abgeglichen/.test(mitteilungen[1][0]), `das Ende des Konflikts meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
+
+    // Eine Sperre: läuft schon ein Abgleich, startet keiner daneben.
+    const sperrdatei = join(w.ausweise, "abgleich", `${basename(agent(), ".plist")}.lock`);
+    writeFileSync(sperrdatei, `${process.pid}\n`);
+    const vorSperre = klientRufe(klient.protokoll).length;
+    lauf = await alsAgent();
+    assert(lauf.status === 0 && /läuft schon/.test(lauf.stdout), `ein zweiter Lauf neben einem ersten wird nicht abgewiesen: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status !== 0 && /läuft schon/.test(lauf.stdout), `von Hand startet ein Abgleich neben dem im Hintergrund: ${lauf.stdout}`);
+    assert(klientRufe(klient.protokoll).length === vorSperre, "neben einem laufenden Abgleich wurde der Klient gerufen");
+    rmSync(sperrdatei);
+
+    // Der Ausweis wird am Gerät widerrufen: der nächste Lauf hält mit einem Satz an, bevor der Klient läuft.
+    const ausweise = JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8"));
+    const echt = ausweise.devices[ausweise.default].token;
+    ausweise.devices[ausweise.default].token = "ausweis_widerrufen";
+    writeFileSync(join(w.ausweise, "credentials.json"), JSON.stringify(ausweise), { mode: 0o600 });
+    const vorWiderruf = klientRufe(klient.protokoll).length;
+    lauf = await alsAgent();
+    assert(lauf.status !== 0 && /weist den Ausweis ab/.test(lauf.stderr), `ein widerrufener Ausweis hält den Abgleich nicht an: ${lauf.stderr}${lauf.stdout}`);
+    assert(klientRufe(klient.protokoll).length === vorWiderruf, "nach dem Widerruf lief der Klient");
+    mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 3 && mitteilungen[2][0] === "Firmenordner nicht abgeglichen" && /weist den Ausweis ab/.test(mitteilungen[2][1]), `der Widerruf meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
+    ausweise.devices[ausweise.default].token = echt;
+    writeFileSync(join(w.ausweise, "credentials.json"), JSON.stringify(ausweise), { mode: 0o600 });
+
+    // Das Gerät startet mitten im Abgleich neu: der Klient verliert den Dienst. Das ist kein Befund
+    // und meldet sich nicht sofort, und die Zeile des Mac-Proxys steht nicht im Satz.
+    lauf = await alsAgent({ ARA_PROBE_WEG: "1" });
+    assert(lauf.status !== 0 && h.mitteilungen().length === 3, `ein Neustart mitten im Abgleich meldet sich sofort: ${JSON.stringify(h.mitteilungen())}`);
+    const weg = JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots[realpathSync(w.root)];
+    assert(weg.background.problem.kind === "unreachable" && !/PAC script/.test(JSON.stringify(weg)), `der verlorene Dienst gilt als Fehler oder trägt die Proxyzeile: ${JSON.stringify(weg.background)}`);
+    await alsAgent();
+    assert(h.mitteilungen().length === 3, `nach dem Neustart meldet sich ein Ende, das nie gemeldet war: ${JSON.stringify(h.mitteilungen())}`);
+
+    // Ein Gerät, das nicht antwortet, startet oft neu: erst nach einer Viertelstunde meldet es sich.
+    await geraet.schliessen();
+    writeFileSync(join(w.root, "buchhaltung", "waehrend-neustart.md"), "geschrieben, während das Gerät neu startet\n");
+    lauf = await alsAgent();
+    assert(lauf.status !== 0 && /antwortet nicht/.test(lauf.stderr), `ein Gerät, das nicht antwortet, wird nicht gesagt: ${lauf.stderr}`);
+    assert(h.mitteilungen().length === 3, `ein Neustart des Geräts meldet sich sofort: ${JSON.stringify(h.mitteilungen())}`);
+    assert(/offen 1, Konflikte 0/.test(await status()), `status steht nicht, wenn das Gerät nicht antwortet: ${await status()}`);
+    const stand = JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8"));
+    const eintrag = stand.roots[realpathSync(w.root)].background;
+    eintrag.since = new Date(Date.now() - 20 * 60_000).toISOString();
+    writeFileSync(join(w.ausweise, "firmenordner.json"), JSON.stringify(stand));
+    await alsAgent();
+    mitteilungen = h.mitteilungen();
+    assert(mitteilungen.length === 4 && /antwortet nicht/.test(mitteilungen[3][1]), `ein Gerät, das länger nicht antwortet, meldet sich nicht: ${JSON.stringify(mitteilungen)}`);
+
+    lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
+    assert(lauf.status === 0 && /zurückgenommen/.test(lauf.stdout), `sync --uninstall: ${lauf.stdout}${lauf.stderr}`);
+    assert(!agent() && h.rufe().some((r) => r[0] === "bootout"), "der Agent liegt nach --uninstall noch da");
+    assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "der Zugang liegt nach --uninstall noch im Schlüsselbund");
+    // Das Gerät ist hier aus: das Token lässt sich nicht widerrufen, und das wird gesagt, mit seinem Ende.
+    assert(/ließ sich am Dateidienst gerade nicht widerrufen: es endet am 2027-09-27/.test(lauf.stdout), `--uninstall sagt nicht, dass das App-Token bleibt: ${lauf.stdout}`);
+    assert(/nicht im Hintergrund/.test(await status()), `status sagt nach --uninstall noch Hintergrund: ${await status()}`);
+    lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
+    assert(lauf.status === 0 && /war kein Abgleich im Hintergrund eingerichtet/.test(lauf.stdout), `ein zweites --uninstall sagt nicht, dass nichts da war: ${lauf.stdout}`);
+    return "falsches Passwort nicht abgelegt, Agent geladen, Lauf ohne Terminal aus dem Schlüsselbund, Konflikt einmal gemeldet, Sperre, Widerruf hält an, Neustart still, --uninstall räumt";
+  } finally {
+    await geraet.schliessen().catch(() => {});
+    spawnSync("/usr/bin/security", ["delete-keychain", h.schluesselbund]);
+  }
+});
+
+await checkAsync("Die Brücke nimmt für einen Ordner, der wie der Mensch heißt, dessen Projektraum und nicht den persönlichen", async () => {
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-namensgleich-");
+  mkdirSync(join(lager, "anna"), { recursive: true });
+  writeFileSync(join(lager, "anna", "am-geraet.md"), "liegt im Projektraum\n");
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([{ kennung: "anna", name: "Anna", ebene: 1, eltern: null, pfad: "anna", recht: "schreiben" }]), lager });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0 && /Runter:\s+1 Datei/.test(lauf.stdout) && !/keinen Raum/.test(lauf.stdout), `der Plan sieht in den leeren persönlichen Raum (gemessen am 27.09.2026): ${lauf.stdout}${lauf.stderr}`);
+    return "zwei Räume eines Namens, der Plan liest den Projektraum";
   } finally {
     await geraet.schliessen();
   }

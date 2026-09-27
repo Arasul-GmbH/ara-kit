@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.48.0 (2026-09-27)
+
+Contract: up to 6
+
+- **`arasul.mjs sync --install` syncs the company folder in the background on a Mac.** It checks the password against the file service once, has it issue an app token for this computer for a year and puts only the token into the keychain (`Arasul Firmenordner`, one entry per root, through the input of `security` and never as an argument, in no file); the password is stored nowhere. It hands launchd an agent that runs `sync --background` at once and every five minutes, `--every <minutes>` another interval. launchd starts it again at every login. `sync --uninstall` takes agent and token back and revokes the token.
+- **A conflict or an error comes as a notification of macOS**, once when it comes about and once when it is over. A device that does not answer is said only after a quarter of an hour: a restart takes minutes. The same holds when the client loses the service in the middle of a sync, measured with a restart of the device during an upload of 60 MB, which arrived equal byte for byte afterwards. `--install` sends a notification at once and says where macOS allows it: at the Mac measured the Script Editor could not notify.
+- **A folder named like a person is read out of its project space**, not out of the person's own space of the same name, which the service lists first.
+- **The credential is asked first at every run**, so revoking it in the device's front end stops the sync in the background with one sentence before the client starts. One sync per root at a time: agent and terminal share a lock.
+- **`status` starts with one line**: last synced, open here since then, conflicts, and whether it runs in the background. It comes out of this computer and stands when the device does not answer.
+
 ## 0.47.0 (2026-09-26)
 
 Contract: up to 6
