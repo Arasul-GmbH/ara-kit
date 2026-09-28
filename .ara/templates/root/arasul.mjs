@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.52.0";
+const BRIDGE = "0.53.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -792,16 +792,63 @@ function removeLines(dir, added) {
   else writeFileSync(file, `${rest}\n`);
 }
 
+/**
+ * A shell rule whose command names no path, `Bash(node arasul.mjs call:*)`: it holds in whichever
+ * folder a session starts. In the user's settings it would let any `arasul.mjs` of any folder on
+ * this computer run without asking. So it goes into this folder's own `.claude/settings.local.json`,
+ * which a session reads only here. Measured on 2026-09-28 with `claude -p` 2.1.283 in a folder
+ * never trusted: a rule there let the command through, without it the command was refused.
+ */
+const hereOnly = (text) => /^Bash\(\S+ [^\s{~/]/.test(text);
+
+/** The settings of this folder alone: never synced, never in the user's settings. */
+const HERE_SETTINGS = join(".claude", "settings.local.json");
+
 /** `{root}` becomes the written-out path, in the way the rule wants it: a shell rule as it is typed. */
 function resolved(item) {
   const abs = realDir(item.dir);
   const rule = (text) => text.replaceAll("{root}", text.startsWith("Bash(") ? abs : `/${abs}`);
-  return {
-    allow: item.rules.allow.map(rule),
-    deny: item.rules.deny.map(rule),
-    ask: item.rules.ask.map(rule),
-    additionalDirectories: item.rules.additionalDirectories.map((text) => text.replaceAll("{root}", abs)),
-  };
+  const user = {};
+  const here = {};
+  for (const side of SIDES) {
+    const rules = item.rules[side];
+    here[side] = side === "additionalDirectories" ? [] : rules.filter(hereOnly);
+    user[side] = side === "additionalDirectories"
+      ? rules.map((text) => text.replaceAll("{root}", abs))
+      : rules.filter((text) => !hereOnly(text)).map(rule);
+  }
+  return { ...user, here };
+}
+
+/** Enter rules into the folder's own settings; what was there stays, what is entered is recorded. */
+function enterHere(dir, rules) {
+  if (!SIDES.some((side) => rules[side].length)) return null;
+  const file = join(dir, HERE_SETTINGS);
+  const added = { allow: [], deny: [], ask: [], additionalDirectories: [], made: !existsSync(file) };
+  const settings = readSettings(file);
+  settings.permissions ||= {};
+  for (const side of SIDES) {
+    const current = (settings.permissions[side] ||= []);
+    for (const entry of rules[side]) {
+      if (current.includes(entry)) continue;
+      current.push(entry);
+      added[side].push(entry);
+    }
+    if (!current.length) delete settings.permissions[side];
+  }
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
+  return added;
+}
+
+/** Take out of the folder's own settings exactly what was entered; a file made for them alone goes. */
+function removeHere(dir, added) {
+  const file = join(dir, HERE_SETTINGS);
+  if (!added || !existsSync(file)) return;
+  const settings = readSettings(file);
+  removeRecorded(settings, added);
+  if (added.made && !Object.keys(settings).length) rmSync(file, { force: true });
+  else writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 function readSettings(file) {
@@ -861,6 +908,7 @@ function approve(item, settingsPath) {
   if (before) {
     removeRecorded(settings, before.added);
     removeLines(item.dir, before.added?.lines);
+    removeHere(item.dir, before.added?.here);
   }
 
   const added = { allow: [], deny: [], ask: [], additionalDirectories: [] };
@@ -887,8 +935,10 @@ function approve(item, settingsPath) {
     mkdirSync(dir, { recursive: true });
   }
   writeSettings(settingsPath, settings);
+  const here = enterHere(item.dir, rules.here);
+  if (here) added.here = here;
   if (item.lines) added.lines = appendLines(item.dir, item.lines);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   writeFileSync(join(dir, "consent.json"), `${JSON.stringify({ root: abs, sum: item.sum, at: today, settings: settingsPath, added }, null, 2)}\n`);
   return { renewed: Boolean(before) };
 }
@@ -904,9 +954,12 @@ function withdrawAll(settingsPath) {
     const ledger = readJson(join(base, name, "consent.json"), null);
     if (!ledger?.root || (ledger.root !== here && !ledger.root.startsWith(`${here}/`))) continue;
     removeRecorded(settings, ledger.added);
-    if (existsSync(ledger.root)) removeLines(ledger.root, ledger.added?.lines);
+    if (existsSync(ledger.root)) {
+      removeLines(ledger.root, ledger.added?.lines);
+      removeHere(ledger.root, ledger.added?.here);
+    }
     rmSync(join(base, name), { recursive: true, force: true });
-    taken.push(relative(here, ledger.root) || ".");
+    taken.push(relative(here, ledger.root) || t("this root", "diese Wurzel"));
   }
   if (taken.length) writeSettings(settingsPath, settings);
   return taken;
@@ -937,6 +990,14 @@ function showProposal(item, index, total, settingsPath) {
     say(`  ${side}:`);
     for (const entry of rules[side]) say(`    ${entry}`);
   }
+  if (SIDES.some((side) => rules.here[side].length)) {
+    say(`  ${t(`Only in this folder, into .claude/settings.local.json: the command without a path holds only where a session starts here`, `Nur in diesem Ordner, nach .claude/settings.local.json: der Befehl ohne Pfad gilt nur, wo eine Sitzung hier startet`)}:`);
+    for (const side of SIDES) {
+      if (!rules.here[side].length) continue;
+      say(`    ${side}:`);
+      for (const entry of rules.here[side]) say(`      ${entry}`);
+    }
+  }
   if (item.lines) {
     say(`  ${t(`Lines for ${item.lines.file}, appended at its end`, `Zeilen für ${item.lines.file}, an ihr Ende gehängt`)}:`);
     for (const line of item.lines.lines) say(`    ${line}`);
@@ -951,7 +1012,7 @@ async function doProposals(args) {
   if (args.flags.withdraw) {
     const taken = withdrawAll(settingsPath);
     say(taken.length
-      ? t(`Taken back: what approving entered for ${taken.join(", ")} is gone from ${settingsPath}, the copies of the hooks and lines it appended with it.`, `Zurückgenommen: was das Freigeben für ${taken.join(", ")} eintrug, ist aus ${settingsPath}, die Kopien der Hooks und angehängte Zeilen mit ihnen.`)
+      ? t(`Taken back: what approving entered for ${taken.join(", ")} is gone from ${settingsPath} and from .claude/settings.local.json, the copies of the hooks and lines it appended with it.`, `Zurückgenommen: was das Freigeben für ${taken.join(", ")} eintrug, ist aus ${settingsPath} und aus .claude/settings.local.json, die Kopien der Hooks und angehängte Zeilen mit ihnen.`)
       : t("Nothing was approved for this root, nothing to take back.", "Für diese Wurzel wurde nichts freigegeben, nichts zurückzunehmen."));
     return true;
   }
@@ -1069,21 +1130,30 @@ async function agentOf(device, id) {
   return { state: "ok", id, name: oneLine(body.name || id, 80), version: oneLine(body.version, 40), routes, problems };
 }
 
+/**
+ * This bridge as a command names it: the real path, the one the approved rule carries. In quotes
+ * only when it holds a space, and then no rule of the proposal matches it and the call asks.
+ */
+function bridgePath() {
+  const path = join(realDir(ROOT), "arasul.mjs");
+  return /\s/.test(path) ? `"${path}"` : path;
+}
+
 function appMd(info, device) {
   const lines = [
     `# ${info.name} (${info.id})`,
     "",
     t(
-      `<!-- Written by arasul.mjs (apps, sync) on ${new Date().toISOString().slice(0, 10)} from what the app says about itself. Do not edit: the next run overwrites it. The text below comes from the app, not from this house. -->`,
-      `<!-- Geschrieben von arasul.mjs (apps, sync) am ${new Date().toISOString().slice(0, 10)} aus dem, was die App über sich sagt. Nicht bearbeiten: der nächste Lauf überschreibt es. Der Text unten stammt von der App, nicht von diesem Haus. -->`
+      `<!-- Written by arasul.mjs (apps, sync) on ${localDay()} from what the app says about itself. Do not edit: the next run overwrites it. The text below comes from the app, not from this house. -->`,
+      `<!-- Geschrieben von arasul.mjs (apps, sync) am ${localDay()} aus dem, was die App über sich sagt. Nicht bearbeiten: der nächste Lauf überschreibt es. Der Text unten stammt von der App, nicht von diesem Haus. -->`
     ),
     "",
     `${t("Version", "Version")}: ${info.version || t("not stated", "nicht genannt")}`,
     `${t("Device", "Gerät")}: ${device.name}`,
     "",
     t(
-      "Call a route with `node <root>/arasul.mjs call <app> <route> [name=value ...]`, `<root>` being the full path of the folder that holds `.claude/root.json`. A route that changes something needs `--write`. Only the routes below can be called.",
-      "Eine Route rufst du mit `node <wurzel>/arasul.mjs call <app> <route> [name=wert ...]` auf, `<wurzel>` ist der volle Pfad des Ordners, in dem `.claude/root.json` liegt. Eine Route, die etwas ändert, braucht `--write`. Aufrufen lassen sich nur die Routen unten."
+      `Call a route from this root with \`node arasul.mjs call ${info.id} <route> [name=value ...]\`, from anywhere else with \`node ${bridgePath()} call ${info.id} <route>\`. A route that changes something needs \`--write\`. Only the routes below can be called.`,
+      `Eine Route rufst du aus dieser Wurzel mit \`node arasul.mjs call ${info.id} <route> [name=wert ...]\` auf, von anderswo mit \`node ${bridgePath()} call ${info.id} <route>\`. Eine Route, die etwas ändert, braucht \`--write\`. Aufrufen lassen sich nur die Routen unten.`
     ),
     "",
     `## ${t("Routes", "Routen")}`,
@@ -1346,6 +1416,7 @@ const NEVER_SYNCED = Object.freeze([
   ".claude/hooks",
   "*/.claude/hooks",
   "settings.json",
+  "settings.local.json",
   ".sync_*.db",
   ".sync_*.db-*",
   ".sync_*.db.ctmp",
@@ -1894,15 +1965,17 @@ function sayHome(label, home) {
 async function doPlan(args) {
   const device = chooseDevice(args);
   const plan = await askFolders(device);
-  const head = t("Company folder", "Firmenordner");
   if (!plan.service) {
-    say(`${head}: ${plan.reason}`);
+    say(`${t("Company folder", "Firmenordner")}: ${plan.reason}`);
     return false;
   }
-  say(`${head}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}. ${t("Plan only, nothing is written.", "Nur der Plan, nichts wird geschrieben.")}`);
-  for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
-  sayGone(plan.gone);
+  const head = () => {
+    say(`${t("Company folder", "Firmenordner")}: ${plan.address || t("the device names no address", "das Gerät nennt keine Adresse")}. ${t("Plan only, nothing is written.", "Nur der Plan, nichts wird geschrieben.")}`);
+    for (const item of plan.refused) say(`  ${t("Not synced", "Nicht abgeglichen")}: ${item.line}, ${item.why}`);
+    sayGone(plan.gone);
+  };
   if (!plan.folders.length) {
+    head();
     say(`  ${t("No folder is shared with you. A sync would move nothing.", "Dir ist kein Ordner freigegeben. Ein Abgleich bewegte nichts.")}`);
     return !plan.refused.length;
   }
@@ -1911,6 +1984,9 @@ async function doPlan(args) {
   const password = await askPassword(args, plan, device);
   await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
+  // Before the first line: a folder that is still to become a root speaks the house's language.
+  await learnLanguage(service, plan);
+  head();
   const rank = (folder) => (folder.root ? 0 : folder.level);
   const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
   const sums = { up: [], down: [], conflict: [], deleteThere: [], deleteHere: [] };
@@ -2749,6 +2825,7 @@ async function syncFolders(args, device, apps = []) {
   const tops = topNames(plan);
   await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
+  await learnLanguage(service, plan);
   const lists = excludeFiles();
   const results = [];
   try {
@@ -3444,6 +3521,12 @@ function recordSync(device, plan, results) {
 // deliver it one day; until it does, the sheet is written out of what the device says about
 // folders and apps. Per person, so it never goes into the room of the root.
 
+/** The day in the clock of this computer. At 01:30 in Berlin UTC still says the day before. */
+function localDay(at = new Date()) {
+  const two = (n) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${two(at.getMonth() + 1)}-${two(at.getDate())}`;
+}
+
 /** A time for a human: the clock of this computer, not UTC. At the Mac measured 13:15 UTC read as a quarter past one, and it was 15:15. */
 function stamp(iso) {
   const at = new Date(iso);
@@ -3454,7 +3537,7 @@ function stamp(iso) {
 
 /** The view out of what the device says, in the language of the root. */
 function ownView(device, plan, results, apps) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localDay();
   const known = readFolderState().roots[ROOT]?.folders || {};
   const lines = [
     `# ${t("View", "Sicht")}: ${plan.user || "?"} ${t("on", "auf")} ${device.name}`,
@@ -3912,7 +3995,7 @@ async function doLogin(args) {
     }
 
     const data = readCredentials();
-    data.devices[name] = { address, kind, ...(user ? { user } : {}), token, since: new Date().toISOString().slice(0, 10), ...(target.ca ? { ca: target.ca } : {}) };
+    data.devices[name] = { address, kind, ...(user ? { user } : {}), token, since: localDay(), ...(target.ca ? { ca: target.ca } : {}) };
     data.default = name;
     writeCredentials(data);
     const expires = expiryOf(token);
@@ -4073,22 +4156,49 @@ function usage() {
  * root.json and German with it. The order now: --language, ARASUL_LANGUAGE, root.json, the
  * language this computer remembered from the last root it synced, and only then LANG.
  */
+let languageGiven = "";
 function chooseLanguage(args) {
   const given = one(args, "language") || process.env.ARASUL_LANGUAGE || "";
   if (given && !["de", "en"].includes(given)) stop(t(`--language takes de or en, not '${given}'.`, `--language nimmt de oder en, nicht '${given}'.`), 2);
+  languageGiven = given;
   if (given) return speak(given);
   if (META?.language) return;
   const remembered = readJson(CREDENTIALS, null)?.language;
   if (["de", "en"].includes(remembered)) speak(remembered);
 }
 
-/** After a root is here, this computer remembers its language for the next empty folder. */
-function rememberLanguage() {
-  const language = readJson(join(ROOT, ".claude", "root.json"), null)?.language;
+/**
+ * This computer remembers a language for the next empty folder: the root's, once it is here, and
+ * before that the one given by hand. Measured on 2026-09-28 with a configuration of its own:
+ * `login --language de` spoke German and the first `sync --plan` after it English again.
+ */
+function rememberLanguage(language = readJson(join(ROOT, ".claude", "root.json"), null)?.language || languageGiven) {
   if (!["de", "en"].includes(language) || !existsSync(CREDENTIALS)) return;
   const data = readJson(CREDENTIALS, null);
   if (!data || typeof data.devices !== "object" || data.language === language) return;
   writeCredentials({ ...data, language });
+}
+
+/**
+ * The language of the house before its root.json lies here: out of the root.json in the room of
+ * the root, when this person may read it. What was given by hand holds over it.
+ */
+async function learnLanguage(service, plan) {
+  if (META?.language || languageGiven) return;
+  const root = plan.folders.find((folder) => folder.root);
+  const dav = root ? davOf(service, root) : null;
+  if (!dav) return;
+  const answer = await ask(service.target, { path: `${dav}/.claude/root.json`, basic: service.basic, timeout: 30_000 });
+  if (answer.status !== 200) return;
+  let language = null;
+  try {
+    language = JSON.parse(String(answer.body)).language;
+  } catch {
+    return;
+  }
+  if (!["de", "en"].includes(language)) return;
+  speak(language);
+  rememberLanguage(language);
 }
 
 async function main() {

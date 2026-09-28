@@ -374,6 +374,48 @@ function sayLevelOne(folders) {
 }
 
 /**
+ * What in .claude would go into the root besides its rules and skills: scripts and runtime files,
+ * each with a proposal. A runtime file belongs to this computer, and its lines for the .gitignore
+ * stand ready. A script is the house's tool; whoever should not read it, the .gitignore keeps it
+ * home or an area takes it.
+ */
+function sayClaude(claude) {
+  if (!claude.scripts.length && !claude.runtime.length) return;
+  const some = (list) => {
+    for (const rel of list.slice(0, 25)) console.log(`    ${rel}`);
+    if (list.length > 25) console.log(t(`    and ${list.length - 25} more`, `    und ${list.length - 25} weitere`));
+  };
+  console.log("");
+  console.log(t(
+    "Inside .claude these would go into the root at the first sync as well, and so to every account of the device:",
+    "In .claude gingen auch diese beim ersten Abgleich in die Wurzel, und damit an jedes Konto am Gerät:"
+  ));
+  if (claude.scripts.length) {
+    console.log(t(`  Scripts (${claude.scripts.length}):`, `  Skripte (${claude.scripts.length}):`));
+    some(claude.scripts);
+    console.log(t(
+      "  Proposal: a script that holds addresses, access or what not everybody should know stays home with a line in the .gitignore, for example /" + claude.scripts[0] + ", or moves into a folder of level 1 that becomes an area on the device. A script everybody may read stays as it is.",
+      "  Vorschlag: ein Skript, das Adressen, Zugänge oder etwas hält, das nicht alle wissen sollen, bleibt mit einer Zeile in der .gitignore zu Hause, etwa /" + claude.scripts[0] + ", oder zieht in einen Ordner der Ebene 1, der am Gerät ein Bereich wird. Ein Skript, das alle lesen dürfen, bleibt, wie es ist."
+    ));
+  }
+  if (claude.runtime.length) {
+    console.log(t(`  Runtime files (${claude.runtime.length}), written by what runs on this computer:`, `  Laufzeitdateien (${claude.runtime.length}), geschrieben von dem, was auf diesem Rechner läuft:`));
+    some(claude.runtime);
+    console.log(t(
+      "  Proposal: they belong to this computer and change at every run. These lines in the .gitignore keep them home:",
+      "  Vorschlag: sie gehören zu diesem Rechner und ändern sich bei jedem Lauf. Diese Zeilen in der .gitignore halten sie zu Hause:"
+    ));
+    for (const rel of claude.runtime) console.log(`    /${rel}`);
+  }
+  if (claude.rest) {
+    console.log(t(
+      `  Besides these, ${claude.rest} files of rules, skills and agents go along: that is what the root is for.`,
+      `  Außerdem gehen ${claude.rest} Dateien mit Regeln, Skills und Agenten mit: dafür ist die Wurzel da.`
+    ));
+  }
+}
+
+/**
  * Take a grown folder over as a root. It writes four files and nothing else, and says what it
  * found: the clones it entered as places, the ones it could not, the source trees and the files
  * with secrets, each with what happens to it at a sync and what the house could do.
@@ -457,6 +499,7 @@ function doAdopt() {
     if (found.secrets.length > 10) console.log(t(`  and ${found.secrets.length - 10} more`, `  und ${found.secrets.length - 10} weitere`));
   }
   if (found.folders.length) sayLevelOne(found.folders);
+  sayClaude(found.claude);
   const own = [".claude/CLAUDE.md", ".claude/settings.json", ".claude/skills", ".claude/hooks", ".gitignore", ".git"].filter((entry) => existsSync(join(root, entry)));
   if (own.length) {
     console.log("");
@@ -470,10 +513,11 @@ function doAdopt() {
     "     login shows the proposal of this root: apps and the reading form of call without asking, and two lines on sicht.md and APP.md for the house's CLAUDE.md. Approve it there with its checksum.",
     "     login zeigt den Vorschlag dieser Wurzel: apps und die lesende Form von call ohne Rückfrage, und zwei Zeilen zu sicht.md und APP.md für die CLAUDE.md des Hauses. Gib ihn dort mit seiner Prüfsumme frei."
   ));
-  if (found.folders.some((folder) => folder.kind)) {
-    console.log(t("  2. Before the first sync: the folders above that not everybody should read, as areas on the device", "  2. Vor dem ersten Abgleich: die Ordner oben, die nicht alle lesen sollen, als Bereich am Gerät anlegen"));
+  const before = found.folders.some((folder) => folder.kind) || found.claude.scripts.length || found.claude.runtime.length;
+  if (before) {
+    console.log(t("  2. Before the first sync: what not everybody should read, as an area on the device or as a line in the .gitignore, see above", "  2. Vor dem ersten Abgleich: was nicht alle lesen sollen, als Bereich am Gerät oder als Zeile in der .gitignore, siehe oben"));
   }
-  const step = found.folders.some((folder) => folder.kind) ? 3 : 2;
+  const step = before ? 3 : 2;
   console.log(t(`  ${step}. Look before anything moves: node arasul.mjs sync --plan`, `  ${step}. Ansehen, bevor sich etwas bewegt: node arasul.mjs sync --plan`));
   console.log(t(`  ${step + 1}. Then sync: node arasul.mjs sync`, `  ${step + 1}. Dann abgleichen: node arasul.mjs sync`));
   process.exit(0);

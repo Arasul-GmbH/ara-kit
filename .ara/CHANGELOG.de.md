@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.53.0 (2026-09-28)
+
+Kontrakt: bis 6
+
+- **Claude Code ruft die Brücke aus einer übernommenen Wurzel ohne Rückfrage.** Der Vorschlag von `root.mjs --adopt` erlaubt `apps` und die lesende Form von `call` in beiden Formen, mit ausgeschriebenem Pfad und als `node arasul.mjs` in der Wurzel, und hält `--write` in beiden zurück. Die zwei Zeilen für die `CLAUDE.md` des Hauses tragen diesen echten Befehl statt des Platzhalters `<wurzel>`. Die Form ohne Pfad geht in die eigene `.claude/settings.local.json` der Wurzel und nie in die Einstellungen des Nutzers, wo sie in jedem Ordner gälte; `login --withdraw` nimmt sie wieder heraus, und ein Abgleich nimmt `settings.local.json` nie mit. Eine vorher freigegebene Wurzel braucht die Freigabe neu: ihr Vorschlag hat sich geändert.
+- **`root.mjs --adopt` nennt die Skripte und Laufzeitdateien in `.claude/`**, die in die Wurzel und damit an jedes Konto gingen, etwa `mail.py` und `state.json`, je mit Vorschlag: die Zeilen für die `.gitignore` für das, was läuft, die `.gitignore` oder ein Bereich für ein Skript.
+- **Ein Ordner ohne `root.json` spricht beim ersten Plan die Sprache des Hauses.** `sync --plan` und `sync` lesen zuerst die `root.json` im Raum der Wurzel, und `login --language` bleibt für den nächsten Befehl gemerkt.
+- **`APP.md`, `sicht.md` und die Freigabe tragen das Datum in der Uhr dieses Rechners**, nicht in UTC. `APP.md` nennt den echten Befehl, aus der Wurzel und mit vollem Pfad. `login --withdraw` sagt „für diese Wurzel“ statt „für .“.
+
 ## 0.52.0 (2026-09-28)
 
 Kontrakt: bis 6

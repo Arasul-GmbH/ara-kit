@@ -9142,6 +9142,14 @@ await checkAsync("Die Brücke listet Apps mit Routen, schreibt APP.md nur für z
     const text = readFileSync(md, "utf8");
     assert(/### POST antraege/.test(text) && /Ändert etwas: ja, braucht --write/.test(text) && /`von` \(string, Pflicht\)/.test(text), `APP.md trägt die Route nicht: ${text}`);
     assert(!/admin/.test(text), "die hinauszeigende Route steht in APP.md");
+    // Der echte Befehl, in beiden Formen, die der Vorschlag erlaubt, und kein Platzhalter.
+    // Das Datum in der Uhr dieses Rechners: gemessen am 28.09.2026 um 01:30 in Berlin trug APP.md den Vortag in UTC.
+    for (const zone of ["Pacific/Kiritimati", "Pacific/Pago_Pago"]) {
+      await bruecke(w, ["apps"], { env: { TZ: zone } });
+      const tag = new Intl.DateTimeFormat("en-CA", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      assert(readFileSync(md, "utf8").includes(`Geschrieben von arasul.mjs (apps, sync) am ${tag} `), `APP.md trägt in ${zone} nicht den Tag ${tag}: ${readFileSync(md, "utf8").split("\n")[2]}`);
+    }
+    assert(text.includes("`node arasul.mjs call urlaub <route>") && text.includes(`\`node ${realpathSync(w.root)}/arasul.mjs call urlaub <route>\``) && !/<wurzel>|<root>/.test(text), `APP.md nennt nicht den echten Befehl: ${text}`);
     for (const keine of ["nur-test", "stumm", "boese"]) assert(!existsSync(join(w.root, "apps", keine)), `für ${keine} liegt ein Ordner da`);
     assert(!existsSync(join(w.root, "boese")) && !existsSync(join(w.root, "..", "boese")), "eine ungültige Kennung hat außerhalb von apps/ geschrieben");
     assert(readdirSync(join(w.root, "apps")).join() === "urlaub", `apps/ trägt mehr als die zugewiesene App: ${readdirSync(join(w.root, "apps"))}`);
@@ -9900,6 +9908,42 @@ await checkAsync("Ein leerer Ordner mit der Brücke allein wird mit sync eine Wu
   }
 });
 
+await checkAsync("Ein Ordner ohne root.json spricht beim ersten Plan die Sprache des Hauses, und login --language bleibt gemerkt", async () => {
+  // Gemessen am 28.09.2026: der erste Plan eines Mitarbeiters in einer leeren Wurzel war englisch,
+  // obwohl das Haus deutsch spricht und login --language de bekommen hatte.
+  const lager = wegwerfordner("ara-lager-");
+  const quelle = wurzel(["--name", "Probehaus", "--language", "de"]);
+  assert(quelle.run.status === 0, `root.mjs endet mit ${quelle.run.status}: ${quelle.run.stderr || quelle.run.stdout}`);
+  cpSync(quelle.root, join(lager, "firma"), { recursive: true });
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_WURZEL]), lager });
+  const leer = (name) => {
+    const root = join(wegwerfordner(`ara-${name}-`), "haus");
+    mkdirSync(root);
+    cpSync(join(ROOT_TEMPLATE, "arasul.mjs"), join(root, "arasul.mjs"));
+    const eigen = wegwerfordner("ara-bruecke-");
+    return { root, ausweise: join(eigen, "ausweis"), env: { ARASUL_CONFIG_DIR: join(eigen, "ausweis"), CLAUDE_CONFIG_DIR: join(eigen, "claude"), LANG: "en_US.UTF-8", ARASUL_LANGUAGE: "" } };
+  };
+  try {
+    // Nichts gesagt, nichts gemerkt: die Sprache kommt aus der root.json im Raum.
+    const w = leer("sprache-raum");
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0 && /Logged in|Device/.test(lauf.stdout), `Anmeldung ohne Sprache: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0 && /^Firmenordner: .*Nur der Plan, nichts wird geschrieben\./m.test(lauf.stdout) && !/Plan only|Company folder/.test(lauf.stdout), `der erste Plan spricht nicht die Sprache des Hauses: ${lauf.stdout}${lauf.stderr}`);
+    assert(JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8")).language === "de" && !existsSync(join(w.root, ".claude")), "der Rechner hat sich die Sprache nicht gemerkt, oder der Plan hat geschrieben");
+
+    // login --language de in einem leeren Ordner: der nächste Befehl spricht deutsch, ohne dass es noch einmal gesagt wird.
+    const v = leer("sprache-login");
+    lauf = await bruecke(v, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--language", "de", "--credential-name", "zweiter"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung mit --language de: ${lauf.stderr}`);
+    lauf = await bruecke(v, ["status"]);
+    assert(/^Gerät: /m.test(lauf.stdout) && !/^Device: /m.test(lauf.stdout), `nach login --language de spricht status englisch: ${lauf.stdout}`);
+    return "Plan deutsch aus der root.json im Raum und gemerkt, login --language de gilt für den nächsten Befehl";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
 await checkAsync("root.mjs --deploy legt die Wurzel in die Wurzel des Geräts: Prüfskript zuerst, Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, nichts Rechnereigenes, gegengeprüft", async () => {
   const w = brueckeWurzel();
   const klient = attrappenKlient();
@@ -10049,10 +10093,18 @@ function gewachsenerOrdner() {
 check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt vier Dateien, überschreibt nichts und nennt die Ordner, die jedes Konto läse", () => {
   const haus = gewachsenerOrdner();
   // Gemessen am 27.09.2026: ein zweites Konto las kunden/ und company/core.md einer übernommenen Wurzel.
-  for (const [pfad, text] of [["kunden/mueller/akte.md", "Akte\n"], ["company/core.md", "Kern\n"], ["Alte Sachen/x.md", "alt\n"]]) {
+  // Gemessen am 28.09.2026: jedes Konto las .claude/scripts/mail.py, .claude/app/serve.py und state.json.
+  const inClaude = [
+    ["kunden/mueller/akte.md", "Akte\n"], ["company/core.md", "Kern\n"], ["Alte Sachen/x.md", "alt\n"],
+    [".claude/scripts/mail.py", "print('mail')\n"], [".claude/app/serve.py", "print('serve')\n"], [".claude/state.json", "{}\n"],
+    [".claude/app/zugriffe.log", "ausgelassen\n"], [".claude/app/de.haus.steuerpult.plist", "<plist/>\n"], [".claude/state/lauf.json", "{}\n"],
+    [".claude/hooks/grenze.py", "print('hook')\n"], [".claude/settings.json", "{}\n"], [".claude/settings.local.json", "{}\n"], [".claude/agents/pruefer.md", "Agent\n"],
+  ];
+  for (const [pfad, text] of inClaude) {
     mkdirSync(dirname(join(haus, pfad)), { recursive: true });
     writeFileSync(join(haus, pfad), text);
   }
+  writeFileSync(join(haus, ".gitignore"), `${readFileSync(join(haus, ".gitignore"), "utf8")}.claude/app/zugriffe.log\n`);
   const vorher = inhalte(haus);
   const lauf = tool("root.mjs", ["--adopt", haus, "--language", "de"], "");
   assert(lauf.status === 0, `--adopt endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
@@ -10068,12 +10120,27 @@ check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt vier Datei
   assert(/^  notizen\/$/m.test(ebene1) && /^  Alte Sachen\/  sein Name ist keine Kennung des Geräts/m.test(ebene1), `die übrigen Ordner der Ebene 1 fehlen oder der Name ohne Kennung wird nicht gesagt: ${ebene1}`);
   assert(!/^  (produkt|offen|\.claude)\//m.test(ebene1), `ein Klon, ein ausgelassener Ordner oder .claude steht unter Ebene 1: ${ebene1}`);
   assert(/Vorschlag: bevor du zum ersten Mal abgleichst, lege jeden Ordner, den nicht alle lesen sollen, am Gerät als Bereich an, mit dem Namen des Ordners als Kennung \(kunden, company\).*Einstellungen, Firmenordner, Ordner anlegen, Art Bereich/.test(ebene1), `der Vorschlag mit dem Weg zum Bereich fehlt: ${ebene1}`);
-  assert(/2\. Vor dem ersten Abgleich: die Ordner oben, die nicht alle lesen sollen, als Bereich am Gerät anlegen/.test(lauf.stdout), `die nächsten Schritte nennen den Bereich nicht vor dem Abgleich: ${lauf.stdout}`);
+  assert(/2\. Vor dem ersten Abgleich: was nicht alle lesen sollen, als Bereich am Gerät oder als Zeile in der \.gitignore/.test(lauf.stdout), `die nächsten Schritte nennen den Bereich nicht vor dem Abgleich: ${lauf.stdout}`);
+
+  // Was aus .claude an jedes Konto ginge: Skripte und Laufzeitdateien, je mit Vorschlag. Was die
+  // .gitignore auslässt und was nie mitgeht, Hooks und Einstellungen, steht nicht da.
+  const claude = lauf.stdout.split("In .claude gingen auch diese beim ersten Abgleich in die Wurzel")[1] || "";
+  const skripte = claude.split("Laufzeitdateien")[0];
+  const laufzeit = claude.split("Laufzeitdateien")[1] || "";
+  assert(/Skripte \(2\):\n    \.claude\/app\/serve\.py\n    \.claude\/scripts\/mail\.py\n/.test(skripte) && /Vorschlag: .*\.gitignore.*Bereich/.test(skripte), `--adopt nennt die Skripte in .claude nicht mit Vorschlag: ${lauf.stdout}`);
+  assert(/\(3\).*\n    \.claude\/app\/de\.haus\.steuerpult\.plist\n    \.claude\/state\/\n    \.claude\/state\.json\n/.test(laufzeit) && /Diese Zeilen in der \.gitignore halten sie zu Hause:\n    \/\.claude\/app\/de\.haus\.steuerpult\.plist\n    \/\.claude\/state\/\n    \/\.claude\/state\.json\n/.test(laufzeit), `--adopt nennt die Laufzeitdateien in .claude nicht mit ihren Zeilen: ${lauf.stdout}`);
+  assert(!/zugriffe\.log|grenze\.py|settings(\.local)?\.json|proposal\.json|root\.json|places\.json/.test(claude.split("Außerdem")[0]), `--adopt nennt, was ohnehin zu Hause bleibt oder dem Kit gehört: ${claude}`);
+  assert(/Außerdem gehen 3 Dateien mit Regeln, Skills und Agenten mit/.test(claude), `der Rest in .claude wird nicht gezählt: ${claude}`);
 
   // Der Vorschlag: apps und die lesende Form von call ohne Rückfrage, --write fragt, zwei Zeilen, kein Hook.
   const vorschlag = JSON.parse(nachher[".claude/proposal/proposal.json"]);
-  assert(!vorschlag.hook && vorschlag.permissions.allow.includes("Bash(node {root}/arasul.mjs apps:*)") && vorschlag.permissions.allow.includes("Bash(node {root}/arasul.mjs call:*)") && vorschlag.permissions.ask.includes("Bash(node {root}/arasul.mjs call*--write*)"), `der Vorschlag der übernommenen Wurzel stimmt nicht: ${JSON.stringify(vorschlag)}`);
+  // Beide Formen: mit ausgeschriebenem Pfad und so, wie der Befehl in der Wurzel getippt wird.
+  const beide = (regel) => [regel.replace("node arasul", "node {root}/arasul"), regel];
+  for (const regel of ["Bash(node arasul.mjs apps:*)", "Bash(node arasul.mjs call:*)"]) assert(beide(regel).every((r) => vorschlag.permissions.allow.includes(r)), `der Vorschlag erlaubt ${regel} nicht in beiden Formen: ${JSON.stringify(vorschlag.permissions)}`);
+  assert(!vorschlag.hook && beide("Bash(node arasul.mjs call*--write*)").every((r) => vorschlag.permissions.ask.includes(r)), `der Vorschlag der übernommenen Wurzel stimmt nicht: ${JSON.stringify(vorschlag)}`);
   assert(vorschlag.lines.file === ".claude/CLAUDE.md" && vorschlag.lines.lines.length === 2 && /sicht\.md/.test(vorschlag.lines.lines[0]) && /apps\/<id>\/APP\.md/.test(vorschlag.lines.lines[1]), `die zwei Zeilen zu sicht.md und APP.md fehlen: ${JSON.stringify(vorschlag.lines)}`);
+  // Gemessen am 28.09.2026: mit dem Platzhalter <wurzel> versuchte claude -p zuerst die Form ohne Pfad und wurde abgewiesen.
+  assert(vorschlag.lines.lines[1].includes("`node arasul.mjs call <app> <route>`") && vorschlag.lines.lines[0].includes("`node arasul.mjs sync`") && !/<wurzel>|<root>|\{root\}/.test(vorschlag.lines.lines.join("")), `die Zeilen tragen einen Platzhalter statt des Befehls: ${JSON.stringify(vorschlag.lines)}`);
   const anmelden = tool("root.mjs", ["--path", haus, "--enroll"], "");
   assert(anmelden.status === 0 && /mit der Brücke freigegeben: .*node arasul\.mjs login/.test(anmelden.stdout), `--enroll verweist bei einem Vorschlag ohne Hook nicht auf die Brücke: ${anmelden.stdout}${anmelden.stderr}`);
 
@@ -10123,6 +10190,10 @@ check("Nach --adopt zeigt login einen Vorschlag für apps und call ohne --write,
   assert(lauf.status === 0 && /Freigegeben: diese Wurzel/.test(lauf.stdout), `die Freigabe ging nicht: ${lauf.stdout}${lauf.stderr}`);
   const settings = JSON.parse(readFileSync(join(eigen, "claude", "settings.json"), "utf8"));
   assert(settings.permissions.allow.includes(`Bash(node ${echt}/arasul.mjs call:*)`) && settings.permissions.ask.includes(`Bash(node ${echt}/arasul.mjs call*--write*)`) && !settings.hooks, `die Einstellungen tragen die Regeln nicht oder einen Hook: ${JSON.stringify(settings)}`);
+  // Die Form ohne Pfad gälte in den Einstellungen des Nutzers in jedem Ordner; sie steht nur in denen der Wurzel.
+  assert(!JSON.stringify(settings).includes("Bash(node arasul.mjs"), `die Form ohne Pfad steht in den Einstellungen des Nutzers: ${JSON.stringify(settings)}`);
+  const hier = JSON.parse(readFileSync(join(haus, ".claude", "settings.local.json"), "utf8"));
+  assert(JSON.stringify(hier) === JSON.stringify({ permissions: { allow: ["Bash(node arasul.mjs apps:*)", "Bash(node arasul.mjs call:*)"], ask: ["Bash(node arasul.mjs call*--write*)"] } }), `settings.local.json der Wurzel trägt nicht die Form ohne Pfad: ${JSON.stringify(hier)}`);
   const mit = readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8");
   assert(mit.startsWith(regeln) && /\n\n- `sicht\.md` oben in dieser Wurzel.*\n- Was eine App kann, steht in `apps\/<id>\/APP\.md`.*\n$/.test(mit.slice(regeln.length - 1)), `die zwei Zeilen stehen nicht am Ende der CLAUDE.md: ${mit}`);
   lauf = bruecke("status");
@@ -10135,7 +10206,14 @@ check("Nach --adopt zeigt login einen Vorschlag für apps und call ohne --write,
   assert(lauf.status === 0 && readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8") === regeln, `--withdraw nimmt die Zeilen nicht zurück: ${readFileSync(join(haus, ".claude", "CLAUDE.md"), "utf8")}`);
   const danach = JSON.parse(readFileSync(join(eigen, "claude", "settings.json"), "utf8"));
   assert(!danach.permissions, `--withdraw lässt Regeln liegen: ${JSON.stringify(danach)}`);
-  return "Vorschlag ohne Hook in login, Regeln für apps und call, --write fragt, zwei Zeilen angehängt und zurückgenommen";
+  assert(!existsSync(join(haus, ".claude", "settings.local.json")) && /für diese Wurzel/.test(lauf.stdout), `--withdraw lässt settings.local.json liegen oder sagt „für .“: ${lauf.stdout}`);
+
+  // Eine settings.local.json des Hauses bleibt: nur das Eingetragene geht wieder.
+  writeFileSync(join(haus, ".claude", "settings.local.json"), '{"permissions":{"allow":["Bash(ls:*)"]}}\n');
+  bruecke("login", "--approve", summe.slice(0, 16));
+  bruecke("login", "--withdraw");
+  assert(JSON.parse(readFileSync(join(haus, ".claude", "settings.local.json"), "utf8")).permissions.allow.join() === "Bash(ls:*)", "--withdraw hat die eigene settings.local.json des Hauses verändert");
+  return "Vorschlag ohne Hook in login, Regeln für apps und call in beiden Formen, die ohne Pfad nur in der Wurzel, --write fragt, zwei Zeilen angehängt und zurückgenommen";
 });
 
 await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und schreibt nichts, .env, .gitignore und Bauordner bleiben zu Hause, der Papierkorb hält, was der Klient löscht", async () => {
