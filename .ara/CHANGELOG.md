@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.54.0 (2026-09-28)
+
+Contract: up to 6
+
+- **`sync --plan` warns before a folder goes over the size limit of its area.** It reads per folder how much still fits out of the device's list (`platz`: used, limit and free), adds up per room what would go up, an area and its project together, and where that is more, asks the device (`passt`) and says its answer in one line at the folder, with the way in the device's interface where an administrator raises the limit. `sync` stops that folder with the same sentence before its client runs and syncs the others. A device without these numbers is asked nothing, and the plan says nothing about a limit.
+- **A rule with the full path holds through a link too.** Approving a proposal, with `root.mjs --enroll` or `arasul.mjs login --approve`, writes every rule with `{root}` in each spelling of the root: the real path and the one typed through a link above it, `/tmp/house` next to `/private/tmp/house`.
+- **The skill `arasul` of a new root carries no placeholder `<root>` any more.** It calls the bridge at the top of the root as `node arasul.mjs`, and the proposal of a new root allows that form as an adopted root's does: approving writes it into the root's own `settings.local.json` in `.claude/`, which the root's `.gitignore` keeps out and its check script lets through when it holds nothing but those rules. A root enrolled before needs the consent anew: its proposal has changed.
+
 ## 0.53.0 (2026-09-28)
 
 Contract: up to 6
