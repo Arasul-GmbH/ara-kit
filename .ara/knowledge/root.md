@@ -449,7 +449,10 @@ broke off with `write EPIPE`, and the other folders were not synced. So a reques
 take twice (`GET`, `PUT`, `DELETE`, `PROPFIND`, `MKCOL`) is sent once more on a fresh connection
 after `EPIPE`, `ECONNRESET` or a socket hang up, and a request that changes something otherwise
 (`POST`, `MOVE`) always takes a fresh one. Should a folder fail anyway, its reason is written
-down for it and the next one is synced; `status` names it under "not through".
+down for it and the next one is synced; `status` names it under "not through". Measured on
+2026-09-28 at the same device with the bridge of 0.52.0: a client run of ten minutes in the
+foreground and one of twelve minutes from the launchd agent, 500 MB up each, both went through,
+and `status` showed every folder synced.
 
 **A withdrawn or thrown away folder never goes into the root.** A folder of level 1 or 2 lies in
 the tree at its place, and the root's sync leaves its name out as long as the device names it.

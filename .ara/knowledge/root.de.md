@@ -466,7 +466,9 @@ wurden nicht abgeglichen. Darum geht eine Anfrage, die das Gerät zweimal nehmen
 `DELETE`, `PROPFIND`, `MKCOL`), nach `EPIPE`, `ECONNRESET` oder einem socket hang up noch einmal
 über eine frische Verbindung, und eine, die sonst etwas ändert (`POST`, `MOVE`), nimmt immer eine
 frische. Scheitert ein Ordner trotzdem, steht sein Grund bei ihm, und der nächste wird abgeglichen;
-`status` nennt ihn unter „nicht durch“.
+`status` nennt ihn unter „nicht durch“. Gemessen am 28.09.2026 am selben Gerät mit der Brücke
+von 0.52.0: ein Klientenlauf von zehn Minuten im Vordergrund und einer von zwölf Minuten aus dem
+launchd-Agenten, je 500 MB hoch, beide gingen durch, und `status` zeigte jeden Ordner abgeglichen.
 
 **Ein entzogener oder weggeworfener Ordner geht nie in die Wurzel.** Ein Ordner der Ebene 1 oder 2
 liegt im Baum an seiner Stelle, und der Abgleich der Wurzel lässt seinen Namen aus, solange das
