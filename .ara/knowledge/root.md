@@ -163,7 +163,7 @@ What it finds, it says, and it writes nothing of that:
   A name that is no id of the device is said with it.
 - **Inside `.claude/`, the scripts and the runtime files** that a sync would take along are named
   one by one, because every account reads them too: measured on 2026-09-28, every account read
-  `.claude/scripts/mail.py`, `.claude/app/serve.py` and `.claude/state.json` of an adopted root.
+  `scripts/mail.py`, `app/serve.py` and `state.json` in the `.claude/` of an adopted root.
   A runtime file is what a running program writes, a log, a state, a lock, a database, an agent
   of launchd; it belongs to this computer, and the tool prints the lines for the `.gitignore`
   that keep it home. A script is the house's tool: one that holds addresses, access or what not
@@ -186,7 +186,7 @@ of the house, so it names no path of one. Measured on 2026-09-28 with `claude -p
 the placeholder `<wurzel>` in the line, the agent tried `node arasul.mjs call` first, twice, and
 was refused each time. A rule without a path would hold in every folder of this computer if it
 stood in the user's settings, and any `arasul.mjs` anywhere would run without asking. So
-approving writes it into the root's own `.claude/settings.local.json`, which a session reads only
+approving writes it into the root's own `settings.local.json` in `.claude/`, which a session reads only
 there, even in a folder never trusted (measured the same day), and `--withdraw` takes exactly
 that out again; a file approving made for it alone goes with it. A sync never takes
 `settings.local.json` along.

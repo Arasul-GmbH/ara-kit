@@ -167,7 +167,7 @@ Was es findet, sagt es, und davon schreibt es nichts:
   und die Wurzel lässt ihn aus. Ein Name, der keine Kennung des Geräts ist, wird dazu gesagt.
 - **In `.claude/` werden die Skripte und die Laufzeitdateien** einzeln genannt, die ein Abgleich
   mitnähme, weil auch sie jedes Konto liest: gemessen am 28.09.2026 las jedes Konto
-  `.claude/scripts/mail.py`, `.claude/app/serve.py` und `.claude/state.json` einer übernommenen
+  `scripts/mail.py`, `app/serve.py` und `state.json` in `.claude/` einer übernommenen
   Wurzel. Eine Laufzeitdatei ist, was ein laufendes Programm schreibt, ein Protokoll, ein Stand,
   eine Sperre, eine Datenbank, ein Agent von launchd; sie gehört zu diesem Rechner, und das
   Werkzeug druckt die Zeilen für die `.gitignore`, die sie zu Hause halten. Ein Skript ist ein
@@ -193,7 +193,7 @@ geht an jeden Rechner des Hauses, also nennt sie keinen Pfad eines Rechners. Gem
 Agent zuerst `node arasul.mjs call`, zweimal, und wurde jedes Mal abgewiesen. Eine Regel ohne
 Pfad gälte in den Einstellungen des Nutzers in jedem Ordner dieses Rechners, und jede
 `arasul.mjs` irgendwo liefe ohne Rückfrage. Darum schreibt das Freigeben sie in die eigene
-`.claude/settings.local.json` der Wurzel, die eine Sitzung nur dort liest, auch in einem Ordner,
+`settings.local.json` der Wurzel in `.claude/`, die eine Sitzung nur dort liest, auch in einem Ordner,
 dem nie vertraut wurde (am selben Tag gemessen), und `--withdraw` nimmt genau das wieder heraus;
 eine Datei, die das Freigeben nur dafür angelegt hat, geht mit. Ein Abgleich nimmt
 `settings.local.json` nie mit.
