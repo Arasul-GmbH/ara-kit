@@ -581,11 +581,28 @@ function tree() {
 // consent. Scripts are not touched by this: they are allowed everywhere.
 function c14() {
   for (const file of tree().settings) {
+    if (enrolledHere(file)) continue;
     report(14, rel(file), t(
       "a settings file in the tree. Nothing here may be active by itself. Put what it says into .claude/proposal/proposal.json and enrol it, or delete it.",
       "eine Einstellungsdatei im Baum. Nichts hier darf von selbst wirken. Trag, was sie sagt, in .claude/proposal/proposal.json ein und melde es an, oder lösche sie."
     ));
   }
+}
+
+/**
+ * The one settings file that may lie here: `.claude/settings.local.json` at the top of the root,
+ * holding nothing but the rules without a path that the proposal names. Approving the proposal
+ * writes it there because such a rule would hold in every folder in the user's settings; it stays
+ * on this computer and is never synced.
+ */
+function enrolledHere(file) {
+  if (file !== join(ROOT, ".claude", "settings.local.json")) return false;
+  const settings = readJson(file, null);
+  const proposal = readJson(join(ROOT, ".claude", "proposal", "proposal.json"), {});
+  const named = new Set(["allow", "deny", "ask"].flatMap((side) => (proposal.permissions?.[side] || []).filter((rule) => !rule.includes("{root}"))));
+  if (!settings || typeof settings !== "object" || Object.keys(settings).some((key) => key !== "permissions")) return false;
+  const permissions = settings.permissions || {};
+  return Object.entries(permissions).every(([side, rules]) => ["allow", "deny", "ask"].includes(side) && Array.isArray(rules) && rules.every((rule) => named.has(rule)));
 }
 
 // --- 15 Confidential things by pattern in the root and in level 1 ---------------------------
