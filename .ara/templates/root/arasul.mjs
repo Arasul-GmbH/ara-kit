@@ -186,8 +186,8 @@ import {
   utimesSync,
   writeFileSync,
 } from "node:fs";
-import { request as httpRequest } from "node:http";
-import { request as httpsRequest } from "node:https";
+import { Agent as HttpAgent, request as httpRequest } from "node:http";
+import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
 import { homedir, hostname, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createInterface } from "node:readline";
@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.51.0";
+const BRIDGE = "0.52.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -504,7 +504,31 @@ const TLS_CODES = new Set([
   "CERT_HAS_EXPIRED",
 ]);
 
-function send({ address, ca }, { method = "GET", path, token, basic, json, body, headers: more = {}, timeout = 30_000, limit = MAX_ANSWER }) {
+/**
+ * A request the device may take twice without harm. Only these go out on a kept connection: after
+ * a long client run the proxy in front of the file service has closed it (idle 180 s at Traefik,
+ * measured on 2026-09-28 as write EPIPE after five minutes), and the first write then fails before
+ * the device read anything. Such a request is sent once more on a fresh connection. MKCOL counts:
+ * a folder that is there already answers 405, and that is taken as made.
+ */
+const REPEATABLE = new Set(["GET", "HEAD", "OPTIONS", "PUT", "DELETE", "PROPFIND", "MKCOL"]);
+/** What a connection the other side closed while it lay idle looks like here. */
+const DROPPED = (error) => ["EPIPE", "ECONNRESET"].includes(error?.code) || /socket hang up/i.test(error?.message || "");
+/** A connection of its own for one request: never a kept one that may be dead already. */
+const FRESH = { http: new HttpAgent({ keepAlive: false }), https: new HttpsAgent({ keepAlive: false }) };
+
+async function send(target, options) {
+  const method = (options.method || "GET").toUpperCase();
+  if (!REPEATABLE.has(method)) return sendOnce(target, options, true);
+  try {
+    return await sendOnce(target, options, false);
+  } catch (error) {
+    if (!DROPPED(error)) throw error;
+    return sendOnce(target, options, true);
+  }
+}
+
+function sendOnce({ address, ca }, { method = "GET", path, token, basic, json, body, headers: more = {}, timeout = 30_000, limit = MAX_ANSWER }, fresh) {
   const url = new URL(path, address.endsWith("/") ? address : `${address}/`);
   const secure = url.protocol === "https:";
   const headers = { Accept: "application/json", ...more };
@@ -521,6 +545,7 @@ function send({ address, ca }, { method = "GET", path, token, basic, json, body,
     headers["Content-Length"] = payload.length;
   }
   const options = { method, headers };
+  if (fresh) options.agent = secure ? FRESH.https : FRESH.http;
   // A certificate that was accepted at login is the trust anchor for this device and for nothing
   // else. The name is not compared then: the device is reached by an address, its own certificate
   // rarely carries it.
@@ -2728,38 +2753,44 @@ async function syncFolders(args, device, apps = []) {
   const results = [];
   try {
     for (const folder of order) {
-      const local = placeOf(folder);
-      mkdirSync(local, { recursive: true });
-      const excludes = excludesFor(plan, folder, local);
-      const rules = service ? await rootRules(service, folder, local, excludes) : { stop: [], bridge: null, foreign: [] };
-      if (rules.stop.length && !args.flags["keep-mine"]) {
-        results.push({ ...folder, ok: false, message: ruleStop(rules.stop), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
-        continue;
+      // One folder that fails, a file service that stops answering in the middle for instance, is
+      // written down for this folder and named by status. The others are synced all the same.
+      try {
+        const local = placeOf(folder);
+        mkdirSync(local, { recursive: true });
+        const excludes = excludesFor(plan, folder, local);
+        const rules = service ? await rootRules(service, folder, local, excludes) : { stop: [], bridge: null, foreign: [] };
+        if (rules.stop.length && !args.flags["keep-mine"]) {
+          results.push({ ...folder, ok: false, message: ruleStop(rules.stop), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
+          continue;
+        }
+        if (rules.bridge) await settleBridge(service, local, rules.bridge);
+        if (args.flags["keep-mine"] && rules.foreign.length) sayMoved(await moveForeign(service, folder, rules.foreign, rules.there.files));
+        const bootstrap = folder.root ? bootstrapBridge(rules.bridge?.way === "up") : null;
+        const guard = guardDeletions(local, excludes);
+        const run = runClient({ client, plan, folder, local, excludes: lists.write(excludes), password });
+        if (bootstrap) bootstrap.settle();
+        const trash = guard.settle();
+        if (run.status === 0) {
+          const dav = service ? davOf(service, folder) : null;
+          const there = dav ? (await remoteTree(service, dav, excludes)).files : null;
+          writeBase(local, localTree(local, excludes, { weighHome: false }).files, there);
+        }
+        const seen = inspectFolder(local, folder.root ? tops : new Set(), excludes);
+        results.push({
+          ...folder,
+          ok: run.status === 0,
+          message: run.status === 0 ? null : clientFailed(run),
+          unreachable: run.status !== 0 && clientLostDevice(run),
+          conflicts: seen.conflicts,
+          links: seen.links,
+          trashed: trash.gone,
+          trash: trash.where,
+          at: new Date().toISOString(),
+        });
+      } catch (error) {
+        results.push({ ...folder, ok: false, message: oneLine(error.message, 400), unreachable: Boolean(error.unreachable), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
       }
-      if (rules.bridge) await settleBridge(service, local, rules.bridge);
-      if (args.flags["keep-mine"] && rules.foreign.length) sayMoved(await moveForeign(service, folder, rules.foreign, rules.there.files));
-      const bootstrap = folder.root ? bootstrapBridge(rules.bridge?.way === "up") : null;
-      const guard = guardDeletions(local, excludes);
-      const run = runClient({ client, plan, folder, local, excludes: lists.write(excludes), password });
-      if (bootstrap) bootstrap.settle();
-      const trash = guard.settle();
-      if (run.status === 0) {
-        const dav = service ? davOf(service, folder) : null;
-        const there = dav ? (await remoteTree(service, dav, excludes)).files : null;
-        writeBase(local, localTree(local, excludes, { weighHome: false }).files, there);
-      }
-      const seen = inspectFolder(local, folder.root ? tops : new Set(), excludes);
-      results.push({
-        ...folder,
-        ok: run.status === 0,
-        message: run.status === 0 ? null : clientFailed(run),
-        unreachable: run.status !== 0 && clientLostDevice(run),
-        conflicts: seen.conflicts,
-        links: seen.links,
-        trashed: trash.gone,
-        trash: trash.where,
-        at: new Date().toISOString(),
-      });
     }
   } finally {
     lists.remove();

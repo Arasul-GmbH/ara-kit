@@ -441,6 +441,19 @@ costs no space. What still lies at its place afterwards loses that name again, w
 took away keeps it, and `sync` says how many and where. Where the computer cannot link into that
 folder, the trash lies in the root as `.arasul-papierkorb/`, which is never synced.
 
+**A long sync goes through, and one folder that fails stops no other.** The first sync of a grown
+folder, or a person with many areas, runs for minutes in the client. Meanwhile the proxy in front of
+the file service closes the connection the bridge kept open, after 180 seconds of idle, without
+saying so beforehand. Measured on 2026-09-28: the next request after a client run of five minutes
+broke off with `write EPIPE`, and the other folders were not synced. So a request the device may
+take twice (`GET`, `PUT`, `DELETE`, `PROPFIND`, `MKCOL`) is sent once more on a fresh connection
+after `EPIPE`, `ECONNRESET` or a socket hang up, and a request that changes something otherwise
+(`POST`, `MOVE`) always takes a fresh one. Should a folder fail anyway, its reason is written
+down for it and the next one is synced; `status` names it under "not through". Measured on
+2026-09-28 at the same device with the bridge of 0.52.0: a client run of ten minutes in the
+foreground and one of twelve minutes from the launchd agent, 500 MB up each, both went through,
+and `status` showed every folder synced.
+
 **A withdrawn or thrown away folder never goes into the root.** A folder of level 1 or 2 lies in
 the tree at its place, and the root's sync leaves its name out as long as the device names it.
 Once it is thrown away in the front end or withdrawn from a person, the device names it no more.

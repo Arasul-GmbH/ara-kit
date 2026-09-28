@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.52.0 (2026-09-28)
+
+Contract: up to 6
+
+- **A sync whose client runs for minutes ends green.** The proxy in front of the file service closes an idle connection after 180 seconds, and the bridge broke off at the next request with `write EPIPE`. A request the device may take twice is now sent once more on a fresh connection after `EPIPE`, `ECONNRESET` or a socket hang up; `POST` and `MOVE` always take a fresh one.
+- **One folder that fails stops no other.** Its reason is written down for it, the next folder is synced, and `status` names it under "not through".
+
 ## 0.51.0 (2026-09-28)
 
 Contract: up to 6
