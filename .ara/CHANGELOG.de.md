@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.52.0 (2026-09-28)
+
+Kontrakt: bis 6
+
+- **Ein Abgleich, dessen Klient Minuten läuft, endet grün.** Der Proxy vor dem Dateidienst schließt eine ruhende Verbindung nach 180 Sekunden, und die Brücke brach bei der nächsten Anfrage mit `write EPIPE` ab. Eine Anfrage, die das Gerät zweimal nehmen darf, geht jetzt nach `EPIPE`, `ECONNRESET` oder einem socket hang up noch einmal über eine frische Verbindung; `POST` und `MOVE` nehmen immer eine frische.
+- **Ein Ordner, der scheitert, hält keinen anderen an.** Sein Grund steht bei ihm, der nächste Ordner wird abgeglichen, und `status` nennt ihn unter „nicht durch“.
+
 ## 0.51.0 (2026-09-28)
 
 Kontrakt: bis 6

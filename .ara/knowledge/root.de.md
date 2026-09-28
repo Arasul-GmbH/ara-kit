@@ -457,6 +457,17 @@ verliert den Namen wieder, was der Klient weggenommen hat, behält ihn, und `syn
 und wo. Kann der Rechner nicht in diesen Ordner verlinken, liegt der Papierkorb in der Wurzel als
 `.arasul-papierkorb/`, der nie abgeglichen wird.
 
+**Ein langer Abgleich geht durch, und ein Ordner, der scheitert, hält keinen anderen an.** Der
+erste Abgleich eines gewachsenen Ordners oder ein Mensch mit vielen Bereichen läuft Minuten im
+Klienten. Währenddessen schließt der Proxy vor dem Dateidienst die Verbindung, die die Brücke offen
+hielt, nach 180 Sekunden Leerlauf, ohne es vorher zu sagen. Gemessen am 28.09.2026: die nächste
+Anfrage nach einem Klientenlauf von fünf Minuten brach mit `write EPIPE` ab, und die übrigen Ordner
+wurden nicht abgeglichen. Darum geht eine Anfrage, die das Gerät zweimal nehmen darf (`GET`, `PUT`,
+`DELETE`, `PROPFIND`, `MKCOL`), nach `EPIPE`, `ECONNRESET` oder einem socket hang up noch einmal
+über eine frische Verbindung, und eine, die sonst etwas ändert (`POST`, `MOVE`), nimmt immer eine
+frische. Scheitert ein Ordner trotzdem, steht sein Grund bei ihm, und der nächste wird abgeglichen;
+`status` nennt ihn unter „nicht durch“.
+
 **Ein entzogener oder weggeworfener Ordner geht nie in die Wurzel.** Ein Ordner der Ebene 1 oder 2
 liegt im Baum an seiner Stelle, und der Abgleich der Wurzel lässt seinen Namen aus, solange das
 Gerät ihn nennt. Ist er in der Oberfläche weggeworfen oder einem Menschen entzogen, nennt das Gerät

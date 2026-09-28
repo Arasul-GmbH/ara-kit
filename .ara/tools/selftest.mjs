@@ -8870,6 +8870,11 @@ function dateidienst(lager, basis, anfrage, antwort, pfad, roh = Buffer.alloc(0)
     return antwort.end();
   }
   if (anfrage.method === "PROPFIND" && treffer) {
+    // Ein Raum, dessen Liste der Dienst nicht liefert: so scheitert ein Ordner mitten im Abgleich.
+    if (existsSync(join(lager, decodeURIComponent(treffer[1]), ".kaputt"))) {
+      antwort.writeHead(500);
+      return antwort.end();
+    }
     const rel = decodeURIComponent(treffer[2] || "/").replace(/^\/+|\/+$/g, "");
     const dir = join(lager, decodeURIComponent(treffer[1]), rel);
     if (!existsSync(dir)) {
@@ -8888,7 +8893,7 @@ function dateidienst(lager, basis, anfrage, antwort, pfad, roh = Buffer.alloc(0)
   return antwort.end();
 }
 
-async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null, lager = null } = {}) {
+async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null, lager = null, leerlauf = 0 } = {}) {
   const gesehen = [];
   let basis = "";
   const handler = (anfrage, antwort) => {
@@ -9000,6 +9005,17 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
   // der Wurzel. Ohne eigenes Lager ist er leer, und die Adresse ist die dieses Geräts.
   if (firmenordner && !lager) lager = wegwerfordner("ara-lager-leer-");
   const server = tls ? createHttpsServer(tls, handler) : createServer(handler);
+  // Wie Traefik vor dem Dateidienst: eine Verbindung, die so lange ruht, wird geschlossen, ohne dass
+  // die Antwort es vorher ankündigt. Mit keepAliveTimeout sagte Node es im Kopf Keep-Alive an, und
+  // der Klient hätte die Verbindung von sich aus verworfen.
+  if (leerlauf) {
+    server.keepAliveTimeout = 0;
+    server.on("request", (anfrage, antwort) => {
+      const verbindung = anfrage.socket;
+      clearTimeout(verbindung.ruhe);
+      antwort.on("finish", () => (verbindung.ruhe = setTimeout(() => verbindung.destroy(), leerlauf)));
+    });
+  }
   await new Promise((bereit) => server.listen(tls?.port || 0, "127.0.0.1", bereit));
   const adresse = `${tls ? "https" : "http"}://127.0.0.1:${server.address().port}`;
   basis = adresse;
@@ -9207,6 +9223,8 @@ appendFileSync(process.env.ARA_PROBE_PROTOKOLL, JSON.stringify({ argv, liste, to
 const ziel = argv[2];
 mkdirSync(ziel, { recursive: true });
 writeFileSync(join(ziel, "vom-dienst.txt"), "aus dem Firmenordner\\n");
+// Ein langer Lauf, wie der erste Abgleich eines gewachsenen Ordners: so lange ruht die Verbindung.
+if (process.env.ARA_PROBE_SCHLAF) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(process.env.ARA_PROBE_SCHLAF));
 if (process.env.ARA_PROBE_FEHLER && argv[1] === process.env.ARA_PROBE_FEHLER) {
   process.stderr.write("Der Dienst antwortet nicht\\n");
   process.exit(3);
@@ -9392,6 +9410,41 @@ await checkAsync("Die Brücke gleicht den Firmenordner an die echte Stelle im Ba
     assert(lauf.status !== 0 && /--password-stdin/.test(lauf.stderr), `ohne Terminal wird nicht erklärt, woher das Passwort kommt: ${lauf.stderr}`);
     assert(klientRufe(klient.protokoll).length === vorFehler, "ohne Klient oder ohne Passwort wurde abgeglichen");
     return "Ebene 1 als Raum, Ebene 2 über Shares mit --remote-folder, Kette lokal angelegt, Liste und Schalter geprüft, Passwort nur in der Umgebung, Konflikt und Symlink gemeldet";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Ein langer Klientenlauf endet grün, obwohl der Dienst die ruhende Verbindung geschlossen hat, und ein gescheiterter Ordner hält die anderen nicht an", async () => {
+  // Gemessen am 28.09.2026: Traefik schließt eine Verbindung nach 180 s Leerlauf, und der Abgleich
+  // danach brach mit write EPIPE ab, ohne die übrigen Ordner. Hier ruht sie 1,5 s bei 200 ms Grenze.
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-");
+  mkdirSync(join(lager, "firma"));
+  mkdirSync(join(lager, "buchhaltung"));
+  writeFileSync(join(lager, "buchhaltung", "beleg.md"), "vom Gerät\n");
+  const klient = attrappenKlient();
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager, ARA_PROBE_SCHLAF: "1500" };
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_WURZEL, FO_ORDNER[0]]), lager, leerlauf: 200 });
+  const abgleichen = () => bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+  const stand = () => JSON.parse(readFileSync(join(w.ausweise, "firmenordner.json"), "utf8")).roots[realpathSync(w.root)].folders;
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await abgleichen();
+    assert(lauf.status === 0 && !/EPIPE|ECONNRESET|socket hang up/i.test(`${lauf.stdout}${lauf.stderr}`), `nach einer geschlossenen Verbindung endet sync nicht grün: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === 2 && stand()["."].result === "ok" && stand().buchhaltung.result === "ok", `nicht jeder Ordner ist abgeglichen: ${JSON.stringify(stand())}`);
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(/zuletzt abgeglichen/.test(lauf.stdout) && !/nicht durch/.test(lauf.stdout), `status zeigt nicht alle Ordner als abgeglichen: ${lauf.stdout}`);
+
+    // Der Dienst liefert die Liste der Wurzel nicht: die Wurzel scheitert, buchhaltung geht trotzdem durch.
+    writeFileSync(join(lager, "firma", ".kaputt"), "");
+    lauf = await abgleichen();
+    assert(lauf.status !== 0 && /Status 500/.test(lauf.stdout), `der Grund des gescheiterten Ordners fehlt: ${lauf.stdout}${lauf.stderr}`);
+    assert(klientRufe(klient.protokoll).length === 4 && stand()["."].result === "error" && stand().buchhaltung.result === "ok", `nach einem gescheiterten Ordner hört sync auf: ${JSON.stringify(stand())}`);
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(lauf.status !== 0 && /nicht durch: firma/.test(lauf.stdout), `status nennt den gescheiterten Ordner nicht: ${lauf.stdout}`);
+    return "geschlossene Verbindung nach 1,5 s Klientenlauf, eine Wiederholung, beide Ordner grün; eine Wurzel mit Status 500 hält buchhaltung nicht an, status nennt sie";
   } finally {
     await geraet.schliessen();
   }
