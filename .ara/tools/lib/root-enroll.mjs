@@ -24,7 +24,7 @@
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { today } from "./kit.mjs";
 import { t } from "./i18n.mjs";
 import { PROPOSAL } from "./root.mjs";
@@ -76,20 +76,97 @@ function ledgerDir(root, settings) {
   return join(resolve(settings, ".."), "ara-roots", `${name}-${id}`);
 }
 
-/** `{root}` wird der ausgeschriebene Pfad, in der Schreibweise, die die Regel verlangt. */
+/**
+ * Jeder ausgeschriebene Pfad, der zu dieser Wurzel fuehrt: der echte zuerst, dann der ueber einen
+ * Link darueber getippte. Claude Code misst eine Shell-Regel am Befehl, wie er getippt ist; eine
+ * Regel mit `/private/tmp/haus` greift nicht fuer `node /tmp/haus/arasul.mjs apps` (28.09.2026).
+ * Dieselbe Rechnung wie `spellings` der Bruecke, der Selbsttest haelt beide zusammen.
+ */
+export function spellings(root) {
+  const real = absolute(root);
+  const found = [real];
+  const add = (path) => {
+    try {
+      if (path && isAbsolute(path) && !found.includes(path) && realpathSync(path) === real) found.push(path);
+    } catch {
+      // Eine Schreibweise, die nirgends hinfuehrt, ist keine.
+    }
+  };
+  add(resolve(root));
+  const pwd = process.env.PWD;
+  if (pwd && isAbsolute(pwd)) {
+    try {
+      const rel = relative(realpathSync(pwd), real);
+      if (!rel.startsWith("..") && !isAbsolute(rel)) add(rel ? join(pwd, rel) : pwd);
+    } catch {
+      // Kein PWD, nach dem sich gehen liesse.
+    }
+  }
+  // macOS: /tmp, /var und /etc sind Links nach /private.
+  if (real.startsWith("/private/")) add(real.slice("/private".length));
+  return found;
+}
+
+/**
+ * Eine Shell-Regel ohne Pfad, `Bash(node arasul.mjs call:*)`, gaelte in den Einstellungen des
+ * Nutzers in jedem Ordner. Sie geht in `.claude/settings.local.json` der Wurzel, wie bei der Bruecke.
+ */
+const hereOnly = (text) => /^Bash\(\S+ [^\s{~/]/.test(text);
+const HERE_SETTINGS = join(".claude", "settings.local.json");
+
+/** `{root}` wird der ausgeschriebene Pfad, in der Schreibweise, die die Regel verlangt, in jeder Schreibweise. */
 function resolved(proposal, root) {
   // A path rule of Read or Edit takes `//` for an absolute path. A shell rule is matched against
   // the command as it is typed, so its path stands as it is: `//Users/...` never matches
   // `/Users/...`.
-  const rule = (text) => text.replaceAll("{root}", text.startsWith("Bash(") ? absolute(root) : `/${absolute(root)}`);
-  const dir = (text) => text.replaceAll("{root}", absolute(root));
+  const all = spellings(root);
+  const rule = (text) => (text.includes("{root}") ? all.map((abs) => text.replaceAll("{root}", text.startsWith("Bash(") ? abs : `/${abs}`)) : [text]);
+  const side = (list) => [...new Set((list || []).filter((text) => !hereOnly(text)).flatMap(rule))];
+  const dir = (text) => text.replaceAll("{root}", all[0]);
   const permissions = proposal.permissions || {};
   return {
-    allow: (permissions.allow || []).map(rule),
-    deny: (permissions.deny || []).map(rule),
-    ask: (permissions.ask || []).map(rule),
+    allow: side(permissions.allow),
+    deny: side(permissions.deny),
+    ask: side(permissions.ask),
     additionalDirectories: (permissions.additionalDirectories || []).map(dir),
+    here: {
+      allow: (permissions.allow || []).filter(hereOnly),
+      deny: (permissions.deny || []).filter(hereOnly),
+      ask: (permissions.ask || []).filter(hereOnly),
+      additionalDirectories: [],
+    },
   };
+}
+
+/** Traegt Regeln in die eigenen Einstellungen der Wurzel ein; was dort stand, bleibt, das Eingetragene wird vermerkt. */
+function enterHere(root, rules) {
+  if (!SIDES.some((side) => rules[side].length)) return null;
+  const file = join(root, HERE_SETTINGS);
+  const added = { allow: [], deny: [], ask: [], additionalDirectories: [], made: !existsSync(file) };
+  const settings = readSettings(file);
+  settings.permissions ||= {};
+  for (const side of SIDES) {
+    const list = (settings.permissions[side] ||= []);
+    for (const entry of rules[side]) {
+      if (list.includes(entry)) continue;
+      list.push(entry);
+      added[side].push(entry);
+    }
+    if (!list.length) delete settings.permissions[side];
+  }
+  mkdirSync(join(root, ".claude"), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
+  return added;
+}
+
+/** Nimmt aus den Einstellungen der Wurzel genau das Eingetragene; eine nur dafuer angelegte Datei geht. */
+function removeHere(root, added) {
+  const file = join(root, HERE_SETTINGS);
+  if (!added || !existsSync(file)) return;
+  const settings = readSettings(file);
+  removeRecorded(settings, added);
+  if (added.made && !Object.keys(settings).length) rmSync(file, { force: true });
+  else writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
 }
 
 /**
@@ -168,7 +245,10 @@ export function enroll(root, settingsPath, consent) {
   const ledgerFile = join(p.dir, "consent.json");
   const before = readJson(ledgerFile, null);
   // Eine neue Zustimmung ersetzt die alte ganz: erst weg, was sie eintrug.
-  if (before) removeRecorded(settings, before.added);
+  if (before) {
+    removeRecorded(settings, before.added);
+    removeHere(root, before.added?.here);
+  }
 
   const added = { allow: [], deny: [], ask: [], additionalDirectories: [], hook: { event: p.event, command: p.command } };
   settings.permissions ||= {};
@@ -187,6 +267,8 @@ export function enroll(root, settingsPath, consent) {
   mkdirSync(p.dir, { recursive: true });
   copyFileSync(join(root, HOOK_SOURCE), p.script);
   writeSettings(settingsPath, settings);
+  const here = enterHere(root, p.rules.here);
+  if (here) added.here = here;
   writeFileSync(ledgerFile, `${JSON.stringify({ root: absolute(root), sum: p.sum, at: today(), settings: settingsPath, added }, null, 2)}\n`);
   return { ...p, added, renewed: Boolean(before) };
 }
@@ -199,6 +281,7 @@ export function unenroll(root, settingsPath) {
   const settings = readSettings(settingsPath);
   removeRecorded(settings, ledger.added);
   writeSettings(settingsPath, settings);
+  removeHere(root, ledger.added?.here);
   rmSync(dir, { recursive: true, force: true });
   return ledger;
 }

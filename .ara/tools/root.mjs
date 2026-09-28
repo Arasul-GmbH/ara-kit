@@ -279,6 +279,17 @@ function doEnrol() {
       console.log(`  ${label}:`);
       listRules(proposal.rules[side]);
     }
+    const here = ["allow", "deny", "ask"].filter((side) => proposal.rules.here[side].length);
+    if (here.length) {
+      console.log(t(
+        `Only in this root, into ${join(root, ".claude", "settings.local.json")}: the command without a path holds only where a session starts there:`,
+        `Nur in dieser Wurzel, nach ${join(root, ".claude", "settings.local.json")}: der Befehl ohne Pfad gilt nur, wo eine Sitzung dort startet:`
+      ));
+      for (const side of here) {
+        console.log(`  ${side}:`);
+        listRules(proposal.rules.here[side]);
+      }
+    }
     console.log(t(
       "The hook acts only in a session that started in this root, not in a place, not anywhere else.",
       "Der Hook wirkt nur in einer Sitzung, die in dieser Wurzel gestartet ist, nicht in einem Ort, nicht anderswo."

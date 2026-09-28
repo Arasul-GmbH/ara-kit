@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.53.0";
+const BRIDGE = "0.54.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -238,6 +238,8 @@ const DEVICE = Object.freeze({
   mine: "api/apps/meine",
   logout: "api/auth/logout",
   folders: "api/firmenordner",
+  // The question before a sync, since 2026-09-28: 409 GRENZE_ERREICHT with a sentence when it does not fit.
+  fits: "api/firmenordner/passt",
   // The view of a person, as the device delivers it since 2026-09-22. A 404 here means: not yet.
   view: "api/firmenordner/sicht",
   // Administration of the company folder: a session, never a credential.
@@ -804,18 +806,50 @@ const hereOnly = (text) => /^Bash\(\S+ [^\s{~/]/.test(text);
 /** The settings of this folder alone: never synced, never in the user's settings. */
 const HERE_SETTINGS = join(".claude", "settings.local.json");
 
-/** `{root}` becomes the written-out path, in the way the rule wants it: a shell rule as it is typed. */
+/**
+ * Every written-out path that leads to this folder: the real one first, then the one typed through a
+ * link above it. Claude Code matches a shell rule against the command as it is typed, so a rule with
+ * `/private/tmp/haus` does not hold for `node /tmp/haus/arasul.mjs apps`, measured on 2026-09-28.
+ * A spelling counts only when it leads to the same folder.
+ */
+export function spellings(dir) {
+  const real = realDir(dir);
+  const found = [real];
+  const add = (path) => {
+    try {
+      if (path && isAbsolute(path) && !found.includes(path) && realpathSync(path) === real) found.push(path);
+    } catch {
+      // A spelling that leads nowhere is none.
+    }
+  };
+  add(resolve(dir));
+  // The shell's own spelling of where it stands, when this folder lies in it or below it.
+  const pwd = process.env.PWD;
+  if (pwd && isAbsolute(pwd)) {
+    try {
+      const rel = relative(realpathSync(pwd), real);
+      if (!rel.startsWith("..") && !isAbsolute(rel)) add(rel ? join(pwd, rel) : pwd);
+    } catch {
+      // No PWD to go by.
+    }
+  }
+  // macOS: /tmp, /var and /etc are links into /private.
+  if (real.startsWith("/private/")) add(real.slice("/private".length));
+  return found;
+}
+
+/** `{root}` becomes the written-out path, in the way the rule wants it: a shell rule as it is typed, in every spelling. */
 function resolved(item) {
-  const abs = realDir(item.dir);
-  const rule = (text) => text.replaceAll("{root}", text.startsWith("Bash(") ? abs : `/${abs}`);
+  const all = spellings(item.dir);
+  const rule = (text) => (text.includes("{root}") ? all.map((abs) => text.replaceAll("{root}", text.startsWith("Bash(") ? abs : `/${abs}`)) : [text]);
   const user = {};
   const here = {};
   for (const side of SIDES) {
     const rules = item.rules[side];
     here[side] = side === "additionalDirectories" ? [] : rules.filter(hereOnly);
     user[side] = side === "additionalDirectories"
-      ? rules.map((text) => text.replaceAll("{root}", abs))
-      : rules.filter((text) => !hereOnly(text)).map(rule);
+      ? rules.map((text) => text.replaceAll("{root}", all[0]))
+      : [...new Set(rules.filter((text) => !hereOnly(text)).flatMap(rule))];
   }
   return { ...user, here };
 }
@@ -1990,6 +2024,8 @@ async function doPlan(args) {
   const rank = (folder) => (folder.root ? 0 : folder.level);
   const order = [...plan.folders].sort((a, b) => rank(a) - rank(b) || a.path.localeCompare(b.path));
   const sums = { up: [], down: [], conflict: [], deleteThere: [], deleteHere: [] };
+  // First every folder compared, then the limit asked: an area and its project share one.
+  const compared = [];
   for (const folder of order) {
     const local = placeOf(folder);
     const excludes = excludesFor(plan, folder, local);
@@ -1997,7 +2033,10 @@ async function doPlan(args) {
     const dav = davOf(service, folder);
     const there = dav ? await remoteTree(service, dav, excludes) : { files: new Map(), home: new Map(), missing: true };
     const base = readBase(local);
-    const result = comparePlan(here.files, there.files, base);
+    compared.push({ folder, local, excludes, here, dav, there, base, result: comparePlan(here.files, there.files, base) });
+  }
+  const limits = await overLimit(device, plan, new Map(compared.map(({ folder, result }) => [folder.path, total(result.up)])));
+  for (const { folder, local, excludes, here, dav, there, base, result } of compared) {
     for (const key of Object.keys(sums)) sums[key].push(...result[key]);
     say();
     say(`  ${labelOf(folder)}   ${t("level", "Ebene")} ${folder.level}${folder.right ? `, ${folder.right}` : ""}`);
@@ -2009,6 +2048,7 @@ async function doPlan(args) {
     if (result.conflict.length) {
       say(`    ${t("Conflicts", "Konflikte")}:         ${fileCount(result.conflict.length)}, ${t("different on both sides, the client keeps both", "auf beiden Seiten anders, der Klient behält beide")}: ${some(result.conflict)}`);
     }
+    if (limits.has(folder.path)) say(`    ${t("sync stops here", "sync hält hier an")}: ${limits.get(folder.path)}`);
     // Only for whoever writes the root: a reader gets the device's version, and sync goes through.
     const rules = dav ? await rootRules(service, folder, local, excludes, { here, there, base, result }) : { stop: [], bridge: null, foreign: [] };
     if (rules.stop.length) say(`    ${t(`sync stops here: ${rules.stop.join(", ")} make this root and differ on both sides. Keep one version on both sides first, or sync --keep-mine.`, `sync hält hier an: ${rules.stop.join(", ")} machen diese Wurzel aus und sind auf beiden Seiten verschieden. Behalte zuerst eine Fassung auf beiden Seiten, oder sync --keep-mine.`)}`);
@@ -2448,6 +2488,7 @@ async function askFolders(device) {
       name: oneLine(raw?.name || id, 80),
       right: oneLine(String(raw?.recht ?? ""), 20),
       path: root ? "." : level === 1 ? id : `${parent}/${id}`,
+      space: spaceOf(raw?.platz),
     });
   }
   const address = oneLine(String(data.adresse ?? ""), 200);
@@ -2796,6 +2837,122 @@ function setAside(plan) {
  * device mirrors it there. It is asked for at every sync and stored nowhere, and it goes to the
  * client in the environment variable the client names, never as an argument.
  */
+/**
+ * How much still fits into a folder, out of `platz` in the device's list, since 2026-09-28: `frei`
+ * in bytes, up to the limit and never more than the disk has. A project of level 2 names `frei`
+ * only, it shares its area's limit. Null when the device names no number, an older device or a
+ * file service that does not answer: then the plan says nothing about a limit.
+ */
+function spaceOf(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const frei = Number(raw.frei);
+  if (raw.frei === null || raw.frei === undefined || !Number.isFinite(frei) || frei < 0) return null;
+  const count = (value) => (value === null || value === undefined || !Number.isFinite(Number(value)) ? null : Number(value));
+  return { free: frei, used: count(raw.belegt), limit: count(raw.grenze), by: String(raw.begrenzt_durch ?? "") };
+}
+
+/** The room whose limit a folder's bytes count against: a project of level 2 lies in its area's. */
+const roomOf = (folder) => (folder.root ? "" : folder.level === 1 ? folder.id : folder.parent);
+
+/** The path the device names a folder by, the root the empty one. */
+const pathOnDevice = (folder) => (folder.root ? "" : folder.path);
+
+/**
+ * The folders whose upload would go over what still fits, each with one sentence.
+ *
+ * `up` names per folder the bytes a sync would take up. Folders in one room add up: an area and
+ * its project share one limit. A folder that takes nothing up is never stopped, whatever its room
+ * holds. Where the numbers say it does not fit, the device is asked (`passt`), and its answer
+ * decides: a 200 means it fits after all. A device without numbers is asked nothing.
+ */
+async function overLimit(device, plan, up) {
+  const needs = new Map();
+  // A project whose area is synced too lies in the area's tree here: its bytes count there already.
+  const counted = new Set(plan.folders.filter((folder) => folder.level === 1).map((folder) => folder.id));
+  for (const folder of plan.folders) {
+    if (folder.level === 2 && counted.has(folder.parent)) continue;
+    needs.set(roomOf(folder), (needs.get(roomOf(folder)) || 0) + (up.get(folder.path) || 0));
+  }
+  const over = new Map();
+  for (const folder of plan.folders) {
+    const bytes = needs.get(roomOf(folder)) || 0;
+    if (!folder.space || !up.get(folder.path) || bytes <= folder.space.free) continue;
+    const sentence = await limitSentence(device, folder, bytes);
+    if (sentence) over.set(folder.path, sentence);
+  }
+  return over;
+}
+
+/**
+ * The sentence for a folder that would go over its limit. The device's own, as it comes, in a German
+ * root; in an English one built from its numbers, with the way in the interface out of its sentence.
+ * Null when the device says it fits.
+ */
+async function limitSentence(device, folder, bytes) {
+  let answer = null;
+  try {
+    answer = await ask(device.entry, { path: `${DEVICE.fits}?pfad=${encodeURIComponent(pathOnDevice(folder))}&bytes=${bytes}`, token: device.entry.token, timeout: 30_000 });
+  } catch {
+    // Not reached: the numbers of the list speak alone.
+  }
+  if (answer && answer.status >= 200 && answer.status < 300) return null;
+  const error = answer?.status === 409 ? jsonOf(answer)?.error : null;
+  const said = error?.code === "GRENZE_ERREICHT" ? oneLine(error.message, 400) : "";
+  if (said && german) return said;
+  const free = Number.isFinite(Number(error?.details?.frei)) ? Number(error.details.frei) : folder.space.free;
+  const disk = folder.space.by === "platte" || /Auf dem Gerät ist nicht mehr genug Platz/.test(said);
+  const way = said.match(/unter (.+?) anheben/)?.[1];
+  const name = folder.root
+    ? t("The root", "Die Wurzel")
+    : folder.level === 2
+      ? t(`The area "${folder.parent}", in which "${folder.path}" lies,`, `Der Bereich „${folder.parent}“, in dem „${folder.path}“ liegt,`)
+      : t(`"${folder.path}"`, `„${folder.path}“`);
+  if (disk) {
+    return t(
+      `There is not enough room left on the device: ${sized(free)} free, ${sized(bytes)} needed. Talk to whoever looks after the device.`,
+      `Auf dem Gerät ist nicht mehr genug Platz: frei sind noch ${sized(free)}, gebraucht werden ${sized(bytes)}. Sprich mit dem, der das Gerät betreut.`
+    );
+  }
+  return t(
+    `${name} is too full: ${sized(free)} free, ${sized(bytes)} needed. An administrator raises the limit ${way ? `in the device's interface under ${way}` : "in the device's administration of the company folder"}.`,
+    `${name} ist zu voll: frei sind noch ${sized(free)}, gebraucht werden ${sized(bytes)}. Ein Administrator hebt die Grenze ${way ? `in der Oberfläche des Geräts unter ${way}` : "in der Verwaltung des Firmenordners am Gerät"} an.`
+  );
+}
+
+/**
+ * What a sync would take up per folder, for the limit. Cheap first: when everything here fits into
+ * what is free, nothing is listed on the device. Only a room where it might not fit is compared
+ * file by file, as the plan does.
+ */
+async function upForLimit(service, plan, order) {
+  const up = new Map();
+  const rooms = new Map();
+  for (const folder of order) {
+    if (!folder.space) continue;
+    const local = placeOf(folder);
+    const here = existsSync(local) ? localTree(local, excludesFor(plan, folder, local), { weighHome: false }) : { files: new Map() };
+    const bytes = total([...here.files.values()]);
+    up.set(folder.path, bytes);
+    const room = roomOf(folder);
+    if (folder.level === 2 && order.some((other) => other.level === 1 && other.id === folder.parent)) {
+      rooms.set(room, { bytes: rooms.get(room)?.bytes || 0, free: Math.min(rooms.get(room)?.free ?? Infinity, folder.space.free), folders: [...(rooms.get(room)?.folders || []), { folder, here }] });
+      continue;
+    }
+    rooms.set(room, { bytes: (rooms.get(room)?.bytes || 0) + bytes, free: Math.min(rooms.get(room)?.free ?? Infinity, folder.space.free), folders: [...(rooms.get(room)?.folders || []), { folder, here }] });
+  }
+  for (const room of rooms.values()) {
+    if (room.bytes <= room.free) continue;
+    for (const { folder, here } of room.folders) {
+      const local = placeOf(folder);
+      const excludes = excludesFor(plan, folder, local);
+      const dav = davOf(service, folder);
+      const there = dav ? await remoteTree(service, dav, excludes) : { files: new Map() };
+      up.set(folder.path, total(comparePlan(here.files, there.files, readBase(local)).up));
+    }
+  }
+  return up;
+}
+
 async function syncFolders(args, device, apps = []) {
   const plan = await askFolders(device);
   const head = t("Company folder", "Firmenordner");
@@ -2826,10 +2983,22 @@ async function syncFolders(args, device, apps = []) {
   await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
   await learnLanguage(service, plan);
+  // A folder whose upload would go over its limit stops before its client runs, with the sentence
+  // the plan says. The others are synced.
+  let limits = new Map();
+  try {
+    limits = await overLimit(device, plan, await upForLimit(service, plan, order));
+  } catch {
+    // Without an answer about the limit the client runs as before and says it itself.
+  }
   const lists = excludeFiles();
   const results = [];
   try {
     for (const folder of order) {
+      if (limits.has(folder.path)) {
+        results.push({ ...folder, ok: false, message: limits.get(folder.path), conflicts: [], links: [], trashed: [], trash: null, at: new Date().toISOString() });
+        continue;
+      }
       // One folder that fails, a file service that stops answering in the middle for instance, is
       // written down for this folder and named by status. The others are synced all the same.
       try {

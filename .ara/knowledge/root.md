@@ -255,6 +255,16 @@ node .ara/tools/root.mjs --path <root> --unenroll
    the proposal has changed, what was consented to keeps running, and `--enroll` shows the
    new checksum. Anything the root enters into the user's settings is recorded, and
    `--unenroll` takes back exactly that and nothing else.
+5. **A rule with the full path stands in every spelling of the root**: the real path, and the
+   one typed through a link above it, `/tmp/house` next to `/private/tmp/house` on a Mac.
+   Claude Code matches a shell rule against the command as it is typed, so a rule with the
+   real path alone did not hold for a session that typed the other (found on 2026-09-28).
+   The bridge's `login --approve` does the same.
+6. **The rules of the bridge without a path**, `node arasul.mjs apps` and the reading form of
+   `call`, go into the root's own `settings.local.json` in `.claude/`, as with an adopted root. The
+   skill `arasul` calls the bridge in that form at the top of the root and names no path: the
+   root goes to every computer of the house. The check script lets exactly that file through
+   when it holds nothing but those rules, and the root's `.gitignore` keeps it out.
 
 `--settings <file>` names another settings file than the agent's own. Logging in to a
 device is not part of this: that is the CLI of the root, `arasul.mjs`, see "The bridge to
@@ -424,6 +434,21 @@ the next plan tells a new file from one that was deleted on the other side. Both
 the client sets the time of a file it moves to the other side's, but an empty file carries the
 time of its upload on the device. Names are compared composed (NFC): the client writes an
 umlaut decomposed on a Mac, the service answers it composed. Both measured on 2026-09-27.
+
+**The plan warns before a folder goes over its limit.** Every area on the device has a size
+limit, and until 2026-09-28 it was a silent one: that day a sync out of launchd broke
+off in the middle with "exceeds the quota for the folder". Since then the device names per
+folder in its list how much still fits (`platz`: used, limit and free, a project only free, it
+shares its area's limit), and answers the question before a sync, `passt`, with a sentence for
+the human. `sync --plan` adds up what would go up per room, an area and its project together,
+and where that is more than is free, it asks the device and says its answer in one line at the
+folder: `sync stops here:` and the sentence, with the way in the device's interface where the
+administrator raises the limit. In a German root the device's sentence stands as it comes; in
+an English one the tool builds it from the numbers and takes the way out of the device's
+sentence. `sync` stops that folder with the same sentence before its client runs and syncs the
+others. A device without these numbers is asked nothing, and the plan says nothing about a
+limit. Which route and which fields: the device's `FIRMENORDNER.md` and API reference, never
+from here.
 
 **The files that make the root win only when somebody says so.** Where a file differs on both
 sides, the client puts the device's version at its name and the house's next to it as a

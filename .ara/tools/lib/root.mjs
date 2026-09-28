@@ -201,14 +201,11 @@ export function proposalFor(places, { method = false, language }) {
   // The bridge: `apps` and the reading form of `call` run without asking. What changes something
   // needs `--write`, and the `ask` rule below hands exactly that form back to the human. A rule
   // of the kind `Bash(...:*)` alone would let `call ... --write` through as well.
-  const allow = [
-    "Read({root}/**)",
-    "Bash(node {root}/.claude/scripts/:*)",
-    "Bash(node {root}/arasul.mjs apps:*)",
-    "Bash(node {root}/arasul.mjs call:*)",
-  ];
+  // Both forms of the bridge, as with an adopted root: the skill calls it as `node arasul.mjs` at the
+  // top of the root, because the root goes to every computer of the house and names no path of this one.
+  const allow = ["Read({root}/**)", "Bash(node {root}/.claude/scripts/:*)", ...BRIDGE_RULES.allow];
   const deny = ["Read({root}/.env)", "Read({root}/**/.env)"];
-  const ask = ["Bash(node {root}/arasul.mjs call*--write*)"];
+  const ask = [...BRIDGE_RULES.ask];
   if (method) deny.push("Edit({root}/archive/**)");
   const additional = ["{root}"];
   for (const place of places) {

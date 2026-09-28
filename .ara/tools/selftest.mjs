@@ -8722,11 +8722,27 @@ check("Die Anmeldung schreibt nur nach Zustimmung mit Prüfsumme, und eine Ände
   assert(unserer.length === 1, `der Grenz-Hook hängt ${unserer.length} Mal davor`);
   assert(nach.permissions.deny.includes(`Edit(/${lokal}/**)`), "der Ort ist in den Einstellungen des Nutzers nicht gesperrt");
   assert(!inhalt().includes("{root}"), "ein {root} blieb in den Einstellungen stehen");
+  // Die Regel mit vollem Pfad greift in jeder Schreibweise: der Wegwerfordner liegt unter /var, und
+  // das ist unter macOS ein Link nach /private/var (Fund 28.09.2026 mit /tmp gegen /private/tmp).
+  const echtePfad = realpathSync(root);
+  for (const form of new Set([echtePfad, root])) assert(nach.permissions.allow.includes(`Bash(node ${form}/arasul.mjs apps:*)`), `die Regel für apps fehlt in der Schreibweise ${form}: ${nach.permissions.allow.join(", ")}`);
+  if (echtePfad !== root) assert(ansehen.stdout.includes(`Bash(node ${root}/arasul.mjs call:*)`), "--enroll nennt die Regel in der Schreibweise über den Link nicht");
+  // Die Form ohne Pfad gälte beim Nutzer in jedem Ordner: sie steht nur in der Wurzel.
+  assert(!inhalt().includes("Bash(node arasul.mjs"), "die Form ohne Pfad steht in den Einstellungen des Nutzers");
+  const hierDatei = join(root, ".claude", "settings.local.json");
+  assert(existsSync(hierDatei) && JSON.parse(readFileSync(hierDatei, "utf8")).permissions.allow.includes("Bash(node arasul.mjs apps:*)"), "die Form ohne Pfad steht nicht in settings.local.json der Wurzel");
   const kopie = unserer[0].command.match(/node "([^"]+)"/)[1];
   assert(existsSync(kopie), "die Kopie des Hooks neben den Einstellungen fehlt");
   assert(readFileSync(kopie, "utf8") === readFileSync(join(root, ".claude", "proposal", "boundary.mjs"), "utf8"), "die Kopie ist nicht der Hook, dem zugestimmt wurde");
   assert(!existsSync(join(root, ".claude", "settings.json")), "das Anmelden hat eine settings.json in den Baum gelegt");
   assert(inWurzel(root, "scripts/check.mjs").status === 0, "das Prüfskript hat nach dem Anmelden einen Befund");
+  // Nur die Regeln ohne Pfad aus dem Vorschlag dürfen dort stehen; eine fremde meldet das Prüfskript.
+  const eingetragen = readFileSync(hierDatei, "utf8");
+  const fremd = JSON.parse(eingetragen);
+  fremd.permissions.allow.push("Bash(rm:*)");
+  writeFileSync(hierDatei, JSON.stringify(fremd));
+  assert(inWurzel(root, "scripts/check.mjs").status !== 0, "eine fremde Regel in settings.local.json der Wurzel meldet das Prüfskript nicht");
+  writeFileSync(hierDatei, eingetragen);
   assert(/angemeldet am/.test(anmelden("--show").stdout), "--show sagt nicht, dass angemeldet ist");
 
   // Der angemeldete Hook wirkt aus jedem Ordner nur da, wo er soll.
@@ -8753,6 +8769,7 @@ check("Die Anmeldung schreibt nur nach Zustimmung mit Prüfsumme, und eine Ände
   assert(zurueck.status === 0, `--unenroll endet mit ${zurueck.status}: ${zurueck.stderr}`);
   assert(JSON.stringify(JSON.parse(inhalt())) === JSON.stringify(eigene), `nach --unenroll sind die Einstellungen nicht wie vorher:\n${inhalt()}`);
   assert(!existsSync(kopie), "die Kopie des Hooks bleibt nach --unenroll liegen");
+  assert(!existsSync(join(root, ".claude", "settings.local.json")), "settings.local.json der Wurzel bleibt nach --unenroll liegen");
   assert(/nichts zurückzunehmen/.test(anmelden("--unenroll").stdout), "--unenroll an einer nicht angemeldeten Wurzel sagt nichts");
   return "ansehen schreibt nichts, falsche Summe nichts, Änderung verlangt neu, zurück ist genau zurück";
 });
@@ -8936,6 +8953,19 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
         return firmenordner
           ? senden(200, { data: { benutzer: "anna", erreichbar: true, nicht_abgeglichen: [{ art: "symlink", text: "Ein Symlink im Baum wird nicht übertragen." }], ...firmenordner } })
           : senden(503, { error: { message: "Auf diesem Geraet laeuft kein Firmenordner." } });
+      }
+      // Die Frage vor einem Abgleich, wie das Gerät sie seit dem 28.09.2026 beantwortet: 409 mit Satz.
+      if (pfad === "/api/firmenordner/passt") {
+        const q = new URLSearchParams(frage);
+        const o = (firmenordner?.ordner || []).find((x) => x.pfad === q.get("pfad"));
+        if (!o) return senden(404, { error: { code: "NOT_FOUND", message: `Einen Ordner „${q.get("pfad")}“ gibt es für Sie nicht.` } });
+        if (!o.platz) return senden(503, { error: { code: "SERVICE_UNAVAILABLE", message: "Der Firmenordner antwortet gerade nicht." } });
+        const bytes = Number(q.get("bytes"));
+        if (o.platz.frei !== null && bytes > o.platz.frei) {
+          const wer = o.ebene === 2 ? `Der Bereich, in dem „${o.pfad}“ liegt,` : `„${o.pfad}“`;
+          return senden(409, { error: { code: "GRENZE_ERREICHT", message: `${wer} ist zu voll: frei sind noch ${o.platz.frei} B, gebraucht werden ${bytes} B. Ihr Administrator kann die Grenze unter Einstellungen → Firmenordner anheben.`, details: { pfad: o.pfad, bytes, frei: o.platz.frei, belegt: o.platz.belegt ?? null, grenze: o.platz.grenze ?? null } } });
+        }
+        return senden(200, { data: { pfad: o.pfad, bytes, passt: true, ...o.platz } });
       }
       // Die Sicht eines Menschen, wie das Geraet sie eines Tages liefert. Bis dahin 404.
       if (pfad === "/api/firmenordner/sicht") {
@@ -10190,6 +10220,8 @@ check("Nach --adopt zeigt login einen Vorschlag für apps und call ohne --write,
   assert(lauf.status === 0 && /Freigegeben: diese Wurzel/.test(lauf.stdout), `die Freigabe ging nicht: ${lauf.stdout}${lauf.stderr}`);
   const settings = JSON.parse(readFileSync(join(eigen, "claude", "settings.json"), "utf8"));
   assert(settings.permissions.allow.includes(`Bash(node ${echt}/arasul.mjs call:*)`) && settings.permissions.ask.includes(`Bash(node ${echt}/arasul.mjs call*--write*)`) && !settings.hooks, `die Einstellungen tragen die Regeln nicht oder einen Hook: ${JSON.stringify(settings)}`);
+  // Auch in der Schreibweise über den Link: /var ist unter macOS ein Link nach /private/var.
+  assert(settings.permissions.allow.includes(`Bash(node ${haus}/arasul.mjs call:*)`) && settings.permissions.ask.includes(`Bash(node ${haus}/arasul.mjs call*--write*)`), `die Regeln fehlen in der Schreibweise ${haus}: ${JSON.stringify(settings)}`);
   // Die Form ohne Pfad gälte in den Einstellungen des Nutzers in jedem Ordner; sie steht nur in denen der Wurzel.
   assert(!JSON.stringify(settings).includes("Bash(node arasul.mjs"), `die Form ohne Pfad steht in den Einstellungen des Nutzers: ${JSON.stringify(settings)}`);
   const hier = JSON.parse(readFileSync(join(haus, ".claude", "settings.local.json"), "utf8"));
@@ -10307,6 +10339,77 @@ await checkAsync("sync --plan zeigt hoch und runter mit Anzahl und Größe und s
     assert(ort && readFileSync(join(ort, "notizen", "a.md"), "utf8") === "aaaa\n", `die gelöschte Datei liegt nicht im Papierkorb: ${lauf.stdout}`);
     assert(ort.startsWith(ausweise) && dateien(ort).length === 1, `im Papierkorb liegt mehr als die gelöschte Datei oder er liegt nicht neben dem Ausweis: ${ort} ${dateien(ort ?? eigen).join(", ")}`);
     return `Plan ${hoch.length} hoch und 1 runter ohne zu schreiben, Liste mit .env, .gitignore und proto/build, Skill build geht mit, Löschung am Gerät im Plan und im Papierkorb`;
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("sync --plan warnt vor der Größengrenze eines Bereichs, sync hält nur diesen Ordner mit demselben Satz an, ein Gerät ohne Zahlen bleibt stumm", async () => {
+  // Gemessen am 28.09.2026: ein Abgleich aus launchd scheiterte mitten im Lauf mit „exceeds the quota
+  // for the folder". Seit arasul-jet J33 nennt das Gerät je Ordner belegt, Grenze und frei.
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const platz = (frei, grenze = frei) => ({ belegt: grenze - frei, grenze, frei, begrenzt_durch: "grenze", stufe: "gut", im_bereich: false });
+  const vertrieb = { kennung: "vertrieb", name: "Vertrieb", ebene: 1, eltern: null, pfad: "vertrieb", recht: "schreiben", platz: platz(1000) };
+  const akten = { kennung: "akten", name: "Akten", ebene: 1, eltern: null, pfad: "akten", recht: "schreiben", platz: platz(1_000_000) };
+  // Ein Projekt teilt die Grenze seines Bereichs und nennt nur frei.
+  const kunde = { kennung: "kunde", name: "Kunde", ebene: 2, eltern: "akten", pfad: "akten/kunde", recht: "schreiben", platz: { belegt: null, grenze: null, frei: 1_000_000, begrenzt_durch: "grenze", stufe: "gut", im_bereich: true } };
+  const plan = firmenordnerPlan([vertrieb, akten, kunde]);
+  const geraet = await brueckeGeraet({ firmenordner: plan });
+  const passwort = `${BRUECKE_PASSWORT}\n`;
+  mkdirSync(join(w.root, "vertrieb"), { recursive: true });
+  writeFileSync(join(w.root, "vertrieb", "gross.bin"), Buffer.alloc(5000, 1));
+  mkdirSync(join(w.root, "akten", "kunde"), { recursive: true });
+  writeFileSync(join(w.root, "akten", "brief.md"), "Brief\n");
+  writeFileSync(join(w.root, "akten", "kunde", "vertrag.md"), "Vertrag\n");
+  const fragen = () => geraet.gesehen.filter((ruf) => ruf.pfad === "/api/firmenordner/passt").map((ruf) => Object.fromEntries(new URLSearchParams(ruf.frage)));
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    const satz = "„vertrieb“ ist zu voll: frei sind noch 1000 B, gebraucht werden 5000 B. Ihr Administrator kann die Grenze unter Einstellungen → Firmenordner anheben.";
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `sync --plan endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    const zeilen = lauf.stdout.split("\n").filter((zeile) => zeile.includes("zu voll"));
+    assert(zeilen.length === 1 && zeilen[0].trim() === `sync hält hier an: ${satz}`, `der Plan sagt die Grenze nicht in einer Zeile mit dem Weg: ${lauf.stdout}`);
+    const abschnitt = lauf.stdout.split(/\n(?=  \S)/).find((teil) => teil.startsWith("  vertrieb   "));
+    assert(abschnitt?.includes(`sync hält hier an: ${satz}`), `die Zeile steht nicht beim Ordner vertrieb: ${lauf.stdout}`);
+    const gefragt = fragen();
+    assert(gefragt.length === 1 && gefragt[0].pfad === "vertrieb" && gefragt[0].bytes === "5000", `das Gerät wurde nicht genau einmal nach vertrieb mit 5000 Bytes gefragt: ${JSON.stringify(gefragt)}`);
+
+    // sync hält vertrieb mit demselben Satz an und gleicht akten und akten/kunde ab.
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: { ARA_PROBE_PROTOKOLL: klient.protokoll } });
+    assert(lauf.status !== 0 && lauf.stdout.includes(`vertrieb   Ebene 1, schreiben   nicht abgeglichen\n      ${satz}`), `sync hält vertrieb nicht mit demselben Satz an: ${lauf.stdout}${lauf.stderr}`);
+    const rufe = klientRufe(klient.protokoll);
+    assert(rufe.length === 2 && !rufe.some((ruf) => ruf.argv[2].endsWith("vertrieb")), `der Klient lief nicht für die zwei anderen allein: ${JSON.stringify(rufe.map((ruf) => ruf.argv[2]))}`);
+    assert(/akten   Ebene 1, schreiben   abgeglichen/.test(lauf.stdout) && /akten\/kunde   Ebene 2, schreiben   abgeglichen/.test(lauf.stdout), `die anderen Ordner wurden nicht abgeglichen: ${lauf.stdout}`);
+
+    // Area und Projekt zählen zusammen: jedes für sich passte, zusammen nicht.
+    akten.platz = platz(10);
+    kunde.platz = { ...kunde.platz, frei: 10 };
+    writeFileSync(join(w.root, "akten", "neu.md"), "neu und acht\n");
+    writeFileSync(join(w.root, "akten", "kunde", "neu.md"), "auch neu\n");
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    const beide = fragen().slice(-2);
+    const hoch = Number(lauf.stdout.match(/  akten   Ebene 1[^\n]*\n(?:    [^\n]*\n)*?    Hoch:\s+\d+ Dateien?, (\d+) B/)?.[1]);
+    // Das Projekt liegt hier im Baum seines Bereichs: seine Bytes zählen einmal, nicht zweimal.
+    assert(beide.length === 2 && beide.map((frage) => frage.pfad).join() === "akten,akten/kunde" && beide.every((frage) => Number(frage.bytes) === hoch) && /Der Bereich, in dem „akten\/kunde“ liegt, ist zu voll/.test(lauf.stdout), `Bereich und Projekt zählen nicht zusammen: ${JSON.stringify(beide)} ${lauf.stdout}`);
+
+    // Ein Gerät ohne diese Zahlen: kein Wort dazu, keine Frage.
+    for (const ordner of plan.ordner) delete ordner.platz;
+    const vorher = fragen().length;
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0 && !/zu voll|hält hier an/.test(lauf.stdout) && fragen().length === vorher, `ohne Zahlen sagt der Plan etwas zur Grenze oder fragt: ${lauf.stdout}`);
+
+    // Eine englische Wurzel: der Satz aus den Zahlen, der Weg in der Oberfläche aus dem Satz des Geräts.
+    vertrieb.platz = platz(1000);
+    const englisch = brueckeWurzel(["--name", "House", "--language", "en", "--folders", "sales"]);
+    mkdirSync(join(englisch.root, "vertrieb"), { recursive: true });
+    writeFileSync(join(englisch.root, "vertrieb", "gross.bin"), Buffer.alloc(5000, 1));
+    lauf = await bruecke(englisch, ["login", geraet.adresse, "--user", "anna", "--credential-name", "Zweiter", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung der englischen Wurzel: ${lauf.stderr}`);
+    lauf = await bruecke(englisch, ["sync", "--plan", "--password-stdin"], { input: passwort });
+    assert(lauf.stdout.includes(`sync stops here: "vertrieb" is too full: 1.0 KB free, 5.0 KB needed. An administrator raises the limit in the device's interface under Einstellungen → Firmenordner.`), `die englische Wurzel sagt die Grenze nicht: ${lauf.stdout}`);
+    return "eine Zeile mit dem Weg, vertrieb angehalten, akten und akten/kunde abgeglichen, Bereich und Projekt zusammen, ohne Zahlen stumm, englisch aus den Zahlen";
   } finally {
     await geraet.schliessen();
   }
@@ -10737,13 +10840,22 @@ check("Der Vorschlag der Wurzel erlaubt apps und die lesende Form von call, und 
   const { root } = wurzel(["--name", "Probehaus", "--language", "de"]);
   const vorschlag = JSON.parse(readFileSync(join(root, ".claude", "proposal", "proposal.json"), "utf8"));
   const brueckenRegeln = vorschlag.permissions.allow.filter((regel) => /arasul\.mjs/.test(regel));
-  assert(brueckenRegeln.length === 2 && brueckenRegeln.some((r) => /arasul\.mjs apps:\*/.test(r)) && brueckenRegeln.some((r) => /arasul\.mjs call:\*/.test(r)), `Erlaubnis für apps und call: ${brueckenRegeln}`);
+  // Beide Formen, wie bei einer übernommenen Wurzel: mit {root} und so, wie der Skill sie in der Wurzel tippt.
+  const erwartet = ["Bash(node {root}/arasul.mjs apps:*)", "Bash(node {root}/arasul.mjs call:*)", "Bash(node arasul.mjs apps:*)", "Bash(node arasul.mjs call:*)"];
+  assert(JSON.stringify(brueckenRegeln) === JSON.stringify(erwartet), `Erlaubnis für apps und call: ${brueckenRegeln}`);
   assert(!brueckenRegeln.some((r) => /login|sync|status/.test(r)), "der Vorschlag erlaubt login, sync oder status ohne Rückfrage");
   assert(vorschlag.permissions.ask?.some((r) => /call\*--write\*/.test(r)), "die ändernde Form von call fehlt unter ask");
   assert(existsSync(join(root, "arasul.mjs")) && existsSync(join(root, ".claude", "skills", "arasul", "SKILL.md")), "arasul.mjs oder sein Skill fehlt in der Wurzel");
   const skill = readFileSync(join(root, ".claude", "skills", "arasul", "SKILL.md"), "utf8");
   for (const wort of ["apps", "call", "--write", "APP.md", "login"]) assert(skill.includes(wort), `der Skill nennt ${wort} nicht`);
   assert(/^---\nname: arasul\ndescription: .+\n---/.test(skill), "der Skill hat keinen Kopf");
+  // Die Wurzel geht an jeden Rechner des Hauses: der Skill nennt keinen Pfad und keinen Platzhalter,
+  // er ruft die Brücke so, wie die Regel ohne Pfad sie durchlässt (Fund 28.09.2026).
+  for (const sprache of ["SKILL.md", "SKILL.de.md"]) {
+    const muster = readFileSync(join(ROOT, ".ara", "templates", "root", "skills", "arasul", sprache), "utf8");
+    assert(!/<root>|<wurzel>/.test(muster) && /`node arasul\.mjs apps`/.test(muster) && /`node arasul\.mjs call <app> <route>/.test(muster), `das Skill-Muster ${sprache} trägt einen Platzhalter oder nicht die Form ohne Pfad`);
+  }
+  assert(!/<root>|<wurzel>/.test(skill), "der Skill einer neu angelegten Wurzel trägt einen Platzhalter");
   // Ein Haus darf keinen Ordner der Ebene 1 `apps` nennen: er gehört der Brücke.
   const laut = tool("root.mjs", ["--path", join(wegwerfordner("ara-root-"), "haus"), "--name", "Probehaus", "--folders", "apps", "--no-git"], "");
   assert(laut.status !== 0, "ein Ordner der Ebene 1 namens apps wird angelegt");

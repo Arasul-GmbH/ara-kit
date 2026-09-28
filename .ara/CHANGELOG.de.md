@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.54.0 (2026-09-28)
+
+Kontrakt: bis 6
+
+- **`sync --plan` warnt, bevor ein Ordner über die Größengrenze seines Bereichs geht.** Es liest je Ordner aus der Liste des Geräts, wie viel noch hineinpasst (`platz`: belegt, Grenze und frei), zählt je Raum zusammen, was hoch ginge, Bereich und Projekt zusammen, und wo es mehr ist, fragt es das Gerät (`passt`) und sagt dessen Antwort in einer Zeile beim Ordner, mit dem Weg in der Oberfläche des Geräts, wo ein Administrator die Grenze anhebt. `sync` hält diesen Ordner mit demselben Satz an, bevor sein Klient läuft, und gleicht die anderen ab. Ein Gerät ohne diese Zahlen wird nichts gefragt, und der Plan sagt nichts zu einer Grenze.
+- **Eine Regel mit vollem Pfad greift auch über einen Link.** Das Freigeben eines Vorschlags, mit `root.mjs --enroll` oder `arasul.mjs login --approve`, schreibt jede Regel mit `{root}` in jeder Schreibweise der Wurzel: der echte Pfad und der über einen Link darüber getippte, `/tmp/haus` neben `/private/tmp/haus`.
+- **Im Skill `arasul` einer neuen Wurzel steht kein Platzhalter `<root>` mehr.** Er ruft die Brücke oben in der Wurzel als `node arasul.mjs` auf, und der Vorschlag einer neuen Wurzel erlaubt diese Form wie der einer übernommenen: das Freigeben schreibt sie in die eigene `settings.local.json` der Wurzel in `.claude/`, die die `.gitignore` der Wurzel draußen hält und ihr Prüfskript durchlässt, wenn sie nichts als diese Regeln trägt. Eine vorher angemeldete Wurzel braucht die Zustimmung neu: ihr Vorschlag hat sich geändert.
+
 ## 0.53.0 (2026-09-28)
 
 Kontrakt: bis 6

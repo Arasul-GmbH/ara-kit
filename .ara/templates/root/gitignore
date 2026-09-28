@@ -6,8 +6,10 @@
 # the root. Enter its folder here, one line per place:
 
 # What the sync with the company folder makes on this computer: the view of this
-# person, and the journal of the client.
+# person, the journal of the client, and the rules approving the proposal enters for
+# this folder alone.
 /sicht.md
+/.claude/settings.local.json
 .sync_*.db*
 ._sync_*.db*
 

@@ -264,6 +264,17 @@ node .ara/tools/root.mjs --path <wurzel> --unenroll
    sagt, dass der Vorschlag sich geändert hat, was zugestimmt war, läuft weiter, und
    `--enroll` zeigt die neue Prüfsumme. Was die Wurzel in die Einstellungen des Nutzers
    einträgt, wird festgehalten, und `--unenroll` nimmt genau das zurück und sonst nichts.
+5. **Eine Regel mit vollem Pfad steht in jeder Schreibweise der Wurzel**: der echte Pfad und
+   der über einen Link darüber getippte, `/tmp/haus` neben `/private/tmp/haus` am Mac. Claude
+   Code misst eine Shell-Regel am Befehl, wie er getippt ist, also griff eine Regel mit dem
+   echten Pfad allein nicht für eine Sitzung, die den anderen tippte (Fund vom 28.09.2026).
+   `login --approve` der Brücke tut dasselbe.
+6. **Die Regeln der Brücke ohne Pfad**, `node arasul.mjs apps` und die lesende Form von
+   `call`, gehen in die eigene `settings.local.json` der Wurzel in `.claude/`, wie bei einer
+   übernommenen Wurzel. Der Skill `arasul` ruft die Brücke in dieser Form oben in der Wurzel
+   auf und nennt keinen Pfad: die Wurzel geht an jeden Rechner des Hauses. Das Prüfskript lässt
+   genau diese Datei durch, wenn sie nichts als diese Regeln trägt, und die `.gitignore` der
+   Wurzel hält sie draußen.
 
 `--settings <datei>` nennt eine andere Einstellungsdatei als die des Agenten selbst. Das
 Einloggen an einem Gerät gehört nicht hierher: das ist das CLI der Wurzel, `arasul.mjs`, siehe
@@ -440,6 +451,21 @@ von einer, die auf der anderen Seite gelöscht wurde. Beide Seiten, weil der Kli
 Datei, die er bewegt, auf die der anderen Seite setzt, eine leere Datei am Gerät aber die Zeit
 ihres Hochladens trägt. Namen werden zusammengesetzt (NFC) verglichen: der Klient schreibt einen
 Umlaut am Mac zerlegt, der Dienst nennt ihn zusammengesetzt. Beides gemessen am 27.09.2026.
+
+**Der Plan warnt, bevor ein Ordner über seine Grenze geht.** Jeder Bereich am Gerät hat eine
+Größengrenze, und bis zum 28.09.2026 war sie still: an dem Tag brach ein Abgleich aus
+launchd mitten im Lauf mit „exceeds the quota for the folder“ ab. Seitdem nennt das Gerät in
+seiner Liste je Ordner, wie viel noch hineinpasst (`platz`: belegt, Grenze und frei, ein
+Projekt nur frei, es teilt die Grenze seines Bereichs), und beantwortet die Frage vor einem
+Abgleich, `passt`, mit einem Satz für den Menschen. `sync --plan` zählt je Raum zusammen, was
+hoch ginge, Bereich und Projekt zusammen, und wo das mehr ist als frei, fragt es das Gerät und
+sagt dessen Antwort in einer Zeile beim Ordner: `sync hält hier an:` und den Satz, mit dem Weg
+in der Oberfläche des Geräts, wo der Administrator die Grenze anhebt. In einer deutschen
+Wurzel steht der Satz des Geräts, wie er kommt; in einer englischen baut das Werkzeug ihn aus
+den Zahlen und nimmt den Weg aus dem Satz des Geräts. `sync` hält diesen Ordner mit demselben
+Satz an, bevor sein Klient läuft, und gleicht die anderen ab. Ein Gerät ohne diese Zahlen wird
+nichts gefragt, und der Plan sagt nichts zu einer Grenze. Welcher Weg und welche Felder: die
+`FIRMENORDNER.md` und die API-Referenz des Geräts, nie von hier.
 
 **Die Dateien, die die Wurzel ausmachen, gewinnen nur, wenn jemand es sagt.** Wo eine Datei auf
 beiden Seiten verschieden ist, legt der Klient die Fassung des Geräts an ihren Namen und die des
