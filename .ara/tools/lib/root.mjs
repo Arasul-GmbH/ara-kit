@@ -27,6 +27,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { homedir } from "node:os";
@@ -511,21 +512,36 @@ function levelOne(root, rules, clones) {
  * The two lines the proposal of an adopted root offers for the house's CLAUDE.md: where the view of
  * this person lies and where each app says what it can. A laid out root has both in its rules; a
  * grown folder has its own rules, and a new session would find neither without a word.
+ *
+ * The command stands as it is typed in this folder, `node arasul.mjs`, and the proposal allows
+ * exactly that form. Measured on 2026-09-28: with a placeholder `<wurzel>` in the line, `claude -p`
+ * tried the form without a path first, twice, and was refused each time. The CLAUDE.md goes to
+ * every computer of the house, so it names no path of this one.
  */
 export function adoptLines(language) {
   return [
     t(
-      "- `sicht.md` at the top of this root says which folders and apps of the Arasul device you have; `node <root>/arasul.mjs sync` writes it anew, never by hand.",
-      "- `sicht.md` oben in dieser Wurzel sagt, welche Ordner und Apps des Arasul-Geräts du hast; `node <wurzel>/arasul.mjs sync` schreibt sie neu, nie von Hand.",
+      "- `sicht.md` at the top of this root says which folders and apps of the Arasul device you have; `node arasul.mjs sync` in this folder writes it anew, never by hand.",
+      "- `sicht.md` oben in dieser Wurzel sagt, welche Ordner und Apps des Arasul-Geräts du hast; `node arasul.mjs sync` in diesem Ordner schreibt sie neu, nie von Hand.",
       language
     ),
     t(
-      "- What an app can do stands in `apps/<id>/APP.md`: call only the routes named there, with `node <root>/arasul.mjs call <app> <route>`; a route that changes something needs `--write`.",
-      "- Was eine App kann, steht in `apps/<id>/APP.md`: rufe nur die Routen, die dort stehen, mit `node <wurzel>/arasul.mjs call <app> <route>`; eine Route, die etwas ändert, braucht `--write`.",
+      "- What an app can do stands in `apps/<id>/APP.md`: call only the routes named there, from this folder with `node arasul.mjs call <app> <route>`, `node arasul.mjs apps` lists the apps; a route that changes something needs `--write`.",
+      "- Was eine App kann, steht in `apps/<id>/APP.md`: rufe nur die Routen, die dort stehen, aus diesem Ordner mit `node arasul.mjs call <app> <route>`, `node arasul.mjs apps` zählt die Apps auf; eine Route, die etwas ändert, braucht `--write`.",
       language
     ),
   ];
 }
+
+/**
+ * The bridge's rules of an adopted root, in both forms: with the written-out path, which holds from
+ * any folder, and as the command is typed in the root, `node arasul.mjs`. The bridge puts the form
+ * without a path into the root's own settings.local.json, never into the user's.
+ */
+export const BRIDGE_RULES = Object.freeze({
+  allow: ["Bash(node {root}/arasul.mjs apps:*)", "Bash(node {root}/arasul.mjs call:*)", "Bash(node arasul.mjs apps:*)", "Bash(node arasul.mjs call:*)"],
+  ask: ["Bash(node {root}/arasul.mjs call*--write*)", "Bash(node arasul.mjs call*--write*)"],
+});
 
 /**
  * The proposal of an adopted root: the bridge's rules and the two lines for CLAUDE.md, no hook.
@@ -536,14 +552,14 @@ export function adoptProposal(root, language) {
   const file = LANGUAGE_FILES.find((rel) => existsSync(join(root, rel))) || LANGUAGE_FILES[0];
   return {
     note: t(
-      "A proposal, not a setting. Nothing in this folder is active by itself. node arasul.mjs login shows it, and approving it with its checksum writes the rules into the user's own settings and the lines into the house's CLAUDE.md; login --withdraw takes both back. {root} stands for this folder.",
-      "Ein Vorschlag, keine Einstellung. Nichts in diesem Ordner wirkt von selbst. node arasul.mjs login zeigt ihn, und wer ihn mit seiner Prüfsumme freigibt, schreibt die Regeln in die eigenen Einstellungen und die Zeilen in die CLAUDE.md des Hauses; login --withdraw nimmt beides zurück. {root} steht für diesen Ordner.",
+      "A proposal, not a setting. Nothing in this folder is active by itself. node arasul.mjs login shows it, and approving it with its checksum writes the rules with {root} into the user's own settings, the ones without a path into this folder's .claude/settings.local.json, and the lines into the house's CLAUDE.md; login --withdraw takes all of it back. {root} stands for this folder.",
+      "Ein Vorschlag, keine Einstellung. Nichts in diesem Ordner wirkt von selbst. node arasul.mjs login zeigt ihn, und wer ihn mit seiner Prüfsumme freigibt, schreibt die Regeln mit {root} in die eigenen Einstellungen, die ohne Pfad in .claude/settings.local.json dieses Ordners und die Zeilen in die CLAUDE.md des Hauses; login --withdraw nimmt alles zurück. {root} steht für diesen Ordner.",
       language
     ),
     permissions: {
-      allow: ["Bash(node {root}/arasul.mjs apps:*)", "Bash(node {root}/arasul.mjs call:*)"],
+      allow: [...BRIDGE_RULES.allow],
       deny: [],
-      ask: ["Bash(node {root}/arasul.mjs call*--write*)"],
+      ask: [...BRIDGE_RULES.ask],
       additionalDirectories: [],
     },
     lines: { file, lines: adoptLines(language) },
@@ -576,6 +592,61 @@ function remoteOf(dir) {
   return url ? { kind: "folder", where: url } : null;
 }
 
+/** Whether the .gitignore at the top leaves a path out, by itself or by a folder above it. */
+function leftOut(rules, rel, dir) {
+  const parts = rel.split("/");
+  for (let i = 1; i <= parts.length; i += 1) {
+    if (ignoredBy(rules, parts.slice(0, i).join("/"), i < parts.length || dir)) return true;
+  }
+  return false;
+}
+
+// What never goes, whatever the house's .gitignore says: kept equal by hand with NEVER_SYNCED of the
+// bridge, as far as it can lie in .claude.
+const NEVER_IN_CLAUDE = (name) => MADE.has(name) || SECRET_FILE.test(name) || name === "settings.json" || name === "settings.local.json" || name === ".DS_Store" || /^\.sync_/.test(name);
+// What a running program writes: logs, state, locks, databases, caches, the agents of launchd.
+const RUNTIME_FILE = /\.(log|pid|lock|sock|db|sqlite3?|db-(wal|shm|journal)|tmp|bak|swp|cache)$|^(state|status|cache)\.json$|\.plist(\.[a-z]+)?$/i;
+const RUNTIME_DIR = /^(state|cache|caches|tmp|temp|logs?|runs?)$/i;
+const SCRIPT_FILE = /\.(py|sh|bash|zsh|mjs|cjs|js|ts|rb|pl|php|ps1|applescript|swift|go)$/i;
+// The kit's own files of an adopted root, and the hooks, which never go.
+const CLAUDE_OWN = new Set(["hooks", "proposal", "root.json", "places.json"]);
+
+/**
+ * What in `.claude/` a sync of the root would take along, and so show to every account: the scripts
+ * and the runtime files, each by itself, and how many other files, rules, skills and agents, which
+ * is what a root is for. Measured on 2026-09-28 at an adopted folder: every account read
+ * `.claude/scripts/mail.py` and `.claude/app/serve.py`, and `--adopt` had named only level 1.
+ */
+export function insideClaude(root, rules) {
+  const scripts = [];
+  const runtime = [];
+  let rest = 0;
+  const walk = (dir, deep) => {
+    if (deep > 12) return;
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.isSymbolicLink() || NEVER_IN_CLAUDE(entry.name)) continue;
+      const path = join(dir, entry.name);
+      const rel = posix(relative(root, path));
+      if (deep === 0 && CLAUDE_OWN.has(entry.name)) continue;
+      if (leftOut(rules, rel, entry.isDirectory())) continue;
+      if (entry.isDirectory()) {
+        if (RUNTIME_DIR.test(entry.name)) runtime.push(`${rel}/`);
+        else walk(path, deep + 1);
+      } else if (RUNTIME_FILE.test(entry.name)) runtime.push(rel);
+      else if (SCRIPT_FILE.test(entry.name) || (!entry.name.includes(".") && (statSync(path).mode & 0o111))) scripts.push(rel);
+      else rest += 1;
+    }
+  };
+  if (existsSync(join(root, ".claude"))) walk(join(root, ".claude"), 0);
+  return { scripts, runtime, rest };
+}
+
 /**
  * What lies in a grown folder: the clones in it, the source trees, the files that hold secrets.
  *
@@ -588,13 +659,7 @@ export function survey(root, rules) {
   const clones = [];
   const sources = [];
   const secrets = [];
-  const left = (rel, dir) => {
-    const parts = rel.split("/");
-    for (let i = 1; i <= parts.length; i += 1) {
-      if (ignoredBy(rules, parts.slice(0, i).join("/"), i < parts.length || dir)) return true;
-    }
-    return false;
-  };
+  const left = (rel, dir) => leftOut(rules, rel, dir);
   const walk = (dir, deep, inSource = false) => {
     if (deep > 30) return;
     let entries;
@@ -695,5 +760,5 @@ export function adopt({ root, name, language, kitVersion }) {
   writeJson(join(root, ".claude", "places.json"), { note: placesNote(language), places });
   writeJson(join(root, PROPOSAL), adoptProposal(root, language));
   copyFileSync(join(TEMPLATE, "arasul.mjs"), join(root, "arasul.mjs"));
-  return { places, ...found, folders, gitignore: existsSync(file) };
+  return { places, ...found, folders, claude: insideClaude(root, rules), gitignore: existsSync(file) };
 }

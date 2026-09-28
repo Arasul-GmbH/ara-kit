@@ -161,6 +161,16 @@ What it finds, it says, and it writes nothing of that:
   and names the way there (front end, Settings, Company folder, Create folder, kind area). An
   area is synced on its own, only to the people with a right on it, and the root leaves it out.
   A name that is no id of the device is said with it.
+- **Inside `.claude/`, the scripts and the runtime files** that a sync would take along are named
+  one by one, because every account reads them too: measured on 2026-09-28, every account read
+  `scripts/mail.py`, `app/serve.py` and `state.json` in the `.claude/` of an adopted root.
+  A runtime file is what a running program writes, a log, a state, a lock, a database, an agent
+  of launchd; it belongs to this computer, and the tool prints the lines for the `.gitignore`
+  that keep it home. A script is the house's tool: one that holds addresses, access or what not
+  everybody should know stays home with a line in the `.gitignore` or moves into a folder of
+  level 1 that becomes an area. What the `.gitignore` leaves out, the hooks and the settings are
+  not named, they stay home anyway. The rules, skills and agents are counted: they are what the
+  root is for.
 
 A root taken over carries no check script of the kit, because it would lie where the house has
 its own. **Its proposal carries no hook**, only what the bridge needs: `apps` and the reading
@@ -168,6 +178,18 @@ form of `call` without asking, `call ... --write` asks, and two lines for the ho
 `CLAUDE.md`, one on `sicht.md` and one on `apps/<id>/APP.md`, so that a new session finds both
 without a word. `login` shows it with its checksum, `login --approve <checksum>` writes the rules
 into the user's own settings and appends the two lines, `login --withdraw` takes both back.
+
+**The bridge's rules stand in both forms**, with the written-out path, which holds from any
+folder, and as the command is typed in the root, `node arasul.mjs call ...`. The two lines name
+that second form, the real command, and no placeholder: the `CLAUDE.md` goes to every computer
+of the house, so it names no path of one. Measured on 2026-09-28 with `claude -p` 2.1.283: with
+the placeholder `<wurzel>` in the line, the agent tried `node arasul.mjs call` first, twice, and
+was refused each time. A rule without a path would hold in every folder of this computer if it
+stood in the user's settings, and any `arasul.mjs` anywhere would run without asking. So
+approving writes it into the root's own `settings.local.json` in `.claude/`, which a session reads only
+there, even in a folder never trusted (measured the same day), and `--withdraw` takes exactly
+that out again; a file approving made for it alone goes with it. A sync never takes
+`settings.local.json` along.
 `root.mjs --enroll` points to the bridge for it. `--show` and `--place` work, `--check` says that
 there is no check script. What comes next is the bridge: `login`, then `sync --plan`, then
 `sync`.
@@ -263,9 +285,10 @@ app offers. This file does that, and nothing else.
 
 **The language of the output** is the root's, out of `.claude/root.json`. In a folder that has
 none yet, such as the empty folder an employee's root comes down into, it is the language this
-computer remembered from the last root it logged in or synced in, and only then the system's
-`LANG`. `--language de|en` or `ARASUL_LANGUAGE` overrule it; say it along when you hand somebody
-the bridge for an empty folder.
+computer remembered from the last root it logged in or synced in, or from the last `login
+--language`, and only then the system's `LANG`. Before its first line, `sync --plan` and `sync`
+read the `root.json` in the room of the root, when this person may read it, and speak its
+language from then on. `--language de|en` or `ARASUL_LANGUAGE` overrule it.
 
 **The credential** lies in `~/.config/arasul/credentials.json`, mode 0600, one entry per device
 with its address and credential. Never in the root, never in the keychain. The login sends name

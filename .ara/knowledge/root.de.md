@@ -165,6 +165,17 @@ Was es findet, sagt es, und davon schreibt es nichts:
   als Kennung, und nennt den Weg dorthin (Oberfläche, Einstellungen, Firmenordner, Ordner anlegen,
   Art Bereich). Ein Bereich wird für sich abgeglichen, nur zu den Menschen mit einem Recht darauf,
   und die Wurzel lässt ihn aus. Ein Name, der keine Kennung des Geräts ist, wird dazu gesagt.
+- **In `.claude/` werden die Skripte und die Laufzeitdateien** einzeln genannt, die ein Abgleich
+  mitnähme, weil auch sie jedes Konto liest: gemessen am 28.09.2026 las jedes Konto
+  `scripts/mail.py`, `app/serve.py` und `state.json` in `.claude/` einer übernommenen
+  Wurzel. Eine Laufzeitdatei ist, was ein laufendes Programm schreibt, ein Protokoll, ein Stand,
+  eine Sperre, eine Datenbank, ein Agent von launchd; sie gehört zu diesem Rechner, und das
+  Werkzeug druckt die Zeilen für die `.gitignore`, die sie zu Hause halten. Ein Skript ist ein
+  Werkzeug des Hauses: eines, das Adressen, Zugänge oder etwas hält, das nicht alle wissen sollen,
+  bleibt mit einer Zeile in der `.gitignore` zu Hause oder zieht in einen Ordner der Ebene 1, der
+  ein Bereich wird. Was die `.gitignore` auslässt, die Hooks und die Einstellungen werden nicht
+  genannt, sie bleiben ohnehin zu Hause. Regeln, Skills und Agenten werden gezählt: für sie ist
+  die Wurzel da.
 
 Eine übernommene Wurzel trägt kein Prüfskript des Kits, weil es dort läge, wo das Haus sein
 eigenes hat. **Ihr Vorschlag trägt keinen Hook**, nur was die Brücke braucht: `apps` und die
@@ -172,8 +183,22 @@ lesende Form von `call` ohne Rückfrage, `call ... --write` fragt, und zwei Zeil
 `CLAUDE.md` des Hauses, eine zu `sicht.md` und eine zu `apps/<id>/APP.md`, damit eine neue
 Sitzung beides ohne Hinweis findet. `login` zeigt ihn mit seiner Prüfsumme,
 `login --approve <prüfsumme>` schreibt die Regeln in die eigenen Einstellungen und hängt die zwei
-Zeilen an, `login --withdraw` nimmt beides zurück. `root.mjs --enroll` verweist dafür auf die
-Brücke. `--show` und `--place` gehen, `--check` sagt, dass kein Prüfskript da ist. Als Nächstes
+Zeilen an, `login --withdraw` nimmt beides zurück.
+
+**Die Regeln der Brücke stehen in beiden Formen**, mit ausgeschriebenem Pfad, die aus jedem
+Ordner gilt, und so, wie der Befehl in der Wurzel getippt wird, `node arasul.mjs call ...`. Die
+zwei Zeilen nennen diese zweite Form, den echten Befehl, und keinen Platzhalter: die `CLAUDE.md`
+geht an jeden Rechner des Hauses, also nennt sie keinen Pfad eines Rechners. Gemessen am
+28.09.2026 mit `claude -p` 2.1.283: mit dem Platzhalter `<wurzel>` in der Zeile versuchte der
+Agent zuerst `node arasul.mjs call`, zweimal, und wurde jedes Mal abgewiesen. Eine Regel ohne
+Pfad gälte in den Einstellungen des Nutzers in jedem Ordner dieses Rechners, und jede
+`arasul.mjs` irgendwo liefe ohne Rückfrage. Darum schreibt das Freigeben sie in die eigene
+`settings.local.json` der Wurzel in `.claude/`, die eine Sitzung nur dort liest, auch in einem Ordner,
+dem nie vertraut wurde (am selben Tag gemessen), und `--withdraw` nimmt genau das wieder heraus;
+eine Datei, die das Freigeben nur dafür angelegt hat, geht mit. Ein Abgleich nimmt
+`settings.local.json` nie mit.
+
+`root.mjs --enroll` verweist dafür auf die Brücke. `--show` und `--place` gehen, `--check` sagt, dass kein Prüfskript da ist. Als Nächstes
 kommt die Brücke: `login`, dann `sync --plan`, dann `sync`.
 
 ## Nach dem Anlegen
@@ -272,8 +297,10 @@ nichts.
 **Die Sprache der Ausgabe** ist die der Wurzel, aus `.claude/root.json`. In einem Ordner, der noch
 keine hat, etwa dem leeren, in den die Wurzel eines Mitarbeiters herunterkommt, ist es die Sprache,
 die dieser Rechner sich von der letzten Wurzel gemerkt hat, in der er angemeldet oder abgeglichen
-hat, und erst dann das `LANG` des Systems. `--language de|en` oder `ARASUL_LANGUAGE` überstimmen
-sie; sag es mit, wenn du jemandem die Brücke für einen leeren Ordner gibst.
+hat, oder vom letzten `login --language`, und erst dann das `LANG` des Systems. Vor ihrer ersten
+Zeile lesen `sync --plan` und `sync` die `root.json` im Raum der Wurzel, wenn dieser Mensch sie
+lesen darf, und sprechen von da an ihre Sprache. `--language de|en` oder `ARASUL_LANGUAGE`
+überstimmen sie.
 
 **Der Ausweis** liegt in `~/.config/arasul/credentials.json`, Rechte 0600, je Gerät ein Eintrag
 mit Adresse und Ausweis. Nie in der Wurzel, nie im Schlüsselbund. Die Anmeldung schickt Name und
