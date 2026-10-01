@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.57.2 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **Die neuere Brücke eines Lese-Kontos übersteht jeden Abgleich, nicht nur den ersten.** Am Orin mit dem echten Klienten gemessen: der erste Lauf behielt die Brücke, der zweite legte die ältere `arasul.mjs` des Raums an den Namen und die neuere in eine Konfliktkopie. Nach einem Abgleich hält der Stand jede Seite gegen ihre eigene Vergangenheit, das Paar ist dann kein Konflikt mehr, die Brücke wurde nicht erkannt und der Klient bekam keinen Ausschluss dafür. Jetzt wird die Brücke eines Lesers bei jedem Lauf mit der des Raums verglichen, sobald beide verschieden sind. Der Plan zählt sie nicht mehr unter den Konflikten.
+
 ## 0.57.1 (2026-10-01)
 
 Kontrakt: bis 6
