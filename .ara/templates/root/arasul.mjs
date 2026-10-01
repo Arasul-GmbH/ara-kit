@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.57.1";
+const BRIDGE = "0.57.2";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -2096,6 +2096,10 @@ async function doPlan(args) {
   }
   const limits = await overLimit(device, plan, new Map(compared.map(({ folder, result }) => [folder.path, total(result.up)])));
   for (const { folder, local, excludes, here, dav, there, base, result } of compared) {
+    // Only for whoever writes the root: a reader gets the device's version, and sync goes through.
+    const rules = dav ? await rootRules(service, folder, local, excludes, { here, there, base, result }) : { stop: [], bridge: null, foreign: [] };
+    // The bridge a reader keeps is no conflict: it has its own line below, and the client is told to leave it alone.
+    if (rules.bridge?.keep) result.conflict = result.conflict.filter((item) => item.path !== "arasul.mjs");
     for (const key of Object.keys(sums)) sums[key].push(...result[key]);
     say();
     say(`  ${labelOf(folder)}   ${t("level", "Ebene")} ${folder.level}${folder.right ? `, ${folder.right}` : ""}`);
@@ -2109,8 +2113,6 @@ async function doPlan(args) {
       say(`    ${t("Conflicts", "Konflikte")}:         ${fileCount(result.conflict.length)}, ${t("different on both sides, the client keeps both", "auf beiden Seiten anders, der Klient behält beide")}: ${some(result.conflict)}`);
     }
     if (limits.has(folder.path)) say(`    ${t("sync stops here", "sync hält hier an")}: ${limits.get(folder.path)}`);
-    // Only for whoever writes the root: a reader gets the device's version, and sync goes through.
-    const rules = dav ? await rootRules(service, folder, local, excludes, { here, there, base, result }) : { stop: [], bridge: null, foreign: [] };
     if (rules.stop.length) say(`    ${t(`sync stops here: ${rules.stop.join(", ")} make this root and differ on both sides. Keep one version on both sides first, or sync --keep-mine.`, `sync hält hier an: ${rules.stop.join(", ")} machen diese Wurzel aus und sind auf beiden Seiten verschieden. Behalte zuerst eine Fassung auf beiden Seiten, oder sync --keep-mine.`)}`);
     if (rules.bridge?.keep) say(`    ${keepBridgeSentence(rules.bridge)}`);
     else if (rules.bridge?.way === "up") say(`    ${t(`arasul.mjs: this bridge (${versionText(rules.bridge.ours)}) is newer than the one in the room (${versionText(rules.bridge.theirs)}), sync puts it into the room without asking, deploy does it too without a further sync.`, `arasul.mjs: diese Brücke (${versionText(rules.bridge.ours)}) ist neuer als die im Raum (${versionText(rules.bridge.theirs)}), sync legt sie ohne Rückfrage in den Raum, deploy tut es auch ohne weiteren Abgleich.`)}`);
@@ -2214,13 +2216,19 @@ async function rootRulesOf(service, folder, local, excludes, known) {
   const conflicts = result.conflict.map((item) => item.path);
   let stops = conflicts.filter((path) => RULE_FILES.includes(path));
   let bridge = null;
-  if (conflicts.includes("arasul.mjs") && existsSync(join(local, "arasul.mjs"))) {
+  // A reader's newer bridge is looked at whenever the two differ, not only at a conflict: after the first
+  // sync the state holds each side against its own past, so the pair no longer counts as a conflict, and
+  // the client would still put the room's older file at the name (measured 2026-10-01 at a device, second run).
+  const hereBridge = here.files.get("arasul.mjs");
+  const thereBridge = there.files.get("arasul.mjs");
+  const readerDiffers = !writes && hereBridge && thereBridge && !alike(hereBridge, thereBridge);
+  if ((conflicts.includes("arasul.mjs") || readerDiffers) && existsSync(join(local, "arasul.mjs"))) {
     const answer = await ask(service.target, { path: `${dav}/arasul.mjs`, basic: service.basic, timeout: 60_000 });
     const theirs = answer.status === 200 ? answer.body : null;
     const ours = readFileSync(join(local, "arasul.mjs"));
     const order = theirs ? newer(bridgeVersion(ours), bridgeVersion(theirs)) : 0;
     if (order > 0) bridge = { way: "up", keep: !writes, ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), dav, body: ours, mtime: Math.floor(statSync(join(local, "arasul.mjs")).mtimeMs / 1000) };
-    else if (order < 0 && isRoot) bridge = { way: "down", ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), body: theirs, mtime: there.files.get("arasul.mjs")?.mtime };
+    else if (order < 0 && isRoot && conflicts.includes("arasul.mjs")) bridge = { way: "down", ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), body: theirs, mtime: there.files.get("arasul.mjs")?.mtime };
     // A folder that becomes a root takes the room's bridge anyway, see bootstrapBridge.
     if (bridge || !isRoot) stops = stops.filter((path) => path !== "arasul.mjs");
   }

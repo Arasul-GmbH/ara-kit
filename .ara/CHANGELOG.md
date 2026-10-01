@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.57.2 (2026-10-01)
+
+Contract: up to 6
+
+- **The newer bridge of a read account now survives every sync, not only the first.** Measured at the Orin with the real client: the first run kept the bridge, the second put the room's older `arasul.mjs` at its name and the newer one into a conflicted copy. After a sync the state holds each side against its own past, so the pair is no longer a conflict, the bridge was not recognised, and the client got no exclusion for it. Now a reader's bridge is compared with the room's at every run whenever the two differ. The plan no longer counts it among the conflicts.
+
 ## 0.57.1 (2026-10-01)
 
 Contract: up to 6

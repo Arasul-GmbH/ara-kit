@@ -10835,8 +10835,20 @@ await checkAsync("Eine neuere Brücke löst die ältere im Raum ab, ohne --keep-
     assert(readFileSync(join(leser2.root, "arasul.mjs"), "utf8") === vorlage, "die neuere Brücke des Lesers wurde durch die ältere ersetzt");
     assert(readFileSync(join(lager3, "firma", "arasul.mjs"), "utf8") === alte, "ein Leser hat die Brücke am Gerät verändert");
     assert(!readdirSync(leser2.root).some((name) => /conflict/.test(name)), `neben der Brücke liegt eine Konfliktkopie: ${readdirSync(leser2.root).join(", ")}`);
-    lauf = await bruecke(leser2, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung3 });
-    assert(lauf.status === 0 && readFileSync(join(leser2.root, "arasul.mjs"), "utf8") === vorlage, `der zweite Lauf verlor die Brücke: ${lauf.stdout}${lauf.stderr}`);
+    // Zweiter und dritter Lauf: der Stand des ersten hält jede Seite gegen ihre eigene Vergangenheit, die Brücke
+    // ist darin kein Konflikt mehr. Am Orin mit dem echten Klienten (OpenCloud 4.0.0) gemessen am 01.10.2026:
+    // erst der zweite Lauf legte die ältere an den Namen. Darum muss die Brücke in jedem Lauf in der Liste stehen.
+    for (const nummer of [2, 3]) {
+      const vorher = klientRufe(klient.protokoll).length;
+      lauf = await bruecke(leser2, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung3 });
+      assert(lauf.status === 0 && readFileSync(join(leser2.root, "arasul.mjs"), "utf8") === vorlage, `Lauf ${nummer} verlor die Brücke: ${lauf.stdout}${lauf.stderr}`);
+      const raumRufe = klientRufe(klient.protokoll).slice(vorher).filter((ruf) => ruf.argv[1] === "firma");
+      assert(raumRufe.length === 1 && raumRufe[0].liste.split("\n").includes("arasul.mjs"), `Lauf ${nummer}: die Brücke steht nicht in der Ausschlussliste des Klienten: ${JSON.stringify(raumRufe)}`);
+      assert(readFileSync(join(lager3, "firma", "arasul.mjs"), "utf8") === alte, `Lauf ${nummer}: die Brücke am Gerät wurde verändert`);
+      assert(!readdirSync(leser2.root).some((name) => /conflict/.test(name)), `Lauf ${nummer}: Konfliktkopie neben der Brücke`);
+    }
+    lauf = await bruecke(leser2, ["sync", "--plan", "--password-stdin"], { input: passwort, env: umgebung3 });
+    assert(/diese Brücke \([\d.]+\) ist neuer als die am Gerät/.test(lauf.stdout) && !/Konflikte:.*arasul\.mjs/.test(lauf.stdout), `der Plan nach dem ersten Lauf nennt die Brücke nicht richtig: ${lauf.stdout}`);
   } finally {
     await geraet3.schliessen();
   }
