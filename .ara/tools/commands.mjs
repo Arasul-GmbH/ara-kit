@@ -193,6 +193,11 @@ function list(dir) {
     .sort();
 }
 
+/** Ein Schreibverbot, wie es die Sandbox von Codex fuer .agents und .codex setzt. */
+function blockedByCodex(error) {
+  return error && (error.code === "EPERM" || error.code === "EACCES");
+}
+
 function isLink(path) {
   try {
     return lstatSync(path).isSymbolicLink();
@@ -359,17 +364,32 @@ if (arg.apply || replace.length) {
       (arg.apply && ["missing", "updated", "unclear"].includes(c.skill.state)) ||
       (replace.includes(c.name) && c.skill.state !== "current")
   );
-  mkdirSync(SKILLS, { recursive: true });
-  for (const c of skillTodo) {
-    mkdirSync(join(SKILLS, c.name, "agents"), { recursive: true });
-    writeFileSync(c.skill.to, c.skill.text);
-    writeFileSync(join(SKILLS, c.name, "agents", "openai.yaml"), c.skill.policy);
-    skillRemembered[c.name] = hashText(c.skill.text);
-    c.skill.placed = c.skill.state;
-    c.skill.state = "current";
+  try {
+    mkdirSync(SKILLS, { recursive: true });
+    for (const c of skillTodo) {
+      mkdirSync(join(SKILLS, c.name, "agents"), { recursive: true });
+      writeFileSync(c.skill.to, c.skill.text);
+      writeFileSync(join(SKILLS, c.name, "agents", "openai.yaml"), c.skill.policy);
+      skillRemembered[c.name] = hashText(c.skill.text);
+      c.skill.placed = c.skill.state;
+      c.skill.state = "current";
+    }
+    for (const c of lage.commands) if (c.skill.state === "current") skillRemembered[c.name] ??= hashText(c.skill.text);
+    writeFileSync(SKILL_MANIFEST, JSON.stringify(skillRemembered, null, 2) + "\n");
+  } catch (error) {
+    if (!blockedByCodex(error)) throw error;
+    console.error(
+      t(
+        "The skills for Codex could not be written: .agents/skills is read-only here, as it is inside the sandbox of Codex, which protects .agents and .codex. " +
+          "The commands for Claude Code are in place. Run this call in your own terminal, or let Codex run it outside the sandbox: " +
+          ".codex/rules/ara.rules allows exactly this call once the folder is trusted.",
+        "Die Skills für Codex ließen sich nicht schreiben: .agents/skills ist hier schreibgeschützt, wie in der Sandbox von Codex, die .agents und .codex schützt. " +
+          "Die Befehle für Claude Code liegen bereit. Ruf das in deinem eigenen Terminal auf, oder lass Codex es außerhalb der Sandbox ausführen: " +
+          ".codex/rules/ara.rules erlaubt genau diesen Aufruf, sobald der Ordner vertraut ist."
+      )
+    );
+    process.exit(1);
   }
-  for (const c of lage.commands) if (c.skill.state === "current") skillRemembered[c.name] ??= hashText(c.skill.text);
-  writeFileSync(SKILL_MANIFEST, JSON.stringify(skillRemembered, null, 2) + "\n");
   skillsPlaced = skillTodo;
 }
 

@@ -62,6 +62,7 @@ import {
   statSync,
   symlinkSync,
   unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
@@ -301,6 +302,30 @@ function describe(diff) {
   return lines.join("\n");
 }
 
+/** Die Ordner, in die das Update schreiben muss und in die es nicht darf. */
+function unwritable(diff) {
+  const dirs = new Set();
+  for (const rel of [...diff.added, ...diff.changed, ...diff.removed]) {
+    const dir = dirname(join(ROOT, rel));
+    // Der naechste Ordner nach oben, der schon da ist: dort muesste ein neuer angelegt werden.
+    let probe = dir;
+    while (!existsSync(probe)) probe = dirname(probe);
+    dirs.add(probe);
+  }
+  const blocked = [];
+  for (const dir of dirs) {
+    const file = join(dir, `.update-probe-${process.pid}`);
+    try {
+      writeFileSync(file, "");
+      rmSync(file);
+    } catch (error) {
+      if (error.code === "EPERM" || error.code === "EACCES") blocked.push(relative(ROOT, dir) || ".");
+      else throw error;
+    }
+  }
+  return blocked;
+}
+
 const work = mkdtempSync(join(tmpdir(), "ara-kit-update-"));
 
 try {
@@ -362,6 +387,20 @@ try {
     process.exit(0);
   }
 
+  // Vor dem ersten Schreiben pruefen, ob alles beschreibbar ist, was sich aendert. Die
+  // Sandbox von Codex haelt .agents und .codex schreibgeschuetzt: ein Update, das mittendrin
+  // daran scheitert, liesse den Stand halb alt und halb neu zurueck.
+  const blocked = unwritable(diff);
+  if (blocked.length) {
+    throw new Error(
+      t(
+        `Nothing deployed: ${blocked.join(", ")} cannot be written from here. Inside the sandbox of Codex that is the case for .agents and .codex. ` +
+          "Run node .ara/tools/update.mjs in your own terminal, or approve it when Codex asks to run it outside the sandbox.",
+        `Nichts eingespielt: ${blocked.join(", ")} lässt sich von hier nicht schreiben. In der Sandbox von Codex gilt das für .agents und .codex. ` +
+          "Ruf node .ara/tools/update.mjs in deinem eigenen Terminal auf, oder gib es frei, wenn Codex fragt, ob es außerhalb der Sandbox laufen darf."
+      )
+    );
+  }
   apply(work, ROOT, diff);
 
   if (!arg.json) {

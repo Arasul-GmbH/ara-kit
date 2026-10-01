@@ -102,8 +102,11 @@ node .ara/tools/commands.mjs --apply --role <partner|company> --language <de|en>
 ```
 
 `--language` stands there because the profile is not written yet: otherwise the tool reads the
-language there. Partners get `all/` and `partner/` from `.ara/commands/`, companies only `all/`. If
-Claude Code does not know a command yet, restarting the session helps.
+language there. Partners get `all/` and `partner/` from `.ara/commands/`, companies only `all/`. The
+same call writes each command a second time as a skill for Codex, `.agents/skills/<name>/`. If
+Claude Code or Codex does not know a command yet, restarting the session helps. Under Codex the
+sandbox keeps `.agents/` read-only, so this call runs outside it, which `.codex/rules/ara.rules`
+allows: see `.ara/knowledge/codex.md`.
 
 For a company the same call clears away what belongs to partners only and came with the clone
 anyway: the skills `customers`, `sales` and `pricing`, the templates for offer, invoice and end

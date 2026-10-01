@@ -1,0 +1,12 @@
+# Rules of the kit for Codex. Read only for a trusted folder, like the rest of .codex/.
+#
+# The sandbox of Codex keeps .agents/ and .codex/ read-only, and the kit writes into both.
+# commands.mjs puts the commands there as skills. It writes only what it generates from the
+# kit's own sources and can be repeated, so Codex may run it outside the sandbox without
+# asking. update.mjs gets no rule on purpose: it replaces the kit's files, and Codex asks the
+# human before it runs outside the sandbox, after the interview has shown the changes.
+prefix_rule(
+    pattern = ["node", ".ara/tools/commands.mjs"],
+    decision = "allow",
+    justification = "commands.mjs writes the commands of this kit as skills into .agents/skills, which the sandbox keeps read-only",
+)

@@ -48,8 +48,8 @@ kit, not about the human.
 2. `node .ara/tools/update.mjs --check` shows what would change, and names the version it
    would go to. Nothing new: say so in one line and stop.
 3. If there is something new, show the list and have the deployment confirmed. Then
-   `node .ara/tools/update.mjs`. It replaces only `.ara/` and the minimum of `.claude/`, it
-   does not touch your folders.
+   `node .ara/tools/update.mjs`. It replaces only `.ara/`, `AGENTS.md`, `.agents/skills/`, `.codex/`
+   and the minimum of `.claude/`, it does not touch your folders.
 4. `node .ara/tools/commands.mjs` shows per command whether it is missing, newer in the
    kit, adapted by hand or both. Missing and newer in the kit: show the difference, then
    `node .ara/tools/commands.mjs --apply`. Adapted ones stay, unless the human wants the

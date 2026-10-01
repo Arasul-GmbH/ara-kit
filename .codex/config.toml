@@ -11,7 +11,9 @@ default_mode_request_user_input = true
 # ssh, gh and the browser need the network, which the sandbox of Codex keeps off by default.
 network_access = true
 
-# The same browser as in .mcp.json, which Codex does not read.
+# The same browser as in .mcp.json, which Codex does not read. Approved without asking, as
+# `mcp__playwright` is in .claude/settings.json: a call that asks every time is no browser.
 [mcp_servers.playwright]
+default_tools_approval_mode = "approve"
 command = "npx"
 args = ["-y", "@playwright/mcp@latest", "--browser", "chromium", "--viewport-size", "1400,900", "--ignore-https-errors"]
