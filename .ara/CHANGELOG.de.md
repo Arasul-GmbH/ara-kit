@@ -15,6 +15,17 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.55.0 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **Das Kit läuft in Codex wie in Claude Code, aus denselben Dateien.** `AGENTS.md` ist die eine Quelle der Regeln, `.claude/CLAUDE.md` enthält nur `@../AGENTS.md`. Die Skills liegen in `.agents/skills/`, `.claude/skills/<name>` verlinkt dorthin, und `commands.mjs` schreibt jeden Befehl ein zweites Mal als Codex-Skill, gerufen als `$app`, `$device` und so weiter, mit `allow_implicit_invocation: false`, weil ein Befehl etwas ist, das der Mensch ruft. `.codex/config.toml` schaltet das Rückfragewerkzeug im normalen Modus, das Netz in der Sandbox und den Browser ein; `.codex/hooks.json` hängt den Riegel ein; `.codex/rules/ara.rules` lässt `commands.mjs` nach `.agents/skills` schreiben, was die Sandbox von Codex schreibgeschützt hält. Gemessen mit Codex 0.159.3 in einem frischen Klon: es liest die Regeln ohne Hinweis, `$init` und `$app` fragen über `request_user_input` mit Freitext, der Riegel sperrt `cat .env` und `rm -rf /`, und `remote.mjs` erreicht ein Gerät per SSH.
+- **Ein Vertrag für die Rückfragen, für beide Agenten.** Die Persona sagt, was in eine Runde passt: Claude Code vier Fragen mit bis zu vier Optionen, Mehrfachauswahl und eine Skizze; Codex höchstens drei Fragen mit zwei oder drei Optionen, keine Mehrfachauswahl, eine Zeile statt der Skizze, Mehrfachauswahl als Ja-oder-Nein-Fragen oder als eine Option mit Nummern im Freitext. Empfehlung zuerst, Freitext immer. Fehlt das Werkzeug unter Codex, ist der Plan-Modus der Weg und nummerierte Optionen im Text der letzte. In `codex exec` geht `/init` über `init.mjs --answers`. Das neue Blatt `.ara/knowledge/codex.de.md` sagt den Rest: erster Start, Sandbox, was schmaler ist.
+- **Der Riegel liest den Umschlag beider Agenten und schließt drei Lücken.** Er hält `remote.mjs --command "rm -rf /"` an, das das schließende Anführungszeichen durchließ, und Einzeiler und Textwerkzeuge auf der `.env` (`node -e`, `python -c`, `grep`, `sed`). Er hält `cp .env.example .env` nicht mehr an, und ein `head` oder `tail` weiter vorn in der Zeile gilt nicht mehr als Lesen einer `.env` weiter hinten.
+- **`update.mjs` bringt die neuen Dateien, behält Links und lässt erzeugte Skills in Ruhe.** `.claude/skills/<name>` wird vom Ordner zum Link, `AGENTS.md`, `.agents/skills/` und `.codex/` kommen mit, die Skills, die `commands.mjs` aus den Befehlen gemacht hat, werden weder ersetzt noch entfernt, und ein Unternehmen bekommt die Partner-Skills weiter nicht. Wo sich `.agents` und `.codex` nicht schreiben lassen, wie in der Sandbox von Codex, hält es vor der ersten Datei mit „Nichts eingespielt“ an.
+- **Der Selbsttest hält den Aufbau fest.** Eine Regeldatei, Links, die irgendwohin zeigen, der Skill `init` in beiden Agenten gleich, die erzeugten Skills mit Beschreibung und ihrer `$1`-Zeile, die Zeilen in der `.gitignore`, die Einstellungen von Codex gegen `.mcp.json`, und bei installiertem Codex der Schlüssel des Rückfragewerkzeugs in `codex features list`. Seine Kopien des Kits lassen Symlinks Symlinks bleiben, denn eine Kopie mit absolutem Ziel ließ einen Schnitt in der Kopie das Original löschen.
+- **Das README nennt beide Agenten** und sagt, was unter Codex schmaler ist.
+
 ## 0.54.0 (2026-09-28)
 
 Kontrakt: bis 6

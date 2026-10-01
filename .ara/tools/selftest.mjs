@@ -446,6 +446,7 @@ check("Riegel lässt normale Arbeit durch", () => {
     "rm -rf ./build",
     'node .ara/tools/remote.mjs --device orin --command "df -h /"',
     "cp .env.example .env",
+    "git log --oneline | head -3; cp .env.example .env",
     "git add .env.example",
     'grep -n "\\.env" .gitignore',
     'node -e "console.log(1 + 1)"',

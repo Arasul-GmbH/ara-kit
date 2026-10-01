@@ -13,6 +13,17 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.55.0 (2026-10-01)
+
+Contract: up to 6
+
+- **The kit runs in Codex as in Claude Code, from the same files.** `AGENTS.md` is the one source of the rules, `.claude/CLAUDE.md` holds only `@../AGENTS.md`. The skills live in `.agents/skills/`, `.claude/skills/<name>` links to them, and `commands.mjs` writes every command a second time as a Codex skill, called `$app`, `$device` and so on, with `allow_implicit_invocation: false` because a command is something the human calls. `.codex/config.toml` switches on the interview tool in the normal mode, the network in the sandbox and the browser; `.codex/hooks.json` hangs the guard in; `.codex/rules/ara.rules` lets `commands.mjs` write `.agents/skills`, which the sandbox of Codex keeps read-only. Measured with Codex 0.159.3 in a fresh clone: it reads the rules unprompted, `$init` and `$app` ask through `request_user_input` with free text, the guard stops `cat .env` and `rm -rf /`, and `remote.mjs` reaches a device over SSH.
+- **One contract for the questions, for both agents.** The persona says what fits into a round: Claude Code four questions with up to four options, multiple choice and a sketch; Codex at most three questions with two or three options, no multiple choice, a line instead of the sketch, multiple choice as yes or no questions or as one option with numbers in free text. Recommendation first, free text always. If the tool is missing under Codex, the plan mode is the way, and numbered options in the text the last one. In `codex exec` `/init` goes through `init.mjs --answers`. The new sheet `.ara/knowledge/codex.md` says the rest: first start, sandbox, what is narrower.
+- **The guard reads the envelope of both agents and closes three gaps.** It stops `remote.mjs --command "rm -rf /"`, which the closing quotation mark let through, and one-liners and text tools on the `.env` (`node -e`, `python -c`, `grep`, `sed`). It no longer stops `cp .env.example .env`, and a `head` or `tail` earlier in the line no longer counts as reading a `.env` later in it.
+- **`update.mjs` brings the new files, keeps links and leaves generated skills alone.** `.claude/skills/<name>` turns from a folder into a link, `AGENTS.md`, `.agents/skills/` and `.codex/` come along, the skills `commands.mjs` made from the commands are neither replaced nor removed, and a company still does not get the partner skills. Where `.agents` and `.codex` cannot be written, as inside the sandbox of Codex, it stops with "Nothing deployed" before the first file.
+- **The self-test holds the layout.** One rules file, links that point somewhere, the skill `init` equal in both agents, the generated skills with their description and their `$1` line, the lines in `.gitignore`, the settings of Codex against `.mcp.json`, and with Codex installed the key of the interview tool in `codex features list`. Its copies of the kit keep symlinks as symlinks, because a copy with an absolute target let a cut in the copy delete the original.
+- **The README names both agents** and says what is narrower under Codex.
+
 ## 0.54.0 (2026-09-28)
 
 Contract: up to 6
