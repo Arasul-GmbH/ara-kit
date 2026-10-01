@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.57.0 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **`sync --plan` zeigt für eine byte-gleiche Datei keinen Konflikt.** Eine Datei, die ohne ihre Änderungszeit kopiert wurde (`cp` ohne `-p`, ein entpacktes Archiv), trägt die Zeit der Kopie und machte jede solche Datei beim ersten Abgleich eines neuen Rechners zum Konflikt. Bei gleicher Größe und verschiedener Zeit vergleicht die Brücke jetzt den Inhalt über eine Prüfsumme, hier und über den Dateidienst. Nur diese Dateien werden gelesen: ein Plan über 20 000 Dateien kostet nichts extra, wo die Zeiten übereinstimmen.
+- **Eine neue Datei in einem Ordner, den du nur liest, wird als nicht hochladbar genannt.** Der Plan führt sie als „geht nicht hoch, nur lesen" statt unter Hoch und lässt sie aus den Summen und der Grenze heraus; `sync` überspringt sie mit demselben Satz, hält sie über die Liste des Klienten zu Hause und endet grün, statt mit Exit 1 und der englischen Meldung des Klienten.
+
 ## 0.56.0 (2026-10-01)
 
 Kontrakt: bis 6

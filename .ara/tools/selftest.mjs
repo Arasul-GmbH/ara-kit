@@ -10021,6 +10021,69 @@ await checkAsync("sync --install prüft aus launchd selbst: ohne lokales Netz ei
   }
 });
 
+await checkAsync("Der Plan hält eine byte-gleiche Datei mit anderer Änderungszeit nicht für einen Konflikt, eine andere mit gleicher Größe schon", async () => {
+  // Jeder neue Rechner startet mit kopierten Dateien ohne erhaltene Zeit (cp ohne -p, Entpacken).
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-");
+  mkdirSync(join(lager, "firma"));
+  mkdirSync(join(lager, "buchhaltung"));
+  mkdirSync(join(w.root, "buchhaltung"), { recursive: true });
+  const alt = new Date("2026-01-01T10:00:00Z");
+  for (const [name, inhalt] of [["gleich.md", "dasselbe\n"], ["anders.md", "Fassung A\n"]]) {
+    writeFileSync(join(lager, "buchhaltung", name), inhalt);
+    utimesSync(join(lager, "buchhaltung", name), alt, alt);
+  }
+  writeFileSync(join(w.root, "buchhaltung", "gleich.md"), "dasselbe\n");
+  writeFileSync(join(w.root, "buchhaltung", "anders.md"), "Fassung B\n");
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_WURZEL, FO_ORDNER[0]]), lager });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `sync --plan endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    assert(/Konflikte: +1 Datei.*: anders\.md$/m.test(lauf.stdout), `die Datei mit anderem Inhalt ist kein Konflikt: ${lauf.stdout}`);
+    assert(!/gleich\.md/.test(lauf.stdout), `die byte-gleiche Datei wird genannt: ${lauf.stdout}`);
+    assert(/Unverändert: +1 Datei/.test(lauf.stdout) && /; 1 Konflikte;/.test(lauf.stdout), `die byte-gleiche Datei zählt nicht als unverändert: ${lauf.stdout}`);
+    // Dieselbe Frage ohne die abweichende Datei: null Konflikte.
+    rmSync(join(w.root, "buchhaltung", "anders.md"));
+    rmSync(join(lager, "buchhaltung", "anders.md"));
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(/; 0 Konflikte;/.test(lauf.stdout), `ein Plan über byte-gleiche Dateien zeigt Konflikte: ${lauf.stdout}`);
+    return "gleiche Größe, andere Zeit: gleicher Inhalt ist unverändert, anderer Inhalt bleibt ein Konflikt";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("Eine neue Datei in einem Ordner mit lesen geht nicht hoch: der Plan und sync sagen es mit demselben Satz, sync endet grün", async () => {
+  const w = brueckeWurzel();
+  const lager = wegwerfordner("ara-lager-");
+  mkdirSync(join(lager, "firma"));
+  mkdirSync(join(lager, "buchhaltung"));
+  mkdirSync(join(w.root, "buchhaltung"), { recursive: true });
+  writeFileSync(join(w.root, "buchhaltung", "neu.md"), "nur hier\n");
+  const klient = attrappenKlient();
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll };
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_WURZEL, FO_ORDNER[0]]), lager });
+  const satz = "geht nicht hoch, nur lesen: 1 Datei: neu.md";
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.stdout.includes(`Hoch:                ${satz}`), `der Plan nennt die Datei nicht als nicht hochladbar: ${lauf.stdout}`);
+    assert(lauf.stdout.includes("hoch 0 Dateien"), `die Summe zählt die Datei als hoch: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0, `sync endet mit ${lauf.status}: ${lauf.stdout}${lauf.stderr}`);
+    assert(lauf.stdout.includes(satz), `sync sagt den Satz nicht: ${lauf.stdout}`);
+    const rufe = klientRufe(klient.protokoll).filter((ruf) => ruf.argv[1] === "buchhaltung");
+    assert(rufe.length === 1 && rufe[0].liste.split("\n").includes("neu.md"), `der Klient bekommt die Datei nicht in der Ausschlussliste: ${JSON.stringify(rufe)}`);
+    assert(existsSync(join(w.root, "buchhaltung", "neu.md")), "die Datei ist nicht mehr da");
+    return "Plan: Hoch 0 und der Satz; sync: derselbe Satz, Datei in der Liste des Klienten, Exit 0";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
 await checkAsync("Die Brücke nimmt für einen Ordner, der wie der Mensch heißt, dessen Projektraum und nicht den persönlichen", async () => {
   const w = brueckeWurzel();
   const lager = wegwerfordner("ara-lager-namensgleich-");

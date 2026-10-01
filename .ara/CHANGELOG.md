@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.57.0 (2026-10-01)
+
+Contract: up to 6
+
+- **`sync --plan` shows no conflict for a file that is byte-equal.** A file copied without its modification time (`cp` without `-p`, an unpacked archive) has the time of the copy and made every such file a conflict at the first sync of a new computer. Where size is equal and time differs, the bridge now compares the content by checksum, here and through the file service. Only those files are read: a plan over 20 000 files costs nothing extra where the times agree.
+- **A new file in a folder you only read is named as not going up.** The plan lists it as "does not go up, read only" instead of under Up and leaves it out of the totals and the limit; `sync` skips it with the same sentence, keeps it at home through the client's list and ends green, instead of ending with exit 1 and the client's English message.
+
 ## 0.56.0 (2026-10-01)
 
 Contract: up to 6
