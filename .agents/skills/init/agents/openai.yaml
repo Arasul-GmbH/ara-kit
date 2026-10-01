@@ -1,0 +1,5 @@
+interface:
+  display_name: "Init"
+  short_description: "Set up the kit or bring it up to date"
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,19 @@
+# What Codex needs beside AGENTS.md. Codex reads this file only for a folder it trusts, and
+# it asks about that the first time. Whatever you change here, node .ara/tools/update.mjs
+# puts back: this file belongs to the kit, like .claude/settings.json does for Claude Code.
+
+[features]
+# The interview tool also in the normal mode, not only in the plan mode. Stage "under
+# development" in Codex, so the self-test checks that `codex features list` still knows it.
+default_mode_request_user_input = true
+
+[sandbox_workspace_write]
+# ssh, gh and the browser need the network, which the sandbox of Codex keeps off by default.
+network_access = true
+
+# The same browser as in .mcp.json, which Codex does not read. Approved without asking, as
+# `mcp__playwright` is in .claude/settings.json: a call that asks every time is no browser.
+[mcp_servers.playwright]
+default_tools_approval_mode = "approve"
+command = "npx"
+args = ["-y", "@playwright/mcp@latest", "--browser", "chromium", "--viewport-size", "1400,900", "--ignore-https-errors"]

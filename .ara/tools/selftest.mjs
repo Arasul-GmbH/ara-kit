@@ -37,15 +37,18 @@ import {
   copyFileSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   realpathSync,
   renameSync,
   rmSync,
   statSync,
   symlinkSync,
+  unlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -171,7 +174,7 @@ import {
   tracked,
   writeFrontmatter,
 } from "./lib/kit.mjs";
-import { isVariant } from "./lib/i18n.mjs";
+import { isVariant, variantOf } from "./lib/i18n.mjs";
 import { compareVersions, contractOf, entriesSince, parseChangelog, standBlock } from "./lib/version.mjs";
 import { ISSUE_PATH, TOKEN_SHAPE, cleanToken, tokenShape, unlock, unlockLines } from "./lib/licence.mjs";
 import { keychainAvailable } from "./lib/secrets.mjs";
@@ -211,7 +214,7 @@ async function checkAsync(name, fn) {
     const hint = await fn();
     report(name, true, typeof hint === "string" ? hint : "");
   } catch (error) {
-    report(name, false, error.message);
+    report(name, false, process.env.ARA_SELFTEST_STACK ? error.stack : error.message);
   }
 }
 
@@ -229,6 +232,36 @@ function assert(condition, message) {
  * Befehle nennt. Gemessen war der Arbeitsordner und nicht das Kit.
  */
 const MIRROR_DIR = join(ROOT, ".ara", "mirror");
+
+/**
+ * Was zum Kit gehoert, ausser `.ara/`: die Regeln, die Skills, was Claude Code und Codex
+ * brauchen. Symlinks bleiben Symlinks mit demselben Ziel, denn `.claude/skills/<name>` zeigt
+ * auf `.agents/skills/<name>`, und cpSync schriebe sonst den absoluten Pfad dieses
+ * Arbeitsordners hinein. Erzeugtes bleibt draussen: die Skills, die `commands.mjs` aus den
+ * Befehlen macht, gehoeren dem Ordner des Nutzers und nicht dem Kit.
+ */
+function copyKitRest(dir) {
+  const befehle = new Set();
+  for (const gruppe of ["all", "partner"]) {
+    for (const name of readdirSync(join(ROOT, ".ara", "commands", gruppe))) {
+      if (name.endsWith(".md") && !isVariant(name)) befehle.add(name.replace(/\.md$/, ""));
+    }
+  }
+  for (const rel of [".claude", ".agents", ".codex"]) {
+    if (!existsSync(join(ROOT, rel))) continue;
+    cpSync(join(ROOT, rel), join(dir, rel), {
+      recursive: true,
+      verbatimSymlinks: true,
+      filter: (src) => {
+        const teile = relative(ROOT, src).split("\\").join("/").split("/");
+        if (teile[0] === ".agents" && teile[1] === "skills" && (teile[2] === ".sources.json" || befehle.has(teile[2]))) return false;
+        if (teile[0] === ".claude" && teile[1] === "commands" && teile[2] && teile[2] !== "init.md") return false;
+        return true;
+      },
+    });
+  }
+  if (existsSync(join(ROOT, "AGENTS.md"))) copyFileSync(join(ROOT, "AGENTS.md"), join(dir, "AGENTS.md"));
+}
 
 function skipEntry(path, name) {
   return name.startsWith(".git") || name === "node_modules" || path === MIRROR_DIR;
@@ -352,12 +385,51 @@ check("Riegel blockiert zerstörerische Befehle", () => {
     "cat .env",
     "cat ~/.ssh/id_ed25519",
     "curl https://arasul.de/api/download?token=geheim12345",
+    // Der Befehl steht als Text in einem Werkzeugaufruf: die Anführungszeichen dürfen
+    // nicht an der Regel vorbeiführen.
+    'node .ara/tools/remote.mjs --device orin --command "rm -rf /"',
+    "node .ara/tools/remote.mjs --device orin --command 'rm -rf ~'",
+    // Einzeiler und Textwerkzeuge auf der .env, nicht nur cat.
+    `node -e "console.log(require('fs').readFileSync('.env','utf8'))"`,
+    'python3 -c "print(open(\'.env\').read())"',
+    "grep TOKEN .env",
+    "sed -n 1,5p .env",
   ];
   for (const command of bad) {
     const run = tool("guard.mjs", [], JSON.stringify({ tool_input: { command } }));
     assert(run.status === 2, `nicht blockiert: ${command}`);
   }
   return `${bad.length} Fälle`;
+});
+
+check("Riegel versteht den Umschlag von Codex und den von Claude Code", () => {
+  // Codex schickt dieselbe Form mit Namen des Werkzeugs, Sitzung und Verzeichnis, den Befehl
+  // gelegentlich als Liste. Gemessen am 01.10.2026 mit Codex 0.159.3: tool_name "Bash",
+  // tool_input.command als Text.
+  const codex = (command) =>
+    JSON.stringify({
+      session_id: "s",
+      turn_id: "t",
+      cwd: "/tmp",
+      hook_event_name: "PreToolUse",
+      model: "m",
+      permission_mode: "default",
+      tool_name: "Bash",
+      tool_input: { command },
+      tool_use_id: "u",
+    });
+  for (const [eingabe, soll, was] of [
+    [codex("cat .env"), 2, "Codex, Text, .env"],
+    [codex("rm -rf /"), 2, "Codex, Text, Wurzel"],
+    [codex(["bash", "-lc", "cat .env"]), 2, "Codex, Liste, .env"],
+    [codex("git status"), 0, "Codex, harmlos"],
+    [codex(["bash", "-lc", "git status"]), 0, "Codex, Liste, harmlos"],
+    [JSON.stringify({ tool_name: "Bash", tool_input: { command: "cat .env" } }), 2, "Claude Code, .env"],
+  ]) {
+    const run = tool("guard.mjs", [], eingabe);
+    assert(run.status === soll, `${was}: Status ${run.status}, erwartet ${soll}`);
+  }
+  return "Codex als Text und als Liste, Claude Code";
 });
 
 check("Riegel lässt normale Arbeit durch", () => {
@@ -371,6 +443,13 @@ check("Riegel lässt normale Arbeit durch", () => {
     "ssh arasul@10.0.0.5 -p 2222 uptime",
     "node .ara/tools/mirror.mjs",
     "node .ara/tools/secrets.mjs --show",
+    "rm -rf ./build",
+    'node .ara/tools/remote.mjs --device orin --command "df -h /"',
+    "cp .env.example .env",
+    "git log --oneline | head -3; cp .env.example .env",
+    "git add .env.example",
+    'grep -n "\\.env" .gitignore',
+    'node -e "console.log(1 + 1)"',
   ];
   for (const command of good) {
     const run = tool("guard.mjs", [], JSON.stringify({ tool_input: { command } }));
@@ -384,6 +463,196 @@ check("Riegel überlebt unbrauchbare Eingaben", () => {
     const run = tool("guard.mjs", [], input);
     assert(run.status === 0, `Riegel bricht bei Eingabe "${input}" ab`);
   }
+});
+
+// --- Codex neben Claude Code ----------------------------------------------------
+
+/**
+ * K22: das Kit laeuft in Codex wie in Claude Code, aus denselben Dateien. Diese Pruefungen
+ * halten den Aufbau fest: eine Quelle fuer die Regeln, eine fuer die Skills, die beiden
+ * Wege fuer Befehle, den Riegel und die Einstellung fuer die Rueckfragen.
+ */
+
+check("Die Regeln stehen einmal in AGENTS.md, Claude Code verweist darauf", () => {
+  assert(existsSync(join(ROOT, "AGENTS.md")), "AGENTS.md fehlt, Codex fände keine Regeln");
+  const stub = readFileSync(join(ROOT, ".claude", "CLAUDE.md"), "utf8");
+  assert(stub.trim() === "@../AGENTS.md", `.claude/CLAUDE.md ist kein Verweis auf AGENTS.md: ${stub.slice(0, 60)}`);
+  // Codex liest bis zu 32 KiB und schneidet danach ab: was hinten steht, kaeme nie an.
+  const bytes = readFileSync(join(ROOT, "AGENTS.md")).length;
+  assert(bytes < 28 * 1024, `AGENTS.md hat ${bytes} Bytes, Codex liest nur 32 KiB (Grenze hier 28 KiB)`);
+  const text = readFileSync(join(ROOT, "AGENTS.md"), "utf8");
+  for (const wort of [".agents/skills", ".codex", "$app"]) {
+    assert(text.includes(wort), `AGENTS.md nennt ${wort} nicht`);
+  }
+  const persona = readFileSync(join(ROOT, ".ara", "persona", "ara.md"), "utf8");
+  for (const wort of ["request_user_input", "AskUserQuestion"]) assert(persona.includes(wort), `die Persona nennt ${wort} nicht`);
+  return `${bytes} Bytes`;
+});
+
+check("Jeder Skill liegt unter .agents/skills, und .claude/skills zeigt per Link darauf", () => {
+  const skills = readdirSync(join(ROOT, ".agents", "skills"), { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => e.name);
+  // Erzeugte Skills aus den Befehlen gehoeren nicht dazu: getrackt ist, was git kennt.
+  const tracked = spawnSync("git", ["ls-files", "-z", ".agents/skills"], { cwd: ROOT, encoding: "utf8" });
+  const getrackt = new Set(
+    tracked.status === 0 ? tracked.stdout.split("\0").filter(Boolean).map((f) => f.split("/")[2]) : skills
+  );
+  const kit = skills.filter((name) => getrackt.has(name));
+  assert(kit.length >= 6 && kit.includes("init"), `nur ${kit.length} Skills im Kit: ${kit.join(", ")}`);
+  for (const name of kit) {
+    const datei = join(ROOT, ".agents", "skills", name, "SKILL.md");
+    assert(existsSync(datei), `${name}: SKILL.md fehlt`);
+    const { fields } = readFrontmatter(datei);
+    // Codex verlangt name und description, und der Name ist der des Ordners.
+    assert(fields.name === name, `${name}: name steht auf "${fields.name}"`);
+    assert(fields.description && fields.description.length <= 1024, `${name}: description fehlt oder ist laenger als 1024 Zeichen`);
+    // init ist unter Claude Code der Befehl .claude/commands/init.md. Ein Link dazu gaebe
+    // dort einen zweiten Weg zum selben Ding.
+    if (name === "init") {
+      assert(!existsSync(join(ROOT, ".claude", "skills", "init")), ".claude/skills/init liegt neben dem Befehl init");
+      continue;
+    }
+    const link = join(ROOT, ".claude", "skills", name);
+    assert(existsSync(link) && lstatSync(link).isSymbolicLink(), `.claude/skills/${name} ist kein Symlink`);
+    assert(readlinkSync(link) === `../../.agents/skills/${name}`, `.claude/skills/${name} zeigt auf ${readlinkSync(link)}`);
+    assert(existsSync(join(link, "SKILL.md")), `.claude/skills/${name}/SKILL.md ist über den Link nicht lesbar`);
+  }
+  // Umgekehrt: kein Link ins Leere und kein Ordner, der nur unter .claude liegt.
+  for (const eintrag of readdirSync(join(ROOT, ".claude", "skills"), { withFileTypes: true })) {
+    const pfad = join(ROOT, ".claude", "skills", eintrag.name);
+    assert(lstatSync(pfad).isSymbolicLink(), `.claude/skills/${eintrag.name} ist ein eigener Ordner, nicht der Link`);
+    assert(existsSync(pfad), `.claude/skills/${eintrag.name} zeigt ins Leere`);
+  }
+  return `${kit.length} Skills: ${kit.join(", ")}`;
+});
+
+check("Der Skill init in Codex ist derselbe Text wie der Befehl init in Claude Code", () => {
+  const befehl = readFrontmatter(join(ROOT, ".claude", "commands", "init.md"));
+  const skill = readFrontmatter(join(ROOT, ".agents", "skills", "init", "SKILL.md"));
+  assert(skill.fields.name === "init" && skill.fields.description, "der Skill init hat keinen Namen oder keine Beschreibung");
+  assert(skill.body.trim() === befehl.body.trim(), "der Rumpf von .agents/skills/init/SKILL.md weicht von .claude/commands/init.md ab");
+  const yaml = readFileSync(join(ROOT, ".agents", "skills", "init", "agents", "openai.yaml"), "utf8");
+  assert(/allow_implicit_invocation:\s*false/.test(yaml), "init darf in Codex von selbst gewaehlt werden");
+});
+
+check("commands.mjs legt jeden Befehl auch als Skill fuer Codex an, aus derselben Quelle", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ara-skills-"));
+  try {
+    cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true, filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src) });
+    copyKitRest(dir);
+    for (const lang of ["en", "de"]) {
+      rmSync(join(dir, ".agents", "skills", ".sources.json"), { force: true });
+      const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", "partner", "--language", lang, "--invoice", "yes"], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+      assert(run.status === 0, `${lang}: commands.mjs --apply: ${run.stderr || run.stdout}`);
+      for (const gruppe of ["all", "partner"]) {
+        for (const datei of readdirSync(join(ROOT, ".ara", "commands", gruppe))) {
+          if (!datei.endsWith(".md") || isVariant(datei)) continue;
+          const name = datei.replace(/\.md$/, "");
+          const quelle = readFrontmatter(join(ROOT, ".ara", "commands", gruppe, variantOf(datei, lang)));
+          const skill = join(dir, ".agents", "skills", name, "SKILL.md");
+          assert(existsSync(skill), `${lang}: kein Skill für /${name}`);
+          const gelesen = readFrontmatter(skill);
+          assert(gelesen.fields.name === name, `${lang}: Skill ${name} heißt ${gelesen.fields.name}`);
+          assert(gelesen.fields.description === quelle.fields.description, `${lang}: Beschreibung von ${name} weicht ab`);
+          assert(gelesen.body.trim().endsWith(quelle.body.trim()), `${lang}: Rumpf von ${name} ist nicht der des Befehls`);
+          assert(gelesen.body.includes(`$${name}`) && /\$1/.test(gelesen.body), `${lang}: ${name} sagt nicht, was $1 unter Codex heißt`);
+          const yaml = readFileSync(join(dir, ".agents", "skills", name, "agents", "openai.yaml"), "utf8");
+          assert(/allow_implicit_invocation:\s*false/.test(yaml), `${lang}: ${name} darf in Codex von selbst gewaehlt werden`);
+        }
+      }
+      // Ein zweiter Lauf hat nichts zu tun, ein von Hand geaenderter Skill bleibt liegen.
+      const eigen = join(dir, ".agents", "skills", "app", "SKILL.md");
+      writeFileSync(eigen, readFileSync(eigen, "utf8") + "\nMeine Zeile.\n");
+      const zweiter = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", "partner", "--language", lang, "--invoice", "yes"], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+      assert(zweiter.status === 0 && /Meine Zeile/.test(readFileSync(eigen, "utf8")), `${lang}: --apply hat einen angepassten Skill überschrieben`);
+      const ersetzt = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--replace", "app", "--role", "partner", "--language", lang], {
+        encoding: "utf8",
+        cwd: dir,
+        env: { ...process.env, ARA_LANGUAGE: "" },
+      });
+      assert(ersetzt.status === 0 && !/Meine Zeile/.test(readFileSync(eigen, "utf8")), `${lang}: --replace hat den Skill nicht ersetzt`);
+    }
+    // Das Unternehmen: kein Skill fuer einen Partnerbefehl, und der Schnitt laeuft nie durch den Link.
+    const firma = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", "company", "--language", "en"], {
+      encoding: "utf8",
+      cwd: dir,
+      env: { ...process.env, ARA_LANGUAGE: "" },
+    });
+    assert(firma.status === 0, `Unternehmen: ${firma.stderr || firma.stdout}`);
+    for (const name of ["sales", "pricing", "customers"]) {
+      assert(!existsSync(join(dir, ".agents", "skills", name)), `Unternehmen: .agents/skills/${name} blieb liegen`);
+      let link = true;
+      try {
+        lstatSync(join(dir, ".claude", "skills", name));
+      } catch {
+        link = false;
+      }
+      assert(!link, `Unternehmen: .claude/skills/${name} blieb als Link ohne Ziel liegen`);
+    }
+    // Der Arbeitsordner, aus dem kopiert wurde, ist unberuehrt.
+    assert(existsSync(join(ROOT, ".agents", "skills", "sales", "SKILL.md")), "der Schnitt im Klon hat den Skill sales im Arbeitsordner geloescht");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("Jeder erzeugte Skill steht in der .gitignore, damit der Klon sauber bleibt", () => {
+  const ignore = readFileSync(join(ROOT, ".gitignore"), "utf8").split("\n");
+  const namen = [];
+  for (const gruppe of ["all", "partner"]) {
+    for (const datei of readdirSync(join(ROOT, ".ara", "commands", gruppe))) {
+      if (datei.endsWith(".md") && !isVariant(datei)) namen.push(datei.replace(/\.md$/, ""));
+    }
+  }
+  for (const name of namen) assert(ignore.includes(`.agents/skills/${name}/`), `.gitignore kennt .agents/skills/${name}/ nicht`);
+  assert(ignore.includes(".agents/skills/.sources.json"), ".gitignore kennt .agents/skills/.sources.json nicht");
+  // Und umgekehrt darf kein getrackter Skill darin stehen.
+  for (const zeile of ignore) {
+    const treffer = zeile.match(/^\.agents\/skills\/([^/]+)\/$/);
+    if (treffer) assert(namen.includes(treffer[1]), `.gitignore verbirgt .agents/skills/${treffer[1]}/, das ist kein Befehl`);
+  }
+  return `${namen.length} Befehle`;
+});
+
+check("Codex findet im Kit seinen Riegel, das Netz und den Browser", () => {
+  const hooks = JSON.parse(readFileSync(join(ROOT, ".codex", "hooks.json"), "utf8"));
+  const pre = hooks.hooks?.PreToolUse ?? [];
+  const riegel = pre.find((eintrag) => eintrag.matcher === "Bash" && (eintrag.hooks ?? []).some((h) => /guard\.mjs/.test(h.command ?? "")));
+  assert(riegel, ".codex/hooks.json hängt guard.mjs nicht als PreToolUse vor Bash");
+  const befehl = riegel.hooks[0].command;
+  // Der Riegel muss aus jedem Unterordner der Sitzung zu finden sein, nicht nur aus der Wurzel.
+  assert(/git rev-parse --show-toplevel/.test(befehl), "der Riegel wird relativ zum Arbeitsverzeichnis gesucht");
+  const toml = readFileSync(join(ROOT, ".codex", "config.toml"), "utf8");
+  assert(/^\s*default_mode_request_user_input\s*=\s*true\s*$/m.test(toml), "das Rückfragewerkzeug ist im normalen Modus nicht eingeschaltet");
+  assert(/^\[sandbox_workspace_write\]\s*\n(?:#.*\n)*\s*network_access\s*=\s*true/m.test(toml), "das Netz der Codex-Sandbox ist nicht eingeschaltet");
+  const mcp = JSON.parse(readFileSync(join(ROOT, ".mcp.json"), "utf8")).mcpServers.playwright;
+  const args = toml.match(/^args\s*=\s*(\[.*\])\s*$/m);
+  assert(args && JSON.stringify(JSON.parse(args[1])) === JSON.stringify(mcp.args), "der Browser in .codex/config.toml ist nicht der aus .mcp.json");
+  assert(JSON.parse(args[1]).includes("--ignore-https-errors"), "der Browser in Codex startet ohne --ignore-https-errors");
+});
+
+check("Ist Codex installiert, kennt es den Schalter für das Rückfragewerkzeug noch", () => {
+  const version = spawnSync("codex", ["--version"], { encoding: "utf8" });
+  if (version.error || version.status !== 0) return "übersprungen, Codex ist nicht installiert";
+  const liste = spawnSync("codex", ["features", "list"], { encoding: "utf8" });
+  assert(liste.status === 0, `codex features list endet mit ${liste.status}`);
+  // Die Stufe heisst "under development" und kann sich aendern. Faellt der Schluessel weg,
+  // fragt Codex im normalen Modus nicht mehr, und das Kit sagt es hier und nicht erst im Gespraech.
+  assert(
+    /^default_mode_request_user_input\s/m.test(liste.stdout),
+    "codex features list kennt default_mode_request_user_input nicht mehr, das Rückfragewerkzeug braucht dann den Plan-Modus: .codex/config.toml und die Persona nachziehen"
+  );
+  assert(/^hooks\s.*\btrue\s*$/m.test(liste.stdout), "Hooks sind in dieser Codex-Version aus, der Riegel liefe nicht");
+  return `${version.stdout.trim()}`;
 });
 
 // --- Frontmatter ------------------------------------------------------------
@@ -11100,8 +11369,9 @@ check("Keine Gedankenstriche im Kit", () => {
   };
   scan(join(ROOT, ".ara"));
   scan(join(ROOT, ".claude"));
+  scan(join(ROOT, ".agents"));
   offenders.push(
-    ...(/[\u2014\u2013]/.test(readFileSync(join(ROOT, "README.md"), "utf8")) ? ["README.md"] : [])
+    ...["README.md", "AGENTS.md"].filter((datei) => /[\u2014\u2013]/.test(readFileSync(join(ROOT, datei), "utf8")))
   );
   assert(offenders.length === 0, `Gedankenstriche in: ${offenders.slice(0, 8).join(", ")}`);
 });
@@ -11116,13 +11386,14 @@ check("Dateinamen sind klein, ohne Umlaute und ohne Leerzeichen", () => {
   if (listed.status !== 0) return "uebersprungen, kein Git-Repository";
   const files = listed.stdout.split("\0").filter(Boolean);
 
-  // Feste Namen, die Werkzeuge so erwarten: README, CLAUDE.md, SKILL.md.
+  // Feste Namen, die Werkzeuge so erwarten: README, AGENTS.md, CLAUDE.md, SKILL.md.
   // `Dockerfile` heisst so, weil Docker es so erwartet: es steht im Paket einer
   // App und wird am Geraet gebaut, nicht von einem Kit-Werkzeug gelesen.
   // `VERSION` und `CHANGELOG.md` sind ueberall im Handwerk grossgeschrieben;
   // ein Partner sucht sie unter diesem Namen und nicht unter einem eigenen.
   const fixed = new Set([
     "README.md",
+    "AGENTS.md",
     "CLAUDE.md",
     "SKILL.md",
     "LICENSE",
@@ -11777,7 +12048,7 @@ check("Die Befehle werden in der Sprache des Profils angelegt", () => {
   const dir = mkdtempSync(join(tmpdir(), "ara-cmd-lang-"));
   try {
     cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true });
-    cpSync(join(ROOT, ".claude"), join(dir, ".claude"), { recursive: true });
+    copyKitRest(dir);
     for (const name of readdirSync(join(dir, ".claude", "commands"))) {
       if (name !== "init.md") rmSync(join(dir, ".claude", "commands", name));
     }
@@ -11823,7 +12094,7 @@ check("Ein Unternehmen bekommt bei /init keine Partnerware, ein Partner alles", 
         recursive: true,
         filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src),
       });
-      cpSync(join(ROOT, ".claude"), join(dir, ".claude"), { recursive: true });
+      copyKitRest(dir);
       // Ein Repository wie der Klon: der Schnitt darf ihn nicht schmutzig machen.
       const git = (...args) =>
         spawnSync("git", ["-c", "user.name=Selbsttest", "-c", "user.email=selbsttest@example.invalid", ...args], { cwd: dir, encoding: "utf8" });
@@ -11892,7 +12163,8 @@ check("Verweise im Kit zeigen auf vorhandene Dateien", () => {
   };
   collect(join(ROOT, ".ara"));
   collect(join(ROOT, ".claude"));
-  files.push(join(ROOT, "README.md"));
+  collect(join(ROOT, ".agents"));
+  files.push(join(ROOT, "README.md"), join(ROOT, "AGENTS.md"));
 
   const missing = [];
   for (const file of files) {
@@ -11943,7 +12215,8 @@ check("Jeder genannte Befehl hat seine Datei", () => {
   };
   collect(join(ROOT, ".ara"));
   collect(join(ROOT, ".claude"));
-  files.push(join(ROOT, "README.md"));
+  collect(join(ROOT, ".agents"));
+  files.push(join(ROOT, "README.md"), join(ROOT, "AGENTS.md"));
   // .env.example ist kein Markdown und stand darum nie in dieser Pruefung. Sie
   // nannte bis zum 28.08.2026 /start, den es seit E1 nicht mehr gibt, und sie
   // ist genau die Datei, die ein Fremder als Erstes aufmacht.
@@ -12035,7 +12308,7 @@ check("Jeder Befehl nennt sein Wissen", () => {
  * Blatt der Muster, und eine Fach-App mit Belegen und Mandanten nimmt drei davon.
  */
 const FACH_APP_LADESATZ = {
-  immer: [".claude/CLAUDE.md"],
+  immer: ["AGENTS.md"],
   sprache: [
     ".ara/persona/ara",
     ".ara/commands/all/app",
@@ -12112,7 +12385,8 @@ check("Verweise auf Abschnitte treffen eine Ueberschrift in der Sprache des Blat
   };
   sammle(join(ROOT, ".ara"), /\.(md|mjs)$/);
   sammle(join(ROOT, ".claude"), /\.md$/);
-  dateien.push(join(ROOT, "README.md"));
+  sammle(join(ROOT, ".agents"), /\.md$/);
+  dateien.push(join(ROOT, "README.md"), join(ROOT, "AGENTS.md"));
   const titel = (pfad) =>
     new Set(
       readFileSync(pfad, "utf8")
@@ -12214,7 +12488,7 @@ check("Jeder genannte Wissenspfad existiert nach jedem init-Zweig und in jeder S
       const dir = mkdtempSync(join(tmpdir(), `ara-pfade-${role}-${lang}-`));
       try {
         cpSync(join(ROOT, ".ara"), join(dir, ".ara"), { recursive: true, filter: (src) => !/\/(mirror|node_modules|templates\/app\/frontend\/src\/marken)(\/|$)/.test(src) });
-        cpSync(join(ROOT, ".claude"), join(dir, ".claude"), { recursive: true });
+        copyKitRest(dir);
         const run = spawnSync("node", [join(dir, ".ara", "tools", "commands.mjs"), "--apply", "--role", role, "--language", lang], {
           encoding: "utf8",
           cwd: dir,
@@ -12285,10 +12559,11 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   const copy = (from, to) =>
     cpSync(from, to, {
       recursive: true,
+      verbatimSymlinks: true,
       filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src),
     });
   copy(join(ROOT, ".ara"), join(fork, ".ara"));
-  copy(join(ROOT, ".claude"), join(fork, ".claude"));
+  copyKitRest(fork);
   const write = (rel, content) => {
     mkdirSync(join(fork, rel, ".."), { recursive: true });
     writeFileSync(join(fork, rel), content);
@@ -12299,7 +12574,6 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   write(".ara/state.json", '{"customer":"probe"}');
   rmSync(join(fork, ".claude", "commands", "device.md"), { force: true });
   spawnSync("git", ["init", "-q"], { cwd: fork });
-
   const forkTool = (file, args, env = {}) =>
     new Promise((done) => {
       const child = spawn("node", [join(fork, ".ara", "tools", file), ...args], {
@@ -12320,6 +12594,18 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
   const source = join(work, "src", "ara-kit-main");
   copy(join(fork, ".ara"), join(source, ".ara"));
   copy(join(fork, ".claude"), join(source, ".claude"));
+  copy(join(fork, ".agents"), join(source, ".agents"));
+  copy(join(fork, ".codex"), join(source, ".codex"));
+  copyFileSync(join(fork, "AGENTS.md"), join(source, "AGENTS.md"));
+  writeFileSync(join(source, ".codex", "config.toml"), read(".codex/config.toml") + "\n# Neu im Kit.\n");
+  // Erst jetzt, nachdem der neue Stand gebaut ist: der Fork bekommt den alten Aufbau.
+  // Der Stand vor 0.55.0: der Skill liegt als echter Ordner unter .claude/skills, unter
+  // .agents/skills gibt es ihn nicht. Das Update muss daraus den Link machen, ohne die
+  // Datei dahinter zu verlieren.
+  unlinkSync(join(fork, ".claude", "skills", "diagnostics"));
+  mkdirSync(join(fork, ".claude", "skills", "diagnostics"), { recursive: true });
+  copyFileSync(join(fork, ".agents", "skills", "diagnostics", "SKILL.md"), join(fork, ".claude", "skills", "diagnostics", "SKILL.md"));
+  rmSync(join(fork, ".agents", "skills", "diagnostics"), { recursive: true });
   rmSync(join(source, ".ara", "mirror"), { recursive: true, force: true });
   rmSync(join(source, ".ara", "state.json"), { force: true });
   writeFileSync(join(source, ".ara", "knowledge", "probe.md"), "# Probe\n");
@@ -12430,7 +12716,9 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(lageJson.contract.hier === KIT_CONTRACT_VERSION, `--json nennt hier ${lageJson.contract.hier}`);
     assert(!has(".ara/knowledge/probe.md"), "--check --json hat eingespielt");
 
-    // 3. Einspielen.
+    // 3. Einspielen. Was commands.mjs in Schritt 1 als Skill erzeugt hat, gehoert nicht dem Update.
+    assert(has(".agents/skills/device/SKILL.md") && has(".agents/skills/.sources.json"), "Schritt 1 hat keinen Skill erzeugt");
+    const erzeugt = read(".agents/skills/device/SKILL.md");
     run = await forkTool("update.mjs", [], env);
     assert(run.status === 0, `Update fehlgeschlagen: ${run.stderr}${run.stdout}`);
     assert(has(".ara/knowledge/probe.md"), "neue Datei fehlt");
@@ -12443,6 +12731,14 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     assert(!/Neu im Kit/.test(read(".claude/commands/device.md")), "erzeugter Befehl wurde ohne Zustimmung ersetzt");
     assert(/probe/.test(read(".ara/mirror/STATE.json")), "Spiegel wurde angefasst");
     assert(/customer/.test(read(".ara/state.json")), "Merker wurde angefasst");
+    // Die neuen Dateien fuer Codex und der Wechsel vom Ordner zum Link.
+    assert(has("AGENTS.md") && has(".codex/hooks.json"), "AGENTS.md oder .codex fehlen nach dem Update");
+    assert(/Neu im Kit\./.test(read(".codex/config.toml")), ".codex/config.toml nicht ersetzt");
+    const link = join(fork, ".claude", "skills", "diagnostics");
+    assert(lstatSync(link).isSymbolicLink() && readlinkSync(link) === "../../.agents/skills/diagnostics", "der Skill unter .claude/skills ist kein Link auf .agents/skills");
+    assert(has(".agents/skills/diagnostics/SKILL.md") && has(".claude/skills/diagnostics/SKILL.md"), "die Datei hinter dem Link fehlt");
+    assert(read(".agents/skills/device/SKILL.md") === erzeugt, "ein erzeugter Skill wurde vom Update angefasst");
+    assert(has(".agents/skills/.sources.json"), "der Merker der Skills wurde vom Update entfernt");
 
     // Ein zweiter Lauf hat nichts mehr zu tun.
     run = await forkTool("update.mjs", ["--check"], env);
@@ -12699,7 +12995,12 @@ check("Der Selbsttest ist in einem blanken Klon gruen", () => {
     for (const datei of dateien) {
       const ziel = join(klon, datei);
       mkdirSync(dirname(ziel), { recursive: true });
-      cpSync(join(ROOT, datei), ziel);
+      // Ein Symlink bleibt einer, mit demselben Ziel: .claude/skills/<name> zeigt im Kit auf
+      // .agents/skills/<name>. cpSync schriebe stattdessen den absoluten Pfad dieses
+      // Arbeitsordners hinein, und ein Schnitt im Klon liefe durch den Link in ihn hinein.
+      const quelle = join(ROOT, datei);
+      if (lstatSync(quelle).isSymbolicLink()) symlinkSync(readlinkSync(quelle), ziel);
+      else cpSync(quelle, ziel);
     }
 
     // Die Ordner des Nutzers gibt es im Klon nicht. Das ist der Unterschied,

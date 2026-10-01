@@ -1,6 +1,6 @@
 ---
-description: Set up the kit or bring it up to date
-argument-hint: [answer file]
+name: init
+description: Set up the kit or bring it up to date. Explicit only: the human calls it with $init, optionally with the path of an answer file.
 ---
 
 This is the one command that exists before there is a profile, so it is the one that is

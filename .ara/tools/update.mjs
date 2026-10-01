@@ -3,8 +3,10 @@
  * Bring the kit up to date.
  *
  * Fetches the version from the Arasul repo and replaces only what belongs to
- * Arasul: `.ara/` and the minimum of `.claude/` (CLAUDE.md, settings.json,
- * commands/init.md, skills/). In the company branch what belongs to partners
+ * Arasul: `.ara/`, `AGENTS.md`, `.agents/skills/`, `.codex/` and the minimum of
+ * `.claude/` (CLAUDE.md, settings.json, commands/init.md, skills/, which are symlinks onto
+ * `.agents/skills/`). The skills that `commands.mjs` made from the commands are not
+ * Arasul's to replace or remove, they are generated. In the company branch what belongs to partners
  * only stays out, see PARTNER_ONLY in lib/commands.mjs. Everything else stays: business/, customers/,
  * devices/, apps/, the generated commands under .claude/commands/, the mirror, the
  * marker, the .env.
@@ -25,9 +27,11 @@
  *
  * Kit auf den aktuellen Stand bringen.
  *
- * Holt den Stand aus dem Arasul-Repo und ersetzt nur, was Arasul gehoert: `.ara/`
- * und das Minimum von `.claude/` (CLAUDE.md, settings.json, commands/init.md,
- * skills/). Im Zweig Unternehmen bleibt draussen, was nur Partnern gehoert,
+ * Holt den Stand aus dem Arasul-Repo und ersetzt nur, was Arasul gehoert: `.ara/`,
+ * `AGENTS.md`, `.agents/skills/`, `.codex/` und das Minimum von `.claude/` (CLAUDE.md,
+ * settings.json, commands/init.md, skills/, das sind Symlinks auf `.agents/skills/`). Die
+ * Skills, die `commands.mjs` aus den Befehlen macht, gehoeren Arasul nicht zum Ersetzen
+ * oder Entfernen, sie sind erzeugt. Im Zweig Unternehmen bleibt draussen, was nur Partnern gehoert,
  * siehe PARTNER_ONLY in lib/commands.mjs. Alles andere bleibt liegen: business/, customers/, devices/, apps/,
  * die erzeugten Befehle unter .claude/commands/, der Spiegel, der Merker, die .env.
  *
@@ -48,17 +52,22 @@ import { spawn } from "node:child_process";
 import {
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  readlinkSync,
   rmSync,
   statSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { Readable } from "node:stream";
-import { language, t, variantOf } from "./lib/i18n.mjs";
+import { isVariant, language, t, variantOf } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 import { partnerOnly } from "./lib/commands.mjs";
 import { KIT_CONTRACT_VERSION } from "./lib/contract.mjs";
@@ -73,6 +82,9 @@ const SOURCE =
 // Nutzer und wird nie angefasst.
 const MANAGED = [
   ".ara",
+  "AGENTS.md",
+  join(".agents", "skills"),
+  ".codex",
   join(".claude", "CLAUDE.md"),
   join(".claude", "settings.json"),
   join(".claude", "commands", "init.md"),
@@ -90,27 +102,53 @@ const arg = parseArgs();
 // lib/commands.mjs, damit beide Werkzeuge dieselbe lesen.
 const company = readFrontmatter(join(BUSINESS, "profile.md")).fields.role === "company";
 
+// Die Skills, die commands.mjs aus den Befehlen macht, und ihr Merker. Sie liegen in
+// .agents/skills/ neben den Skills des Kits, kommen aber nie mit dem geholten Stand und
+// duerfen darum weder ersetzt noch als "entfernt" gezaehlt werden.
+const GENERATED = new Set();
+for (const group of ["all", "partner"]) {
+  const dir = join(ROOT, ".ara", "commands", group);
+  if (!existsSync(dir)) continue;
+  for (const file of readdirSync(dir)) {
+    if (file.endsWith(".md") && !isVariant(file)) GENERATED.add(file.replace(/\.md$/, ""));
+  }
+}
+
+function generated(rel) {
+  const parts = rel.split("\\").join("/").split("/");
+  if (parts[0] !== ".agents" || parts[1] !== "skills") return false;
+  return parts[2] === ".sources.json" || GENERATED.has(parts[2]);
+}
+
 function skipped(rel) {
   if (company && partnerOnly(rel)) return true;
+  if (generated(rel)) return true;
   return SKIP.some((s) => rel === s || rel.startsWith(s + "/"));
 }
+
+const isLink = (path) => lstatSync(path).isSymbolicLink();
 
 /** Alle Dateien unter einem Pfad, relativ zur Wurzel. Eine Datei zaehlt als sich selbst. */
 function listFiles(root, rel) {
   const abs = join(root, rel);
   if (!existsSync(abs)) return [];
-  if (statSync(abs).isFile()) return skipped(rel) ? [] : [rel];
+  if (isLink(abs) || statSync(abs).isFile()) return skipped(rel) ? [] : [rel];
   const out = [];
   for (const entry of readdirSync(abs, { withFileTypes: true })) {
     const child = join(rel, entry.name);
     if (skipped(child)) continue;
-    if (entry.isDirectory()) out.push(...listFiles(root, child));
+    // Ein Symlink zaehlt als eine Datei, auch einer auf einen Ordner: so liegt
+    // .claude/skills/<name> als der Link da, der er im Kit ist.
+    if (entry.isDirectory() && !entry.isSymbolicLink()) out.push(...listFiles(root, child));
     else out.push(child);
   }
   return out;
 }
 
 function same(a, b) {
+  const linkA = isLink(a);
+  if (linkA !== isLink(b)) return false;
+  if (linkA) return readlinkSync(a) === readlinkSync(b);
   return readFileSync(a).equals(readFileSync(b));
 }
 
@@ -134,11 +172,27 @@ export function compare(fresh, kit) {
 
 /** Spielt den Unterschied ein. Nur die genannten Dateien, nichts daneben. */
 export function apply(fresh, kit, diff) {
+  // Erst weg, dann hin: aus .claude/skills/<name>/SKILL.md vor 0.55.0 wird ein Link, und
+  // der Ordner muss leer sein, bevor er einer wird. Umgekehrt loeschte "entfernt" die Datei,
+  // auf die der neue Link schon zeigt.
+  removeFiles(kit, diff.removed);
   for (const rel of [...diff.added, ...diff.changed]) {
-    mkdirSync(dirname(join(kit, rel)), { recursive: true });
-    cpSync(join(fresh, rel), join(kit, rel));
+    const from = join(fresh, rel);
+    const to = join(kit, rel);
+    mkdirSync(dirname(to), { recursive: true });
+    if (isLink(from)) {
+      rmSync(to, { recursive: true, force: true });
+      symlinkSync(readlinkSync(from), to);
+    } else {
+      // Eine Datei, die vorher ein Link war, wuerde sonst durch ihn geschrieben.
+      if (existsSync(to) && isLink(to)) unlinkSync(to);
+      cpSync(from, to);
+    }
   }
-  for (const rel of diff.removed) {
+}
+
+function removeFiles(kit, removed) {
+  for (const rel of removed) {
     rmSync(join(kit, rel), { force: true });
     // Leere Ordner, die nur wegen dieser Datei da waren, gehen mit.
     let dir = dirname(join(kit, rel));
@@ -248,6 +302,30 @@ function describe(diff) {
   return lines.join("\n");
 }
 
+/** Die Ordner, in die das Update schreiben muss und in die es nicht darf. */
+function unwritable(diff) {
+  const dirs = new Set();
+  for (const rel of [...diff.added, ...diff.changed, ...diff.removed]) {
+    const dir = dirname(join(ROOT, rel));
+    // Der naechste Ordner nach oben, der schon da ist: dort muesste ein neuer angelegt werden.
+    let probe = dir;
+    while (!existsSync(probe)) probe = dirname(probe);
+    dirs.add(probe);
+  }
+  const blocked = [];
+  for (const dir of dirs) {
+    const file = join(dir, `.update-probe-${process.pid}`);
+    try {
+      writeFileSync(file, "");
+      rmSync(file);
+    } catch (error) {
+      if (error.code === "EPERM" || error.code === "EACCES") blocked.push(relative(ROOT, dir) || ".");
+      else throw error;
+    }
+  }
+  return blocked;
+}
+
 const work = mkdtempSync(join(tmpdir(), "ara-kit-update-"));
 
 try {
@@ -309,6 +387,20 @@ try {
     process.exit(0);
   }
 
+  // Vor dem ersten Schreiben pruefen, ob alles beschreibbar ist, was sich aendert. Die
+  // Sandbox von Codex haelt .agents und .codex schreibgeschuetzt: ein Update, das mittendrin
+  // daran scheitert, liesse den Stand halb alt und halb neu zurueck.
+  const blocked = unwritable(diff);
+  if (blocked.length) {
+    throw new Error(
+      t(
+        `Nothing deployed: ${blocked.join(", ")} cannot be written from here. Inside the sandbox of Codex that is the case for .agents and .codex. ` +
+          "Run node .ara/tools/update.mjs in your own terminal, or approve it when Codex asks to run it outside the sandbox.",
+        `Nichts eingespielt: ${blocked.join(", ")} lässt sich von hier nicht schreiben. In der Sandbox von Codex gilt das für .agents und .codex. ` +
+          "Ruf node .ara/tools/update.mjs in deinem eigenen Terminal auf, oder gib es frei, wenn Codex fragt, ob es außerhalb der Sandbox laufen darf."
+      )
+    );
+  }
   apply(work, ROOT, diff);
 
   if (!arg.json) {

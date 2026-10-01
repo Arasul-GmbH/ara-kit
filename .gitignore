@@ -22,6 +22,19 @@ AUFTRAG.md
 .claude/commands/*
 !.claude/commands/init.md
 
+# Dieselben Befehle als Skills fuer Codex, von commands.mjs erzeugt. Getrackt sind die
+# Skills des Kits und init/. Ein neuer Befehl in .ara/commands/ braucht hier seine Zeile,
+# der Selbsttest sagt es, wenn sie fehlt.
+.agents/skills/.sources.json
+.agents/skills/app/
+.agents/skills/calculation/
+.agents/skills/customer/
+.agents/skills/device/
+.agents/skills/invoice/
+.agents/skills/maintain/
+.agents/skills/offer/
+.agents/skills/root/
+
 # Zwischenspeicher des Produktstands und der Merker fuer zuletzt genutzte Akten.
 .ara/mirror/*
 !.ara/mirror/.gitkeep

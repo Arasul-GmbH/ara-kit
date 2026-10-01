@@ -36,9 +36,18 @@
  * partner would have the old and the new one side by side, and the old one leads
  * through a procedure that no longer exists.
  *
- * Only init.md is tracked. Everything else in .claude/commands/ is generated and
- * in .gitignore, so an update does not overwrite it and a fork does not carry it
- * along. Whatever a user puts there themselves stays untouched.
+ * Codex knows no commands of its own, only skills. So the same tool writes every command a
+ * second time as a skill, `.agents/skills/<name>/SKILL.md`, called `$<name>` there. The
+ * skill is derived from the same source: its description from the command's frontmatter, its
+ * body the command's body, with one line in front that says what `$1` means under Codex. It
+ * carries `agents/openai.yaml` with `allow_implicit_invocation: false`, because a command is
+ * something the human calls and not something Codex picks by itself. The skills keep their
+ * own marker in .agents/skills/.sources.json and are judged by the same four cases.
+ *
+ * Only init.md is tracked, and for Codex .agents/skills/init/. Everything else in
+ * .claude/commands/ and the skills made from commands are generated and in .gitignore, so an
+ * update does not overwrite them and a fork does not carry them along. Whatever a user puts
+ * there themselves stays untouched.
  *
  * === deutsch ===
  *
@@ -78,14 +87,24 @@
  * der Partner den alten und den neuen nebeneinander, und der alte fuehrt durch
  * ein Verfahren, das es nicht mehr gibt.
  *
- * Getrackt ist nur init.md. Alles andere in .claude/commands/ ist erzeugt und im
- * .gitignore, damit ein Update es nicht ueberschreibt und ein Fork es nicht
- * mitschleppt. Was ein Nutzer dort selbst dazulegt, bleibt unangetastet.
+ * Codex kennt keine eigenen Befehle, nur Skills. Darum schreibt dasselbe Werkzeug jeden
+ * Befehl ein zweites Mal als Skill, `.agents/skills/<name>/SKILL.md`, dort `$<name>`
+ * gerufen. Der Skill stammt aus derselben Quelle: seine Beschreibung aus dem Frontmatter
+ * des Befehls, sein Rumpf der des Befehls, mit einer Zeile davor, die sagt, was `$1` unter
+ * Codex heisst. Er traegt `agents/openai.yaml` mit `allow_implicit_invocation: false`, denn
+ * ein Befehl ist etwas, das der Mensch ruft, und nichts, das Codex von selbst waehlt. Die
+ * Skills haben ihren eigenen Merker in .agents/skills/.sources.json und werden nach denselben
+ * vier Faellen beurteilt.
+ *
+ * Getrackt ist nur init.md, und fuer Codex .agents/skills/init/. Alles andere in
+ * .claude/commands/ und die Skills aus Befehlen sind erzeugt und im .gitignore, damit ein
+ * Update sie nicht ueberschreibt und ein Fork sie nicht mitschleppt. Was ein Nutzer dort
+ * selbst dazulegt, bleibt unangetastet.
  */
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BRANCHES, PARTNER_ONLY, RETIRED } from "./lib/commands.mjs";
 import { LANGUAGES, isVariant, language, t, variantOf } from "./lib/i18n.mjs";
@@ -94,6 +113,8 @@ import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter } from "./li
 const SOURCE = join(ROOT, ".ara", "commands");
 const TARGET = join(ROOT, ".claude", "commands");
 const MANIFEST = join(TARGET, ".sources.json");
+const SKILLS = join(ROOT, ".agents", "skills");
+const SKILL_MANIFEST = join(SKILLS, ".sources.json");
 const ROLES = ["partner", "company"];
 
 // Zweig zu Quellordner: BRANCHES in lib/commands.mjs. Daneben steht dort, was
@@ -172,23 +193,65 @@ function list(dir) {
     .sort();
 }
 
+/** Ein Schreibverbot, wie es die Sandbox von Codex fuer .agents und .codex setzt. */
+function blockedByCodex(error) {
+  return error && (error.code === "EPERM" || error.code === "EACCES");
+}
+
+function isLink(path) {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
 function hash(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-function readManifest() {
-  if (!existsSync(MANIFEST)) return {};
+function readManifest(file = MANIFEST) {
+  if (!existsSync(file)) return {};
   try {
-    return JSON.parse(readFileSync(MANIFEST, "utf8"));
+    return JSON.parse(readFileSync(file, "utf8"));
   } catch {
     return {};
   }
 }
 
+function hashText(text) {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+/**
+ * Der Skill, den Codex fuer einen Befehl liest. Er ist eine reine Funktion der Quelle und
+ * der Sprache, darum laesst sich sein Zustand am Text ablesen, ohne ihn zu kopieren.
+ */
+function skillOf(name, from, lang) {
+  const source = readFrontmatter(from);
+  const description = source.fields.description || name;
+  const hint = source.fields["argument-hint"];
+  const preface =
+    lang === "de"
+      ? `Unter Codex heißt dieser Befehl \`$${name}\`. Wo unten \`$1\` steht, lies das erste Wort, ` +
+        `das der Mensch hinter \`$${name}\` geschrieben hat` +
+        `${hint ? ` (Form: ${hint})` : ""}. Ohne Wort ist es leer. Ein \`/${name}\` in den Blättern heißt hier \`$${name}\`.`
+      : `Under Codex this command is called \`$${name}\`. Where \`$1\` stands below, read the first ` +
+        `word the human wrote after \`$${name}\`${hint ? ` (form: ${hint})` : ""}. Without one it is empty. ` +
+        `A \`/${name}\` in the sheets means \`$${name}\` here.`;
+  const text =
+    `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${preface}\n\n` +
+    source.body.replace(/^\s+/, "");
+  const policy =
+    `interface:\n  display_name: ${JSON.stringify(name)}\n  short_description: ${JSON.stringify(description.slice(0, 120))}\n` +
+    `policy:\n  allow_implicit_invocation: false\n`;
+  return { text, policy };
+}
+
 /** Zustand einer Kopie gegenueber ihrer Quelle, siehe Kopf der Datei. */
-function state(from, to, remembered) {
+function state(from, to, remembered, sourceText) {
   if (!existsSync(to)) return "missing";
-  const source = hash(from);
+  const source = sourceText === undefined ? hash(from) : hashText(sourceText);
   const copy = hash(to);
   if (source === copy) return "current";
   if (!remembered) return "unclear";
@@ -202,6 +265,7 @@ function state(from, to, remembered) {
 /** Lage je Befehl. Dazu, was im Ziel liegt und nicht aus dem Kit stammt. */
 function survey(branch, lang) {
   const remembered = readManifest();
+  const skillRemembered = readManifest(SKILL_MANIFEST);
   // --invoice yes|no ueberstimmt das Profil, solange es noch keins gibt.
   const fields = { ...profile.fields, ...(arg.invoice ? { invoice: arg.invoice } : {}) };
   const expected = [];
@@ -214,7 +278,16 @@ function survey(branch, lang) {
       const variant = join(SOURCE, group, variantOf(file, lang));
       const from = existsSync(variant) ? variant : join(SOURCE, group, file);
       const to = join(TARGET, file);
-      expected.push({ name, group, from, to, state: state(from, to, remembered[name]) });
+      const skill = skillOf(name, from, lang);
+      const skillTo = join(SKILLS, name, "SKILL.md");
+      expected.push({
+        name,
+        group,
+        from,
+        to,
+        state: state(from, to, remembered[name]),
+        skill: { to: skillTo, ...skill, state: state(from, skillTo, skillRemembered[name], skill.text) },
+      });
     }
   }
   // Abgeloeste Befehle, die noch im Ziel liegen. Unveraendert heisst: die Kopie
@@ -252,6 +325,7 @@ for (const name of replace) {
 }
 
 let placed = [];
+let skillsPlaced = [];
 if (arg.apply || replace.length) {
   const remembered = readManifest();
   const todo = arg.apply ? by("missing", "updated", "unclear") : [];
@@ -281,6 +355,42 @@ if (arg.apply || replace.length) {
 
   writeFileSync(MANIFEST, JSON.stringify(remembered, null, 2) + "\n");
   placed = todo;
+
+  // Dieselben Befehle als Skills fuer Codex, nach denselben Regeln: fehlende und im Kit
+  // neuere kommen hin, angepasste bleiben, nur --replace nimmt sie trotzdem.
+  const skillRemembered = readManifest(SKILL_MANIFEST);
+  const skillTodo = lage.commands.filter(
+    (c) =>
+      (arg.apply && ["missing", "updated", "unclear"].includes(c.skill.state)) ||
+      (replace.includes(c.name) && c.skill.state !== "current")
+  );
+  try {
+    mkdirSync(SKILLS, { recursive: true });
+    for (const c of skillTodo) {
+      mkdirSync(join(SKILLS, c.name, "agents"), { recursive: true });
+      writeFileSync(c.skill.to, c.skill.text);
+      writeFileSync(join(SKILLS, c.name, "agents", "openai.yaml"), c.skill.policy);
+      skillRemembered[c.name] = hashText(c.skill.text);
+      c.skill.placed = c.skill.state;
+      c.skill.state = "current";
+    }
+    for (const c of lage.commands) if (c.skill.state === "current") skillRemembered[c.name] ??= hashText(c.skill.text);
+    writeFileSync(SKILL_MANIFEST, JSON.stringify(skillRemembered, null, 2) + "\n");
+  } catch (error) {
+    if (!blockedByCodex(error)) throw error;
+    console.error(
+      t(
+        "The skills for Codex could not be written: .agents/skills is read-only here, as it is inside the sandbox of Codex, which protects .agents and .codex. " +
+          "The commands for Claude Code are in place. Run this call in your own terminal, or let Codex run it outside the sandbox: " +
+          ".codex/rules/ara.rules allows exactly this call once the folder is trusted.",
+        "Die Skills für Codex ließen sich nicht schreiben: .agents/skills ist hier schreibgeschützt, wie in der Sandbox von Codex, die .agents und .codex schützt. " +
+          "Die Befehle für Claude Code liegen bereit. Ruf das in deinem eigenen Terminal auf, oder lass Codex es außerhalb der Sandbox ausführen: " +
+          ".codex/rules/ara.rules erlaubt genau diesen Aufruf, sobald der Ordner vertraut ist."
+      )
+    );
+    process.exit(1);
+  }
+  skillsPlaced = skillTodo;
 }
 
 /**
@@ -292,8 +402,12 @@ if (arg.apply || replace.length) {
 let cut = [];
 if (arg.apply && branch === "company") {
   for (const rel of PARTNER_ONLY) {
-    const path = join(ROOT, rel);
-    if (!existsSync(path)) continue;
+    // Ohne den Schraegstrich am Ende: mit ihm folgt das Betriebssystem einem Symlink
+    // (.claude/skills/<name> zeigt auf .agents/skills/<name>) und der Schnitt liefe durch
+    // ihn in den Ordner dahinter. So geht der Link selbst weg, und der Ordner mit seiner
+    // eigenen Zeile in PARTNER_ONLY danach.
+    const path = join(ROOT, rel.replace(/\/$/, ""));
+    if (!existsSync(path) && !isLink(path)) continue;
     rmSync(path, { recursive: true, force: true });
     cut.push(rel);
   }
@@ -318,7 +432,7 @@ if (arg.apply && branch === "company") {
 function markForGit(branchName) {
   const inside = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: ROOT, encoding: "utf8" });
   if (inside.status !== 0 || inside.stdout.trim() !== "true") return 0;
-  const tracked = spawnSync("git", ["ls-files", "-z", "--", ...PARTNER_ONLY], { cwd: ROOT, encoding: "utf8" });
+  const tracked = spawnSync("git", ["ls-files", "-z", "--", ...PARTNER_ONLY.map((rel) => rel.replace(/\/$/, ""))], { cwd: ROOT, encoding: "utf8" });
   const files = (tracked.stdout || "").split("\0").filter(Boolean);
   if (!files.length) return 0;
   const flag = branchName === "company" ? "--skip-worktree" : "--no-skip-worktree";
@@ -328,7 +442,8 @@ function markForGit(branchName) {
 const gitMarked = arg.apply ? markForGit(branch) : 0;
 
 if (arg.json) {
-  console.log(JSON.stringify({ ...lage, applied: Boolean(arg.apply), replaced: replace, cut, git_marked: gitMarked }, null, 2));
+  const commands = lage.commands.map(({ skill, ...c }) => ({ ...c, skill: { to: skill.to, state: skill.state, placed: skill.placed } }));
+  console.log(JSON.stringify({ ...lage, commands, applied: Boolean(arg.apply), replaced: replace, cut, git_marked: gitMarked }, null, 2));
   process.exit(0);
 }
 
@@ -357,6 +472,15 @@ console.log(
   )
 );
 for (const c of lage.commands) console.log(`${label[c.state]} /${c.name}  (${c.group})`);
+const skillsOpen = lage.commands.filter((c) => c.skill.state !== "current");
+if (skillsOpen.length) {
+  console.log(
+    t(
+      `Codex skills not current: ${skillsOpen.map((c) => `$${c.name} (${c.skill.state})`).join(", ")}`,
+      `Codex-Skills nicht aktuell: ${skillsOpen.map((c) => `$${c.name} (${c.skill.state})`).join(", ")}`
+    )
+  );
+}
 for (const old of lage.retired) {
   console.log(
     t(
@@ -377,10 +501,14 @@ if (arg.apply || replace.length) {
   const created = placed.filter((c) => c.placed === "missing").length;
   const replaced = placed.length - created;
   console.log(
-    placed.length
+    placed.length || skillsPlaced.length
       ? t(
-          `\n${created} created, ${replaced} replaced. If Claude Code does not know a command yet, restarting the session helps.`,
-          `\n${created} angelegt, ${replaced} ersetzt. Erkennt Claude Code einen Befehl noch nicht, hilft ein Neustart der Sitzung.`
+          `\n${created} created, ${replaced} replaced` +
+            `${skillsPlaced.length ? `, ${skillsPlaced.length} Codex skills written` : ""}. ` +
+            "If Claude Code or Codex does not know a command yet, restarting the session helps.",
+          `\n${created} angelegt, ${replaced} ersetzt` +
+            `${skillsPlaced.length ? `, ${skillsPlaced.length} Codex-Skills geschrieben` : ""}. ` +
+            "Erkennt Claude Code oder Codex einen Befehl noch nicht, hilft ein Neustart der Sitzung."
         )
       : t("\nNothing to do, every command is current.", "\nNichts zu tun, alle Befehle sind aktuell.")
   );
@@ -427,7 +555,7 @@ if (arg.apply || replace.length) {
     );
   }
 } else {
-  const open = by("missing", "updated", "unclear");
+  const open = [...by("missing", "updated", "unclear"), ...skillsOpen.filter((c) => !by("missing", "updated", "unclear").includes(c))];
   const kept = by("customized", "conflict");
   if (open.length) {
     console.log(

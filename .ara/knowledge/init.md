@@ -34,8 +34,11 @@ If somebody skips a round, that is fine, but it gets named at the end, with the 
 "Without an hourly rate I cannot calculate anything." A kit that is half set up and acts as if
 everything were finished shows up at the first customer conversation.
 
-**3. Every round is one bundled question in the interview tool.** With one open option per question.
-What the human writes there freely holds.
+**3. Every round is one bundled question in the interview tool.** Free text is always possible.
+What the human writes there freely holds. A round holds as much as the tool carries: under Claude
+Code four questions, under Codex three, see `.ara/persona/ara.md`, "What fits into one round". A
+round with more than that becomes two, the language and the branch always in the first. Under
+`codex exec` there is no tool at all, there only the answer file works.
 
 ### The second way: the answer file
 
@@ -99,8 +102,11 @@ node .ara/tools/commands.mjs --apply --role <partner|company> --language <de|en>
 ```
 
 `--language` stands there because the profile is not written yet: otherwise the tool reads the
-language there. Partners get `all/` and `partner/` from `.ara/commands/`, companies only `all/`. If
-Claude Code does not know a command yet, restarting the session helps.
+language there. Partners get `all/` and `partner/` from `.ara/commands/`, companies only `all/`. The
+same call writes each command a second time as a skill for Codex, `.agents/skills/<name>/`. If
+Claude Code or Codex does not know a command yet, restarting the session helps. Under Codex the
+sandbox keeps `.agents/` read-only, so this call runs outside it, which `.codex/rules/ara.rules`
+allows: see `.ara/knowledge/codex.md`.
 
 For a company the same call clears away what belongs to partners only and came with the clone
 anyway: the skills `customers`, `sales` and `pricing`, the templates for offer, invoice and end
