@@ -13,6 +13,8 @@ procedure there. In German, read the `.de.md` next to each of them. Knowledge th
 loads: `.ara/knowledge/init.md`, plus `.ara/knowledge/security.md` for the security levels
 and `.ara/knowledge/browser.md` for the browser. Nothing else.
 
+**Depth.** The list "What must be clear" in `.ara/knowledge/init.md` decides when the questions end, not the end of a round, and the interview takes at least three rounds with questions. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest stays open in the profile and is asked at the next `/init`.
+
 There are three ways, and which one applies a file and the argument decide:
 
 **An argument is there (`$1`, the first word after the command): an answer file, no interview.**

@@ -119,3 +119,5 @@ hast, sagst du als ungeprüft an.
 - [ ] Das PDF trägt den Anhang, und er ließ sich zurücklesen
 - [ ] Verlaufseintrag geschrieben, `follow_up` auf die Fälligkeit gesetzt
 - [ ] Keine Gedankenstriche als Trenner, keine Emojis
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/invoicing.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

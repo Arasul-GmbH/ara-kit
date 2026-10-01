@@ -89,6 +89,19 @@ Interview-Werkzeug, jede mit einer offenen Möglichkeit.
 in kein Angebot und in keinen Verlaufseintrag, auch nicht als Zwischensumme, aus der sich
 die Marge zurückrechnen lässt. Die Marge des Partners ist seine Sache.
 
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Was das Kalkulationsblatt schon enthält, wird vorgelesen, nicht gefragt. Je Zahl:
+
+- Der Wert, die Einheit (je Stunde, je Tag, pauschal, je Monat) und was er abdeckt. Steckt die Anfahrt im Stundensatz oder kommt sie dazu? Stecken Wartungsstunden im Monatspreis?
+- `rates_asof`: seit wann er gilt.
+- Der Steuerstatus des Hauses (umsatzsteuerpflichtig oder Kleinunternehmer), weil er in jedem Angebot über netto oder brutto entscheidet.
+- Je Hardwaretyp, den der Partner anbietet: der Einkaufspreis aus dem Portal, mit dem Datum, an dem er dort stand.
+- Die Aufschlagsregel auf Hardware (Prozent oder fest) und wie gerundet wird.
+- Wartung: Laufzeit, Preis, was sie einschließt.
+
+Ein Preis wird nie angenommen. Sagt der Mensch „genug", bleibt die Zahl fehlend, `calculation.mjs` nennt sie, und du sagst, welches Angebot deshalb noch nicht geht.
+
 ## Die Posten
 
 Ein vollständiges Angebot besteht aus vier Teilen. Fehlt einer, wird nachverhandelt, und

@@ -79,3 +79,5 @@ the device".
 
 **Somebody only wants to see one:** `node .ara/tools/root.mjs --path <folder> --example`
 lays out the showcase, an invented company with the method and filled sheets.
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/root.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.

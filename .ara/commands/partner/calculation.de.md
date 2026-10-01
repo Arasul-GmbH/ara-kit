@@ -43,3 +43,5 @@ liegt, was fehlt und was deshalb nicht geht. Konkret. „Ohne Einkaufspreis der 
 keine Wartungsposition" ist brauchbar, „einiges fehlt" nicht.
 
 Soll direkt danach gerechnet werden, ist der nächste Schritt `/offer <kunde>`.
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/pricing.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

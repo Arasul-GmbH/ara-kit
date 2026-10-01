@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.56.0 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **Jeder Befehl fragt bis zur vollen Tiefe.** Jeder der neun Befehle führt in seiner Wissensdatei eine Liste „Was geklärt sein muss", und das Interview endet, wenn die Liste erfüllt ist, nicht, wenn eine Runde vorbei ist. Die Regel steht einmal in `AGENTS.md`: eine vage Antwort wird mit fertigen Entwürfen als Optionen nachgebohrt, `/app` und `/init` brauchen mindestens drei Runden, „genug" im Freitext bricht ab und der Rest wird eine Annahme (ein Preis, ein Produktwert oder eine Rechtstatsache bleibt stattdessen offen), und das Interview stellt nie in Frage, ob das Haus Arasul nutzt.
+- **`/app` fragt bis zu Bildschirmen, Feldern, Buttons und Automatik.** Vier Ebenen kommen in die Checkliste: die Seiten und was darauf steht, je Formular jedes Feld mit Typ, Pflicht und Prüfregel, die Buttons je Rolle und was folgt, und je Automatik Auslöser, Kontext ans Modell, Ergebnis, Prüfer, Fehlerfall und Benachrichtigung. Die Planvorlage hat für jede einen Abschnitt, ein Plan zeigt also, was beantwortet wurde, und eine Annahme, was nicht. Das Blatt der Muster liefert die Entwürfe für die Folgefrage.
+- **Die übrigen acht Befehle bekamen ihre Listen:** `/init`, `/customer` (zwei Stufen nach Status), `/calculation`, `/offer`, `/invoice`, `/device`, `/maintain` und `/root`.
+- **Unter Codex sind die Listen dieselben,** bei weniger Fragen je Runde, also mehr Runden, und die Skizze einer Layout-Option steht in einer Zeile ihrer Beschreibung.
+
 ## 0.55.0 (2026-10-01)
 
 Kontrakt: bis 6

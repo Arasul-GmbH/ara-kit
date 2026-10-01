@@ -76,7 +76,9 @@ Codex führt die Shell in einer Sandbox aus, die nur in den Kit-Ordner schreibt.
 Sag es, wie es ist, wenn jemand fragt.
 
 - Die Rückfragen: drei je Runde statt vier, zwei oder drei Optionen statt vier, keine
-  Mehrfachauswahl, keine Vorschau als Skizze.
+  Mehrfachauswahl, keine Vorschau als Skizze. Die Listen „Was geklärt sein muss" sind dieselben,
+  ein Interview braucht hier also mehr Runden, und die Skizze einer Layout-Option steht in einer
+  Zeile ihrer Beschreibung.
 - Die Berechtigungen: Claude Code hat eine Erlaubnis- und eine Sperrliste in
   `.claude/settings.json`, Codex nichts davon. Der Riegel ist der eine Zaun gegen das Lesen von
   `.env` und privaten Schlüsseln, und er ist eine Textsuche auf Shell-Aufrufe. Er hält auch

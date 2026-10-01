@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.56.0 (2026-10-01)
+
+Contract: up to 6
+
+- **Every command asks to full depth.** Each of the nine commands keeps a list "What must be clear" in its knowledge file, and the interview ends when the list is met, not when a round is over. The rule stands once, in `AGENTS.md`: a vague answer is probed with finished drafts as options, `/app` and `/init` take at least three rounds, "enough" in the free text ends it and the rest becomes an assumption (a price, a product value or a legal fact stays open instead), and the interview never questions whether the house uses Arasul.
+- **`/app` asks down to screens, fields, buttons and automation.** Four levels join the checklist: the pages and what stands on them, per form every field with type, required and check rule, the buttons per role and what follows, and per automation trigger, context to the model, result, checker, failure and notification. The plan scaffold has a section for each, so a plan shows what was answered and an assumption shows what was not. The pattern sheet gives the drafts for the follow-up question.
+- **The other eight commands got their lists:** `/init`, `/customer` (two tiers by status), `/calculation`, `/offer`, `/invoice`, `/device`, `/maintain` and `/root`.
+- **Under Codex the lists are the same,** with fewer questions per round, so more rounds, and the sketch of a layout option in one line of its description.
+
 ## 0.55.0 (2026-10-01)
 
 Contract: up to 6

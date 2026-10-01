@@ -120,3 +120,5 @@ announce as unchecked.
 - [ ] The PDF carries the attachment, and it could be read back
 - [ ] History entry written, `follow_up` set to the due date
 - [ ] No dashes as separators, no emojis
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/invoicing.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.

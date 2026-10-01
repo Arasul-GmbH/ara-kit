@@ -22,7 +22,9 @@ Schritte; was am Gerät steht, fragt `--status` dort.
 ## Die Prüfliste des Interviews
 
 Frag gebündelt, bis jeder Punkt beantwortet ist oder als **Annahme** offen im Plan steht. Womit das
-Haus arbeitet (`business/profile.md`), gehört in den ersten Entwurf.
+Haus arbeitet (`business/profile.md`), gehört in den ersten Entwurf. **Mindestens drei Runden**,
+bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht in `AGENTS.md`,
+„Every command asks to full depth"; die vier Ebenen unten sind, was sie für eine App heißt.
 
 | Was | Warum es entscheidet |
 | --- | --- |
@@ -39,6 +41,51 @@ Haus arbeitet (`business/profile.md`), gehört in den ersten Entwurf.
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |
+| **Bildschirme und Aufbau** | Welche Seiten, was auf jeder steht, Liste und Einzelheit, was man zuerst sieht. Ohne das erfindet der Bauende die Oberfläche |
+| **Felder je Formular** | Je Feld: Beschriftung, Typ, Pflicht oder nicht, Beispielwert, Prüfregel. Ein Feld, das keiner nannte, ist ein Feld, das der Bauende rät |
+| **Buttons je Rolle** | Welche Aktion wo für wen steht, und was danach passiert. Rollen sehen verschiedene Buttons |
+| **Automatik und Kontext** | Je Automatik: Auslöser, was ans Modell geht, was herauskommt, wer prüft, was bei einem Fehler geschieht, wer Bescheid bekommt |
+
+### Die vier Ebenen, Punkt für Punkt
+
+Eine Ebene ist geklärt, wenn jede Zeile darunter beantwortet ist. Jede Antwort landet im eigenen
+Abschnitt des Plans (`Bildschirme`, `Felder je Formular`, `Buttons je Rolle`, `Automatik`), und
+nichts darin wurde geraten.
+
+1. **Bildschirme und Aufbau.** Je Seite: ihr Name und ihr Weg (eine Ebene tief), was darauf steht,
+   ob Liste oder Einzelheit, was der Mensch zuerst sieht, was eine leere Seite sagt, wohin die
+   Seitenleiste führt.
+2. **Felder je Formular.** Je Formular, je Feld: die Beschriftung, wie der Mensch sie kennt, der
+   Typ (Text, Zahl, Datum, Auswahl, Datei, Person), Pflicht oder freiwillig, ein Beispielwert,
+   die Prüfregel (Bereich, Format, „Ende nicht vor Beginn"). Welche Felder der Freigebende sieht
+   und welche der Einreichende nach dem Absenden nicht mehr ändern darf.
+3. **Buttons je Rolle.** Ein Raster aus Rolle und Seite: welcher Button da ist, was er tut, in
+   welchem Zustand der Vorgang danach steht, wer Bescheid bekommt. Auch die Buttons, nach denen
+   keiner fragte und die eine Runde braucht: zurückziehen, zurückgeben, kommentieren.
+4. **Automatik und Kontext.** Je Automatik sechs Zeilen: der **Auslöser** (ein Vorgang wird
+   abgeschickt, Zeit vergeht, ein Button), der **Kontext**, der ans Modell geht (welche Felder,
+   welche Dokumente, Personenbezogenes benannt), das **Ergebnis** (was entsteht und wo es landet),
+   der **Prüfer** (welcher Mensch schaut hin, und was er sieht), der **Fehlerfall** (das Modell
+   antwortet nicht, der Prüfer ist weg, das Ergebnis ist falsch) und die **Benachrichtigung**
+   (wer, auf welchem Weg).
+
+### Wie gefragt wird, und wann Schluss ist
+
+- **Eine vage Antwort bohrst du nach.** „Mit Freigaben" ist keine Antwort. Die Folgefrage bietet
+  **fertige Entwürfe**, abgeleitet aus dem Muster und aus dem, womit das Haus arbeitet: „Antrag
+  mit vier Feldern: von, bis, Art des Urlaubs, Vertretung", „Zwei Stufen: Teamleitung, dann
+  Personal". Nie ein leeres „welche Felder?".
+- **Layout-Fragen tragen eine Skizze je Option** unter Claude Code, unter Codex eine knappe Zeile
+  in der Beschreibung.
+- **Erst nachsehen.** Was das Profil, die eigenen Unterlagen des Hauses oder die Vorlage schon
+  sagen, wird vorgeschlagen, nicht gefragt.
+- **Schluss** ist, wenn jede Zeile der vier Ebenen beantwortet ist oder der Mensch im Freitext
+  „genug" schreibt. Was dann offen ist, kommt in den Plan unter `Annahmen`, eine Zeile je Punkt.
+  Nichts wird geraten, um eine Lücke zu schließen, und kein späterer Schritt baut auf einer
+  ungekennzeichneten Vermutung.
+- **Die Wahl nicht infrage stellen.** Ob das Haus Arasul nutzt, wird nicht gefragt. Ziel ist die
+  App, die dem Haus am meisten bringt, digitale Souveränität zuerst: Daten und Modelle bleiben am
+  Gerät.
 
 ```
 node .ara/tools/app.mjs --app <name> --new --titel "<Anzeigename>"

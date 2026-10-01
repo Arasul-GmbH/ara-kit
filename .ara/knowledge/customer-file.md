@@ -78,12 +78,37 @@ Then **one** interview round with bundled questions:
 7. **Particularities.** An industry with special requirements (law firm, practice, authority)?
    Existing IT support you have to coordinate with?
 
-Ask only what you need. For an early prospect the first four points are enough. An empty field is
+Ask only what the list "What must be clear" below needs for the status the customer has. An empty field is
 better than an invented answer.
 
 **At the end of the round always:** when do you want to get back in touch, and what will it be
 about then? → `follow_up` and `follow_up_note`. A conversation without a next date is a customer
 forgotten in three months (skill `customers`).
+
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". Look first (website, existing file), ask only what is still missing. Two tiers, by status:
+
+**At once, for any first conversation**
+
+- Contact: name, role, how to reach them.
+- Who decides, who uses it, who can prevent it.
+- What they intend, in their words, one or two sentences.
+- Status: first conversation, offer out, ordered, device already there.
+- The next contact: date and what it is about (`follow_up`, `follow_up_note`).
+
+**Before an offer**
+
+- The work step behind the wish: what is done by hand today, how often, by whom.
+- How many people will use it, and in which roles.
+- Device: clear which one, ordered, delivered, set up.
+- Place and network: where it stands, who looks after the network there.
+- Industry particularities: professional secrecy, authority, regulated area.
+- Existing IT support to coordinate with.
+- Who on the customer's side is responsible for data protection.
+- What hurts if nothing happens.
+
+Tier one is enough for an early prospect. Tier two counts the moment the status moves towards an offer.
 
 ## Creating: what you write
 

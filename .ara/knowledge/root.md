@@ -95,6 +95,22 @@ root says *what* the place has to be able to do by when, the place decides *how*
 house wants it differently for a place, `write: yes` stands in the list for everybody to
 read, and a line in the rules or, with the method, in `company/decisions.md` says why.
 
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". Beyond the six points of the bundle above, before anything is laid out:
+
+- Where the root lies, what the house is called, which language.
+- The folders of level 1, each with one phrase on what belongs there.
+- Per place: short name, kind, where it lives, where it lies on this computer, what it is for, who works in it (people and agents), and whether the root may write into it. Default is no.
+- What no agent may read: contracts, payroll, anything the house marks as closed.
+- Which accounts of which agent are to take the root over.
+- Whether the method is wanted.
+- Who runs the check script, and when.
+- For a grown folder: what is in it, what stays where it is, what goes into the root.
+- For a deployment: which device, and which area on it.
+
+Look first (`ls`, `git remote -v`). Ask only what the folder cannot say. After "enough" the root is laid out with what is known, the rest stays out, and a place never gets `write: yes` by assumption.
+
 ## Laying out
 
 ```

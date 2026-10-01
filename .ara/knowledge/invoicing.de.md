@@ -54,6 +54,22 @@ Drei Regeln, und sie stehen nicht zur Disposition:
 Ein Beleg mit einem Datum aus einem Jahr, für das schon abgeschlossen wurde, bekommt
 keine Nummer: sie stünde sonst hinter einer älteren.
 
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Bevor das Werkzeug aufgerufen wird.
+
+- Welches Angebot oder welchen Auftrag die Rechnung abrechnet, und ob es eine Teil-, Schluss- oder Vorausrechnung ist, mit dem, was abzuziehen ist.
+- Der Empfänger: Firmenname und Anschrift, und die Umsatzsteuer-ID, falls es eine gibt.
+- Ob der Empfänger ein Unternehmen in einem anderen EU-Land ist, weil das die Steuerangabe ändert.
+- Der Zeitpunkt der Leistung: ein Tag oder ein Zeitraum. Immer gefragt, nie aus dem Rechnungsdatum genommen.
+- Die Posten mit Menge und Nettobetrag, aus dem Angebot.
+- Der Steuersatz oder der Grund für eine Befreiung, aus dem Status des Hauses in `business/company.md`. Ara entscheidet den Steuerstatus nicht.
+- Zahlungsbedingungen und Bankverbindung.
+
+Die Rechnungsnummer kommt aus dem Nummernkreis und wird nicht gefragt.
+
+Hier wird nichts angenommen. Ein offener Punkt hält die Rechnung an, und du nennst, welcher.
+
 ## Die neun Pflichtangaben
 
 Das ist die Liste aus § 14 Abs. 4 UStG, und das ist genau die Liste, die

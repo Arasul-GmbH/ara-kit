@@ -38,6 +38,38 @@ device, and that is the point.
 What happens in order, from the point of view of the human in front of it. One step per
 line.
 
+## Screens
+
+One row per page. Nothing here is guessed: what was not answered stands under Assumptions.
+
+| Page | Route (one level deep) | What stands on it | List or single item | What you see first |
+| --- | --- | --- | --- | --- |
+
+## Fields per form
+
+One row per field.
+
+| Form | Field | Type | Required | Example value | Check rule |
+| --- | --- | --- | --- | --- | --- |
+
+## Buttons per role
+
+One row per button and role.
+
+| Role | Page | Button | What happens afterwards | Who is told |
+| --- | --- | --- | --- | --- |
+
+## Automation
+
+One block per automation, all six lines.
+
+- **Trigger:**
+- **Context to the model:** which fields and documents, personal data named
+- **Result:** what it produces and where it lands
+- **Checker:** which human looks, and what they see
+- **On failure:**
+- **Notification:** who, by which way
+
 ## Where a flow is needed
 
 Where a language model works and where it does not. A flow that only shifts data back and

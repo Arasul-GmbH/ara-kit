@@ -86,6 +86,19 @@ each with an open option.
 offer and into no history entry, not even as a subtotal from which the margin can be worked back.
 The partner's margin is their own business.
 
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". What the calculation sheet already holds is read out, not asked. Per number:
+
+- The value, the unit (per hour, per day, flat, per month) and what it covers. Is travel inside the hourly rate or extra? Are hours of maintenance inside the monthly price?
+- `rates_asof`: since when it holds.
+- The tax status of the house (liable, or exempt as a small business), because it decides net or gross in every offer.
+- Per hardware type the partner offers: the purchase price from the portal, with the date it stood there.
+- The markup rule on hardware (percent or fixed) and how to round.
+- Maintenance: term, price, what it includes.
+
+A price is never assumed. If the human says "enough", the number stays missing, `calculation.mjs` names it, and you say which offer is therefore not yet possible.
+
 ## The line items
 
 A complete offer consists of four parts. If one is missing, it gets renegotiated, and always to

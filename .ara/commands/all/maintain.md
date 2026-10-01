@@ -91,3 +91,5 @@ It also guesses no path. If it finds nothing in the device's contract on a point
 
 Every visit ends with an entry: for a customer device under `customers/<customer>/history/`,
 otherwise in the device's runsheet.
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/maintenance-flow.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.

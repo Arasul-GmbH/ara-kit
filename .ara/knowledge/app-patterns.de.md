@@ -34,3 +34,11 @@ tief (`dokumente?nr=17`, nicht `dokumente/17`).
 einmal, was daneben liegt: ein Dokument, eine Mail, ein Nachschlagen, ein Werkzeug, das das Büro
 ohnehin nutzt, ein Beleg, den das Gerät ausliest, Mandanten. Der Plan nennt das Muster, das er
 benutzt; nach `--new` nennt das Werkzeug dieses Blatt.
+
+**Entwürfe für die Folgefrage.** Auf eine vage Antwort im Interview („mit Freigaben") antwortest
+du mit Optionen, die fertige Entwürfe sind, nicht mit einer leeren Frage. Nimm sie aus dem
+Muster, dem die Idee am nächsten liegt, und aus dem, womit das Haus arbeitet, etwa für einen
+Urlaubsantrag auf Muster 1: „Antrag mit vier Feldern: von, bis, Art des Urlaubs, Vertretung",
+„Zwei Stufen: Teamleitung, dann Personal", „Zuerst die Liste meiner Anträge, das Formular hinter
+einem Button". Jede Option sagt in einem Satz, was sie kostet. Der Mensch wählt eine, ändert sie
+im Freitext oder schreibt eine eigene, und was er schreibt, gilt.

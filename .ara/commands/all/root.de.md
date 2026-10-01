@@ -81,3 +81,5 @@ Gerät ausrollen".
 
 **Jemand will nur eine sehen:** `node .ara/tools/root.mjs --path <ordner> --example` legt die
 Vorzeigefassung aus, eine erfundene Firma mit der Methode und gefüllten Blättern.
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/root.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

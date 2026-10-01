@@ -53,3 +53,5 @@ sentence on what it will be about then. That is three lines and the difference b
 customer file and a folder full of files.
 
 From now on you work exclusively in `customers/$1/`. No look into other customer folders.
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/customer-file.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.

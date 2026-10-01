@@ -38,6 +38,22 @@ platform that is just coming up says nothing about its version.
 It only reads. The interventions are `--install` and `--deploy-key`, both further down, both only
 on request and after confirmation.
 
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". Read what the device can tell (hardware, system, Docker, services) over SSH, do not ask the human for it.
+
+- Which device it is, and whether it belongs to a customer or to the house.
+- How it is reached: address, SSH user, port, the name of the key, and from where.
+- What it is for: which workload, how many people, which apps. That decides the verdict.
+- The verdict: supported, soon, not suitable, and what follows from it.
+- Arasul: whether a bought token or licence code exists. Asked once, a no stays noted.
+- How far the setup is: the phase in the runsheet.
+- For the first employee: who, and with which role.
+- Where the backup goes.
+- At the handover: who attends, and who signs.
+
+What is open stays in the device file as an assumption, with the date. A hardware value is never an assumption, it is measured.
+
 ## Where the file lies
 
 | Device | Place | Call |

@@ -99,6 +99,22 @@ Sitzung. Die Wurzel sagt, *was* der Ort bis wann können muss, der Ort entscheid
 Will das Haus es für einen Ort anders, steht `write: yes` für alle lesbar in der Liste, und
 eine Zeile in den Regeln oder, mit der Methode, in `company/decisions.md` sagt, warum.
 
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Über die sechs Punkte des Bündels oben hinaus, bevor etwas angelegt wird:
+
+- Wo die Wurzel liegt, wie das Haus heißt, welche Sprache.
+- Die Ordner der Ebene 1, je mit einer Wendung dazu, was dorthin gehört.
+- Je Ort: Kurzname, Art, wo er lebt, wo er auf diesem Rechner liegt, wozu er dient, wer darin arbeitet (Menschen und Agenten), und ob die Wurzel hineinschreiben darf. Standard ist nein.
+- Was kein Agent lesen darf: Verträge, Gehälter, alles, was das Haus als verschlossen kennzeichnet.
+- Welche Konten welches Agenten die Wurzel übernehmen sollen.
+- Ob die Methode gewollt ist.
+- Wer das Prüfskript wann ausführt.
+- Bei einem gewachsenen Ordner: was darin liegt, was bleibt, wo es liegt, was in die Wurzel kommt.
+- Bei einer Ausrollung: welches Gerät, und welcher Bereich darauf.
+
+Erst nachsehen (`ls`, `git remote -v`). Nur fragen, was der Ordner nicht sagen kann. Nach „genug" wird die Wurzel mit dem Bekannten angelegt, der Rest bleibt draußen, und ein Ort bekommt nie `write: yes` durch Annahme.
+
 ## Anlegen
 
 ```

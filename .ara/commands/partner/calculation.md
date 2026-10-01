@@ -43,3 +43,5 @@ what is missing and what is therefore not possible. Concretely. "Without the pur
 of the maintenance no maintenance line item" is usable, "some things are missing" is not.
 
 If something is to be calculated straight afterwards, the next step is `/offer <customer>`.
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/pricing.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.

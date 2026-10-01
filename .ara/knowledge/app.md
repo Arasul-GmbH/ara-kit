@@ -23,7 +23,9 @@ what stands on the device, `--status` asks there.
 ## The interview checklist
 
 Ask, bundled, until every point is answered or left open as an **assumption** in the plan. What
-the house works with (`business/profile.md`) belongs in the first draft.
+the house works with (`business/profile.md`) belongs in the first draft. **At least three rounds**
+before the first plan is written. The rule on how deep to ask is in `AGENTS.md`, "Every command
+asks to full depth"; the four levels below are what it means for an app.
 
 | What | Why it decides |
 | --- | --- |
@@ -40,6 +42,48 @@ the house works with (`business/profile.md`) belongs in the first draft.
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | Something that gets checked is an afternoon. Something that may never be wrong is a project |
+| **Screens and layout** | Which pages, what stands on each, list and single item, what you see first. Without it the builder invents the interface |
+| **Fields per form** | Per field: label, type, required or not, example value, check rule. A field nobody named is a field the builder guesses |
+| **Buttons per role** | Which action stands where for whom, and what happens after it. Roles see different buttons |
+| **Automation and context** | Per automation: trigger, what goes to the model, what comes out, who checks, what happens on failure, who is told |
+
+### The four levels, point by point
+
+A level is clear when every line below is answered. Each answer lands in the plan's own section
+(`Screens`, `Fields per form`, `Buttons per role`, `Automation`), and nothing in those sections
+was guessed.
+
+1. **Screens and layout.** Per page: its name and its route (one level deep), what stands on it,
+   whether it is a list or a single item, what the human sees first, what an empty page says,
+   where the sidebar leads.
+2. **Fields per form.** Per form, per field: the label as the human knows it, the type (text,
+   number, date, choice, file, person), required or optional, an example value, the check rule
+   (range, format, "end not before start"). Which fields the approver sees, and which the
+   submitter may no longer change after sending.
+3. **Buttons per role.** A grid of role by page: which button is there, what it does, what state
+   the item has afterwards, who is told. Include the buttons nobody asked for but that a round
+   needs: withdraw, send back, comment.
+4. **Automation and context.** Per automation, six lines: the **trigger** (an item is sent, a
+   time passes, a button), the **context** that goes to the model (which fields, which
+   documents, personal data named), the **result** (what it produces and where it lands), the
+   **checker** (which human looks, and what they see), the **failure** (the model does not
+   answer, the checker is away, the result is wrong), and the **notification** (who, by which way).
+
+### How to ask, and when to stop
+
+- **Probe a vague answer.** "With approvals" is not an answer. The follow-up question offers
+  **finished drafts**, derived from the pattern and from what the house works with: "Request with
+  four fields: from, to, kind of leave, substitute", "Two steps: team lead, then personnel".
+  Never a blank "which fields?".
+- **Layout questions carry a sketch per option** under Claude Code, a short line in the
+  description under Codex.
+- **Look first.** What the profile, the house's own documents or the scaffold already say is
+  proposed, not asked.
+- **Stop** when every line of the four levels is answered or the human writes "enough" in free
+  text. What is still open goes into the plan under `Assumptions`, one line each. Nothing is
+  guessed to close a gap, and no later step builds on an unmarked guess.
+- **Do not question the choice.** Whether the house uses Arasul is not asked. The aim is the app
+  that brings the house most, with digital sovereignty first: data and models stay on the device.
 
 ```
 node .ara/tools/app.mjs --app <name> --new --titel "<display name>"

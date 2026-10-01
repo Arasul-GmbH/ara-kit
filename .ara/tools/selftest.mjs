@@ -11346,6 +11346,62 @@ check("Das Gerüst der Firmenwurzel liegt in beiden Sprachen vor", () => {
   return `${paare} Paare`;
 });
 
+// --- Tiefe des Interviews ----------------------------------------------------
+
+check("Jeder der neun Befehle führt eine Liste, was geklärt sein muss, und die Regel steht einmal", () => {
+  // Die Regel steht in AGENTS.md. Die Listen stehen im Wissen des Befehls, in
+  // beiden Sprachen, und der Befehl verweist darauf.
+  const agents = readFileSync(join(ROOT, "AGENTS.md"), "utf8");
+  for (const teil of ["Every command asks to full depth", "at least three rounds", "enough", "never questions whether the house uses Arasul", "Never guess"]) {
+    assert(agents.includes(teil), `AGENTS.md nennt „${teil}" nicht`);
+  }
+  const wissen = {
+    app: "app", init: "init", customer: "customer-file", calculation: "pricing", offer: "paperwork",
+    invoice: "invoicing", device: "device", maintain: "maintenance-flow", root: "root",
+  };
+  for (const [befehl, datei] of Object.entries(wissen)) {
+    assert(agents.includes(`\`${datei}.md\``), `AGENTS.md nennt ${datei}.md nicht in der Regel`);
+    for (const [endung, titel] of [[".md", "What must be clear"], [".de.md", "Was geklärt sein muss"]]) {
+      const text = readFileSync(join(ROOT, ".ara", "knowledge", `${datei}${endung}`), "utf8");
+      const treffer = text.match(new RegExp(`^#{2,3} ${titel}$`, "gm")) || [];
+      assert(treffer.length === 1 || befehl === "app", `${datei}${endung}: die Liste „${titel}" steht ${treffer.length} Mal`);
+      if (befehl === "app") continue;
+      const abschnitt = text.split(new RegExp(`^#{2,3} ${titel}$`, "m"))[1].split(/^#{2,3} /m)[0];
+      const punkte = abschnitt.match(/^- /gm) || [];
+      assert(punkte.length >= 5, `${datei}${endung}: die Liste hat nur ${punkte.length} Punkte`);
+    }
+    // Der Befehl verweist auf seine Liste.
+    const quelle = befehl === "init" ? [".agents/skills/init/SKILL.md", ".claude/commands/init.md"] : null;
+    const ordner = ["all", "partner"].find((o) => existsSync(join(ROOT, ".ara", "commands", o, `${befehl}.md`)));
+    const dateien = quelle || [".ara/commands/" + ordner + "/" + befehl + ".md", ".ara/commands/" + ordner + "/" + befehl + ".de.md"];
+    for (const d of dateien) {
+      const text = readFileSync(join(ROOT, d), "utf8");
+      assert(/What must be clear|Was geklärt sein muss/.test(text), `${d} verweist nicht auf die Liste`);
+    }
+  }
+  return "neun Listen in beiden Sprachen, Regel einmal in AGENTS.md, jeder Befehl verweist darauf";
+});
+
+check("/app fragt bis zu Bildschirmen, Feldern, Buttons und Automatik, und die Planvorlage hat die Abschnitte", () => {
+  const paare = [
+    [".ara/knowledge/app.md", ["Screens and layout", "Fields per form", "Buttons per role", "Automation and context", "trigger", "enough"]],
+    [".ara/knowledge/app.de.md", ["Bildschirme und Aufbau", "Felder je Formular", "Buttons je Rolle", "Automatik und Kontext", "Auslöser", "genug"]],
+  ];
+  for (const [datei, worte] of paare) {
+    const text = readFileSync(join(ROOT, datei), "utf8");
+    for (const wort of worte) assert(text.includes(wort), `${datei} nennt „${wort}" nicht`);
+  }
+  for (const [datei, abschnitte, kopf] of [
+    [".ara/templates/plan.md", ["Screens", "Fields per form", "Buttons per role", "Automation"], ["Type", "Required", "Check rule", "Trigger", "Checker", "On failure", "Notification"]],
+    [".ara/templates/plan.de.md", ["Bildschirme", "Felder je Formular", "Buttons je Rolle", "Automatik"], ["Typ", "Pflicht", "Prüfregel", "Auslöser", "Prüfer", "Im Fehlerfall", "Benachrichtigung"]],
+  ]) {
+    const text = readFileSync(join(ROOT, datei), "utf8");
+    for (const abschnitt of abschnitte) assert(new RegExp(`^## ${abschnitt}$`, "m").test(text), `${datei} hat den Abschnitt ${abschnitt} nicht`);
+    for (const wort of kopf) assert(text.includes(wort), `${datei} nennt „${wort}" nicht`);
+  }
+  return "vier Ebenen in der Prüfliste, vier Abschnitte im Plan, beide Sprachen";
+});
+
 // --- Schreibweise -----------------------------------------------------------
 
 check("Keine Gedankenstriche im Kit", () => {
@@ -12327,11 +12383,13 @@ const FACH_APP_LADESATZ = {
 /**
  * Die Grenze aus dem Auftrag K17: gemessen wie `wc -w`, mal 1,4. Bis 0.43.0
  * 15.000, und der Satz stand bei 14.981: das nächste Musterblatt passte nicht
- * mehr. Seit 0.44.0 14.000.
+ * mehr. Seit 0.44.0 14.000. Seit 0.56.0 16.000: die vier Ebenen der Prüfliste
+ * (Bildschirme, Felder, Buttons, Automatik) und die Regel der Tiefe in AGENTS.md
+ * kosten rund 1.900 Tokens, und ohne sie rät der Agent genau dort.
  */
-const FACH_APP_GRENZE = 14000;
+const FACH_APP_GRENZE = 16000;
 
-check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 14.000 Tokens, in beiden Sprachen", () => {
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 16.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
   // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
   // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit
