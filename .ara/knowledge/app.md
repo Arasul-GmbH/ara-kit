@@ -36,6 +36,9 @@ asks to full depth"; the four levels below are what it means for an app.
 | **Where a flow is needed** | Where a language model really does the work. Shifting data is a program, not a flow |
 | **Where a human decides** | Every approval, when an item is complete enough for it, who decides and who explicitly not |
 | **Who may see what** | Everything for everybody inside, or only their clients, departments, files. The app decides that |
+| **Roles and assignment** | **Always asked.** Default: an administrator and employees. The administrator hands files (clients, projects, cases) to employees; an employee sees only the files handed to them, with the approvals that concern them. Another role only with a reason. See "Three questions every app gets" |
+| **What leaves the device** | **Always asked.** Mail, a register, a payment service, a search on the internet. Default: nothing leaves. Every outside connection is agreed one by one |
+| **Which model per flow** | **Always asked.** Each place where a language model works gets a suggestion the administrator may switch on the device |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention: `.ara/knowledge/app-professional.md` |
 | **Which shape it takes** | The eight patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
@@ -68,6 +71,46 @@ was guessed.
    documents, personal data named), the **result** (what it produces and where it lands), the
    **checker** (which human looks, and what they see), the **failure** (the model does not
    answer, the checker is away, the result is wrong), and the **notification** (who, by which way).
+
+### Three questions every app gets
+
+These three are asked in **every** `/app` interview, in the human's words, whatever else the app
+does. They are on the list because a person without programming experience will not raise them
+and cannot repair them later. Each gets finished drafts as options, never a blank "which roles?".
+Speak plainly (`AGENTS.md`, "Plain language"): a technical word gets one sentence the first time.
+
+1. **Roles and assignment.** Ask: "Who works with the app? Suggestion: you as administrator, all
+   others as employees. As administrator you hand each employee the files they work on, a client,
+   a project, a case. An employee sees only their own files, and the approvals that concern them,
+   never somebody else's." Options: *Administrator and employees (suggested)*; *Everybody sees
+   everything* (only with the reason written into the plan, and said aloud that a wrong click then
+   shows a client's file to everybody); *More roles* (see below). **A further role needs a reason in
+   the human's words**: ask "what may this person do that an employee may not?" If the answer is
+   nothing, no role is made. Then ask who the administrators are and what a "file" is called in the
+   house (client, project, case), and use that word on every screen. **The build is pattern 7**
+   (`.ara/knowledge/app-patterns.md`): a page where the administrator hands files to employees, and
+   the test `backend/probe/fremde-akte.mjs`, "somebody else's file answers 404". The plan names
+   both, and **the app does not go live before that test passed in staging**; its output goes into the
+   plan. Tell the human plainly that a new employee opens the app once before they can be handed
+   files.
+2. **What goes out to the internet.** Run
+   `node .ara/tools/app.mjs --connections "<the description so far>"`: it names the outside services
+   and any research on the internet the description points to. Ask per entry: "Is this needed? From
+   the start, or only when somebody asks for it? May personal data go with it?" and say what leaves
+   the device in one sentence ("the text of the mails goes to your mail provider"). The answers go
+   into the plan under `Connections`. **Nothing goes out that was not agreed.** When the device's
+   contract names the field `verbindungen`, the entries go into `app.json` and `--check` holds them
+   against the contract; until it does, the plan holds them, `--check` says the field is not
+   checked, and the app calls nothing outside by itself. Do not invent the shape of an entry.
+3. **Which model per flow.** Say first what a model is: "the program that reads and writes text.
+   A bigger one is slower and more careful, a small one is quick." Per place where a model works,
+   propose a kind of model for the task and say why, and say the administrator can switch it on the
+   device later without the app breaking. **No model name from memory**: what the device has
+   comes from `--contract`, the catalogue from the mirror. The suggestion stands in the header of
+   the flow file; the plan lists flow, task, suggestion and reason under `Models per flow`.
+
+**"Enough" does not drop these three.** What stays open becomes the safe default and is said aloud:
+administrator and employees, nothing goes out, the suggestion of the flow's header.
 
 ### How to ask, and when to stop
 

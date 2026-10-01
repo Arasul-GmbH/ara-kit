@@ -70,6 +70,29 @@ Ein Block je Automatik, alle sechs Zeilen.
 - **Im Fehlerfall:**
 - **Benachrichtigung:** wer, auf welchem Weg
 
+## Rollen und Zuweisung
+
+Immer ausgefüllt. Vorgabe: ein Admin und Mitarbeiter. Wer Admin ist, wie die „Akte" im Haus heißt
+(Mandant, Projekt, Fall), wer wem Akten zuweist, und dass ein Mitarbeiter nur die ihm zugewiesenen
+Akten und die Freigaben sieht, die ihn betreffen. Eine weitere Rolle nur mit ihrem Grund in den
+Worten des Menschen. Die Seite, auf der Akten zugewiesen werden, und der Test „eine fremde Akte
+gibt 404" mit seinem Ergebnis im Teststand.
+
+## Verbindungen
+
+Immer ausgefüllt. Was das Gerät verlässt, eine Zeile je Dienst von außen oder Recherche im Internet:
+wozu, von Anfang an oder nur auf Wunsch, ob personenbezogene Daten mitgehen. „Nichts verlässt das
+Gerät" ist eine Antwort. Die Einträge für `verbindungen` in der app.json folgen, sobald der Kontrakt
+des Geräts das Feld nennt.
+
+## Modelle je Flow
+
+Eine Zeile je Stelle, an der ein Sprachmodell arbeitet: der Flow, die Aufgabe, die Art Modell als
+Vorschlag, der Grund, und dass der Admin es am Gerät umstellen darf. Kein Modellname aus dem Kopf.
+
+| Flow | Aufgabe | Vorschlag (Art) | Grund | Wer umstellen darf |
+| --- | --- | --- | --- | --- |
+
 ## Wo ein Flow gebraucht wird
 
 Wo ein Sprachmodell arbeitet und wo nicht. Ein Flow, der nur Daten hin und her schiebt,

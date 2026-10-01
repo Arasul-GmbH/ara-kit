@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.60.0 (2026-10-01)
+
+Contract: up to 6
+
+- **`/app` fragt immer nach Rollen, Internet und Modell, in einfachen Worten.** Drei Fragen gehören jetzt zu jedem App-Interview und überleben „genug": wer mit der App arbeitet (Vorgabe ein Admin und Mitarbeiter; der Admin weist Mitarbeitern Akten wie Mandanten oder Projekte zu, ein Mitarbeiter sieht nur seine Akten und die Freigaben, die ihn betreffen; eine weitere Rolle nur mit Grund), was das Gerät verlässt (Vorgabe nichts; jeder Dienst von außen und jede Recherche im Internet wird einzeln vereinbart) und welches Modell in welchem Flow arbeitet (ein Vorschlag, den der Admin am Gerät umstellen darf). Die Plan-Vorlage hat für jede einen Abschnitt.
+- **Das Kit erkennt Dienste von außen in einer Beschreibung.** `node .ara/tools/app.mjs --connections "<text>"` nennt die Dienste und jede Recherche im Internet, auf die eine Beschreibung hindeutet, und was mit jedem das Gerät verlässt, damit das Interview je Eintrag fragen kann. Die Form eines Eintrags in `verbindungen` wird nicht erfunden: der Kontrakt des Geräts sagt sie. `--check` und `--deploy` halten das Feld gegen den Kontrakt, sobald er es nennt, und sagen bis dahin in einem Satz, dass es ungeprüft ist.
+- **Muster 7 bringt den Test „eine fremde Akte gibt 404" mit.** `backend/probe/fremde-akte.mjs` legt zwei Probe-Akten an, weist je eine zwei Mitarbeitern zu und versucht von der einen Seite Ansehen, Ändern, Einreichen, Darin-Anlegen und Auflisten; jede Antwort muss 404 sein. Die Zuordnungen löst er danach wieder. Der Selbsttest lässt ihn gegen ein gespieltes Gerät laufen und einmal mit zwei gleichen Namen, um ihn rot werden zu sehen.
+- **Eine Regel für einfache Sprache, in `AGENTS.md` und der Persona.** Wer mit dem Kit baut, ist meist nicht technisch: ein Fachwort bekommt beim ersten Mal einen Satz, ein Fehler sagt, was ein Mensch tun kann. Drei zu technische Stellen sind umgeschrieben (Freigaben in `app-professional`, der Kopf des Blatts zu Muster 7, der Absatz zu `modelle`).
+- **Nicht Teil dieser Fassung:** der Freigabe-Baustein aus der Jet-Karte „mitarbeiter-ohne-technik-und-freigaben" ist noch nicht ausgeliefert. Ein neuer Mitarbeiter öffnet die App weiter einmal, bevor man ihm Akten zuweisen kann.
+
 ## 0.59.1 (2026-10-01)
 
 Kontrakt: bis 6

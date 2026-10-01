@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.60.0 (2026-10-01)
+
+Contract: up to 6
+
+- **`/app` always asks about roles, the internet and the model, in plain words.** Three questions now belong to every app interview and survive "enough": who works with the app (default an administrator and employees; the administrator hands files such as clients or projects to employees, an employee sees only their own files and the approvals that concern them; a further role only with a reason), what leaves the device (default nothing; each outside service or research on the internet is agreed one by one) and which model works in which flow (a suggestion the administrator may switch on the device). The plan template has a section for each.
+- **The kit spots outside services in a description.** `node .ara/tools/app.mjs --connections "<text>"` names the services and any research on the internet a description points to, and what leaves the device with each, so the interview can ask per entry. The shape of an entry in `verbindungen` is not invented: the device's contract says it. `--check` and `--deploy` hold the field against the contract once the contract names it, and until then say in one sentence that it is not checked.
+- **Pattern 7 ships with the test "somebody else's file answers 404".** `backend/probe/fremde-akte.mjs` creates two sample files, hands one to each of two employees, and tries view, change, send in, create inside and list from one side; every answer must be 404. It removes its assignments afterwards. The self-test runs it against a played device, and runs it once with two identical names to see it turn red.
+- **One rule for plain language, in `AGENTS.md` and the persona.** Whoever builds with the kit is mostly not technical: a technical word gets one sentence the first time, errors say what a person can do. Three passages that were too technical are rewritten (approvals in `app-professional`, the head of the pattern 7 sheet, the paragraph on `modelle`).
+- **Not part of this version:** the approval building block from the Jet card "mitarbeiter-ohne-technik-und-freigaben" is not delivered yet. A new employee still opens the app once before files can be handed to them.
+
 ## 0.59.1 (2026-10-01)
 
 Contract: up to 6

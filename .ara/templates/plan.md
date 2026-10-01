@@ -70,6 +70,29 @@ One block per automation, all six lines.
 - **On failure:**
 - **Notification:** who, by which way
 
+## Roles and assignment
+
+Always filled. Default: an administrator and employees. Who the administrators are, what a "file"
+is called in the house (client, project, case), who hands files to whom, and that an employee sees
+only the files handed to them and the approvals that concern them. A further role only with its
+reason in the human's words. The page where files are handed out, and the test "somebody else's
+file answers 404" with its result in staging.
+
+## Connections
+
+Always filled. What leaves the device, one line per outside service or research on the internet:
+what for, from the start or only on request, whether personal data goes with it. "Nothing leaves
+the device" is an answer. The entries for `verbindungen` in app.json follow once the device's
+contract names the field.
+
+## Models per flow
+
+One row per place where a language model works: the flow, the task, the kind of model suggested,
+why, and that the administrator may switch it on the device. No model name from memory.
+
+| Flow | Task | Suggestion (kind) | Why | Who may switch |
+| --- | --- | --- | --- | --- |
+
 ## Where a flow is needed
 
 Where a language model works and where it does not. A flow that only shifts data back and

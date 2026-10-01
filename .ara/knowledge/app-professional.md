@@ -22,13 +22,16 @@ asks `bereit` first: an item that is not complete stays in work without a run, w
 what is missing. **After submitting nothing changes**: `darfAendern` holds only in work, patterns 2,
 7 and 8 answer 409 to attaching, changing, deleting and reading anew.
 
-**Seeing is not deciding.** Pattern 7 marks at each mapping whether the account decides, `regel`
-returns four eyes and only the deciders of the item's client. If nobody remains, no run starts and
-the item says why. The circle stands in `.ara/knowledge/platform-services.md`, "Permissions: a run
-stops, a human decides". An account named there without the app released makes the device refuse
-the start with 400, that sentence stands at the item. **A decision counts only from somebody still
-deciding**: the device keeps the circle from the start, so the app checks the decider against the
-mapping when catching up.
+**Seeing a file is not the same as deciding on it.** For every file an employee has been handed, the
+administrator also says whether that employee may approve it, or only look. An item is checked by a
+second person, never by the one who sent it in. If nobody else is left who may approve, nothing
+starts, and the item says why in a sentence. How the device handles an approval: `.ara/knowledge/platform-services.md`,
+"Permissions: a run stops, a human decides". If the device does not know the approver yet, it
+refuses the start, and that sentence stands at the item. **A decision counts only from somebody who
+may still approve**: the device keeps the list of approvers from the start, so the app checks the
+person against the current assignment when it catches up. (In code: pattern 7 stores `entscheidet`
+per assignment, `regel` returns four eyes with the approvers of the item's client, status 400 from
+the device.)
 
 **How the scaffold carries it.** Submitter and rule go only when `arasul.json` says under `freigaben`
 that the device takes them. `regel` returns the rule, a sentence starts no run; `zustaendig` checks a
@@ -53,9 +56,10 @@ afterwards. What the contract says about a model is a measurement, not a promise
 **Promise no image
 understanding**, no handwriting, no photo of goods, before you have seen it on the customer's device.
 
-**Which model reads, the answer says** (`model`). **The field `modelle` in `app.json` is a demand,
-not a delivery**: the device installs no model, at the deploy it says which one is missing. Empty,
-as in the scaffold, means none by name.
+**Which model reads, the answer says** (`model`). **The list `modelle` in `app.json` is a demand,
+not a delivery**: the device does not install a model for you. When the app goes onto the device it
+says which model is missing, and an administrator has to install it. An empty list, as in the
+scaffold, asks for no model by name.
 
 **The model suggests, the app checks, a human decides.** The app holds the fields against the
 schema and its professional rules, a tax rate that does not fit, writes every finding onto the

@@ -35,6 +35,9 @@ bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht i
 | **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Daten schieben ist ein Programm, kein Flow |
 | **Wo ein Mensch entscheidet** | Jede Freigabe, wann ein Vorgang vollständig genug dafür ist, wer entscheidet und wer ausdrücklich nicht |
 | **Wer was sehen darf** | Jeder darin alles, oder nur seine Mandanten, Abteilungen, Akten. Das entscheidet die App |
+| **Rollen und Zuweisung** | **Wird immer gefragt.** Vorgabe: ein Admin und Mitarbeiter. Der Admin weist Mitarbeitern Akten zu (Mandanten, Projekte, Fälle); ein Mitarbeiter sieht nur die ihm zugewiesenen Akten samt den Freigaben, die ihn betreffen. Weitere Rollen nur mit Grund. Siehe „Drei Fragen, die jede App bekommt" |
+| **Was ins Netz geht** | **Wird immer gefragt.** Mail, ein Register, ein Zahlungsdienst, eine Suche im Internet. Vorgabe: nichts verlässt das Gerät. Jede Verbindung nach außen wird einzeln vereinbart |
+| **Welches Modell je Flow** | **Wird immer gefragt.** Jede Stelle, an der ein Sprachmodell arbeitet, bekommt einen Vorschlag, den der Admin am Gerät umstellen darf |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
 | **Welche Gestalt sie annimmt** | Die acht Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
@@ -68,6 +71,48 @@ nichts darin wurde geraten.
    der **Prüfer** (welcher Mensch schaut hin, und was er sieht), der **Fehlerfall** (das Modell
    antwortet nicht, der Prüfer ist weg, das Ergebnis ist falsch) und die **Benachrichtigung**
    (wer, auf welchem Weg).
+
+### Drei Fragen, die jede App bekommt
+
+Diese drei werden in **jedem** `/app`-Interview gestellt, in den Worten des Menschen, was die App
+sonst auch tut. Sie stehen auf der Liste, weil ein Mensch ohne Programmiererfahrung sie nicht von
+sich aus anspricht und später nicht reparieren kann. Jede bekommt fertige Entwürfe als Optionen,
+nie ein leeres „welche Rollen?". Sprich einfach (`AGENTS.md`, „Plain language"): ein Fachwort
+bekommt beim ersten Mal einen Satz.
+
+1. **Rollen und Zuweisung.** Frag: „Wer arbeitet mit der App? Vorschlag: Sie als Admin, alle
+   anderen als Mitarbeiter. Als Admin weisen Sie jedem Mitarbeiter die Akten zu, an denen er
+   arbeitet, einen Mandanten, ein Projekt, einen Fall. Ein Mitarbeiter sieht nur seine eigenen
+   Akten und die Freigaben, die ihn betreffen, nie die eines anderen." Optionen: *Admin und
+   Mitarbeiter (Vorschlag)*; *Alle sehen alles* (nur mit dem Grund im Plan, und laut gesagt, dass ein
+   falscher Klick dann die Akte eines Mandanten allen zeigt); *Weitere Rollen* (siehe unten). **Eine
+   weitere Rolle braucht einen Grund in den Worten des Menschen**: frag „Was darf diese Person, was
+   ein Mitarbeiter nicht darf?" Lautet die Antwort „nichts", entsteht keine Rolle. Dann frag, wer
+   Admin ist und wie die „Akte" im Haus heißt (Mandant, Projekt, Fall), und nimm dieses Wort für
+   jede Seite. **Gebaut wird Muster 7** (`.ara/knowledge/app-patterns.de.md`): eine Seite, auf der der
+   Admin Mitarbeitern Akten zuweist, und der Test `backend/probe/fremde-akte.mjs`, „eine fremde Akte
+   gibt 404". Der Plan nennt beides, und **die App geht nicht live, bevor dieser Test im Teststand
+   bestanden ist**; seine Ausgabe kommt in den Plan. Sag dem Menschen klar, dass ein neuer
+   Mitarbeiter die App einmal öffnet, bevor man ihm Akten zuweisen kann.
+2. **Was ins Internet geht.** Ruf
+   `node .ara/tools/app.mjs --connections "<die Beschreibung bisher>"` auf: es nennt die Dienste von
+   außen und jede Recherche im Internet, auf die die Beschreibung hindeutet. Frag je Eintrag: „Wird
+   das gebraucht? Von Anfang an oder nur, wenn jemand es verlangt? Dürfen personenbezogene Daten
+   mit?" und sag in einem Satz, was das Gerät verlässt („der Text der Mails geht an Ihren
+   Mail-Anbieter"). Die Antworten kommen in den Plan unter `Verbindungen`. **Nichts geht hinaus, was
+   nicht vereinbart wurde.** Nennt der Kontrakt des Geräts das Feld `verbindungen`, kommen die
+   Einträge in die `app.json`, und `--check` hält sie gegen den Kontrakt; bis dahin hält der Plan sie,
+   `--check` sagt, dass das Feld ungeprüft ist, und die App ruft von sich aus nichts nach außen auf.
+   Die Form eines Eintrags wird nicht erfunden.
+3. **Welches Modell je Flow.** Sag zuerst, was ein Modell ist: „das Programm, das Texte liest und
+   schreibt. Ein größeres ist langsamer und gründlicher, ein kleines ist flink." Schlag je Stelle,
+   an der ein Modell arbeitet, eine Art Modell für die Aufgabe vor, mit Grund, und sag, dass der
+   Admin es später am Gerät umstellen kann, ohne dass die App kaputtgeht. **Kein Modellname aus dem
+   Kopf**: was das Gerät hat, kommt aus `--contract`, der Katalog aus dem Spiegel. Der Vorschlag steht
+   im Kopf der Flow-Datei; der Plan listet Flow, Aufgabe, Vorschlag und Grund unter `Modelle je Flow`.
+
+**„Genug" lässt diese drei nicht fallen.** Was offen bleibt, wird zur sicheren Vorgabe und laut
+gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf des Flows.
 
 ### Wie gefragt wird, und wann Schluss ist
 
