@@ -309,6 +309,7 @@ nichts.
 | Befehl | Was er tut |
 | --- | --- |
 | `login <adresse> --user <name>` | Meldet an, lässt einen Ausweis ausstellen, zeigt danach die Vorschläge und die Orte. Das Passwort wird am Terminal gefragt und nie gezeigt, `--password-stdin` nimmt es aus der ersten Zeile der Eingabe, ein Argument nie. `--credential-name` sagt, unter welchem Namen das Gerät den Ausweis führt, sonst der Name dieses Rechners |
+| `login ... --default` | Ein zweites `login` unter einem anderen `--name` lässt das Standardgerät, wo es war, und sagt das in einem Satz; `--default` rückt es um. Von selbst setzt nur das erste `login` es oder das Standardgerät, das sich neu anmeldet. `status` kennzeichnet es, `sync --install` nennt sein Gerät im Agenten fest und folgt dem Standard nie |
 | `login <adresse> --token-stdin` | Dasselbe mit einem Ausweis statt Name und Passwort. Ausgestellt wird er in der Oberfläche des Geräts |
 | `login`, `login --approve <prüfsumme>`, `login --withdraw` | Die Vorschläge zeigen, einen mit seiner Prüfsumme freigeben, alles zurücknehmen, was das Freigeben eintrug |
 | `apps` | Die dem Menschen zugewiesenen Apps mit ihren Routen. Schreibt `apps/<id>/APP.md` für jede |
@@ -519,6 +520,16 @@ Ordner, der nur die Brücke trägt. Eine Brücke von vor 0.51.0 trägt keine Fas
 **Ein oben verankerter Name reicht weiter.** Eine Regel mit führendem Schrägstrich, für eine `notizen.log`, meint nur die oben;
 der Klient hält den Namen in jeder Tiefe draußen. Der Plan nennt, was das über das hinaus zu
 Hause hält, was die `.gitignore` meinte.
+
+**Eine Datei, die nicht hochgeht, hält ihre Namensvettern zurück.** In einem Ordner, den der Mensch
+nur liest, geht eine neue Datei oben als bloßer Name an den Klienten, und der Klient verankert
+keinen Namen oben: am 01.10.2026 mit dem Klienten des Herstellers gemessen, `/x.md`, `./x.md` und
+`x.m[d/]` hielten nichts draußen, die Datei ging hoch und scheiterte. Also bleibt `unter/x.md` am
+Gerät draußen, solange `x.md` oben liegt. `sync --plan` und `sync` nennen diese Pfade einzeln und
+zählen sie nicht als herunterkommend. Der Ausweg ist, die Datei oben umzubenennen oder
+wegzunehmen. Auch dann sieht der Klient in einen Ordner erst wieder, wenn er sich am Gerät ändert,
+darum nennt `sync`, was dennoch nicht herunterkam, und die Datei wartet, bis sie am Gerät neu
+gespeichert wird.
 
 **Nichts, was der Klient hier löscht, geht verloren.** Der Klient löscht hier, was am Gerät
 gelöscht wurde, so geht ein Abgleich. Bevor er läuft, bekommt jede Datei, die er anfassen kann,

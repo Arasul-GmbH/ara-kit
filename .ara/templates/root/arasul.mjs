@@ -163,7 +163,7 @@
  * eigenem wird bei der Anmeldung einmal mit --insecure festgehalten, nicht abgeschaltet.
  *
  * `--settings <datei>` nennt für die Vorschläge eine andere Einstellungsdatei als die des Agenten
- * selbst, `--device <name>` ein anderes Gerät als das zuletzt angemeldete.
+ * selbst, `--device <name>` ein anderes Gerät als das Standardgerät.
  */
 
 import { spawnSync } from "node:child_process";
@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.57.2";
+const BRIDGE = "0.58.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -383,7 +383,7 @@ const stop = (message, code = 1) => {
 };
 
 const FLAGS_WITH_VALUE = ["user", "name", "approve", "device", "method", "settings", "client", "credential-name", "every", "language"];
-const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine", "install", "uninstall", "background", "reach", "fetch-client"];
+const FLAGS_ALONE = ["write", "insecure", "password-stdin", "token-stdin", "withdraw", "json", "help", "plan", "keep-mine", "install", "uninstall", "background", "reach", "fetch-client", "default"];
 
 function parseArgs(argv) {
   const out = { _: [], flags: {} };
@@ -442,7 +442,7 @@ function writeCredentials(data) {
   renameSync(temporary, CREDENTIALS);
 }
 
-/** The device this call means: --device, else the one logged in to last, else the only one. */
+/** The device this call means: --device, else the default device, else the only one. */
 function chooseDevice(args) {
   const data = readCredentials();
   const names = Object.keys(data.devices);
@@ -1976,8 +1976,33 @@ async function comparePlace(service, dav, folder, local, here, there, base) {
   const result = comparePlan(here.files, there.files, base);
   result.blocked = readsOnly(folder) ? result.up : [];
   if (readsOnly(folder)) result.up = [];
+  result.held = heldByName(result, here.files, there.files);
   return result;
 }
+
+/**
+ * What the client keeps out because of a name, though the human meant one path.
+ *
+ * A file that cannot go up and lies at the top goes to the client as its bare name, and the client
+ * anchors no name at the top (measured on 2026-10-01 with the vendor's client: `/x.md`, `./x.md`
+ * and `x.m[d/]` kept nothing out and the file went up). So the name holds at every depth: a file of
+ * the same name further down neither comes down nor is compared. Those paths are named one by one,
+ * and what would have come down from them is taken out of `down`.
+ */
+function heldByName(result, here, there) {
+  const names = new Set(result.blocked.map((item) => item.path).filter((path) => !path.includes("/")));
+  if (!names.size) return [];
+  const held = [...new Set([...here.keys(), ...there.keys()])].filter((path) => path.includes("/") && names.has(path.split("/").pop())).sort();
+  const gone = new Set(held);
+  result.down = result.down.filter((item) => !gone.has(item.path));
+  return held;
+}
+
+/** The sentence for what stays out of a read-only folder because a file of its name lies at the top. */
+const heldSentence = (held) => t(
+  `stays out as well, because a file of the same name lies at the top here and cannot go up, and the client keeps a name out at every depth: ${held.slice(0, 8).join(", ")}${held.length > 8 ? ", ..." : ""}. Rename or move the one at the top, then these are synced.`,
+  `bleibt auch draußen, weil oben hier eine Datei gleichen Namens liegt, die nicht hochgeht, und der Klient einen Namen in jeder Tiefe draußen hält: ${held.slice(0, 8).join(", ")}${held.length > 8 ? ", ..." : ""}. Benenne die oben um oder nimm sie weg, dann werden diese abgeglichen.`
+);
 
 /**
  * What a sync would do with each file, out of here, there and the state of the last sync.
@@ -2108,6 +2133,7 @@ async function doPlan(args) {
     say(`    ${t("Up", "Hoch")}:                ${fileCount(result.up.length)}, ${sized(total(result.up))}${result.up.length ? `: ${some(result.up, 3)}` : ""}`);
     if (result.blocked.length) say(`    ${t("Up", "Hoch")}:                ${readOnlySentence(result.blocked)}`);
     say(`    ${t("Down", "Runter")}:              ${fileCount(result.down.length)}, ${sized(total(result.down))}${result.down.length ? `: ${some(result.down, 3)}` : ""}`);
+    if (result.held.length) say(`    ${t("Down", "Runter")}:              ${heldSentence(result.held)}`);
     say(`    ${t("Unchanged", "Unverändert")}:         ${fileCount(result.same)}`);
     if (result.conflict.length) {
       say(`    ${t("Conflicts", "Konflikte")}:         ${fileCount(result.conflict.length)}, ${t("different on both sides, the client keeps both", "auf beiden Seiten anders, der Klient behält beide")}: ${some(result.conflict)}`);
@@ -3113,6 +3139,8 @@ async function syncFolders(args, device, apps = []) {
         const bootstrap = folder.root ? bootstrapBridge(rules.bridge?.way === "up") : null;
         // What a reader cannot put up stays home: the client would end with its own message and exit 1.
         let skipped = [];
+        let held = [];
+        let coming = [];
         let toClient = excludes;
         if (service && readsOnly(folder)) {
           const dav = davOf(service, folder);
@@ -3120,7 +3148,10 @@ async function syncFolders(args, device, apps = []) {
             try {
               const here = localTree(local, excludes, { weighHome: false });
               const there = await remoteTree(service, dav, excludes);
-              skipped = (await comparePlace(service, dav, folder, local, here, there, readBase(local))).blocked;
+              const compared = await comparePlace(service, dav, folder, local, here, there, readBase(local));
+              skipped = compared.blocked;
+              held = compared.held;
+              coming = compared.down;
               // The client keeps a bare name out at every depth: a file at the top goes by its name.
               toClient = Object.assign([...excludes, ...skipped.map((item) => here.files.get(item.path)?.path || item.path)], { pinned: excludes.pinned });
             } catch {
@@ -3139,6 +3170,9 @@ async function syncFolders(args, device, apps = []) {
           const there = dav ? (await remoteTree(service, dav, excludes)).files : null;
           writeBase(local, localTree(local, excludes, { weighHome: false }).files, there);
         }
+        // What the plan said would come down and did not: the client skips a folder whose state on the
+        // device did not change since it last kept a file of it out (measured on 2026-10-01).
+        const stuck = run.status === 0 ? coming.filter((item) => !existsSync(join(local, item.path))).map((item) => item.path) : [];
         const seen = inspectFolder(local, folder.root ? tops : new Set(), excludes);
         results.push({
           ...folder,
@@ -3150,6 +3184,8 @@ async function syncFolders(args, device, apps = []) {
           trashed: trash.gone,
           trash: trash.where,
           skipped,
+          held,
+          stuck,
           at: new Date().toISOString(),
         });
       } catch (error) {
@@ -3178,6 +3214,13 @@ async function syncFolders(args, device, apps = []) {
       clean = false;
     }
     if (result.skipped?.length) say(`      ${readOnlySentence(result.skipped)}`);
+    if (result.held?.length) say(`      ${heldSentence(result.held)}`);
+    if (result.stuck?.length) {
+      say(`      ${t(
+        `did not come down although nothing keeps it out any more: ${some(result.stuck.map((path) => ({ path })))}. The client looks into a folder again only when it changes on the device, so a file it once saw kept out waits until it is saved there anew.`,
+        `kam nicht herunter, obwohl es nichts mehr draußen hält: ${some(result.stuck.map((path) => ({ path })))}. Der Klient sieht in einen Ordner erst wieder, wenn er sich am Gerät ändert, darum wartet eine Datei, die er einmal draußen sah, bis sie dort neu gespeichert wird.`
+      )}`);
+    }
     if (result.links.length) {
       say(`      ${result.links.length} ${t("symbolic links, the client does not sync them", "Symlinks, die gleicht der Klient nicht ab")}: ${result.links.slice(0, 5).join(", ")}${result.links.length > 5 ? ", ..." : ""}`);
       clean = false;
@@ -4284,10 +4327,20 @@ async function doLogin(args) {
 
     const data = readCredentials();
     data.devices[name] = { address, kind, ...(user ? { user } : {}), token, since: localDay(), ...(target.ca ? { ca: target.ca } : {}) };
-    data.default = name;
+    // A second account on this computer must not change silently which device every call without
+    // --device means: the default moves only when there is none, when this is the default itself
+    // logging in again, or when the human asks for it with --default.
+    const kept = data.default && data.default !== name && data.devices[data.default] ? data.default : null;
+    if (!kept || args.flags.default) data.default = name;
     writeCredentials(data);
     const expires = expiryOf(token);
     say(t(`Logged in to ${address} as ${name}${user ? ` (${user})` : ""}. The credential lies in ${CREDENTIALS}, mode 0600.`, `Angemeldet an ${address} als ${name}${user ? ` (${user})` : ""}. Der Ausweis liegt in ${CREDENTIALS}, Rechte 0600.`));
+    if (kept && !args.flags.default) {
+      say(t(
+        `${kept} stays the default device. Calls without --device mean ${kept}; ${name} is addressed with --device ${name}, or becomes the default with: node arasul.mjs login ${address} --default`,
+        `${kept} bleibt das Standardgerät. Aufrufe ohne --device meinen ${kept}; ${name} sprichst du mit --device ${name} an, oder es wird Standard mit: node arasul.mjs login ${address} --default`
+      ));
+    }
     if (kind === "issued") {
       say(t(
         "The device issued it for this computer and showed its value once. The session of the login was not kept: a credential has no end and opens no administration.",
@@ -4327,7 +4380,7 @@ async function doStatus(args) {
   for (const name of names) {
     const entry = data.devices[name];
     const expires = expiryOf(entry.token);
-    say(`${t("Device", "Gerät")}: ${name}${data.default === name ? ` (${t("last logged in", "zuletzt angemeldet")})` : ""}, ${entry.address}`);
+    say(`${t("Device", "Gerät")}: ${name}${data.default === name ? ` (${t("default device", "Standardgerät")})` : ""}, ${entry.address}`);
     say(`  ${t("Credential", "Ausweis")}: ${entry.kind === "pasted" ? t("pasted in", "eingefügt") : t("issued by the device", "vom Gerät ausgestellt")}${entry.user ? `, ${entry.user}` : ""}, ${t("since", "seit")} ${entry.since}${expires ? `, ${expires < Date.now() ? t("ended", "zu Ende") : t("holds until", "hält bis")} ${stamp(expires)}` : ""}`);
     try {
       const answer = await send(entry, { path: DEVICE.session, token: entry.token, timeout: 10_000 });
@@ -4395,6 +4448,7 @@ function usage() {
       "  login [<address>] [--user <name>] [--token-stdin | --password-stdin] [--insecure] [--name <label>]",
       "        log in, then show the proposals for hooks and rules and the places on this computer",
       "        [--credential-name <name>]     the name the device files the credential under",
+      "        [--default]                    make this device the default; else the first one stays it, and a second login says so",
       "  login --approve <checksum>     approve one proposal, once per proposal",
       "  login --withdraw               take back what approving entered",
       "  status                         one line on the sync, then device, credential, company folder, proposals",
@@ -4408,7 +4462,7 @@ function usage() {
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
       "  call <app> <route> [name=value ...] [--write] [--method <verb>]",
       "",
-      "  --device <name>  another device than the last one   --settings <file>  another settings file",
+      "  --device <name>  another device than the default   --settings <file>  another settings file",
       "  --language de|en  the language of the output, before the root's .claude/root.json has one",
     ].join("\n"),
     [
@@ -4417,6 +4471,7 @@ function usage() {
       "  login [<adresse>] [--user <name>] [--token-stdin | --password-stdin] [--insecure] [--name <bezeichnung>]",
       "        anmelden, danach die Vorschläge für Hooks und Regeln und die Orte auf diesem Rechner zeigen",
       "        [--credential-name <name>]     unter welchem Namen das Gerät den Ausweis führt",
+      "        [--default]                    dieses Gerät zum Standard machen; sonst bleibt das erste es, und ein zweites login sagt das",
       "  login --approve <prüfsumme>    einen Vorschlag freigeben, einmal je Vorschlag",
       "  login --withdraw               zurücknehmen, was das Freigeben eintrug",
       "  status                         eine Zeile zum Abgleich, dann Gerät, Ausweis, Firmenordner, Vorschläge",
@@ -4430,7 +4485,7 @@ function usage() {
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
       "  call <app> <route> [name=wert ...] [--write] [--method <verb>]",
       "",
-      "  --device <name>  ein anderes Gerät als das zuletzt angemeldete   --settings <datei>  eine andere Einstellungsdatei",
+      "  --device <name>  ein anderes Gerät als das Standard   --settings <datei>  eine andere Einstellungsdatei",
       "  --language de|en  die Sprache der Ausgabe, solange .claude/root.json der Wurzel keine nennt",
     ].join("\n")
   ));

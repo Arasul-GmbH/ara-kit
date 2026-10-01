@@ -297,6 +297,7 @@ app offers. This file does that, and nothing else.
 | Command | What it does |
 | --- | --- |
 | `login <address> --user <name>` | Logs in, has a credential issued, then shows the proposals and the places. The password is asked for at the terminal and never shown, `--password-stdin` takes it from the first line of the input, an argument never. `--credential-name` says what the device files the credential under, by default the name of this computer |
+| `login ... --default` | A second `login` under another `--name` leaves the default device where it was and says so in one sentence; `--default` moves it. Only the first login, or the default logging in again, sets it on its own. `status` marks it, `sync --install` pins its device in the agent and never follows the default |
 | `login <address> --token-stdin` | The same with a credential instead of name and password. It is issued in the device's front end |
 | `login`, `login --approve <checksum>`, `login --withdraw` | Show the proposals, approve one by its checksum, take back everything the approving entered |
 | `apps` | The apps assigned to the person, with their routes. Writes `apps/<id>/APP.md` for each |
@@ -499,6 +500,15 @@ carries no version and counts as the older one.
 **A name anchored at the top reaches further.** A rule with a leading slash, for a `notes.log`, means only
 the one at the top; the client keeps the name out at every depth. The plan names what that keeps home
 beyond what the `.gitignore` meant.
+
+**A file that cannot go up holds its namesakes back.** In a folder the person only reads, a new
+file at the top goes to the client as its bare name, and the client anchors no name at the top:
+measured on 2026-10-01 with the vendor's client, `/x.md`, `./x.md` and `x.m[d/]` kept nothing out
+and the file went up and failed. So `unter/x.md` on the device stays out as long as `x.md` lies at
+the top. `sync --plan` and `sync` name those paths one by one and do not count them as coming
+down. The way out is to rename or move the file at the top. Even then the client looks into a
+folder again only when it changes on the device, so `sync` names what still did not come down,
+and the file waits until it is saved on the device anew.
 
 **Nothing the client deletes here is lost.** The client deletes here what was deleted on the
 device, that is how a sync works. Before it runs, every file it may touch gets a second name in a
