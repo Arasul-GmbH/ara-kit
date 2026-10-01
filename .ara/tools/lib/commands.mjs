@@ -52,9 +52,13 @@ export const BRANCHES = Object.freeze({ partner: ["all", "partner"], company: ["
  * Profil aendern, dann `node .ara/tools/update.mjs`, das holt alles wieder.
  */
 export const PARTNER_ONLY = Object.freeze([
+  // Erst der Link, dann sein Ziel: .claude/skills/<name> ist ein Symlink auf .agents/skills/<name>.
   ".claude/skills/customers/",
   ".claude/skills/sales/",
   ".claude/skills/pricing/",
+  ".agents/skills/customers/",
+  ".agents/skills/sales/",
+  ".agents/skills/pricing/",
   ".ara/vorlagen/angebot.md",
   ".ara/vorlagen/rechnung.md",
   ".ara/vorlagen/endkundenbedingungen.md",

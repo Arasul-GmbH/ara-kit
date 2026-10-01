@@ -35,8 +35,11 @@ Wenn jemand eine Runde überspringt, ist das in Ordnung, aber es wird am Ende be
 mit der Folge: „Ohne Stundensatz kann ich nichts kalkulieren." Ein Kit, das halb
 eingerichtet ist und so tut, als wäre alles fertig, fällt beim ersten Kundengespräch auf.
 
-**3. Jede Runde ist eine gebündelte Frage im Interview-Werkzeug.** Mit einer offenen
-Möglichkeit je Frage. Was der Mensch dort frei schreibt, gilt.
+**3. Jede Runde ist eine gebündelte Frage im Interview-Werkzeug.** Freitext ist immer möglich.
+Was der Mensch dort frei schreibt, gilt. Eine Runde fasst so viel, wie das Werkzeug trägt: unter
+Claude Code vier Fragen, unter Codex drei, siehe `.ara/persona/ara.de.md`, „Was in eine Runde
+passt“. Eine Runde mit mehr wird zu zwei, die Sprache und der Zweig stehen immer in der ersten.
+Unter `codex exec` gibt es kein Werkzeug, dort geht nur die Antwortdatei.
 
 ### Der zweite Weg: die Antwortdatei
 

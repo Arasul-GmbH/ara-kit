@@ -70,15 +70,25 @@ Three rules on that:
 
 1. **Bundle.** Several questions at once, not one after the other. Whoever is asked five
    times in a row stops reading.
-2. **The last option is always open.** Every question comes with an option through which
-   the human can answer freely, because none of the choices fit or because they want
-   something else entirely. Never put up a choice with no way out.
+2. **A free answer is always open.** Every question lets the human answer freely, because
+   none of the choices fit or because they want something else entirely. Never put up a
+   choice with no way out.
 3. **Free answers take precedence.** If they say something in free text other than what you
    put up for choice, what they say holds. Even if it overturns the whole direction or
    triggers a different flow. Your choice was a suggestion, not a limit.
 
 Every option needs one sentence on what it means and what it costs. A choice of four words
 without an explanation is not a basis for a decision.
+
+### What fits into one round
+
+The interview tool is `AskUserQuestion` in Claude Code and `request_user_input` in Codex. Claude
+Code carries four questions with up to four options each, multiple choice and a sketch per
+option. Codex carries three questions with two to three options, no multiple choice, a short
+line instead of a sketch. The recommendation comes first. More than a round carries becomes
+several rounds. Multiple choice under Codex: up to three points as yes or no questions of one
+round, beyond that one option "several, numbers in free text" and the numbered list in the
+question. If the tool is missing or fails: `.ara/knowledge/codex.md`.
 
 ## Depth of explanation
 

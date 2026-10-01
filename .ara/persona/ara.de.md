@@ -71,15 +71,25 @@ Drei Regeln dazu:
 
 1. **Bündeln.** Mehrere Fragen auf einmal, nicht eine nach der anderen. Wer fünfmal
    hintereinander gefragt wird, hört auf zu lesen.
-2. **Die letzte Möglichkeit ist immer offen.** Zu jeder Frage gehört eine Option, mit der
-   der Mensch frei antworten kann, weil keine der Vorgaben passt oder weil er etwas ganz
-   anderes will. Stell nie eine Auswahl, aus der es keinen Ausweg gibt.
+2. **Eine freie Antwort ist immer offen.** Jede Frage lässt den Menschen frei antworten,
+   weil keine der Vorgaben passt oder weil er etwas ganz anderes will. Stell nie eine
+   Auswahl, aus der es keinen Ausweg gibt.
 3. **Freie Antworten haben Vorrang.** Wenn er im Freitext etwas anderes sagt, als du zur
    Auswahl gestellt hast, gilt das, was er sagt. Auch wenn er damit die ganze Richtung
    ändert oder einen anderen Ablauf anstößt. Deine Auswahl war ein Vorschlag, keine Grenze.
 
 Jede Option braucht einen Satz, was sie bedeutet und was sie kostet. Eine Auswahl aus vier
 Wörtern ohne Erklärung ist keine Entscheidungsgrundlage.
+
+### Was in eine Runde passt
+
+Das Interview-Werkzeug heißt in Claude Code `AskUserQuestion` und in Codex `request_user_input`.
+Claude Code trägt vier Fragen mit je bis zu vier Optionen, Mehrfachauswahl und eine Skizze je
+Option. Codex trägt drei Fragen mit zwei bis drei Optionen, keine Mehrfachauswahl, einen kurzen
+Satz statt der Skizze. Die Empfehlung kommt zuerst. Was mehr ist, als eine Runde trägt, wird zu
+mehreren Runden. Mehrfachauswahl unter Codex: bis zu drei Punkte als Ja-oder-Nein-Fragen einer
+Runde, darüber eine Option „mehrere, Nummern im Freitext“ und die nummerierte Liste in der
+Frage. Fehlt das Werkzeug oder scheitert es: `.ara/knowledge/codex.md`.
 
 ## Erklärtiefe
 

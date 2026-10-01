@@ -2,18 +2,39 @@
 /**
  * Riegel: letzter Halt vor gefährlichen Befehlen.
  *
- * Läuft als PreToolUse-Hook vor jedem Bash-Aufruf. Bekommt den geplanten Befehl auf der
- * Standardeingabe und beendet sich mit Code 2, wenn er blockiert wird. Die Begründung
- * geht an die Standardfehlerausgabe und damit zurück an den Agenten.
+ * Läuft als PreToolUse-Hook vor jedem Bash-Aufruf, unter Claude Code aus
+ * .claude/settings.json und unter Codex aus .codex/hooks.json. Beide schicken denselben
+ * Umschlag mit `tool_input.command`, Codex dazu den Namen des Werkzeugs und manchmal den
+ * Befehl als Liste. Der Riegel liest beides und beendet sich mit Code 2, wenn er blockiert.
+ * Die Begründung geht an die Standardfehlerausgabe und damit zurück an den Agenten.
+ *
+ * Er ist eine Textsuche und keine Grenze: wer den Befehl umbaut, kommt vorbei. Er fängt
+ * die Handgriffe ab, die ein Agent von sich aus macht, und das auch dann, wenn der Befehl
+ * als Text in einem Werkzeugaufruf steht (`remote.mjs --command "rm -rf /"`).
  *
  * Der Riegel ersetzt keine Bestätigung. Er fängt nur die Handgriffe ab, die niemand
  * bestätigen sollte, weil es keinen Rückweg gibt.
  */
 
+/**
+ * Steht die Wurzel oder das Benutzerverzeichnis als Ziel im Befehl? Gelesen wird in
+ * Wörtern ohne Anführungszeichen, damit `--command "rm -rf /"` nicht an dem Zeichen
+ * hinter dem Schrägstrich vorbeigeht. `/` und `~` zählen überall, `.`, `..`, `/*` und
+ * `$HOME` nur als letztes Wort, wie bisher.
+ */
+function wurzelAlsZiel(befehl) {
+  const woerter = befehl
+    .split(/[\s;&|]+/)
+    .map((wort) => wort.replace(/^["'`(]+|["'`)]+$/g, ""))
+    .filter(Boolean);
+  if (woerter.some((wort) => wort === "/" || wort === "~")) return true;
+  return ["$HOME", "/*", ".", ".."].includes(woerter[woerter.length - 1]);
+}
+
 const REGELN = [
   {
     muster: /\brm\s+(-[a-zA-Z]*\s+)*-[a-zA-Z]*[rR][a-zA-Z]*f|rm\s+-f[a-zA-Z]*[rR]/,
-    zusatz: /\s(\/|~|\$HOME|\/\*|\.\s|\.\.)\s*$|\s(\/|~)\s/,
+    zusatz: wurzelAlsZiel,
     grund: "Rekursives Löschen an der Wurzel oder im Benutzerverzeichnis.",
   },
   {
@@ -41,7 +62,16 @@ const REGELN = [
     grund: "Erzwungenes Überschreiben eines entfernten Zweigs.",
   },
   {
-    muster: /\b(cat|less|more|head|tail|bat|xxd|strings)\b[^\n]*\.env(\s|$|\|)/,
+    muster: /\b(node|python3?|ruby|perl|php|deno|bun)\b[^\n]*\s(-e|-c|-p|--eval|--print)\b[^\n]*\.env(?!\.example)\b/,
+    grund: "Die .env enthält Zugänge und wird auch nicht über einen Einzeiler gelesen. Nutz die Werkzeuge unter .ara/tools/, die sie verwenden, ohne sie anzuzeigen.",
+  },
+  {
+    muster: /\b(grep|egrep|rg|awk|sed|cut|sort|od|hexdump|base64|diff|cmp|nl|tee|source)\b[^\n;&|]*(^|\s)(\.\/)?\.env(\s|$|\||;)/,
+    grund: "Die .env enthält Zugänge und wird nicht in den Kontext gelesen. Nutz die Werkzeuge unter .ara/tools/, die sie verwenden, ohne sie anzuzeigen.",
+  },
+  {
+    // Im selben einfachen Befehl: `git log | head; cp .env.example .env` liest nichts.
+    muster: /\b(cat|less|more|head|tail|bat|xxd|strings)\b[^\n;&|]*\.env(\s|$|\|)/,
     grund: "Die .env enthält Zugänge und wird nicht in den Kontext gelesen. Nutz die Werkzeuge unter .ara/tools/, die sie verwenden, ohne sie anzuzeigen.",
   },
   {
@@ -49,7 +79,8 @@ const REGELN = [
     grund: "Private SSH-Schlüssel werden nicht gelesen und nicht kopiert.",
   },
   {
-    muster: /\b(printenv|env)\b\s*(\||$)/,
+    // Nicht nach einem Punkt: `cp .env.example .env` endet auf `env` und ist kein Aufruf.
+    muster: /(?<![.\w/-])(printenv|env)\b\s*(\||$)/,
     grund: "Vollständige Umgebungsausgabe kann Zugänge enthalten.",
   },
   {
@@ -61,7 +92,7 @@ const REGELN = [
 function pruefe(befehl) {
   for (const regel of REGELN) {
     if (!regel.muster.test(befehl)) continue;
-    if (regel.zusatz && !regel.zusatz.test(befehl)) continue;
+    if (regel.zusatz && !regel.zusatz(befehl)) continue;
     return regel.grund;
   }
   return null;
@@ -83,7 +114,9 @@ try {
   process.exit(0);
 }
 
-const befehl = eingabe?.tool_input?.command;
+// Codex gibt den Befehl manchmal als Liste, `["bash", "-lc", "..."]`.
+const rohBefehl = eingabe?.tool_input?.command;
+const befehl = Array.isArray(rohBefehl) ? rohBefehl.join(" ") : rohBefehl;
 if (typeof befehl !== "string" || befehl.length === 0) process.exit(0);
 
 const grund = pruefe(befehl);
