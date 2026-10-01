@@ -56,7 +56,7 @@ needs doing, and you pull the matching procedure:
 | Something is stuck | `.ara/knowledge/diagnostics.md`. Establish first, change second |
 | Just having a look | The report is the answer. Result into the history, even if everything was fine |
 | An app is stuck | Version from the report, then `/app`: switching back to the previous version is the fastest way back |
-| Deploy an update | `.ara/knowledge/maintenance-flow.md`, section "Deploy an update". Back up first, then check that the backup exists |
+| Deploy an update | `node .ara/tools/upgrade.mjs --device <device> ...` shows the plan first (versions, duration, way back); `.ara/knowledge/maintenance-flow.md`, section "Deploy an update". The tool backs up, checks the backup, fetches the artifact the customer's way and compares before and after |
 | Extension | `.ara/knowledge/extensions.md` |
 
 For a fault the rule is: no repair without a finding, never two changes at once.
@@ -74,8 +74,9 @@ something yourself.
 
 ## What the tool does not do
 
-It restarts nothing, deploys nothing and cleans up nothing. **Every intervention is a
-decision of its own**, with intent, target and way back, and for a customer device with a
+`maintain.mjs` restarts nothing, deploys nothing and cleans up nothing. An update goes through
+`upgrade.mjs`, which says duration and way back first and changes nothing without `--yes`.
+**Every intervention is a decision of its own**, with intent, target and way back, and for a customer device with a
 confirmation in front of it (`.ara/knowledge/security.md`). A maintenance contract permits
 maintenance, it is not a licence for a restart at eleven in the morning.
 

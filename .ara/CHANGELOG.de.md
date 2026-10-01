@@ -15,6 +15,17 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.59.0 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **`/maintain` spielt eine neue Fassung ein, und das Kit führt den Weg.** Bisher stand im Wissen „dem Weg des Produkts folgend (im Spiegel nachlesen)": ein Kunde ohne Fernzugriff von Arasul gab die Zeilen aus dem Handbuch von Hand an `remote.mjs`, ohne Dauer und ohne Rückweg, und schob das Update auf. Das neue Werkzeug `upgrade.mjs` beginnt mit einem Plan, der nichts ändert: die Fassung am Gerät und die neueste, woher das Artefakt kommt, was passiert, wie lange es dauert (2,5 Minuten Einspielen und 3 Minuten nach einem Neustart, bis die Container gesund sind, mit Datum und Gerät der Messung) und der Rückweg. Den Rückweg liest es aus den Anleitungen am Gerät. Am Orin gemessen nennen sie keinen auf die vorige Fassung, also sagt der Plan genau das, sagt, was die Sicherung zurückbringt (die Daten, nicht die Fassung), und der Kunde hört es vorher.
+- **Eingespielt wird nur, was neuer ist.** Bei gleicher oder älterer Fassung endet `--apply` mit einem Satz, bevor etwas gesichert wird. Die Fassung am Gerät wird aus dem Kontrakt, dem Ordner, den `install.sh` zuletzt eingerichtet hat, und der Statusroute gelesen; ein Deploy-Stand wie `20261001-759a2b8` steht neben der Nummer und wird nie als Nummer verglichen.
+- **Die Sicherung wird in der Liste geprüft.** `--apply --yes` und `--prepare --yes` bitten das Gerät um eine Sicherung und verlangen neue Einträge in `GET /api/backup/sicherungen`; kein neuer Eintrag, kein Update. Die Sitzung als Administrator kommt aus `device.mjs --admin-login`, mit dem Konto aus dem Aufruf (`--login-user`, `--password-ref`), und das Passwort wird nie angezeigt.
+- **Das Artefakt kommt auf dem Kundenweg.** Von `arasul.de/api/download` mit dem Token aus der Geheimnis-Ablage, gehalten gegen die Prüfsumme der Release-Datei; eine falsche Summe beendet den Lauf, bevor das Gerät berührt wird. Ohne Token sagt das Werkzeug das in einem Satz und hält an. Die öffentliche Release-Datei samt Prüfsumme wird nur mit `--github` genommen, als ausdrückliche Wahl.
+- **Vorher und nachher.** Konten, Lizenz, Apps mit ihren Datenbanken, Flows, Modelle und Firmenordner werden mit dem Stand vorher verglichen, einmal nach dem Einspielen und einmal nach dem Neustart des Rechners (`--no-reboot` lässt ihn aus, und der Bericht sagt es). Die Wege kommen aus der API-Referenz des Geräts; einen, den sie nicht aufführt, ruft das Werkzeug nicht, und er steht als nicht gemessen da. Fehlt nachher etwas, endet der Lauf rot. Bericht unter `reports/`, Eintrag im Laufzettel, bei einem Kunden auch in `history/`.
+- **Am Orin gemessen, 01.10.2026:** der Plan mit 0.8.14 gegen 0.8.14, die Vorprüfung mit einer echten Sicherung (11 neue Einträge, alle Listen danach unverändert) und die Abweisung der gleichen und einer älteren Fassung. Das Einspielen auf die nächste Fassung bleibt ein Nachweis für die Ernte dieses Releases.
+
 ## 0.58.0 (2026-10-01)
 
 Kontrakt: bis 6

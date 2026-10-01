@@ -82,7 +82,7 @@ Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Nach der S
 - Welches Gerät, und was das Anliegen ist: eine Störung, ein Update, eine Erweiterung, eine Routineprüfung, die Meldung eines Kunden.
 - Bei einer Störung: was die Person gesehen hat, seit wann, was sich vorher geändert hat, ob es sich wiederholen lässt. Frag, was sie getan haben, nicht, was sie vermuten.
 - Wer und was betroffen ist: ein Nutzer, alle, eine App, das ganze Gerät.
-- Bei einem Update: die Fassung jetzt und das Ziel, das Zeitfenster, wer Bescheid wissen muss, der Weg zurück.
+- Bei einem Update: die Fassung jetzt und das Ziel, das Zeitfenster, wer Bescheid wissen muss, der Weg zurück (der Plan von `upgrade.mjs` nennt Fassung, Dauer und Rückweg; dass der Mensch es gehört hat, ist der Punkt).
 - Bei einer Erweiterung: was sie tun soll, dann `/app`.
 - Die Stufe des Eingriffs (lesen, ändern, unumkehrbar) und dass der Mensch sie bestätigt hat.
 - Ob der Kunde Bescheid bekommt, und von wem.
@@ -127,17 +127,80 @@ Einträgen ist bei einer Verlängerung mehr wert als jedes Verkaufsgespräch.
 
 ### 3. Update einspielen
 
-Ein Update ist ein Eingriff, kein Klick.
+Ein Update ist ein Eingriff, kein Klick. Das Kit führt den Weg mit einem eigenen Werkzeug,
+damit niemand eine Zeile Shell schreibt und niemand die Dauer rät:
 
-1. **Vorher:** Was ändert sich? Gibt es Hinweise im Produkt dazu? Ist der Zeitpunkt mit dem
-   Kunden abgesprochen? Ein Update während der Arbeitszeit ist eine Störung.
-2. **Sicherung anlegen und prüfen, dass sie existiert.** Nicht „läuft ja automatisch".
-3. **Einspielen**, dem Weg des Produkts folgend (im Spiegel nachlesen).
-4. **Danach die Nachweise aus `.ara/knowledge/handover.de.md`**: mindestens: Dienste gesund,
-   fachliche Anfrage beantwortet, Fernzugriff steht. Ein Update, das durchläuft und danach
-   ein totes System hinterlässt, ist der Normalfall bei ungeprüften Updates.
-5. **Rückweg kennen**, bevor du anfängst. Wenn es keinen gibt, ist das eine Information für
-   den Kunden, keine Kleinigkeit.
+```
+node .ara/tools/upgrade.mjs --device <gerät> --login-user <konto> --password-ref <NAME>
+node .ara/tools/upgrade.mjs --customer <kunde> --device <gerät> ...
+```
+
+1. **Erst der Plan, und er ändert nichts.** Ohne weitere Optionen nennt das Werkzeug die
+   Fassung am Gerät und die neueste, woher das Artefakt käme, was passiert, wie lange es
+   dauert und den Rückweg. Gib das weiter und sag es dem Kunden vorher; ein Update während
+   der Arbeitszeit ist eine Störung.
+   - **Die Fassung am Gerät** wird an drei Stellen gelesen, und der Plan sagt, an welcher:
+     der Kontrakt, der Ordner, den `install.sh` zuletzt eingerichtet hat, und die Statusroute.
+     Die Statusroute kann statt einer Release-Nummer einen Stand aus einem Deploy nennen
+     (`20261001-759a2b8`); verglichen wird nur die Nummer, der Stand steht daneben.
+   - **Die neueste Fassung** kommt vom Portal (`GET /api/download?token=<token>&pruefen=1`),
+     wenn der Kunden-Token hinterlegt ist, sonst aus der öffentlichen Release-Datei. In
+     welchem Repository sie liegt, sagt der Spiegel oder die Auslieferung am Gerät, oder
+     `--repo <inhaber/name>`.
+   - **Wie lange:** der Plan nennt die gemessenen Zahlen mit Datum und Gerät (2,5 Minuten
+     Einspielen und 3 Minuten nach einem Neustart, bis alle Container gesund sind, gemessen am
+     01.10.2026 an einem Jetson AGX Orin von 0.8.12 auf 0.8.14), dazu die Sicherung. Eine
+     Zahl, die anderswo gemessen wurde, wird nicht versprochen. Solange die Plattform neu
+     startet, ist sie nicht erreichbar.
+   - **Der Rückweg:** das Werkzeug liest `ops/AUSLIEFERUNG.md` und `ops/BACKUP_SYSTEM.md` am
+     Gerät und zeigt, was dort über das Zurückgehen auf die vorige Fassung steht. **Steht dort
+     nichts, sagt der Plan genau das: das Produkt nennt keinen Weg zurück.** Was die Sicherung
+     zurückbringt, sind die Daten (`POST /api/backup/wiederherstellung`) und nicht die
+     Fassung, und das Kit verkauft das eine nicht als das andere. Sag dem Kunden: das Update
+     ist ein Schritt nach vorn, und ist die neue Fassung schlecht, ist der Weg ein behobenes
+     Release. Das ist ein Befund für das Produkt, keine Kleinigkeit.
+   - **Eingespielt wird nur, was neuer ist.** Bei gleicher oder älterer Fassung endet der
+     Befehl mit einem Satz, bevor er etwas sichert.
+2. **Die Sitzung als Administrator.** Die Sicherung und der Vergleich brauchen eine, und der
+   Kit-Schlüssel öffnet sie nicht. Das Werkzeug holt sie über `device.mjs --admin-login`, gib
+   also `--login-user` und `--password-ref` eines benannten Kontos an. Nicht als `admin`, wenn
+   es ein Lese- oder Probekonto gibt. Das Passwort wird nie angezeigt.
+3. **Der Mensch bestätigt** Absicht (von Fassung zu Fassung), Ziel (das Gerät) und Rückweg (den
+   Satz aus dem Plan). Erst dann `--yes`. Das ist eine Bestätigung der Stufe 2, siehe
+   `.ara/knowledge/security.de.md`.
+4. **`--prepare --yes` ist der Probelauf, der trotzdem echt ist:** er hält den Stand fest und
+   sichert, spielt nichts ein. Nimm ihn einen Tag vorher, wenn das Fenster eng ist.
+5. **`--apply --yes` macht den Rest:**
+   - hält den Stand fest: Konten, Lizenz, Apps mit Daten, Flows, Modelle, Firmenordner;
+   - holt das Artefakt **auf dem Kundenweg**, von `arasul.de/api/download` mit dem Token aus
+     der Geheimnis-Ablage, und hält es gegen die Prüfsumme der Release-Datei. Eine falsche
+     Summe beendet den Lauf, bevor das Gerät berührt wird. **Ohne Kunden-Token sagt das
+     Werkzeug das in einem Satz und hält an.** Die öffentliche Release-Datei samt Prüfsumme
+     ist der andere Weg, genommen nur mit `--github`, als ausdrückliche Wahl und nie still;
+   - bittet das Gerät um eine Sicherung (`POST /api/backup/sicherung`, es antwortet erst, wenn
+     sie fertig ist) und **prüft**, dass neue Sicherungen in der Liste liegen
+     (`GET /api/backup/sicherungen`). Keine neue Sicherung, kein Update;
+   - legt das Artefakt auf das Gerät und führt dort dessen `install.sh` aus;
+   - wartet, bis die Container, die vorher bereit waren, wieder bereit sind;
+   - **startet den Rechner neu** und wartet wieder. Der Neustart gehört zum Nachweis: eine
+     Plattform, die nur läuft, weil sie niemand neu gestartet hat, hat nicht gezeigt, dass sie
+     anläuft. `--no-reboot` lässt ihn aus, wenn das Fenster des Kunden ihn nicht erlaubt, und
+     der Bericht sagt es;
+   - vergleicht den Stand mit dem von vorher und legt Bericht, Eintrag im Laufzettel und bei
+     einem Kunden einen Eintrag in `history/` ab.
+6. **Danach die Nachweise aus `.ara/knowledge/handover.de.md`** obendrauf: Dienste gesund,
+   fachliche Anfrage beantwortet, Fernzugriff steht. Der Vergleich des Werkzeugs ersetzt das
+   nicht. Er vergleicht die Listen, die das Gerät herausgibt; den Inhalt der App-Datenbanken
+   liest er nicht Zeile für Zeile, er vergleicht, welche die Sicherung führt. **Fehlt nachher
+   etwas, ist das ein Befund und keine Kleinigkeit:** der Lauf endet rot, und der Bericht
+   nennt es.
+
+Welche Wege das Werkzeug fragt, nimmt es aus der API-Referenz des Geräts selbst, und es ruft
+keinen, den die Referenz nicht aufführt: `GET /api/update/status`, `GET /api/benutzer`,
+`GET /api/license/info`, `GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`,
+`GET /api/firmenordner/ordner`, `GET /api/firmenordner/platz`, `GET /api/backup/sicherungen`,
+`POST /api/backup/sicherung`. Fehlt dort einer, steht das Thema als „nicht gemessen" da, und
+der Bericht sagt, warum.
 
 ### 4. Erweiterung bauen
 
