@@ -5138,6 +5138,28 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     r = await ruf("carla", "team", `/vorgaenge/${va}`);
     assert(r.code === 404, "nach dem Lösen sieht carla den Vorgang noch");
 
+    // Der Test, der mit dem Muster ausgeliefert wird: "eine fremde Akte gibt 404", als Skript der
+    // App gegen die laufende App, mit den Kopfzeilen dieses gespielten Geräts.
+    const kopfVon = (wer, rolle) => ({ [kontrakt.koepfe.benutzer]: wer, [kontrakt.koepfe.rolle]: rolle });
+    const probe = (b = "bernd") =>
+      spawnSync(
+        "node",
+        [
+          join(paket, "probe", "fremde-akte.mjs"),
+          "--basis", basis,
+          "--verwaltung", JSON.stringify({ name: "chefin", kopf: kopfVon("chefin", "leitung") }),
+          "--a", JSON.stringify({ name: "emil", kopf: kopfVon("emil", "team") }),
+          "--b", JSON.stringify({ name: b, kopf: kopfVon(b, "team") }),
+        ],
+        { encoding: "utf8" }
+      );
+    const lauf = probe();
+    assert(lauf.status === 0 && /eine fremde Akte gibt 404/.test(lauf.stdout), `der Test fremde Akte besteht nicht: ${lauf.stdout} ${lauf.stderr}`);
+    assert(!/Probe-/.test((await ruf("emil", "team", "/mandanten")).daten.mandanten.map((m) => m.name).join()), "der Test hat Zuordnungen stehen lassen");
+    // Und er schlägt an, wenn sie fehlt: B ist selbst dem Mandanten von A zugeordnet, gleicher Name wie A.
+    const unrein = probe("emil");
+    assert(unrein.status !== 0, `der Test besteht, obwohl A und B dieselbe Akte sehen: ${unrein.stdout}`);
+
     // Die Rolle kommt aus dem Kontrakt, nicht aus dem Quelltext.
     const { verwaltungsRolle } = await import(join(PATTERNS, "clients", "backend", "kern", "mandanten.mjs"));
     assert(verwaltungsRolle(kontrakt) === "leitung", "die Rolle wird nicht aus freigaben.rollen und koepfe.rollen gelesen");
@@ -12808,11 +12830,13 @@ const FACH_APP_LADESATZ = {
  * 15.000, und der Satz stand bei 14.981: das nächste Musterblatt passte nicht
  * mehr. Seit 0.44.0 14.000. Seit 0.56.0 16.000: die vier Ebenen der Prüfliste
  * (Bildschirme, Felder, Buttons, Automatik) und die Regel der Tiefe in AGENTS.md
- * kosten rund 1.900 Tokens, und ohne sie rät der Agent genau dort.
+ * kosten rund 1.900 Tokens, und ohne sie rät der Agent genau dort. Seit 0.60.0 18.000: die
+ * drei Fragen, die jede App bekommt (Rollen, Internet, Modell), kosten rund 1.000 Tokens, und
+ * ohne sie baut der Agent eine App, in der jeder alles sieht und niemand weiß, was hinausgeht.
  */
-const FACH_APP_GRENZE = 16000;
+const FACH_APP_GRENZE = 18000;
 
-check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 16.000 Tokens, in beiden Sprachen", () => {
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 18.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
   // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
   // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit

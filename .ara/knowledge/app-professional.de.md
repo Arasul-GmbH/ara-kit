@@ -24,13 +24,17 @@ bleibt in Arbeit ohne Lauf, mit dem Satz, was fehlt. **Nach dem Einreichen ände
 mehr**: `darfAendern` gilt nur in Arbeit, die Muster 2, 7 und 8 antworten auf Anhängen, Ändern,
 Löschen und neues Auslesen mit 409.
 
-**Sehen heißt nicht entscheiden.** Muster 7 markiert an jeder Zuordnung, ob das Konto entscheidet,
-`regel` gibt vier Augen und nur die Entscheider des Mandanten. Bleibt niemand, startet kein Lauf,
-und der Vorgang sagt warum. Der Kreis steht in `.ara/knowledge/platform-services.de.md`, „Freigaben:
-ein Lauf hält an, ein Mensch entscheidet". Ein dort genanntes Konto ohne Freigabe der App lässt das
-Gerät den Start mit 400 ablehnen, dieser Satz steht am Vorgang. **Eine Entscheidung zählt nur von
-jemandem, der noch entscheidet**: das Gerät behält den Kreis vom Start, darum prüft die App den
-Entscheider beim Nachziehen gegen die Zuordnung.
+**Eine Akte sehen heißt nicht, über sie zu entscheiden.** Zu jeder Akte, die ein Mitarbeiter
+zugewiesen bekommt, sagt der Admin auch, ob dieser Mitarbeiter sie freigeben darf oder nur
+ansehen. Ein Vorgang wird von einer zweiten Person geprüft, nie von der, die ihn eingereicht hat.
+Bleibt niemand übrig, der freigeben darf, startet nichts, und der Vorgang sagt in einem Satz
+warum. Wie das Gerät eine Freigabe behandelt, steht in `.ara/knowledge/platform-services.de.md`,
+„Freigaben: ein Lauf hält an, ein Mensch entscheidet". Kennt das Gerät den Freigebenden noch nicht,
+lehnt es den Start ab, und dieser Satz steht am Vorgang. **Eine Entscheidung zählt nur von jemandem,
+der noch freigeben darf**: das Gerät behält die Liste der Freigebenden vom Start, darum prüft die
+App die Person beim Nachziehen gegen die aktuelle Zuweisung. (Im Code: Muster 7 speichert
+`entscheidet` an jeder Zuordnung, `regel` gibt vier Augen mit den Entscheidern des Mandanten,
+Status 400 vom Gerät.)
 
 **Wie die Vorlage es trägt.** Einreicher und Regel gehen nur mit, wenn `arasul.json` unter
 `freigaben` sagt, dass das Gerät sie annimmt. `regel` gibt die Regel, ein Satz startet keinen Lauf;
@@ -56,9 +60,10 @@ jedes Foto. **Versprich
 kein Bildverständnis**, keine Handschrift, kein Warenfoto, bevor du es am Gerät des Kunden gesehen
 hast.
 
-**Welches Modell liest, sagt die Antwort** (`model`). **Das Feld `modelle` in `app.json` ist eine
-Forderung, keine Lieferung**: das Gerät installiert kein Modell, beim Einspielen sagt es, welches
-fehlt. Leer, wie in der Vorlage, heißt keines mit Namen.
+**Welches Modell liest, sagt die Antwort** (`model`). **Die Liste `modelle` in der `app.json` ist
+eine Forderung, keine Lieferung**: das Gerät installiert kein Modell für dich. Beim Einspielen sagt
+es, welches Modell fehlt, und ein Admin muss es installieren. Eine leere Liste, wie in der
+Vorlage, fordert kein Modell mit Namen.
 
 **Das Modell schlägt vor, die App prüft, ein Mensch entscheidet.** Die App hält die Felder gegen
 das Schema und ihre fachlichen Regeln, ein Steuersatz, der nicht passt, schreibt jeden Befund an

@@ -212,6 +212,14 @@ itself the first time, because it creates the file in the first place.
   - **Never guess** a field, a button or a number to close the list.
   - **The interview never questions whether the house uses Arasul.** The aim is the app or setup
     that brings the house most, digital sovereignty first.
+- **Plain language, for somebody who has never built software.** Whoever builds with this kit is
+  mostly not technical, a tax clerk or an office manager. Every question and every message says what
+  a person can see and do: "who may open which file", not "scope", "which clients does an employee
+  see", not "tenant isolation". A technical word (flow, client as in tenant, approval, contract,
+  slot, staging) is explained in one sentence **the first time it appears** in a conversation and
+  in a document, then it may stand. Where a plain word exists, use it. An error says what happened
+  to the person and what they can do, not the status code. The technical word stays in files,
+  field names and code, where machines and builders read it.
 - **Questions serve understanding, not cover.** Clarify beforehand what you have to know, and
   then work through without asking again at every step. Make no silent assumptions: what you
   do not know, you ask. Where you take a shortcut, you say so and write it down.

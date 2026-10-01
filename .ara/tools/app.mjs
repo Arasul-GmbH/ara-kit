@@ -125,6 +125,7 @@ import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mj
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
+import { connectionFindings, describeConnections } from "./lib/connections.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
@@ -153,6 +154,7 @@ if (process.argv.length <= 2) {
         '  --plan "<title>"         new plan file under plans/offen/',
         "  --plan-aktiv <file>      plan from open to active, at most one",
         "  --plan-erledigt <file>   plan from active to done",
+        '  --connections "<text>"   which outside services and research a description names, in plain words',
         "  --build                  build the package, result under build/. Needs an active plan",
         "  --no-plan                with --build: build without an active plan, on purpose",
         "",
@@ -188,6 +190,7 @@ if (process.argv.length <= 2) {
         '  --plan "<titel>"         neue Plandatei unter plans/offen/',
         "  --plan-aktiv <datei>     Plan von offen nach aktiv, höchstens einer",
         "  --plan-erledigt <datei>  Plan von aktiv nach erledigt",
+        '  --connections "<text>"   welche Dienste und Recherche von außen eine Beschreibung nennt, in einfachen Worten',
         "  --build                  Paket bauen, Ergebnis unter build/. Braucht einen aktiven Plan",
         "  --no-plan                mit --build: ohne aktiven Plan bauen, bewusst",
         "",
@@ -235,6 +238,12 @@ for (const [name, value] of [
       )
     );
   }
+}
+
+if (arg.connections !== undefined) {
+  if (arg.connections === true) fail(t('--connections needs the description: --connections "<text>".', '--connections braucht die Beschreibung: --connections "<text>".'));
+  console.log(describeConnections(arg.connections));
+  process.exit(0);
 }
 
 // --- Welche App -------------------------------------------------------------
@@ -1466,7 +1475,7 @@ function reportManifest(where, result, delivery) {
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest)];
   if (arg.json) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
@@ -1490,7 +1499,7 @@ if (arg.check !== undefined) {
 if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest)];
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
