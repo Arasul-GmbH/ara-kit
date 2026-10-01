@@ -13,6 +13,17 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.59.0 (2026-10-01)
+
+Contract: up to 6
+
+- **`/maintain` deploys a new version, and the kit leads the way.** Until now the knowledge said "following the product's way (read up in the mirror)": a customer without remote access from Arasul gave the lines of the manual to `remote.mjs` by hand, with no duration and no way back, and put the update off. The new tool `upgrade.mjs` starts with a plan that changes nothing: the version on the device and the newest one, where the artifact comes from, what happens, how long it takes (2.5 minutes to deploy and 3 minutes after a restart until the containers are healthy, with date and device of the measurement) and the way back. It reads the way back from the manuals on the device. Measured at the Orin, they name none for the previous version, so the plan says exactly that, says what the backup restores (the data, not the version) and the customer hears it beforehand.
+- **Nothing is deployed that is not newer.** With the same or an older version `--apply` ends with one sentence, before it backs anything up. The version on the device is read from the contract, the folder `install.sh` set up last and the status route; a deploy stamp such as `20261001-759a2b8` is named beside the number and never compared as one.
+- **The backup is checked in the list.** `--apply --yes` and `--prepare --yes` ask the device for a backup and demand new entries in `GET /api/backup/sicherungen`; no new entry, no update. The administrator session comes from `device.mjs --admin-login`, with the account of the call (`--login-user`, `--password-ref`), and the password is never shown.
+- **The artifact comes the customer's way.** From `arasul.de/api/download` with the token from the secret store, held against the checksum of the release file; a wrong sum ends the run before the device is touched. Without a token the tool says so in one sentence and stops. The public release file with its checksum is taken only with `--github`, as an explicit choice.
+- **Before and after.** Accounts, licence, apps with their databases, flows, models and company folders are compared with the state before, once after the deploy and once after the restart of the computer (`--no-reboot` leaves it out and the report says so). The routes come from the API reference of the device; one it does not list is not called and stands as not measured. Something missing afterwards ends the run red. Report under `reports/`, entry in the runsheet, for a customer also in `history/`.
+- **Measured at the Orin, 01.10.2026:** the plan with 0.8.14 against 0.8.14, the pre-check with a real backup (11 new entries, all lists unchanged afterwards), and the refusal of the same and of an older version. The deploy onto the next release stays a proof for the harvest of that release.
+
 ## 0.58.0 (2026-10-01)
 
 Contract: up to 6

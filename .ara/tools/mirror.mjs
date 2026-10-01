@@ -59,6 +59,7 @@ import { ROOT, fail, helpOnly, parseArgs, readDevice, sshArgs } from "./lib/kit.
 import { APPLEDOUBLE, packEnv, releaseVersion } from "./lib/install.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 import { STORE_CALL, buyLines, portalBase } from "./lib/licence.mjs";
+import { FIND_DOCS } from "./lib/upgrade.mjs";
 
 // ARA_MIRROR weicht vom Standardort ab. Wird vom Selbsttest genutzt, damit er
 // einen echten Spiegel nicht überschreibt.
@@ -252,12 +253,6 @@ function docs(dir, depth = 0) {
  * installiert hatte, und `--docs` sagte „Es gibt keinen Spiegel". Die Doku lag
  * die ganze Zeit am Gerät; er fand sie auf eigene Faust.
  */
-const FIND_DOCS =
-  `best=$(docker ps --format '{{.Label "com.docker.compose.project.working_dir"}}' 2>/dev/null | ` +
-  `grep -v '^$' | sort | uniq -c | sort -rn | while read n d; do [ -d "$d/docs" ] && echo "$d" && break; done); ` +
-  `if [ -z "$best" ]; then for d in "$HOME/arasul" "$HOME"/arasul-* /opt/arasul /arasul; do ` +
-  `[ -d "$d/docs" ] && best="$d"; done; fi; echo "@dir=$best"`;
-
 function deviceDocs() {
   let device;
   try {

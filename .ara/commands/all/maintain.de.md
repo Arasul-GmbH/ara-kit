@@ -57,7 +57,7 @@ und ziehst das passende Verfahren:
 | Es klemmt | `.ara/knowledge/diagnostics.de.md`. Erst feststellen, dann ändern |
 | Nur nachsehen | Der Bericht ist die Antwort. Ergebnis in den Verlauf, auch wenn alles in Ordnung war |
 | Eine App hängt | Stand aus dem Bericht, dann `/app`: zurückschalten auf die vorige Fassung ist der schnellste Rückweg |
-| Update einspielen | `.ara/knowledge/maintenance-flow.de.md`, Abschnitt "Update einspielen". Erst sichern, dann prüfen, dass die Sicherung existiert |
+| Update einspielen | `node .ara/tools/upgrade.mjs --device <gerät> ...` zeigt erst den Plan (Fassungen, Dauer, Rückweg); `.ara/knowledge/maintenance-flow.de.md`, Abschnitt "Update einspielen". Das Werkzeug sichert, prüft die Sicherung, holt das Artefakt auf dem Kundenweg und vergleicht vorher und nachher |
 | Erweiterung | `.ara/knowledge/extensions.de.md` |
 
 Bei einer Störung gilt: keine Reparatur ohne Befund, keine zwei Änderungen gleichzeitig.
@@ -75,8 +75,9 @@ dann, wenn du selbst etwas verändert hast.
 
 ## Was das Werkzeug nicht tut
 
-Es startet nichts neu, spielt nichts ein und räumt nichts auf. **Jeder Eingriff ist eine
-eigene Entscheidung**, mit Absicht, Ziel und Rückweg, und bei einem Kundengerät mit einer
+`maintain.mjs` startet nichts neu, spielt nichts ein und räumt nichts auf. Ein Update geht
+über `upgrade.mjs`, das erst Dauer und Rückweg sagt und ohne `--yes` nichts ändert.
+**Jeder Eingriff ist eine eigene Entscheidung**, mit Absicht, Ziel und Rückweg, und bei einem Kundengerät mit einer
 Bestätigung davor (`.ara/knowledge/security.de.md`). Ein Wartungsvertrag erlaubt Wartung, er
 ist kein Freibrief für einen Neustart um elf Uhr vormittags.
 

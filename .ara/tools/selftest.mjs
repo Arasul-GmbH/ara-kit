@@ -121,6 +121,22 @@ import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
 import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
 import { contractRows, fillPath, routeRows, shareWays } from "./lib/adminways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
+import {
+  TOPICS as UPGRADE_TOPICS,
+  compareSnapshots,
+  diffEntries,
+  durationSentence as durationSentenceFor,
+  githubRelease,
+  installedVersion,
+  lostAnything,
+  parseSha256,
+  repoFrom,
+  routeListed,
+  routeRows as upgradeRouteRows,
+  topicVerdict,
+  verdict as upgradeVerdict,
+  wayBackLines,
+} from "./lib/upgrade.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import {
   classesWithoutRule,
@@ -7783,6 +7799,282 @@ await checkAsync("maintain.mjs berichtet auch ohne SSH und sagt, was fehlt", asy
     rmSync(akte, { recursive: true, force: true });
     if (savedState === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, savedState);
+  }
+});
+
+// --- Eine neue Fassung auf ein Gerät spielen ---------------------------------
+
+check("upgrade: Fassung am Gerät, Entscheidung, Release, Prüfsumme, Rückweg und Vergleich", () => {
+  // Die Fassung: der Installationsordner nennt die Nummer, die Statusroute einen Stand aus einem Deploy.
+  const fassung = installedVersion({ installation: "/home/arasul/arasul-0.8.14", status: "20261001-759a2b8" });
+  assert(fassung.version === "0.8.14" && fassung.from === "folder", `Fassung falsch gelesen: ${JSON.stringify(fassung)}`);
+  assert(fassung.stamp === "20261001-759a2b8", "der Stand aus dem Deploy wird verschwiegen");
+  assert(installedVersion({ status: "20261001-759a2b8" }).version === null, "ein Deploy-Stand gilt als Nummer");
+  assert(installedVersion({ contract: "0.9.0", installation: "/x/arasul-0.8.14" }).from === "contract", "der Kontrakt geht nicht vor");
+
+  // Eingespielt wird nur, was neuer ist.
+  assert(upgradeVerdict("0.8.14", "0.8.15") === "update", "neuer wird nicht erkannt");
+  assert(upgradeVerdict("0.8.14", "0.8.14") === "same", "gleich wird nicht erkannt");
+  assert(upgradeVerdict("0.8.14", "0.8.12") === "older", "älter wird nicht erkannt");
+  assert(upgradeVerdict(null, "0.8.12") === "unknown" && upgradeVerdict("0.8.14", null) === "unknown", "Unbekanntes wird verglichen");
+  assert(upgradeVerdict("0.9.0", "0.10.0") === "update", "0.10.0 gilt als kleiner als 0.9.0");
+
+  // Das Release: die Datei auf .tar.gz, die Prüfsumme daneben, das v vor der Nummer fällt weg.
+  const release = githubRelease({
+    tag_name: "v0.8.14",
+    assets: [
+      { name: "arasul-0.8.14.tar.gz.sha256", browser_download_url: "https://x/sum" },
+      { name: "arasul-0.8.14.tar.gz", browser_download_url: "https://x/tar" },
+    ],
+  });
+  assert(release?.version === "0.8.14" && release.tarball.url === "https://x/tar" && release.sum.url === "https://x/sum", `Release falsch: ${JSON.stringify(release)}`);
+  assert(githubRelease({ tag_name: "v1.0.0", assets: [] }) === null, "ein Release ohne Datei zählt");
+  const summe = "c321c408982555d51aa1a239b60b523d9a95d700ddd5749eadeda92e82819afa";
+  assert(parseSha256(`${summe}  arasul-0.8.14.tar.gz\n`) === summe, "die Prüfsumme wird nicht gelesen");
+  assert(parseSha256("keine Summe hier") === null, "ein Text ohne Summe ergibt eine");
+  assert(repoFrom("curl -fsSLO https://github.com/koljaschoepe/arasul-jet/releases/download/v1.2.0/a.tar.gz") === "koljaschoepe/arasul-jet", "das Repo wird nicht gelesen");
+  assert(repoFrom("https://github.com/…/releases/download/v0.6.0/a.tar.gz") === null, "ein Platzhalter gilt als Repo");
+
+  // Der Rückweg: das Kit zeigt, was die Anleitung sagt, und erfindet keinen.
+  assert(wayBackLines([{ file: "a.md", text: "Die Wiederherstellung spielt Daten zurück.\nNichts weiter." }]).length === 0, "eine Datenwiederherstellung gilt als Rückweg");
+  const zurueck = wayBackLines([{ file: "a.md", text: "x\nRückweg: ./install.sh in der vorigen Fassung\n" }]);
+  assert(zurueck.length === 1 && zurueck[0].line === 2, `Rückweg nicht gefunden: ${JSON.stringify(zurueck)}`);
+
+  // Die Routen: gerufen wird nur, was die API-Referenz des Geräts aufführt.
+  const zeilen = upgradeRouteRows("| GET    | `/api/benutzer`  | Alle Benutzer |\n| POST   | `/api/backup/sicherung` | Jetzt sichern |\n");
+  assert(routeListed(zeilen, "GET", "/api/benutzer") && !routeListed(zeilen, "GET", "/api/license/info"), "routeListed urteilt falsch");
+  assert(UPGRADE_TOPICS.length === 8, `die Themen des Vergleichs: ${UPGRADE_TOPICS.length}`);
+
+  // Der Vergleich: was nachher fehlt, ist die Abweichung; was sich von selbst bewegt, ein Hinweis.
+  const vorher = { accounts: { state: "gelesen", entries: [{ key: "anna", value: "admin, aktiv" }, { key: "ben", value: "mitarbeiter, aktiv" }] } };
+  const nachher = { accounts: { state: "gelesen", entries: [{ key: "anna", value: "admin, aktiv" }] } };
+  const vergleich = compareSnapshots(vorher, nachher).find((row) => row.key === "accounts");
+  assert(vergleich.verdict === "lost" && vergleich.diff.missing[0].key === "ben", `Verlust nicht erkannt: ${JSON.stringify(vergleich)}`);
+  assert(lostAnything(compareSnapshots(vorher, nachher)), "lostAnything übersieht den Verlust");
+  assert(compareSnapshots(vorher, vorher).find((row) => row.key === "accounts").verdict === "same", "gleiche Stände sind nicht gleich");
+  assert(compareSnapshots(vorher, {}).find((row) => row.key === "accounts").verdict === "unmeasured", "ein fehlender Stand gilt als gemessen");
+  const flatter = diffEntries([{ key: "firma", value: "1 Byte" }], []);
+  assert(topicVerdict(flatter, { volatile: true }) === "changed" && topicVerdict(flatter) === "lost", "flüchtige Themen urteilen wie stabile");
+  assert(/2[.,]5/.test(durationSentenceFor()), "die gemessene Dauer fehlt");
+  return "Fassung, Entscheidung, Release, Summe, Repo, Rückweg, Routen, Vergleich";
+});
+
+await checkAsync("upgrade.mjs: Plan ändert nichts, Gleiches und Älteres wird nicht eingespielt, Ablauf mit Sicherung, Prüfsumme und Vergleich", async () => {
+  const name = "selftest-upgrade";
+  const akte = join(ROOT, "devices", name);
+  const heim = mkdtempSync(join(tmpdir(), "ara-upgrade-heim-"));
+  const spiegel = mkdtempSync(join(tmpdir(), "ara-upgrade-spiegel-"));
+  const bin = join(heim, "bin");
+  const fassungOrdner = (nummer) => join(heim, `arasul-${nummer}`);
+  const zugang = "ara_" + "0".repeat(31) + "1";
+
+  // Das Artefakt, gespielt: ein Ordner mit install.sh und arasul-release.json, als tar.gz.
+  const bauen = (nummer) => {
+    const wurzel = mkdtempSync(join(tmpdir(), "ara-upgrade-bau-"));
+    const ordner = join(wurzel, `arasul-${nummer}`);
+    mkdirSync(ordner, { recursive: true });
+    writeFileSync(join(ordner, "arasul-release.json"), JSON.stringify({ fassung: nummer, einstiegspunkt: "install.sh", repo: "acme/jet" }));
+    writeFileSync(
+      join(ordner, "install.sh"),
+      `#!/bin/sh\ncurl -s http://127.0.0.1:$ARA_TEST_PORT/__eingespielt >/dev/null\nmkdir -p "$HOME/.arasul"\npwd > "$HOME/.arasul/installation"\n`
+    );
+    chmodSync(join(ordner, "install.sh"), 0o755);
+    const datei = join(wurzel, "artefakt.tar.gz");
+    const tar = spawnSync("tar", ["-czf", datei, "-C", wurzel, `arasul-${nummer}`], { encoding: "utf8", env: { ...process.env, COPYFILE_DISABLE: "1" } });
+    assert(tar.status === 0, `tar: ${tar.stderr}`);
+    const inhalt = readFileSync(datei);
+    rmSync(wurzel, { recursive: true, force: true });
+    return { inhalt, summe: createHash("sha256").update(inhalt).digest("hex") };
+  };
+  const neu = bauen("1.1.0");
+
+  // Der Zustand des gespielten Geräts.
+  const zustand = { eingespielt: false, gesichert: 0, verliereKonto: false, falscheSumme: false, posts: [] };
+  const sicherungen = [{ art: "postgres", name: "arasul_db_20260101_000000.sql.gz", bytes: 10, zeitpunkt: "2026-01-01T00:00:00Z" }];
+  const antwort = (response, status, body) => {
+    response.writeHead(status, { "Content-Type": "application/json" });
+    response.end(JSON.stringify(body));
+  };
+  const server = createServer((request, response) => {
+    const pfad = request.url.split("?")[0];
+    const query = new URL(request.url, "http://x").searchParams;
+    if (pfad === "/__eingespielt") {
+      zustand.eingespielt = true;
+      return antwort(response, 200, {});
+    }
+    // Das Portal: pruefen=1 nennt die Fassung, sonst kommt die Datei.
+    if (pfad === "/api/download") {
+      if (query.get("token") !== zugang) return antwort(response, 403, { ok: false, fehler: "token_ungueltig" });
+      if (query.get("pruefen")) return antwort(response, 200, { ok: true, typ: "device", artefakt: "bereit", fassung: "v1.1.0", quelle: "release" });
+      response.writeHead(200, { "Content-Type": "application/gzip" });
+      return response.end(neu.inhalt);
+    }
+    // GitHub: das neueste Release und das nach Nummer.
+    const wo = `http://127.0.0.1:${server.address().port}`;
+    const release = (nummer) => ({
+      tag_name: `v${nummer}`,
+      assets: [
+        { name: `arasul-${nummer}.tar.gz`, browser_download_url: `${wo}/files/arasul.tar.gz` },
+        { name: `arasul-${nummer}.tar.gz.sha256`, browser_download_url: `${wo}/files/arasul.sha256` },
+      ],
+    });
+    if (pfad === "/repos/acme/jet/releases/latest") return antwort(response, 200, release("1.1.0"));
+    const nachNummer = pfad.match(/^\/repos\/acme\/jet\/releases\/tags\/v(\d+\.\d+\.\d+)$/);
+    if (nachNummer) return antwort(response, 200, release(nachNummer[1]));
+    if (pfad === "/files/arasul.tar.gz") {
+      response.writeHead(200);
+      return response.end(neu.inhalt);
+    }
+    if (pfad === "/files/arasul.sha256") {
+      response.writeHead(200);
+      return response.end(`${zustand.falscheSumme ? "0".repeat(64) : neu.summe}  arasul-1.1.0.tar.gz\n`);
+    }
+    // Das Gerät. Die Anmeldung zuerst, dann alles mit dem Ausweis.
+    if (pfad === "/api/auth/login") return antwort(response, 200, { token: "ausweis-selftest" });
+    if (request.headers.authorization !== "Bearer ausweis-selftest") return antwort(response, 401, { error: { message: "Anmeldung nötig" } });
+    if (request.method === "POST") zustand.posts.push(pfad);
+    if (pfad === "/api/update/status") return antwort(response, 200, { fassung: { version: "20260101-abcdef0" } });
+    if (pfad === "/api/benutzer") {
+      const konten = [{ username: "anna", role: "admin", is_active: true }, { username: "ben", role: "mitarbeiter", is_active: true }];
+      return antwort(response, 200, { data: zustand.eingespielt && zustand.verliereKonto ? konten.slice(0, 1) : konten });
+    }
+    if (pfad === "/api/license/info") return antwort(response, 200, { valid: true, tier: "professional", customer: "Probe", nutzung: { konten: { belegt: 2, grenze: -1 }, apps: { belegt: 1, grenze: -1 } } });
+    if (pfad === "/api/apps") return antwort(response, 200, { data: [{ id: "belege", staende: { live: { version: "1.0.0", lieferbar: true } } }] });
+    if (pfad === "/api/flows") return antwort(response, 200, { data: [], fehlerhaft: [] });
+    if (pfad === "/api/models/installed") return antwort(response, 200, { models: [{ id: "modell:1", status: "available" }] });
+    if (pfad === "/api/firmenordner/ordner") return antwort(response, 200, { data: [{ kennung: "firma", art: "wurzel", rechte_anzahl: 0 }] });
+    if (pfad === "/api/firmenordner/platz") return antwort(response, 200, { data: { ordner: [{ kennung: "firma", belegt: 5 }] } });
+    if (pfad === "/api/backup/sicherungen") return antwort(response, 200, { data: sicherungen });
+    if (pfad === "/api/backup/sicherung" && request.method === "POST") {
+      zustand.gesichert++;
+      sicherungen.push({ art: "postgres", name: `arasul_db_neu_${zustand.gesichert}.sql.gz`, bytes: 2048, zeitpunkt: "2026-10-01T00:00:00Z" });
+      sicherungen.push({ art: "app-datenbanken", name: `arasul_app_belege_live_neu_${zustand.gesichert}.sql.gz`, bytes: 1024, datenbank: "arasul_app_belege_live", zeitpunkt: "2026-10-01T00:00:00Z" });
+      return antwort(response, 200, { status: "completed" });
+    }
+    antwort(response, 404, { error: { message: "Endpoint not found" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const wo = `http://127.0.0.1:${server.address().port}`;
+
+  // Das Gerät ist dieser Rechner: der Ordner mit der Anleitung und dem Zeiger liegt im gespielten Heim,
+  // und ein Docker, das nichts kennt, steht vor dem echten.
+  mkdirSync(join(fassungOrdner("1.0.0"), "docs", "api"), { recursive: true });
+  mkdirSync(join(fassungOrdner("1.0.0"), "docs", "ops"), { recursive: true });
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, "docker"), "#!/bin/sh\nexit 1\n");
+  chmodSync(join(bin, "docker"), 0o755);
+  writeFileSync(
+    join(fassungOrdner("1.0.0"), "docs", "api", "API_REFERENCE.md"),
+    UPGRADE_TOPICS.map((thema) => [thema.verb, thema.path])
+      .concat([["POST", "/api/backup/sicherung"], ["POST", "/api/backup/wiederherstellung"]])
+      .map(([verb, pfad]) => `| ${verb} | \`${pfad}\` | Probe |`)
+      .join("\n") + "\n"
+  );
+  writeFileSync(join(fassungOrdner("1.0.0"), "docs", "ops", "AUSLIEFERUNG.md"), "Direkt: https://github.com/acme/jet/releases/download/v1.2.0/arasul-1.2.0.tar.gz\n");
+  writeFileSync(join(fassungOrdner("1.0.0"), "docs", "ops", "BACKUP_SYSTEM.md"), "Die Wiederherstellung spielt Daten zurück.\n");
+  const zeiger = (nummer) => {
+    mkdirSync(join(heim, ".arasul"), { recursive: true });
+    writeFileSync(join(heim, ".arasul", "installation"), `${fassungOrdner(nummer)}\n`);
+  };
+  zeiger("1.0.0");
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  writeFrontmatter(join(akte, "device.md"), { name, address: "127.0.0.1", api_base: wo, verdict: "supported", arasul: "found" });
+  assert(tool("runsheet.mjs", ["--create", "--device", name]).status === 0, "der Laufzettel ließ sich nicht anlegen");
+
+  // Die Ablage dieses Laufs liegt im gespielten Heim: das Token und das Passwort stehen nur dort.
+  const ablage = (mitToken) =>
+    writeFileSync(
+      join(heim, ".env"),
+      `${mitToken ? `ARASUL_TOKEN=${zugang}\nARASUL_BASIS=${wo}\n` : ""}SELFTEST_UPGRADE_PW=geheim-selftest-pw\n`
+    );
+  const env = {
+    HOME: heim,
+    PATH: `${bin}:${process.env.PATH}`,
+    ARA_GITHUB_API: wo,
+    ARA_MIRROR: spiegel,
+    ARA_TEST_PORT: String(server.address().port),
+    ARA_ENV_FILE: join(heim, ".env"),
+  };
+  const mitKonto = ["--device", name, "--login-user", "probe", "--password-ref", "SELFTEST_UPGRADE_PW"];
+  const lauf = (args) => toolAsync("upgrade.mjs", [...mitKonto, ...args], env);
+  const berichte = () => (existsSync(join(akte, "reports")) ? readdirSync(join(akte, "reports")) : []);
+
+  try {
+    // 1. Der Plan: Fassungen, Quelle, Dauer, Rückweg, und nichts wird geändert.
+    ablage(true);
+    let run = await lauf([]);
+    assert(run.status === 0, `Plan fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(/Am Gerät: 1\.0\.0/.test(run.stdout) && /Neueste: 1\.1\.0/.test(run.stdout), `Fassungen fehlen im Plan: ${run.stdout}`);
+    assert(/Rund 5,5 Minuten/.test(run.stdout) && /01\.10\.2026/.test(run.stdout), "die gemessene Dauer mit Datum fehlt im Plan");
+    assert(/keinen Weg zurück auf die vorige Fassung/.test(run.stdout), `der fehlende Rückweg wird nicht gesagt: ${run.stdout}`);
+    assert(/POST \/api\/backup\/wiederherstellung/.test(run.stdout), "der Weg für die Daten fehlt im Plan");
+    assert(/Kundenweg: das Portal/.test(run.stdout), "der Weg über das Portal fehlt im Plan");
+    assert(zustand.posts.length === 0 && !zustand.eingespielt && berichte().length === 0, "der Plan hat etwas geändert");
+    assert(!run.stdout.includes("geheim-selftest-pw") && !run.stdout.includes("ausweis-selftest"), "Passwort oder Ausweis stehen in der Ausgabe");
+
+    // 2. Ohne --yes wird nichts gesichert und nichts eingespielt.
+    run = await lauf(["--apply"]);
+    assert(run.status !== 0 && /--yes/.test(run.stderr + run.stdout), `--apply ohne --yes lief: ${run.stdout}`);
+    assert(zustand.posts.length === 0, "ohne --yes wurde gesichert");
+
+    // 3. Ohne Token und ohne --github: ein Satz, der den GitHub-Weg als Wahl nennt, und nichts am Gerät.
+    ablage(false);
+    run = await lauf(["--apply", "--yes", "--no-reboot"]);
+    assert(run.status === 1 && /kein Kunden-Token hinterlegt/.test(run.stdout), `kein Satz zum fehlenden Token: ${run.stdout}`);
+    assert(/--github/.test(run.stdout), "der GitHub-Weg wird nicht als Wahl genannt");
+    assert(zustand.posts.length === 0 && !zustand.eingespielt, "ohne Token wurde etwas geändert");
+
+    // 4. Eine falsche Prüfsumme beendet den Lauf vor jeder Änderung am Gerät.
+    zustand.falscheSumme = true;
+    run = await lauf(["--apply", "--yes", "--no-reboot", "--github"]);
+    assert(run.status === 1 && /Prüfsumme stimmt nicht/.test(run.stdout), `falsche Summe nicht gemeldet: ${run.stdout}`);
+    assert(zustand.posts.length === 0 && !zustand.eingespielt, "mit falscher Summe wurde gesichert oder eingespielt");
+    zustand.falscheSumme = false;
+
+    // 5. Gleiche und ältere Fassung: ein Satz, kein Plan, keine Sicherung.
+    run = await lauf(["--apply", "--yes", "--github", "--version", "0.9.0"]);
+    assert(run.status === 0 && /Nichts eingespielt: 0\.9\.0 ist älter als 1\.0\.0/.test(run.stdout), `Älteres nicht abgewiesen: ${run.stdout}`);
+    assert(run.stdout.trim().split("\n").length === 1, `mehr als ein Satz: ${run.stdout}`);
+    zeiger("1.1.0");
+    run = await lauf(["--apply", "--yes", "--github"]);
+    assert(run.status === 0 && /Nichts einzuspielen: das Gerät trägt schon 1\.1\.0/.test(run.stdout), `Gleiches nicht abgewiesen: ${run.stdout}`);
+    assert(zustand.posts.length === 0 && !zustand.eingespielt, "bei gleicher Fassung wurde etwas geändert");
+    zeiger("1.0.0");
+
+    // 6. Das Einspielen über das Portal: Sicherung geprüft, Datei geprüft, install.sh am Gerät, Vergleich, Berichte.
+    ablage(true);
+    run = await lauf(["--apply", "--yes", "--no-reboot"]);
+    assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(zustand.gesichert === 1 && zustand.eingespielt, "es wurde nicht gesichert und eingespielt");
+    assert(/Sicherung angelegt und geprüft: 2 neue Einträge/.test(run.stdout), `die Sicherung wurde nicht in der Liste geprüft: ${run.stdout}`);
+    assert(/Artefakt geholt, Prüfsumme stimmt/.test(run.stdout), "die Prüfsumme wird nicht genannt");
+    assert(/Fassung danach: 1\.1\.0/.test(run.stdout), `die Fassung danach fehlt: ${run.stdout}`);
+    assert(/Konten: unverändert/.test(run.stdout) && /Lizenz: unverändert/.test(run.stdout), "der Vergleich fehlt");
+    assert(existsSync(join(fassungOrdner("1.1.0"), "install.sh")), "das Artefakt liegt nicht am Gerät");
+    // Auch die abgebrochenen Läufe haben ihren Bericht abgelegt, und zwei am selben Tag überschreiben sich nicht.
+    assert(berichte().length >= 3, `die abgebrochenen Läufe haben keinen Bericht: ${berichte().join(", ")}`);
+    assert(
+      berichte().some((n) => /Eingespielt und geprüft/.test(readFileSync(join(akte, "reports", n), "utf8"))),
+      "kein Bericht sagt das Ergebnis"
+    );
+    assert(/Update: 1\.0\.0 auf 1\.1\.0/.test(readFileSync(join(akte, "runsheet.md"), "utf8")), "der Laufzettel bekam nichts");
+    assert(JSON.parse(readFileSync(join(spiegel, "STATE.json"), "utf8")).version === "1.1.0", "das Artefakt ist nicht der Spiegel geworden");
+    assert(!run.stdout.includes("ausweis-selftest") && !run.stdout.includes("geheim-selftest-pw"), "Ausweis oder Passwort stehen in der Ausgabe");
+
+    // 7. Fehlt nachher ein Konto, ist der Lauf nicht sauber und sagt es.
+    zeiger("1.0.0");
+    zustand.eingespielt = false;
+    zustand.verliereKonto = true;
+    run = await lauf(["--apply", "--yes", "--no-reboot"]);
+    assert(run.status === 1 && /Konten: ETWAS FEHLT/.test(run.stdout), `der Verlust eines Kontos wird nicht gemeldet: ${run.stdout}`);
+    return "Plan ohne Änderung, ohne --yes nichts, ohne Token ein Satz, falsche Summe, Gleiches und Älteres, Ablauf, Verlust";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(heim, { recursive: true, force: true });
+    rmSync(spiegel, { recursive: true, force: true });
   }
 });
 
