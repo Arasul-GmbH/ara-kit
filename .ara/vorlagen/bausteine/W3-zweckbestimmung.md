@@ -1,3 +1,10 @@
+<!-- gespiegelt-aus-arasul -->
+> **Gespiegelt aus dem Steuerungsordner von Arasul. Hier nicht
+> bearbeiten**, jede Änderung wird beim nächsten Spiegeln
+> überschrieben. Wer etwas geändert haben will, sagt es Arasul.
+>
+> Quelle: `templates/legal/bausteine/W3-zweckbestimmung.md` · Stand: 2026-10-01
+
 (1) Die Software erzeugt Ausgaben mit statistischen Verfahren. Ausgaben können
 unrichtig, unvollständig oder irreführend sein, auch wenn sie plausibel wirken.
 Eine Zusicherung der inhaltlichen Richtigkeit wird nicht abgegeben und ist
@@ -9,9 +16,10 @@ Dokumenten- und Automatisierungsvorgänge mit menschlicher Letztentscheidung.
 (3) Der Betreiber ist verpflichtet, vor der Inbetriebnahme die in der Anlage
 "Leistungsbeschreibung" Abschnitt 8 aufgeführten Schutzmaßnahmen einzurichten und
 jede Ausgabe vor einer Verwendung, die rechtliche oder wirtschaftliche Wirkung
-entfaltet, durch eine sachkundige Person zu prüfen. Er weist die Personen, die mit
-dem System arbeiten, hierauf nachweislich hin und bestätigt die Einrichtung im
-Übergabeprotokoll.
+entfaltet, insbesondere vor der Übernahme in eine Buchhaltungs-, Steuer- oder
+Abrechnungssoftware und vor der Weitergabe an Dritte, durch eine sachkundige
+Person zu prüfen. Er weist die Personen, die mit dem System arbeiten, hierauf
+nachweislich hin und bestätigt die Einrichtung im Übergabeprotokoll.
 
 (4) Ausgeschlossen ist insbesondere der Einsatz zur Entscheidung oder Vorbereitung
 von Entscheidungen über Einstellung, Beförderung, Kündigung oder Aufgabenzuweisung
@@ -25,16 +33,22 @@ Praktiken.
 (5) Bindet der Betreiber externe Modelle oder Dienste an, so ist er hierfür allein
 verantwortlich, einschließlich Auswahl, Konfiguration, Rechtsgrundlage,
 Drittlandübermittlung, Abschluss einer eigenen Vereinbarung zur
-Auftragsverarbeitung und Einhaltung der Nutzungsbedingungen des Anbieters. Eine
-Haftung für Verfügbarkeit, Kosten, Inhalte oder Rechtsfolgen solcher Anbindungen
-besteht nicht. Diese Funktion ist optional und im Auslieferungszustand nicht
+Auftragsverarbeitung und Einhaltung der Nutzungsbedingungen des Anbieters. Für
+Verfügbarkeit, Kosten, Inhalte oder Rechtsfolgen solcher Anbindungen haftet
+Arasul nicht, soweit sie nicht auf einer von Arasul zu vertretenden
+Pflichtverletzung beruhen; insoweit gelten die Regelungen zur Haftung dieses
+Vertrages. Diese Funktion ist optional und im Auslieferungszustand nicht
 eingerichtet.
 
 (6) Anbieter des KI-Systems im Sinne von Art. 3 Nr. 3 der Verordnung
 (EU) 2024/1689 ist Arasul. Betreiber im Sinne von Art. 3 Nr. 4 ist, wer das System
-unter eigener Verantwortung verwendet. Versieht ein Vertragspartner oder Betreiber
-das System mit eigenem Namen, eigener Marke oder einem anderen Erkennungszeichen,
-nimmt er eine wesentliche Änderung vor oder ändert er die Zweckbestimmung so, dass
-das System zu einem Hochrisiko-System wird, so gilt er nach Art. 25 Abs. 1 der
-Verordnung als Anbieter mit den daraus folgenden Pflichten. Diese Rechtsfolge
-tritt kraft Gesetzes und ungeachtet abweichender vertraglicher Vereinbarungen ein.
+unter eigener Verantwortung verwendet. Wer eine Erweiterung, die selbst ein
+KI-System ist, entwickelt oder entwickeln lässt und unter eigenem Namen in Betrieb
+nimmt, ist insoweit selbst Anbieter im Sinne von Art. 3 Nr. 3 der Verordnung.
+Versieht ein Vertragspartner oder Betreiber ein Hochrisiko-KI-System mit eigenem
+Namen, eigener Marke oder einem anderen Erkennungszeichen, nimmt er an einem
+solchen System eine wesentliche Änderung vor oder ändert er die Zweckbestimmung
+so, dass das System zu einem Hochrisiko-KI-System wird, so gilt er nach Art. 25
+Abs. 1 der Verordnung als Anbieter mit den daraus folgenden Pflichten. Diese
+Rechtsfolge tritt kraft Gesetzes und ungeachtet abweichender vertraglicher
+Vereinbarungen ein.

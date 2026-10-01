@@ -89,6 +89,7 @@ Vertragsgegenstand sind.
 (2) Der Vertragspartner erwirbt die Software in Kenntnis dieses Standes. Eine
 darüber hinausgehende Beschaffenheit wird nicht vereinbart, insbesondere nicht aus
 Werbeaussagen, Bildschirmfotos, Vorführungen oder mündlichen Äußerungen.
+Individuell getroffene Vereinbarungen bleiben unberührt (§ 305b BGB).
 
 (3) Die Software ist dafür bestimmt, Arbeitsvorgänge mit menschlicher
 Letztentscheidung zu unterstützen. **Sie ist nicht dafür bestimmt, einen
@@ -122,9 +123,10 @@ Dokumenten- und Automatisierungsvorgänge mit menschlicher Letztentscheidung.
 (3) Der Betreiber ist verpflichtet, vor der Inbetriebnahme die in der Anlage
 "Leistungsbeschreibung" Abschnitt 8 aufgeführten Schutzmaßnahmen einzurichten und
 jede Ausgabe vor einer Verwendung, die rechtliche oder wirtschaftliche Wirkung
-entfaltet, durch eine sachkundige Person zu prüfen. Er weist die Personen, die mit
-dem System arbeiten, hierauf nachweislich hin und bestätigt die Einrichtung im
-Übergabeprotokoll.
+entfaltet, insbesondere vor der Übernahme in eine Buchhaltungs-, Steuer- oder
+Abrechnungssoftware und vor der Weitergabe an Dritte, durch eine sachkundige
+Person zu prüfen. Er weist die Personen, die mit dem System arbeiten, hierauf
+nachweislich hin und bestätigt die Einrichtung im Übergabeprotokoll.
 
 (4) Ausgeschlossen ist insbesondere der Einsatz zur Entscheidung oder Vorbereitung
 von Entscheidungen über Einstellung, Beförderung, Kündigung oder Aufgabenzuweisung
@@ -138,19 +140,25 @@ Praktiken.
 (5) Bindet der Betreiber externe Modelle oder Dienste an, so ist er hierfür allein
 verantwortlich, einschließlich Auswahl, Konfiguration, Rechtsgrundlage,
 Drittlandübermittlung, Abschluss einer eigenen Vereinbarung zur
-Auftragsverarbeitung und Einhaltung der Nutzungsbedingungen des Anbieters. Eine
-Haftung für Verfügbarkeit, Kosten, Inhalte oder Rechtsfolgen solcher Anbindungen
-besteht nicht. Diese Funktion ist optional und im Auslieferungszustand nicht
+Auftragsverarbeitung und Einhaltung der Nutzungsbedingungen des Anbieters. Für
+Verfügbarkeit, Kosten, Inhalte oder Rechtsfolgen solcher Anbindungen haftet
+Arasul nicht, soweit sie nicht auf einer von Arasul zu vertretenden
+Pflichtverletzung beruhen; insoweit gelten die Regelungen zur Haftung dieses
+Vertrages. Diese Funktion ist optional und im Auslieferungszustand nicht
 eingerichtet.
 
 (6) Anbieter des KI-Systems im Sinne von Art. 3 Nr. 3 der Verordnung
 (EU) 2024/1689 ist Arasul. Betreiber im Sinne von Art. 3 Nr. 4 ist, wer das System
-unter eigener Verantwortung verwendet. Versieht ein Vertragspartner oder Betreiber
-das System mit eigenem Namen, eigener Marke oder einem anderen Erkennungszeichen,
-nimmt er eine wesentliche Änderung vor oder ändert er die Zweckbestimmung so, dass
-das System zu einem Hochrisiko-System wird, so gilt er nach Art. 25 Abs. 1 der
-Verordnung als Anbieter mit den daraus folgenden Pflichten. Diese Rechtsfolge
-tritt kraft Gesetzes und ungeachtet abweichender vertraglicher Vereinbarungen ein.
+unter eigener Verantwortung verwendet. Wer eine Erweiterung, die selbst ein
+KI-System ist, entwickelt oder entwickeln lässt und unter eigenem Namen in Betrieb
+nimmt, ist insoweit selbst Anbieter im Sinne von Art. 3 Nr. 3 der Verordnung.
+Versieht ein Vertragspartner oder Betreiber ein Hochrisiko-KI-System mit eigenem
+Namen, eigener Marke oder einem anderen Erkennungszeichen, nimmt er an einem
+solchen System eine wesentliche Änderung vor oder ändert er die Zweckbestimmung
+so, dass das System zu einem Hochrisiko-KI-System wird, so gilt er nach Art. 25
+Abs. 1 der Verordnung als Anbieter mit den daraus folgenden Pflichten. Diese
+Rechtsfolge tritt kraft Gesetzes und ungeachtet abweichender vertraglicher
+Vereinbarungen ein.
 <!-- /BAUSTEIN W3 -->
 
 ## 6 Haftung
@@ -166,20 +174,26 @@ in jedem Fall unberührt.
 Für die Haftung von Anbieter und Hersteller gilt:
 
 <!-- BAUSTEIN W2 -->
-(1) Es wird unbeschränkt gehaftet für Vorsatz und grobe Fahrlässigkeit, für
-Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit, nach dem
-Produkthaftungsgesetz sowie im Umfang einer ausdrücklich in Textform übernommenen
-Garantie.
+(1) Es wird unbeschränkt gehaftet für Vorsatz und grobe Fahrlässigkeit, bei
+arglistigem Verschweigen eines Mangels, für Schäden aus der Verletzung des
+Lebens, des Körpers oder der Gesundheit, nach dem Produkthaftungsgesetz sowie im
+Umfang einer ausdrücklich in Textform übernommenen Garantie.
 
 (2) Bei leicht fahrlässiger Verletzung einer Pflicht, deren Erfüllung die
 ordnungsgemäße Durchführung dieses Vertrages überhaupt erst ermöglicht und auf
 deren Einhaltung der Vertragspartner regelmäßig vertrauen darf, ist die Haftung
 der Höhe nach auf den bei Vertragsschluss vorhersehbaren, vertragstypischen
-Schaden begrenzt, höchstens jedoch auf **50.000 Euro je Schadensfall und
-100.000 Euro je Vertragsjahr**.
+Schaden begrenzt, **je Vertragsjahr höchstens jedoch auf die Nettovergütung
+dieses Vertrages**. Nettovergütung in diesem Sinne ist die Summe aller einmaligen
+Nettovergütungen zuzüglich der für das betroffene Vertragsjahr vereinbarten
+wiederkehrenden Nettovergütungen. Vertragsjahr ist jeder Zeitraum von zwölf
+Monaten ab Vertragsschluss.
 
-(3) Im Übrigen ist die Haftung für leicht fahrlässig verursachte Schäden
-ausgeschlossen.
+(3) Bei leicht fahrlässiger Verletzung einer Pflicht nach Absatz 2 wird für
+mittelbare Schäden, Folgeschäden und entgangenen Gewinn nicht gehaftet, soweit
+sie bei Vertragsschluss nicht als typische Folge einer solchen Pflichtverletzung
+vorhersehbar waren. Im Übrigen ist die Haftung für leicht fahrlässig verursachte
+Schäden ausgeschlossen.
 
 (4) Für Datenverlust wird nur in Höhe des Aufwands gehaftet, der bei
 ordnungsgemäßer und regelmäßiger Datensicherung durch den Betreiber zur
@@ -203,21 +217,55 @@ Partnervertrag unter Ziffer 12. Nicht von Hand ändern.
 (1) Die Plattform sieht vor, dass eigene Erweiterungen und Software Dritter
 gebaut, installiert und angebunden werden. **Erweiterungen sind nicht Bestandteil
 der Lieferung**, auch dann nicht, wenn die Plattform ihre Installation vorsieht
-oder erleichtert. Welche Erweiterungen bei Übergabe installiert sind, weist die
-Anlage "Leistungsbeschreibung" Abschnitt 6 aus.
+oder erleichtert. Erweiterungen in diesem Sinne sind insbesondere Apps und
+Abläufe, die nicht von Arasul geliefert werden, gleich wer sie gebaut hat. Welche
+Erweiterungen bei Übergabe installiert sind, weist die Anlage
+"Leistungsbeschreibung" Abschnitt 6 aus.
 
-(2) Wer eine Erweiterung installiert, betreibt oder anbindet, ist für sie allein
+(2) **Mit dem Einspielen, Installieren oder Anbinden der ersten Erweiterung
+trennen sich die Verantwortungsbereiche.** Arasul bleibt für die gelieferte
+Software im Umfang der Anlage "Leistungsbeschreibung" verantwortlich. In den
+Verantwortungsbereich dessen, der Erweiterungen einspielt, installiert, betreibt
+oder anbindet, fallen ab diesem Zeitpunkt:
+
+- die Erweiterungen selbst, ihr Aufbau, ihre Daten und ihre Trennung nach
+  Mandanten, Kunden oder Vorgängen;
+- die mit ihnen eingerichteten Abläufe und deren Einstellungen;
+- die Auswahl, Konfiguration und der Wechsel der verwendeten Modelle;
+- die von Erweiterungen und Abläufen erzeugten Ausgaben und deren Übernahme,
+  Weitergabe oder Übertragung in andere Systeme, etwa in eine Buchhaltungs-,
+  Steuer- oder Abrechnungssoftware;
+- die Anbindungen und Zugänge, die für Erweiterungen eingerichtet oder genutzt
+  werden, insbesondere zu Coding-Agenten wie Claude Code und zu externen
+  Anbietern, einschließlich der Verträge mit diesen Anbietern und der Frage,
+  welche Daten ihnen zugänglich gemacht werden.
+
+(3) Wer eine Erweiterung installiert, betreibt oder anbindet, ist für sie allein
 verantwortlich, einschließlich Auswahl, Lizenzierung, Konfiguration, Betrieb,
 Aktualisierung, Datenschutz und Rechtsgrundlage. Für Erweiterungen wird weder
 Funktion noch Verfügbarkeit noch Verträglichkeit mit künftigen Fassungen der
 Software geschuldet; eine Haftung für sie besteht nicht.
 
-(3) Führt eine Erweiterung zu einem Fehler, ist die Fehlersuche nur im Rahmen
+(4) Wer Ausgaben einer Erweiterung oder eines Ablaufs übernimmt, weitergibt oder
+in ein anderes System überträgt, prüft sie vorher durch eine sachkundige Person
+auf Richtigkeit und Vollständigkeit. Die Pflicht zur Prüfung nach den Regelungen
+zur Zweckbestimmung dieses Vertrages bleibt unberührt.
+
+(5) Führt eine Erweiterung zu einem Fehler, ist die Fehlersuche nur im Rahmen
 einer gesondert zu vereinbarenden Leistung geschuldet. Es kann verlangt werden,
 dass ein Fehler zunächst ohne Erweiterungen nachgestellt wird.
 
-(4) Wer eine Erweiterung installiert, betreibt oder anbindet, stellt Arasul von
-Ansprüchen Dritter frei, die darauf beruhen.
+(6) Wer eine Erweiterung installiert, betreibt oder anbindet, stellt Arasul von
+Ansprüchen Dritter frei, soweit er deren Ursache zu vertreten hat und sie auf der
+Erweiterung, ihren Ausgaben oder den für sie eingerichteten Anbindungen beruhen,
+einschließlich der angemessenen Kosten der Rechtsverteidigung. Arasul
+unterrichtet den Freistellenden unverzüglich über einen geltend gemachten
+Anspruch und erkennt ihn nicht ohne dessen Zustimmung an.
+
+(7) Die Absätze 2 bis 6 gelten nicht, soweit ein Schaden oder ein Anspruch auf
+einer von Arasul zu vertretenden Pflichtverletzung beruht, insbesondere auf einem
+Mangel der gelieferten Software. Insoweit gelten die Regelungen zur Haftung
+dieses Vertrages.
 <!-- /BAUSTEIN W4 -->
 
 ## 8 Komponenten Dritter
@@ -228,9 +276,11 @@ Partnervertrag unter Ziffer 13. Nicht von Hand ändern.
 <!-- BAUSTEIN W5 -->
 Die Software enthält Bestandteile Dritter, die eigenen Lizenzbedingungen
 unterliegen. Diese sind in der Anlage "Drittlizenzen" aufgeführt und gehen für den
-jeweiligen Bestandteil den Regelungen dieses Vertrages vor. Für Bestandteile
-Dritter gelten Gewährleistung und Haftung nur im Umfang der jeweiligen
-Drittlizenz; eine darüber hinausgehende Haftung wird nicht übernommen. Der
+jeweiligen Bestandteil den Regelungen dieses Vertrages über die Nutzungsrechte
+vor. Eine eigene Gewährleistung oder Haftung der Dritten wird durch Arasul nicht
+vermittelt. Für Mängel der gelieferten Software, auch soweit sie auf einem
+Bestandteil Dritter beruhen, gelten die Regelungen dieses Vertrages zu
+Beschaffenheit, Gewährleistung und Haftung. Der
 Quellcode der unter Copyleft-Lizenzen stehenden Bestandteile wird von Arasul auf
 Anforderung in Textform bereitgestellt.
 <!-- /BAUSTEIN W5 -->
