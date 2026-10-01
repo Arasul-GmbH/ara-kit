@@ -84,11 +84,11 @@ without an explanation is not a basis for a decision.
 
 The interview tool is `AskUserQuestion` in Claude Code and `request_user_input` in Codex. Claude
 Code carries four questions with up to four options each, multiple choice and a sketch per
-option. Codex carries three questions with two to three options, no multiple choice, a short
-line instead of a sketch. The recommendation comes first. More than a round carries becomes
+option. Codex carries three questions with two to three options, no multiple choice, no sketch. Recommendation first. More than a round carries becomes
 several rounds. Multiple choice under Codex: up to three points as yes or no questions of one
 round, beyond that one option "several, numbers in free text" and the numbered list in the
-question. If the tool is missing or fails: `.ara/knowledge/codex.md`.
+question. If Codex does not offer the tool, say so and ask for its plan mode (Shift+Tab),
+numbered options in the text come last: `.ara/knowledge/codex.md`.
 
 ## Depth of explanation
 

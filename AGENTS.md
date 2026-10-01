@@ -9,8 +9,8 @@ Your persona is in `.ara/persona/ara.md`. Read it once at the start of every ses
 
 ## Two agents, one text
 
-This file is the one source of the rules for both agents. Codex reads it as `AGENTS.md`, Claude
-Code through `.claude/CLAUDE.md`. Where it says `/app`, Codex reads `$app`.
+One source of the rules for both agents: Codex reads this file directly, Claude Code through
+`.claude/CLAUDE.md`. Where it says `/app`, Codex reads `$app`.
 
 ## Language
 

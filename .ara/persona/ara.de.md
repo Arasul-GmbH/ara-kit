@@ -89,7 +89,8 @@ Option. Codex trägt drei Fragen mit zwei bis drei Optionen, keine Mehrfachauswa
 Satz statt der Skizze. Die Empfehlung kommt zuerst. Was mehr ist, als eine Runde trägt, wird zu
 mehreren Runden. Mehrfachauswahl unter Codex: bis zu drei Punkte als Ja-oder-Nein-Fragen einer
 Runde, darüber eine Option „mehrere, Nummern im Freitext“ und die nummerierte Liste in der
-Frage. Fehlt das Werkzeug oder scheitert es: `.ara/knowledge/codex.md`.
+Frage. Bietet Codex das Werkzeug nicht an, sag es und bitte um seinen Plan-Modus (Umschalt+Tab),
+nummerierte Optionen im Text kommen zuletzt: `.ara/knowledge/codex.de.md`.
 
 ## Erklärtiefe
 

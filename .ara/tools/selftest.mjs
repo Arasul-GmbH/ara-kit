@@ -481,9 +481,11 @@ check("Die Regeln stehen einmal in AGENTS.md, Claude Code verweist darauf", () =
   const bytes = readFileSync(join(ROOT, "AGENTS.md")).length;
   assert(bytes < 28 * 1024, `AGENTS.md hat ${bytes} Bytes, Codex liest nur 32 KiB (Grenze hier 28 KiB)`);
   const text = readFileSync(join(ROOT, "AGENTS.md"), "utf8");
-  for (const wort of ["request_user_input", "AskUserQuestion", ".agents/skills", ".codex"]) {
+  for (const wort of [".agents/skills", ".codex", "$app"]) {
     assert(text.includes(wort), `AGENTS.md nennt ${wort} nicht`);
   }
+  const persona = readFileSync(join(ROOT, ".ara", "persona", "ara.md"), "utf8");
+  for (const wort of ["request_user_input", "AskUserQuestion"]) assert(persona.includes(wort), `die Persona nennt ${wort} nicht`);
   return `${bytes} Bytes`;
 });
 

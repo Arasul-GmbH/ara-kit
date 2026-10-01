@@ -23,7 +23,7 @@ Codex fragt zweimal, einmal je Sache, und das Kit braucht beide Male ein Ja:
 
 1. **Diesem Ordner vertrauen.** Davor lädt Codex die Skills und sonst nichts: keine
    `config.toml`, keinen Hook, keine Regel. Die Warnung sagt das.
-2. **Hooks müssen geprüft werden.** Der Riegel ist für Codex neu. Wähl „Trust all and continue“
+2. **Hooks müssen geprüft werden.** Der Riegel ist für Codex neu. Wähl „Trust all“
    oder öffne die Prüfung und drück `t`. Ohne das läuft der Riegel nicht, und zwischen einem
    Agenten und `cat .env` steht nur seine eigene Sorgfalt. Codex fragt erneut, wenn sich
    `.codex/hooks.json` ändert.
