@@ -514,6 +514,8 @@ bekommen sie beim nächsten Abgleich; niemand rollt von Hand aus. Dasselbe gilt 
 Ordner, der nur die Brücke trägt. Eine Brücke von vor 0.51.0 trägt keine Fassung und gilt als die
 ältere.
 
+**Auch ein Leser behält eine neuere Brücke.** Ein Lese-Konto kann seine Brücke nicht in den Raum legen, aber die ältere des Raums darf auch nicht ihren Namen nehmen: sync behält die neuere hier, legt keine Konfliktkopie an, und der Plan sagt in einer eigenen Zeile, dass die Brücke am Gerät älter bleibt, bis jemand mit `schreiben` `deploy` ausführt.
+
 **Ein oben verankerter Name reicht weiter.** Eine Regel mit führendem Schrägstrich, für eine `notizen.log`, meint nur die oben;
 der Klient hält den Namen in jeder Tiefe draußen. Der Plan nennt, was das über das hinaus zu
 Hause hält, was die `.gitignore` meinte.

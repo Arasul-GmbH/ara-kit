@@ -10814,7 +10814,33 @@ await checkAsync("Eine neuere Brücke löst die ältere im Raum ab, ohne --keep-
   } finally {
     await geraet2.schliessen();
   }
-  return "ältere im Raum abgelöst, neuere aus dem Raum geholt, leerer Ordner ohne Anhalten, Leser ohne „hält hier an“";
+
+  // 5. Ein Leser mit der neueren Brücke, im Raum die ältere: sie bleibt unter ihrem Namen, keine Konfliktkopie,
+  // der Plan nennt die Brücke als eigene Zeile und sagt, wer die am Gerät hebt. Gemessen am 01.10.2026 am Orin:
+  // der Abgleich legte die ältere an den Namen und die neuere in eine Konfliktkopie.
+  const leser2 = brueckeWurzel();
+  const lager3 = wegwerfordner("ara-lager-leserbruecke-");
+  mkdirSync(join(lager3, "firma"));
+  writeFileSync(join(lager3, "firma", "arasul.mjs"), alte);
+  writeFileSync(join(leser2.root, "arasul.mjs"), vorlage);
+  const geraet3 = await brueckeGeraet({ firmenordner: { adresse: FO_ADRESSE, ordner: [{ ...FO_WURZEL, recht: "lesen" }] }, lager: lager3 });
+  const umgebung3 = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager3, ARA_PROBE_LISTE: "1" };
+  try {
+    let lauf = await bruecke(leser2, ["login", geraet3.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
+    assert(lauf.status === 0, `Anmeldung des Lesers mit der neueren Brücke: ${lauf.stderr}`);
+    lauf = await bruecke(leser2, ["sync", "--plan", "--password-stdin"], { input: passwort, env: umgebung3 });
+    assert(/arasul\.mjs: diese Brücke \([\d.]+\) ist neuer als die am Gerät \(von vor 0\.51\.0\)\. Du liest diese Wurzel nur.*deploy/.test(lauf.stdout), `der Plan nennt die Brücke eines Lesers nicht als eigene Zeile: ${lauf.stdout}`);
+    lauf = await bruecke(leser2, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung3 });
+    assert(lauf.status === 0, `sync des Lesers: ${lauf.stdout}${lauf.stderr}`);
+    assert(readFileSync(join(leser2.root, "arasul.mjs"), "utf8") === vorlage, "die neuere Brücke des Lesers wurde durch die ältere ersetzt");
+    assert(readFileSync(join(lager3, "firma", "arasul.mjs"), "utf8") === alte, "ein Leser hat die Brücke am Gerät verändert");
+    assert(!readdirSync(leser2.root).some((name) => /conflict/.test(name)), `neben der Brücke liegt eine Konfliktkopie: ${readdirSync(leser2.root).join(", ")}`);
+    lauf = await bruecke(leser2, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung3 });
+    assert(lauf.status === 0 && readFileSync(join(leser2.root, "arasul.mjs"), "utf8") === vorlage, `der zweite Lauf verlor die Brücke: ${lauf.stdout}${lauf.stderr}`);
+  } finally {
+    await geraet3.schliessen();
+  }
+  return "ältere im Raum abgelöst, neuere aus dem Raum geholt, leerer Ordner ohne Anhalten, Leser ohne „hält hier an“, Leser behält die neuere Brücke";
 });
 
 await checkAsync("login bietet den Klienten des Dateidienstes an und holt ihn mit --fetch-client, geprüft an seiner Prüfsumme, entpackt ohne Installation", async () => {

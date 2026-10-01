@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.57.1 (2026-10-01)
+
+Contract: up to 6
+
+- **A sync never replaces a newer local bridge with an older one from the room, for a reader too.** Measured at the Orin with a read account: the room's older `arasul.mjs` took the name and the newer one became a conflicted copy, and the next run no longer found the fetched client. Now the newer bridge stays under its name and no conflicted copy comes about. `sync --plan` names the bridge as its own line: here newer, on the device older, and what follows. An account with `schreiben` is pointed to `deploy`, an account with `lesen` is told that somebody with `schreiben` has to lift the bridge on the device.
+
 ## 0.57.0 (2026-10-01)
 
 Contract: up to 6

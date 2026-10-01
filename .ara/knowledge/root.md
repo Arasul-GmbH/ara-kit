@@ -494,6 +494,8 @@ administrator syncs with it, and everybody else gets it at their next sync; nobo
 hand. The same holds in an empty folder that holds the bridge alone. A bridge from before 0.51.0
 carries no version and counts as the older one.
 
+**A reader keeps a newer bridge too.** A read account cannot put its bridge into the room, but the room's older one must not take its name either: sync keeps the newer one here, makes no conflicted copy, and the plan says in its own line that the bridge on the device stays older until somebody with `schreiben` runs `deploy`.
+
 **A name anchored at the top reaches further.** A rule with a leading slash, for a `notes.log`, means only
 the one at the top; the client keeps the name out at every depth. The plan names what that keeps home
 beyond what the `.gitignore` meant.
