@@ -4386,7 +4386,7 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
   const wurzel = join(PATTERNS, "datev", "backend");
   const format = await import(pathToFileURL(join(wurzel, "kern", "extf-format.mjs")).href);
   const { buchungsstapel } = await import(pathToFileURL(join(wurzel, "kern", "datev.mjs")).href);
-  const { extfPruefen } = await import(pathToFileURL(join(wurzel, "pruefen", "extf-pruefen.mjs")).href);
+  const { pruefen: stapelPruefen } = await import(pathToFileURL(join(wurzel, "pruefen", "stapel.mjs")).href);
   const { pruefen: kontenPruefen, KONTEN } = await import(pathToFileURL(join(wurzel, "kern", "skr03.mjs")).href);
   const { datevWege } = await import(pathToFileURL(join(wurzel, "wege", "datev.mjs")).href);
 
@@ -4417,7 +4417,7 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
   assert(gut.includes('" =HYPERLINK(1)"'), "ein Text mit = ist nicht gegen Formeln geschützt");
   assert(gut.startsWith('"EXTF";700;21;"Buchungsstapel";13;20261002101112345;;"RE";"Kanzlei Muster";"";29098;55003;20260101;4;20260305;20261231;'), "die Kopfzeile ist nicht die der Quelle");
   assert(gut.split("\r\n").length === 5 && !/(?<!\r)\n/.test(gut), "Zeilenende nicht CR LF");
-  const befund = extfPruefen(r.bytes);
+  const befund = stapelPruefen(r.bytes);
   assert(befund.ok && befund.buchungen === 2, `eine gute Datei fällt durch: ${befund.fehler.join(" | ")}`);
 
   // Jeder Fehler, von Hand in eine gute Datei gemacht, fällt durch, mit Zeile und Feld.
@@ -4451,7 +4451,7 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
     ["leere Datei", Buffer.alloc(0), /leer/],
   ];
   for (const [was, bytes, erwartet] of faelle) {
-    const b = extfPruefen(bytes);
+    const b = stapelPruefen(bytes);
     assert(!b.ok, `eine Datei ${was} besteht das Prüfskript`);
     assert(b.fehler.some((f) => erwartet.test(f)), `${was}: erwartet ${erwartet}, gefunden: ${b.fehler.join(" | ")}`);
   }
@@ -4463,7 +4463,7 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
     const schlechtPfad = join(arbeit, "schlecht.csv");
     writeFileSync(gutPfad, r.bytes);
     writeFileSync(schlechtPfad, Buffer.from(mit(2, feld(2, 9, "3102")), "latin1"));
-    const skript = join(wurzel, "pruefen", "extf-pruefen.mjs");
+    const skript = join(wurzel, "pruefen", "stapel.mjs");
     const lauf = (...args) => spawnSync(process.execPath, [skript, ...args], { encoding: "utf8" });
     assert(lauf(gutPfad).status === 0 && /^OK: 2 Buchungen/m.test(lauf(gutPfad).stdout), "das Skript nimmt die gute Datei nicht an");
     assert(lauf(schlechtPfad).status === 1 && /Feld 10/.test(lauf(schlechtPfad).stdout), "das Skript lehnt die schlechte Datei nicht mit Feld ab");
@@ -4484,13 +4484,13 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
   }
   // Ein abweichendes Wirtschaftsjahr: Belege von Juli bis Juni, Jahr aus dem Kopf.
   const gebrochen = buchungsstapel({ mandant: { ...mandant, wjBeginn: "2026-07-01" }, buchungen: [{ id: 9, betrag: 1, konto: "4910", gegenkonto: "1000", belegdatum: "2027-02-03" }, { id: 10, betrag: 1, konto: "4910", gegenkonto: "1000", belegdatum: "2026-06-30" }] }, { jetzt });
-  assert(gebrochen.ids.join() === "9" && extfPruefen(gebrochen.bytes).ok, "ein Wirtschaftsjahr ab Juli wird nicht richtig geschrieben");
+  assert(gebrochen.ids.join() === "9" && stapelPruefen(gebrochen.bytes).ok, "ein Wirtschaftsjahr ab Juli wird nicht richtig geschrieben");
 
   // Die Konten: ein Vorschlag außerhalb der Liste wird korrigiert, mit Grund.
   const pruefung = kontenPruefen({ konto: "9999", gegenkonto: "5", steuersatz: 19, bu_schluessel: "8", brutto: "119,00", kategorie: "buero", zahlungsart: "Barzahlung", belegdatum: "2026-03-05" });
   assert(pruefung.vorschlag.konto === "4930" && pruefung.vorschlag.gegenkonto === "1000" && pruefung.vorschlag.bu_schluessel === "9" && pruefung.korrekturen.length === 3, `der Vorschlag wird nicht geprüft: ${JSON.stringify(pruefung)}`);
   assert(Object.keys(KONTEN).length >= 10, "die Liste der Konten ist leer");
-  assert(extfPruefen(buchungsstapel({ mandant, buchungen: [pruefung.vorschlag] }, { jetzt }).bytes).ok, "ein geprüfter Vorschlag ergibt keine gute Datei");
+  assert(stapelPruefen(buchungsstapel({ mandant, buchungen: [pruefung.vorschlag] }, { jetzt }).bytes).ok, "ein geprüfter Vorschlag ergibt keine gute Datei");
 
   // Die Wege: Vorschau und Datei, fremder Mandant 404, ohne Mandant 400.
   const antworten = [];
@@ -4512,7 +4512,7 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
   const vorschau = await rufe("GET", "/datev/vorschau?mandant=55003");
   assert(vorschau.status === 200 && JSON.parse(vorschau.koerper).abgelehnt.length === 4 && JSON.parse(vorschau.koerper).pruefung.ok, "die Vorschau stimmt nicht");
   const datei = await rufe("GET", "/datev/stapel?mandant=55003");
-  assert(datei.status === 200 && /windows-1252/.test(datei.kopfzeilen["content-type"]) && /EXTF_Buchungsstapel_55003_\d{14}\.csv/.test(datei.kopfzeilen["content-disposition"]) && extfPruefen(datei.koerper).ok, "die Datei vom Weg besteht das Prüfskript nicht");
+  assert(datei.status === 200 && /windows-1252/.test(datei.kopfzeilen["content-type"]) && /EXTF_Buchungsstapel_55003_\d{14}\.csv/.test(datei.kopfzeilen["content-disposition"]) && stapelPruefen(datei.koerper).ok, "die Datei vom Weg besteht das Prüfskript nicht");
   assert((await rufe("GET", "/datev/stapel?mandant=1")).status === 404, "ein fremder Mandant ist kein 404");
   assert((await rufe("GET", "/datev/stapel")).status === 400, "ohne Mandant ist es kein 400");
   assert((await rufe("POST", "/datev/stapel?mandant=55003")).status === 405, "POST ist kein 405");

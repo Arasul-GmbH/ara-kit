@@ -6,13 +6,13 @@
  *
  * Als Skript, an jeder Datei:
  *
- *   node pruefen/extf-pruefen.mjs EXTF_Buchungsstapel_55003_20261002120000.csv
+ *   node pruefen/stapel.mjs EXTF_Buchungsstapel_55003_20261002120000.csv
  *
  * Ausgang 0: keine Abweichung. 1: mindestens ein Fehler, jeder mit Zeile und
  * Feld. 2: die Datei ließ sich nicht lesen. Als Baustein:
  *
- *   import { extfPruefen } from "./pruefen/extf-pruefen.mjs";
- *   const { ok, fehler, hinweise, buchungen } = extfPruefen(bytes);
+ *   import { pruefen } from "./pruefen/stapel.mjs";
+ *   const { ok, fehler, hinweise, buchungen } = pruefen(bytes);
  *
  * **Was geprüft wird**: Zeichensatz (Windows-1252, kein BOM, nicht UTF-8 ohne
  * BOM), Zeilenende CR LF, die 31 Felder der Kopfzeile gegen die Ausdrücke der
@@ -86,7 +86,7 @@ function decodieren(bytes) {
  * @param {Buffer|Uint8Array} bytes
  * @returns {{ ok: boolean, fehler: string[], hinweise: string[], buchungen: number, kopf: string[]|null }}
  */
-export function extfPruefen(bytes) {
+export function pruefen(bytes) {
   const fehler = [];
   const hinweise = [];
   const roh = Buffer.from(bytes);
@@ -211,7 +211,7 @@ export function extfPruefen(bytes) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const pfad = process.argv[2];
   if (!pfad) {
-    console.error("Aufruf: node pruefen/extf-pruefen.mjs <Datei>");
+    console.error("Aufruf: node pruefen/stapel.mjs <Datei>");
     process.exit(2);
   }
   let bytes;
@@ -221,7 +221,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error(`Die Datei ließ sich nicht lesen: ${e.message}`);
     process.exit(2);
   }
-  const r = extfPruefen(bytes);
+  const r = pruefen(bytes);
   for (const h of r.hinweise) console.log(`Hinweis: ${h}`);
   for (const f of r.fehler) console.log(`FEHLER: ${f}`);
   console.log(

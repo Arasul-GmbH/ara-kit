@@ -3,7 +3,7 @@
 Für ein Büro, das Bücher führt oder vorbereitet: Die App macht aus freigegebenen Buchungen die Datei,
 die der Steuerberater in DATEV einliest, und prüft diese Datei, bevor jemand sie herunterlädt. Der
 Überblick über alle Muster: `.ara/knowledge/app-patterns.de.md`. Was die Vorschriften eines fremden
-Formats für eine App bedeuten: `.ara/knowledge/app-professional.de.md`, „Fachliche Standards".
+Formats für eine App bedeuten: `.ara/knowledge/app-professional.de.md`, „Fachstandards".
 
 ## In einfachen Worten
 
@@ -57,7 +57,7 @@ es. Offen ist auch, dass die Schlüssel 8 und 9 auf jedem Konto der Liste stimme
 | `backend/kern/extf-format.mjs` | Das Format, wie die Quelle es sagt: Kopffelder, 125 Spaltennamen, ein Ausdruck je Feld |
 | `backend/kern/datev.mjs` | `buchungsstapel({ mandant, buchungen })`: Dateiname, Bytes, die Nummern, die hineinkamen, und die Buchungen, die es abgelehnt hat, jede mit Grund |
 | `backend/kern/skr03.mjs` | `KONTEN`, `GEGENKONTEN`, `KATEGORIEN` und `pruefen`: ein Vorschlag gegen die Listen, jede Korrektur mit Grund |
-| `backend/pruefen/extf-pruefen.mjs` | Das Prüfskript, auch aufrufbar als `node backend/pruefen/extf-pruefen.mjs <Datei>` |
+| `backend/pruefen/stapel.mjs` | Das Prüfskript, auch aufrufbar als `node backend/pruefen/stapel.mjs <Datei>` |
 | `backend/wege/datev.mjs` | Zwei Wege: `GET /datev/vorschau?mandant=` und `GET /datev/stapel?mandant=` |
 
 **Einhängen**: den Ordner `backend` in die App kopieren, die Zeilen aus dem Kopf von

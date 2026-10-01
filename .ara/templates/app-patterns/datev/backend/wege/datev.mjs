@@ -38,7 +38,7 @@
  */
 
 import { buchungsstapel } from "../kern/datev.mjs";
-import { extfPruefen } from "../pruefen/extf-pruefen.mjs";
+import { pruefen as stapelPruefen } from "../pruefen/stapel.mjs";
 
 function json(antwort, status, daten) {
   antwort.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -71,7 +71,7 @@ export function datevWege({ stapel }) {
       json(antwort, 422, { fehler: fehler.message });
       return true;
     }
-    const pruefung = extfPruefen(ergebnis.bytes);
+    const pruefung = stapelPruefen(ergebnis.bytes);
 
     if (teile[1] === "vorschau") {
       json(antwort, 200, { datei: ergebnis.datei, ids: ergebnis.ids, abgelehnt: ergebnis.abgelehnt, pruefung });

@@ -54,7 +54,7 @@ of the list.
 | `backend/kern/extf-format.mjs` | The format as the source says it: header fields, 125 column names, an expression per field |
 | `backend/kern/datev.mjs` | `buchungsstapel({ mandant, buchungen })`: file name, bytes, the ids that went in, and the bookings it refused, each with a reason |
 | `backend/kern/skr03.mjs` | `KONTEN`, `GEGENKONTEN`, `KATEGORIEN` and `pruefen`: a suggestion held against the lists, every correction with its reason |
-| `backend/pruefen/extf-pruefen.mjs` | The check script, also callable as `node backend/pruefen/extf-pruefen.mjs <file>` |
+| `backend/pruefen/stapel.mjs` | The check script, also callable as `node backend/pruefen/stapel.mjs <file>` |
 | `backend/wege/datev.mjs` | Two routes: `GET /datev/vorschau?mandant=` and `GET /datev/stapel?mandant=` |
 
 **Wiring**: copy the `backend` folder into the app, put the lines from the head of

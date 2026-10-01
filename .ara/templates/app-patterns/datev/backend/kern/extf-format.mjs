@@ -1,7 +1,7 @@
 /**
  * Das Format des DATEV-Buchungsstapels, genau so, wie die Quelle es sagt.
  * Eine Datei, aus der Schreiber (`datev.mjs`) und Prüfskript
- * (`../pruefen/extf-pruefen.mjs`) lesen: ändert DATEV das Format, ändert sich
+ * (`../pruefen/stapel.mjs`) lesen: ändert DATEV das Format, ändert sich
  * hier eine Stelle und beide folgen.
  *
  * Primärquelle: DATEV Developer Portal, DATEV-Format, abgerufen am 02.10.2026.

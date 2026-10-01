@@ -5,8 +5,8 @@
  *
  * **Das ist eine Beispielauswahl und keine Steuerberatung.** Die Kontonummern
  * der Aufwandskonten stehen im Kontenrahmen SKR 03 der DATEV (Branchenpaket
- * Bau und Handwerk, gültig für 2026, abgerufen am 02.10.2026, Adresse:
- * https://www.datev.de/content/dam/markenassets/themen-und-produktgruppen/zielgruppen/zielgruppenuebergreifend/shop-assets/rechnungswesen/kontenrahmen/19606_HGB_SKR_03_Bau_und_Handwerk_2026.pdf),
+ * Bau und Handwerk, gültig für 2026, Datei 19606_HGB_SKR_03_Bau_und_Handwerk_2026.pdf auf datev.de,
+ * abgerufen am 02.10.2026),
  * die Bezeichnungen sind hier gekürzt. Die Konten 1000, 1200 und 1600 standen in
  * diesem Auszug nicht als einzelne Nummern: die Kanzlei bestätigt sie. **Ersetze
  * die Listen durch die Konten der Kanzlei**, und lass sie von deren
