@@ -11,11 +11,11 @@ language is the first thing you ask.
 Read `.ara/persona/ara.md` first, then `.ara/knowledge/init.md`, and work along the
 procedure there. In German, read the `.de.md` next to each of them. Knowledge this command
 loads: `.ara/knowledge/init.md`, plus `.ara/knowledge/security.md` for the security levels
-and `.ara/knowledge/browser.md` for the browser. Nothing else.
+and `.ara/knowledge/browser.md` for the browser, and `.ara/knowledge/transfer.md` for a kit that was handed over to you. Nothing else.
 
 **Depth.** The list "What must be clear" in `.ara/knowledge/init.md` decides when the questions end, not the end of a round, and the interview takes at least three rounds with questions. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest stays open in the profile and is asked at the next `/init`.
 
-There are three ways, and which one applies a file and the argument decide:
+There are four ways, and which one applies a file and the argument decide:
 
 **An argument is there (`$1`, the first word after the command): an answer file, no interview.**
 
@@ -40,6 +40,12 @@ node .ara/tools/commands.mjs --apply --role <partner|company> --language <de|en>
 read it from the profile.
 
 No token, no account: the onboarding needs neither.
+
+**`business/profile.md` exists and `node .ara/tools/init.mjs --show` says the kit was handed over to
+you: the takeover.** This comes before everything else. The profile came with the repository, but
+the keys for the devices did not. Work along the section "A kit that was handed over to you" in
+`.ara/knowledge/init.md` and `.ara/knowledge/transfer.md`: your own SSH and kit keys on every device,
+put there through the interface, the old ones revoked.
 
 **`business/profile.md` exists: every further time.** Then it is about the version of the
 kit, not about the human.

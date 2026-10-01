@@ -141,6 +141,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 | `app.mjs` | An app: scaffold, plans, build, and with `--device` contract, check, staging, live, back, remove, share, Compose: `.ara/knowledge/app.md` |
 | `customer.mjs` | Create a customer file and read its picture |
 | `maintain.mjs` | Read the state of a device, status line and report, reading only |
+| `transfer.mjs` | Hand the kit over to a customer and take it over: prepare the repository, own SSH and kit keys on the device, revoke the old ones, prove it: `.ara/knowledge/transfer.md` |
 | `upgrade.mjs` | Deploy a new version on a device: plan with duration and way back first, backup checked in the list, artifact the customer's way with its checksum, `install.sh` at the device, comparison before and after: `.ara/knowledge/maintenance-flow.md` |
 | `heal.mjs` | Self-healing inside the Arasul tree, every step recorded and undoable: `.ara/knowledge/self-healing.md` |
 | `runsheet.mjs` | Read and write the state of a setup |

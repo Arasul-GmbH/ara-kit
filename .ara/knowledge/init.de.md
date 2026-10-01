@@ -5,7 +5,8 @@
 > gilt der kurze Teil am Ende: Kit nachziehen, Befehle anbieten, Profil ergänzen.
 >
 > **Wissen dazu:** `.ara/knowledge/security.de.md` für die drei Stufen in Runde 5,
-> `.ara/knowledge/browser.de.md` für Runde 8. Sonst nichts, der Rest steht hier.
+> `.ara/knowledge/browser.de.md` für Runde 8, `.ara/knowledge/transfer.de.md` für ein Kit, das dir
+> übergeben wurde. Sonst nichts, der Rest steht hier.
 
 ## Das erste Mal
 
@@ -338,6 +339,29 @@ Beispiel:
 > Nächster Schritt: deinen ersten Kunden anlegen mit /customer.
 
 Keine Zusammenfassung des ganzen Gesprächs. Keine Begeisterung.
+
+## Ein Kit, das dir übergeben wurde
+
+`business/profile.md` liegt da, weil es mit dem Repository kam, aber sonst gibt es auf diesem Rechner nichts:
+keine Befehle, keine Geheimnis-Ablage, keinen Schlüssel. **Das prüfst du vor allem anderen**:
+`node .ara/tools/init.mjs --show` beginnt mit einer Zeile, wenn das Kit übergeben wurde und ein Gerät noch auf
+deine Schlüssel wartet. Das ist weder ein erster Lauf noch ein Update, es ist ein dritter Fall.
+
+1. **Sag, was passiert ist**, zwei Sätze, einfach: die Dateien in diesem Repository gehören jetzt dir, der
+   Zugang zu den Geräten noch nicht; dafür bekommst du eigene Schlüssel, und die alten hören auf zu gelten.
+2. **Frag, was die Übernahme braucht**, über das Rückfragewerkzeug, gebündelt: welche Sprache und mit welchem
+   KI-Werkzeug du arbeitest (dafür richtet das Kit die Befehle ein), wo die Geheimnisse liegen sollen (`.env`
+   oder Schlüsselbund, wie in Runde 8 des ersten Mals), wie du den ersten Weg aufs Gerät bekommst (das Passwort
+   der Anmeldung am Gerät, das du außerhalb des Repositorys erhalten hast) und ob weitere gültige Kit-Schlüssel
+   am Gerät auch gehen sollen. Einen eigenen SSH-Schlüssel macht die Übernahme selbst, danach fragst du nicht.
+3. **Befehle anlegen** (`node .ara/tools/commands.mjs --apply`), dann **den Plan zeigen**
+   (`node .ara/tools/transfer.mjs --accept`) und nach einem Ja, das das Gerät nennt und sagt, dass die alten
+   Schlüssel aufhören zu gelten, **ausführen** (`--accept --yes`, mit `--revoke-others` nur, wenn er es gesagt hat).
+4. **Das Ergebnis vorlesen**, aus der Zählung des Werkzeugs am Gerät und nicht aus deiner Erinnerung daran. Sagt es,
+   ein Schlüssel gelte noch oder der alte Anmeldeschlüssel sei noch da, ist die Übernahme nicht fertig, und das sagst du.
+5. Dann der Rest wie unter "Jedes weitere Mal", ab Schritt 1.
+
+Verfahren und Grenzen: `.ara/knowledge/transfer.de.md`.
 
 ## Jedes weitere Mal
 

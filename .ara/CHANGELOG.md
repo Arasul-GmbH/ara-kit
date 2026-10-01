@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.61.0 (2026-10-02)
+
+Contract: up to 6
+
+- **The kit can be handed over to the customer, and taken over with own keys.** `node .ara/tools/transfer.mjs --prepare --to "<name>"` (company branch) shows a plan and, with `--yes`, sets `versioned: business, devices, apps` in the profile and the matching exceptions in `.gitignore`, refuses while a file in those folders looks like it holds a secret (kit key, private key, token, password, a `.env`; the place and kind are named, never the value), and writes `business/handover.md`: the sheet for the new person in plain words, plus per device the fingerprint of the old login key and the start of the old kit key. Device files keep only the names of their secrets.
+- **`/init` notices a handed-over kit.** `init.mjs --show` opens with a line when a device still waits for the new person's keys. `transfer.mjs --accept` then makes an own SSH key per device, puts its public half on the device, proves the login with it, lets the device issue an own kit key and stores it, and only then revokes the old kit key and removes the old login key. Afterwards it counts on the device what is still valid and lists other valid kit keys; `--revoke-others` revokes them. If the device takes keys only and the new person has none, it stops and prints the public half; `--authorize <file>` lets the one handing over put it there.
+- **`transfer.mjs --prove` shows that the old keys are dead.** The one who handed over runs it in his own clone: his login key and his kit key are tried against the device, exit 0 only if both are refused, exit 2 when a test could not be made.
+- **A step in `/maintain`**, and `.ara/knowledge/transfer.md` with the procedure. The product publishes no interface for login keys; the kit invents none and says where each key goes.
+
 ## 0.60.0 (2026-10-01)
 
 Contract: up to 6

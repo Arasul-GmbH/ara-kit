@@ -5,7 +5,8 @@
 > end applies: bring the kit up to date, offer commands, complete the profile.
 >
 > **Knowledge for it:** `.ara/knowledge/security.md` for the three levels in round 5,
-> `.ara/knowledge/browser.md` for round 8. Nothing else, the rest stands here.
+> `.ara/knowledge/browser.md` for round 8, `.ara/knowledge/transfer.md` for a kit that was handed over
+> to you. Nothing else, the rest stands here.
 
 ## The first time
 
@@ -323,6 +324,29 @@ Example:
 > Next step: create your first customer with /customer.
 
 No summary of the whole conversation. No enthusiasm.
+
+## A kit that was handed over to you
+
+`business/profile.md` exists because it came with the repository, but nothing on this computer does:
+no commands, no secret store, no key. **Check that before anything else**: `node .ara/tools/init.mjs --show`
+opens with a line when the kit was handed over and a device still waits for your keys. That is not a first
+run and not an update, it is a third case.
+
+1. **Say what has happened**, two sentences, plain: the files in this repository are now yours, the
+   access to the devices is not yet; for that you get your own keys and the old ones stop working.
+2. **Ask what the takeover needs**, through the interview tool, bundled: which language and which AI tool you
+   work with (the kit sets up the commands for it), where the secrets should lie (`.env` or keychain, as in
+   round 8 of the first time), how you get the first way onto each device (the password of the login on the
+   device, which you got outside of the repository), and whether other valid kit keys on the device should go
+   as well. An SSH key of your own is made by the takeover itself, do not ask about it.
+3. **Create the commands** (`node .ara/tools/commands.mjs --apply`), then **show the plan**
+   (`node .ara/tools/transfer.mjs --accept`) and, after a yes that names the device and says that the old keys
+   stop working, **do it** (`--accept --yes`, with `--revoke-others` only if they said so).
+4. **Read the result back** from the tool's own count on the device, not from your memory of it. If it says
+   a key is still valid or the old login key is still there, the takeover is not finished, and you say so.
+5. Then the rest as in "Every further time", starting with step 1.
+
+Procedure and limits: `.ara/knowledge/transfer.md`.
 
 ## Every further time
 

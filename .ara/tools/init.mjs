@@ -68,6 +68,7 @@ import {
 import { KIT_CONTRACT_VERSION, catchUpLines } from "./lib/contract.mjs";
 import { compatibility, parseChangelog, standBlock } from "./lib/version.mjs";
 import { CLOSED_FIELDS, ROLES } from "./lib/profile.mjs";
+import { handoverState } from "./lib/transfer.mjs";
 
 const TEMPLATES = join(ROOT, ".ara", "templates");
 const VERSION_FILE = join(ROOT, ".ara", "VERSION");
@@ -442,6 +443,25 @@ function printAhead(lage) {
   for (const line of catchUpLines()) console.log(line);
 }
 
+/**
+ * Kam dieses Kit als Übergabe an? Dann steht das ganz oben, vor allem anderen:
+ * wer übernimmt, hat weder den Anmeldeschlüssel noch den Kit-Schlüssel der
+ * Geräte, und jede Frage danach ginge ins Leere.
+ */
+function printHandover() {
+  const s = handoverState();
+  if (!s.pending?.length) return;
+  const von = s.from ? t(` from ${s.from}`, ` von ${s.from}`) : "";
+  console.log(
+    t(
+      `This kit was handed over to you${von}. For ${s.pending.map((d) => d.device).join(", ")} you have no keys yet. ` +
+        "Next: node .ara/tools/transfer.mjs --accept (the plan first, then with --yes). Procedure: .ara/knowledge/transfer.md",
+      `Dieses Kit wurde dir übergeben${von}. Für ${s.pending.map((d) => d.device).join(", ")} hast du noch keine Schlüssel. ` +
+        "Als Nächstes: node .ara/tools/transfer.mjs --accept (erst der Plan, dann mit --yes). Verfahren: .ara/knowledge/transfer.de.md"
+    )
+  );
+}
+
 if (arg.answers) {
   const answers = readAnswers(arg.answers);
   const result = apply(answers);
@@ -477,11 +497,13 @@ if (arg.answers) {
 
 const lage = { ...status(), stand: stand() };
 if (arg.json) {
-  console.log(JSON.stringify(lage, null, 2));
+  const h = handoverState();
+  console.log(JSON.stringify({ ...lage, handover: { state: h.state, pending: (h.pending || []).map((d) => d.device) } }, null, 2));
   process.exit(0);
 }
 for (const line of lage.stand.lines) console.log(line);
 printAhead(lage);
+printHandover();
 console.log("");
 if (!lage.exists) {
   console.log(

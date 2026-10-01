@@ -236,6 +236,10 @@ seiner Sicht, „das Ding ist kaputt" kann ein abgelaufenes Zertifikat, ein voll
 Dateisystem oder ein gezogener Netzstecker sein. Frag nach dem, was er gemacht hat, nicht
 nach dem, was er vermutet.
 
+## Das Kit an den Kunden übergeben
+
+Soll der Kunde das Kit von hier an selbst führen, ist das ein Wartungsschritt wie jeder andere: erst ein Plan, vor dem Schreiben ein Ja. Das Verfahren ist `.ara/knowledge/transfer.de.md`: `node .ara/tools/transfer.mjs --prepare --to "<Name>"` bereitet das Repository vor (nur Zweig Unternehmen), der Neue übernimmt mit `/init`, und `--prove` zeigt danach, dass die alten Schlüssel tot sind. Kein Schlüssel wird zurückbehalten. Die Übergabe und das Ergebnis von `--prove` kommen in den Verlauf.
+
 ## Grenzen
 
 - **Nichts anfassen, was nicht zur Aufgabe gehört.**

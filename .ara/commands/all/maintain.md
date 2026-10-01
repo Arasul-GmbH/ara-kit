@@ -10,7 +10,8 @@ Read `.ara/knowledge/maintenance-flow.md` and work along it. Knowledge this comm
 `.ara/knowledge/self-healing.md` when something of Arasul does not run,
 `.ara/knowledge/diagnostics.md` for a fault, `.ara/knowledge/extensions.md` for an
 extension, `.ara/knowledge/platform-services.md` when it is about the backup or a service
-of the platform, `.ara/knowledge/live-knowledge.md` for every product value. You read the
+of the platform, `.ara/knowledge/transfer.md` when the kit goes to the customer,
+`.ara/knowledge/live-knowledge.md` for every product value. You read the
 profile in `business/profile.md` beforehand.
 
 **The argument.** `zentrale` is a device without a customer under `devices/zentrale/`.
@@ -58,6 +59,7 @@ needs doing, and you pull the matching procedure:
 | An app is stuck | Version from the report, then `/app`: switching back to the previous version is the fastest way back |
 | Deploy an update | `node .ara/tools/upgrade.mjs --device <device> ...` shows the plan first (versions, duration, way back); `.ara/knowledge/maintenance-flow.md`, section "Deploy an update". The tool backs up, checks the backup, fetches the artifact the customer's way and compares before and after |
 | Extension | `.ara/knowledge/extensions.md` |
+| Hand the kit over to the customer | `node .ara/tools/transfer.mjs --prepare --to "<name>"` shows the plan first (company branch only); `.ara/knowledge/transfer.md`. The new person's keys replace yours, and afterwards `--prove` shows that yours are dead |
 
 For a fault the rule is: no repair without a finding, never two changes at once.
 
