@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.57.1 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **Ein Abgleich ersetzt eine neuere lokale Brücke nie durch eine ältere aus dem Raum, auch für einen Leser nicht.** Am Orin mit einem Lese-Konto gemessen: die ältere `arasul.mjs` des Raums nahm den Namen, die neuere wurde zur Konfliktkopie, und der nächste Lauf fand den geholten Klienten nicht mehr. Jetzt bleibt die neuere Brücke unter ihrem Namen, und es entsteht keine Konfliktkopie. `sync --plan` nennt die Brücke als eigene Zeile: hier neuer, am Gerät älter, und was folgt. Ein Konto mit `schreiben` bekommt den Hinweis auf `deploy`, ein Konto mit `lesen` den Satz, dass jemand mit `schreiben` die Brücke am Gerät heben muss.
+
 ## 0.57.0 (2026-10-01)
 
 Kontrakt: bis 6
