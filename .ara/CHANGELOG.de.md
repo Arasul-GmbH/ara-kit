@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.58.0 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **Ein zweites `login` stellt das Standardgerät nicht mehr von selbst um.** Am Orin gemessen: `login --name` unter einem Lese-Konto schrieb seinen Eintrag und machte ihn zum Standard, sodass jeder Aufruf ohne `--device` und ein Abgleich im Hintergrund das andere Konto meinte. Jetzt rückt `default` in `credentials.json` nur, wenn es keines gibt, wenn das Standardgerät selbst sich neu anmeldet, oder mit dem neuen `--default`. Sonst sagt `login` in einem Satz, welches Gerät Standard bleibt und wie man umstellt. `status` kennzeichnet das Standardgerät, und `sync --install` nennt sein Gerät im Agenten fest und folgt dem Standard nie.
+- **Eine Datei in einem Lese-Ordner, die nicht hochgeht, versteckt ihre Namensvettern nicht mehr still.** Der Klient hält einen bloßen Namen in jeder Tiefe draußen und verankert keinen oben: am Orin mit dem echten Klienten gemessen, `/x.md`, `./x.md` und `x.m[d/]` hielten nichts draußen. Also bleibt `unter/x.md` am Gerät, solange `x.md` oben liegt. `sync --plan` und `sync` nennen solche Pfade jetzt einzeln, der Plan zählt sie nicht mehr unter runter, und eine Datei, die nach dem Wegfall der Ursache nicht herunterkam, wird mit dem Grund genannt: der Klient sieht in einen Ordner erst wieder, wenn er sich am Gerät ändert.
+
 ## 0.57.2 (2026-10-01)
 
 Kontrakt: bis 6

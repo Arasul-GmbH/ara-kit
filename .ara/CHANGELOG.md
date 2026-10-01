@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.58.0 (2026-10-01)
+
+Contract: up to 6
+
+- **A second `login` no longer switches the default device on its own.** Measured at the Orin: `login --name` under a read account wrote its entry and made it the default, so every call without `--device` and a sync in the background meant the other account. Now `default` in `credentials.json` moves only when there is none, when the default itself logs in again, or with the new `--default`. Otherwise `login` says in one sentence which device stays the default and how to switch. `status` marks the default device, and `sync --install` names its device in the agent for good and never follows the default.
+- **A file in a read-only folder that cannot go up no longer hides its namesakes silently.** The client keeps a bare name out at every depth and anchors none at the top: measured at the Orin with the real client, `/x.md`, `./x.md` and `x.m[d/]` kept nothing out. So `unter/x.md` stays on the device while `x.md` lies at the top. `sync --plan` and `sync` now name such paths one by one, the plan no longer counts them under down, and a file that did not come down after the cause was gone is named with the reason: the client looks into a folder again only when it changes on the device.
+
 ## 0.57.2 (2026-10-01)
 
 Contract: up to 6

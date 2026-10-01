@@ -9408,6 +9408,18 @@ await checkAsync("Die Brücke meldet an, legt den Ausweis mit 0600 ab und zeigt 
     lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token"], { input: `${BRUECKE_TOKEN}\n` });
     assert(lauf.status === 0 && JSON.parse(readFileSync(datei, "utf8")).devices["mit-token"].kind === "pasted", `die Anmeldung mit einem eingefügten Ausweis scheitert: ${lauf.stderr}${lauf.stdout}`);
 
+    // Ein zweites Konto am selben Rechner stellt das Standardgerät nicht still um (K20).
+    const erstes = new URL(geraet.adresse).hostname;
+    assert(JSON.parse(readFileSync(datei, "utf8")).default === erstes, `ein zweites login hat das Standardgerät umgestellt: ${readFileSync(datei, "utf8")}`);
+    assert(new RegExp(`${erstes} bleibt das Standardgerät.*--device mit-token.*--default`).test(lauf.stdout.replace(/\n/g, " ")), `login sagt nicht, welches Gerät Standard bleibt und wie man umstellt: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["status"]);
+    assert(new RegExp(`Gerät: ${erstes} \\(Standardgerät\\)`).test(lauf.stdout) && !/Gerät: mit-token \\(Standardgerät\\)/.test(lauf.stdout), `status nennt das Standardgerät nicht: ${lauf.stdout}`);
+    // Mit --default verlangt der Mensch es, und wer schon Standard ist, bleibt es beim erneuten Anmelden.
+    lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token", "--default"], { input: `${BRUECKE_TOKEN}\n` });
+    assert(lauf.status === 0 && JSON.parse(readFileSync(datei, "utf8")).default === "mit-token" && !/bleibt das Standardgerät/.test(lauf.stdout), `--default stellt das Standardgerät nicht um: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["login", geraet.adresse, "--token-stdin", "--name", "mit-token"], { input: `${BRUECKE_TOKEN}\n` });
+    assert(lauf.status === 0 && JSON.parse(readFileSync(datei, "utf8")).default === "mit-token", "erneutes Anmelden des Standardgeräts nimmt ihm den Platz");
+
     // Eine Sitzung, die zu Ende ist, sagt es, ohne das Gerät zu fragen.
     const daten = JSON.parse(readFileSync(datei, "utf8"));
     daten.devices["mit-token"].token = brueckeToken(Math.floor(Date.now() / 1000) - 60);
@@ -9873,6 +9885,9 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     const plist = readFileSync(agent(), "utf8");
     assert(plist.includes("<integer>420</integer>") && plist.includes("<string>--background</string>") && plist.includes("<key>RunAtLoad</key><true/>"), `die Datei des Agenten stimmt nicht:\n${plist}`);
     assert(!plist.includes(BRUECKE_PASSWORT) && !plist.includes(BRUECKE_AUSWEIS), "das Passwort oder der Ausweis steht in der Datei des Agenten");
+    // Der Agent nennt sein Gerät fest und folgt dem Standard nie (K20).
+    const geraetName = new URL(geraet.adresse).hostname;
+    assert(new RegExp(`<string>--device</string>\\s*<string>${geraetName}</string>`).test(plist), `der Agent nennt sein Gerät nicht fest:\n${plist}`);
     assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_PASSWORT), "das Passwort steht in der Ausgabe von --install");
     const geladen = h.rufe().find((ruf) => ruf[0] === "bootstrap" && !ruf[2].includes(".pruefung"));
     assert(geladen && /^gui\/\d+$/.test(geladen[1]) && geladen[2] === agent(), `der Agent wurde nicht in die Sitzung des Menschen geladen: ${JSON.stringify(h.rufe())}`);
@@ -10062,19 +10077,28 @@ await checkAsync("Eine neue Datei in einem Ordner mit lesen geht nicht hoch: der
   mkdirSync(join(lager, "buchhaltung"));
   mkdirSync(join(w.root, "buchhaltung"), { recursive: true });
   writeFileSync(join(w.root, "buchhaltung", "neu.md"), "nur hier\n");
+  // Eine andere Datei gleichen Namens am Gerät, tiefer (K20): der Klient hält einen Namen oben nur
+  // in jeder Tiefe draußen, ein verankerter Ausschluss wirkt nicht (am Orin gemessen am 01.10.2026).
+  mkdirSync(join(lager, "buchhaltung", "unter"));
+  writeFileSync(join(lager, "buchhaltung", "unter", "neu.md"), "am Gerät, tiefer\n");
   const klient = attrappenKlient();
   const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll };
   const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_WURZEL, FO_ORDNER[0]]), lager });
   const satz = "geht nicht hoch, nur lesen: 1 Datei: neu.md";
+  const gleichnamig = "bleibt auch draußen, weil oben hier eine Datei gleichen Namens liegt, die nicht hochgeht, und der Klient einen Namen in jeder Tiefe draußen hält: unter/neu.md.";
   try {
     let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
     assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
     lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
     assert(lauf.stdout.includes(`Hoch:                ${satz}`), `der Plan nennt die Datei nicht als nicht hochladbar: ${lauf.stdout}`);
     assert(lauf.stdout.includes("hoch 0 Dateien"), `die Summe zählt die Datei als hoch: ${lauf.stdout}`);
+    // Was der Klient wegen des Namens nicht holt, steht im Plan einzeln da und nicht unter „Runter".
+    assert(lauf.stdout.includes(gleichnamig), `der Plan nennt die mit ausgeschlossene Datei nicht einzeln: ${lauf.stdout}`);
+    assert(/Runter: +0 Dateien/.test(lauf.stdout) && !/Runter: +1 Datei/.test(lauf.stdout), `der Plan zählt die Datei unter „Runter", die nicht herunterkommt: ${lauf.stdout}`);
     lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
     assert(lauf.status === 0, `sync endet mit ${lauf.status}: ${lauf.stdout}${lauf.stderr}`);
     assert(lauf.stdout.includes(satz), `sync sagt den Satz nicht: ${lauf.stdout}`);
+    assert(lauf.stdout.includes(gleichnamig), `sync nennt die mit ausgeschlossene Datei nicht einzeln: ${lauf.stdout}`);
     const rufe = klientRufe(klient.protokoll).filter((ruf) => ruf.argv[1] === "buchhaltung");
     assert(rufe.length === 1 && rufe[0].liste.split("\n").includes("neu.md"), `der Klient bekommt die Datei nicht in der Ausschlussliste: ${JSON.stringify(rufe)}`);
     assert(existsSync(join(w.root, "buchhaltung", "neu.md")), "die Datei ist nicht mehr da");
