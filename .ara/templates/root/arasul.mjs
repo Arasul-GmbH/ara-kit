@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.56.0";
+const BRIDGE = "0.57.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -1917,8 +1917,67 @@ function writeBase(local, files, remote = null) {
   renameSync(temporary, baseFile(local));
 }
 
-/** Two states of a file are the same when size and time to the second agree. */
-const alike = (a, b) => a.size === b.size && Math.abs(a.mtime - b.mtime) <= 1;
+/**
+ * Two states of a file are the same when size and time to the second agree, or, where the time
+ * differs, when the content does: `sum` is filled by `settleSums` and only for files of equal size.
+ * A file that was copied without its time (cp without -p, a download, an unzip) has the time of the
+ * copy, and without the sum every such file would be a conflict on the first sync.
+ */
+const alike = (a, b) => a.size === b.size && (Math.abs(a.mtime - b.mtime) <= 1 || (a.sum !== undefined && a.sum === b.sum));
+
+/**
+ * The content sums of the files that lie on both sides with equal size and a different time, and of
+ * those only: a plan over 20 000 files reads nothing where the times agree. Here the file is read,
+ * there it is fetched. A file that cannot be read keeps no sum and stays different, as before.
+ */
+async function settleSums(service, dav, local, here, there) {
+  const open = [...here].filter(([path, file]) => {
+    const other = there.get(path);
+    return other && other.size === file.size && Math.abs(other.mtime - file.mtime) > 1 && !CONFLICT_MARK.test(path.split("/").pop());
+  });
+  const empty = createHash("sha256").digest("hex");
+  const queue = [...open];
+  const worker = async () => {
+    for (let next = queue.shift(); next; next = queue.shift()) {
+      const [path, file] = next;
+      const other = there.get(path);
+      if (file.size === 0) {
+        file.sum = empty;
+        other.sum = empty;
+        continue;
+      }
+      try {
+        const mine = createHash("sha256").update(readFileSync(join(local, file.path))).digest("hex");
+        const answer = await ask(service.target, { path: `${dav}/${path.split("/").map(encodeURIComponent).join("/")}`, basic: service.basic, timeout: 120_000, limit: file.size + 1024, headers: { Accept: "*/*" } });
+        if (answer.status !== 200 || answer.body.length !== file.size) continue;
+        file.sum = mine;
+        other.sum = createHash("sha256").update(answer.body).digest("hex");
+      } catch (error) {
+        // A device that goes away is a device away; anything else leaves the file without a sum.
+        if (error?.unreachable) throw error;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(4, queue.length) }, worker));
+}
+
+/** Is this folder one the person only reads? Nothing goes up from it, the file service refuses it. */
+const readsOnly = (folder) => folder.right === "lesen";
+
+/** The sentence for what lies in a folder that is only read: the plan and the sync say the same. */
+const readOnlySentence = (list) => t(`does not go up, read only: ${fileCount(list.length)}: ${some(list, 3)}`, `geht nicht hoch, nur lesen: ${fileCount(list.length)}: ${some(list, 3)}`);
+
+/**
+ * `comparePlan` for one folder, with the content sums settled first. In a folder that is only read
+ * what would go up cannot: it is named `blocked` instead, and sync keeps it at home.
+ */
+async function comparePlace(service, dav, folder, local, here, there, base) {
+  if (dav) await settleSums(service, dav, local, here.files, there.files);
+  const result = comparePlan(here.files, there.files, base);
+  result.blocked = readsOnly(folder) ? result.up : [];
+  if (readsOnly(folder)) result.up = [];
+  return result;
+}
 
 /**
  * What a sync would do with each file, out of here, there and the state of the last sync.
@@ -2033,7 +2092,7 @@ async function doPlan(args) {
     const dav = davOf(service, folder);
     const there = dav ? await remoteTree(service, dav, excludes) : { files: new Map(), home: new Map(), missing: true };
     const base = readBase(local);
-    compared.push({ folder, local, excludes, here, dav, there, base, result: comparePlan(here.files, there.files, base) });
+    compared.push({ folder, local, excludes, here, dav, there, base, result: await comparePlace(service, dav, folder, local, here, there, base) });
   }
   const limits = await overLimit(device, plan, new Map(compared.map(({ folder, result }) => [folder.path, total(result.up)])));
   for (const { folder, local, excludes, here, dav, there, base, result } of compared) {
@@ -2043,6 +2102,7 @@ async function doPlan(args) {
     if (there.missing) say(`    ${t("The file service shows no room for it to you yet: everything here would go up.", "Der Dateidienst zeigt dir dafür noch keinen Raum: alles hier ginge hoch.")}`);
     say(`    ${base ? t(`Compared with the last sync (${base.size} files).`, `Verglichen mit dem letzten Abgleich (${base.size} Dateien).`) : t("Never synced from here: what lies on one side only goes to the other, nothing is deleted.", "Von hier noch nie abgeglichen: was nur auf einer Seite liegt, geht auf die andere, gelöscht wird nichts.")}`);
     say(`    ${t("Up", "Hoch")}:                ${fileCount(result.up.length)}, ${sized(total(result.up))}${result.up.length ? `: ${some(result.up, 3)}` : ""}`);
+    if (result.blocked.length) say(`    ${t("Up", "Hoch")}:                ${readOnlySentence(result.blocked)}`);
     say(`    ${t("Down", "Runter")}:              ${fileCount(result.down.length)}, ${sized(total(result.down))}${result.down.length ? `: ${some(result.down, 3)}` : ""}`);
     say(`    ${t("Unchanged", "Unverändert")}:         ${fileCount(result.same)}`);
     if (result.conflict.length) {
@@ -2127,7 +2187,7 @@ async function rootRules(service, folder, local, excludes, known = null) {
   const there = known?.there || (await remoteTree(service, dav, excludes));
   const here = known?.here || localTree(local, excludes, { weighHome: false });
   const base = known ? known.base : readBase(local);
-  const result = known?.result || comparePlan(here.files, there.files, base);
+  const result = known?.result || (await comparePlace(service, dav, folder, local, here, there, base));
   const isRoot = existsSync(join(local, ".claude", "root.json"));
   const conflicts = result.conflict.map((item) => item.path);
   let stops = conflicts.filter((path) => RULE_FILES.includes(path));
@@ -2929,6 +2989,11 @@ async function upForLimit(service, plan, order) {
   const rooms = new Map();
   for (const folder of order) {
     if (!folder.space) continue;
+    // Nothing goes up from a folder that is only read, so nothing counts against its limit.
+    if (readsOnly(folder)) {
+      up.set(folder.path, 0);
+      continue;
+    }
     const local = placeOf(folder);
     const here = existsSync(local) ? localTree(local, excludesFor(plan, folder, local), { weighHome: false }) : { files: new Map() };
     const bytes = total([...here.files.values()]);
@@ -2947,7 +3012,7 @@ async function upForLimit(service, plan, order) {
       const excludes = excludesFor(plan, folder, local);
       const dav = davOf(service, folder);
       const there = dav ? await remoteTree(service, dav, excludes) : { files: new Map() };
-      up.set(folder.path, total(comparePlan(here.files, there.files, readBase(local)).up));
+      up.set(folder.path, total((await comparePlace(service, dav, folder, local, here, there, readBase(local))).up));
     }
   }
   return up;
@@ -3013,8 +3078,25 @@ async function syncFolders(args, device, apps = []) {
         if (rules.bridge) await settleBridge(service, local, rules.bridge);
         if (args.flags["keep-mine"] && rules.foreign.length) sayMoved(await moveForeign(service, folder, rules.foreign, rules.there.files));
         const bootstrap = folder.root ? bootstrapBridge(rules.bridge?.way === "up") : null;
+        // What a reader cannot put up stays home: the client would end with its own message and exit 1.
+        let skipped = [];
+        let toClient = excludes;
+        if (service && readsOnly(folder)) {
+          const dav = davOf(service, folder);
+          if (dav) {
+            try {
+              const here = localTree(local, excludes, { weighHome: false });
+              const there = await remoteTree(service, dav, excludes);
+              skipped = (await comparePlace(service, dav, folder, local, here, there, readBase(local))).blocked;
+              // The client keeps a bare name out at every depth: a file at the top goes by its name.
+              toClient = Object.assign([...excludes, ...skipped.map((item) => here.files.get(item.path)?.path || item.path)], { pinned: excludes.pinned });
+            } catch {
+              // Without the list the client runs as before and says what it has to say itself.
+            }
+          }
+        }
         const guard = guardDeletions(local, excludes);
-        const run = runClient({ client, plan, folder, local, excludes: lists.write(excludes), password });
+        const run = runClient({ client, plan, folder, local, excludes: lists.write(toClient), password });
         if (bootstrap) bootstrap.settle();
         const trash = guard.settle();
         if (run.status === 0) {
@@ -3032,6 +3114,7 @@ async function syncFolders(args, device, apps = []) {
           links: seen.links,
           trashed: trash.gone,
           trash: trash.where,
+          skipped,
           at: new Date().toISOString(),
         });
       } catch (error) {
@@ -3059,6 +3142,7 @@ async function syncFolders(args, device, apps = []) {
       say(`      ${result.conflicts.length} ${t("conflicts, the client could not merge them and kept both", "Konflikte, der Klient konnte sie nicht zusammenführen und hat beides behalten")}: ${result.conflicts.slice(0, 5).join(", ")}${result.conflicts.length > 5 ? ", ..." : ""}`);
       clean = false;
     }
+    if (result.skipped?.length) say(`      ${readOnlySentence(result.skipped)}`);
     if (result.links.length) {
       say(`      ${result.links.length} ${t("symbolic links, the client does not sync them", "Symlinks, die gleicht der Klient nicht ab")}: ${result.links.slice(0, 5).join(", ")}${result.links.length > 5 ? ", ..." : ""}`);
       clean = false;
