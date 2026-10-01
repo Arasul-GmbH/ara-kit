@@ -62,6 +62,21 @@ Existiert `business/profile.md` schon, ist das Onboarding gelaufen. Dann gilt de
 „Jedes weitere Mal" unten. `node .ara/tools/init.mjs --show` sagt in drei Zeilen, was
 hinterlegt ist und was fehlt.
 
+### Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Das Onboarding braucht mindestens drei Runden mit Fragen. Die Runden 2 bis 9 unten sind der Weg dorthin, und keine darf wegen eines Punktes dieser Liste entfallen.
+
+- Die Sprache, und der Zweig: Partner oder Firma. Immer zuerst.
+- Wer der Mensch ist, was das Haus tut, und was er selbst kann.
+- Womit das Haus heute arbeitet, je Bereich, und was es behalten will.
+- Wie viel Erklärung er will, und welche Sicherheitsstufe.
+- Was er mit dem Kit in den nächsten Monaten vorhat: einen ersten Kunden, eine erste App, ein erstes Gerät, die eigene Maschine.
+- Partner: die Firmendaten, ob das Kit Rechnungen schreiben darf, und dass die Preise mit `/calculation` kommen.
+- Zugang: wo Geheimnisse liegen, welcher SSH-Schlüssel, ob der Browser von selbst starten darf.
+- Die Sicherung der eigenen Arbeit, und ob ein erstes Gerät bereitsteht.
+
+„Genug" im Freitext beendet die Runden sofort. Das Profil wird mit dem Bekannten geschrieben. Was offen ist, bleibt leer, wird im Abschluss genannt, und das nächste `/init` fragt genau diese Punkte. Ein leeres Feld ist besser als ein erfundenes. Mit einer Antwortdatei gibt es kein Interview, das Werkzeug meldet die Lücken im Profil.
+
 ### Runde 1: Technikcheck, ohne zu fragen
 
 ```

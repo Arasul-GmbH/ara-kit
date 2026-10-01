@@ -39,6 +39,22 @@ hochkommt, sagt nichts über ihre Fassung.
 Es liest nur. Eingriffe sind `--install` und `--deploy-key`, beide weiter unten, beide
 nur auf Wunsch und nach Bestätigung.
 
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Was das Gerät selbst sagen kann (Hardware, System, Docker, Dienste), liest du per SSH, du fragst den Menschen nicht danach.
+
+- Welches Gerät es ist, und ob es einem Kunden oder dem Haus gehört.
+- Wie man hinkommt: Adresse, SSH-Benutzer, Port, Name des Schlüssels, und von wo.
+- Wozu es dient: welche Last, wie viele Leute, welche Apps. Das entscheidet das Urteil.
+- Das Urteil: unterstützt, bald, nicht geeignet, und was daraus folgt.
+- Arasul: ob ein gekaufter Token oder Lizenzcode da ist. Einmal gefragt, ein Nein bleibt vermerkt.
+- Wie weit die Einrichtung ist: die Phase im Laufzettel.
+- Für den ersten Mitarbeiter: wer, und mit welcher Rolle.
+- Wohin die Sicherung geht.
+- Bei der Übergabe: wer dabei ist und wer unterschreibt.
+
+Was offen ist, steht als Annahme mit Datum in der Gerätedatei. Ein Hardwarewert ist nie eine Annahme, er wird gemessen.
+
 ## Wo die Akte liegt
 
 | Gerät | Ort | Aufruf |

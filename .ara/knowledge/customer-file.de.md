@@ -82,12 +82,37 @@ Dann **eine** Interview-Runde mit gebündelten Fragen:
 7. **Besonderheiten.** Branche mit besonderen Anforderungen (Kanzlei, Praxis, Behörde)?
    Bestehende IT-Betreuung, mit der man sich abstimmen muss?
 
-Frag nur, was du brauchst. Bei einem frühen Interessenten reichen die ersten vier Punkte.
+Frag nur, was die Liste „Was geklärt sein muss" weiter unten für den Status des Kunden braucht.
 Ein leeres Feld ist besser als eine erfundene Antwort.
 
 **Am Ende der Runde immer:** Wann willst du dich wieder melden, und worum geht es dann?
 → `follow_up` und `follow_up_note`. Ein Gespräch ohne nächsten Termin ist ein Kunde, den
 man in drei Monaten vergessen hat (Skill `customers`).
+
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Erst nachsehen (Webseite, vorhandene Akte), nur fragen, was noch fehlt. Zwei Stufen, nach Status:
+
+**Sofort, bei jedem ersten Gespräch**
+
+- Kontakt: Name, Rolle, wie erreichbar.
+- Wer entscheidet, wer benutzt es, wer kann es verhindern.
+- Was sie vorhaben, in ihren Worten, ein bis zwei Sätze.
+- Status: erstes Gespräch, Angebot raus, bestellt, Gerät schon da.
+- Der nächste Kontakt: Datum und worum es dann geht (`follow_up`, `follow_up_note`).
+
+**Vor einem Angebot**
+
+- Der Arbeitsschritt hinter dem Wunsch: was heute von Hand geschieht, wie oft, durch wen.
+- Wie viele Leute es benutzen, und in welchen Rollen.
+- Gerät: geklärt welches, bestellt, geliefert, eingerichtet.
+- Ort und Netz: wo es steht, wer dort das Netz betreut.
+- Besonderheiten der Branche: Berufsgeheimnis, Behörde, regulierter Bereich.
+- Vorhandene IT-Betreuung, mit der abzustimmen ist.
+- Wer beim Kunden für den Datenschutz zuständig ist.
+- Was weh tut, wenn nichts geschieht.
+
+Stufe eins reicht für einen frühen Interessenten. Stufe zwei zählt, sobald der Status auf ein Angebot zuläuft.
 
 ## Anlegen: was du schreibst
 

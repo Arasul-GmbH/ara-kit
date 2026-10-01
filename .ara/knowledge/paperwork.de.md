@@ -40,6 +40,21 @@ Kit liefert ihn nicht, weil es nicht weiß, unter welchen Bedingungen der Partne
 verkauft. Was aus dem Angebot zwingend darin auftauchen muss, steht unten unter
 "Vorbehalte, die weiterwandern".
 
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Vor der ersten Zeile eines Angebots. Akte und Verlauf zuerst lesen.
+
+- Für wen das Angebot ist, und wer auf ihrer Seite unterschreibt.
+- Was sie erreichen wollen, in ihren Worten, aus der Akte. Steht es nicht dort, zuerst `/customer`.
+- Der Umfang: welches Gerät oder welche Geräte, wie viele Leute, welche Apps, und was ausdrücklich **nicht** dazugehört.
+- Die Leistungsbeschreibung: jeder Wert aus dem Spiegel oder vom Gerät, keiner aus dem Gedächtnis.
+- Die Preisgrundlage: das Kalkulationsblatt ist für jede Zeile des Angebots vollständig.
+- Die Bedingungen: Gültigkeitsdatum, Zahlungsziel, Lieferzeit, ob Wartung dabei ist, ob es eine Testphase gibt.
+- Anlagen 4 und 5: ob der Kunde einen Datenschutzbeauftragten oder einen Anwalt hat, der sie liest. Bis zu dessen Antwort liegt das Angebot.
+- Die Vorbehalte, die weiterwandern, und das Datum der Wiedervorlage.
+
+Ein fehlender Wert wird nicht durch einen plausiblen ersetzt. Er bleibt ein Platzhalter in geschweiften Klammern, und `pdf.mjs` verweigert, bis er gefüllt ist.
+
 ## Die Reihenfolge
 
 1. **Verstehen und rechnen.** Was der Kunde erreichen will, steht in seiner Akte und in

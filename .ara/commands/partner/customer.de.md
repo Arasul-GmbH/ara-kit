@@ -53,3 +53,5 @@ Halbsatz, worum es dann geht. Das sind drei Zeilen und der Unterschied zwischen 
 Akte und einem Ordner voller Dateien.
 
 Ab jetzt arbeitest du ausschließlich in `customers/$1/`. Kein Blick in andere Kundenordner.
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/customer-file.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

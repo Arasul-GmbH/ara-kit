@@ -93,3 +93,5 @@ dort "bietet dieses Gerät nicht an", und das ist die Antwort. Nicht ergänzen.
 
 Jeder Einsatz endet mit einem Eintrag: bei einem Kundengerät unter
 `customers/<kunde>/history/`, sonst im Laufzettel des Geräts.
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/maintenance-flow.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

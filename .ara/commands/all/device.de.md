@@ -140,3 +140,5 @@ ihm: das braucht kein Gerät, und `.ara/knowledge/extensions.de.md` ist dafür d
 auch der Skill `sales`. Wo die Antwort
 ein Produktwert wäre, an den du nicht herankommst, sag, dass du ihn nicht weißt. Mit Arasul
 auf einem unterstützten Gerät geht es nach dem Verfahren weiter.
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/device.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

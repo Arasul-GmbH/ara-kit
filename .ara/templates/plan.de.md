@@ -38,6 +38,38 @@ benennen: es bleibt am Gerät, und das ist der Punkt.
 
 Was der Reihe nach passiert, aus Sicht des Menschen davor. Ein Schritt je Zeile.
 
+## Bildschirme
+
+Eine Zeile je Seite. Nichts hier ist geraten: was nicht beantwortet wurde, steht unter Annahmen.
+
+| Seite | Weg (eine Ebene tief) | Was darauf steht | Liste oder Einzelheit | Was man zuerst sieht |
+| --- | --- | --- | --- | --- |
+
+## Felder je Formular
+
+Eine Zeile je Feld.
+
+| Formular | Feld | Typ | Pflicht | Beispielwert | Prüfregel |
+| --- | --- | --- | --- | --- | --- |
+
+## Buttons je Rolle
+
+Eine Zeile je Button und Rolle.
+
+| Rolle | Seite | Button | Was danach passiert | Wer Bescheid bekommt |
+| --- | --- | --- | --- | --- |
+
+## Automatik
+
+Ein Block je Automatik, alle sechs Zeilen.
+
+- **Auslöser:**
+- **Kontext ans Modell:** welche Felder und Dokumente, Personenbezogenes benannt
+- **Ergebnis:** was entsteht und wo es landet
+- **Prüfer:** welcher Mensch schaut hin, und was er sieht
+- **Im Fehlerfall:**
+- **Benachrichtigung:** wer, auf welchem Weg
+
 ## Wo ein Flow gebraucht wird
 
 Wo ein Sprachmodell arbeitet und wo nicht. Ein Flow, der nur Daten hin und her schiebt,

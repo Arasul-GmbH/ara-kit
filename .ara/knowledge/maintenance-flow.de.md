@@ -75,6 +75,20 @@ die neben dem Gerät liegt, ist nach einem Wasserschaden auch weg.
 **In eine Leistungsbeschreibung oder ein Übergabeprotokoll kommt nur, was du gesehen
 hast**, mit Datum und mit dem Weg, auf dem du es gesehen hast.
 
+## Was geklärt sein muss
+
+Die Regel steht in `AGENTS.md`, „Every command asks to full depth". Nach der Statuszeile, die du zuerst liest.
+
+- Welches Gerät, und was das Anliegen ist: eine Störung, ein Update, eine Erweiterung, eine Routineprüfung, die Meldung eines Kunden.
+- Bei einer Störung: was die Person gesehen hat, seit wann, was sich vorher geändert hat, ob es sich wiederholen lässt. Frag, was sie getan haben, nicht, was sie vermuten.
+- Wer und was betroffen ist: ein Nutzer, alle, eine App, das ganze Gerät.
+- Bei einem Update: die Fassung jetzt und das Ziel, das Zeitfenster, wer Bescheid wissen muss, der Weg zurück.
+- Bei einer Erweiterung: was sie tun soll, dann `/app`.
+- Die Stufe des Eingriffs (lesen, ändern, unumkehrbar) und dass der Mensch sie bestätigt hat.
+- Ob der Kunde Bescheid bekommt, und von wem.
+
+Ein offener Punkt wird nie zur Erlaubnis. Eine Änderung bleibt unbestätigt, bis der Mensch Ja sagt. Nach „genug" tust du nur, was liest.
+
 ## Die vier Anliegen
 
 ### 1. Es klemmt

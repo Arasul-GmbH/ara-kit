@@ -33,3 +33,11 @@ entry. Routes stay one level deep (`dokumente?nr=17`, not `dokumente/17`).
 once what lies next to it: a document, a mail, a lookup, a tool the office uses anyway, a receipt
 the device reads, clients. The plan names the pattern it uses; after `--new` the tool names this
 sheet.
+
+**Drafts for the follow-up question.** A vague answer in the interview ("with approvals") is
+answered with options that are finished drafts, not with a blank question. Take them from the
+pattern the idea is nearest to and from what the house works with, for instance for a leave
+request on pattern 1: "Request with four fields: from, to, kind of leave, substitute", "Two
+steps: team lead, then personnel", "List of my requests first, form behind a button". Each
+option says in one sentence what it costs. The human picks one, changes it in free text or
+writes their own, and what they write holds.

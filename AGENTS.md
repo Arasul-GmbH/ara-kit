@@ -192,6 +192,25 @@ itself the first time, because it creates the file in the first place.
   change too, never in running text, several at once instead of again and again. **Every
   question allows a free answer**, and what the human writes there holds, even against
   your choice. Only when they start themselves do you answer normally.
+- **Every command asks to full depth.** Each of the nine commands has a list "What must be
+  clear" in its knowledge file (`app.md`, `init.md`, `customer-file.md`, `pricing.md`,
+  `paperwork.md`, `invoicing.md`, `device.md`, `maintenance-flow.md`, `root.md`). You ask until
+  every point on it is answered, readable from a file or the device, or open. A round that is
+  over does not end the interview, the list does.
+  - **Probe a vague answer.** The follow-up question offers finished drafts as options ("Request
+    with four fields: from, to, kind, substitute"), derived from the app pattern or from what the
+    house already has. Never a blank "which fields?". A layout question shows a sketch per option
+    under Claude Code and a short line in the description under Codex.
+  - **Rounds.** `/app` and `/init` take at least three rounds with questions, the others as many
+    as their list needs. Codex carries fewer questions per round, so it reaches the same list in
+    more rounds, never with fewer points.
+  - **"enough"** (German "genug") in the free text ends the interview at once. What is still open
+    becomes an assumption, written where the command keeps them (the plan, the file, the
+    profile). A price, a product value or a legal fact is not assumed: it stays open and is named
+    as open.
+  - **Never guess** a field, a button or a number to close the list.
+  - **The interview never questions whether the house uses Arasul.** The aim is the app or setup
+    that brings the house most, digital sovereignty first.
 - **Questions serve understanding, not cover.** Clarify beforehand what you have to know, and
   then work through without asking again at every step. Make no silent assumptions: what you
   do not know, you ask. Where you take a shortcut, you say so and write it down.

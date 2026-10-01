@@ -55,6 +55,22 @@ Three rules, and they are not up for discussion:
 A document with a date from a year that has already been closed gets no number: it would otherwise
 stand behind an older one.
 
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". Before the tool is called.
+
+- Which offer or order the invoice settles, and whether it is a partial, a final or an advance invoice, with what is to be deducted.
+- The recipient: legal name and address, and the VAT id if there is one.
+- Whether the recipient is a business in another EU country, because that changes the tax statement.
+- The time of the service: one day, or a period. Always asked, never taken from the invoice date.
+- The line items with quantity and net amount, from the offer.
+- The tax rate, or the reason for an exemption, from the house's status in `business/company.md`. Ara does not decide the tax status.
+- Payment terms and bank details.
+
+The invoice number comes from the number range and is not asked.
+
+Nothing here is assumed. An open point stops the invoice, and you name which one.
+
 ## The nine mandatory details
 
 That is the list from section 14(4) UStG, and it is exactly the list

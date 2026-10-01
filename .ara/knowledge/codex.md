@@ -70,7 +70,9 @@ Codex runs the shell in a sandbox that writes only into the kit folder.
 Say it as it is when somebody asks.
 
 - The questions: three per round instead of four, two or three options instead of four, no
-  multiple choice, no preview sketch.
+  multiple choice, no preview sketch. The lists "What must be clear" are the same, so an
+  interview takes more rounds here, and the sketch of a layout option stands in a line of its
+  description.
 - The permissions: Claude Code has an allow and a deny list in `.claude/settings.json`, Codex has
   none of it. The guard is the one fence against reading `.env` and private keys, and it is a text
   search on shell calls. It also stops `remote.mjs --command "rm -rf /"`, but a call built around

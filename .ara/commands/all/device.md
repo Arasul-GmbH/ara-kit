@@ -136,3 +136,5 @@ nothing to it. If the human then asks about Arasul, answer them: that needs no d
 `.ara/knowledge/extensions.md` is there for it, for a partner the skill `sales` too. Where the answer would be a product value you
 cannot reach, say that you do not know it. With Arasul on a supported device it continues
 along the procedure.
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/device.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.

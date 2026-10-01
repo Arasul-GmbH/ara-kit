@@ -41,6 +41,21 @@ The sales contract between the **partner** and their customer is the partner's b
 does not deliver it, because it does not know under which terms the partner sells. What has to
 appear in it from the offer stands below under "Reservations that travel on".
 
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". Before the first line of an offer. Read the file and the history first.
+
+- Who the offer is for, and who signs on their side.
+- What they want to achieve, in their words, from the file. If it is not there, `/customer` first.
+- The scope: which device or devices, how many people, which apps, and what is expressly **not** included.
+- The Leistungsbeschreibung: every value from the mirror or the device, none from memory.
+- The price basis: the calculation sheet is complete for every line of the offer.
+- The terms: validity date, payment terms, delivery time, whether maintenance is included, whether there is a trial phase.
+- Annexes 4 and 5: whether the customer has a data protection officer or a lawyer to read them. The offer lies there until they answer.
+- The reservations that travel on, and the follow-up date.
+
+A missing value is not filled with a plausible one. It stays a placeholder in curly braces, and `pdf.mjs` refuses until it is filled.
+
 ## The order
 
 1. **Understand and calculate.** What the customer wants to achieve stands in their file and in

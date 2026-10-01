@@ -74,6 +74,20 @@ the device is gone too after water damage.
 **Into a service description or a handover record goes only what you have seen**, with a date and
 with the way you saw it.
 
+## What must be clear
+
+The rule is in `AGENTS.md`, "Every command asks to full depth". After the status line, which you read first.
+
+- Which device, and what the request is: a fault, an update, an extension, a routine check, a customer's report.
+- For a fault: what the person saw, since when, what changed before, whether it can be repeated. Ask what they did, not what they suspect.
+- Who and what is affected: one user, all, one app, the whole device.
+- For an update: the version now and the target, the time window, who must be told, the way back.
+- For an extension: what it should do, then `/app`.
+- The level of the intervention (read, change, irreversible) and that the human has confirmed it.
+- Whether the customer is to be told, and by whom.
+
+An open point never becomes a permission. A change stays unconfirmed until the human says yes. After "enough" you do only what reads.
+
 ## The four requests
 
 ### 1. Something is stuck

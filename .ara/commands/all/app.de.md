@@ -38,3 +38,5 @@ das Erste, statt aufzuzählen, was alles ginge.
 Annahme in den Plan. **An ein Gerät**: ohne Akte unter `devices/` zuerst `/device`. Vor dem
 Einspielen sagst du, dass die App noch nicht sichtbar ist, und warum (`.ara/knowledge/deploy.de.md`).
 `--live` ist Stufe 2: frag.
+
+**Tiefe.** Wann die Fragen enden, entscheidet die Liste „Was geklärt sein muss" in `.ara/knowledge/app.de.md`, nicht das Ende einer Runde. Die Regel steht in `AGENTS.md`, „Every command asks to full depth": vage Antworten mit fertigen Entwürfen nachbohren, „genug" im Freitext bricht ab, der Rest wird eine Annahme.

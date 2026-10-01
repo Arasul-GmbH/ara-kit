@@ -38,3 +38,5 @@ first, instead of listing everything possible.
 as an assumption. **To a device**: without a file under `devices/`, `/device` first. Before the
 deploy you say that the app is not yet visible, and why (`.ara/knowledge/deploy.md`). `--live` is
 level 2: ask.
+
+**Depth.** The list "What must be clear" in `.ara/knowledge/app.md` decides when the questions end, not the end of a round. The rule is in `AGENTS.md`, "Every command asks to full depth": probe vague answers with finished drafts, "enough" in the free text ends it, the rest becomes an assumption.
