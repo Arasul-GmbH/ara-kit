@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.59.1 (2026-10-01)
+
+Kontrakt: bis 6
+
+- **Ein Abgleich mit `schreiben` hebt die Brücke am Gerät nur über `deploy` und sagt das.** Bisher legte sich eine neuere lokale Brücke schon beim ersten Abgleich ohne Rückfrage in den Raum, und jedes Konto, das die Wurzel nur liest, lief danach mit einer Fassung, die niemand gewählt hatte. Jetzt behalten `sync` und `sync --plan` die neuere Brücke zu Hause, in jedem Lauf und nicht nur im ersten, setzen sie auf die Ausschlussliste des Klienten und nennen `node arasul.mjs deploy` als Weg, die am Gerät zu heben. Eine ältere lokale Brücke nimmt weiter die neuere des Raums und sagt es. `deploy` hebt die neuere Brücke wie bisher.
+- **Die Meldung zu einem Namen, den der Klient draußen hält, sagt, wann die Datei kommt.** In einem Ordner, den du nur liest, ergänzt „Benenne die oben um oder nimm sie weg“ jetzt, dass die Datei selbst erst herunterkommt, wenn sie am Gerät neu gespeichert wird.
+- **Am Orin gemessen, 01.10.2026,** mit einem gestempelten Probe-Administrator (wieder gelöscht, Papierkorb bei 0) in einer Wurzel im Scratchpad, `ARASUL_CONFIG_DIR` gesetzt: `sync --plan` nennt die neuere Brücke (0.59.0 hier, von vor 0.51.0 am Gerät) und deploy als Weg. Der Schreibfall ist nicht live gemessen: ein Administrator schreibt `firma`, den echten Ordner, und einen Probe-Raum der Wurzel gibt es nicht. Er ist an der Attrappe gehalten, zwei Abgleiche hintereinander, der Raum jedes Mal unverändert.
+
 ## 0.59.0 (2026-10-01)
 
 Kontrakt: bis 6

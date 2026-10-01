@@ -199,7 +199,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.59.0";
+const BRIDGE = "0.59.1";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -2000,8 +2000,8 @@ function heldByName(result, here, there) {
 
 /** The sentence for what stays out of a read-only folder because a file of its name lies at the top. */
 const heldSentence = (held) => t(
-  `stays out as well, because a file of the same name lies at the top here and cannot go up, and the client keeps a name out at every depth: ${held.slice(0, 8).join(", ")}${held.length > 8 ? ", ..." : ""}. Rename or move the one at the top, then these are synced.`,
-  `bleibt auch draußen, weil oben hier eine Datei gleichen Namens liegt, die nicht hochgeht, und der Klient einen Namen in jeder Tiefe draußen hält: ${held.slice(0, 8).join(", ")}${held.length > 8 ? ", ..." : ""}. Benenne die oben um oder nimm sie weg, dann werden diese abgeglichen.`
+  `stays out as well, because a file of the same name lies at the top here and cannot go up, and the client keeps a name out at every depth: ${held.slice(0, 8).join(", ")}${held.length > 8 ? ", ..." : ""}. Rename or move the one at the top, then these are synced: the file itself only comes down once it is saved anew on the device.`,
+  `bleibt auch draußen, weil oben hier eine Datei gleichen Namens liegt, die nicht hochgeht, und der Klient einen Namen in jeder Tiefe draußen hält: ${held.slice(0, 8).join(", ")}${held.length > 8 ? ", ..." : ""}. Benenne die oben um oder nimm sie weg, dann werden diese abgeglichen; die Datei selbst kommt erst herunter, wenn sie am Gerät neu gespeichert wird.`
 );
 
 /**
@@ -2141,7 +2141,6 @@ async function doPlan(args) {
     if (limits.has(folder.path)) say(`    ${t("sync stops here", "sync hält hier an")}: ${limits.get(folder.path)}`);
     if (rules.stop.length) say(`    ${t(`sync stops here: ${rules.stop.join(", ")} make this root and differ on both sides. Keep one version on both sides first, or sync --keep-mine.`, `sync hält hier an: ${rules.stop.join(", ")} machen diese Wurzel aus und sind auf beiden Seiten verschieden. Behalte zuerst eine Fassung auf beiden Seiten, oder sync --keep-mine.`)}`);
     if (rules.bridge?.keep) say(`    ${keepBridgeSentence(rules.bridge)}`);
-    else if (rules.bridge?.way === "up") say(`    ${t(`arasul.mjs: this bridge (${versionText(rules.bridge.ours)}) is newer than the one in the room (${versionText(rules.bridge.theirs)}), sync puts it into the room without asking, deploy does it too without a further sync.`, `arasul.mjs: diese Brücke (${versionText(rules.bridge.ours)}) ist neuer als die im Raum (${versionText(rules.bridge.theirs)}), sync legt sie ohne Rückfrage in den Raum, deploy tut es auch ohne weiteren Abgleich.`)}`);
     if (rules.bridge?.way === "down") say(`    ${t(`arasul.mjs: the bridge in the room (${versionText(rules.bridge.theirs)}) is newer than this one (${versionText(rules.bridge.ours)}), sync takes it.`, `arasul.mjs: die Brücke im Raum (${versionText(rules.bridge.theirs)}) ist neuer als diese (${versionText(rules.bridge.ours)}), sync nimmt sie.`)}`);
     if (rules.foreign.length && (rules.first || rules.stop.length)) {
       say(`    ${t(
@@ -2193,7 +2192,10 @@ function newer(a, b) {
 }
 
 /** A reader cannot put its newer bridge into the room: it keeps it here, and says who lifts the one on the device. */
-const keepBridgeSentence = (bridge) => t(
+const keepBridgeSentence = (bridge) => bridge.writes ? t(
+  `arasul.mjs: this bridge (${versionText(bridge.ours)}) is newer than the one on the device (${versionText(bridge.theirs)}). sync does not put it into the room, because every account that reads this root runs the one there; it keeps this one here and makes no conflicted copy. To lift the one on the device, run \`node arasul.mjs deploy\`.`,
+  `arasul.mjs: diese Brücke (${versionText(bridge.ours)}) ist neuer als die am Gerät (${versionText(bridge.theirs)}). sync legt sie nicht in den Raum, weil jedes Konto, das diese Wurzel liest, die dort ausführt; es behält diese hier und legt keine Konfliktkopie an. Um die am Gerät zu heben, führe \`node arasul.mjs deploy\` aus.`
+) : t(
   `arasul.mjs: this bridge (${versionText(bridge.ours)}) is newer than the one on the device (${versionText(bridge.theirs)}). You only read this root, so sync keeps this one here and makes no conflicted copy; the one on the device stays older until somebody with 'schreiben' runs deploy.`,
   `arasul.mjs: diese Brücke (${versionText(bridge.ours)}) ist neuer als die am Gerät (${versionText(bridge.theirs)}). Du liest diese Wurzel nur, darum behält sync diese hier und legt keine Konfliktkopie an; die am Gerät bleibt älter, bis jemand mit 'schreiben' deploy ausführt.`
 );
@@ -2207,26 +2209,27 @@ const ASIDE = () => `.claude/${t("device-old", "geraet-alt")}`;
  * What the root's own files say before the client runs, for a person who writes the root.
  *
  * `stop`: files that make the root and differ on both sides; a sync stops at them unless the
- * person says `--keep-mine`. `bridge`: the bridge differs, and one side is the newer version; the
- * newer one takes the place of the older one on both sides, without anybody deciding it, because
- * the bridge is a file of the kit and not of the house. `foreign`: what `--keep-mine` moves aside,
+ * person says `--keep-mine`. `bridge`: the bridge differs, and one side is the newer version. A newer
+ * room's bridge takes the place of the older one here. A newer bridge here goes into the room only
+ * where `lifts` is set, which is `deploy`: the room's bridge is what every reader runs, so a sync
+ * keeps the newer one at home and names `deploy`. `foreign`: what `--keep-mine` moves aside,
  * the device's version of every file that conflicts and, at the first sync of a root that is one
  * already here, every file only the device has: that is the root of another house, or an older one
  * of this. Readers get the device's version, and that is right: the rules are the house's.
  */
-async function rootRules(service, folder, local, excludes, known = null) {
+async function rootRules(service, folder, local, excludes, known = null, lifts = false) {
   // A reader's bridge is a courtesy: where the room cannot be listed, the client runs as before and says it itself.
   if (folder.root && folder.right !== "schreiben") {
     try {
-      return await rootRulesOf(service, folder, local, excludes, known);
+      return await rootRulesOf(service, folder, local, excludes, known, lifts);
     } catch {
       return { stop: [], bridge: null, foreign: [], there: null };
     }
   }
-  return rootRulesOf(service, folder, local, excludes, known);
+  return rootRulesOf(service, folder, local, excludes, known, lifts);
 }
 
-async function rootRulesOf(service, folder, local, excludes, known) {
+async function rootRulesOf(service, folder, local, excludes, known, lifts) {
   const none = { stop: [], bridge: null, foreign: [], there: null };
   if (!folder.root) return none;
   // A reader is not asked for the rules of the root, but the bridge is a file of the kit: a newer one
@@ -2242,18 +2245,18 @@ async function rootRulesOf(service, folder, local, excludes, known) {
   const conflicts = result.conflict.map((item) => item.path);
   let stops = conflicts.filter((path) => RULE_FILES.includes(path));
   let bridge = null;
-  // A reader's newer bridge is looked at whenever the two differ, not only at a conflict: after the first
+  // A newer bridge here is looked at whenever the two differ, not only at a conflict: after the first
   // sync the state holds each side against its own past, so the pair no longer counts as a conflict, and
   // the client would still put the room's older file at the name (measured 2026-10-01 at a device, second run).
   const hereBridge = here.files.get("arasul.mjs");
   const thereBridge = there.files.get("arasul.mjs");
-  const readerDiffers = !writes && hereBridge && thereBridge && !alike(hereBridge, thereBridge);
-  if ((conflicts.includes("arasul.mjs") || readerDiffers) && existsSync(join(local, "arasul.mjs"))) {
+  const differs = hereBridge && thereBridge && !alike(hereBridge, thereBridge);
+  if ((conflicts.includes("arasul.mjs") || differs) && existsSync(join(local, "arasul.mjs"))) {
     const answer = await ask(service.target, { path: `${dav}/arasul.mjs`, basic: service.basic, timeout: 60_000 });
     const theirs = answer.status === 200 ? answer.body : null;
     const ours = readFileSync(join(local, "arasul.mjs"));
     const order = theirs ? newer(bridgeVersion(ours), bridgeVersion(theirs)) : 0;
-    if (order > 0) bridge = { way: "up", keep: !writes, ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), dav, body: ours, mtime: Math.floor(statSync(join(local, "arasul.mjs")).mtimeMs / 1000) };
+    if (order > 0) bridge = { way: "up", keep: !(writes && lifts), writes, ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), dav, body: ours, mtime: Math.floor(statSync(join(local, "arasul.mjs")).mtimeMs / 1000) };
     else if (order < 0 && isRoot && conflicts.includes("arasul.mjs")) bridge = { way: "down", ours: bridgeVersion(ours), theirs: bridgeVersion(theirs), body: theirs, mtime: there.files.get("arasul.mjs")?.mtime };
     // A folder that becomes a root takes the room's bridge anyway, see bootstrapBridge.
     if (bridge || !isRoot) stops = stops.filter((path) => path !== "arasul.mjs");
@@ -4157,7 +4160,7 @@ async function doDeploy(args) {
   await pickAddress(plan, device);
   const service = await spacesOf(plan, device, password);
   {
-    const rules = await rootRules(service, room, ROOT, excludes);
+    const rules = await rootRules(service, room, ROOT, excludes, null, true);
     if (rules.stop.length && !args.flags["keep-mine"]) stop(`${ruleStop(rules.stop)} ${t("Nothing was deployed.", "Nichts wurde ausgerollt.")}`);
     if (rules.bridge) await settleBridge(service, ROOT, rules.bridge);
     if (args.flags["keep-mine"] && rules.foreign.length) sayMoved(await moveForeign(service, room, rules.foreign, rules.there.files));

@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.59.1 (2026-10-01)
+
+Contract: up to 6
+
+- **A sync with `schreiben` lifts the bridge on the device only through `deploy`, and says so.** Until now a newer local bridge went into the room at the first sync without a question, and every account that only reads the root ran a version nobody had chosen. Now `sync` and `sync --plan` keep the newer bridge at home, in every run and not only the first, put it on the client's exclusion list, and name `node arasul.mjs deploy` as the way to lift the one on the device. An older local bridge still takes the room's newer one, and says so. `deploy` lifts the newer bridge as before.
+- **The message for a name the client keeps out says when the file comes.** In a folder you only read, "rename or move the one at the top" now adds that the file itself only comes down once it is saved anew on the device.
+- **Measured at the Orin, 01.10.2026,** with a stamped probe administrator (deleted again, trash at 0) in a scratch root, `ARASUL_CONFIG_DIR` set: `sync --plan` names the newer bridge (0.59.0 here, from before 0.51.0 on the device) and deploy as the way. The write case is not measured live: an administrator writes `firma`, the real folder, and no probe room of the root exists. It is held by the test double, two syncs in a row, room unchanged each time.
+
 ## 0.59.0 (2026-10-01)
 
 Contract: up to 6

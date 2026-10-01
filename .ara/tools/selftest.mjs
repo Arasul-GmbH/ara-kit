@@ -11087,14 +11087,20 @@ await checkAsync("Eine neuere Brücke löst die ältere im Raum ab, ohne --keep-
   writeFileSync(join(lager, "firma", "arasul.mjs"), alte);
   const plan = { adresse: FO_ADRESSE, ordner: [{ ...FO_WURZEL, recht: "schreiben" }] };
   const geraet = await brueckeGeraet({ firmenordner: plan, lager, rolle: "admin" });
-  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const umgebung = { ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager, ARA_PROBE_LISTE: "1" };
   try {
     let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: passwort });
     assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
     lauf = await bruecke(w, ["sync", "--plan", "--password-stdin"], { input: passwort, env: umgebung });
-    assert(!/hält hier an/.test(lauf.stdout) && /arasul\.mjs: diese Brücke \([\d.]+\) ist neuer als die im Raum \(von vor 0\.51\.0\), sync legt sie ohne Rückfrage in den Raum/.test(lauf.stdout), `der Plan sagt die neuere Brücke nicht oder hält an: ${lauf.stdout}`);
+    assert(!/hält hier an/.test(lauf.stdout) && /arasul\.mjs: diese Brücke \([\d.]+\) ist neuer als die am Gerät \(von vor 0\.51\.0\)\. sync legt sie nicht in den Raum.*node arasul\.mjs deploy/.test(lauf.stdout), `der Plan nennt deploy als Weg für die neuere Brücke nicht oder hält an: ${lauf.stdout}`);
     lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
-    assert(lauf.status === 0 && readFileSync(join(lager, "firma", "arasul.mjs"), "utf8") === vorlage && readFileSync(join(w.root, "arasul.mjs"), "utf8") === vorlage, `die neuere Brücke hat die ältere im Raum nicht abgelöst: ${lauf.stdout}${lauf.stderr}`);
+    // K20: ein Konto mit schreiben hebt die Brücke am Gerät nur über deploy; zweimal sync ändern den Raum nicht.
+    for (let mal = 0; mal < 2; mal += 1) {
+      assert(lauf.status === 0 && /node arasul\.mjs deploy/.test(lauf.stdout), `sync ${mal + 1} endet nicht grün oder nennt deploy nicht: ${lauf.status} ${lauf.stdout}${lauf.stderr}`);
+      assert(readFileSync(join(lager, "firma", "arasul.mjs"), "utf8") === alte, `sync ${mal + 1} hat die Brücke im Raum angefasst`);
+      assert(readFileSync(join(w.root, "arasul.mjs"), "utf8") === vorlage, `sync ${mal + 1}: die neuere Brücke hier ging verloren`);
+      if (mal === 0) lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
+    }
     assert(!readdirSync(w.root).some((name) => /conflict|Gerät/.test(name)), `neben der Brücke liegt eine Konfliktkopie: ${readdirSync(w.root).join(", ")}`);
 
     // 2. Im Raum liegt eine neuere: sie nimmt hier den Platz, ohne Anhalten.
@@ -11103,7 +11109,7 @@ await checkAsync("Eine neuere Brücke löst die ältere im Raum ab, ohne --keep-
     lauf = await bruecke(w, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
     assert(lauf.status === 0 && /die Brücke im Raum \(9\.9\.9\) ist neuer als diese/.test(lauf.stdout) && readFileSync(join(w.root, "arasul.mjs"), "utf8") === neuere, `die neuere Brücke im Raum kam nicht herunter: ${lauf.stdout}${lauf.stderr}`);
 
-    // 3. Ein Admin mit der Brücke allein in einem leeren Ordner, im Raum die ältere: kein Anhalten, diese geht hinein.
+    // 3. Ein Admin mit der Brücke allein in einem leeren Ordner, im Raum die ältere: kein Anhalten, die Brücke im Raum bleibt.
     writeFileSync(join(lager, "firma", "arasul.mjs"), alte);
     const leer = join(wegwerfordner("ara-leer-bruecke-"), "neu");
     mkdirSync(leer);
@@ -11111,7 +11117,7 @@ await checkAsync("Eine neuere Brücke löst die ältere im Raum ab, ohne --keep-
     const w2 = { root: leer, env: w.env };
     lauf = await bruecke(w2, ["sync", "--client", klient.pfad, "--password-stdin"], { input: passwort, env: umgebung });
     assert(lauf.status === 0 && !/Nicht abgeglichen/.test(lauf.stdout), `aus dem leeren Ordner hält sync an der Brücke an: ${lauf.stdout}${lauf.stderr}`);
-    assert(readFileSync(join(lager, "firma", "arasul.mjs"), "utf8") === vorlage && readFileSync(join(leer, "arasul.mjs"), "utf8") === vorlage && existsSync(join(leer, ".claude", "root.json")), `aus dem leeren Ordner löste die Brücke die ältere nicht ab oder die Wurzel kam nicht herunter: ${readdirSync(leer).join(", ")}`);
+    assert(readFileSync(join(lager, "firma", "arasul.mjs"), "utf8") === alte && readFileSync(join(leer, "arasul.mjs"), "utf8") === vorlage && existsSync(join(leer, ".claude", "root.json")), `aus dem leeren Ordner blieb die Brücke nicht stehen oder die Wurzel kam nicht herunter: ${readdirSync(leer).join(", ")}`);
   } finally {
     await geraet.schliessen();
   }
