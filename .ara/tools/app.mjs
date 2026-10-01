@@ -126,6 +126,7 @@ import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } f
 import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { connectionFindings, describeConnections } from "./lib/connections.mjs";
+import { describePatterns } from "./lib/patterns.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
@@ -155,6 +156,7 @@ if (process.argv.length <= 2) {
         "  --plan-aktiv <file>      plan from open to active, at most one",
         "  --plan-erledigt <file>   plan from active to done",
         '  --connections "<text>"   which outside services and research a description names, in plain words',
+        '  --patterns "<text>"      which ready-made pattern a description matches, with its sheet',
         "  --build                  build the package, result under build/. Needs an active plan",
         "  --no-plan                with --build: build without an active plan, on purpose",
         "",
@@ -191,6 +193,7 @@ if (process.argv.length <= 2) {
         "  --plan-aktiv <datei>     Plan von offen nach aktiv, höchstens einer",
         "  --plan-erledigt <datei>  Plan von aktiv nach erledigt",
         '  --connections "<text>"   welche Dienste und Recherche von außen eine Beschreibung nennt, in einfachen Worten',
+        '  --patterns "<text>"      zu welchem fertigen Muster eine Beschreibung passt, mit seinem Blatt',
         "  --build                  Paket bauen, Ergebnis unter build/. Braucht einen aktiven Plan",
         "  --no-plan                mit --build: ohne aktiven Plan bauen, bewusst",
         "",
@@ -243,6 +246,12 @@ for (const [name, value] of [
 if (arg.connections !== undefined) {
   if (arg.connections === true) fail(t('--connections needs the description: --connections "<text>".', '--connections braucht die Beschreibung: --connections "<text>".'));
   console.log(describeConnections(arg.connections));
+  process.exit(0);
+}
+
+if (arg.patterns !== undefined) {
+  if (arg.patterns === true) fail(t('--patterns needs the description: --patterns "<text>".', '--patterns braucht die Beschreibung: --patterns "<text>".'));
+  console.log(describePatterns(arg.patterns));
   process.exit(0);
 }
 

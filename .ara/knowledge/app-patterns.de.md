@@ -1,4 +1,4 @@
-# Verfahren: acht Muster einer App jenseits des Formulars
+# Verfahren: neun Muster einer App jenseits des Formulars
 
 > **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann, wenn
 > jemand Arasul für ein Formularwerkzeug hält. Das Gerät bringt Anmeldung, Freigaben, Flows und
@@ -23,6 +23,7 @@ einen Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage.
 | 6. Dokument auslesen | Felder aus einem Beleg, geprüft, jede Auslesung protokolliert | `.ara/templates/app-patterns/extract/README.de.md` |
 | 7. Mandanten | Wer welchen Mandanten sieht, wer entscheidet | `.ara/templates/app-patterns/clients/README.de.md` |
 | 8. Belege je Mandant | 2, 6 und 7 zusammen: Beleg am Vorgang, ausgelesen, je Mandant getrennt | `.ara/templates/app-patterns/receipts/README.de.md` |
+| 9. Buchungsstapel für den Steuerberater | Eine DATEV-Datei aus freigegebenen Buchungen, Konten des SKR03, ein Prüfskript, das vor jedem Herunterladen läuft | `.ara/templates/app-patterns/datev/README.de.md` |
 
 **Muster 1 ist die Vorlage**: eine `Route` je Seite in `Wege()` von
 `.ara/templates/app/frontend/src/app.tsx`, die `Seitenleiste` der Bibliothek in
@@ -33,7 +34,9 @@ tief (`dokumente?nr=17`, nicht `dokumente/17`).
 **Was `/app` damit tut.** Der Wunsch ist oft klein, „ein Formular für den Urlaubsantrag". Nenne
 einmal, was daneben liegt: ein Dokument, eine Mail, ein Nachschlagen, ein Werkzeug, das das Büro
 ohnehin nutzt, ein Beleg, den das Gerät ausliest, Mandanten. Der Plan nennt das Muster, das er
-benutzt; nach `--new` nennt das Werkzeug dieses Blatt.
+benutzt; nach `--new` nennt das Werkzeug dieses Blatt. **Beschreibt jemand eine Kanzlei, einen
+Steuerberater oder Buchhaltung**: `node .ara/tools/app.mjs --patterns "<die Beschreibung bisher>"` nennt
+Muster 9 und seine Grenze, und du bietest es als Frage an.
 
 **Entwürfe für die Folgefrage.** Auf eine vage Antwort im Interview („mit Freigaben") antwortest
 du mit Optionen, die fertige Entwürfe sind, nicht mit einer leeren Frage. Nimm sie aus dem

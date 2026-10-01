@@ -87,4 +87,5 @@ Whatever could not be checked stands as an assumption in the plan. **Before swit
 sample file goes to whoever processes it, the tax adviser with their import, and their answer is the
 proof. A check script for the format lives in the app and runs at every export in staging. Promised
 is not "GoBD compliant" or "DATEV certified", but what the app does: which format, which version,
-traceable by what.
+traceable by what. **For the DATEV booking batch the code and the check script exist**: pattern 9,
+`.ara/templates/app-patterns/datev/README.md`, with its source and date of retrieval.
