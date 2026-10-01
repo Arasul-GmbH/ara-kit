@@ -7359,6 +7359,222 @@ await checkAsync("--keys markiert den eigenen Schluessel, --revoke-key widerruft
   }
 });
 
+// --- Uebergabe an den Kunden ---------------------------------------------------
+
+await checkAsync("transfer.mjs: vorbereiten, uebernehmen mit eigenen Schluesseln, alte widerrufen, beweisen", async () => {
+  const work = mkdtempSync(join(tmpdir(), "ara-uebergabe-"));
+  const geraet = join(work, "geraet");
+  const state = join(work, "kit-state.txt");
+  const bauen = (name) => {
+    const home = join(work, name);
+    mkdirSync(join(home, ".ssh"), { recursive: true });
+    symlinkSync(join(geraet, ".ssh", "authorized_keys"), join(home, ".ssh", "authorized_keys"));
+    // Das Skript muss eine echte Datei sein: `find` folgt keinem Link. Es arbeitet auf einer
+    // Zustandsdatei mit absolutem Pfad, also sieht jede Kopie dasselbe Geraet.
+    mkdirSync(join(home, "arasul", "arasul-jet", "scripts", "util"), { recursive: true });
+    return home;
+  };
+  const keygen = (pfad) =>
+    assert(spawnSync("ssh-keygen", ["-t", "ed25519", "-N", "", "-q", "-f", pfad, "-C", "test"]).status === 0, "ssh-keygen fehlt");
+  const kopie = (ziel) => {
+    mkdirSync(join(ziel, ".ara"), { recursive: true });
+    for (const teil of ["tools", "templates"]) cpSync(join(ROOT, ".ara", teil), join(ziel, ".ara", teil), { recursive: true });
+    copyFileSync(join(ROOT, ".ara", "VERSION"), join(ziel, ".ara", "VERSION"));
+    copyFileSync(join(ROOT, ".gitignore"), join(ziel, ".gitignore"));
+  };
+  let server;
+  let skriptKopieren;
+  try {
+    // Die Attrappe des Geraets: Anmeldeschluessel und die drei Befehle der Kit-Schluessel.
+    mkdirSync(join(geraet, ".ssh"), { recursive: true });
+    mkdirSync(join(geraet, "arasul", "arasul-jet", "scripts", "util"), { recursive: true });
+    const giverHome = bauen("home-giver");
+    keygen(join(giverHome, ".ssh", "kolja"));
+    keygen(join(work, "support"));
+    writeFileSync(
+      join(geraet, ".ssh", "authorized_keys"),
+      readFileSync(join(giverHome, ".ssh", "kolja.pub"), "utf8") + readFileSync(join(work, "support.pub"), "utf8")
+    );
+    writeFileSync(
+      state,
+      "gueltig      40  aras_oldkey1234  Ara-Kit Faktum   angelegt 2026-09-01\n" +
+        "gueltig      39  aras_inst9999   Erstinstallation angelegt 2026-08-01\n"
+    );
+    writeFileSync(
+      join(geraet, "arasul", "arasul-jet", "scripts", "util", "kit-schluessel.sh"),
+      `#!/bin/sh\ncase "$1" in\n  liste) printf '%b' "$(cat ${JSON.stringify(state)})" ;;\n` +
+        `  anlegen) n=$(wc -l < ${JSON.stringify(state)} | tr -d ' '); printf 'gueltig      %s  aras_newkey%s   %s   angelegt heute\\n' "$n" "$n" "$2" >> ${JSON.stringify(state)}; ` +
+        `echo "Schlüssel (nur jetzt sichtbar): aras_newkey\${n}SECRETneu0123456789"; echo "Präfix: aras_newkey$n" ;;\n` +
+        `  widerrufen) awk -v p="$2" '$3==p{$1="widerrufen"}1' ${JSON.stringify(state)} > ${JSON.stringify(state)}.neu && cat ${JSON.stringify(state)}.neu > ${JSON.stringify(state)}; echo "widerrufen $2" ;;\n` +
+        `  *) exit 2 ;;\nesac\n`,
+      { mode: 0o755 }
+    );
+
+    const skript = join(geraet, "arasul", "arasul-jet", "scripts", "util", "kit-schluessel.sh");
+    skriptKopieren = (home) => copyFileSync(skript, join(home, "arasul", "arasul-jet", "scripts", "util", "kit-schluessel.sh"));
+    skriptKopieren(giverHome);
+
+    // Der Kit-Ordner des Uebergebenden.
+    const giver = join(work, "kit-giver");
+    kopie(giver);
+    mkdirSync(join(giver, "business"), { recursive: true });
+    mkdirSync(join(giver, "devices", "orin"), { recursive: true });
+    mkdirSync(join(giver, "apps", "urlaub"), { recursive: true });
+    writeFileSync(join(giver, "business", "profile.md"), "---\nrole: company\nlanguage: de\nname: Faktum\n---\n\nProfil.\n");
+    writeFileSync(join(giver, "business", "company.md"), "---\nname: Faktum\n---\n");
+    cpSync(join(ROOT, ".ara", "templates", "device.md"), join(giver, "devices", "orin", "device.md"));
+    writeFrontmatter(join(giver, "devices", "orin", "device.md"), {
+      name: "orin",
+      address: "localhost",
+      ssh_port: "1",
+      ssh_user: "probe",
+      ssh_key: "kolja",
+      arasul: "found",
+      verdict: "supported",
+      api_key_ref: "ARASUL_KEY_ORIN",
+    });
+    writeFileSync(join(giver, "apps", "urlaub", "app.json"), "{}\n");
+    const giverEnv = join(work, "giver.env");
+    writeFileSync(giverEnv, "ARASUL_KEY_ORIN=aras_oldkey1234SECRETalt0123456789\n");
+
+    const lauf = (kit, home, envDatei, args, extra = {}) =>
+      spawnSync("node", [join(kit, ".ara", "tools", "transfer.mjs"), ...args], {
+        encoding: "utf8",
+        cwd: kit,
+        env: { ...process.env, HOME: home, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_ENV_FILE: envDatei, ...extra },
+      });
+
+    // Vorbereiten: ohne --yes nur der Plan.
+    let run = lauf(giver, giverHome, giverEnv, ["--prepare"]);
+    assert(run.status === 0, `--prepare ohne --yes fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(!existsSync(join(giver, "business", "handover.md")), "der Plan hat schon geschrieben");
+    assert(/aras_oldkey1234/.test(run.stdout) && /SHA256:/.test(run.stdout), `der Plan nennt Praefix und Fingerabdruck nicht: ${run.stdout}`);
+
+    // Ein Geheimnis in einer Datei haelt die Uebergabe an.
+    writeFileSync(join(giver, "apps", "urlaub", ".env"), "X=1\n");
+    run = lauf(giver, giverHome, giverEnv, ["--prepare", "--yes"]);
+    assert(run.status === 1 && /\.env/.test(run.stdout), `eine .env im Ordner haelt nicht an: ${run.stdout}`);
+    rmSync(join(giver, "apps", "urlaub", ".env"));
+    writeFileSync(join(giver, "devices", "orin", "runsheet.md"), "Passwort: hunter2hunter2\n");
+    run = lauf(giver, giverHome, giverEnv, ["--prepare", "--yes"]);
+    assert(run.status === 1 && /Passwort/.test(run.stdout) && !/hunter2/.test(run.stdout), `ein Passwort haelt nicht an oder wird gezeigt: ${run.stdout}`);
+    writeFileSync(join(giver, "devices", "orin", "runsheet.md"), "Startpasswort liegt unter ARASUL_START_ORIN.\n");
+    assert(!existsSync(join(giver, "business", "handover.md")), "trotz Fund wurde geschrieben");
+
+    run = lauf(giver, giverHome, giverEnv, ["--prepare", "--yes", "--to", "Anton Labzin"]);
+    assert(run.status === 0, `--prepare --yes fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    const blatt = readFileSync(join(giver, "business", "handover.md"), "utf8");
+    assert(/^old_kit_orin: aras_oldkey1234$/m.test(blatt), `Praefix fehlt im Blatt: ${blatt.slice(0, 400)}`);
+    assert(/^old_ssh_orin: SHA256:/m.test(blatt), "Fingerabdruck fehlt im Blatt");
+    assert(!/SECRETalt/.test(blatt), "ein Klartext steht im Uebergabeblatt");
+    assert(/Anton Labzin/.test(blatt) && /Was danach nicht mehr geht/.test(blatt), "das Blatt fehlt oder ist nicht in einfacher Sprache");
+    assert(!/[\u2014\u2013]/.test(blatt), "Gedankenstriche im Uebergabeblatt");
+    assert(/^versioned: business, devices, apps$/m.test(readFileSync(join(giver, "business", "profile.md"), "utf8")), "versioned fehlt im Profil");
+    const ignore = readFileSync(join(giver, ".gitignore"), "utf8");
+    assert(/^!\/business\/$/m.test(ignore) && /^!\/devices\/$/m.test(ignore) && /^!\/apps\/$/m.test(ignore), "die Ausnahmen fehlen in der .gitignore");
+    // Wiederholbar: kein zweiter Block.
+    run = lauf(giver, giverHome, giverEnv, ["--prepare", "--yes"]);
+    assert((readFileSync(join(giver, ".gitignore"), "utf8").match(/^!\/business\/$/gm) || []).length === 1, "die Ausnahmen stehen doppelt");
+    // Beim Uebergebenden ist die Uebergabe vorbereitet, aber er ist nicht der Uebernehmende.
+    run = lauf(giver, giverHome, giverEnv, ["--status"]);
+    assert(/vorbereitet/.test(run.stdout) && !/übernehmende/.test(run.stdout), `der Uebergebende gilt als Uebernehmender: ${run.stdout}`);
+    // Als Klon im Repository: nichts Geheimes im Verfolgten.
+    const git = (...a) => spawnSync("git", ["-c", "user.name=T", "-c", "user.email=t@example.invalid", ...a], { cwd: giver, encoding: "utf8" });
+    git("init", "-q", "-b", "main");
+    git("add", "-A");
+    const verfolgt = git("ls-files").stdout;
+    for (const pfad of ["business/handover.md", "business/profile.md", "devices/orin/device.md", "apps/urlaub/app.json"]) {
+      assert(verfolgt.split("\n").includes(pfad), `${pfad} wird nach der Vorbereitung nicht verfolgt`);
+    }
+    assert(!/SECRET|aras_oldkey1234SECRET/.test(spawnSync("git", ["grep", "-I", "SECRET", "--cached", "--", "business", "devices", "apps"], { cwd: giver, encoding: "utf8" }).stdout), "ein Klartext wird verfolgt");
+
+    // Der Uebernehmende: eine Kopie ohne Schluessel, eigener Rechner, eigene Ablage.
+    const taker = join(work, "kit-taker");
+    kopie(taker);
+    for (const ordner of ["business", "devices", "apps"]) cpSync(join(giver, ordner), join(taker, ordner), { recursive: true });
+    copyFileSync(join(giver, ".gitignore"), join(taker, ".gitignore"));
+    const takerHome = bauen("home-taker");
+    skriptKopieren(takerHome);
+    const takerEnv = join(work, "taker.env");
+    writeFileSync(takerEnv, "");
+    run = lauf(taker, takerHome, takerEnv, ["--status"]);
+    assert(/übernehmende für orin/.test(run.stdout), `die Uebernahme wird nicht erkannt: ${run.stdout}`);
+
+    run = lauf(taker, takerHome, takerEnv, ["--accept"]);
+    assert(run.status === 0 && /Plan/.test(run.stdout), `--accept ohne --yes: ${run.stderr}${run.stdout}`);
+    assert(!existsSync(join(takerHome, ".ssh", "ara-orin")), "der Plan hat schon einen Schluessel angelegt");
+    assert(readFileSync(state, "utf8").includes("gueltig      40"), "der Plan hat schon am Geraet geaendert");
+
+    run = lauf(taker, takerHome, takerEnv, ["--accept", "--yes", "--no-passphrase"]);
+    assert(run.status === 0, `--accept --yes fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(existsSync(join(takerHome, ".ssh", "ara-orin")) && existsSync(join(takerHome, ".ssh", "ara-orin.pub")), "kein eigener Anmeldeschluessel");
+    const liste = readFileSync(state, "utf8");
+    assert(/widerrufen\s+40\s+aras_oldkey1234/.test(liste), `der alte Kit-Schluessel ist nicht widerrufen: ${liste}`);
+    assert(/gueltig\s+\d+\s+aras_newkey/.test(liste), "kein neuer Kit-Schluessel am Geraet");
+    assert(/gueltig\s+39\s+aras_inst9999/.test(liste), "ohne --revoke-others wurde ein fremder Schluessel widerrufen");
+    assert(/aras_inst9999/.test(run.stdout) && /--revoke-others/.test(run.stdout), `die uebrigen gueltigen werden nicht genannt: ${run.stdout}`);
+    const neu = readFileSync(takerEnv, "utf8");
+    assert(/^ARASUL_KEY_ORIN=aras_newkey\d+SECRETneu/m.test(neu), "der neue Kit-Schluessel liegt nicht in der Ablage des Uebernehmenden");
+    assert(!run.stdout.includes("SECRETneu") && !run.stderr.includes("SECRETneu"), "der Klartext des Schluessels wird gezeigt");
+    const auth = readFileSync(join(geraet, ".ssh", "authorized_keys"), "utf8");
+    const pubNeu = readFileSync(join(takerHome, ".ssh", "ara-orin.pub"), "utf8").trim();
+    assert(auth.includes(pubNeu), "der neue Schluessel steht nicht in authorized_keys");
+    assert(!auth.includes(readFileSync(join(giverHome, ".ssh", "kolja.pub"), "utf8").trim()), "der alte Anmeldeschluessel steht noch da");
+    assert(auth.includes(readFileSync(join(work, "support.pub"), "utf8").trim()), "ein fremder Anmeldeschluessel wurde mit entfernt");
+    const akte = readFrontmatter(join(taker, "devices", "orin", "device.md")).fields;
+    assert(akte.ssh_key === "ara-orin" && akte.api_key_ref === "ARASUL_KEY_ORIN", `die Akte zeigt nicht auf die neuen Schluessel: ${JSON.stringify(akte)}`);
+    assert(/^status: accepted$/m.test(readFileSync(join(taker, "business", "handover.md"), "utf8")), "die Uebergabe gilt nicht als uebernommen");
+    assert(!/SECRETneu/.test(readFileSync(join(taker, "devices", "orin", "device.md"), "utf8")), "ein Klartext steht in der Geraeteakte");
+    run = lauf(taker, takerHome, takerEnv, ["--accept", "--yes", "--no-passphrase"]);
+    assert(run.status === 0 && /schon übernommen/.test(run.stdout), `ein zweiter Lauf uebernimmt nochmal: ${run.stdout}`);
+
+    run = lauf(taker, takerHome, takerEnv, ["--accept", "--revoke-others", "--yes"]);
+    assert(run.status === 0, `--revoke-others fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    const danach = readFileSync(state, "utf8");
+    assert(/widerrufen\s+39\s+aras_inst9999/.test(danach), `der uebrige Schluessel gilt noch: ${danach}`);
+    assert(/gueltig\s+\d+\s+aras_newkey/.test(danach), "der eigene Schluessel wurde mit widerrufen");
+
+    // Der Beweis: ein Server, der nur den neuen Schluessel kennt.
+    const neuerWert = neu.match(/^ARASUL_KEY_ORIN=(.+)$/m)[1];
+    let antwort = 401;
+    server = createServer((req, res) => {
+      const gilt = Object.values(req.headers).includes(neuerWert);
+      res.writeHead(gilt ? 200 : antwort, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(gilt ? { data: {} } : { error: "ungueltig" }));
+    });
+    await new Promise((fertig) => server.listen(0, "127.0.0.1", fertig));
+    const port = server.address().port;
+    writeFrontmatter(join(giver, "devices", "orin", "device.md"), { api_base: `http://127.0.0.1:${port}`, ssh_key: "" });
+    run = await new Promise((fertig) => {
+      const kind = spawn("node", [join(giver, ".ara", "tools", "transfer.mjs"), "--prove"], {
+        cwd: giver,
+        env: { ...process.env, HOME: giverHome, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_ENV_FILE: giverEnv },
+      });
+      let aus = "";
+      kind.stdout.on("data", (d) => (aus += d));
+      kind.stderr.on("data", (d) => (aus += d));
+      kind.on("close", (status) => fertig({ status, stdout: aus }));
+    });
+    assert(run.status === 0 && /Geschlossen/.test(run.stdout) && /abgewiesen \(401\)/.test(run.stdout), `der Beweis geht nicht durch: ${run.stdout}`);
+    // Und er wird rot, wenn der alte Schluessel noch gilt.
+    writeFileSync(giverEnv, `ARASUL_KEY_ORIN=${neuerWert}\n`);
+    run = await new Promise((fertig) => {
+      const kind = spawn("node", [join(giver, ".ara", "tools", "transfer.mjs"), "--prove"], {
+        cwd: giver,
+        env: { ...process.env, HOME: giverHome, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_ENV_FILE: giverEnv },
+      });
+      let aus = "";
+      kind.stdout.on("data", (d) => (aus += d));
+      kind.on("close", (status) => fertig({ status, stdout: aus }));
+    });
+    assert(run.status === 1 && /GEHT NOCH/.test(run.stdout), `ein noch gueltiger Schluessel wird nicht erkannt: ${run.stdout}`);
+    return "Plan, Funde halten an, Uebernahme mit eigenen Schluesseln, Widerruf, Beweis in beide Richtungen";
+  } finally {
+    if (server) server.close();
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
 await checkAsync("Ein Geraet, das weiter ist als das Kit, faellt beim ersten Kontakt auf", async () => {
   // Der Befund vom 30.08.2026: die Werkstatt stand auf Kontrakt 3, der Orin
   // fuehrte 5. `--check` nahm das Manifest an und gab trotzdem 1 zurueck,

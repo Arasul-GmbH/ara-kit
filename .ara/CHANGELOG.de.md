@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.61.0 (2026-10-02)
+
+Kontrakt: bis 6
+
+- **Das Kit lässt sich an den Kunden übergeben und mit eigenen Schlüsseln übernehmen.** `node .ara/tools/transfer.mjs --prepare --to "<Name>"` (Zweig Unternehmen) zeigt einen Plan und setzt mit `--yes` `versioned: business, devices, apps` im Profil und die passenden Ausnahmen in der `.gitignore`, weigert sich, solange eine Datei in diesen Ordnern nach einem Geheimnis aussieht (Kit-Schlüssel, privater Schlüssel, Token, Passwort, eine `.env`; genannt werden Ort und Art, nie der Wert), und schreibt `business/handover.md`: das Blatt für den Neuen in einfachen Worten, dazu je Gerät den Fingerabdruck des alten Anmeldeschlüssels und den Anfang des alten Kit-Schlüssels. Geräteakten behalten nur die Namen ihrer Geheimnisse.
+- **`/init` erkennt ein übergebenes Kit.** `init.mjs --show` beginnt mit einer Zeile, wenn ein Gerät noch auf die Schlüssel des Neuen wartet. `transfer.mjs --accept` macht dann je Gerät einen eigenen SSH-Schlüssel, legt dessen öffentliche Hälfte am Gerät ab, beweist die Anmeldung damit, lässt das Gerät einen eigenen Kit-Schlüssel ausstellen und legt ihn ab, und widerruft erst dann den alten Kit-Schlüssel und nimmt den alten Anmeldeschlüssel heraus. Danach zählt es am Gerät nach, was noch gilt, und listet weitere gültige Kit-Schlüssel; `--revoke-others` widerruft sie. Nimmt das Gerät nur Schlüssel und der Neue hat noch keinen, hört es auf und gibt die öffentliche Hälfte aus; mit `--authorize <Datei>` legt sie der Übergebende dort ab.
+- **`transfer.mjs --prove` zeigt, dass die alten Schlüssel tot sind.** Der Übergebende führt es in seinem eigenen Klon aus: sein Anmeldeschlüssel und sein Kit-Schlüssel werden am Gerät probiert, Ausgang 0 nur, wenn beide abgewiesen werden, Ausgang 2, wenn sich eine Prüfung nicht machen ließ.
+- **Ein Schritt in `/maintain`**, und `.ara/knowledge/transfer.md` mit dem Verfahren. Das Produkt veröffentlicht keine Schnittstelle für Anmeldeschlüssel; das Kit erfindet keine und sagt, wohin jeder Schlüssel geht.
+
 ## 0.60.0 (2026-10-01)
 
 Contract: up to 6

@@ -235,6 +235,10 @@ Then: **listen first, look second.** What the customer describes is a symptom fr
 view, "the thing is broken" can be an expired certificate, a full file system or a pulled power
 plug. Ask about what they did, not about what they suspect.
 
+## Handing the kit over to the customer
+
+When the customer is to run the kit themselves from here on, this is a maintenance step like any other, with a plan first and a yes before anything is written. The procedure is `.ara/knowledge/transfer.md`: `node .ara/tools/transfer.mjs --prepare --to "<name>"` prepares the repository (company branch only), the new person takes over with `/init`, and `--prove` shows afterwards that the old keys are dead. Do not hold a key back. Write the handover and the result of `--prove` into the history.
+
 ## Limits
 
 - **Touch nothing that does not belong to the task.**

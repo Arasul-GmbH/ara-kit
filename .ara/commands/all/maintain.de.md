@@ -10,8 +10,8 @@ lädt: `.ara/knowledge/maintenance-flow.de.md`, `.ara/knowledge/security.de.md`,
 `.ara/knowledge/self-healing.de.md`, wenn etwas von Arasul nicht läuft,
 `.ara/knowledge/diagnostics.de.md` bei einer Störung, `.ara/knowledge/extensions.de.md` bei
 einer Erweiterung, `.ara/knowledge/platform-services.de.md`, wenn es um die Sicherung oder
-einen Dienst der Plattform geht, `.ara/knowledge/live-knowledge.de.md` für jeden
-Produktwert. Das Profil
+einen Dienst der Plattform geht, `.ara/knowledge/transfer.de.md`, wenn das Kit an den Kunden
+geht, `.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Das Profil
 in `business/profile.md` liest du vorher.
 
 **Das Argument.** `zentrale` ist ein Gerät ohne Kunden unter `devices/zentrale/`.
@@ -59,6 +59,7 @@ und ziehst das passende Verfahren:
 | Eine App hängt | Stand aus dem Bericht, dann `/app`: zurückschalten auf die vorige Fassung ist der schnellste Rückweg |
 | Update einspielen | `node .ara/tools/upgrade.mjs --device <gerät> ...` zeigt erst den Plan (Fassungen, Dauer, Rückweg); `.ara/knowledge/maintenance-flow.de.md`, Abschnitt "Update einspielen". Das Werkzeug sichert, prüft die Sicherung, holt das Artefakt auf dem Kundenweg und vergleicht vorher und nachher |
 | Erweiterung | `.ara/knowledge/extensions.de.md` |
+| Das Kit an den Kunden übergeben | `node .ara/tools/transfer.mjs --prepare --to "<Name>"` zeigt zuerst den Plan (nur Zweig Unternehmen); `.ara/knowledge/transfer.de.md`. Die Schlüssel des Neuen lösen deine ab, und danach zeigt `--prove`, dass deine tot sind |
 
 Bei einer Störung gilt: keine Reparatur ohne Befund, keine zwei Änderungen gleichzeitig.
 
