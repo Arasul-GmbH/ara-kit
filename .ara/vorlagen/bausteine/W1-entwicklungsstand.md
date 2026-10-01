@@ -1,3 +1,10 @@
+<!-- gespiegelt-aus-arasul -->
+> **Gespiegelt aus dem Steuerungsordner von Arasul. Hier nicht
+> bearbeiten**, jede Änderung wird beim nächsten Spiegeln
+> überschrieben. Wer etwas geändert haben will, sagt es Arasul.
+>
+> Quelle: `templates/legal/bausteine/W1-entwicklungsstand.md` · Stand: 2026-10-01
+
 (1) Die Software befindet sich im Vorserienstand und wird laufend
 weiterentwickelt. Ihre Beschaffenheit ergibt sich abschließend aus der Anlage
 "Leistungsbeschreibung" in der bei Vertragsschluss geltenden Fassung. Diese
@@ -7,6 +14,7 @@ Vertragsgegenstand sind.
 (2) Der Vertragspartner erwirbt die Software in Kenntnis dieses Standes. Eine
 darüber hinausgehende Beschaffenheit wird nicht vereinbart, insbesondere nicht aus
 Werbeaussagen, Bildschirmfotos, Vorführungen oder mündlichen Äußerungen.
+Individuell getroffene Vereinbarungen bleiben unberührt (§ 305b BGB).
 
 (3) Die Software ist dafür bestimmt, Arbeitsvorgänge mit menschlicher
 Letztentscheidung zu unterstützen. **Sie ist nicht dafür bestimmt, einen
