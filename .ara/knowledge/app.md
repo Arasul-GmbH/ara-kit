@@ -41,7 +41,7 @@ asks to full depth"; the four levels below are what it means for an app.
 | **Which model per flow** | **Always asked.** Each place where a language model works gets a suggestion the administrator may switch on the device |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention: `.ara/knowledge/app-professional.md` |
-| **Which shape it takes** | The eight patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
+| **Which shape it takes** | The nine patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | Something that gets checked is an afternoon. Something that may never be wrong is a project |

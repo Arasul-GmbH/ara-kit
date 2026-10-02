@@ -40,7 +40,7 @@ bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht i
 | **Welches Modell je Flow** | **Wird immer gefragt.** Jede Stelle, an der ein Sprachmodell arbeitet, bekommt einen Vorschlag, den der Admin am Gerät umstellen darf |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
-| **Welche Gestalt sie annimmt** | Die acht Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
+| **Welche Gestalt sie annimmt** | Die neun Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |

@@ -92,4 +92,5 @@ Was sich nicht prüfen ließ, steht als Annahme im Plan. **Vor dem Live-Schalten
 Beispieldatei an den, der sie verarbeitet, den Steuerberater mit seinem Import, und seine Antwort ist
 der Nachweis. Ein Prüfskript für das Format gehört in die App und läuft bei jedem Export im
 Teststand. Versprochen wird nicht „GoBD-konform" oder „DATEV-zertifiziert", sondern was die App tut:
-welches Format, welche Fassung, nachvollziehbar woran.
+welches Format, welche Fassung, nachvollziehbar woran. **Für den DATEV-Buchungsstapel gibt es Code und Prüfskript**: Muster 9,
+`.ara/templates/app-patterns/datev/README.de.md`, mit Quelle und Abrufdatum.

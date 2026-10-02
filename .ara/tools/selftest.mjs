@@ -4342,23 +4342,23 @@ await checkAsync("Die CSV-Hilfe der Vorlage schreibt BOM, Semikolon und Dezimalk
 /** Der Ordner der Muster, und die Vorlage daneben. */
 const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
 
-check("Das Wissen kennt acht Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+check("Das Wissen kennt neun Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
-  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt acht Muster, und
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt neun Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
   // Seit 0.37.0 ist das Blatt der Überblick, und das Blatt jedes Musters liegt
   // neben seinem Code: gelesen wird nur das, das der Plan nimmt.
   for (const [blatt, endung] of [[".ara/knowledge/app-patterns.md", ".md"], [".ara/knowledge/app-patterns.de.md", ".de.md"]]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
-    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
       assert(new RegExp(`^\\| ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
     assert(pfade.length >= 7, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
     for (const pfad of pfade) assert(existsSync(join(ROOT, pfad)), `${blatt} nennt ${pfad}, die Datei fehlt`);
     const blaetter = pfade.filter((pfad) => pfad.endsWith(`/README${endung}`));
-    assert(blaetter.length === 7, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind sieben`);
+    assert(blaetter.length === 8, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind acht`);
     // Was das Blatt der Dokumente über die Bibliothek sagt, steht so in der Bibliothek.
     const dokumente = readFileSync(join(PATTERNS, "documents", `README${endung}`), "utf8");
     for (const wort of ["quelle", "art", "hoehe", "pdf-dateien", "Dokumentanzeige", "Dateiablage"]) {
@@ -4376,7 +4376,157 @@ check("Das Wissen kennt acht Muster jenseits des Formulars, und jeder Verweis tr
   ]) {
     assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
   }
-  return "acht Muster, beide Fassungen, Befehl, Prüfliste und --new";
+  return "neun Muster, beide Fassungen, Befehl, Prüfliste und --new";
+});
+
+await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfskript besteht, und jeder Fehler fällt durch", async () => {
+  // Am 02.10.2026 aus der Quelle gebaut: DATEV Developer Portal, Versionsnummer
+  // 700, Formatversion 13. Das Skript liest die Datei und kennt den Schreiber
+  // nicht, also muss es auch eine Datei ablehnen, die von Hand verdorben wurde.
+  const wurzel = join(PATTERNS, "datev", "backend");
+  const format = await import(pathToFileURL(join(wurzel, "kern", "extf-format.mjs")).href);
+  const { buchungsstapel } = await import(pathToFileURL(join(wurzel, "kern", "datev.mjs")).href);
+  const { pruefen: stapelPruefen } = await import(pathToFileURL(join(wurzel, "pruefen", "stapel.mjs")).href);
+  const { pruefen: kontenPruefen, KONTEN } = await import(pathToFileURL(join(wurzel, "kern", "skr03.mjs")).href);
+  const { datevWege } = await import(pathToFileURL(join(wurzel, "wege", "datev.mjs")).href);
+
+  assert(format.SPALTEN.length === 125 && format.AUSDRUECKE.length === 125 && format.KOPF.length === 31, "das Format hat nicht 31 Kopffelder und 125 Spalten");
+  assert(format.QUELLE.formatversion === 13 && format.QUELLE.versionsnummer === 700 && format.QUELLE.abgerufen === "2026-10-02", "Formatversion oder Abrufdatum fehlen");
+  const kopf = readFileSync(join(wurzel, "kern", "extf-format.mjs"), "utf8");
+  for (const adresse of ["format-description/header", "format-description/booking-batch", "format-description/sample-data", "character-set"]) {
+    assert(kopf.includes(`https://developer.datev.de/de/file-format/details/datev-format/${adresse}`), `die Quelle ${adresse} fehlt im Kopf des Formats`);
+  }
+
+  const mandant = { beraternummer: 29098, nummer: 55003, wjBeginn: "2026-01-01" };
+  const jetzt = new Date("2026-10-02T10:11:12.345Z");
+  const buchungen = [
+    { id: 1, betrag: 119, konto: "4930", gegenkonto: "1200", bu_schluessel: "9", belegdatum: "2026-03-05", belegnummer: "RE 2026/17 ä", buchungstext: 'Büromaterial Müller & Söhne, "Rabatt" 5 €' },
+    { id: 2, betrag: 12.5, konto: "4910", gegenkonto: "1000", belegdatum: "2026-12-31", buchungstext: "=HYPERLINK(1)" },
+    { id: 3, betrag: 0, konto: "4910", gegenkonto: "1000", belegdatum: "2026-04-01", buchungstext: "ohne Betrag" },
+    { id: 4, betrag: 5, konto: "4910", gegenkonto: "1000", belegdatum: "2026-02-30", buchungstext: "Datum gibt es nicht" },
+    { id: 5, betrag: 5, konto: "4910", gegenkonto: "1000", belegdatum: "2025-12-31", buchungstext: "Vorjahr" },
+    { id: 6, betrag: 5, konto: "49100000", gegenkonto: "1000", belegdatum: "2026-05-01", buchungstext: "Konto zu lang" },
+  ];
+  const r = buchungsstapel({ mandant, buchungen }, { exportiertVon: "Kanzlei Muster", jetzt });
+  assert(JSON.stringify(r.ids) === "[1,2]", `in der Datei stehen ${JSON.stringify(r.ids)}`);
+  assert(r.abgelehnt.map((a) => a.id).join() === "3,4,5,6" && r.abgelehnt.every((a) => a.grund.length > 10), "die abgelehnten Buchungen sind nicht alle benannt");
+  assert(r.datei === "EXTF_Buchungsstapel_55003_20261002101112.csv", `Dateiname ${r.datei}`);
+  const gut = r.bytes.toString("latin1");
+  assert(gut.includes("Büromaterial Müller & Söhne") && r.bytes.includes(0xfc), "Umlaute stehen nicht als Windows-1252 in der Datei");
+  assert(gut.includes('"Büromaterial Müller & Söhne, ""Rabatt"" 5 \x80"'), "Anführungszeichen oder Euro-Zeichen falsch geschrieben");
+  assert(gut.includes('" =HYPERLINK(1)"'), "ein Text mit = ist nicht gegen Formeln geschützt");
+  assert(gut.startsWith('"EXTF";700;21;"Buchungsstapel";13;20261002101112345;;"RE";"Kanzlei Muster";"";29098;55003;20260101;4;20260305;20261231;'), "die Kopfzeile ist nicht die der Quelle");
+  assert(gut.split("\r\n").length === 5 && !/(?<!\r)\n/.test(gut), "Zeilenende nicht CR LF");
+  const befund = stapelPruefen(r.bytes);
+  assert(befund.ok && befund.buchungen === 2, `eine gute Datei fällt durch: ${befund.fehler.join(" | ")}`);
+
+  // Jeder Fehler, von Hand in eine gute Datei gemacht, fällt durch, mit Zeile und Feld.
+  const zeilen = gut.split("\r\n");
+  const feld = (zeile, nr, wert) => {
+    const f = zeilen[zeile].split(";");
+    f[nr] = wert;
+    return f.join(";");
+  };
+  const mit = (zeile, text) => [...zeilen.slice(0, zeile), text, ...zeilen.slice(zeile + 1)].join("\r\n");
+  const faelle = [
+    ["mit UTF-8-BOM", Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), r.bytes]), /UTF-8-BOM/],
+    ["als UTF-8 ohne BOM", Buffer.from(gut.replace(/\x80/g, "€"), "utf8"), /UTF-8 ohne BOM/],
+    ["LF statt CR LF", Buffer.from(gut.replace(/\r\n/g, "\n"), "latin1"), /LF ohne CR/],
+    ["Formatversion 12", Buffer.from(mit(0, feld(0, 4, "12")), "latin1"), /Feld 5 \(Formatversion\)/],
+    ["Versionsnummer 710", Buffer.from(mit(0, feld(0, 1, "710")), "latin1"), /Feld 2/],
+    ["Kopf mit 30 Feldern", Buffer.from(mit(0, zeilen[0].split(";").slice(0, 30).join(";")), "latin1"), /30 Felder/],
+    ["Beraternummer 12", Buffer.from(mit(0, feld(0, 10, "12")), "latin1"), /Feld 11 \(Beraternummer\)/],
+    ["Spaltenname geändert", Buffer.from(mit(1, zeilen[1].replace("Buchungstext", "Text")), "latin1"), /Zeile 2, Spalte 14/],
+    ["Zeile mit 124 Feldern", Buffer.from(mit(2, zeilen[2].split(";").slice(0, 124).join(";")), "latin1"), /Zeile 3: 124 Felder/],
+    ["Betrag 0,00", Buffer.from(mit(2, feld(2, 0, "0,00")), "latin1"), /Zeile 3, Feld 1 \(Umsatz/],
+    ["Betrag mit Punkt", Buffer.from(mit(2, feld(2, 0, "119.00")), "latin1"), /Zeile 3, Feld 1 \(Umsatz/],
+    ["Soll/Haben X", Buffer.from(mit(2, feld(2, 1, '"X"')), "latin1"), /Zeile 3, Feld 2/],
+    ["Konto mit Buchstaben", Buffer.from(mit(2, feld(2, 6, "49A0")), "latin1"), /Zeile 3, Feld 7/],
+    ["Konto zu lang", Buffer.from(mit(2, feld(2, 6, "4930000")), "latin1"), /Zeile 3, Feld 7/],
+    ["Belegdatum 3102", Buffer.from(mit(2, feld(2, 9, "3102")), "latin1"), /Zeile 3, Feld 10/],
+    ["Belegdatum vor dem Zeitraum", Buffer.from(mit(2, feld(2, 9, "0201")), "latin1"), /Zeile 3, Feld 10 \(Belegdatum\): 02\.01\. liegt außerhalb/],
+    ["Belegfeld mit Leerzeichen", Buffer.from(mit(2, feld(2, 10, '"RE 17"')), "latin1"), /Zeile 3, Feld 11/],
+    ["Buchungstext über 60 Zeichen", Buffer.from(mit(2, feld(2, 13, `"${"x".repeat(61)}"`)), "latin1"), /Zeile 3, Feld 14/],
+    ["festgeschrieben", Buffer.from(mit(2, feld(2, 113, "1")), "latin1"), /Zeile 3, Feld 114 \(Festschreibung\)/],
+    ["leere Datei", Buffer.alloc(0), /leer/],
+  ];
+  for (const [was, bytes, erwartet] of faelle) {
+    const b = stapelPruefen(bytes);
+    assert(!b.ok, `eine Datei ${was} besteht das Prüfskript`);
+    assert(b.fehler.some((f) => erwartet.test(f)), `${was}: erwartet ${erwartet}, gefunden: ${b.fehler.join(" | ")}`);
+  }
+
+  // Als Skript: Ausgang 0 für die gute Datei, 1 für eine schlechte, 2 ohne lesbare Datei.
+  const arbeit = mkdtempSync(join(tmpdir(), "ara-datev-"));
+  try {
+    const gutPfad = join(arbeit, "gut.csv");
+    const schlechtPfad = join(arbeit, "schlecht.csv");
+    writeFileSync(gutPfad, r.bytes);
+    writeFileSync(schlechtPfad, Buffer.from(mit(2, feld(2, 9, "3102")), "latin1"));
+    const skript = join(wurzel, "pruefen", "stapel.mjs");
+    const lauf = (...args) => spawnSync(process.execPath, [skript, ...args], { encoding: "utf8" });
+    assert(lauf(gutPfad).status === 0 && /^OK: 2 Buchungen/m.test(lauf(gutPfad).stdout), "das Skript nimmt die gute Datei nicht an");
+    assert(lauf(schlechtPfad).status === 1 && /Feld 10/.test(lauf(schlechtPfad).stdout), "das Skript lehnt die schlechte Datei nicht mit Feld ab");
+    assert(lauf(join(arbeit, "gibt-es-nicht.csv")).status === 2 && lauf().status === 2, "das Skript meldet eine fehlende Datei nicht mit 2");
+  } finally {
+    rmSync(arbeit, { recursive: true, force: true });
+  }
+
+  // Der Schreiber nimmt keinen Mandanten ohne gültige Nummern.
+  for (const falsch of [{ ...mandant, beraternummer: 12 }, { ...mandant, nummer: 0 }, { ...mandant, wjBeginn: "2026-13-01" }]) {
+    let fehler = null;
+    try {
+      buchungsstapel({ mandant: falsch, buchungen });
+    } catch (e) {
+      fehler = e;
+    }
+    assert(fehler, `ein Mandant ${JSON.stringify(falsch)} wird angenommen`);
+  }
+  // Ein abweichendes Wirtschaftsjahr: Belege von Juli bis Juni, Jahr aus dem Kopf.
+  const gebrochen = buchungsstapel({ mandant: { ...mandant, wjBeginn: "2026-07-01" }, buchungen: [{ id: 9, betrag: 1, konto: "4910", gegenkonto: "1000", belegdatum: "2027-02-03" }, { id: 10, betrag: 1, konto: "4910", gegenkonto: "1000", belegdatum: "2026-06-30" }] }, { jetzt });
+  assert(gebrochen.ids.join() === "9" && stapelPruefen(gebrochen.bytes).ok, "ein Wirtschaftsjahr ab Juli wird nicht richtig geschrieben");
+
+  // Die Konten: ein Vorschlag außerhalb der Liste wird korrigiert, mit Grund.
+  const pruefung = kontenPruefen({ konto: "9999", gegenkonto: "5", steuersatz: 19, bu_schluessel: "8", brutto: "119,00", kategorie: "buero", zahlungsart: "Barzahlung", belegdatum: "2026-03-05" });
+  assert(pruefung.vorschlag.konto === "4930" && pruefung.vorschlag.gegenkonto === "1000" && pruefung.vorschlag.bu_schluessel === "9" && pruefung.korrekturen.length === 3, `der Vorschlag wird nicht geprüft: ${JSON.stringify(pruefung)}`);
+  assert(Object.keys(KONTEN).length >= 10, "die Liste der Konten ist leer");
+  assert(stapelPruefen(buchungsstapel({ mandant, buchungen: [pruefung.vorschlag] }, { jetzt }).bytes).ok, "ein geprüfter Vorschlag ergibt keine gute Datei");
+
+  // Die Wege: Vorschau und Datei, fremder Mandant 404, ohne Mandant 400.
+  const antworten = [];
+  const wege = datevWege({
+    stapel: async (_anfrage, id) => (id === "55003" ? { mandant, buchungen, exportiertVon: "Kanzlei Muster" } : null),
+  });
+  const rufe = async (methode, url) => {
+    const kopfzeilen = {};
+    let status = 0;
+    let koerper = Buffer.alloc(0);
+    const antwort = {
+      writeHead: (s, k) => ((status = s), Object.assign(kopfzeilen, k)),
+      end: (b) => (koerper = Buffer.isBuffer(b) ? b : Buffer.from(b ?? "")),
+    };
+    const bedient = await wege({ method: methode, url }, antwort, new URL(url, "http://app").pathname);
+    antworten.push(status);
+    return { bedient, status, kopfzeilen, koerper };
+  };
+  const vorschau = await rufe("GET", "/datev/vorschau?mandant=55003");
+  assert(vorschau.status === 200 && JSON.parse(vorschau.koerper).abgelehnt.length === 4 && JSON.parse(vorschau.koerper).pruefung.ok, "die Vorschau stimmt nicht");
+  const datei = await rufe("GET", "/datev/stapel?mandant=55003");
+  assert(datei.status === 200 && /windows-1252/.test(datei.kopfzeilen["content-type"]) && /EXTF_Buchungsstapel_55003_\d{14}\.csv/.test(datei.kopfzeilen["content-disposition"]) && stapelPruefen(datei.koerper).ok, "die Datei vom Weg besteht das Prüfskript nicht");
+  assert((await rufe("GET", "/datev/stapel?mandant=1")).status === 404, "ein fremder Mandant ist kein 404");
+  assert((await rufe("GET", "/datev/stapel")).status === 400, "ohne Mandant ist es kein 400");
+  assert((await rufe("POST", "/datev/stapel?mandant=55003")).status === 405, "POST ist kein 405");
+  assert((await rufe("GET", "/dokumente")).bedient === false, "der Weg nimmt einen fremden Pfad an");
+
+  // Und /app schlägt das Muster vor, wenn eine Kanzlei oder Buchhaltung beschrieben wird.
+  const vorschlag = (text) => spawnSync(process.execPath, [join(ROOT, ".ara", "tools", "app.mjs"), "--patterns", text], { encoding: "utf8", env: { ...process.env, ARA_LANGUAGE: "en" } });
+  for (const text of ["Wir sind eine Kanzlei und brauchen eine App für Belege", "Buchhaltung für drei Mandanten, der Steuerberater will eine DATEV-Datei", "Our tax adviser wants the receipts as a file"]) {
+    const ausgabe = vorschlag(text);
+    assert(ausgabe.status === 0 && /pattern 9|Muster 9/.test(ausgabe.stdout) && /datev\/README/.test(ausgabe.stdout), `${text}: kein Vorschlag, ${ausgabe.stdout}`);
+  }
+  const keiner = vorschlag("Urlaubsantrag für die Mitarbeiter");
+  assert(keiner.status === 0 && !/datev\/README/.test(keiner.stdout), "ein Urlaubsantrag bekommt den Buchungsstapel vorgeschlagen");
+  return "Datei besteht, 20 verdorbene Dateien fallen durch, Skript 0/1/2, Wege 200/404/400/405, /app schlägt Muster 9 vor";
 });
 
 check("Die Vorlage trägt die Dokumentanzeige, und das Muster Dokumente benutzt sie richtig", () => {
@@ -12250,7 +12400,7 @@ const PAIRED = [
   { dir: ".ara/templates", flat: true, extensions: [".md", ".json"] },
   // Jedes Muster traegt sein Blatt neben dem Code, und das ist eine Anleitung:
   // sie wird gelesen und nicht gebaut, also gibt es sie in beiden Sprachen.
-  ...["documents", "mail", "foreign-api", "foreign-container", "extract", "clients"].map((muster) => ({
+  ...["documents", "mail", "foreign-api", "foreign-container", "extract", "clients", "receipts", "datev"].map((muster) => ({
     dir: `.ara/templates/app-patterns/${muster}`,
   })),
 ];

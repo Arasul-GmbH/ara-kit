@@ -13,7 +13,8 @@ its moment comes.
   the plan takes, which it names.
 - `.ara/knowledge/app-professional.md` before the plan of a professional app: clients or files,
   data that lasts for years, receipts the device reads, an approval without the submitter, an
-  export format of another vendor.
+  export format of another vendor; for an office or bookkeeping first
+  `node .ara/tools/app.mjs --patterns "<description>"`.
 - `.ara/knowledge/platform-services.md` as soon as the app wants something from the platform:
   login, approval, flow, reading a document.
 - `.ara/knowledge/design-system.md` as soon as you touch an interface.

@@ -13,7 +13,8 @@ wenn ihr Moment kommt.
   der Plan nimmt, der es nennt.
 - `.ara/knowledge/app-professional.de.md` vor dem Plan einer Fach-App: Mandanten oder Akten, Daten,
   die Jahre halten, Belege, die das Gerät ausliest, eine Freigabe ohne den Einreicher, ein
-  Exportformat eines anderen Herstellers.
+  Exportformat eines anderen Herstellers; für eine Kanzlei oder Buchhaltung zuerst
+  `node .ara/tools/app.mjs --patterns "<Beschreibung>"`.
 - `.ara/knowledge/platform-services.de.md`, sobald die App etwas von der Plattform will: Anmeldung,
   Freigabe, Flow, Auslesen eines Dokuments.
 - `.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst.
