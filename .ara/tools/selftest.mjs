@@ -83,6 +83,7 @@ import {
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
+import { ersatzwoerter, prosaBereiche, sichtbareErsatzfunde } from "./lib/umlaute.mjs";
 import { EXAMPLE as ROOT_EXAMPLE, METHOD as ROOT_METHOD, METHOD_FOLDERS as ROOT_FOLDERS, METHOD_TARGETS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE, languageOf } from "./lib/root.mjs";
 import {
   EXTERNAL_PREFIX,
@@ -13251,125 +13252,63 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
   return `${blaetter.length} Blätter, ${werkzeuge.length} Werkzeuge, ${quellen.length} Dateien der Vorlage und der Muster`;
 });
 
-/**
- * Wo in einer Datei der Vorlage deutscher Inhalt steht, als Bereiche
- * `[von, bis]`: Kommentare, Zeichenketten mit Leerraum (ohne SQL und ohne
- * `${}`-Einschübe), Text zwischen JSX-Tags, in Markdown alles außerhalb von
- * Codeblöcken. Codespannen in Backticks bleiben draußen: dort stehen Namen.
- */
-function prosaBereiche(quelle, pfad) {
-  const raus = [];
-  const ohneSpannen = (von, bis) => {
-    let anfang = von;
-    let offen = false;
-    for (let i = von; i < bis; i++) {
-      if (quelle[i] === "\n") offen = false;
-      if (quelle[i] !== "`") continue;
-      if (!offen) raus.push([anfang, i]);
-      else anfang = i + 1;
-      offen = !offen;
-    }
-    if (!offen) raus.push([anfang, bis]);
+check("Das Ausrollen warnt vor Ersatzschreibung in sichtbaren Texten", () => {
+  // Fund vom 02.10.2026: "Messgeraet fuer" in der Beschreibung einer Probe-App.
+  // Die Regel fuer das Kit selbst steht in der Pruefung davor, diese hier haelt
+  // die Apps der Menschen an dieselbe Regel. Es ist eine Warnung, kein Halt.
+
+  // Was anschlagen muss
+  const schlaegt = ersatzwoerter("Messgeraet fuer die Aenderung ueber Nacht, Strasse und grosse Aerzte");
+  for (const wort of ["Messgeraet", "fuer", "Aenderung", "ueber", "Strasse", "grosse", "Aerzte"]) {
+    assert(schlaegt.includes(wort), `${wort} schlaegt nicht an: ${schlaegt.join(", ")}`);
+  }
+  // Was nicht anschlagen darf
+  const still = ersatzwoerter(
+    "Queue Michael aktuell neue Steuer Treue zuerst manuell true value Bluetooth Poesie Israel Koexistenz guess influence `fuer` vorgaenge.json geraet_id geraetId https://x.de/ueber mail@fuer.de"
+  );
+  assert(still.length === 0, `schlaegt zu Unrecht an: ${still.join(", ")}`);
+
+  // An einer App: app.json, Flow und Frontend, einmal mit Ersatz und einmal sauber
+  const baue = (name, { beschreibung, flow, frontend }) => {
+    const dir = mkdtempSync(join(tmpdir(), `ara-umlaut-${name}-`));
+    mkdirSync(join(dir, "flows"));
+    mkdirSync(join(dir, "frontend", "src"), { recursive: true });
+    const manifest = { id: "probe", name: "Probe", beschreibung, flows: { verzeichnis: "flows" }, frontend: { verzeichnis: "frontend" }, backend: { umgebung: { ARASUL_APP_NAME: "Probe" } } };
+    writeFileSync(join(dir, "flows", "probe.md"), flow);
+    writeFileSync(join(dir, "frontend", "src", "App.tsx"), frontend);
+    return { dir, manifest };
   };
-  const name = pfad.split(/[\\/]/).pop();
-  const muster = (re, vorn, hinten) => {
-    for (const m of quelle.matchAll(re)) ohneSpannen(m.index + vorn, m.index + m[0].length - hinten);
-    return raus;
-  };
-  if (name.endsWith(".sql")) return muster(/--.*/g, 2, 0);
-  if (name.endsWith(".css")) return muster(/\/\*[\s\S]*?\*\//g, 2, 2);
-  if (name === "Dockerfile") return muster(/#.*/g, 1, 0);
-  if (name.endsWith(".html")) return muster(/<!--[\s\S]*?-->/g, 4, 3);
-  if (name.endsWith(".json")) {
-    for (const m of quelle.matchAll(/"((?:[^"\\]|\\.)*)"/g)) {
-      if (/\s/.test(m[1]) && !/--|&&/.test(m[1])) ohneSpannen(m.index + 1, m.index + m[0].length - 1);
-    }
-    return raus;
+  const schlecht = baue("schlecht", {
+    beschreibung: "Messgeraet fuer die Probe",
+    flow: "---\nname: probe\nbeschreibung: Holt die Freigabe ein.\nschritte:\n  - name: entscheiden\n    typ: werkzeug\n    parameter:\n      zusammenhang: Bitte ueber den Vorgang entscheiden.\n---\nEin Satz.\n",
+    frontend: 'export const App = () => <p>Aenderung speichern</p>;\n// Kommentar: Geraet wird hier nur benannt\nconst geraet = "geraet";\n',
+  });
+  const sauber = baue("sauber", {
+    beschreibung: "Messgerät für die Probe, aktuell mit Queue",
+    flow: "---\nname: probe\nbeschreibung: Holt die Freigabe ein.\nschritte:\n  - name: entscheiden\n    typ: werkzeug\n    parameter:\n      zusammenhang: Bitte über den Vorgang entscheiden.\n---\nEin Satz.\n",
+    frontend: 'export const App = () => <p>Änderung speichern, neue Einträge</p>;\n// Kommentar: Geraet bleibt im Code\nconst geraet = "geraet";\n',
+  });
+  try {
+    const funde = sichtbareErsatzfunde(schlecht.dir, schlecht.manifest);
+    const orte = funde.map((f) => f.wo).join(" | ");
+    assert(funde.some((f) => f.wo === "app.json, beschreibung"), `die Beschreibung schlaegt nicht an: ${orte}`);
+    assert(funde.some((f) => f.wo.startsWith("flows")), `der Flow schlaegt nicht an: ${orte}`);
+    assert(funde.some((f) => f.wo.endsWith("App.tsx") && f.woerter.includes("Aenderung")), `das Frontend schlaegt nicht an: ${orte}`);
+    assert(!funde.some((f) => f.woerter.includes("Geraet") || f.woerter.includes("geraet")), "Kommentar oder Bezeichner im Frontend schlaegt an");
+    const gut = sichtbareErsatzfunde(sauber.dir, sauber.manifest);
+    assert(gut.length === 0, `eine saubere App schlaegt an: ${JSON.stringify(gut)}`);
+  } finally {
+    rmSync(schlecht.dir, { recursive: true, force: true });
+    rmSync(sauber.dir, { recursive: true, force: true });
   }
-  if (name.endsWith(".md")) {
-    let pos = 0;
-    for (const m of quelle.matchAll(/^```[\s\S]*?^```/gm)) {
-      ohneSpannen(pos, m.index);
-      pos = m.index + m[0].length;
-    }
-    ohneSpannen(pos, quelle.length);
-    return raus;
-  }
-  const code = [];
-  let codeAnfang = 0;
-  let letztes = "";
-  let i = 0;
-  while (i < quelle.length) {
-    const c = quelle[i];
-    const d = quelle[i + 1];
-    if (c === "/" && (d === "/" || d === "*")) {
-      code.push([codeAnfang, i]);
-      const ende = d === "/" ? quelle.indexOf("\n", i) : quelle.indexOf("*/", i + 2);
-      const bis = ende < 0 ? quelle.length : ende;
-      ohneSpannen(i + 2, bis);
-      i = d === "/" ? bis : bis + 2;
-      codeAnfang = i;
-      continue;
-    }
-    if (c === '"' || c === "'" || c === "`") {
-      code.push([codeAnfang, i]);
-      let j = i + 1;
-      let tiefe = 0;
-      let start = i + 1;
-      const teile = [];
-      while (j < quelle.length) {
-        const z = quelle[j];
-        if (z === "\\") { j += 2; continue; }
-        if (c === "`" && !tiefe && z === "$" && quelle[j + 1] === "{") { teile.push([start, j]); tiefe = 1; j += 2; continue; }
-        if (tiefe) {
-          if (z === "{") tiefe += 1;
-          else if (z === "}" && --tiefe === 0) start = j + 1;
-          j += 1;
-          continue;
-        }
-        if (z === c || (c !== "`" && z === "\n")) break;
-        j += 1;
-      }
-      teile.push([start, j]);
-      const inhalt = teile.map(([von, bis]) => quelle.slice(von, bis)).join(" ");
-      const sql = /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|VALUES)\b/.test(inhalt);
-      if (!sql && /\s/.test(inhalt.trim())) {
-        if (c === "`") raus.push(...teile);
-        else ohneSpannen(i + 1, j);
-      }
-      i = j + 1;
-      codeAnfang = i;
-      letztes = c;
-      continue;
-    }
-    // Ein regulärer Ausdruck ist Code, auch wenn er Buchstaben trägt.
-    if (c === "/" && (letztes === "" || "(,=:[!&|?{};".includes(letztes))) {
-      let j = i + 1;
-      let klasse = false;
-      while (j < quelle.length && quelle[j] !== "\n") {
-        if (quelle[j] === "\\") { j += 2; continue; }
-        if (quelle[j] === "[") klasse = true;
-        else if (quelle[j] === "]") klasse = false;
-        else if (quelle[j] === "/" && !klasse) break;
-        j += 1;
-      }
-      i = j + 1;
-      letztes = "/";
-      continue;
-    }
-    if (!/\s/.test(c)) letztes = c;
-    i += 1;
-  }
-  code.push([codeAnfang, quelle.length]);
-  if (name.endsWith(".tsx")) {
-    for (const [von, bis] of code) {
-      for (const m of quelle.slice(von, bis).matchAll(/>([^<>{}=;()]*[A-Za-zÄÖÜäöüß][^<>{}=;()]*)(?=[<{])/g)) {
-        raus.push([von + m.index + 1, von + m.index + 1 + m[1].length]);
-      }
-    }
-  }
-  return raus;
-}
+
+  // Und es ist verdrahtet: --check und --deploy sagen es
+  const quelle = readFileSync(join(ROOT, ".ara", "tools", "app.mjs"), "utf8");
+  assert((quelle.match(/umlautSection\(dir, manifest\)/g) || []).length >= 2, "app.mjs ruft die Umlautpruefung nicht in --check und --deploy auf");
+  const regel = readFileSync(join(ROOT, "AGENTS.md"), "utf8");
+  assert(/Everything a human reads carries real umlauts/.test(regel), "AGENTS.md traegt die Regel nicht, dass alles Gelesene echte Umlaute traegt");
+  return "schlaegt an bei Ersatz, schweigt bei Queue, Michael, aktuell, neue";
+});
 
 check("Jede Route steht in beiden Fassungen des Blattes", () => {
   // Eine Uebersetzung, die eine Route verliert, faellt sonst erst am Geraet auf,
