@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.64.4 (2026-10-02)
+
+Contract: up to 7
+
+- **`sync --uninstall` revokes the credential of this computer at the device (K26).** The credential calls `DELETE /api/ausweise/<its own number>` with itself (the device takes that since J34, answers 204, and the same value is a 401 afterwards). The number is stored beside the credential at `login`. The output says in plain words that it is revoked and taken out of this computer, or why not: a credential pasted in has no known number, the device does not know the number, the device does not answer. Then the credential stays and the output names the front end of the device. This replaces the sentence that a credential may not revoke itself.
+
 ## 0.64.3 (2026-10-02)
 
 Contract: up to 7

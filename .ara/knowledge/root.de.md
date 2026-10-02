@@ -317,7 +317,7 @@ nichts.
 | `sync --plan` | Zeigt je Ordner, was ein Abgleich bewegte: hoch und runter mit Anzahl und Größe, Konflikte, was auf einer Seite gelöscht wurde, was zu Hause bleibt. Schreibt nichts und startet keinen Klienten |
 | `sync --keep-mine` | Legt die Fassung des Geräts von jeder Datei, die verschieden ist, und beim ersten Abgleich einer Wurzel, die hier schon eine ist, auch von jeder Datei, die nur das Gerät hat, am Gerät nach `.claude/geraet-alt/<zeit>/` (`device-old` in einer englischen Wurzel) und gleicht die dieser Wurzel ab. Ohne den Schalter hält `sync` an den Dateien an, die die Wurzel ausmachen |
 | `sync --install` | Am Mac: der Abgleich im Hintergrund. Lässt launchd einmal prüfen und hält mit einer Zeile an, wenn node aus launchd das Gerät nicht erreicht. Prüft das Passwort am Dateidienst, lässt sich damit ein App-Token für diesen Rechner ausstellen, legt das Token in den Schlüsselbund und übergibt launchd einen Agenten, der alle fünf Minuten abgleicht, `--every <minuten>` einen anderen Abstand |
-| `sync --uninstall` | Nimmt den Agenten aus launchd, widerruft das App-Token und nimmt es aus dem Schlüsselbund. Was abgeglichen wurde, bleibt |
+| `sync --uninstall` | Nimmt den Agenten aus launchd, widerruft das App-Token und den Ausweis dieses Rechners am Gerät (der Ausweis widerruft sich selbst, mit seiner eigenen Nummer) und nimmt beide aus diesem Rechner. Was abgeglichen wurde, bleibt |
 | `status` | Zuerst eine Zeile: wann der letzte Abgleich durchging, wie viel hier offen ist, wie viele Konflikte, ob er im Hintergrund läuft. Dann das Gerät, der Ausweis, ob das Gerät ihn annimmt, der Firmenordner je Ordner mit der Wurzel zuerst, `sicht.md`, die Vorschläge. Passt das Zertifikat des Geräts nicht mehr zum festgehaltenen, nennt es die neue CA (seit wann, beide Fingerabdrücke) und den Ausweis (bekannt oder nicht) getrennt, mit dem einen Befehl `login ... --insecure`, und lässt den Firmenordner ungefragt |
 | `deploy` | Legt diese Wurzel in die Wurzel des Geräts: zuerst das Prüfskript, die Wurzel als Administrator angelegt, nur wenn das Gerät keine führt, danach ein Herunterladen als Beweis. `root.mjs --deploy` ruft es |
 | `call <app> <route> [name=wert ...]` | Ruft eine Route einer App auf und schreibt die Antwort auf die Standardausgabe. `--write` für eine Route, die etwas ändert, `--method`, wo es einen Pfad für zwei Methoden gibt |
@@ -610,7 +610,7 @@ Neustart brachte alles hoch und herunter, und die 60 MB waren Byte für Byte gle
 Abgleich beim nächsten Lauf mit einem Satz an, bevor der Klient startet: der Ausweis wird bei
 jedem Lauf zuerst gefragt. Ein widerrufenes oder abgelaufenes App-Token oder ein geändertes
 Passwort hält ihn ebenso an, und `sync --install` stellt ein neues aus. `sync --uninstall` nimmt
-Agent und Token zurück und widerruft das Token am Dienst. Eine
+Agent und Token zurück, widerruft das Token am Dienst und den Ausweis dieses Rechners am Gerät. Geht das nicht, sagt es warum und wo man es von Hand tut. Eine
 Wurzel unter Schreibtisch, Dokumente, Downloads oder iCloud bewacht macOS: ein Programm im
 Hintergrund kommt nur mit vollem Festplattenzugriff für node hinein, und `--install` sagt das.
 
