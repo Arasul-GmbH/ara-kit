@@ -15,12 +15,13 @@
  *   node arasul.mjs status                             one line on the sync, device, credential, folder, proposals
  *   node arasul.mjs sync                               sync the company folder, write apps/<id>/APP.md
  *   node arasul.mjs sync --plan                        what a sync would move up and down, writing nothing
- *   node arasul.mjs sync --install [--every <min>]     on a Mac: sync in the background, app token in the keychain
+ *   node arasul.mjs sync --install [--every <min>]     sync in the background: launchd and keychain on a Mac, task scheduler on Windows
  *   node arasul.mjs sync --uninstall                   take the agent back, revoke the token
  *   node arasul.mjs apps                               the assigned apps with their routes, writes APP.md
  *   node arasul.mjs call <app> <route> [name=value ...] [--write] [--method <verb>]
  *
- * The credential lies in ~/.config/arasul/credentials.json (0600), one entry per device with its
+ * The credential lies in ~/.config/arasul/credentials.json (0600; on Windows in %APPDATA%\arasul, readable by
+ * the Windows user alone), one entry per device with its
  * address and credential. Never in this folder. The login takes a name and
  * a password, has the device issue a credential for this computer with it, and keeps only that:
  * the session of the login has an end and carries everything the human may do, a credential says
@@ -41,6 +42,10 @@
  * `--fetch-client` fetches it from the vendor's releases, checked against its checksum, unpacked next
  * to the credential and installed nowhere. The device names every address of its file service; the
  * first one that answers from here is taken.
+ *
+ * On Windows the same job goes to the task scheduler (a task of the person logged in, a launcher without
+ * a window, the log written by node itself) and the access lies in a file only that Windows user can read
+ * (icacls), where a Mac has the keychain. The vendor's desktop app is installed by hand there.
  *
  * `sync --install` hands the sync to launchd on a Mac: an agent of the person logged in runs
  * `sync --background` every five minutes (--every names another interval), and an app token of the
@@ -97,12 +102,13 @@
  *   node arasul.mjs status                             eine Zeile zum Abgleich, Gerät, Ausweis, Ordner, Vorschläge
  *   node arasul.mjs sync                               den Firmenordner abgleichen, apps/<id>/APP.md schreiben
  *   node arasul.mjs sync --plan                        was ein Abgleich hoch und runter bewegte, ohne zu schreiben
- *   node arasul.mjs sync --install [--every <min>]     am Mac: Abgleich im Hintergrund, App-Token im Schlüsselbund
+ *   node arasul.mjs sync --install [--every <min>]     Abgleich im Hintergrund: launchd und Schlüsselbund am Mac, Aufgabenplanung unter Windows
  *   node arasul.mjs sync --uninstall                   Agent zurücknehmen, Token widerrufen
  *   node arasul.mjs apps                               die zugewiesenen Apps mit ihren Routen, schreibt APP.md
  *   node arasul.mjs call <app> <route> [name=wert ...] [--write] [--method <verb>]
  *
- * Der Ausweis liegt in ~/.config/arasul/credentials.json (0600), je Gerät ein Eintrag mit Adresse
+ * Der Ausweis liegt in ~/.config/arasul/credentials.json (0600; unter Windows in %APPDATA%\arasul, nur für den
+ * Windows-Benutzer lesbar), je Gerät ein Eintrag mit Adresse
  * und Ausweis. Nie in diesem Ordner. Die Anmeldung nimmt Name und Passwort,
  * lässt sich damit vom Gerät einen Ausweis für diesen Rechner ausstellen und behält nur den: die
  * Sitzung der Anmeldung hat ein Ende und trägt alles, was der Mensch darf, ein Ausweis sagt, wer
@@ -124,6 +130,11 @@
  * `--fetch-client` holt ihn aus den Veröffentlichungen des Herstellers, geprüft an seiner
  * Prüfsumme, entpackt neben den Ausweis und nirgends installiert. Das Gerät nennt jede Adresse
  * seines Dateidienstes; genommen wird die erste, die von hier antwortet.
+ *
+ * Unter Windows geht dieselbe Arbeit an die Aufgabenplanung (eine Aufgabe des angemeldeten Menschen, ein
+ * Starter ohne Fenster, das Protokoll schreibt node selbst) und der Zugang liegt in einer Datei, die nur dieser
+ * Windows-Benutzer lesen kann (icacls), wo ein Mac den Schlüsselbund hat. Die Desktop-App des Herstellers wird dort
+ * von Hand installiert.
  *
  * `sync --install` übergibt den Abgleich am Mac an launchd: ein Agent des angemeldeten Menschen
  * führt alle fünf Minuten `sync --background` aus (--every nennt einen anderen Abstand), und ein
@@ -169,6 +180,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  appendFileSync,
   chmodSync,
   copyFileSync,
   createWriteStream,
@@ -188,8 +200,8 @@ import {
 } from "node:fs";
 import { Agent as HttpAgent, request as httpRequest } from "node:http";
 import { Agent as HttpsAgent, request as httpsRequest } from "node:https";
-import { homedir, hostname, tmpdir } from "node:os";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { homedir, hostname, tmpdir, userInfo } from "node:os";
+import { basename, delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createInterface } from "node:readline";
 import { connect as tlsConnect } from "node:tls";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -199,11 +211,20 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.62.0";
+const BRIDGE = "0.63.0";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
 const ROOT = HERE;
+
+/**
+ * The system this runs on. ARASUL_PLATFORM names another one, for a test that stands in for a
+ * system it is not run on: the kit's selftest lets a Mac act as Windows with it, and stands in for
+ * icacls and schtasks with programs of its own. Nobody else needs it.
+ */
+const PLATFORM = process.env.ARASUL_PLATFORM || process.platform;
+const IS_WIN = PLATFORM === "win32";
+const IS_MAC = PLATFORM === "darwin";
 
 function readJson(path, fallback) {
   try {
@@ -216,7 +237,7 @@ function readJson(path, fallback) {
 const META = readJson(join(ROOT, ".claude", "root.json"), null);
 // Without a root the language of this computer decides: a root that is still to come down from
 // the device has no root.json yet, and the first sync speaks before it arrives.
-let german = META ? META.language === "de" : /^de/i.test(process.env.LANG || "");
+let german = META ? META.language === "de" : /^de/i.test(process.env.LANG || (IS_WIN ? Intl.DateTimeFormat().resolvedOptions().locale : "") || "");
 const t = (en, de) => (german ? de : en);
 /** The kit's check reads `readAgent` in the language of its own profile, not of a root. */
 export function speak(language) {
@@ -418,14 +439,72 @@ const one = (args, name) => args.flags[name]?.[args.flags[name].length - 1];
 
 // --- The credential ------------------------------------------------------------------------
 
-const CONFIG_DIR = process.env.ARASUL_CONFIG_DIR ? resolve(process.env.ARASUL_CONFIG_DIR) : join(homedir(), ".config", "arasul");
+// On Windows the place for what belongs to one person's programs is %APPDATA%, not a dot folder.
+const CONFIG_DIR = process.env.ARASUL_CONFIG_DIR
+  ? resolve(process.env.ARASUL_CONFIG_DIR)
+  : IS_WIN
+    ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "arasul")
+    : join(homedir(), ".config", "arasul");
 const CREDENTIALS = join(CONFIG_DIR, "credentials.json");
+
+// --- Files for this person alone ------------------------------------------------------------
+// On a Mac or Linux that is a file mode. Windows knows no mode: a file there is read by the people
+// its access list names, so the list is cut down to this one user with icacls, which every Windows
+// brings. A folder gets the list with the rule that its files inherit it, so everything that is
+// made in it later is private from its first byte. Measured on Windows: not yet, see the steps in
+// the pull request of K26.
+
+const ICACLS = process.env.ARASUL_ICACLS || "icacls";
+/** Who may read: the Windows user that runs this, as DOMAIN\name. */
+const windowsUser = () => `${process.env.USERDOMAIN ? `${process.env.USERDOMAIN}\\` : ""}${process.env.USERNAME || userInfo().username}`;
+/** The groups whose rule in an access list means "others can read this". */
+const OPEN_TO_OTHERS = /(?:^|\s)(?:Everyone|BUILTIN\\Users|NT AUTHORITY\\Authenticated Users|[^\s:\\]+\\Domain Users):/im;
+
+/** Cut the access list of a file or folder down to this user. True when icacls took it (or here is no Windows). */
+function ownerOnly(path, { folder = false } = {}) {
+  if (!IS_WIN) {
+    try {
+      chmodSync(path, folder ? 0o700 : 0o600);
+    } catch {
+      return false;
+    }
+    return true;
+  }
+  const run = spawnSync(ICACLS, [path, "/inheritance:r", "/grant:r", `${windowsUser()}:${folder ? "(OI)(CI)F" : "F"}`], { encoding: "utf8", timeout: 30_000, windowsHide: true });
+  return run.status === 0;
+}
+
+/** Can anybody else read this? On Windows by the access list, elsewhere by the mode. */
+function openToOthers(path) {
+  if (!IS_WIN) return Boolean(statSync(path).mode & 0o077);
+  const run = spawnSync(ICACLS, [path], { encoding: "utf8", timeout: 30_000, windowsHide: true });
+  return run.status === 0 && OPEN_TO_OTHERS.test(run.stdout || "");
+}
+
+let configSecured = false;
+/** The folder of the credential exists and, on Windows, is private. Said once if icacls did not take it. */
+function ensureConfigDir() {
+  mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  if (IS_WIN && !configSecured) {
+    configSecured = true;
+    if (!ownerOnly(CONFIG_DIR, { folder: true })) {
+      warn(t(
+        `${CONFIG_DIR} could not be restricted to your Windows user (icacls). It lies in your own profile, which other users do not read by default. Check with: icacls "${CONFIG_DIR}"`,
+        `${CONFIG_DIR} ließ sich nicht auf deinen Windows-Benutzer beschränken (icacls). Er liegt in deinem eigenen Profil, das andere Benutzer standardmäßig nicht lesen. Prüfen mit: icacls "${CONFIG_DIR}"`
+      ));
+    }
+  }
+}
+
+const privateHint = () => (IS_WIN ? t("readable by your Windows user only", "nur für deinen Windows-Benutzer lesbar") : t("mode 0600", "Rechte 0600"));
 
 function readCredentials() {
   if (!existsSync(CREDENTIALS)) return { version: 1, devices: {} };
-  if (statSync(CREDENTIALS).mode & 0o077) {
-    chmodSync(CREDENTIALS, 0o600);
-    warn(t(`${CREDENTIALS} was readable by others. Set to 0600.`, `${CREDENTIALS} war für andere lesbar. Auf 0600 gesetzt.`));
+  if (openToOthers(CREDENTIALS)) {
+    ownerOnly(CREDENTIALS);
+    warn(IS_WIN
+      ? t(`${CREDENTIALS} was readable by other users. Restricted to your Windows user.`, `${CREDENTIALS} war für andere Benutzer lesbar. Auf deinen Windows-Benutzer beschränkt.`)
+      : t(`${CREDENTIALS} was readable by others. Set to 0600.`, `${CREDENTIALS} war für andere lesbar. Auf 0600 gesetzt.`));
   }
   const data = readJson(CREDENTIALS, null);
   if (!data || typeof data.devices !== "object") {
@@ -435,10 +514,10 @@ function readCredentials() {
 }
 
 function writeCredentials(data) {
-  mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  ensureConfigDir();
   const temporary = join(CONFIG_DIR, `.credentials-${process.pid}.tmp`);
   writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
-  chmodSync(temporary, 0o600);
+  ownerOnly(temporary);
   renameSync(temporary, CREDENTIALS);
 }
 
@@ -1389,11 +1468,19 @@ const CLIENT_HOME = join(CONFIG_DIR, "klient");
 const CLIENT_FETCHED = join(CLIENT_HOME, "OpenCloud.app", "Contents", "MacOS", "opencloudcmd");
 
 /** Where the vendor's client lies when nobody says otherwise. It runs unpacked, without installing. */
-const CLIENT_PLACES = Object.freeze([
-  "/Applications/OpenCloud.app/Contents/MacOS/opencloudcmd",
-  join(homedir(), "Applications", "OpenCloud.app", "Contents", "MacOS", "opencloudcmd"),
-  CLIENT_FETCHED,
-]);
+const CLIENT_PLACES = Object.freeze(
+  IS_WIN
+    ? [
+        ...[process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA && join(process.env.LOCALAPPDATA, "Programs")]
+          .filter(Boolean)
+          .map((base) => join(base, "OpenCloud", `${SERVICE.client}.exe`)),
+      ]
+    : [
+        "/Applications/OpenCloud.app/Contents/MacOS/opencloudcmd",
+        join(homedir(), "Applications", "OpenCloud.app", "Contents", "MacOS", "opencloudcmd"),
+        CLIENT_FETCHED,
+      ]
+);
 
 /**
  * Where the vendor publishes its desktop package, as of 2026-09-27: the releases of this repository
@@ -1455,6 +1542,8 @@ const NEVER_SYNCED = Object.freeze([
   ".sync_*.db-*",
   ".sync_*.db.ctmp",
   ".DS_Store",
+  "Thumbs.db",
+  "desktop.ini",
   TRASH_IN_ROOT,
 ]);
 
@@ -1906,6 +1995,7 @@ function readBase(local) {
 
 /** The state after a sync: what lies here, and when the room was listed afterwards, what lies there. */
 function writeBase(local, files, remote = null) {
+  ensureConfigDir();
   mkdirSync(BASES, { recursive: true, mode: 0o700 });
   const temporary = join(BASES, `.stand-${process.pid}.tmp`);
   const entry = (path, file) => {
@@ -2430,15 +2520,18 @@ function findClient(args) {
     return path;
   }
   for (const place of CLIENT_PLACES) if (existsSync(place)) return place;
-  for (const part of (process.env.PATH || "").split(":")) {
+  for (const part of (process.env.PATH || "").split(delimiter)) {
     if (!part) continue;
-    const path = join(part, SERVICE.client);
+    const path = join(part, IS_WIN ? `${SERVICE.client}.exe` : SERVICE.client);
     if (existsSync(path)) return path;
   }
   return null;
 }
 
-const clientMissing = () => t(
+const clientMissing = () => IS_WIN ? t(
+  `The command line client ${SERVICE.client}.exe is not on this computer. It belongs to the desktop app of the file service (OpenCloud Desktop for Windows), which the vendor does not publish among its GitHub releases (checked on 2026-10-02: packages for macOS and Linux only), so this file cannot fetch it. Install the desktop app from the vendor's download page, then run again or name the program: --client <path to ${SERVICE.client}.exe>. Looked in: ${CLIENT_PLACES.join(", ")} and on the path.`,
+  `Der Kommandozeilen-Klient ${SERVICE.client}.exe ist nicht auf diesem Rechner. Er gehört zur Desktop-App des Dateidienstes (OpenCloud Desktop für Windows), die der Hersteller nicht unter seinen Veröffentlichungen auf GitHub anbietet (geprüft am 02.10.2026: nur Pakete für macOS und Linux), darum kann diese Datei ihn nicht holen. Installiere die Desktop-App von der Download-Seite des Herstellers, dann noch einmal, oder nenne das Programm: --client <pfad zu ${SERVICE.client}.exe>. Gesucht in: ${CLIENT_PLACES.join(", ")} und auf dem Pfad.`
+) : t(
   `The command line client ${SERVICE.client} is not on this computer. It lies in the desktop package of the file service and runs unpacked, without installing. Looked in: ${CLIENT_PLACES.join(", ")} and on the path. ${IS_MAC ? "--fetch-client fetches it, checked against its checksum, into " + CLIENT_HOME + "; " : ""}--client names another place.`,
   `Der Kommandozeilen-Klient ${SERVICE.client} ist nicht auf diesem Rechner. Er liegt im Desktop-Paket des Dateidienstes und läuft entpackt, ohne Installation. Gesucht in: ${CLIENT_PLACES.join(", ")} und auf dem Pfad. ${IS_MAC ? "--fetch-client holt ihn, geprüft an seiner Prüfsumme, nach " + CLIENT_HOME + "; " : ""}--client nennt eine andere Stelle.`
 );
@@ -2498,6 +2591,7 @@ function findBelow(dir, name, deep = 0) {
  * line client of version 4.0.0 runs out of the unpacked package.
  */
 async function fetchClient() {
+  if (IS_WIN && !process.env.ARASUL_CLIENT_RELEASE) stop(clientMissing());
   if (!IS_MAC && !process.env.ARASUL_CLIENT_RELEASE) {
     stop(t(
       `Fetching the client is built for a Mac. Here: the desktop package of the file service for this system, from the vendor's releases, then --client <path to ${SERVICE.client}>.`,
@@ -2637,7 +2731,7 @@ function readFolderState() {
 }
 
 function writeFolderState(data) {
-  mkdirSync(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  ensureConfigDir();
   const temporary = join(CONFIG_DIR, `.firmenordner-${process.pid}.tmp`);
   writeFileSync(temporary, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
   renameSync(temporary, FOLDER_STATE);
@@ -2748,10 +2842,10 @@ function clientFailed(run) {
  * The password for the file service. It is the one of the device, because the device mirrors it
  * there: asked for at every run, at the terminal or with --password-stdin, and stored nowhere.
  * The one exception is the sync in the background, which nobody is there to type for: it takes the
- * password out of the keychain, where `sync --install` put it, and out of no file.
+ * password out of the keychain (on Windows out of the private file) where `sync --install` put it.
  */
 async function askPassword(args, plan, device) {
-  if (args.flags.background) return keychainPassword(plan, device);
+  if (args.flags.background) return accessPassword(plan, device);
   const password = args.flags["password-stdin"]
     ? (await readAllStdin()).split(/\r?\n/)[0].trim()
     : await secretLine(t(`Password of ${plan.user} on ${device.name} (the file service takes the same one): `, `Passwort von ${plan.user} auf ${device.name} (der Dateidienst nimmt dasselbe): `));
@@ -2801,6 +2895,7 @@ function runClient({ client, plan, folder, local, excludes, password }) {
     encoding: "utf8",
     env: { ...process.env, [SERVICE.password]: password },
     timeout: 30 * 60_000,
+    windowsHide: true,
   });
 }
 
@@ -3285,7 +3380,6 @@ function bootstrapBridge(newest = false) {
 
 let inBackground = false;
 
-const IS_MAC = process.platform === "darwin";
 const SECURITY = "/usr/bin/security";
 const KEYCHAIN_SERVICE = "Arasul Firmenordner";
 // A keychain file of its own instead of the login keychain, for a test. Never needed otherwise.
@@ -3304,6 +3398,15 @@ const AGENT_LABEL = `de.arasul.abgleich.${basename(ROOT).toLowerCase().replace(/
 const AGENT_PLIST = join(LAUNCH_AGENTS, `${AGENT_LABEL}.plist`);
 const AGENT_LOG = join(BACKGROUND_DIR, `${AGENT_LABEL}.log`);
 const AGENT_LOCK = join(BACKGROUND_DIR, `${AGENT_LABEL}.lock`);
+// Windows has neither launchd nor a keychain this file may reach without a program of its own: the
+// task scheduler holds the job (a task file, a launcher without a window, a note of what was set up)
+// and the access lies in a file that only this Windows user may read.
+const SCHTASKS = process.env.ARASUL_SCHTASKS || "schtasks";
+const TASK_NAME = `Arasul\\${AGENT_LABEL}`;
+const TASK_META = join(BACKGROUND_DIR, `${AGENT_LABEL}.task.json`);
+const TASK_LAUNCHER = join(BACKGROUND_DIR, `${AGENT_LABEL}.vbs`);
+const TASK_XML = join(BACKGROUND_DIR, `${AGENT_LABEL}.task.xml`);
+const ACCESS_FILE = join(BACKGROUND_DIR, `${AGENT_LABEL}.zugang`);
 const domain = () => `gui/${process.getuid()}`;
 
 const pause = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -3363,16 +3466,55 @@ function keychainForget() {
 }
 
 /** The access of the sync in the background, out of the keychain and out of nothing else. */
-function keychainPassword() {
-  if (!IS_MAC && !KEYCHAIN_FILE) stop(t("The sync in the background takes its access out of the keychain of a Mac, and this is no Mac.", "Der Abgleich im Hintergrund nimmt seinen Zugang aus dem Schlüsselbund eines Mac, und das hier ist keiner."));
-  const entry = keychainRead();
+function accessPassword() {
+  if (!IS_MAC && !IS_WIN && !KEYCHAIN_FILE) stop(t("The sync in the background takes its access out of the keychain of a Mac or out of the private file of a Windows computer, and this is neither.", "Der Abgleich im Hintergrund nimmt seinen Zugang aus dem Schlüsselbund eines Mac oder aus der privaten Datei eines Windows-Rechners, und das hier ist keins von beiden."));
+  const entry = accessRead();
   if (!entry) {
     stop(t(
-      "No access for the sync in the background lies in the keychain. node arasul.mjs sync --install stores one, once.",
-      "Im Schlüsselbund liegt kein Zugang für den Abgleich im Hintergrund. node arasul.mjs sync --install legt einen ab, einmal."
+      "No access for the sync in the background is stored. node arasul.mjs sync --install stores one, once.",
+      "Für den Abgleich im Hintergrund ist kein Zugang abgelegt. node arasul.mjs sync --install legt einen ab, einmal."
     ));
   }
   return entry.value;
+}
+
+/** Does the access lie in the keychain? Otherwise in a file for this person alone. */
+const inTheKeychain = () => IS_MAC || Boolean(KEYCHAIN_FILE);
+const accessPlace = () => (inTheKeychain() ? t(`the keychain '${KEYCHAIN_SERVICE}'`, `dem Schlüsselbund '${KEYCHAIN_SERVICE}'`) : t(`${ACCESS_FILE}, a file only your Windows user can read`, `${ACCESS_FILE}, einer Datei, die nur dein Windows-Benutzer lesen kann`));
+
+/** What the access of the sync holds for this root, or null. Out of the keychain, or out of the private file on Windows. */
+function accessRead() {
+  if (inTheKeychain()) return keychainRead();
+  if (!existsSync(ACCESS_FILE)) return null;
+  if (openToOthers(ACCESS_FILE)) ownerOnly(ACCESS_FILE);
+  const entry = readJson(ACCESS_FILE, null);
+  return entry && typeof entry.value === "string" ? entry : null;
+}
+
+function accessStore(entry) {
+  if (inTheKeychain()) return keychainStore(entry);
+  ensureConfigDir();
+  mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
+  const temporary = join(BACKGROUND_DIR, `.zugang-${process.pid}.tmp`);
+  writeFileSync(temporary, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
+  // The file is private before it carries its name: the list of rules is cut first, then it is renamed.
+  if (!ownerOnly(temporary)) {
+    rmSync(temporary, { force: true });
+    stop(t(
+      `The access could not be restricted to your user (icacls), so it was not stored. Nothing was set up.`,
+      `Der Zugang ließ sich nicht auf deinen Benutzer beschränken (icacls), darum wurde er nicht abgelegt. Nichts wurde eingerichtet.`
+    ));
+  }
+  renameSync(temporary, ACCESS_FILE);
+  if (JSON.stringify(accessRead()) !== JSON.stringify(entry)) stop(t("The access did not stay in its file. Nothing was set up.", "Der Zugang ist nicht in seiner Datei geblieben. Nichts wurde eingerichtet."));
+}
+
+/** Take the access of this root away. True when one lay there. */
+function accessForget() {
+  if (inTheKeychain()) return keychainForget();
+  const had = existsSync(ACCESS_FILE);
+  rmSync(ACCESS_FILE, { force: true });
+  return had;
 }
 
 /**
@@ -3409,10 +3551,11 @@ const launchctl = (args) => spawnSync(LAUNCHCTL, args, { encoding: "utf8", timeo
 /** The node the agent starts: the one on the path when it is this one, so that an update of node does not break it. */
 function nodePath() {
   const real = realpathSync(process.execPath);
-  for (const part of (process.env.PATH || "").split(":")) {
+  for (const part of (process.env.PATH || "").split(delimiter)) {
     if (!part) continue;
     try {
-      if (realpathSync(join(part, "node")) === real) return join(part, "node");
+      const name = IS_WIN ? "node.exe" : "node";
+      if (realpathSync(join(part, name)) === real) return join(part, name);
     } catch {
       // Not there.
     }
@@ -3450,8 +3593,102 @@ function plistOf(program, every, env, label = AGENT_LABEL) {
   ].join("\n");
 }
 
+// --- The same job on Windows: the task scheduler -----------------------------------------------
+// A task of the person logged in, no administrator. It starts a launcher without a window
+// (wscript, //B) that sets the environment, goes into the root and starts node; node writes its own
+// log (ARASUL_LOG_TO), because a launcher without a window has no console to redirect. The task
+// file says: also on battery, also when a run was missed, one run at a time, again at every login.
+
+const vbs = (value) => `"${String(value).replace(/"/g, '""')}"`;
+/** One argument as the launcher passes it on: in quotes, and without a quote of its own (Windows paths have none). */
+const quotedArg = (value) => `"${String(value).replace(/"/g, "")}"`;
+
+/** The launcher, a VBScript. UTF-16 with a mark, because a user name with an umlaut is no ANSI. */
+function launcherOf(program, env) {
+  const lines = [
+    'Set shell = CreateObject("WScript.Shell")',
+    `shell.CurrentDirectory = ${vbs(ROOT)}`,
+    'Set environment = shell.Environment("Process")',
+    ...Object.entries({ ...env, ARASUL_LOG_TO: AGENT_LOG }).map(([name, value]) => `environment(${vbs(name)}) = ${vbs(value)}`),
+    `shell.Run ${vbs(program.map(quotedArg).join(" "))}, 0, True`,
+    "",
+  ];
+  return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(lines.join("\r\n"), "utf16le")]);
+}
+
+/** An interval for the task file: PT1H30M. */
+function isoInterval(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return `PT${hours ? `${hours}H` : ""}${rest || !hours ? `${rest}M` : ""}`;
+}
+
+const localStart = () => {
+  const now = new Date();
+  const two = (value) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}T${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}`;
+};
+
+/** The task file for the task scheduler, UTF-16 with a mark like the scheduler writes its own. */
+function taskXmlOf(every) {
+  const text = [
+    '<?xml version="1.0" encoding="UTF-16"?>',
+    '<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">',
+    `  <RegistrationInfo><Description>${xml(t(`Sync of the company folder ${ROOT}. Taken back by node arasul.mjs sync --uninstall.`, `Abgleich des Firmenordners ${ROOT}. Zurückgenommen mit node arasul.mjs sync --uninstall.`))}</Description></RegistrationInfo>`,
+    "  <Triggers>",
+    `    <TimeTrigger><Repetition><Interval>${isoInterval(every)}</Interval><StopAtDurationEnd>false</StopAtDurationEnd></Repetition><StartBoundary>${localStart()}</StartBoundary><Enabled>true</Enabled></TimeTrigger>`,
+    `    <LogonTrigger><Enabled>true</Enabled><UserId>${xml(windowsUser())}</UserId></LogonTrigger>`,
+    "  </Triggers>",
+    `  <Principals><Principal id="Author"><UserId>${xml(windowsUser())}</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>`,
+    "  <Settings>",
+    "    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>",
+    "    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>",
+    "    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>",
+    "    <StartWhenAvailable>true</StartWhenAvailable>",
+    "    <AllowStartOnDemand>true</AllowStartOnDemand>",
+    "    <Enabled>true</Enabled>",
+    "    <Hidden>false</Hidden>",
+    "    <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>",
+    "  </Settings>",
+    '  <Actions Context="Author">',
+    `    <Exec><Command>wscript.exe</Command><Arguments>//B //Nologo ${xml(quotedArg(TASK_LAUNCHER))}</Arguments></Exec>`,
+    "  </Actions>",
+    "</Task>",
+    "",
+  ].join("\r\n");
+  return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, "utf16le")]);
+}
+
+const schtasks = (args) => spawnSync(SCHTASKS, args, { encoding: "utf8", timeout: 60_000, windowsHide: true });
+
+/** Set the job up at the task scheduler. The task file first; where the scheduler turns it down, the plain way with an interval alone. */
+function taskCreate(program, every, env) {
+  mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
+  writeFileSync(TASK_LAUNCHER, launcherOf(program, env));
+  writeFileSync(TASK_XML, taskXmlOf(every));
+  writeFileSync(TASK_META, `${JSON.stringify({ every, program, label: AGENT_LABEL, task: TASK_NAME, launcher: TASK_LAUNCHER }, null, 2)}\n`);
+  let run = schtasks(["/Create", "/TN", TASK_NAME, "/XML", TASK_XML, "/F"]);
+  if (run.status !== 0) {
+    run = schtasks(["/Create", "/TN", TASK_NAME, "/SC", "MINUTE", "/MO", String(every), "/TR", `wscript.exe //B //Nologo ${quotedArg(TASK_LAUNCHER)}`, "/F"]);
+  }
+  if (run.status === 0) schtasks(["/Run", "/TN", TASK_NAME]);
+  return run;
+}
+
+/** Take the job away. True when the scheduler held it. */
+function taskDelete() {
+  const held = schtasks(["/Delete", "/TN", TASK_NAME, "/F"]).status === 0;
+  for (const file of [TASK_LAUNCHER, TASK_XML, TASK_META]) rmSync(file, { force: true });
+  return held;
+}
+
 /** What is set up for this root: the agent's file, its interval and program, and whether launchd holds it. */
 function agentState() {
+  if (IS_WIN) {
+    const meta = readJson(TASK_META, null);
+    if (!meta) return null;
+    return { every: Number(meta.every) || 0, program: String(meta.program?.[0] || ""), loaded: schtasks(["/Query", "/TN", TASK_NAME]).status === 0 };
+  }
   if (!existsSync(AGENT_PLIST)) return null;
   const text = readFileSync(AGENT_PLIST, "utf8");
   const every = Math.round(Number(text.match(/<key>StartInterval<\/key>\s*<integer>(\d+)</)?.[1] || 0) / 60);
@@ -3486,12 +3723,29 @@ function takeLock() {
   };
 }
 
-/** A notification of macOS, or of the program ARASUL_NOTIFY names. The text goes as an argument of the script, never into its source. */
+/** A notification of macOS or Windows, or of the program ARASUL_NOTIFY names. The text goes as an argument of the script, never into its source. */
 function notify(title, message) {
   const text = oneLine(message, 400);
   say(`${t("Notification", "Mitteilung")}: ${title}: ${text}`);
   const custom = process.env.ARASUL_NOTIFY;
-  if (custom) return spawnSync(custom, [title, text], { timeout: 15_000 });
+  if (custom) return spawnSync(custom, [title, text], { timeout: 15_000, windowsHide: true });
+  if (IS_WIN) {
+    // The text goes in the environment of the script, never into its source.
+    const script = [
+      "[void][Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]",
+      "$content = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)",
+      "$lines = $content.GetElementsByTagName('text')",
+      "[void]$lines.Item(0).AppendChild($content.CreateTextNode($env:ARASUL_NOTE_TITLE))",
+      "[void]$lines.Item(1).AppendChild($content.CreateTextNode($env:ARASUL_NOTE_TEXT))",
+      "$toast = [Windows.UI.Notifications.ToastNotification]::new($content)",
+      "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show($toast)",
+    ].join("\n");
+    return spawnSync(process.env.ARASUL_POWERSHELL || "powershell.exe", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")], {
+      env: { ...process.env, ARASUL_NOTE_TITLE: title, ARASUL_NOTE_TEXT: text },
+      timeout: 30_000,
+      windowsHide: true,
+    });
+  }
   if (!IS_MAC) return null;
   return spawnSync("/usr/bin/osascript", ["-e", "on run argv", "-e", "display notification (item 2 of argv) with title (item 1 of argv)", "-e", "end run", title, text], { timeout: 15_000 });
 }
@@ -3646,10 +3900,10 @@ function backgroundStop(failed, device, instead) {
 
 /** `sync --install`: the password into the keychain, proven first, and an agent to launchd. */
 async function doInstall(args) {
-  if (!IS_MAC && !process.env.ARASUL_LAUNCH_AGENTS) {
+  if (!IS_MAC && !IS_WIN && !process.env.ARASUL_LAUNCH_AGENTS) {
     stop(t(
-      "The sync in the background is built on launchd and the keychain of a Mac. Here: node arasul.mjs sync, by hand or out of a timer of this computer.",
-      "Der Abgleich im Hintergrund baut auf launchd und den Schlüsselbund eines Mac. Hier: node arasul.mjs sync, von Hand oder aus einem Zeitgeber dieses Rechners."
+      "The sync in the background is built on launchd and the keychain of a Mac, and on the task scheduler of Windows. Here: node arasul.mjs sync, by hand or out of a timer of this computer.",
+      "Der Abgleich im Hintergrund baut auf launchd und den Schlüsselbund eines Mac und auf die Aufgabenplanung von Windows. Hier: node arasul.mjs sync, von Hand oder aus einem Zeitgeber dieses Rechners."
     ), 2);
   }
   const every = Number(one(args, "every") ?? EVERY_DEFAULT);
@@ -3664,11 +3918,15 @@ async function doInstall(args) {
   // Proven before it is stored: a password the service does not take would fail at every run.
   await pickAddress(plan, device);
   await spacesOf(plan, device, password);
-  const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
-  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "ARASUL_LANGUAGE", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
+  // On Windows the task keeps the environment of the person; on a Mac launchd starts with almost none.
+  const env = IS_WIN ? {} : { PATH: "/usr/bin:/bin:/usr/sbin:/sbin" };
+  for (const name of ["ARASUL_CONFIG_DIR", "ARASUL_KEYCHAIN", "ARASUL_NOTIFY", "ARASUL_LANGUAGE", "ARASUL_PLATFORM", "ARASUL_ICACLS", "ARASUL_SCHTASKS", "LANG"]) if (process.env[name]) env[name] = name === "ARASUL_CONFIG_DIR" ? CONFIG_DIR : process.env[name];
   // Proven from where it will run: launchd's node does not reach what this terminal reaches.
-  const probe = probeFromBackground(device, plan, env);
-  if (probe) {
+  // Windows has no such barrier: a program of the task scheduler reaches the network like this terminal does.
+  const probe = IS_WIN ? null : probeFromBackground(device, plan, env);
+  if (IS_WIN) {
+    say(t(`Not checked from the background: on Windows the task scheduler starts the sync with your own access to the network. status says after the first run whether it got through.`, `Nicht aus dem Hintergrund geprüft: unter Windows startet die Aufgabenplanung den Abgleich mit deinem eigenen Netzzugang. status sagt nach dem ersten Lauf, ob er durchkam.`));
+  } else if (probe) {
     const { seen, hosts } = probe;
     const there = seen.get(device.entry.address);
     const service = plan.addresses.filter((address) => seen.get(address)?.ok);
@@ -3681,36 +3939,48 @@ async function doInstall(args) {
   }
   const token = await issueAppToken(plan, device, password);
   if (token) await spacesOf(plan, device, token.value);
-  const before = keychainRead();
-  keychainStore({ kind: token ? "token" : "password", value: token ? token.value : password, ...(token?.until ? { until: token.until } : {}), device: device.name, address: plan.address, user: plan.user });
+  const before = accessRead();
+  accessStore({ kind: token ? "token" : "password", value: token ? token.value : password, ...(token?.until ? { until: token.until } : {}), device: device.name, address: plan.address, user: plan.user });
   // An earlier install of this root issued a token of its own; it goes now, not in a year.
   if (before?.kind === "token" && before.value !== token?.value) await revokeAppToken(before);
 
   mkdirSync(BACKGROUND_DIR, { recursive: true, mode: 0o700 });
-  mkdirSync(LAUNCH_AGENTS, { recursive: true });
   // This very file, by its path: whoever installs runs the bridge they mean, and a root that is still
   // to become one carries the house's arasul.mjs after its first sync.
   const program = [nodePath(), fileURLToPath(import.meta.url), "sync", "--background", "--device", device.name, "--client", client];
-  writeFileSync(AGENT_PLIST, plistOf(program, every, env), { mode: 0o644 });
-  launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]);
-  let run;
-  // launchd lets go of an agent a moment after bootout, and refuses it until then.
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    run = launchctl(["bootstrap", domain(), AGENT_PLIST]);
-    if (run.status === 0) break;
-    pause(1000);
-  }
-  if (run.status !== 0) {
-    stop(t(
-      `launchd did not take the agent: ${clientSaid(run)}. The password lies in the keychain and the agent at ${AGENT_PLIST}: node arasul.mjs sync --uninstall takes both back.`,
-      `launchd hat den Agenten nicht angenommen: ${clientSaid(run)}. Das Passwort liegt im Schlüsselbund und der Agent unter ${AGENT_PLIST}: node arasul.mjs sync --uninstall nimmt beides zurück.`
-    ));
+  if (IS_WIN) {
+    const run = taskCreate(program, every, env);
+    if (run.status !== 0) {
+      stop(t(
+        `The task scheduler did not take the task: ${clientSaid(run)}. The access lies in ${ACCESS_FILE}: node arasul.mjs sync --uninstall takes it back.`,
+        `Die Aufgabenplanung hat die Aufgabe nicht angenommen: ${clientSaid(run)}. Der Zugang liegt in ${ACCESS_FILE}: node arasul.mjs sync --uninstall nimmt ihn zurück.`
+      ));
+    }
+  } else {
+    mkdirSync(LAUNCH_AGENTS, { recursive: true });
+    writeFileSync(AGENT_PLIST, plistOf(program, every, env), { mode: 0o644 });
+    launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]);
+    let run;
+    // launchd lets go of an agent a moment after bootout, and refuses it until then.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      run = launchctl(["bootstrap", domain(), AGENT_PLIST]);
+      if (run.status === 0) break;
+      pause(1000);
+    }
+    if (run.status !== 0) {
+      stop(t(
+        `launchd did not take the agent: ${clientSaid(run)}. The password lies in the keychain and the agent at ${AGENT_PLIST}: node arasul.mjs sync --uninstall takes both back.`,
+        `launchd hat den Agenten nicht angenommen: ${clientSaid(run)}. Das Passwort liegt im Schlüsselbund und der Agent unter ${AGENT_PLIST}: node arasul.mjs sync --uninstall nimmt beides zurück.`
+      ));
+    }
   }
   say(t(`Sync in the background set up: ${plan.user} on ${device.name}, every ${every} minutes, starting now.`, `Abgleich im Hintergrund eingerichtet: ${plan.user} auf ${device.name}, alle ${every} Minuten, ab jetzt.`));
-  say(`  ${t("Agent", "Agent")}: ${AGENT_PLIST} (${AGENT_LABEL}), ${t("started again by launchd at every login", "von launchd bei jeder Anmeldung neu gestartet")}`);
+  say(IS_WIN
+    ? `  ${t("Task", "Aufgabe")}: ${TASK_NAME} ${t("in the task scheduler, started again at every login. Open it in the Windows search as 'Task Scheduler'", "in der Aufgabenplanung, bei jeder Anmeldung neu gestartet. Du findest sie in der Windows-Suche unter 'Aufgabenplanung'")}`
+    : `  ${t("Agent", "Agent")}: ${AGENT_PLIST} (${AGENT_LABEL}), ${t("started again by launchd at every login", "von launchd bei jeder Anmeldung neu gestartet")}`);
   say(`  ${t("Access", "Zugang")}: ${token
-    ? t(`an app token of the file service for this computer, holds until ${token.until ? token.until.slice(0, 10) : "?"}, in the keychain '${KEYCHAIN_SERVICE}'. Your password is stored nowhere.`, `ein App-Token des Dateidienstes für diesen Rechner, gilt bis ${token.until ? token.until.slice(0, 10) : "?"}, im Schlüsselbund '${KEYCHAIN_SERVICE}'. Dein Passwort liegt nirgends.`)
-    : t(`the file service issues no app token, so your password lies in the keychain '${KEYCHAIN_SERVICE}', checked against the service. In no file.`, `der Dateidienst stellt kein App-Token aus, darum liegt dein Passwort im Schlüsselbund '${KEYCHAIN_SERVICE}', am Dienst geprüft. In keiner Datei.`)}`);
+    ? t(`an app token of the file service for this computer, holds until ${token.until ? token.until.slice(0, 10) : "?"}, in ${accessPlace()}. Your password is stored nowhere.`, `ein App-Token des Dateidienstes für diesen Rechner, gilt bis ${token.until ? token.until.slice(0, 10) : "?"}, in ${accessPlace()}. Dein Passwort liegt nirgends.`)
+    : t(`the file service issues no app token, so your password lies in ${accessPlace()}, checked against the service.${inTheKeychain() ? " In no file." : ""}`, `der Dateidienst stellt kein App-Token aus, darum liegt dein Passwort in ${accessPlace()}, am Dienst geprüft.${inTheKeychain() ? " In keiner Datei." : ""}`)}`);
   say(`  ${t("Log", "Protokoll")}: ${AGENT_LOG}`);
   say(`  ${t(
     "A conflict or an error comes as a notification. node arasul.mjs status says in one line how things stand. Revoking the credential in the device's front end stops the sync at its next run.",
@@ -3720,11 +3990,16 @@ async function doInstall(args) {
   // Editor may notify: on 2026-09-27 at a Mac it could not, and every notification went nowhere
   // without a sign. So one comes now, and the output says where it is allowed.
   notify(t("Company folder in the background", "Firmenordner im Hintergrund"), t(`${basename(ROOT)} is synced every ${every} minutes from now on.`, `${basename(ROOT)} wird ab jetzt alle ${every} Minuten abgeglichen.`));
-  say(`  ${t(
-    "A notification went out just now. If none appeared: System Settings, Notifications, Script Editor, allow notifications. Without it a conflict stays silent and only status says it.",
-    "Eben ging eine Mitteilung hinaus. Ist keine erschienen: Systemeinstellungen, Mitteilungen, Skripteditor, Mitteilungen erlauben. Ohne das bleibt ein Konflikt still, und nur status sagt ihn."
-  )}`);
-  if (guardedByMacos(ROOT)) {
+  say(`  ${IS_WIN
+    ? t(
+        "A notification went out just now. If none appeared: Settings, System, Notifications, allow notifications from 'Windows PowerShell', and switch Focus assist off. Without it a conflict stays silent and only status says it.",
+        "Eben ging eine Mitteilung hinaus. Ist keine erschienen: Einstellungen, System, Benachrichtigungen, Benachrichtigungen von 'Windows PowerShell' erlauben und die Fokussierungshilfe ausschalten. Ohne das bleibt ein Konflikt still, und nur status sagt ihn."
+      )
+    : t(
+        "A notification went out just now. If none appeared: System Settings, Notifications, Script Editor, allow notifications. Without it a conflict stays silent and only status says it.",
+        "Eben ging eine Mitteilung hinaus. Ist keine erschienen: Systemeinstellungen, Mitteilungen, Skripteditor, Mitteilungen erlauben. Ohne das bleibt ein Konflikt still, und nur status sagt ihn."
+      )}`);
+  if (IS_MAC && guardedByMacos(ROOT)) {
     say(`  ${t(
       `${ROOT} lies in a folder macOS guards: a program in the background gets in only when node has full disk access in the system settings, under privacy and security. Without it every run ends with 'Operation not permitted'.`,
       `${ROOT} liegt in einem Ordner, den macOS bewacht: ein Programm im Hintergrund kommt nur hinein, wenn node in den Systemeinstellungen unter Datenschutz und Sicherheit vollen Festplattenzugriff hat. Ohne ihn endet jeder Lauf mit 'Operation not permitted'.`
@@ -3735,12 +4010,12 @@ async function doInstall(args) {
 
 /** `sync --uninstall`: the agent out of launchd, its file away, the token revoked, the access out of the keychain. */
 async function doUninstall() {
-  const loaded = launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]).status === 0;
-  const had = existsSync(AGENT_PLIST);
+  const had = IS_WIN ? existsSync(TASK_META) : existsSync(AGENT_PLIST);
+  const loaded = IS_WIN ? taskDelete() : launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]).status === 0;
   rmSync(AGENT_PLIST, { force: true });
-  const entry = IS_MAC || KEYCHAIN_FILE ? keychainRead() : null;
+  const entry = IS_MAC || IS_WIN || KEYCHAIN_FILE ? accessRead() : null;
   const revoked = entry?.kind === "token" ? await revokeAppToken(entry) : null;
-  const forgot = IS_MAC || KEYCHAIN_FILE ? keychainForget() : false;
+  const forgot = IS_MAC || IS_WIN || KEYCHAIN_FILE ? accessForget() : false;
   const state = readFolderState();
   if (state.roots[ROOT]?.background) {
     delete state.roots[ROOT].background;
@@ -3751,8 +4026,10 @@ async function doUninstall() {
     return true;
   }
   say(t("Sync in the background taken back:", "Abgleich im Hintergrund zurückgenommen:"));
-  say(`  ${t("Agent", "Agent")}: ${loaded ? t("taken out of launchd", "aus launchd genommen") : t("was not loaded", "war nicht geladen")}${had ? t(`, ${AGENT_PLIST} deleted`, `, ${AGENT_PLIST} gelöscht`) : ""}`);
-  say(`  ${t("Access", "Zugang")}: ${forgot ? t("taken out of the keychain", "aus dem Schlüsselbund genommen") : t("none lay in the keychain", "im Schlüsselbund lag keiner")}${
+  if (IS_WIN) say(`  ${t("Task", "Aufgabe")}: ${loaded ? t("taken out of the task scheduler", "aus der Aufgabenplanung genommen") : t("was not held by the task scheduler", "die Aufgabenplanung hielt sie nicht")}${had ? t(", its files deleted", ", ihre Dateien gelöscht") : ""}`);
+  else say(`  ${t("Agent", "Agent")}: ${loaded ? t("taken out of launchd", "aus launchd genommen") : t("was not loaded", "war nicht geladen")}${had ? t(`, ${AGENT_PLIST} deleted`, `, ${AGENT_PLIST} gelöscht`) : ""}`);
+  const where = inTheKeychain() ? t("the keychain", "dem Schlüsselbund") : t("its private file", "seiner privaten Datei");
+  say(`  ${t("Access", "Zugang")}: ${forgot ? t(`taken out of ${where}`, `aus ${where} genommen`) : t(`none lay in ${where}`, `in ${where} lag keiner`)}${
     revoked === true ? t(", the app token revoked at the file service", ", das App-Token am Dateidienst widerrufen")
     : revoked === false ? t(`, the app token could not be revoked at the file service now: it ends on ${entry.until?.slice(0, 10) || "?"}, or revoke it in the file service's front end`, `, das App-Token ließ sich am Dateidienst gerade nicht widerrufen: es endet am ${entry.until?.slice(0, 10) || "?"}, oder widerrufe es in der Oberfläche des Dateidienstes`)
     : ""}`);
@@ -3789,7 +4066,9 @@ function syncLine() {
       ? t(`in the background, but ${agent.program} is gone: node arasul.mjs sync --install again`, `im Hintergrund, aber ${agent.program} ist weg: node arasul.mjs sync --install noch einmal`)
       : agent.loaded
         ? t(`in the background every ${agent.every} minutes`, `im Hintergrund alle ${agent.every} Minuten`)
-        : t(`set up every ${agent.every} minutes, but launchd does not hold it: log in again or node arasul.mjs sync --install`, `alle ${agent.every} Minuten eingerichtet, aber launchd hält es nicht: neu anmelden oder node arasul.mjs sync --install`);
+        : IS_WIN
+          ? t(`set up every ${agent.every} minutes, but the task scheduler does not hold it: node arasul.mjs sync --install`, `alle ${agent.every} Minuten eingerichtet, aber die Aufgabenplanung hält es nicht: node arasul.mjs sync --install`)
+          : t(`set up every ${agent.every} minutes, but launchd does not hold it: log in again or node arasul.mjs sync --install`, `alle ${agent.every} Minuten eingerichtet, aber launchd hält es nicht: neu anmelden oder node arasul.mjs sync --install`);
   const problem = mine?.background?.problem || null;
   // What went next to the root, in one sentence, as long as it lies there.
   const went = mine?.setAside;
@@ -4120,7 +4399,7 @@ function filesThrough(dir, excludes) {
     }
     for (const entry of entries) {
       const path = join(at, entry.name);
-      const rel = relative(dir, path).split("/").join("/");
+      const rel = slashed(relative(dir, path));
       if (entry.isSymbolicLink() || tests.some((test) => test(rel))) continue;
       if (entry.isDirectory()) walk(path, deep + 1);
       else out.push(rel);
@@ -4310,11 +4589,11 @@ async function doLogin(args) {
       }
       user = oneLine((body?.user || jsonOf(answer)?.user)?.username || user || "", 80) || null;
     } else {
-      if (!user) user = (await visibleLine(t("User name: ", "Benutzername: "))) || "";
+      if (!user) user = (await visibleLine(t("E-mail (or user name): ", "E-Mail (oder Benutzername): "))) || "";
       user = user.trim();
-      if (!user) stop(t("A user name is needed: --user <name>.", "Ein Benutzername wird gebraucht: --user <name>."), 2);
+      if (!user) stop(t("An e-mail address or user name is needed: --user <e-mail>.", "Eine E-Mail-Adresse oder ein Benutzername wird gebraucht: --user <e-mail>."), 2);
       let password = secret ?? (await secretLine(t(`Password for ${user} on ${address}: `, `Passwort für ${user} auf ${address}: `)));
-      if (!password) stop(t("The password comes from the terminal, or from the first line of the input with --password-stdin. It is never taken from an argument.", "Das Passwort kommt vom Terminal, oder mit --password-stdin aus der ersten Zeile der Eingabe. Aus einem Argument wird es nie genommen."), 2);
+      if (!password) stop(`${t("The password comes from the terminal, or from the first line of the input with --password-stdin. It is never taken from an argument.", "Das Passwort kommt vom Terminal, oder mit --password-stdin aus der ersten Zeile der Eingabe. Aus einem Argument wird es nie genommen.")}${IS_WIN ? ` ${t("On Windows run this in PowerShell or in Windows Terminal itself: Git Bash and the terminal of an editor often pass no keyboard on to node.", "Unter Windows führe das in PowerShell oder im Windows-Terminal selbst aus: Git Bash und das Terminal eines Editors reichen die Tastatur oft nicht an node weiter.")}` : ""}`, 2);
       kind = "issued";
       const answer = await first({ method: "POST", path: DEVICE.login, json: { [DEVICE.userField]: user, [DEVICE.passwordField]: password } });
       password = "";
@@ -4337,7 +4616,7 @@ async function doLogin(args) {
     if (!kept || args.flags.default) data.default = name;
     writeCredentials(data);
     const expires = expiryOf(token);
-    say(t(`Logged in to ${address} as ${name}${user ? ` (${user})` : ""}. The credential lies in ${CREDENTIALS}, mode 0600.`, `Angemeldet an ${address} als ${name}${user ? ` (${user})` : ""}. Der Ausweis liegt in ${CREDENTIALS}, Rechte 0600.`));
+    say(t(`Logged in to ${address} as ${name}${user ? ` (${user})` : ""}. The credential lies in ${CREDENTIALS}, ${privateHint()}.`, `Angemeldet an ${address} als ${name}${user ? ` (${user})` : ""}. Der Ausweis liegt in ${CREDENTIALS}, ${privateHint()}.`));
     if (kept && !args.flags.default) {
       say(t(
         `${kept} stays the default device. Calls without --device mean ${kept}; ${name} is addressed with --device ${name}, or becomes the default with: node arasul.mjs login ${address} --default`,
@@ -4459,7 +4738,7 @@ function usage() {
       "  sync --plan                    what a sync would move up and down, with count and size, writing nothing",
       "  sync --keep-mine               the device's version of what differs, at the first sync of what only it has, into .claude/device-old/ there",
       "  --fetch-client                 with login, sync or sync --install: fetch the file service's client when it is missing",
-      "  sync --install [--every <min>] on a Mac: sync in the background, an app token in the keychain, every 5 minutes",
+      "  sync --install [--every <min>] sync in the background (Mac: launchd, keychain; Windows: task scheduler, private file), every 5 minutes",
       "  sync --uninstall               take the agent back and revoke the token",
       "  deploy [--client <path>]       put this root into the room of the root on the device, the check script first",
       "  apps [--json]                  the assigned apps with their routes, writes APP.md",
@@ -4482,7 +4761,7 @@ function usage() {
       "  sync --plan                    was ein Abgleich hoch und runter bewegte, mit Anzahl und Größe, ohne zu schreiben",
       "  sync --keep-mine               die Fassung des Geräts von allem, was verschieden ist, beim ersten Abgleich auch was nur es hat, dort nach .claude/geraet-alt/",
       "  --fetch-client                 mit login, sync oder sync --install: den Klienten des Dateidienstes holen, wenn er fehlt",
-      "  sync --install [--every <min>] am Mac: Abgleich im Hintergrund, ein App-Token im Schlüsselbund, alle 5 Minuten",
+      "  sync --install [--every <min>] Abgleich im Hintergrund (Mac: launchd, Schlüsselbund; Windows: Aufgabenplanung, private Datei), alle 5 Minuten",
       "  sync --uninstall               Agent zurücknehmen und Token widerrufen",
       "  deploy [--client <pfad>]       diese Wurzel in den Raum der Wurzel am Gerät legen, zuerst das Prüfskript",
       "  apps [--json]                  die zugewiesenen Apps mit ihren Routen, schreibt APP.md",
@@ -4547,7 +4826,27 @@ async function learnLanguage(service, plan) {
   rememberLanguage(language);
 }
 
+/** The task scheduler's launcher has no console, so the output goes to the log by itself. */
+function logToFile(path) {
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  const write = (stream) => {
+    stream.write = (chunk, encoding, done) => {
+      try {
+        appendFileSync(path, typeof chunk === "string" ? chunk : Buffer.from(chunk));
+      } catch {
+        // A log that cannot be written must not stop the sync.
+      }
+      if (typeof encoding === "function") encoding();
+      else if (typeof done === "function") done();
+      return true;
+    };
+  };
+  write(process.stdout);
+  write(process.stderr);
+}
+
 async function main() {
+  if (process.env.ARASUL_LOG_TO) logToFile(process.env.ARASUL_LOG_TO);
   const args = parseArgs(process.argv.slice(2));
   chooseLanguage(args);
   const command = args._[0];

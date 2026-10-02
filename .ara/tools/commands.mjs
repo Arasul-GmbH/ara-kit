@@ -107,6 +107,7 @@ import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { BRANCHES, PARTNER_ONLY, RETIRED } from "./lib/commands.mjs";
+import { repairLinks } from "./lib/links.mjs";
 import { LANGUAGES, isVariant, language, t, variantOf } from "./lib/i18n.mjs";
 import { BUSINESS, ROOT, fail, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.mjs";
 
@@ -440,10 +441,20 @@ function markForGit(branchName) {
   return marked.status === 0 ? files.length : 0;
 }
 const gitMarked = arg.apply ? markForGit(branch) : 0;
+// Windows: git leaves a link it cannot make as a small file, and the skill behind it is then not there.
+const repairedLinks = arg.apply ? repairLinks(join(ROOT, ".claude", "skills")) : [];
+if (repairedLinks.length && !arg.json) {
+  console.log(
+    t(
+      `Links repaired (git could not make them on this computer): ${repairedLinks.map((link) => `${link.path} (${link.how})`).join(", ")}.`,
+      `Links wiederhergestellt (git konnte sie auf diesem Rechner nicht anlegen): ${repairedLinks.map((link) => `${link.path} (${link.how})`).join(", ")}.`
+    )
+  );
+}
 
 if (arg.json) {
   const commands = lage.commands.map(({ skill, ...c }) => ({ ...c, skill: { to: skill.to, state: skill.state, placed: skill.placed } }));
-  console.log(JSON.stringify({ ...lage, commands, applied: Boolean(arg.apply), replaced: replace, cut, git_marked: gitMarked }, null, 2));
+  console.log(JSON.stringify({ ...lage, commands, applied: Boolean(arg.apply), replaced: replace, cut, git_marked: gitMarked, links_repaired: repairedLinks.length }, null, 2));
   process.exit(0);
 }
 
