@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.64.3 (2026-10-02)
+
+Contract: up to 7
+
+- **`status` never sends the credential to a certificate nobody has vouched for (K20).** When the certificate a device presents no longer fits the one held, `status` names the new certificate authority with both fingerprints as before, but no longer asks the device whether it still knows the credential. A bearer token goes only to a device whose certificate is held. The credential line says "not checked, log in again first", or that it ended when its own end date says so. The one `login` command stays. This replaces the one request to the session route that 0.64.2 described.
+
 ## 0.64.2 (2026-10-02)
 
 Contract: up to 7

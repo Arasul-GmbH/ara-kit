@@ -12020,7 +12020,8 @@ await checkAsync("status nennt eine neue CA und einen Ausweis, den das Gerät ni
     let text = lauf.stdout;
     assert(lauf.status !== 0 && /Zertifikat: das Gerät trägt seit \d{4}-\d\d-\d\d \d\d:\d\d eine neue CA, SHA-256 /.test(text), `status nennt die neue CA nicht: ${text}${lauf.stderr}`);
     assert(text.includes(fingerabdruck(zweites.cert)) && text.includes(fingerabdruck(erstes.cert)), `status nennt nicht beide Fingerabdrücke: ${text}`);
-    assert(/Ausweis: das Gerät kennt ihn noch/.test(text) && !/kennt ihn nicht mehr/.test(text), `status verwechselt den Ausweis mit der CA: ${text}`);
+    assert(/Ausweis: nicht geprüft, erst neu anmelden\./.test(text) && !/kennt ihn/.test(text), `status prüft den Ausweis, obwohl dem neuen Zertifikat niemand traut: ${text}`);
+    assert(!geraet.gesehen.some((f) => f.ausweis), `ein Authorization-Kopf hat das Kit zum getauschten Zertifikat verlassen: ${JSON.stringify(geraet.gesehen)}`);
     assert(text.includes(`node arasul.mjs login ${geraet.adresse} --user anna --name orin --insecure`), `status nennt den einen Befehl nicht: ${text}`);
     assert(!/SELF_SIGNED/.test(text + lauf.stderr), "status nennt nur den Zertifikatsfehler");
 
@@ -12029,10 +12030,11 @@ await checkAsync("status nennt eine neue CA und einen Ausweis, den das Gerät ni
     geraet = await brueckeGeraet({ tls: { ...zweites, port }, ausweisTot: true });
     lauf = await bruecke(w, ["status", "--language", "de"]);
     text = lauf.stdout;
-    assert(/Zertifikat: das Gerät trägt seit .* eine neue CA/.test(text) && /Ausweis: das Gerät kennt ihn nicht mehr, er wurde dort widerrufen oder gelöscht\./.test(text), `status nennt nicht beides getrennt: ${text}`);
+    assert(/Zertifikat: das Gerät trägt seit .* eine neue CA/.test(text) && /Ausweis: nicht geprüft, erst neu anmelden\./.test(text), `status nennt nicht beides getrennt: ${text}`);
+    assert(!geraet.gesehen.some((f) => f.ausweis), `ein Authorization-Kopf hat das Kit zum getauschten Zertifikat verlassen: ${JSON.stringify(geraet.gesehen)}`);
     assert(text.includes("--insecure") && !text.includes(BRUECKE_TOKEN), `der Befehl fehlt oder das Token steht in der Ausgabe: ${text}`);
     lauf = await bruecke(w, ["status", "--language", "en"]);
-    assert(/Certificate: the device carries a new certificate authority since /.test(lauf.stdout) && /Credential: the device no longer knows it/.test(lauf.stdout), `status spricht nicht Englisch: ${lauf.stdout}`);
+    assert(/Certificate: the device carries a new certificate authority since /.test(lauf.stdout) && /Credential: not checked, log in again first/.test(lauf.stdout), `status spricht nicht Englisch: ${lauf.stdout}`);
 
     // Dasselbe Zertifikat, Gerät nicht erreichbar: weiter die schlichte Meldung, keine neue CA erfunden.
     await geraet.schliessen();

@@ -211,7 +211,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.64.2";
+const BRIDGE = "0.64.3";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -4666,13 +4666,13 @@ async function doLogin(args) {
 }
 
 /**
- * A device whose certificate no longer fits the one held is two things, and status names them apart:
- * the certificate (the device carries a new one, since when, which fingerprint) and the credential
- * (whether the device still knows it). The second needs one request to the device with the new
- * certificate, and that request carries the credential to a certificate nobody has vouched for yet.
- * It is sent once, to the session route only, and only here, in a read; a dead credential costs
- * nothing, a living one went to the address it was issued for. Returns the lines, or null when the
- * certificate is the same one (it expired, then the plain explanation holds).
+ * A device whose certificate no longer fits the one held is shown as two things, and status names
+ * them apart: the certificate (the device carries a new one, since when, which fingerprint) and the
+ * credential. The credential is never sent to find out: a bearer token goes only to a device whose
+ * certificate is vouched for, and nobody has vouched for the new one. So the credential line says
+ * "not checked, log in again first", except where the credential's own end date already answers it.
+ * Returns the lines, or null when the certificate is the same one (it expired, then the plain
+ * explanation holds).
  */
 async function changedCertificate(name, entry) {
   let held;
@@ -4697,24 +4697,10 @@ async function changedCertificate(name, entry) {
     )}`,
   ];
   const expires = expiryOf(entry.token);
-  let known = null;
-  try {
-    const answer = await send({ address: entry.address, ca: now.pem }, { path: DEVICE.session, token: entry.token, timeout: 10_000 });
-    const body = inner(jsonOf(answer));
-    if (answer.status === 401 || answer.status === 403) known = false;
-    else if (answer.status === 200) known = Boolean(body?.authenticated ?? jsonOf(answer)?.authenticated);
-  } catch {
-    known = null;
-  }
-  if (known === false || (known === null && expires && expires < Date.now())) {
-    lines.push(`  ${t("Credential", "Ausweis")}: ${t(
-      expires && expires < Date.now() ? `ended on ${stamp(expires)}, the device no longer knows it` : "the device no longer knows it, it was revoked or deleted there",
-      expires && expires < Date.now() ? `am ${stamp(expires)} zu Ende gegangen, das Gerät kennt ihn nicht mehr` : "das Gerät kennt ihn nicht mehr, er wurde dort widerrufen oder gelöscht"
-    )}.`);
-  } else if (known === true) {
-    lines.push(`  ${t("Credential", "Ausweis")}: ${t("the device still knows it", "das Gerät kennt ihn noch")}.`);
+  if (expires && expires < Date.now()) {
+    lines.push(`  ${t("Credential", "Ausweis")}: ${t(`ended on ${stamp(expires)}`, `am ${stamp(expires)} zu Ende gegangen`)}.`);
   } else {
-    lines.push(`  ${t("Credential", "Ausweis")}: ${t("not checked, the device did not answer the check", "nicht geprüft, das Gerät hat auf die Prüfung nicht geantwortet")}.`);
+    lines.push(`  ${t("Credential", "Ausweis")}: ${t("not checked, log in again first", "nicht geprüft, erst neu anmelden")}.`);
   }
   lines.push(`  ${t("One command for both, compare the fingerprint with the device first", "Ein Befehl für beides, vergleiche vorher den Fingerabdruck mit dem Gerät")}: ${login}`);
   return lines;
