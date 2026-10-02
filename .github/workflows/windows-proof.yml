@@ -5,6 +5,8 @@ name: windows-proof
 
 on:
   workflow_dispatch:
+  push:
+    branches: [auftrag/cli-windows-auf-github] # TEMPORAER, vor dem PR entfernen
 
 permissions:
   contents: read
