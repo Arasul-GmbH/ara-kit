@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.64.5 (2026-10-02)
+
+Contract: up to 7
+
+- **The test "somebody else's file answers 404" reaches a device with a self-signed certificate (K24).** Run in Codex against the Orin, the test could not accept the certificate, and the agent switched certificate checking off for the whole process to get through. The test now takes `--unsicher` ("unsafe") and then accepts that certificate for its own requests only; without it, it says in one sentence what is wrong instead of a stack trace. Measured at the Orin in Codex 0.160.0: the interview of `/app` with the answer file in three rounds of three questions, the pattern 7 app, ten of ten checks 404/403/401 as expected, and a takeover with `transfer.mjs`, `--prove` exit 0.
+
 ## 0.64.4 (2026-10-02)
 
 Contract: up to 7

@@ -35,7 +35,8 @@ The folder `backend/probe/` comes along with the copy. Then `--build`.
 to each of two employees, and tries from one side everything that could reach the other's file:
 view, change, send in, create inside it, find it in the list. Every answer must be 404. Run it in
 staging before the app goes live, with the call in the head of the file; it removes the
-assignments again afterwards.
+assignments again afterwards. A device with a self-signed certificate needs `--unsicher` ("unsafe"),
+which accepts that certificate for the test's own requests and nowhere else.
 
 **Checked by the self-test** against a played device with other role names: foreign items 404, the
 management 403 without the role, only deciders in the rule, 409 after submitting, the filter in

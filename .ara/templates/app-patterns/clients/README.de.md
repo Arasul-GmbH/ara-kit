@@ -37,7 +37,8 @@ ein Vorgang vollständig ist. Der Ordner `backend/probe/` kommt mit der Kopie mi
 zwei Mitarbeitern zu und versucht von der einen Seite aus alles, was die Akte der anderen erreichen
 könnte: ansehen, ändern, einreichen, darin anlegen, sie in der Liste finden. Jede Antwort muss 404
 sein. Lauf ihn im Teststand, bevor die App live geht, mit dem Aufruf aus dem Kopf der Datei; die
-Zuordnungen löst er danach wieder.
+Zuordnungen löst er danach wieder. Ein Gerät mit selbst ausgestelltem Zertifikat braucht `--unsicher`,
+das dieses Zertifikat für die eigenen Anfragen des Tests annimmt und sonst nirgends.
 
 **Geprüft vom Selbsttest** gegen ein gespieltes Gerät mit anderen Rollennamen: fremde Vorgänge
 404, die Verwaltung 403 ohne die Rolle, nur Entscheider in der Regel, 409 nach dem Einreichen, der
