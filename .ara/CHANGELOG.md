@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.65.1 (2026-10-02)
+
+Contract: up to 7
+
+- **The self-test is green in the company branch too, as a handed-over customer repository has it (K25).** In a clone where `commands.mjs --apply --role company` has run (partner files such as `sales.md` are absent, marked skip-worktree), five checks went red: the skill count, the cut-in-the-clone check, the price check, the "what must be clear" lists and the section references into partner sheets. They now measure only what that branch has and say "skipped" for the rest, and the summary counts the skipped checks in its own line. The partner branch measures exactly as before.
+
 ## 0.65.0 (2026-10-02)
 
 Contract: up to 7
