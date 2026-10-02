@@ -431,6 +431,16 @@ function sayClaude(claude) {
  * found: the clones it entered as places, the ones it could not, the source trees and the files
  * with secrets, each with what happens to it at a sync and what the house could do.
  */
+/**
+ * Whether the bridge of this root says it never synced: the first line of its own `status`. A
+ * status that cannot be read counts as never synced, the open steps are then named all the same.
+ */
+function neverSynced(root, lang) {
+  const run = spawnSync(process.execPath, ["arasul.mjs", "status", "--language", lang], { cwd: root, encoding: "utf8", timeout: 60_000 });
+  const first = String(run.stdout || "").split("\n")[0];
+  return !first || /never synced|noch nie abgeglichen/.test(first);
+}
+
 function doAdopt() {
   if (isRoot) fail(t(`${root} is a root already. Look at it with --show.`, `${root} ist schon eine Wurzel. Sieh sie mit --show an.`));
   if (!existsSync(root) || !statSync(root).isDirectory()) {
@@ -530,7 +540,19 @@ function doAdopt() {
   }
   const step = before ? 3 : 2;
   console.log(t(`  ${step}. Look before anything moves: node arasul.mjs sync --plan`, `  ${step}. Ansehen, bevor sich etwas bewegt: node arasul.mjs sync --plan`));
-  console.log(t(`  ${step + 1}. Then sync: node arasul.mjs sync`, `  ${step + 1}. Dann abgleichen: node arasul.mjs sync`));
+  if (neverSynced(root, lang)) {
+    console.log(t(
+      `  ${step + 1}. Then sync, and keep your own where the device has another version of the same file: node arasul.mjs sync --keep-mine`,
+      `  ${step + 1}. Dann abgleichen, und das Eigene behalten, wo das Gerät eine andere Fassung derselben Datei hat: node arasul.mjs sync --keep-mine`
+    ));
+    console.log(t(
+      `  ${step + 2}. Then let it run in the background: node arasul.mjs sync --install`,
+      `  ${step + 2}. Danach im Hintergrund laufen lassen: node arasul.mjs sync --install`
+    ));
+    console.log(t("  Until these are done, node arasul.mjs status says: never synced.", "  Solange das offen ist, sagt node arasul.mjs status: noch nie abgeglichen."));
+  } else {
+    console.log(t(`  ${step + 1}. Then sync: node arasul.mjs sync`, `  ${step + 1}. Dann abgleichen: node arasul.mjs sync`));
+  }
   process.exit(0);
 }
 

@@ -178,7 +178,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { X509Certificate, createHash } from "node:crypto";
 import {
   appendFileSync,
   chmodSync,
@@ -211,7 +211,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.64.1";
+const BRIDGE = "0.64.2";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -699,7 +699,7 @@ function fetchCertificate(address) {
       socket.end();
       if (!top.raw) return failed(new Error("no certificate"));
       const body = top.raw.toString("base64").match(/.{1,64}/g).join("\n");
-      done({ pem: `-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----\n`, fingerprint: top.fingerprint256, subject: top.subject?.CN || "" });
+      done({ pem: `-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----\n`, fingerprint: top.fingerprint256, subject: top.subject?.CN || "", from: top.valid_from || "" });
     });
     socket.on("error", failed);
     socket.setTimeout(10_000, () => socket.destroy(new Error("timeout")));
@@ -4665,10 +4665,66 @@ async function doLogin(args) {
   return clean;
 }
 
+/**
+ * A device whose certificate no longer fits the one held is two things, and status names them apart:
+ * the certificate (the device carries a new one, since when, which fingerprint) and the credential
+ * (whether the device still knows it). The second needs one request to the device with the new
+ * certificate, and that request carries the credential to a certificate nobody has vouched for yet.
+ * It is sent once, to the session route only, and only here, in a read; a dead credential costs
+ * nothing, a living one went to the address it was issued for. Returns the lines, or null when the
+ * certificate is the same one (it expired, then the plain explanation holds).
+ */
+async function changedCertificate(name, entry) {
+  let held;
+  try {
+    held = new X509Certificate(entry.ca);
+  } catch {
+    return null;
+  }
+  let now;
+  try {
+    now = await fetchCertificate(entry.address);
+  } catch {
+    return null;
+  }
+  if (now.fingerprint === held.fingerprint256) return null;
+  const when = (text) => (Number.isNaN(new Date(text).getTime()) ? String(text) : stamp(new Date(text).toISOString()));
+  const login = `node arasul.mjs login ${entry.address} ${entry.user ? `--user ${entry.user} ` : ""}--name ${name} --insecure`;
+  const lines = [
+    `  ${t("Certificate", "Zertifikat")}: ${t(
+      `the device carries a new certificate authority since ${when(now.from)}, SHA-256 ${now.fingerprint}. Held here: the one of ${when(held.validFrom)}, SHA-256 ${held.fingerprint256}.`,
+      `das Gerät trägt seit ${when(now.from)} eine neue CA, SHA-256 ${now.fingerprint}. Hier festgehalten: die vom ${when(held.validFrom)}, SHA-256 ${held.fingerprint256}.`
+    )}`,
+  ];
+  const expires = expiryOf(entry.token);
+  let known = null;
+  try {
+    const answer = await send({ address: entry.address, ca: now.pem }, { path: DEVICE.session, token: entry.token, timeout: 10_000 });
+    const body = inner(jsonOf(answer));
+    if (answer.status === 401 || answer.status === 403) known = false;
+    else if (answer.status === 200) known = Boolean(body?.authenticated ?? jsonOf(answer)?.authenticated);
+  } catch {
+    known = null;
+  }
+  if (known === false || (known === null && expires && expires < Date.now())) {
+    lines.push(`  ${t("Credential", "Ausweis")}: ${t(
+      expires && expires < Date.now() ? `ended on ${stamp(expires)}, the device no longer knows it` : "the device no longer knows it, it was revoked or deleted there",
+      expires && expires < Date.now() ? `am ${stamp(expires)} zu Ende gegangen, das Gerät kennt ihn nicht mehr` : "das Gerät kennt ihn nicht mehr, er wurde dort widerrufen oder gelöscht"
+    )}.`);
+  } else if (known === true) {
+    lines.push(`  ${t("Credential", "Ausweis")}: ${t("the device still knows it", "das Gerät kennt ihn noch")}.`);
+  } else {
+    lines.push(`  ${t("Credential", "Ausweis")}: ${t("not checked, the device did not answer the check", "nicht geprüft, das Gerät hat auf die Prüfung nicht geantwortet")}.`);
+  }
+  lines.push(`  ${t("One command for both, compare the fingerprint with the device first", "Ein Befehl für beides, vergleiche vorher den Fingerabdruck mit dem Gerät")}: ${login}`);
+  return lines;
+}
+
 async function doStatus(args) {
   const data = readCredentials();
   const names = Object.keys(data.devices);
   const summary = syncLine();
+  const stale = new Set();
   say(summary.line);
   if (summary.problem) say(`  ${t("Last run in the background", "Letzter Lauf im Hintergrund")}: ${summary.problem.text}`);
   if (summary.aside) say(`  ${summary.aside}`);
@@ -4689,11 +4745,19 @@ async function doStatus(args) {
       say(`  ${t("Device answers", "Gerät antwortet")}: ${t("yes", "ja")}, ${on ? t("the credential is accepted", "der Ausweis wird angenommen") : t("the credential is not accepted, log in again", "der Ausweis wird nicht angenommen, melde dich neu an")}`);
       if (!on) fine = false;
     } catch (error) {
-      say(`  ${t("Device answers", "Gerät antwortet")}: ${t("no", "nein")}, ${explain(error, entry.address)}`);
       fine = false;
+      const changed = TLS_CODES.has(error.code) && entry.ca ? await changedCertificate(name, entry) : null;
+      if (changed) {
+        for (const line of changed) say(line);
+        stale.add(name);
+      } else say(`  ${t("Device answers", "Gerät antwortet")}: ${t("no", "nein")}, ${explain(error, entry.address)}`);
     }
   }
-  if (names.length && !(await folderStatus(args, chooseDevice(args)))) fine = false;
+  if (names.length) {
+    const device = chooseDevice(args);
+    if (stale.has(device.name)) say(`${t("Company folder", "Firmenordner")}: ${t("not asked, the certificate of the device comes first", "nicht gefragt, zuerst muss das Zertifikat des Geräts stimmen")}`);
+    else if (!(await folderStatus(args, device))) fine = false;
+  }
   const settingsPath = settingsFile(args);
   const items = proposalFolders().map(loadProposal);
   const counts = { current: 0, none: 0, changed: 0, broken: 0, invalid: 0 };
