@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.63.0 (2026-10-02)
+
+Contract: up to 6
+
+- **The bridge of the root runs on Windows (K26).** `arasul.mjs login` asks for e-mail (or user name) and password, has the device issue the credential for this computer and keeps only that. On Windows the credential lies in `%APPDATA%\arasul`, with the access list cut down to the Windows user (`icacls`). `sync --install` hands the sync to the task scheduler instead of launchd (a task of the person logged in, a launcher without a window, the log written by node itself, Windows toasts for a conflict or an error), and the access for it lies in a file only that user can read, where a Mac has the keychain. Measured: a Mac acting as Windows in the selftest (stand-ins for `icacls`, `schtasks` and the notification) and `login`, `status`, `sync --plan`, `sync` against the Orin as `probe-admin` from a Mac. **Not measured on a Windows computer**, the steps are in the pull request. The vendor publishes no client package for Windows among its releases: the person installs the desktop app, `opencloudcmd.exe` is looked for in the usual places or named with `--client`.
+- **The kit survives a clone on Windows.** `.gitattributes` (`eol=lf`) keeps line endings equal. A link git could not make (`.claude/skills/<name>`) is made again by `commands.mjs --apply` as a junction, or copied; `update.mjs` falls back the same way.
+
 ## 0.62.0 (2026-10-02)
 
 Contract: up to 6

@@ -90,6 +90,13 @@ der Rechner zum Flashen eingebetteter Geräte taugt.
 Sag in zwei bis drei Zeilen, was das bedeutet. Behebe still, was du beheben darfst. Fehlt
 etwas Grundlegendes, nenne den Installationsweg für das erkannte System und mach weiter.
 
+**Unter Windows** (das System meldet `Windows`): das Kit läuft aus PowerShell oder dem Windows-Terminal mit Node,
+git und dem OpenSSH-Klienten von Windows. Nenne, was fehlt und wie man es bekommt (zum Beispiel
+`winget install OpenJS.NodeJS.LTS` und `winget install Git.Git`), installiere es nicht ungefragt. Führe nach dem Klon
+einmal `node .ara/tools/commands.mjs --apply` aus: es legt die Skill-Links wieder an, die git dort nicht anlegen
+konnte. Ein Geheimnis kommt in die `.env` (der Schlüsselbund wird nicht angeboten), und der Abgleich einer Wurzel im
+Hintergrund nutzt die Aufgabenplanung: `.ara/knowledge/root.de.md`, „Die Brücke unter Windows“.
+
 Merk dir das Ergebnis, es kommt in Runde 10 in `business/profile.md`.
 
 ### Runde 2: Sprache und Zweig

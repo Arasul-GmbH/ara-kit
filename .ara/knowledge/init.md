@@ -89,6 +89,13 @@ is fit for flashing embedded devices.
 Say in two or three lines what that means. Fix silently what you are allowed to fix. If something
 fundamental is missing, name the installation route for the recognised system and carry on.
 
+**On Windows** (the system reports `Windows`): the kit runs from PowerShell or Windows Terminal with Node,
+git and the OpenSSH client from Windows. Name what is missing and how to get it (for instance
+`winget install OpenJS.NodeJS.LTS` and `winget install Git.Git`), do not install it unasked. Run
+`node .ara/tools/commands.mjs --apply` once after the clone: it makes the skill links again that git could not
+make there. A secret goes into the `.env` (the keychain choice is not offered), and the sync of a root in the
+background uses the task scheduler: `.ara/knowledge/root.md`, "The bridge on Windows".
+
 Remember the result, it goes into `business/profile.md` in round 10.
 
 ### Round 2: language and branch

@@ -1,0 +1,9 @@
+# One line ending in every file, also on Windows: the bridge compares files byte for byte, scripts
+# with a carriage return fail in a shell, and a file with CRLF is a changed file for git.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.ico binary
+*.woff2 binary

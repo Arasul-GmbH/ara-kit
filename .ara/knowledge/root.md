@@ -695,6 +695,37 @@ started in the place itself. Without consent it does not act. **Not measured:** 
 through `~/.claude/settings.json` itself and in an interactive session, only through
 `--settings`.
 
+## The bridge on Windows
+
+Built for K26, 2026-10-02. **Measured on a Mac that acted as Windows (the kit's selftest, with
+programs standing in for `icacls` and `schtasks`) and against the Orin as `probe-admin` from a Mac. Not yet on a
+Windows computer.** The steps for that stand in the pull request of K26. Until someone has run them, say
+"built and tested with stand-ins" and not "works on Windows".
+
+- **Run it in PowerShell or in Windows Terminal.** The password is typed without an echo; Git Bash and the
+  terminal of an editor often do not pass the keyboard on to node, and the bridge says so then.
+- **Where things lie.** `%APPDATA%\arasul` instead of `~/.config/arasul`. `ARASUL_CONFIG_DIR` still names another.
+- **Only for this user.** A file mode means nothing on Windows. The bridge cuts the access list of the folder and
+  of every file with the credential down to the Windows user running it (`icacls`, inheritance removed), and
+  reads the list again when it reads the credential. If `icacls` is refused, it says so and goes on, because
+  the profile folder is private to the user by default.
+- **In the background.** The task scheduler instead of launchd: a task `Arasul\<name>` of the person logged
+  in, no administrator, started again at every login, also on battery, one run at a time. The task starts a
+  launcher without a window (`wscript //B`, UTF-16 because of umlauts in user names), which sets the environment
+  and starts node; node writes the log itself (`ARASUL_LOG_TO`). If the scheduler turns down the task file,
+  the plain way with an interval alone is tried. Notifications are Windows toasts through PowerShell.
+- **The access for it** lies in a file only the Windows user can read (`abgleich\<name>.zugang`), made private
+  before it gets its name. It holds the app token of the file service, the password only where the service
+  issues no token. The keychain of a Mac has no counterpart a plain program may reach without installing
+  something; the Credential Manager would need a native helper. This is a decision, it can be revisited.
+- **The client.** The vendor publishes no package for Windows among its GitHub releases (checked 2026-10-02: macOS
+  and Linux only), so `--fetch-client` cannot fetch it there. The person installs the vendor's desktop app and
+  `opencloudcmd.exe` is looked for in Program Files and `%LOCALAPPDATA%\Programs`, or named with `--client`.
+  That the app brings a command line client for Windows has not been seen yet.
+- **No check from the background.** The Mac's barrier (local network approval for a program started by launchd)
+  does not exist on Windows; `sync --install` says it did not check.
+- **Line endings.** The kit carries a `.gitattributes` with `eol=lf`, so a clone on Windows has the same bytes.
+
 ## Deploying the root onto the device
 
 ```

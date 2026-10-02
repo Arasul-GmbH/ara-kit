@@ -10670,6 +10670,164 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
   }
 });
 
+/**
+ * Attrappen für Windows, auf jedem Rechner lauffähig: icacls schreibt auf und hält eine Rechteliste
+ * vor, schtasks merkt sich die Aufgabe. Die Brücke hält sich mit ARASUL_PLATFORM=win32 für Windows.
+ */
+function windowsAttrappen() {
+  const dir = wegwerfordner("ara-windows-");
+  const icacls = join(dir, "icacls");
+  writeFileSync(icacls, `#!/usr/bin/env node
+const { appendFileSync, existsSync } = require("node:fs");
+const argv = process.argv.slice(2);
+appendFileSync(${JSON.stringify(join(dir, "icacls.jsonl"))}, JSON.stringify(argv) + "\\n");
+if (argv.length === 1) process.stdout.write(argv[0] + (existsSync(${JSON.stringify(join(dir, "offen"))}) ? " BUILTIN\\\\Users:(I)(RX)\\n" : " PROBE\\\\anna:(F)\\n") + "\\nSuccessfully processed 1 files; Failed processing 0 files\\n");
+process.exit(0);
+`);
+  chmodSync(icacls, 0o755);
+  const schtasks = join(dir, "schtasks");
+  writeFileSync(schtasks, `#!/usr/bin/env node
+const { appendFileSync, copyFileSync, existsSync, rmSync, writeFileSync } = require("node:fs");
+const argv = process.argv.slice(2);
+appendFileSync(${JSON.stringify(join(dir, "schtasks.jsonl"))}, JSON.stringify(argv) + "\\n");
+const geladen = ${JSON.stringify(join(dir, "geladen"))};
+if (argv[0] === "/Create") {
+  if (process.env.ARA_XML_ABGELEHNT && argv.includes("/XML")) process.exit(1);
+  if (argv.includes("/XML")) copyFileSync(argv[argv.indexOf("/XML") + 1], ${JSON.stringify(join(dir, "aufgabe.xml"))});
+  writeFileSync(geladen, argv[argv.indexOf("/TN") + 1]);
+  process.exit(0);
+}
+if (argv[0] === "/Query") process.exit(existsSync(geladen) ? 0 : 1);
+if (argv[0] === "/Delete") { if (!existsSync(geladen)) process.exit(1); rmSync(geladen); process.exit(0); }
+process.exit(0);
+`);
+  chmodSync(schtasks, 0o755);
+  const mitteilung = join(dir, "mitteilung");
+  writeFileSync(mitteilung, `#!/usr/bin/env node
+require("node:fs").appendFileSync(${JSON.stringify(join(dir, "mitteilungen.jsonl"))}, JSON.stringify(process.argv.slice(2)) + "\\n");
+`);
+  chmodSync(mitteilung, 0o755);
+  const lesen = (name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8").split("\n").filter(Boolean).map((zeile) => JSON.parse(zeile)) : []);
+  return {
+    dir,
+    env: { ARASUL_PLATFORM: "win32", ARASUL_ICACLS: icacls, ARASUL_SCHTASKS: schtasks, ARASUL_NOTIFY: mitteilung, USERDOMAIN: "PROBE", USERNAME: "anna" },
+    icacls: () => lesen("icacls.jsonl"),
+    schtasks: () => lesen("schtasks.jsonl"),
+    mitteilungen: () => lesen("mitteilungen.jsonl"),
+  };
+}
+
+await checkAsync("Ein Link, den git unter Windows als kleine Datei hinterlässt, wird wieder ein Link, und linkOrCopy weicht aus, wo Symlinks nicht gehen", async () => {
+  const { brokenLinks, linkOrCopy, repairLinks } = await import("./lib/links.mjs");
+  const dir = wegwerfordner("ara-links-");
+  mkdirSync(join(dir, ".agents", "skills", "sales"), { recursive: true });
+  writeFileSync(join(dir, ".agents", "skills", "sales", "SKILL.md"), "# sales\n");
+  mkdirSync(join(dir, ".claude", "skills"), { recursive: true });
+  // So schreibt git einen Link, den es nicht anlegen kann: eine Datei mit dem Ziel als Text.
+  writeFileSync(join(dir, ".claude", "skills", "sales"), "../../.agents/skills/sales");
+  writeFileSync(join(dir, ".claude", "skills", "notiz.md"), "eine gewöhnliche kleine Datei\n");
+  const kaputt = brokenLinks(join(dir, ".claude", "skills"));
+  assert(kaputt.length === 1 && kaputt[0].path.endsWith("sales"), `die kaputten Links werden nicht erkannt: ${JSON.stringify(kaputt)}`);
+  const gemacht = repairLinks(join(dir, ".claude", "skills"));
+  assert(gemacht.length === 1 && existsSync(join(dir, ".claude", "skills", "sales", "SKILL.md")), `der Link wurde nicht wiederhergestellt: ${JSON.stringify(gemacht)}`);
+  assert(repairLinks(join(dir, ".claude", "skills")).length === 0, "ein heiler Link wird noch einmal angefasst");
+  assert(readFileSync(join(dir, ".claude", "skills", "notiz.md"), "utf8").startsWith("eine gewöhnliche"), "eine gewöhnliche Datei wurde angefasst");
+  // Wo ein Symlink geht, wird es einer; das Ausweichen auf Junction und Kopie braucht Windows (siehe den Pull Request).
+  assert(linkOrCopy("../.agents/skills/sales", join(dir, "kopie")) === "symlink", "am Mac geht ein Symlink");
+  return "kaputter Link erkannt und erneuert, heile Dateien und Links bleiben, ein Symlink wo er geht";
+});
+
+await checkAsync("Die Brücke unter Windows (nachgestellt): Ausweis nur für den Benutzer, Aufgabenplanung statt launchd, Zugang in privater Datei statt Schlüsselbund", async () => {
+  const w = brueckeWurzel();
+  const klient = attrappenKlient();
+  const lager = wegwerfordner("ara-lager-windows-");
+  const geraet = await brueckeGeraet({ firmenordner: firmenordnerPlan([FO_ORDNER[0]]), lager });
+  const win = windowsAttrappen();
+  const umgebung = { ...win.env, ARA_PROBE_PROTOKOLL: klient.protokoll, ARA_PROBE_LAGER: lager };
+  const dateien = () => readdirSync(join(w.ausweise, "abgleich")).sort();
+  const aufgabe = () => dateien().filter((name) => name.endsWith(".task.json"))[0];
+  try {
+    // Anmelden mit Passwort, ohne Kopieren: der Ausweis wird gelöst und liegt nur für den Benutzer da.
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0 && /nur für deinen Windows-Benutzer lesbar/.test(lauf.stdout) && !/0600/.test(lauf.stdout), `Anmeldung unter Windows: ${lauf.stdout}${lauf.stderr}`);
+    const eintrag = JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8")).devices[new URL(geraet.adresse).hostname];
+    assert(eintrag.token === BRUECKE_AUSWEIS, "abgelegt wurde nicht der ausgestellte Ausweis");
+    const rufe = win.icacls();
+    const ordner = rufe.find((ruf) => ruf[0] === w.ausweise);
+    const datei = rufe.find((ruf) => ruf[0].includes(".credentials-"));
+    assert(ordner?.join(" ") === `${w.ausweise} /inheritance:r /grant:r PROBE\\anna:(OI)(CI)F`, `der Ordner des Ausweises wird nicht auf den Benutzer beschränkt: ${JSON.stringify(ordner)}`);
+    assert(datei?.slice(1).join(" ") === "/inheritance:r /grant:r PROBE\\anna:F", `die Ausweisdatei wird nicht auf den Benutzer beschränkt: ${JSON.stringify(datei)}`);
+
+    // Eine Liste, die andere lesen lässt, wird beim nächsten Lesen enger gemacht, und es wird gesagt.
+    writeFileSync(join(win.dir, "offen"), "");
+    const vorher = win.icacls().length;
+    lauf = await bruecke(w, ["status"], { env: umgebung });
+    assert(/war für andere Benutzer lesbar\. Auf deinen Windows-Benutzer beschränkt/.test(lauf.stderr), `eine offene Liste wird nicht gemeldet: ${lauf.stderr}`);
+    assert(win.icacls().slice(vorher).some((ruf) => ruf[0] === join(w.ausweise, "credentials.json") && ruf.includes("/inheritance:r")), "die offene Liste wurde nicht enger gemacht");
+    rmSync(join(win.dir, "offen"));
+
+    // Der Klient fehlt unter Windows: der Satz sagt, was zu tun ist, statt einen Mac-Weg zu versprechen.
+    lauf = await bruecke(w, ["sync", "--fetch-client", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: { ...umgebung, PATH: dirname(process.execPath), ProgramFiles: join(win.dir, "leer") } });
+    assert(lauf.status !== 0 && /opencloudcmd\.exe ist nicht auf diesem Rechner/.test(lauf.stderr) && /--client <pfad zu opencloudcmd\.exe>/.test(lauf.stderr), `der fehlende Klient wird unter Windows nicht erklärt: ${lauf.stderr}`);
+
+    // Einrichten: Aufgabe in der Aufgabenplanung, Starter ohne Fenster, Zugang in der privaten Datei, kein launchd.
+    lauf = await bruecke(w, ["sync", "--install", "--every", "7", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: umgebung });
+    assert(lauf.status === 0, `sync --install unter Windows endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+    assert(/Aufgabenplanung/.test(lauf.stdout) && /alle 7 Minuten/.test(lauf.stdout) && /App-Token des Dateidienstes.*Datei, die nur dein Windows-Benutzer lesen kann/.test(lauf.stdout), `sync --install sagt nicht, was es eingerichtet hat: ${lauf.stdout}`);
+    assert(!/launchd|Schlüsselbund/.test(lauf.stdout), `sync --install unter Windows spricht von launchd oder dem Schlüsselbund: ${lauf.stdout}`);
+    const angelegt = win.schtasks().find((ruf) => ruf[0] === "/Create");
+    assert(angelegt && /^Arasul\\de\.arasul\.abgleich\./.test(angelegt[angelegt.indexOf("/TN") + 1]) && angelegt.includes("/XML") && angelegt.includes("/F"), `die Aufgabe wurde nicht mit ihrer Datei angelegt: ${JSON.stringify(win.schtasks())}`);
+    assert(win.schtasks().some((ruf) => ruf[0] === "/Run"), "die Aufgabe wurde nicht gleich gestartet");
+    const xmlText = readFileSync(join(win.dir, "aufgabe.xml")).toString("utf16le").replace(/^﻿/, "");
+    assert(xmlText.includes("<Interval>PT7M</Interval>") && xmlText.includes("<LogonTrigger>") && xmlText.includes("<DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>") && xmlText.includes("<MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>") && xmlText.includes("<Command>wscript.exe</Command>") && xmlText.includes("<UserId>PROBE\\anna</UserId>"), `die Aufgabendatei stimmt nicht:\n${xmlText}`);
+    assert(!xmlText.includes(BRUECKE_PASSWORT) && !xmlText.includes(APP_TOKEN), "ein Geheimnis steht in der Aufgabendatei");
+    const meta = JSON.parse(readFileSync(join(w.ausweise, "abgleich", aufgabe()), "utf8"));
+    const starter = readFileSync(meta.launcher);
+    assert(starter[0] === 0xff && starter[1] === 0xfe, "der Starter ist nicht UTF-16 mit Kennung");
+    const starterText = starter.toString("utf16le").replace(/^﻿/, "");
+    assert(/shell\.Run ".*sync"" ""--background"" ""--device""/.test(starterText.replace(/\r/g, "")) || starterText.includes('""--background""'), `der Starter ruft den Abgleich nicht auf:\n${starterText}`);
+    assert(starterText.includes("ARASUL_LOG_TO") && starterText.includes(", 0, True") && starterText.includes("CurrentDirectory"), `der Starter hat kein Protokoll, kein Verstecken oder kein Arbeitsverzeichnis:\n${starterText}`);
+    assert(!starterText.includes(BRUECKE_PASSWORT) && !starterText.includes(APP_TOKEN), "ein Geheimnis steht im Starter");
+    assert(win.icacls().some((ruf) => ruf[0].includes(".zugang-") && ruf.includes("/inheritance:r")), "die Zugangsdatei wurde nicht auf den Benutzer beschränkt, bevor sie ihren Namen bekam");
+    const zugang = JSON.parse(readFileSync(join(w.ausweise, "abgleich", dateien().find((name) => name.endsWith(".zugang"))), "utf8"));
+    assert(zugang.kind === "token" && zugang.value === APP_TOKEN && !JSON.stringify(zugang).includes(BRUECKE_PASSWORT), "in der Zugangsdatei liegt nicht das App-Token");
+    assert(!win.mitteilungen().length === false && /alle 7 Minuten/.test(win.mitteilungen()[0][1]), `beim Einrichten kommt keine Probemitteilung: ${JSON.stringify(win.mitteilungen())}`);
+    assert(/Abgleich: noch nie abgeglichen, im Hintergrund alle 7 Minuten/.test((await bruecke(w, ["status"], { env: umgebung })).stdout.split("\n")[0]), "status kennt die Aufgabe nicht");
+
+    // Die Aufgabe läuft, wie die Aufgabenplanung sie startet: das Programm aus ihrer Datei, ohne Terminal, das Protokoll schreibt node.
+    const protokoll = join(w.ausweise, "abgleich", `${meta.label}.log`);
+    const alsAufgabe = () => new Promise((fertig) => {
+      const kind = spawn(meta.program[0], meta.program.slice(1), { cwd: w.root, env: { ...process.env, ...w.env, ...umgebung, ARASUL_LOG_TO: protokoll } });
+      let stdout = "";
+      kind.stdout.on("data", (stueck) => (stdout += stueck));
+      kind.stdin.end();
+      kind.on("close", (status) => fertig({ status, stdout }));
+    });
+    lauf = await alsAufgabe();
+    assert(lauf.status === 0 && lauf.stdout === "", `der Lauf als Aufgabe endet mit ${lauf.status} oder schreibt auf eine Konsole: ${lauf.stdout}`);
+    assert(/sync in the background|Abgleich im Hintergrund/.test(readFileSync(protokoll, "utf8")), "das Protokoll der Aufgabe bleibt leer");
+    const ruf = klientRufe(klient.protokoll).at(-1);
+    assert(ruf?.token === APP_TOKEN && !ruf.argv.some((teil) => teil.includes(APP_TOKEN)), "der Klient bekommt als Aufgabe das App-Token nicht aus der Zugangsdatei");
+    writeFileSync(join(w.root, "buchhaltung", "plan_conflict-20260927-101500.md"), "zweimal geändert\n");
+    await alsAufgabe();
+    assert(win.mitteilungen().some((m) => m[0] === "Konflikt im Firmenordner"), `der Konflikt meldet sich unter Windows nicht: ${JSON.stringify(win.mitteilungen())}`);
+    rmSync(join(w.root, "buchhaltung", "plan_conflict-20260927-101500.md"));
+
+    // Nimmt die Aufgabenplanung die Aufgabendatei nicht an, gilt der einfache Weg mit dem Zeitabstand.
+    lauf = await bruecke(w, ["sync", "--install", "--every", "10", "--client", klient.pfad, "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n`, env: { ...umgebung, ARA_XML_ABGELEHNT: "1" } });
+    const einfach = win.schtasks().filter((r) => r[0] === "/Create").at(-1);
+    assert(lauf.status === 0 && einfach.includes("/SC") && einfach[einfach.indexOf("/MO") + 1] === "10" && /wscript\.exe \/\/B \/\/Nologo ".*\.vbs"/.test(einfach[einfach.indexOf("/TR") + 1]), `der einfache Weg der Aufgabenplanung fehlt: ${JSON.stringify(einfach)} ${lauf.stderr}`);
+
+    lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
+    assert(lauf.status === 0 && /Aufgabenplanung genommen/.test(lauf.stdout) && /aus seiner privaten Datei genommen/.test(lauf.stdout), `sync --uninstall unter Windows: ${lauf.stdout}${lauf.stderr}`);
+    assert(!dateien().some((name) => /\.(task\.json|task\.xml|vbs|zugang)$/.test(name)), `nach --uninstall liegt noch etwas da: ${dateien().join(", ")}`);
+    assert(win.schtasks().some((r) => r[0] === "/Delete") && /nicht im Hintergrund/.test((await bruecke(w, ["status"], { env: umgebung })).stdout.split("\n")[0]), "die Aufgabe ist nach --uninstall noch da");
+    return "Ausweis und Ordner nur für den Benutzer (icacls), offene Liste enger gemacht, Aufgabe mit Datei und einfachem Weg, Starter ohne Fenster in UTF-16, Zugang in privater Datei, Lauf mit Protokoll, Konflikt gemeldet, --uninstall räumt";
+  } finally {
+    await geraet.schliessen().catch(() => {});
+  }
+});
+
 await checkAsync("sync --install prüft aus launchd selbst: ohne lokales Netz eine Zeile mit Ursache und Ausweg, eine zweite Adresse des Dateidienstes springt ein", async () => {
   if (platform() !== "darwin") return "übersprungen: launchd und Schlüsselbund gibt es nur am Mac";
   // Gemessen am 27.09.2026: node aus launchd erreichte 192.168.0.197 nicht (EHOSTUNREACH), aus dem

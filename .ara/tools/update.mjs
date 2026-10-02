@@ -72,6 +72,7 @@ import { BUSINESS, ROOT, helpOnly, parseArgs, readFrontmatter } from "./lib/kit.
 import { partnerOnly } from "./lib/commands.mjs";
 import { KIT_CONTRACT_VERSION } from "./lib/contract.mjs";
 import { APPLEDOUBLE, packEnv } from "./lib/install.mjs";
+import { linkOrCopy } from "./lib/links.mjs";
 import { contractOf, standBlock } from "./lib/version.mjs";
 
 const SOURCE =
@@ -182,7 +183,7 @@ export function apply(fresh, kit, diff) {
     mkdirSync(dirname(to), { recursive: true });
     if (isLink(from)) {
       rmSync(to, { recursive: true, force: true });
-      symlinkSync(readlinkSync(from), to);
+      linkOrCopy(readlinkSync(from), to);
     } else {
       // Eine Datei, die vorher ein Link war, wuerde sonst durch ihn geschrieben.
       if (existsSync(to) && isLink(to)) unlinkSync(to);

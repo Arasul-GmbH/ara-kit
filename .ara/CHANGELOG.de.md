@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.63.0 (2026-10-02)
+
+Contract: up to 6
+
+- **Die Brücke der Wurzel läuft unter Windows (K26).** `arasul.mjs login` fragt E-Mail (oder Benutzername) und Passwort, lässt sich vom Gerät den Ausweis für diesen Rechner ausstellen und behält nur den. Unter Windows liegt der Ausweis in `%APPDATA%\arasul`, die Zugriffsliste auf den Windows-Benutzer zugeschnitten (`icacls`). `sync --install` übergibt den Abgleich statt an launchd an die Aufgabenplanung (eine Aufgabe des angemeldeten Menschen, ein Starter ohne Fenster, das Protokoll schreibt node selbst, Windows-Toasts bei Konflikt oder Fehler), und der Zugang dafür liegt in einer Datei, die nur dieser Benutzer lesen kann, wo ein Mac den Schlüsselbund hat. Gemessen: ein Mac, der im Selbsttest Windows spielt (Ersatz für `icacls`, `schtasks` und die Mitteilung), und `login`, `status`, `sync --plan`, `sync` als `probe-admin` vom Mac aus am Orin. **Nicht gemessen an einem Windows-Rechner**, die Schritte stehen im Pull Request. Der Hersteller bietet unter seinen Veröffentlichungen kein Klientenpaket für Windows an: der Mensch installiert die Desktop-App, `opencloudcmd.exe` wird an den üblichen Orten gesucht oder mit `--client` genannt.
+- **Das Kit übersteht einen Klon unter Windows.** `.gitattributes` (`eol=lf`) hält die Zeilenenden gleich. Einen Link, den git nicht anlegen konnte (`.claude/skills/<name>`), legt `commands.mjs --apply` als Junction wieder an oder kopiert ihn; `update.mjs` weicht genauso aus.
+
 ## 0.62.0 (2026-10-02)
 
 Contract: up to 6

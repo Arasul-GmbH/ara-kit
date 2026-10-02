@@ -724,6 +724,38 @@ Shell, und hält eine Sitzung nicht an, die im Ort selbst gestartet ist. Ohne Zu
 er nicht. **Nicht gemessen:** dasselbe über `~/.claude/settings.json` selbst und in einer
 interaktiven Sitzung, nur über `--settings`.
 
+## Die Brücke unter Windows
+
+Gebaut für K26, 02.10.2026. **Gemessen an einem Mac, der Windows spielte (der Selbsttest des Kits, mit
+Programmen als Ersatz für `icacls` und `schtasks`), und als `probe-admin` vom Mac aus am Orin. Noch nicht an einem
+Windows-Rechner.** Die Schritte dafür stehen im Pull Request zu K26. Solange sie niemand gegangen ist, sagst du
+„gebaut und mit Ersatzprogrammen geprüft“ und nicht „läuft unter Windows“.
+
+- **In PowerShell oder im Windows-Terminal ausführen.** Das Passwort wird ohne Echo getippt; Git Bash und das
+  Terminal eines Editors reichen die Tastatur oft nicht an node weiter, und die Brücke sagt das dann.
+- **Wo etwas liegt.** `%APPDATA%\arasul` statt `~/.config/arasul`. `ARASUL_CONFIG_DIR` nennt weiter einen anderen Ort.
+- **Nur für diesen Benutzer.** Rechte als Zahl gibt es unter Windows nicht. Die Brücke schneidet die Zugriffsliste
+  des Ordners und jeder Datei mit dem Ausweis auf den Windows-Benutzer zu, der sie ausführt (`icacls`, Vererbung
+  entfernt), und liest die Liste beim Lesen des Ausweises noch einmal. Lehnt `icacls` ab, sagt sie das und macht
+  weiter, denn der Profilordner ist von Haus aus nur für den Benutzer da.
+- **Im Hintergrund.** Die Aufgabenplanung statt launchd: eine Aufgabe `Arasul\<name>` des angemeldeten Menschen,
+  kein Administrator, bei jeder Anmeldung neu gestartet, auch im Akkubetrieb, ein Lauf zur Zeit. Die Aufgabe
+  startet einen Starter ohne Fenster (`wscript //B`, UTF-16 wegen Umlauten in Benutzernamen), der die Umgebung setzt
+  und node startet; das Protokoll schreibt node selbst (`ARASUL_LOG_TO`). Lehnt die Aufgabenplanung die
+  Aufgabendatei ab, wird der einfache Weg mit nur einem Zeitabstand versucht. Mitteilungen sind Windows-Toasts über PowerShell.
+- **Der Zugang dafür** liegt in einer Datei, die nur der Windows-Benutzer lesen kann (`abgleich\<name>.zugang`),
+  privat gemacht, bevor sie ihren Namen bekommt. Darin steht das App-Token des Dateidienstes, das Passwort nur dort,
+  wo der Dienst kein Token ausstellt. Zum Schlüsselbund des Mac gibt es nichts, was ein einfaches Programm ohne
+  Installation erreicht; die Anmeldeinformationsverwaltung bräuchte ein eigenes Hilfsprogramm. Das ist eine
+  Entscheidung, sie lässt sich überdenken.
+- **Der Klient.** Der Hersteller bietet unter seinen Veröffentlichungen auf GitHub kein Paket für Windows an (geprüft am
+  02.10.2026: nur macOS und Linux), also kann `--fetch-client` dort nichts holen. Der Mensch installiert die
+  Desktop-App des Herstellers, und `opencloudcmd.exe` wird in Programme und `%LOCALAPPDATA%\Programs` gesucht oder
+  mit `--client` genannt. Dass die App einen Kommandozeilen-Klienten für Windows mitbringt, ist noch nicht gesehen.
+- **Keine Prüfung aus dem Hintergrund.** Die Hürde des Mac (Freigabe Lokales Netzwerk für ein von launchd gestartetes
+  Programm) gibt es unter Windows nicht; `sync --install` sagt, dass es nicht geprüft hat.
+- **Zeilenenden.** Das Kit trägt eine `.gitattributes` mit `eol=lf`, ein Klon unter Windows hat so dieselben Bytes.
+
 ## Die Wurzel aufs Gerät ausrollen
 
 ```
