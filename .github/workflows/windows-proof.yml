@@ -1,0 +1,24 @@
+# K26: das CLI der Wurzel einmal echt unter Windows.
+# Nur von Hand (workflow_dispatch): kein Trigger auf push oder PR, er läuft nie von selbst.
+# Kein Secret, kein Gerät: das Gerät ist ein kleiner Server in windows-proof.mjs.
+name: windows-proof
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kit-Selbsttest ohne Gerät
+        run: node .ara/tools/selftest.mjs
+      - name: Brücke, Aufgabenplanung und Rechte unter echtem Windows
+        run: node .github/scripts/windows-proof.mjs
