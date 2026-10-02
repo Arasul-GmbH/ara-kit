@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.64.3 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **`status` schickt den Ausweis nie an ein Zertifikat, für das noch niemand gebürgt hat (K20).** Passt das Zertifikat, das ein Gerät vorzeigt, nicht mehr zu dem festgehaltenen, nennt `status` die neue CA mit beiden Fingerabdrücken wie bisher, fragt das Gerät aber nicht mehr, ob es den Ausweis noch kennt. Ein Bearer-Token geht nur an ein Gerät, dessen Zertifikat festgehalten ist. Die Zeile zum Ausweis sagt "nicht geprüft, erst neu anmelden", oder dass er zu Ende ging, wenn sein eigenes Ablaufdatum das schon beantwortet. Der eine `login`-Befehl bleibt. Das ersetzt die eine Anfrage an den Weg der Sitzung, die 0.64.2 beschrieb.
+
 ## 0.64.2 (2026-10-02)
 
 Kontrakt: bis 7
