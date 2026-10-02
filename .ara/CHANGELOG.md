@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.64.2 (2026-10-02)
+
+Contract: up to 7
+
+- **The root says when its credential is dead (K20).** When the certificate a device presents no longer fits the one held, `status` no longer stops at `SELF_SIGNED_CERT_IN_CHAIN`. It names two things apart: the certificate (a new certificate authority since a date, with both fingerprints) and the credential (whether the device still knows it, or that it ended), then the one `login` command for both and the reminder to compare the fingerprint with the device first. To ask the second, `status` sends the credential once, to the session route only, to the certificate the device presents now; a dead credential costs nothing. The company folder is not asked until the certificate fits again.
+- **`root.mjs --adopt` ends with the open steps** login, `sync --keep-mine`, `sync --install` for as long as the bridge's `status` says never synced.
+
 ## 0.64.1 (2026-10-02)
 
 Contract: up to 7

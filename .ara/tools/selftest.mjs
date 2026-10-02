@@ -27,7 +27,7 @@
  * gegen dieselben Werkzeuge.
  */
 
-import { createHash } from "node:crypto";
+import { X509Certificate, createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { spawn, spawnSync } from "node:child_process";
@@ -9880,7 +9880,7 @@ function dateidienst(lager, basis, anfrage, antwort, pfad, roh = Buffer.alloc(0)
   return antwort.end();
 }
 
-async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null, lager = null, leerlauf = 0 } = {}) {
+async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null, lager = null, leerlauf = 0, ausweisTot = false } = {}) {
   const gesehen = [];
   let basis = "";
   const handler = (anfrage, antwort) => {
@@ -9904,7 +9904,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
       if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/") || pfad.startsWith("/auth-app/"))) return dateidienst(lager, basis, anfrage, antwort, pfad, Buffer.concat(teile));
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
       const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
-      const gueltig = sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`;
+      const gueltig = !ausweisTot && (sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`);
       if (pfad === "/api/auth/session") return senden(200, gueltig ? { authenticated: true, user: { username: "anna" } } : { authenticated: false, user: null });
       if (!gueltig) return senden(401, { error: { message: "Kein gültiger Ausweis" } });
       if (pfad === "/api/ausweise" && anfrage.method === "POST") {
@@ -11356,8 +11356,10 @@ check("root.mjs --adopt übernimmt einen gewachsenen Ordner, schreibt vier Datei
   }
   writeFileSync(join(haus, ".gitignore"), `${readFileSync(join(haus, ".gitignore"), "utf8")}.claude/app/zugriffe.log\n`);
   const vorher = inhalte(haus);
-  const lauf = tool("root.mjs", ["--adopt", haus, "--language", "de"], "");
+  const lauf = tool("root.mjs", ["--adopt", haus, "--language", "de"], "", { ARASUL_CONFIG_DIR: wegwerfordner("ara-adopt-konfig-") });
   assert(lauf.status === 0, `--adopt endet mit ${lauf.status}: ${lauf.stderr}${lauf.stdout}`);
+  assert(/sync --keep-mine/.test(lauf.stdout) && /sync --install/.test(lauf.stdout) && /noch nie abgeglichen/.test(lauf.stdout), `--adopt endet nicht mit den offenen Schritten login, sync --keep-mine, sync --install: ${lauf.stdout}`);
+  assert(lauf.stdout.indexOf("node arasul.mjs login") < lauf.stdout.indexOf("sync --keep-mine") && lauf.stdout.indexOf("sync --keep-mine") < lauf.stdout.indexOf("sync --install"), "die Schritte stehen nicht in der Reihenfolge login, keep-mine, install");
   const nachher = inhalte(haus);
   const neu = Object.keys(nachher).filter((datei) => !(datei in vorher)).sort();
   assert(JSON.stringify(neu) === JSON.stringify([".claude/places.json", ".claude/proposal/proposal.json", ".claude/root.json", "arasul.mjs"]), `--adopt schrieb anderes als die vier Dateien: ${neu.join(", ")}`);
@@ -11989,6 +11991,54 @@ await checkAsync("Die Brücke hält ein eigenes Zertifikat einmal fest und schal
     assert(lauf.status !== 0 && geraet.gesehen.length === vorher, `ein anderes Zertifikat am selben Port wird angenommen: ${lauf.stdout}${lauf.stderr}`);
     assert(!(lauf.stdout + lauf.stderr).includes(BRUECKE_TOKEN), "das Token steht in der Ausgabe");
     return "ohne --insecure abgewiesen, ohne dass das Passwort hinausging, einmal festgehalten, ein anderes Zertifikat abgewiesen";
+  } finally {
+    await geraet.schliessen();
+  }
+});
+
+await checkAsync("status nennt eine neue CA und einen Ausweis, den das Gerät nicht mehr kennt, getrennt und mit dem einen Befehl", async () => {
+  const erzeugt = (name) => {
+    const dir = wegwerfordner("ara-zert-");
+    const lauf = spawnSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", join(dir, "k.pem"), "-out", join(dir, "z.pem"), "-days", "1", "-subj", `/CN=${name}`], { encoding: "utf8" });
+    return lauf.status === 0 ? { key: readFileSync(join(dir, "k.pem")), cert: readFileSync(join(dir, "z.pem")) } : null;
+  };
+  const erstes = erzeugt("geraet-a");
+  const zweites = erzeugt("geraet-b");
+  if (!erstes || !zweites) return "übersprungen, openssl stellt hier kein Zertifikat aus";
+  const w = brueckeWurzel();
+  let geraet = await brueckeGeraet({ tls: erstes });
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin", "--insecure", "--name", "orin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `login scheitert: ${lauf.stdout}${lauf.stderr}`);
+    const port = geraet.port;
+    const fingerabdruck = (pem) => new X509Certificate(pem).fingerprint256;
+
+    // Neue CA, Ausweis dem Gerät noch bekannt: nur das Zertifikat wird genannt.
+    await geraet.schliessen();
+    geraet = await brueckeGeraet({ tls: { ...zweites, port } });
+    lauf = await bruecke(w, ["status", "--language", "de"]);
+    let text = lauf.stdout;
+    assert(lauf.status !== 0 && /Zertifikat: das Gerät trägt seit \d{4}-\d\d-\d\d \d\d:\d\d eine neue CA, SHA-256 /.test(text), `status nennt die neue CA nicht: ${text}${lauf.stderr}`);
+    assert(text.includes(fingerabdruck(zweites.cert)) && text.includes(fingerabdruck(erstes.cert)), `status nennt nicht beide Fingerabdrücke: ${text}`);
+    assert(/Ausweis: das Gerät kennt ihn noch/.test(text) && !/kennt ihn nicht mehr/.test(text), `status verwechselt den Ausweis mit der CA: ${text}`);
+    assert(text.includes(`node arasul.mjs login ${geraet.adresse} --user anna --name orin --insecure`), `status nennt den einen Befehl nicht: ${text}`);
+    assert(!/SELF_SIGNED/.test(text + lauf.stderr), "status nennt nur den Zertifikatsfehler");
+
+    // Neue CA und ein Ausweis, den das Gerät nicht mehr kennt: beides, getrennt.
+    await geraet.schliessen();
+    geraet = await brueckeGeraet({ tls: { ...zweites, port }, ausweisTot: true });
+    lauf = await bruecke(w, ["status", "--language", "de"]);
+    text = lauf.stdout;
+    assert(/Zertifikat: das Gerät trägt seit .* eine neue CA/.test(text) && /Ausweis: das Gerät kennt ihn nicht mehr, er wurde dort widerrufen oder gelöscht\./.test(text), `status nennt nicht beides getrennt: ${text}`);
+    assert(text.includes("--insecure") && !text.includes(BRUECKE_TOKEN), `der Befehl fehlt oder das Token steht in der Ausgabe: ${text}`);
+    lauf = await bruecke(w, ["status", "--language", "en"]);
+    assert(/Certificate: the device carries a new certificate authority since /.test(lauf.stdout) && /Credential: the device no longer knows it/.test(lauf.stdout), `status spricht nicht Englisch: ${lauf.stdout}`);
+
+    // Dasselbe Zertifikat, Gerät nicht erreichbar: weiter die schlichte Meldung, keine neue CA erfunden.
+    await geraet.schliessen();
+    lauf = await bruecke(w, ["status", "--language", "de"]);
+    assert(!/neue CA/.test(lauf.stdout), `status erfindet eine neue CA: ${lauf.stdout}`);
+    return "neue CA und toter Ausweis getrennt genannt, mit Fingerabdrücken und dem einen Befehl";
   } finally {
     await geraet.schliessen();
   }

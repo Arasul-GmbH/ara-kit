@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.64.2 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **Die Wurzel sagt, wenn ihr Ausweis tot ist (K20).** Passt das Zertifikat, das ein Gerät vorzeigt, nicht mehr zu dem festgehaltenen, bleibt `status` nicht mehr bei `SELF_SIGNED_CERT_IN_CHAIN` stehen. Es nennt zwei Dinge getrennt: das Zertifikat (eine neue CA seit einem Datum, mit beiden Fingerabdrücken) und den Ausweis (ob das Gerät ihn noch kennt, oder dass er zu Ende ging), danach den einen `login`-Befehl für beides und die Erinnerung, den Fingerabdruck vorher mit dem Gerät zu vergleichen. Für das Zweite schickt `status` den Ausweis einmal, nur an den Weg der Sitzung, an das Zertifikat, das das Gerät jetzt vorzeigt; ein toter Ausweis kostet nichts. Der Firmenordner wird erst gefragt, wenn das Zertifikat wieder passt.
+- **`root.mjs --adopt` endet mit den offenen Schritten** login, `sync --keep-mine`, `sync --install`, solange `status` der Brücke noch nie abgeglichen sagt.
+
 ## 0.64.1 (2026-10-02)
 
 Kontrakt: bis 7
