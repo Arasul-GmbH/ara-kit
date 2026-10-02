@@ -28,7 +28,7 @@ import { ROOT, customerPath, ensureDir, now, today } from "./kit.mjs";
 import { baseUrl, call, reason } from "./arasul.mjs";
 import { CONTRACT_PATH, findEndpoint } from "./contract.mjs";
 import { getSecret } from "./secrets.mjs";
-import { TOPICS, compareSnapshots, installedVersion, lostAnything, minutes, verdict, verdictSentence, versionIn } from "./upgrade.mjs";
+import { TOPICS, compareSnapshots, readTopic, installedVersion, lostAnything, minutes, verdict, verdictSentence, versionIn } from "./upgrade.mjs";
 
 /** Die Wege, die dieses Werkzeug ruft. Ob das Gerät sie anbietet, sagt sein Kontrakt. */
 export const WAYS = Object.freeze({
@@ -99,6 +99,7 @@ export function judgeRun(lauf, nach) {
 
 const str = (v) => (typeof v === "string" ? v : null);
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+const REVOKE_TRIES = 6;
 
 /**
  * Der ganze Ablauf. Rückgabe ist der Exit-Code.
@@ -109,6 +110,7 @@ export async function runViaInterface({ device, arg, mode, place, call_ }) {
   const say = (text) => console.log(text);
   const step = (text) => say(`\n== ${text}`);
   const pollMs = Number(process.env.ARA_UPDATE_POLL_MS) || 10_000;
+  const revokeWaitMs = Number(process.env.ARA_UPDATE_POLL_MS) || 10_000;
   const limitMs = (Number(process.env.ARA_UPDATE_LIMIT_MIN) || 45) * 60_000;
 
   const ssh = `${call_} --ssh`;
@@ -245,6 +247,13 @@ export async function runViaInterface({ device, arg, mode, place, call_ }) {
     }
   }
 
+  const snapshot = async () => {
+    if (!session().ok) return null;
+    const out = {};
+    for (const topic of TOPICS) out[topic.key] = await readTopic(topic, asAdmin, out);
+    return out;
+  };
+
   // --- Der Plan ------------------------------------------------------------------
   const backEntry = contract ? findEndpoint(contract, ...WAYS.back) : null;
   const startEntry = contract ? findEndpoint(contract, ...WAYS.start) : null;
@@ -273,6 +282,25 @@ export async function runViaInterface({ device, arg, mode, place, call_ }) {
   }
   if (state.laeuft) {
     plan.push(t("- A run is under way on the device right now.", "- Am Gerät läuft gerade schon ein Lauf."), "");
+  }
+
+  // Was das Gerät jetzt hat, gezählt wie beim Lauf: der Stand, gegen den nachher verglichen würde.
+  const now_ = await snapshot();
+  if (now_) {
+    plan.push(t("## What the device has now", "## Was das Gerät jetzt hat"), "");
+    for (const topic of TOPICS) {
+      const row = now_[topic.key];
+      plan.push(`- ${topic.label()}: ${row.state === "gelesen" ? row.entries.length : t(`not measured (${row.text})`, `nicht gemessen (${row.text})`)}`);
+    }
+    const perApp = {};
+    for (const entry of now_["app-flows"]?.entries || []) {
+      const app = entry.key.split(" ")[0];
+      perApp[app] = (perApp[app] || 0) + 1;
+    }
+    if (Object.keys(perApp).length) {
+      plan.push(t(`- Flows per app: ${Object.entries(perApp).map(([app, n]) => `${app} ${n}`).join(", ")}`, `- Flows je App: ${Object.entries(perApp).map(([app, n]) => `${app} ${n}`).join(", ")}`));
+    }
+    plan.push("");
   }
 
   plan.push(t("## What happens", "## Was passiert"), "");
@@ -347,20 +375,6 @@ export async function runViaInterface({ device, arg, mode, place, call_ }) {
   let runMs = null;
   let minted = null;
   let before = null;
-
-  const snapshot = async () => {
-    if (!session().ok) return null;
-    const out = {};
-    for (const topic of TOPICS) {
-      const answer = await asAdmin(topic.verb, topic.path);
-      out[topic.key] = answer.ok
-        ? { state: "gelesen", entries: topic.entries(answer.body), path: topic.path }
-        : answer.status === 404 || answer.status === 405
-          ? { state: "kein-endpunkt", entries: [], text: t("the device does not know the route", "das Gerät kennt den Weg nicht") }
-          : { state: "fehler", entries: [], text: `${topic.verb} ${topic.path}: ${reason(answer)}` };
-    }
-    return out;
-  };
 
   try {
     step(t("State before", "Stand vorher"));
@@ -490,7 +504,14 @@ export async function runViaInterface({ device, arg, mode, place, call_ }) {
   } finally {
     if (minted) {
       sessionMemo = null;
-      const gone = await asAdmin("DELETE", `/api/v1/external/api-keys/${minted.id}`);
+      // Nach dem Umschalten ist das Gerät oft noch einen Moment nicht erreichbar ("No connection",
+      // Status 0): dann wieder fragen, bevor der Schlüssel als nicht widerrufen gilt.
+      let gone = await asAdmin("DELETE", `/api/v1/external/api-keys/${minted.id}`);
+      for (let tries = 0; !gone.ok && gone.status === 0 && tries < REVOKE_TRIES; tries++) {
+        await sleep(revokeWaitMs);
+        sessionMemo = null;
+        gone = await asAdmin("DELETE", `/api/v1/external/api-keys/${minted.id}`);
+      }
       if (gone.ok) {
         mark(t("Key for this occasion revoked", "Schlüssel für diesen Anlass widerrufen"), true, minted.prefix);
       } else {

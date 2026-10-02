@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.65.2 (2026-10-02)
+
+Contract: up to 7
+
+- **The comparison before and after an update counts the flows of the apps (K28).** It used to read only `GET /api/flows`, which lists the platform's own flows and reported "Flows 0" on a device whose apps bring eight. `upgrade.mjs` now asks `GET /api/apps/:id/flows` for every app, before and after, and a flow that is missing afterwards turns the comparison red. The old line is now called "Platform flows". At the end of a run the kit key made for the occasion is revoked again when the device answers "No connection" (it is often not back yet): the kit asks again up to six times before it calls the key not revoked.
+
 ## 0.65.1 (2026-10-02)
 
 Contract: up to 7

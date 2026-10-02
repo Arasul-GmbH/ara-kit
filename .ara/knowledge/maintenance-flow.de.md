@@ -204,7 +204,7 @@ das die Schnittstelle nicht erreicht. Das Werkzeug nennt ihn in dem Satz, an dem
 Schnittstelle anhält.
 
 Die Wege für den Vergleich sind dieselben wie zuvor: `GET /api/benutzer`, `GET /api/license/info`,
-`GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`, `GET /api/firmenordner/ordner`,
+`GET /api/apps`, `GET /api/flows` (die eigenen Flows der Plattform), `GET /api/apps/:id/flows` (die Flows jeder App, je App und Stand gefragt, so dass ein Flow, den ein Update verliert, den Vergleich rot macht), `GET /api/models/installed`, `GET /api/firmenordner/ordner`,
 `GET /api/firmenordner/platz`. Kennt das Gerät einen nicht, steht das Thema als "nicht gemessen",
 und der Bericht sagt warum.
 

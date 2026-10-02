@@ -121,7 +121,7 @@ import { APPLEDOUBLE, installCommand, installTarget, installerEntry, packEnv, re
 import { portalBase } from "./lib/licence.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 import { HEALTH_PROBE, parseHealth, readHealth } from "./lib/maintain.mjs";
-import { TOPICS, INSTALLATION_PROBE, compareSnapshots, durationSentence, githubRelease, installedVersion, lostAnything, minutes, parseFacts, parseSha256, repoFrom, routeListed, routeRows, sha256File, verdict, verdictSentence, versionIn, wayBackLines } from "./lib/upgrade.mjs";
+import { TOPICS, INSTALLATION_PROBE, compareSnapshots, readTopic, durationSentence, githubRelease, installedVersion, lostAnything, minutes, parseFacts, parseSha256, repoFrom, routeListed, routeRows, sha256File, verdict, verdictSentence, versionIn, wayBackLines } from "./lib/upgrade.mjs";
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -525,14 +525,10 @@ function planLines() {
 async function snapshot() {
   const out = {};
   for (const topic of TOPICS) {
-    if (!apiReference || !routeListed(routes, topic.verb, topic.path)) {
-      out[topic.key] = { state: "kein-endpunkt", entries: [], text: t("the device's API reference does not list the route", "die API-Referenz des Geräts führt den Weg nicht auf") };
-      continue;
-    }
-    const answer = await admin(topic.verb, topic.path);
-    out[topic.key] = answer.ok
-      ? { state: "gelesen", entries: topic.entries(answer.body), path: topic.path }
-      : { state: "fehler", entries: [], text: `${topic.verb} ${topic.path}: ${reason(answer)}` };
+    out[topic.key] =
+      !apiReference || !routeListed(routes, topic.verb, topic.path)
+        ? { state: "kein-endpunkt", entries: [], text: t("the device's API reference does not list the route", "die API-Referenz des Geräts führt den Weg nicht auf") }
+        : await readTopic(topic, admin, out);
   }
   return out;
 }

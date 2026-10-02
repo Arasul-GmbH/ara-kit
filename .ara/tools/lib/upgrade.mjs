@@ -21,6 +21,7 @@ import { compareVersions } from "./version.mjs";
 import { routeRows } from "./adminways.mjs";
 import { normalize } from "./docroutes.mjs";
 import { t } from "./i18n.mjs";
+import { reason } from "./arasul.mjs";
 
 /** Gemessen am 01.10.2026 am Jetson AGX Orin, Aktualisierung von 0.8.12 auf 0.8.14. */
 export const MEASURED = Object.freeze({
@@ -260,6 +261,7 @@ export const TOPICS = Object.freeze([
     label: () => t("Apps", "Apps"),
     verb: "GET",
     path: "/api/apps",
+    ids: (a) => rowsOf(a).map((app) => flat(app.id)).filter((id) => id !== "-"),
     entries: (a) =>
       rowsOf(a).flatMap((app) => {
         const stands = Object.entries(app.staende || {}).filter(([, s]) => s);
@@ -288,7 +290,7 @@ export const TOPICS = Object.freeze([
   },
   {
     key: "flows",
-    label: () => t("Flows", "Flows"),
+    label: () => t("Platform flows", "Plattform-Flows"),
     verb: "GET",
     path: "/api/flows",
     entries: (a) => [
@@ -297,6 +299,22 @@ export const TOPICS = Object.freeze([
         ? [{ key: t("broken files", "fehlerhafte Dateien"), value: String(a.fehlerhaft.length) }]
         : []),
     ],
+  },
+  {
+    // Die Flows der Apps stehen nicht in `/api/flows` (das sind die der Plattform), sondern je App
+    // und Stand an `/api/apps/:id/flows`. Ein Update, das sie verliert, fiele sonst nicht auf.
+    key: "app-flows",
+    label: () => t("App flows", "App-Flows"),
+    verb: "GET",
+    path: "/api/apps/:id/flows",
+    perApp: true,
+    entries: (a, appId) =>
+      ["test", "live"].flatMap((stand) =>
+        (Array.isArray(a?.data?.[stand]) ? a.data[stand] : []).map((flow) => ({
+          key: `${appId} ${stand} ${flat(flow.name)}`,
+          value: flat(flow.version),
+        }))
+      ),
   },
   {
     key: "models",
@@ -335,6 +353,35 @@ export const TOPICS = Object.freeze([
       })),
   },
 ]);
+
+/**
+ * Ein Thema lesen. `ask(verb, path)` gibt `{ ok, status, body }`; `read` hält die schon gelesenen
+ * Themen. Ein Thema je App (`perApp`) fragt jede App, die `apps` nennt, und führt die Antworten
+ * zusammen: gezählt wird, was das Gerät je App nennt, nicht was eine Sammelliste zufällig enthält.
+ */
+export async function readTopic(topic, ask, read = {}) {
+  const failed = (answer, path) =>
+    answer.status === 404 || answer.status === 405
+      ? { state: "kein-endpunkt", entries: [], text: t("the device does not know the route", "das Gerät kennt den Weg nicht") }
+      : { state: "fehler", entries: [], text: `${topic.verb} ${path}: ${reason(answer)}` };
+  if (!topic.perApp) {
+    const answer = await ask(topic.verb, topic.path);
+    if (!answer.ok) return failed(answer, topic.path);
+    return { state: "gelesen", entries: topic.entries(answer.body), path: topic.path, ...(topic.ids ? { ids: topic.ids(answer.body) } : {}) };
+  }
+  const apps = read.apps;
+  if (!apps || apps.state !== "gelesen") {
+    return { state: "fehler", entries: [], text: t("the apps could not be read, so their flows cannot be asked for", "die Apps ließen sich nicht lesen, also auch ihre Flows nicht") };
+  }
+  const entries = [];
+  for (const appId of apps.ids) {
+    const path = topic.path.replace(":id", encodeURIComponent(appId));
+    const answer = await ask(topic.verb, path);
+    if (!answer.ok) return failed(answer, path);
+    entries.push(...topic.entries(answer.body, appId));
+  }
+  return { state: "gelesen", entries, path: topic.path };
+}
 
 /** Vergleich eines Themas: was fehlt nachher, was ist neu, was hat sich geändert. */
 export function diffEntries(before, after) {
