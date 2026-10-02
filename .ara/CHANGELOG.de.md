@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.64.1 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **Kleinfunde der Nacht (K24).** `call` auf eine App, die diesem Menschen niemand zugewiesen hat, sagt das und dass die Anmeldung in Ordnung ist, statt "Ausweis abgewiesen (403)". `sync --uninstall` sagt, dass der Ausweis dieses Rechners weiter gilt und wo man ihn widerruft, weil ein Ausweis keine Ausweise widerrufen darf. `app.mjs --patterns` schlägt Muster 9 bei jedem Wort mit `kanzlei` vor, auch bei "Steuerkanzlei". Bei einer App mit `verbindungen` sagt die Planzeile, dass sie nur über den Ausgang des Geräts nach draußen kommt, dass ein Programm, das `HTTPS_PROXY` nicht beachtet, keine Verbindung bekommt und dass das `wget` des kleinen Linux `NO_PROXY` überhört.
+
 ## 0.64.0 (2026-10-02)
 
 Kontrakt: bis 7

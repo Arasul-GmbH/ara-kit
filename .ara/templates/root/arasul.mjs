@@ -211,7 +211,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.64.0";
+const BRIDGE = "0.64.1";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -1371,6 +1371,15 @@ async function doCall(args) {
   if (!wanted) stop(t(`'${routeName}' is not a route of an app: a path without .. and without a query, parameters go as name=value.`, `'${routeName}' ist keine Route einer App: ein Pfad ohne .. und ohne Anfrage, Parameter gehen als name=wert.`), 2);
 
   const device = chooseDevice(args);
+  // The device answers 403 for an app nobody assigned to this person, the same as for a dead credential.
+  // The list of the assigned apps tells them apart, and it already stops with the right words when the credential is dead.
+  const assigned = await assignedApps(device);
+  if (!assigned.some((app) => app.id === appId)) {
+    stop(t(
+      `${appId} is not assigned to ${device.entry.user || "you"} on ${device.name}, so nothing can be called on it. The login is fine. Ask the administrator of the device to give you access to the app.${assigned.length ? ` Assigned now: ${assigned.map((app) => app.id).join(", ")}.` : " No app is assigned to you yet."}`,
+      `${appId} ist ${device.entry.user || "dir"} auf ${device.name} nicht zugewiesen, darum lässt sich auf ihr nichts aufrufen. Die Anmeldung ist in Ordnung. Bitte den Administrator des Geräts, dir die App freizugeben.${assigned.length ? ` Zugewiesen ist jetzt: ${assigned.map((app) => app.id).join(", ")}.` : " Dir ist noch keine App zugewiesen."}`
+    ));
+  }
   const described = await agentOf(device, appId);
   if (described.state === "none") stop(t(`${appId} does not describe itself: it has no route agent. Nothing is called on it.`, `${appId} beschreibt sich nicht: sie hat keine Route agent. Auf ihr wird nichts aufgerufen.`));
   if (described.state === "error") stop(t(`The description of ${appId} could not be read: ${described.message}`, `Die Beschreibung von ${appId} ließ sich nicht lesen: ${described.message}`));
@@ -4033,6 +4042,15 @@ async function doUninstall() {
     revoked === true ? t(", the app token revoked at the file service", ", das App-Token am Dateidienst widerrufen")
     : revoked === false ? t(`, the app token could not be revoked at the file service now: it ends on ${entry.until?.slice(0, 10) || "?"}, or revoke it in the file service's front end`, `, das App-Token ließ sich am Dateidienst gerade nicht widerrufen: es endet am ${entry.until?.slice(0, 10) || "?"}, oder widerrufe es in der Oberfläche des Dateidienstes`)
     : ""}`);
+  // The credential of this computer is not the app token: a credential may not list or revoke credentials at the device,
+  // so this file cannot take it back. It says so and names the place instead of leaving the human to think it is gone.
+  const known = Object.keys(readCredentials().devices);
+  if (known.length) {
+    say(`  ${t("Credential", "Ausweis")}: ${t(
+      `the credential of this computer for ${known.join(", ")} stays valid and is not revoked here, because a credential may not revoke credentials. To close it, revoke it in the device's front end under the credentials of your account.`,
+      `der Ausweis dieses Rechners für ${known.join(", ")} gilt weiter und wird hier nicht widerrufen, weil ein Ausweis keine Ausweise widerrufen darf. Um ihn zu schließen, widerrufe ihn in der Oberfläche des Geräts bei den Ausweisen deines Kontos.`
+    )}`);
+  }
   say(`  ${t("What was synced stays here. The log stays for reading", "Was abgeglichen wurde, bleibt hier. Das Protokoll bleibt zum Lesen")}: ${AGENT_LOG}`);
   return true;
 }

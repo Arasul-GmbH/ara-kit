@@ -17,7 +17,7 @@ const KNOWN = [
     id: "datev",
     number: 9,
     words:
-      /\b(kanzlei|kanzleien|steuerberat\w*|buchhalt\w*|buchf(?:ü|ue)hrung|finanzbuchhaltung|vorkontier\w*|kontierung|datev|skr ?0?[34]|kontenrahmen|belegerfassung|accounting|bookkeep\w*|tax (?:adviser|advisor|firm|office)|booking batch)\b/i,
+      /\b(\w*kanzlei\w*|steuerberat\w*|buchhalt\w*|buchf(?:ü|ue)hrung|finanzbuchhaltung|vorkontier\w*|kontierung|datev|skr ?0?[34]|kontenrahmen|belegerfassung|accounting|bookkeep\w*|tax (?:adviser|advisor|firm|office)|booking batch)\b/i,
     sheet: ".ara/templates/app-patterns/datev/README",
     en: {
       name: "Booking batch for the tax adviser (pattern 9)",
