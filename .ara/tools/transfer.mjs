@@ -419,7 +419,7 @@ function makeSshKey(name) {
   const owner = company.name || profile.company || profile.name || userInfo().username;
   const keygen = spawnSync(
     "ssh-keygen",
-    ["-t", "ed25519", "-f", path, "-C", `ara-kit ${owner} ${name}`, ...(arg["no-passphrase"] ? ["-N", ""] : [])],
+    ["-t", "ed25519", "-f", path, "-C", `ara-kit ${owner} ${name} ${today()}`, ...(arg["no-passphrase"] ? ["-N", ""] : [])],
     { stdio: arg["no-passphrase"] ? ["ignore", "ignore", "pipe"] : "inherit" }
   );
   if (keygen.status !== 0) {
@@ -454,12 +454,22 @@ function acceptDevice(device) {
   const oldPrefix = hand[`old_kit_${slug}`] || "";
   const sshName = `ara-${device}`;
   const ref = fields.api_key_ref || `ARASUL_KEY_${secretSlug(null, device)}`;
-  const { keyName } = ownerNames();
+  const { keyName: ownerKeyName } = ownerNames();
+  // Der Stempel: Name des Hauses und Tag der Übernahme, damit man am Gerät sieht, wessen Schlüssel das ist.
+  const keyName = `${ownerKeyName} ${today()}`;
   const step = (text) => line(`  - ${text}`);
 
   line(`\n${t("Device", "Gerät")} ${device}`);
   if (hand[`done_${slug}`]) {
     step(t(`already taken over on ${hand[`done_${slug}`]}`, `schon übernommen am ${hand[`done_${slug}`]}`));
+    const own0 = baseArgs(fields, { batch: true, key: fields.ssh_key });
+    const via0 = transportOf(own0.args, own0.host, { keyOnly: true });
+    step(
+      via0.transport !== "none"
+        ? t("your key already applies on this device: nothing to do, nothing was changed", "dein Schlüssel gilt auf diesem Gerät schon: es ist nichts zu tun, nichts wurde geändert")
+        : t(`the note says taken over, but the key of this copy does not log in now (${via0.message || "refused"}). Check the device file and the key in ~/.ssh.`, `laut Vermerk übernommen, aber der Schlüssel dieser Kopie meldet sich jetzt nicht an (${via0.message || "abgelehnt"}). Prüfe die Geräteakte und den Schlüssel in ~/.ssh.`)
+    );
+    if (via0.transport === "none") return false;
     if (!arg["revoke-others"]) return true;
     if (!yes) {
       step(t("with --yes it revokes every other valid kit key on the device", "mit --yes widerruft es jeden anderen gültigen Kit-Schlüssel am Gerät"));

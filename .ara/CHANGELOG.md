@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.63.1 (2026-10-02)
+
+Contract: up to 6
+
+- **A second `transfer.mjs --accept` says the key already applies (K25).** It no longer stops at "already taken over": it logs in with this copy's key and says "your key already applies on this device: nothing to do, nothing was changed", or says that the note and the device disagree. The keys `--accept` makes carry a stamp: the login key's comment is `ara-kit <house> <name> <date>`, the kit key's name on the device is `Ara-Kit <house> <date>`.
+
 ## 0.63.0 (2026-10-02)
 
 Contract: up to 6

@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.63.1 (2026-10-02)
+
+Contract: up to 6
+
+- **Ein zweites `transfer.mjs --accept` sagt, dass der Schlüssel schon gilt (K25).** Es bleibt nicht mehr bei „schon übernommen“: es meldet sich mit dem Schlüssel dieser Kopie an und sagt „dein Schlüssel gilt auf diesem Gerät schon: es ist nichts zu tun, nichts wurde geändert“, oder sagt, dass Vermerk und Gerät nicht zusammenpassen. Die Schlüssel, die `--accept` macht, tragen einen Stempel: der Kommentar des Anmeldeschlüssels ist `ara-kit <Haus> <Name> <Datum>`, der Name des Kit-Schlüssels am Gerät `Ara-Kit <Haus> <Datum>`.
+
 ## 0.63.0 (2026-10-02)
 
 Contract: up to 6
