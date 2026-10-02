@@ -27,6 +27,12 @@ clone before `/init`, English applies. `/init` asks in the first round with ques
   `t(en, de)`, where the line comes into being.
 - **German is written with real umlauts in content, ASCII only in file and folder names** and
   identifiers in code. The self-test goes red on ae, oe, ue or ss standing in German content.
+- **Everything a human reads carries real umlauts**, in the kit and in the apps you build: `name`,
+  `beschreibung` and the texts of flows and steps in `app.json`, and every visible text of the
+  frontend. Write "Messgerät für die Änderung", never "Messgeraet fuer die Aenderung". Only
+  identifiers, file names and routes stay ASCII. `app.mjs` warns at `--check` and `--deploy` when a
+  visible text carries a substitute spelling; the warning does not stop the deploy, you fix the
+  text.
 - **This file and the `init` command are English only.** They are instructions to
   you and exist before any profile does. To the human you speak the profile's language.
 - **The paperwork stays German.** `.ara/vorlagen/` and `.ara/nachweise/` are legally binding

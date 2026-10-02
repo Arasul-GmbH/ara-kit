@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.65.3 (2026-10-02)
+
+Contract: up to 7
+
+- **`app.mjs` warnt vor Ersatzschreibungen in sichtbaren Texten (M5).** `--check` und `--deploy` halten `name`, `beschreibung`, die Texte von Flows und Stufen und den sichtbaren Text des Frontends gegen ein Wortmuster mit Ausnahmen: `Messgeraet fuer die Aenderung` schlägt an, `Queue`, `Michael`, aktuell und neue nicht. Kommentare, Bezeichner, Pfade und Adressen bleiben draußen. Es ist eine Warnung und hält das Einspielen nicht an. `AGENTS.md` trägt jetzt die Regel, dass alles, was ein Mensch liest, echte Umlaute trägt, und der Selbsttest belegt einen Fall, der anschlägt, und einen, der nicht anschlägt.
+
 ## 0.65.2 (2026-10-02)
 
 Contract: up to 7

@@ -125,6 +125,7 @@ import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mj
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
+import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
 import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
@@ -1499,6 +1500,19 @@ function reportManifest(where, result, delivery) {
   return lines.join("\n");
 }
 
+/**
+ * Warnung, kein Halt: sichtbare Texte der App ohne echte Umlaute. Ein Muster
+ * rät, und ein Wort, das es falsch trifft, soll keine Auslieferung sperren.
+ * Schweigt es, steht das auch da: eine Prüfung, die nichts sagt, sieht aus wie
+ * eine, die nicht lief.
+ */
+function umlautSection(dir, manifest) {
+  const lines = umlautWarnung(sichtbareErsatzfunde(dir, manifest), t);
+  return lines.length
+    ? lines
+    : [t("Umlaut check: visible texts carry real umlauts, no finding.", "Umlautprüfung: sichtbare Texte tragen echte Umlaute, kein Befund.")];
+}
+
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
@@ -1512,6 +1526,7 @@ if (arg.check !== undefined) {
     console.log(
       spaced([
         ...reportManifest(relative(ROOT, dir) || dir, result, delivery).split("\n"),
+        ...umlautSection(dir, manifest),
         ...arrangementSection(dir, manifest),
         ...addressSection(dir),
         ...versionSection(),
@@ -1531,6 +1546,8 @@ if (arg.deploy !== undefined) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
   }
+  console.log(umlautSection(dir, manifest).join("\n"));
+
   // „Nichts eingespielt" allein schickt den Menschen in seine App. Der Grund
   // liegt hier im Kit, und der Weg heraus steht in derselben Meldung.
   // „Nichts eingespielt" zuerst, der Grund gleich dahinter und der Weg zuletzt:

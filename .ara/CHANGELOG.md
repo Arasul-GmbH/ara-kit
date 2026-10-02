@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.65.3 (2026-10-02)
+
+Contract: up to 7
+
+- **`app.mjs` warns about substitute spellings in visible texts (M5).** `--check` and `--deploy` hold `name`, `beschreibung`, the texts of flows and steps and the visible text of the frontend against a word pattern with exceptions: "Messgeraet fuer die Aenderung" is flagged, Queue, Michael, aktuell and neue are not. Comments, identifiers, paths and addresses stay out. It is a warning and does not stop the deploy. `AGENTS.md` now carries the rule that everything a human reads has real umlauts, and the self-test proves a case that flags and a case that does not.
+
 ## 0.65.2 (2026-10-02)
 
 Contract: up to 7
