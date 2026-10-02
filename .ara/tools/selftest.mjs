@@ -7661,6 +7661,7 @@ await checkAsync("transfer.mjs: vorbereiten, uebernehmen mit eigenen Schluesseln
     const liste = readFileSync(state, "utf8");
     assert(/widerrufen\s+40\s+aras_oldkey1234/.test(liste), `der alte Kit-Schluessel ist nicht widerrufen: ${liste}`);
     assert(/gueltig\s+\d+\s+aras_newkey/.test(liste), "kein neuer Kit-Schluessel am Geraet");
+    assert(new RegExp(`aras_newkey\\d+\\s+Ara-Kit .* ${today()}\\s`).test(liste), `der Kit-Schluessel traegt keinen Stempel: ${liste}`);
     assert(/gueltig\s+39\s+aras_inst9999/.test(liste), "ohne --revoke-others wurde ein fremder Schluessel widerrufen");
     assert(/aras_inst9999/.test(run.stdout) && /--revoke-others/.test(run.stdout), `die uebrigen gueltigen werden nicht genannt: ${run.stdout}`);
     const neu = readFileSync(takerEnv, "utf8");
@@ -7677,6 +7678,9 @@ await checkAsync("transfer.mjs: vorbereiten, uebernehmen mit eigenen Schluesseln
     assert(!/SECRETneu/.test(readFileSync(join(taker, "devices", "orin", "device.md"), "utf8")), "ein Klartext steht in der Geraeteakte");
     run = lauf(taker, takerHome, takerEnv, ["--accept", "--yes", "--no-passphrase"]);
     assert(run.status === 0 && /schon übernommen/.test(run.stdout), `ein zweiter Lauf uebernimmt nochmal: ${run.stdout}`);
+    assert(/dein Schlüssel gilt auf diesem Gerät schon/.test(run.stdout), `der zweite Lauf sagt nicht, dass der Schluessel schon gilt: ${run.stdout}`);
+    const stempel = readFileSync(join(takerHome, ".ssh", "ara-orin.pub"), "utf8");
+    assert(new RegExp(`ara-kit .* ara-orin ${today()}`).test(stempel), `der Anmeldeschluessel traegt keinen Stempel: ${stempel}`);
 
     run = lauf(taker, takerHome, takerEnv, ["--accept", "--revoke-others", "--yes"]);
     assert(run.status === 0, `--revoke-others fehlgeschlagen: ${run.stderr}${run.stdout}`);
