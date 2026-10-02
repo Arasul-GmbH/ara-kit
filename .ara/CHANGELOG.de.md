@@ -15,7 +15,11 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
-## 0.64.3 (2026-10-02)
+## 0.64.4 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **`sync --uninstall` widerruft den Ausweis dieses Rechners am Gerät (K26).** Der Ausweis ruft `DELETE /api/ausweise/<seine eigene Nummer>` mit sich selbst auf (das Gerät nimmt das seit J34 an, antwortet 204, und derselbe Wert ist danach ein 401). Die Nummer liegt seit `login` neben dem Ausweis. Die Ausgabe sagt in einfachen Worten, dass er widerrufen und aus diesem Rechner genommen ist, oder warum nicht: ein eingefügter Ausweis hat keine bekannte Nummer, das Gerät kennt die Nummer nicht, das Gerät antwortet nicht. Dann bleibt der Ausweis, und die Ausgabe nennt die Oberfläche des Geräts. Das ersetzt den Satz, ein Ausweis dürfe sich nicht selbst widerrufen.
 
 Kontrakt: bis 7
 

@@ -211,7 +211,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * one takes the place of the older one on both sides; the kit's selftest holds it equal to the
  * kit's own version.
  */
-const BRIDGE = "0.64.3";
+const BRIDGE = "0.64.4";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 // The root is where this file lies: `node arasul.mjs` works from every folder.
@@ -3555,6 +3555,34 @@ async function revokeAppToken(entry) {
   }
 }
 
+/**
+ * Revoke the credential of this computer at one device, with itself: since J34 (2026-10-02) the device
+ * takes `DELETE api/ausweise/<own number>` from the credential, for its own number only, and answers 204.
+ * Returns what a human is told: done (revoked now, or it no longer counted), or the reason it is not.
+ */
+async function revokeCredential(name, entry) {
+  if (entry.kind !== "issued" || !entry.credentialId) {
+    return { done: false, why: t(
+      "this computer did not get it issued by the device with a number this file knows, so it cannot revoke it. Revoke it in the device's front end under the credentials of your account",
+      "der Ausweis wurde diesem Rechner nicht mit einer Nummer ausgestellt, die diese Datei kennt, sie kann ihn also nicht widerrufen. Widerrufe ihn in der Oberfläche des Geräts bei den Ausweisen deines Kontos"
+    ) };
+  }
+  try {
+    const answer = await send(entry, { method: "DELETE", path: `${DEVICE.credentials}/${entry.credentialId}`, token: entry.token, timeout: 30_000 });
+    if (answer.status === 204 || answer.status === 200) return { done: true };
+    if (answer.status === 401) return { done: true, already: true };
+    if (answer.status === 404) {
+      return { done: false, why: t(
+        `${name} does not know this number as its own credential (404). Look at the credentials of your account in the device's front end`,
+        `${name} kennt diese Nummer nicht als eigenen Ausweis (404). Sieh bei den Ausweisen deines Kontos in der Oberfläche des Geräts nach`
+      ) };
+    }
+    return { done: false, why: t(`${name} refused (status ${answer.status}). Revoke it in the device's front end under the credentials of your account`, `${name} hat es abgewiesen (Status ${answer.status}). Widerrufe ihn in der Oberfläche des Geräts bei den Ausweisen deines Kontos`) };
+  } catch (error) {
+    return { done: false, why: t(`${explain(error, entry.address)} Revoke it later in the device's front end under the credentials of your account`, `${explain(error, entry.address)} Widerrufe ihn später in der Oberfläche des Geräts bei den Ausweisen deines Kontos`) };
+  }
+}
+
 const launchctl = (args) => spawnSync(LAUNCHCTL, args, { encoding: "utf8", timeout: 30_000 });
 
 /** The node the agent starts: the one on the path when it is this one, so that an update of node does not break it. */
@@ -4017,7 +4045,7 @@ async function doInstall(args) {
   return true;
 }
 
-/** `sync --uninstall`: the agent out of launchd, its file away, the token revoked, the access out of the keychain. */
+/** `sync --uninstall`: the agent out of launchd, its file away, the token and the credential of this computer revoked, the access out of the keychain. */
 async function doUninstall() {
   const had = IS_WIN ? existsSync(TASK_META) : existsSync(AGENT_PLIST);
   const loaded = IS_WIN ? taskDelete() : launchctl(["bootout", `${domain()}/${AGENT_LABEL}`]).status === 0;
@@ -4025,13 +4053,38 @@ async function doUninstall() {
   const entry = IS_MAC || IS_WIN || KEYCHAIN_FILE ? accessRead() : null;
   const revoked = entry?.kind === "token" ? await revokeAppToken(entry) : null;
   const forgot = IS_MAC || IS_WIN || KEYCHAIN_FILE ? accessForget() : false;
+  // The credential of this computer goes last of the things that need the device: whoever hands a computer on
+  // and logs out expects that it opens nothing afterwards. A revoked one is taken out of the list too, a dead one
+  // helps nobody; one that could not be revoked stays, so the human can still see which it is.
+  const credentialLines = [];
+  const credentials = readCredentials();
+  let changed = false;
+  for (const [name, entry] of Object.entries(credentials.devices)) {
+    const result = await revokeCredential(name, entry);
+    if (result.done) {
+      delete credentials.devices[name];
+      if (credentials.default === name) delete credentials.default;
+      changed = true;
+      credentialLines.push(result.already
+        ? t(`the credential of this computer for ${name} no longer counted at the device. It is taken out of this computer.`, `der Ausweis dieses Rechners für ${name} galt am Gerät schon nicht mehr. Er ist aus diesem Rechner genommen.`)
+        : t(`the credential of this computer for ${name} is revoked at the device and opens nothing any more. It is taken out of this computer.`, `der Ausweis dieses Rechners für ${name} ist am Gerät widerrufen und öffnet nichts mehr. Er ist aus diesem Rechner genommen.`));
+    } else {
+      credentialLines.push(t(`the credential of this computer for ${name} still counts: ${result.why}.`, `der Ausweis dieses Rechners für ${name} gilt noch: ${result.why}.`));
+    }
+  }
+  if (changed) writeCredentials(credentials);
   const state = readFolderState();
   if (state.roots[ROOT]?.background) {
     delete state.roots[ROOT].background;
     writeFolderState(state);
   }
   if (!loaded && !had && !forgot) {
-    say(t("No sync in the background was set up for this root. Nothing was changed.", "Für diese Wurzel war kein Abgleich im Hintergrund eingerichtet. Nichts wurde geändert."));
+    if (credentialLines.length) {
+      say(t("No sync in the background was set up for this root.", "Für diese Wurzel war kein Abgleich im Hintergrund eingerichtet."));
+      for (const line of credentialLines) say(`  ${t("Credential", "Ausweis")}: ${line}`);
+    } else {
+      say(t("No sync in the background was set up for this root. Nothing was changed.", "Für diese Wurzel war kein Abgleich im Hintergrund eingerichtet. Nichts wurde geändert."));
+    }
     return true;
   }
   say(t("Sync in the background taken back:", "Abgleich im Hintergrund zurückgenommen:"));
@@ -4044,13 +4097,8 @@ async function doUninstall() {
     : ""}`);
   // The credential of this computer is not the app token: a credential may not list or revoke credentials at the device,
   // so this file cannot take it back. It says so and names the place instead of leaving the human to think it is gone.
-  const known = Object.keys(readCredentials().devices);
-  if (known.length) {
-    say(`  ${t("Credential", "Ausweis")}: ${t(
-      `the credential of this computer for ${known.join(", ")} stays valid and is not revoked here, because a credential may not revoke credentials. To close it, revoke it in the device's front end under the credentials of your account.`,
-      `der Ausweis dieses Rechners für ${known.join(", ")} gilt weiter und wird hier nicht widerrufen, weil ein Ausweis keine Ausweise widerrufen darf. Um ihn zu schließen, widerrufe ihn in der Oberfläche des Geräts bei den Ausweisen deines Kontos.`
-    )}`);
-  }
+  const lines = credentialLines;
+  for (const line of lines) say(`  ${t("Credential", "Ausweis")}: ${line}`);
   say(`  ${t("What was synced stays here. The log stays for reading", "Was abgeglichen wurde, bleibt hier. Das Protokoll bleibt zum Lesen")}: ${AGENT_LOG}`);
   return true;
 }
@@ -4555,7 +4603,9 @@ async function issueCredential(target, session, machine) {
       `${target.address} hat einen Ausweis ausgestellt und nimmt ihn nicht an (Status ${proof.status}). Nichts wurde abgelegt.`
     ));
   }
-  return issued;
+  // The number the device gave it: the only name under which the credential can later revoke itself.
+  const number = Number(inner(jsonOf(answer))?.id);
+  return { value: issued, id: Number.isSafeInteger(number) && number > 0 ? number : null };
 }
 
 async function doLogin(args) {
@@ -4567,6 +4617,7 @@ async function doLogin(args) {
 
     let token;
     let kind;
+    let credentialId = null;
     let user = one(args, "user") || null;
     if (args.flags["token-stdin"] && args.flags["password-stdin"]) stop(t("Either --token-stdin or --password-stdin, not both.", "Entweder --token-stdin oder --password-stdin, nicht beides."), 2);
     let secret = null;
@@ -4622,11 +4673,13 @@ async function doLogin(args) {
       if (answer.status < 200 || answer.status >= 300) stop(t(`${address} did not accept the login (status ${answer.status}).`, `${address} hat die Anmeldung nicht angenommen (Status ${answer.status}).`));
       const session = tokenIn(jsonOf(answer));
       if (!session) stop(t(`${address} accepted the login, but its answer holds nothing this file can use. Nothing was stored.`, `${address} hat die Anmeldung angenommen, in der Antwort steht aber nichts, das diese Datei brauchen kann. Nichts wurde abgelegt.`));
-      token = await issueCredential(target, session, one(args, "credential-name") || hostname() || name);
+      const issued = await issueCredential(target, session, one(args, "credential-name") || hostname() || name);
+      token = issued.value;
+      credentialId = issued.id;
     }
 
     const data = readCredentials();
-    data.devices[name] = { address, kind, ...(user ? { user } : {}), token, since: localDay(), ...(target.ca ? { ca: target.ca } : {}) };
+    data.devices[name] = { address, kind, ...(user ? { user } : {}), token, ...(credentialId ? { credentialId } : {}), since: localDay(), ...(target.ca ? { ca: target.ca } : {}) };
     // A second account on this computer must not change silently which device every call without
     // --device means: the default moves only when there is none, when this is the default itself
     // logging in again, or when the human asks for it with --default.

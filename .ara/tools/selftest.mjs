@@ -9883,6 +9883,9 @@ function dateidienst(lager, basis, anfrage, antwort, pfad, roh = Buffer.alloc(0)
 async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, ausweisNamen = [], rolle = "mitarbeiter", alleOrdner = [], sicht = null, lager = null, leerlauf = 0, ausweisTot = false } = {}) {
   const gesehen = [];
   let basis = "";
+  // Seit J34 (02.10.2026) widerruft ein Ausweis sich selbst: DELETE auf die eigene Nummer, 204, danach 401.
+  let eigeneNummer = 0;
+  let widerrufen = false;
   const handler = (anfrage, antwort) => {
     const teile = [];
     anfrage.on("data", (stueck) => teile.push(stueck));
@@ -9904,7 +9907,7 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
       if (lager && (pfad.startsWith("/graph/") || pfad.startsWith("/dav/") || pfad.startsWith("/auth-app/"))) return dateidienst(lager, basis, anfrage, antwort, pfad, Buffer.concat(teile));
       // Die Sitzung stellt einen Ausweis aus, und nur der kommt danach wieder.
       const sitzung = ausweis === `Bearer ${BRUECKE_TOKEN}`;
-      const gueltig = !ausweisTot && (sitzung || ausweis === `Bearer ${BRUECKE_AUSWEIS}`);
+      const gueltig = !ausweisTot && (sitzung || (!widerrufen && ausweis === `Bearer ${BRUECKE_AUSWEIS}`));
       if (pfad === "/api/auth/session") return senden(200, gueltig ? { authenticated: true, user: { username: "anna" } } : { authenticated: false, user: null });
       if (!gueltig) return senden(401, { error: { message: "Kein gültiger Ausweis" } });
       if (pfad === "/api/ausweise" && anfrage.method === "POST") {
@@ -9913,7 +9916,16 @@ async function brueckeGeraet({ tls = null, weiter = null, firmenordner = null, a
         if (!name || typeof name !== "string") return senden(400, { error: { message: "Name fehlt" } });
         if (ausweisNamen.includes(name)) return senden(409, { error: { message: `Es gibt schon einen Ausweis mit dem Namen „${name}"` } });
         ausweisNamen.push(name);
+        eigeneNummer = ausweisNamen.length;
         return senden(201, { data: { id: ausweisNamen.length, name, praefix: BRUECKE_AUSWEIS.slice(0, 14), ausweis: BRUECKE_AUSWEIS } });
+      }
+      const widerruf = /^\/api\/ausweise\/(\d+)$/.exec(pfad);
+      if (widerruf && anfrage.method === "DELETE") {
+        // Nur der Ausweis selbst, nur für die eigene Nummer; jede andere ist 404.
+        if (sitzung || Number(widerruf[1]) !== eigeneNummer) return senden(404, { error: { message: "Diesen Ausweis gibt es nicht." } });
+        widerrufen = true;
+        antwort.writeHead(204);
+        return antwort.end();
       }
       if (pfad === "/api/auth/logout" && anfrage.method === "POST") return senden(200, { success: true });
       if (pfad === "/api/auth/me") return senden(200, { user: { id: 7, username: "anna", role: rolle } });
@@ -10221,6 +10233,58 @@ await checkAsync("Die Brücke listet Apps mit Routen, schreibt APP.md nur für z
     return "apps, APP.md nur zugewiesen, lesen ohne, ändern nur mit --write, neun Aufrufe ohne Weg hinaus";
   } finally {
     await geraet.schliessen();
+  }
+});
+
+await checkAsync("sync --uninstall widerruft den Ausweis dieses Rechners am Gerät mit dem Ausweis selbst und sagt ehrlich, wenn nicht", async () => {
+  if (platform() === "win32") return "übersprungen: unter Windows räumt --uninstall in der Aufgabenplanung, das stellt der Test der Windows-Brücke nach";
+  // Am Mac ein eigener Schlüsselbund, damit --uninstall nie den echten berührt.
+  const h = platform() === "darwin" ? hintergrundAttrappen() : null;
+  const w = brueckeWurzel();
+  if (h) w.env = { ...w.env, ...h.env };
+  const geraet = await brueckeGeraet();
+  const dateiAusweise = join(w.ausweise, "credentials.json");
+  const eintraege = () => JSON.parse(readFileSync(dateiAusweise, "utf8"));
+  const gilt = async () => (await fetch(`${geraet.adresse}/api/auth/me`, { headers: { Authorization: `Bearer ${BRUECKE_AUSWEIS}` } })).status;
+  try {
+    let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
+    assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
+    const eintrag = Object.values(eintraege().devices)[0];
+    assert(eintrag.credentialId === 1, `die Nummer des Ausweises liegt nicht neben ihm: ${JSON.stringify({ ...eintrag, token: "…" })}`);
+    assert(await gilt() === 200, "der Ausweis gilt vor dem Abmelden nicht");
+
+    // Ein Gerät, das die Nummer nicht als eigene kennt: gesagt, der Ausweis bleibt im Rechner.
+    const daten = eintraege();
+    for (const e of Object.values(daten.devices)) e.credentialId = 9;
+    writeFileSync(dateiAusweise, JSON.stringify(daten), { mode: 0o600 });
+    lauf = await bruecke(w, ["sync", "--uninstall"]);
+    assert(lauf.status === 0 && /gilt noch: .*kennt diese Nummer nicht.*in der Oberfläche des Geräts/.test(lauf.stdout), `eine fremde Nummer wird nicht gesagt: ${lauf.stdout}${lauf.stderr}`);
+    assert(await gilt() === 200 && Object.keys(eintraege().devices).length === 1, "trotz 404 galt der Ausweis nicht mehr oder wurde genommen");
+
+    // Ein Ausweis ohne bekannte Nummer (eingefügt): ehrlich, kein Aufruf.
+    for (const e of Object.values(daten.devices)) delete e.credentialId;
+    writeFileSync(dateiAusweise, JSON.stringify(daten), { mode: 0o600 });
+    const vorher = geraet.gesehen.length;
+    lauf = await bruecke(w, ["sync", "--uninstall"]);
+    assert(/gilt noch: .*nicht mit einer Nummer ausgestellt.*in der Oberfläche des Geräts/.test(lauf.stdout) && !geraet.gesehen.slice(vorher).some((f) => f.verb === "DELETE"), `ohne Nummer wird nicht ehrlich gesagt oder trotzdem gerufen: ${lauf.stdout}`);
+
+    // Der Normalfall: der Ausweis ruft DELETE auf seine Nummer, 204, danach 401, und er ist aus dem Rechner genommen.
+    for (const e of Object.values(daten.devices)) e.credentialId = 1;
+    writeFileSync(dateiAusweise, JSON.stringify(daten), { mode: 0o600 });
+    lauf = await bruecke(w, ["sync", "--uninstall"]);
+    const aufruf = geraet.gesehen.find((f) => f.verb === "DELETE" && f.pfad === "/api/ausweise/1");
+    assert(aufruf?.ausweis === `Bearer ${BRUECKE_AUSWEIS}`, `der Ausweis widerruft sich nicht selbst: ${JSON.stringify(geraet.gesehen.map((f) => `${f.verb} ${f.pfad}`))}`);
+    assert(lauf.status === 0 && /Ausweis: der Ausweis dieses Rechners für .* ist am Gerät widerrufen und öffnet nichts mehr/.test(lauf.stdout), `--uninstall sagt den Widerruf nicht: ${lauf.stdout}${lauf.stderr}`);
+    assert(await gilt() === 401, "nach dem Widerruf gilt der Ausweis noch");
+    assert(!Object.keys(eintraege().devices).length && !lauf.stdout.includes(BRUECKE_AUSWEIS), "der widerrufene Ausweis liegt noch im Rechner, oder er steht in der Ausgabe");
+
+    // Ein zweites Mal: nichts mehr da.
+    lauf = await bruecke(w, ["sync", "--uninstall"]);
+    assert(lauf.status === 0 && /Nichts wurde geändert/.test(lauf.stdout), `ein zweites --uninstall ändert etwas: ${lauf.stdout}`);
+    return "DELETE mit dem Ausweis auf die eigene Nummer, danach 401 und aus dem Rechner genommen; fremde Nummer, fehlende Nummer und totes Gerät werden ehrlich gesagt";
+  } finally {
+    await geraet.schliessen().catch(() => {});
+    if (h) spawnSync("/usr/bin/security", ["delete-keychain", h.schluesselbund]);
   }
 });
 
@@ -10685,7 +10749,8 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "der Zugang liegt nach --uninstall noch im Schlüsselbund");
     // Das Gerät ist hier aus: das Token lässt sich nicht widerrufen, und das wird gesagt, mit seinem Ende.
     assert(/ließ sich am Dateidienst gerade nicht widerrufen: es endet am 2027-09-27/.test(lauf.stdout), `--uninstall sagt nicht, dass das App-Token bleibt: ${lauf.stdout}`);
-    assert(/Ausweis: der Ausweis dieses Rechners für .* gilt weiter und wird hier nicht widerrufen/.test(lauf.stdout) && /in der Oberfläche des Geräts/.test(lauf.stdout), `--uninstall sagt nicht, wo der Ausweis widerrufen wird: ${lauf.stdout}`);
+    assert(/Ausweis: der Ausweis dieses Rechners für .* gilt noch: .*antwortet nicht.*in der Oberfläche des Geräts/.test(lauf.stdout), `--uninstall sagt nicht ehrlich, warum der Ausweis bleibt: ${lauf.stdout}`);
+    assert(Object.keys(JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8")).devices).length === 1, "ein nicht widerrufener Ausweis wurde aus dem Rechner genommen");
     assert(/nicht im Hintergrund/.test(await status()), `status sagt nach --uninstall noch Hintergrund: ${await status()}`);
     lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
     assert(lauf.status === 0 && /war kein Abgleich im Hintergrund eingerichtet/.test(lauf.stdout), `ein zweites --uninstall sagt nicht, dass nichts da war: ${lauf.stdout}`);

@@ -305,7 +305,7 @@ app offers. This file does that, and nothing else.
 | `sync --plan` | Shows per folder what a sync would move: up and down with count and size, conflicts, what was deleted on one side, what stays home. Writes nothing and starts no client |
 | `sync --keep-mine` | Moves the device's version of every file that differs, and at the first sync of a root that is one here also every file only the device has, on the device into `.claude/device-old/<time>/` (`geraet-alt` in a German root) and syncs this root's. Without it `sync` stops at the files that make the root |
 | `sync --install` | On a Mac: the sync in the background. Lets launchd run a check once and stops with one line when launchd's node does not reach the device. Checks the password against the file service, has it issue an app token for this computer, puts the token into the keychain and hands an agent to launchd that syncs every five minutes, `--every <minutes>` another interval |
-| `sync --uninstall` | Takes the agent out of launchd, revokes the app token and takes it out of the keychain. What was synced stays |
+| `sync --uninstall` | Takes the agent out of launchd, revokes the app token and the credential of this computer at the device (the credential revokes itself, by its own number) and takes both out of this computer. What was synced stays |
 | `status` | First one line: when the last sync went through, how much is open here, how many conflicts, whether it runs in the background. Then the device, the credential, whether the device accepts it, the company folder per folder with the root first, `sicht.md`, the proposals. Does the certificate of the device no longer fit the held one, it names the new certificate authority (since when, both fingerprints) and the credential (known or not) apart, with the one `login ... --insecure` command, and leaves the company folder unasked |
 | `deploy` | Puts this root into the root of the device: the check script first, the root made as an administrator only when the device carries none, a download afterwards as the proof. `root.mjs --deploy` calls it |
 | `call <app> <route> [name=value ...]` | Calls one route of one app and writes the answer to the standard output. `--write` for a route that changes something, `--method` where a path exists for two methods |
@@ -586,7 +586,7 @@ run after the restart took everything up and down, and the 60 MB were equal byte
 device's front end stops the sync at its next run with one sentence, before the client starts:
 the credential is asked first at every run. An app token revoked, ended or a password
 changed stops it as well, and `sync --install` issues a new one. `sync --uninstall` takes agent
-and token back and revokes the token at the service. A
+and token back, revokes the token at the service and the credential of this computer at the device. If it cannot, it says why and where to do it by hand. A
 root under Desktop, Documents, Downloads or iCloud is guarded by macOS: a program in the
 background gets in only with full disk access for node, and `--install` says so.
 
