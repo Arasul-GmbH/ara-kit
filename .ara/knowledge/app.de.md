@@ -104,6 +104,16 @@ bekommt beim ersten Mal einen Satz.
    Einträge in die `app.json`, und `--check` hält sie gegen den Kontrakt; bis dahin hält der Plan sie,
    `--check` sagt, dass das Feld ungeprüft ist, und die App ruft von sich aus nichts nach außen auf.
    Die Form eines Eintrags wird nicht erfunden.
+   **Sag es einmal im Gespräch in einfachen Worten:** „Eine App ohne Eintrag kommt nicht ins
+   Internet. Sie läuft in einem eigenen Netz, das keinen Weg nach draußen hat. Was sie draußen
+   erreichen soll, braucht den Namen dieser Seite auf einer Liste, und nur diese Namen kommen
+   durch." Auf einem Gerät, dessen Kontrakt Fassung 7 oder mehr trägt, ist das eine Tatsache,
+   `--contract` sagt sie unter „Das Netz einer App". Eine Schriftart aus dem Netz, ein Webdienst, ein
+   Paketmanager beim Start: all das scheitert ohne Eintrag, was die App braucht, wird also vorher
+   in sie eingebaut. Modelle und Dokumente bekommt die App über das Gerät, dafür braucht es keinen
+   Eintrag. Der Eintrag ist nur der Name der Seite, klein geschrieben, ohne `https://`, ohne Port
+   und Pfad; `--check` sagt in einem Satz, was an einem Eintrag nicht passt, und welche Seiten die
+   App erreicht.
 3. **Welches Modell je Flow.** Sag zuerst, was ein Modell ist: „das Programm, das Texte liest und
    schreibt. Ein größeres ist langsamer und gründlicher, ein kleines ist flink." Schlag je Stelle,
    an der ein Modell arbeitet, eine Art Modell für die Aufgabe vor, mit Grund, und sag, dass der

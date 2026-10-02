@@ -102,6 +102,15 @@ Speak plainly (`AGENTS.md`, "Plain language"): a technical word gets one sentenc
    contract names the field `verbindungen`, the entries go into `app.json` and `--check` holds them
    against the contract; until it does, the plan holds them, `--check` says the field is not
    checked, and the app calls nothing outside by itself. Do not invent the shape of an entry.
+   **Say it plainly, once, in the conversation:** "An app without an entry does not get onto the
+   internet. It runs in a network of its own that has no way out. Whatever it should reach outside
+   needs the name of that site on a list, and only those names get through." On a device whose
+   contract carries version 7 or more that is a fact, `--contract` says it under "The network of an
+   app". A font from the web, a web service, a package manager at start: all of that fails without
+   an entry, so what the app needs is built into it beforehand. Models and documents the app gets
+   through the device, they need no entry. The entry is only the name of the site, in small
+   letters, without `https://`, without port and path; `--check` says in one sentence what is
+   wrong with an entry that does not fit, and which sites the app reaches.
 3. **Which model per flow.** Say first what a model is: "the program that reads and writes text.
    A bigger one is slower and more careful, a small one is quick." Per place where a model works,
    propose a kind of model for the task and say why, and say the administrator can switch it on the

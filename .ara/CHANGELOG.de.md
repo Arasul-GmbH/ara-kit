@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.64.0 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **Das Kit versteht Kontrakt 7 (K24).** Die Geräte, die ihn führen, halten das Kit nicht mehr an. Eine App läuft in einem eigenen Netz, das keinen Weg ins Internet hat, und was sie draußen erreichen soll, nennt sie in `verbindungen`, einer Liste von Namen von Seiten. `--contract` gibt das Netz einer App wörtlich vom Gerät aus (`netz`), `--check` hält `verbindungen` gegen das Schema des Geräts und sagt in einem Satz, welche Seiten die App erreicht oder dass sie keine erreicht. Ein Eintrag, der nicht passt (Großbuchstaben, `https://`, Port, Pfad, Stern, Zahlenadresse), bekommt einen Satz, mit dem ein Mensch etwas anfangen kann, neben der Abweisung des Geräts. Das Kit kennt von sich aus keine Seite und setzt keine.
+- **Das Wissen sagt es in einfachen Worten:** eine App ohne Eintrag kommt nicht ins Internet. `/app` sagt das dem Menschen einmal, im Interview darüber, was das Gerät verlässt. Ob das Gerät die Liste schon durchsetzt, sagt sein Kontrakt, nicht das Kit.
+- **Keine „ungelesenen Felder" mehr beim Gerät.** `netz`, `protokoll`, `auslesen`, `warten` und `bilder` wurden schon gelesen, standen aber nicht als gelesen in der Liste, und ein Gerät mit Kontrakt 7 hörte, das Kit mache nichts daraus.
+
 ## 0.63.1 (2026-10-02)
 
 Contract: up to 6
