@@ -200,7 +200,7 @@ interface route is not open: an older device without the update route, a device 
 not reach. The tool names it in the sentence where the interface route stops.
 
 The routes for the comparison are the same as before: `GET /api/benutzer`, `GET /api/license/info`,
-`GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`, `GET /api/firmenordner/ordner`,
+`GET /api/apps`, `GET /api/flows` (the platform's own flows), `GET /api/apps/:id/flows` (the flows of each app, asked per app and stand, so a flow an update loses turns the comparison red), `GET /api/models/installed`, `GET /api/firmenordner/ordner`,
 `GET /api/firmenordner/platz`. If the device does not know one, the topic stands as "not measured"
 and the report says why.
 

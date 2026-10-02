@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.65.2 (2026-10-02)
+
+Contract: up to 7
+
+- **Der Vergleich vor und nach einem Update zählt die Flows der Apps (K28).** Er las bisher nur `GET /api/flows`, das die eigenen Flows der Plattform nennt, und meldete „Flows 0" an einem Gerät, dessen Apps acht mitbringen. `upgrade.mjs` fragt jetzt vorher und nachher für jede App `GET /api/apps/:id/flows`, und ein Flow, der nachher fehlt, macht den Vergleich rot. Die alte Zeile heißt jetzt „Plattform-Flows". Am Ende eines Laufs wird der Schlüssel für den Anlass auch dann widerrufen, wenn das Gerät „No connection" antwortet (es ist oft noch nicht wieder da): das Kit fragt bis zu sechsmal neu, bevor es den Schlüssel als nicht widerrufen meldet.
+
 ## 0.65.1 (2026-10-02)
 
 Contract: up to 7

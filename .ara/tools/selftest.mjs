@@ -130,6 +130,7 @@ import {
   installedVersion,
   lostAnything,
   parseSha256,
+  readTopic as readUpgradeTopic,
   repoFrom,
   routeListed,
   routeRows as upgradeRouteRows,
@@ -8216,7 +8217,7 @@ await checkAsync("maintain.mjs berichtet auch ohne SSH und sagt, was fehlt", asy
 
 // --- Eine neue Fassung auf ein Gerät spielen ---------------------------------
 
-check("upgrade: Fassung am Gerät, Entscheidung, Release, Prüfsumme, Rückweg und Vergleich", () => {
+await checkAsync("upgrade: Fassung am Gerät, Entscheidung, Release, Prüfsumme, Rückweg und Vergleich", async () => {
   // Die Fassung: der Installationsordner nennt die Nummer, die Statusroute einen Stand aus einem Deploy.
   const fassung = installedVersion({ installation: "/home/arasul/arasul-0.8.14", status: "20261001-759a2b8" });
   assert(fassung.version === "0.8.14" && fassung.from === "folder", `Fassung falsch gelesen: ${JSON.stringify(fassung)}`);
@@ -8255,7 +8256,7 @@ check("upgrade: Fassung am Gerät, Entscheidung, Release, Prüfsumme, Rückweg u
   // Die Routen: gerufen wird nur, was die API-Referenz des Geräts aufführt.
   const zeilen = upgradeRouteRows("| GET    | `/api/benutzer`  | Alle Benutzer |\n| POST   | `/api/backup/sicherung` | Jetzt sichern |\n");
   assert(routeListed(zeilen, "GET", "/api/benutzer") && !routeListed(zeilen, "GET", "/api/license/info"), "routeListed urteilt falsch");
-  assert(UPGRADE_TOPICS.length === 8, `die Themen des Vergleichs: ${UPGRADE_TOPICS.length}`);
+  assert(UPGRADE_TOPICS.length === 9, `die Themen des Vergleichs: ${UPGRADE_TOPICS.length}`);
 
   // Der Vergleich: was nachher fehlt, ist die Abweichung; was sich von selbst bewegt, ein Hinweis.
   const vorher = { accounts: { state: "gelesen", entries: [{ key: "anna", value: "admin, aktiv" }, { key: "ben", value: "mitarbeiter, aktiv" }] } };
@@ -8265,6 +8266,24 @@ check("upgrade: Fassung am Gerät, Entscheidung, Release, Prüfsumme, Rückweg u
   assert(lostAnything(compareSnapshots(vorher, nachher)), "lostAnything übersieht den Verlust");
   assert(compareSnapshots(vorher, vorher).find((row) => row.key === "accounts").verdict === "same", "gleiche Stände sind nicht gleich");
   assert(compareSnapshots(vorher, {}).find((row) => row.key === "accounts").verdict === "unmeasured", "ein fehlender Stand gilt als gemessen");
+  // Die Flows der Apps: je App und Stand gefragt, nicht aus der Sammelliste der Plattform.
+  const appFlowsThema = UPGRADE_TOPICS.find((thema) => thema.key === "app-flows");
+  const gefragt = [];
+  const fragen = async (verb, pfad) => {
+    gefragt.push(pfad);
+    if (pfad === "/api/apps") return { ok: true, status: 200, body: { data: [{ id: "a1" }, { id: "b2" }] } };
+    const flows = { "/api/apps/a1/flows": { test: [], live: [{ name: "x", version: "1" }, { name: "y", version: "1" }] }, "/api/apps/b2/flows": { test: [{ name: "z", version: "2" }], live: [] } }[pfad];
+    return flows ? { ok: true, status: 200, body: { data: { app_id: "?", ...flows } } } : { ok: false, status: 404, body: null };
+  };
+  const gelesen = {};
+  gelesen.apps = await readUpgradeTopic(UPGRADE_TOPICS.find((thema) => thema.key === "apps"), fragen, gelesen);
+  gelesen["app-flows"] = await readUpgradeTopic(appFlowsThema, fragen, gelesen);
+  assert(gelesen["app-flows"].state === "gelesen" && gelesen["app-flows"].entries.length === 3, `App-Flows nicht gezählt: ${JSON.stringify(gelesen["app-flows"])}`);
+  assert(gelesen["app-flows"].entries.some((e) => e.key === "a1 live y") && gefragt.includes("/api/apps/b2/flows"), "ein Flow oder eine App fehlt in der Zählung");
+  const ohneApps = await readUpgradeTopic(appFlowsThema, fragen, {});
+  assert(ohneApps.state === "fehler", "ohne gelesene Apps gilt das Thema als gemessen");
+  const flowVerlust = compareSnapshots({ "app-flows": gelesen["app-flows"] }, { "app-flows": { state: "gelesen", entries: gelesen["app-flows"].entries.slice(1) } }).find((row) => row.key === "app-flows");
+  assert(flowVerlust.verdict === "lost", "ein fehlender App-Flow macht den Vergleich nicht rot");
   const flatter = diffEntries([{ key: "firma", value: "1 Byte" }], []);
   assert(topicVerdict(flatter, { volatile: true }) === "changed" && topicVerdict(flatter) === "lost", "flüchtige Themen urteilen wie stabile");
   assert(/2[.,]5/.test(durationSentenceFor()), "die gemessene Dauer fehlt");
@@ -8353,6 +8372,7 @@ await checkAsync("upgrade.mjs --ssh: Plan ändert nichts, Gleiches und Älteres 
     if (pfad === "/api/license/info") return antwort(response, 200, { valid: true, tier: "professional", customer: "Probe", nutzung: { konten: { belegt: 2, grenze: -1 }, apps: { belegt: 1, grenze: -1 } } });
     if (pfad === "/api/apps") return antwort(response, 200, { data: [{ id: "belege", staende: { live: { version: "1.0.0", lieferbar: true } } }] });
     if (pfad === "/api/flows") return antwort(response, 200, { data: [], fehlerhaft: [] });
+    if (pfad === "/api/apps/belege/flows") return antwort(response, 200, { data: { app_id: "belege", test: [], live: [{ name: "pruefen", version: "1.0.0" }] } });
     if (pfad === "/api/models/installed") return antwort(response, 200, { models: [{ id: "modell:1", status: "available" }] });
     if (pfad === "/api/firmenordner/ordner") return antwort(response, 200, { data: [{ kennung: "firma", art: "wurzel", rechte_anzahl: 0 }] });
     if (pfad === "/api/firmenordner/platz") return antwort(response, 200, { data: { ordner: [{ kennung: "firma", belegt: 5 }] } });
@@ -8464,6 +8484,7 @@ await checkAsync("upgrade.mjs --ssh: Plan ändert nichts, Gleiches und Älteres 
     assert(/Artefakt geholt, Prüfsumme stimmt/.test(run.stdout), "die Prüfsumme wird nicht genannt");
     assert(/Fassung danach: 1\.1\.0/.test(run.stdout), `die Fassung danach fehlt: ${run.stdout}`);
     assert(/Konten: unverändert/.test(run.stdout) && /Lizenz: unverändert/.test(run.stdout), "der Vergleich fehlt");
+    assert(/App-Flows: unverändert/.test(run.stdout), `die Flows der Apps fehlen im Vergleich: ${run.stdout}`);
     assert(existsSync(join(fassungOrdner("1.1.0"), "install.sh")), "das Artefakt liegt nicht am Gerät");
     // Auch die abgebrochenen Läufe haben ihren Bericht abgelegt, und zwei am selben Tag überschreiben sich nicht.
     assert(berichte().length >= 3, `die abgebrochenen Läufe haben keinen Bericht: ${berichte().join(", ")}`);
@@ -8526,6 +8547,9 @@ await checkAsync("upgrade.mjs über die Schnittstelle: Plan ändert nichts, Glei
     gestartet: [],
     anlassAngelegtMit: null,
     unerreichbar: 0,
+    verliereFlow: false,
+    widerrufNichtErreichbar: 0,
+    widerrufVersuche: 0,
   };
   const antwort = (response, status, body) => {
     response.writeHead(status, { "Content-Type": "application/json" });
@@ -8625,12 +8649,21 @@ await checkAsync("upgrade.mjs über die Schnittstelle: Plan ändert nichts, Glei
     }
     const weg = pfad.match(/^\/api\/v1\/external\/api-keys\/(\d+)$/);
     if (weg && request.method === "DELETE") {
+      if (zustand.widerrufNichtErreichbar > 0) {
+        zustand.widerrufNichtErreichbar--;
+        zustand.widerrufVersuche++;
+        return request.socket.destroy();
+      }
       zustand.widerrufen.push(weg[1]);
       return antwort(response, 200, { success: true });
     }
     if (pfad === "/api/benutzer") return antwort(response, 200, { data: [{ username: "anna", role: "admin", is_active: true }] });
     if (pfad === "/api/license/info") return antwort(response, 200, { valid: true, tier: "professional", customer: "Probe", nutzung: { konten: { belegt: 1, grenze: -1 }, apps: { belegt: 0, grenze: -1 } } });
-    if (pfad === "/api/apps") return antwort(response, 200, { data: [] });
+    if (pfad === "/api/apps") return antwort(response, 200, { data: [{ id: "belege", staende: { live: { version: "1.0.0", lieferbar: true } } }] });
+    if (pfad === "/api/apps/belege/flows") {
+      const flows = [{ name: "pruefen", version: "1.0.0" }, { name: "melden", version: "1.0.0" }];
+      return antwort(response, 200, { data: { app_id: "belege", test: [], live: zustand.verliereFlow && zustand.nummer === "1.1.0" ? flows.slice(1) : flows } });
+    }
     if (pfad === "/api/flows") return antwort(response, 200, { data: [], fehlerhaft: [] });
     if (pfad === "/api/models/installed") return antwort(response, 200, { models: [{ id: "modell:1", status: "available" }] });
     if (pfad === "/api/firmenordner/ordner") return antwort(response, 200, { data: [] });
@@ -8688,6 +8721,7 @@ await checkAsync("upgrade.mjs über die Schnittstelle: Plan ändert nichts, Glei
     assert(/Schritt: sichern/.test(run.stdout) && /Schritt: installieren/.test(run.stdout) && /Images werden gebaut/.test(run.stdout), `Fortschritt fehlt: ${run.stdout}`);
     assert(/antwortet gerade nicht/.test(run.stdout), "das Umschalten ohne Antwort wird nicht gesagt");
     assert(/Fassung danach: 1\.1\.0/.test(run.stdout) && /Konten: unverändert/.test(run.stdout), `Fassung oder Vergleich fehlen: ${run.stdout}`);
+    assert(/App-Flows: unverändert/.test(run.stdout) && /App-Flows 2/.test(run.stdout), `die Flows der Apps werden nicht gezählt: ${run.stdout}`);
     assert(/Schlüssel für diesen Anlass widerrufen/.test(run.stdout) && zustand.widerrufen.join() === "7", "der Schlüssel für den Anlass wurde nicht widerrufen");
     assert(!run.stdout.includes(anlassSchluessel) && !run.stdout.includes("ausweis-selftest") && !run.stdout.includes("geheim-selftest-pw"), "ein Geheimnis steht in der Ausgabe");
     assert(berichte().some((n) => /Eingespielt und geprüft/.test(readFileSync(join(akte, "reports", n), "utf8"))), "kein Bericht sagt das Ergebnis");
@@ -8725,7 +8759,23 @@ await checkAsync("upgrade.mjs über die Schnittstelle: Plan ändert nichts, Glei
     zustand.gestartet = [];
     run = await toolAsync("upgrade.mjs", ["--device", name, "--apply", "--yes"], env);
     assert(run.status === 1 && /--ssh/.test(run.stdout) && zustand.gestartet.length === 0, `ohne Zugang kein klarer Satz: ${run.stdout}`);
-    return "Plan ohne Änderung, ohne --yes nichts, Gleiches abgewiesen, Schlüssel für den Anlass, Zusehen, Umschalten, Vergleich, Rückweg, Zurückgerollt, Kit-Schlüssel, SSH als Rückfall genannt";
+
+    // 10. Ein Update, das einen Flow einer App verliert, ist rot, auch wenn alles andere stimmt.
+    zustand.verliereFlow = true;
+    zustand.widerrufen = [];
+    run = await lauf_(["--apply", "--yes"]);
+    assert(run.status === 1 && /App-Flows: ETWAS FEHLT/.test(run.stdout), `der verlorene Flow wird nicht gemeldet: ${run.stdout}`);
+    assert(zustand.widerrufen.join() === "7", "nach dem Verlust blieb der Schlüssel gültig");
+    zustand.verliereFlow = false;
+
+    // 11. Das Gerät ist beim Widerrufen noch nicht wieder erreichbar: das Kit fragt wieder, statt aufzugeben.
+    zustand.nummer = "1.0.0";
+    zustand.widerrufen = [];
+    zustand.widerrufNichtErreichbar = 2;
+    run = await lauf_(["--apply", "--yes"]);
+    assert(run.status === 0 && zustand.widerrufVersuche === 2 && zustand.widerrufen.join() === "7", `der Widerruf wurde nicht wiederholt: ${zustand.widerrufVersuche}, ${run.stdout}`);
+    assert(/Schlüssel für diesen Anlass widerrufen/.test(run.stdout) && !/Von Hand widerrufen/.test(run.stdout), `der Widerruf gilt als gescheitert: ${run.stdout}`);
+    return "Plan ohne Änderung, ohne --yes nichts, Gleiches abgewiesen, Schlüssel für den Anlass, Zusehen, Umschalten, Vergleich mit Flows der Apps, Rückweg, Zurückgerollt, Kit-Schlüssel, SSH als Rückfall genannt, verlorener Flow rot, Widerruf wiederholt";
   } finally {
     server.close();
     rmSync(akte, { recursive: true, force: true });
