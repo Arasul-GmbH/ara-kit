@@ -127,80 +127,86 @@ Einträgen ist bei einer Verlängerung mehr wert als jedes Verkaufsgespräch.
 
 ### 3. Update einspielen
 
-Ein Update ist ein Eingriff, kein Klick. Das Kit führt den Weg mit einem eigenen Werkzeug,
-damit niemand eine Zeile Shell schreibt und niemand die Dauer rät:
+Ein Update ist ein Eingriff, kein Klick. Das Kit führt den Weg mit einem eigenen Werkzeug, damit
+niemand eine Zeile Shell schreibt und niemand rät, wie lange es dauert. **Der Weg ist die
+Schnittstelle des Geräts, nicht SSH.** Seit das Gerät Updates auf Auftrag annimmt, macht es die
+Arbeit selbst: es holt das Paket aus dem Release, prüft die Prüfsumme, sichert zuerst (und hält an,
+ohne etwas zu ändern, wenn die Sicherung scheitert), baut die neuen Images, während es weiterläuft,
+schaltet um und meldet jeden Schritt. Ein Kunde braucht für die Wartung keinen SSH-Zugang.
 
 ```
 node .ara/tools/upgrade.mjs --device <gerät> --login-user <konto> --password-ref <NAME>
 node .ara/tools/upgrade.mjs --customer <kunde> --device <gerät> ...
 ```
 
-1. **Erst der Plan, und er ändert nichts.** Ohne weitere Optionen nennt das Werkzeug die
-   Fassung am Gerät und die neueste, woher das Artefakt käme, was passiert, wie lange es
-   dauert und den Rückweg. Gib das weiter und sag es dem Kunden vorher; ein Update während
-   der Arbeitszeit ist eine Störung.
-   - **Die Fassung am Gerät** wird an drei Stellen gelesen, und der Plan sagt, an welcher:
-     der Kontrakt, der Ordner, den `install.sh` zuletzt eingerichtet hat, und die Statusroute.
-     Die Statusroute kann statt einer Release-Nummer einen Stand aus einem Deploy nennen
-     (`20261001-759a2b8`); verglichen wird nur die Nummer, der Stand steht daneben.
-   - **Die neueste Fassung** kommt vom Portal (`GET /api/download?token=<token>&pruefen=1`),
-     wenn der Kunden-Token hinterlegt ist, sonst aus der öffentlichen Release-Datei. In
-     welchem Repository sie liegt, sagt der Spiegel oder die Auslieferung am Gerät, oder
-     `--repo <inhaber/name>`.
-   - **Wie lange:** der Plan nennt die gemessenen Zahlen mit Datum und Gerät (2,5 Minuten
-     Einspielen und 3 Minuten nach einem Neustart, bis alle Container gesund sind, gemessen am
-     01.10.2026 an einem Jetson AGX Orin von 0.8.12 auf 0.8.14), dazu die Sicherung. Eine
-     Zahl, die anderswo gemessen wurde, wird nicht versprochen. Solange die Plattform neu
-     startet, ist sie nicht erreichbar.
-   - **Der Rückweg:** das Werkzeug liest `ops/AUSLIEFERUNG.md` und `ops/BACKUP_SYSTEM.md` am
-     Gerät und zeigt, was dort über das Zurückgehen auf die vorige Fassung steht. **Steht dort
-     nichts, sagt der Plan genau das: das Produkt nennt keinen Weg zurück.** Was die Sicherung
-     zurückbringt, sind die Daten (`POST /api/backup/wiederherstellung`) und nicht die
-     Fassung, und das Kit verkauft das eine nicht als das andere. Sag dem Kunden: das Update
-     ist ein Schritt nach vorn, und ist die neue Fassung schlecht, ist der Weg ein behobenes
-     Release. Das ist ein Befund für das Produkt, keine Kleinigkeit.
+1. **Zuerst der Plan, und er ändert nichts.** Ohne weitere Optionen nennt das Werkzeug die
+   Fassung am Gerät und die neueste, was passiert, wie lange es dauert, den Rückweg und den
+   Schlüssel, den es nimmt. Gib es weiter und nenne es dem Kunden vorher; ein Update in der
+   Arbeitszeit ist eine Störung.
+   - **Die Fassung am Gerät und die neueste** kommen vom Gerät selbst: seine Statusroute und
+     seine eigene Frage nach dem Release. Nennt das Gerät keine Fassung, sagt der Plan das.
+     Verglichen wird nur die Nummer; ein Stand aus einem Deploy (`20261001-759a2b8`) steht
+     daneben und ist keine Release-Nummer.
+   - **Wie lange:** der Plan nennt die gemessenen Zahlen mit Datum und Gerät (4 und 19 Minuten
+     über diesen Weg, gemessen am 02.10.2026 an einem Jetson AGX Orin, von 0.8.14 auf 0.8.16
+     und auf 0.8.15). Eine Zahl, die anderswo gemessen wurde, wird nicht versprochen. Beim
+     Umschalten ist das Gerät einige Minuten nicht erreichbar, und das ist keine Störung. Die
+     eigene Messung des Kits mit dem nächsten Release ersetzt diese Zahlen.
+   - **Der Rückweg:** der Plan zitiert, was der Kontrakt des Geräts zu dem Weg sagt, und ob das
+     Gerät gerade eine vorige Fassung kennt. Der Rückweg holt das Programm der vorigen Fassung,
+     **nicht die Daten**. Die Sicherung, die das Gerät zuerst macht, liegt bereit, falls auch die
+     Daten zurück sollen, und das entscheidet ein Mensch. Sag es dem Kunden.
    - **Eingespielt wird nur, was neuer ist.** Bei gleicher oder älterer Fassung endet der
-     Befehl mit einem Satz, bevor er etwas sichert.
-2. **Die Sitzung als Administrator.** Die Sicherung und der Vergleich brauchen eine, und der
-   Kit-Schlüssel öffnet sie nicht. Das Werkzeug holt sie über `device.mjs --admin-login`, gib
-   also `--login-user` und `--password-ref` eines benannten Kontos an. Nicht als `admin`, wenn
-   es ein Lese- oder Probekonto gibt. Das Passwort wird nie angezeigt.
-3. **Der Mensch bestätigt** Absicht (von Fassung zu Fassung), Ziel (das Gerät) und Rückweg (den
-   Satz aus dem Plan). Erst dann `--yes`. Das ist eine Bestätigung der Stufe 2, siehe
+     Befehl mit einem Satz, bevor er einen Schlüssel anlegt oder das Gerät um etwas bittet.
+2. **Der Schlüssel.** Der Bereich `system:update` steckt in keinem Schlüssel von selbst und nicht
+   im Kit-Schlüssel (`app:deploy`): wer eine App einspielen darf, darf damit nicht das Gerät
+   austauschen. Trägt der Kit-Schlüssel den Bereich, nimmt das Kit ihn. **Sonst legt es einen
+   Schlüssel für diesen einen Anlass an**, mit der Sitzung als Administrator (`--login-user` und
+   `--password-ref` eines benannten Kontos, nicht `admin`, wenn es ein Lese- oder Probekonto gibt),
+   mit genau diesem Bereich, nach drei Stunden von selbst abgelaufen, und widerruft ihn am Ende,
+   auch nach einem Lauf, der scheitert. Wer weder einen Kit-Schlüssel mit dem Bereich noch eine
+   Sitzung als Administrator hat, bekommt einen Satz, und es wird nichts geändert. Der Schlüssel
+   wird nie angezeigt und steht in keinem Bericht.
+3. **Der Mensch bestätigt** Absicht (von Fassung zu Fassung), Ziel (das Gerät) und Rückweg (der Satz
+   aus dem Plan). Erst dann `--yes`. Das ist eine Bestätigung der Stufe 2, siehe
    `.ara/knowledge/security.de.md`.
-4. **`--prepare --yes` ist der Probelauf, der trotzdem echt ist:** er hält den Stand fest und
-   sichert, spielt nichts ein. Nimm ihn einen Tag vorher, wenn das Fenster eng ist.
-5. **`--apply --yes` macht den Rest:**
-   - hält den Stand fest: Konten, Lizenz, Apps mit Daten, Flows, Modelle, Firmenordner;
-   - holt das Artefakt **auf dem Kundenweg**, von `arasul.de/api/download` mit dem Token aus
-     der Geheimnis-Ablage, und hält es gegen die Prüfsumme der Release-Datei. Eine falsche
-     Summe beendet den Lauf, bevor das Gerät berührt wird. **Ohne Kunden-Token sagt das
-     Werkzeug das in einem Satz und hält an.** Die öffentliche Release-Datei samt Prüfsumme
-     ist der andere Weg, genommen nur mit `--github`, als ausdrückliche Wahl und nie still;
-   - bittet das Gerät um eine Sicherung (`POST /api/backup/sicherung`, es antwortet erst, wenn
-     sie fertig ist) und **prüft**, dass neue Sicherungen in der Liste liegen
-     (`GET /api/backup/sicherungen`). Keine neue Sicherung, kein Update;
-   - legt das Artefakt auf das Gerät und führt dort dessen `install.sh` aus;
-   - wartet, bis die Container, die vorher bereit waren, wieder bereit sind;
-   - **startet den Rechner neu** und wartet wieder. Der Neustart gehört zum Nachweis: eine
-     Plattform, die nur läuft, weil sie niemand neu gestartet hat, hat nicht gezeigt, dass sie
-     anläuft. `--no-reboot` lässt ihn aus, wenn das Fenster des Kunden ihn nicht erlaubt, und
-     der Bericht sagt es;
-   - vergleicht den Stand mit dem von vorher und legt Bericht, Eintrag im Laufzettel und bei
-     einem Kunden einen Eintrag in `history/` ab.
-6. **Danach die Nachweise aus `.ara/knowledge/handover.de.md`** obendrauf: Dienste gesund,
-   fachliche Anfrage beantwortet, Fernzugriff steht. Der Vergleich des Werkzeugs ersetzt das
-   nicht. Er vergleicht die Listen, die das Gerät herausgibt; den Inhalt der App-Datenbanken
-   liest er nicht Zeile für Zeile, er vergleicht, welche die Sicherung führt. **Fehlt nachher
-   etwas, ist das ein Befund und keine Kleinigkeit:** der Lauf endet rot, und der Bericht
-   nennt es.
+4. **`--apply --yes` macht den Rest:**
+   - hält den Stand mit der Sitzung als Administrator fest: Konten, Lizenz, Apps mit Daten, Flows,
+     Modelle, Firmenordner (ohne Sitzung läuft es weiter und sagt, dass der Vergleich nicht
+     gemessen wurde);
+   - bittet das Gerät um das Update (`POST` auf den Weg, den sein Kontrakt nennt; das Kit ruft
+     nichts, was der Kontrakt nicht nennt);
+   - **zeigt den Fortschritt, sobald er kommt:** den Schritt, den das Gerät meldet, und die neuen
+     Zeilen seines Protokolls. Beim Umschalten antwortet das Gerät nicht; das Kit sagt es einmal
+     und fragt wieder;
+   - endet mit dem, was das Gerät meldet: fertig, zurückgerollt, fehlgeschlagen oder abgebrochen.
+     Ein Lauf, den das Gerät von selbst zurückgerollt hat, ist nicht sauber, und das Werkzeug
+     sagt es;
+   - vergleicht Fassung und Stand mit dem von vorher und legt den Bericht (mit dem Protokoll des
+     Geräts), den Eintrag im Laufzettel und bei einem Kunden einen Eintrag in `history/` ab.
+   Der Rechner selbst wird auf diesem Weg nicht neu gestartet.
+5. **`--back --yes` geht zurück** auf die vorige Fassung, wenn das Gerät eine nennt. Nennt es
+   keine, gibt es einen Satz und sonst nichts.
+6. **Danach der Nachweis aus `.ara/knowledge/handover.de.md`** obendrauf: Dienste gesund, eine Frage
+   zur Sache beantwortet, Fernzugang steht. Der Vergleich des Werkzeugs ersetzt das nicht. Er
+   vergleicht die Listen, die das Gerät herausgibt; den Inhalt der App-Datenbanken liest er nicht
+   Zeile für Zeile. **Fehlt danach etwas, ist das ein Fund und keine Kleinigkeit:** der Lauf endet
+   rot, und der Bericht nennt es. Der Spiegel des Kits hält nach dem Lauf noch das frühere
+   Artefakt: `node .ara/tools/mirror.mjs --refresh`.
 
-Welche Wege das Werkzeug fragt, nimmt es aus der API-Referenz des Geräts selbst, und es ruft
-keinen, den die Referenz nicht aufführt: `GET /api/update/status`, `GET /api/benutzer`,
-`GET /api/license/info`, `GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`,
-`GET /api/firmenordner/ordner`, `GET /api/firmenordner/platz`, `GET /api/backup/sicherungen`,
-`POST /api/backup/sicherung`. Fehlt dort einer, steht das Thema als „nicht gemessen" da, und
-der Bericht sagt, warum.
+**Der Rückfall ist SSH, und er ist ausdrücklich:** `--ssh` zum Aufruf. Dann holt das Kit das
+Artefakt selbst (den Kundenweg über das Portal mit dem Token, oder mit `--github` die öffentliche
+Release-Datei samt Prüfsumme, nie still), bittet um eine Sicherung und prüft sie in der Liste
+(`--prepare --yes` macht nur das), schiebt das Artefakt hin, startet dessen `install.sh`, startet
+den Rechner neu und wartet (`--no-reboot` lässt das aus, der Bericht sagt es). Nimm ihn nur, wenn
+der Weg über die Schnittstelle nicht offen ist: ein älteres Gerät ohne den Update-Weg, ein Gerät,
+das die Schnittstelle nicht erreicht. Das Werkzeug nennt ihn in dem Satz, an dem der Weg über die
+Schnittstelle anhält.
+
+Die Wege für den Vergleich sind dieselben wie zuvor: `GET /api/benutzer`, `GET /api/license/info`,
+`GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`, `GET /api/firmenordner/ordner`,
+`GET /api/firmenordner/platz`. Kennt das Gerät einen nicht, steht das Thema als "nicht gemessen",
+und der Bericht sagt warum.
 
 ### 4. Erweiterung bauen
 

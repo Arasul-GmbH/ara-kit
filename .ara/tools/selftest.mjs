@@ -138,6 +138,7 @@ import {
   wayBackLines,
 } from "./lib/upgrade.mjs";
 import { WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
+import { MEASURED_API, durationSentenceApi, judgeRun, newLines } from "./lib/upgrade-api.mjs";
 import {
   classesWithoutRule,
   dependencyFindings,
@@ -8268,7 +8269,7 @@ check("upgrade: Fassung am Gerät, Entscheidung, Release, Prüfsumme, Rückweg u
   return "Fassung, Entscheidung, Release, Summe, Repo, Rückweg, Routen, Vergleich";
 });
 
-await checkAsync("upgrade.mjs: Plan ändert nichts, Gleiches und Älteres wird nicht eingespielt, Ablauf mit Sicherung, Prüfsumme und Vergleich", async () => {
+await checkAsync("upgrade.mjs --ssh: Plan ändert nichts, Gleiches und Älteres wird nicht eingespielt, Ablauf mit Sicherung, Prüfsumme und Vergleich", async () => {
   const name = "selftest-upgrade";
   const akte = join(ROOT, "devices", name);
   const heim = mkdtempSync(join(tmpdir(), "ara-upgrade-heim-"));
@@ -8407,7 +8408,7 @@ await checkAsync("upgrade.mjs: Plan ändert nichts, Gleiches und Älteres wird n
     ARA_ENV_FILE: join(heim, ".env"),
   };
   const mitKonto = ["--device", name, "--login-user", "probe", "--password-ref", "SELFTEST_UPGRADE_PW"];
-  const lauf = (args) => toolAsync("upgrade.mjs", [...mitKonto, ...args], env);
+  const lauf = (args) => toolAsync("upgrade.mjs", [...mitKonto, "--ssh", ...args], env);
   const berichte = () => (existsSync(join(akte, "reports")) ? readdirSync(join(akte, "reports")) : []);
 
   try {
@@ -8484,6 +8485,249 @@ await checkAsync("upgrade.mjs: Plan ändert nichts, Gleiches und Älteres wird n
     rmSync(akte, { recursive: true, force: true });
     rmSync(heim, { recursive: true, force: true });
     rmSync(spiegel, { recursive: true, force: true });
+  }
+});
+
+check("upgrade über die Schnittstelle: Protokoll, Urteil über den Lauf, Dauer mit Datum", () => {
+  assert(newLines([], ["a", "b"]).join() === "a,b", "ohne Gezeigtes ist alles neu");
+  assert(newLines(["a", "b"], ["a", "b", "c"]).join() === "c", "nur die neue Zeile kommt dazu");
+  assert(newLines(["a", "b", "c"], ["b", "c", "d", "e"]).join() === "d,e", "ein Fenster, das weiterrückt, wird nicht doppelt gezeigt");
+  assert(newLines(["a"], ["x", "y"]).join() === "x,y", "ein ganz neues Protokoll geht verloren");
+  assert(judgeRun(null, "1.1.0").state === "waiting", "ohne Lauf gilt er als laufend");
+  assert(judgeRun({ status: "fertig", nach: "1.0.5" }, "1.1.0").state === "waiting", "der alte Lauf mit anderem Ziel zählt");
+  assert(judgeRun({ status: "laeuft", nach: "1.1.0" }, "1.1.0").state === "running", "laeuft wird nicht erkannt");
+  assert(judgeRun({ status: "fertig", nach: "1.1.0" }, "1.1.0").state === "done", "fertig wird nicht erkannt");
+  for (const status of ["zurueckgerollt", "rueckweg_fehlgeschlagen", "fehlgeschlagen", "abgebrochen"]) {
+    const urteil = judgeRun({ status, nach: "1.1.0", meldung: "Grund" }, "1.1.0");
+    assert(urteil.state === "failed" && /Grund/.test(urteil.text), `${status} gilt nicht als Misserfolg: ${JSON.stringify(urteil)}`);
+  }
+  const satz = durationSentenceApi();
+  assert(satz.includes(MEASURED_API.date) && satz.includes(MEASURED_API.device), "Datum und Gerät fehlen bei der Dauer");
+  return "Protokollfenster, Urteil über den Lauf, Dauer mit Datum und Gerät";
+});
+
+await checkAsync("upgrade.mjs über die Schnittstelle: Plan ändert nichts, Gleiches wird abgewiesen, Schlüssel für den Anlass, Zusehen, Vergleich, Rückweg", async () => {
+  const name = "selftest-upgrade-api";
+  const akte = join(ROOT, "devices", name);
+  const heim = mkdtempSync(join(tmpdir(), "ara-upgrade-api-heim-"));
+  const kitSchluessel = "aras_kit_" + "1".repeat(20);
+  const anlassSchluessel = "aras_anlass_" + "2".repeat(20);
+
+  const zustand = {
+    nummer: "1.0.0",
+    lauf: null,
+    abfragen: 0,
+    verhalten: "gut",
+    kitTraegtBereich: false,
+    angelegt: 0,
+    widerrufen: [],
+    gestartet: [],
+    anlassAngelegtMit: null,
+    unerreichbar: 0,
+  };
+  const antwort = (response, status, body) => {
+    response.writeHead(status, { "Content-Type": "application/json" });
+    response.end(JSON.stringify(body));
+  };
+  const stand = () => ({
+    fassung: { version: "20260101-abcdef0", nummer: zustand.nummer },
+    einspielenMoeglich: true,
+    einspielenGrund: null,
+    laeuft: zustand.lauf?.status === "laeuft",
+    lauf: zustand.lauf,
+    zurueckMoeglich: zustand.zurueckMoeglich === true,
+    vorige: zustand.vorige ? { fassung: zustand.vorige } : null,
+  });
+  const kontrakt = {
+    kontrakt: 7,
+    schluessel: { kopf: "X-API-Key" },
+    endpunkte: [
+      { verb: "GET", pfad: "/api/v1/external/update", bereich: "system:update", was: "Stand der Plattform" },
+      { verb: "GET", pfad: "/api/v1/external/update/neueste", bereich: "system:update", was: "Die neueste Fassung im Netz" },
+      { verb: "POST", pfad: "/api/v1/external/update", bereich: "system:update", was: "Das Gerät auf eine neue Fassung bringen; sichert vorher" },
+      { verb: "POST", pfad: "/api/v1/external/update/zurueck", bereich: "system:update", was: "Zurück auf die vorige Fassung (das Programm, nicht die Daten)" },
+    ],
+  };
+  const lauf = (request, response, nach, von) => {
+    zustand.gestartet.push(`${request.method} ${request.url}`);
+    zustand.lauf = { status: "laeuft", schritt: "herunterladen", von, nach, meldung: "Paket wird geholt", protokoll: ["Paket wird geholt"] };
+    zustand.abfragen = 0;
+    return antwort(response, 202, { data: { lauf: "l1", von, nach } });
+  };
+  const server = createServer((request, response) => {
+    const pfad = request.url.split("?")[0];
+    if (pfad === "/api/auth/login") return antwort(response, 200, { token: "ausweis-selftest" });
+    const schluessel = request.headers["x-api-key"];
+    const sitzung = request.headers.authorization === "Bearer ausweis-selftest";
+    // Mit Schlüssel: der Kontrakt für jeden gültigen, alles andere nur mit dem Bereich.
+    if (schluessel) {
+      const gueltig = schluessel === anlassSchluessel || schluessel === kitSchluessel;
+      if (!gueltig || (schluessel === anlassSchluessel && zustand.widerrufen.length)) return antwort(response, 401, { error: { message: "Schlüssel ungültig" } });
+      if (pfad === "/api/v1/external/contract") return antwort(response, 200, { data: kontrakt });
+      if (schluessel === kitSchluessel && !zustand.kitTraegtBereich) return antwort(response, 403, { error: { message: "Bereich fehlt" } });
+      if (pfad === "/api/v1/external/update" && request.method === "GET") {
+        const l = zustand.lauf;
+        if (l?.status === "laeuft") {
+          zustand.abfragen++;
+          if (zustand.abfragen === 1) {
+            l.schritt = "sichern";
+            l.protokoll.push("Sicherung läuft");
+          } else if (zustand.abfragen === 2) {
+            zustand.unerreichbar++;
+            return request.socket.destroy();
+          } else if (zustand.abfragen === 3) {
+            l.schritt = "installieren";
+            l.protokoll.push("Images werden gebaut");
+          } else if (zustand.verhalten === "zurueckgerollt") {
+            l.status = "zurueckgerollt";
+            l.meldung = "Die neue Fassung wurde nicht gesund";
+          } else {
+            l.status = "fertig";
+            l.schritt = "fertig";
+            l.protokoll.push("fertig");
+            zustand.vorige = l.von;
+            zustand.zurueckMoeglich = true;
+            zustand.nummer = l.nach;
+          }
+        }
+        return antwort(response, 200, { data: stand() });
+      }
+      if (pfad === "/api/v1/external/update/neueste") return antwort(response, 200, { data: { fassung: "1.1.0" } });
+      if (pfad === "/api/v1/external/update" && request.method === "POST") {
+        const rumpf = [];
+        request.on("data", (c) => rumpf.push(c));
+        return request.on("end", () => {
+          const nach = JSON.parse(Buffer.concat(rumpf).toString() || "{}").fassung;
+          if (nach === zustand.nummer) return antwort(response, 409, { error: { message: "nicht neuer" } });
+          lauf(request, response, nach, zustand.nummer);
+        });
+      }
+      if (pfad === "/api/v1/external/update/zurueck" && request.method === "POST") {
+        if (!zustand.vorige) return antwort(response, 404, { error: { message: "keine vorige Fassung" } });
+        return lauf(request, response, zustand.vorige, zustand.nummer);
+      }
+      return antwort(response, 404, { error: { message: "Endpoint not found" } });
+    }
+    if (!sitzung) return antwort(response, 401, { error: { message: "Anmeldung nötig" } });
+    // Mit Sitzung: lesen, und den Schlüssel für den Anlass anlegen und widerrufen.
+    if (pfad === "/api/update/fassung") return antwort(response, 200, { data: stand() });
+    if (pfad === "/api/update/fassung/neueste") return antwort(response, 200, { data: { fassung: "1.1.0" } });
+    if (pfad === "/api/v1/external/api-keys" && request.method === "POST") {
+      const rumpf = [];
+      request.on("data", (c) => rumpf.push(c));
+      return request.on("end", () => {
+        zustand.angelegt++;
+        zustand.anlassAngelegtMit = JSON.parse(Buffer.concat(rumpf).toString());
+        antwort(response, 200, { success: true, api_key: anlassSchluessel, key_prefix: "aras_anl", key_id: 7 });
+      });
+    }
+    const weg = pfad.match(/^\/api\/v1\/external\/api-keys\/(\d+)$/);
+    if (weg && request.method === "DELETE") {
+      zustand.widerrufen.push(weg[1]);
+      return antwort(response, 200, { success: true });
+    }
+    if (pfad === "/api/benutzer") return antwort(response, 200, { data: [{ username: "anna", role: "admin", is_active: true }] });
+    if (pfad === "/api/license/info") return antwort(response, 200, { valid: true, tier: "professional", customer: "Probe", nutzung: { konten: { belegt: 1, grenze: -1 }, apps: { belegt: 0, grenze: -1 } } });
+    if (pfad === "/api/apps") return antwort(response, 200, { data: [] });
+    if (pfad === "/api/flows") return antwort(response, 200, { data: [], fehlerhaft: [] });
+    if (pfad === "/api/models/installed") return antwort(response, 200, { models: [{ id: "modell:1", status: "available" }] });
+    if (pfad === "/api/firmenordner/ordner") return antwort(response, 200, { data: [] });
+    if (pfad === "/api/firmenordner/platz") return antwort(response, 200, { data: { ordner: [] } });
+    antwort(response, 404, { error: { message: "Endpoint not found" } });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const wo = `http://127.0.0.1:${server.address().port}`;
+
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  // Eine Adresse, unter der kein SSH antwortet: dieser Weg darf keines brauchen.
+  writeFrontmatter(join(akte, "device.md"), { name, address: "192.0.2.1", api_base: wo, verdict: "supported", arasul: "found" });
+  assert(tool("runsheet.mjs", ["--create", "--device", name]).status === 0, "der Laufzettel ließ sich nicht anlegen");
+  writeFileSync(join(heim, ".env"), `SELFTEST_UPGRADE_PW=geheim-selftest-pw\nSELFTEST_KITKEY=${kitSchluessel}\n`);
+  const env = { HOME: heim, ARA_ENV_FILE: join(heim, ".env"), ARA_UPDATE_POLL_MS: "30", ARA_UPDATE_LIMIT_MIN: "1" };
+  const lauf_ = (args) => toolAsync("upgrade.mjs", ["--device", name, "--login-user", "probe", "--password-ref", "SELFTEST_UPGRADE_PW", ...args], env);
+  const berichte = () => (existsSync(join(akte, "reports")) ? readdirSync(join(akte, "reports")) : []);
+  const nichtsGeaendert = () => zustand.angelegt === 0 && zustand.gestartet.length === 0;
+
+  try {
+    // 1. Der Plan: ohne SSH, ohne Schlüssel, ändert nichts.
+    let run = await lauf_([]);
+    assert(run.status === 0, `Plan fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(/Am Gerät: 1\.0\.0/.test(run.stdout) && /Neueste: 1\.1\.0/.test(run.stdout), `Fassungen fehlen im Plan: ${run.stdout}`);
+    assert(run.stdout.includes(MEASURED_API.date) && /Minuten von 0\.8\.14 auf 0\.8\.16/.test(run.stdout), "die gemessene Dauer mit Datum fehlt im Plan");
+    assert(/## Der Rückweg/.test(run.stdout) && /keine vorige Fassung/.test(run.stdout), `der Rückweg fehlt im Plan: ${run.stdout}`);
+    assert(/Auf diesem Weg braucht es keinen SSH-Zugang/.test(run.stdout), "der Plan sagt nicht, dass kein SSH nötig ist");
+    assert(nichtsGeaendert() && berichte().length === 0, "der Plan hat etwas geändert");
+    assert(!run.stdout.includes("geheim-selftest-pw") && !run.stdout.includes("ausweis-selftest"), "Passwort oder Ausweis stehen in der Ausgabe");
+
+    // 2. Ohne --yes geschieht nichts.
+    run = await lauf_(["--apply"]);
+    assert(run.status !== 0 && /--yes/.test(run.stderr + run.stdout) && nichtsGeaendert(), `--apply ohne --yes lief: ${run.stdout}`);
+    run = await lauf_(["--back"]);
+    assert(run.status !== 0 && /--yes/.test(run.stderr + run.stdout) && nichtsGeaendert(), `--back ohne --yes lief: ${run.stdout}`);
+
+    // 3. Gleiche Fassung: ein Satz, und es wird nicht einmal ein Schlüssel angelegt.
+    zustand.nummer = "1.1.0";
+    run = await lauf_(["--apply", "--yes"]);
+    assert(run.status === 0 && /Nichts einzuspielen: das Gerät trägt schon 1\.1\.0/.test(run.stdout), `Gleiches nicht abgewiesen: ${run.stdout}`);
+    assert(run.stdout.trim().split("\n").length === 1 && nichtsGeaendert(), `mehr als ein Satz oder etwas geändert: ${run.stdout}`);
+    zustand.nummer = "1.0.0";
+
+    // 4. Zurück, ohne dass das Gerät eine vorige Fassung kennt: ein Satz, nichts geschieht.
+    run = await lauf_(["--back", "--yes"]);
+    assert(run.status === 1 && /Nichts, wohin zurückzugehen wäre/.test(run.stdout) && nichtsGeaendert(), `Rückweg ohne Ziel: ${run.stdout}`);
+
+    // 5. Das Einspielen: Schlüssel für den Anlass, Schritte und Protokoll, Umschalten ohne Antwort, Vergleich, Widerruf.
+    run = await lauf_(["--apply", "--yes"]);
+    assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stderr}${run.stdout}`);
+    assert(zustand.angelegt === 1 && JSON.stringify(zustand.anlassAngelegtMit.allowed_endpoints) === '["system:update"]', "der Schlüssel für den Anlass trägt nicht genau einen Bereich");
+    assert(zustand.anlassAngelegtMit.expires_at && Date.parse(zustand.anlassAngelegtMit.expires_at) > Date.now(), "der Schlüssel für den Anlass läuft nicht ab");
+    assert(zustand.gestartet.join() === "POST /api/v1/external/update" && zustand.unerreichbar === 1, `Start oder Umschalten falsch: ${zustand.gestartet}`);
+    assert(/Schritt: sichern/.test(run.stdout) && /Schritt: installieren/.test(run.stdout) && /Images werden gebaut/.test(run.stdout), `Fortschritt fehlt: ${run.stdout}`);
+    assert(/antwortet gerade nicht/.test(run.stdout), "das Umschalten ohne Antwort wird nicht gesagt");
+    assert(/Fassung danach: 1\.1\.0/.test(run.stdout) && /Konten: unverändert/.test(run.stdout), `Fassung oder Vergleich fehlen: ${run.stdout}`);
+    assert(/Schlüssel für diesen Anlass widerrufen/.test(run.stdout) && zustand.widerrufen.join() === "7", "der Schlüssel für den Anlass wurde nicht widerrufen");
+    assert(!run.stdout.includes(anlassSchluessel) && !run.stdout.includes("ausweis-selftest") && !run.stdout.includes("geheim-selftest-pw"), "ein Geheimnis steht in der Ausgabe");
+    assert(berichte().some((n) => /Eingespielt und geprüft/.test(readFileSync(join(akte, "reports", n), "utf8"))), "kein Bericht sagt das Ergebnis");
+    assert(!berichte().some((n) => readFileSync(join(akte, "reports", n), "utf8").includes(anlassSchluessel)), "der Schlüssel steht im Bericht");
+    assert(/Update über die Schnittstelle: 1\.0\.0 auf 1\.1\.0/.test(readFileSync(join(akte, "runsheet.md"), "utf8")), "der Laufzettel bekam nichts");
+
+    // 6. Der Rückweg: das Gerät kennt jetzt eine vorige Fassung.
+    zustand.gestartet = [];
+    zustand.widerrufen = [];
+    zustand.angelegt = 0;
+    run = await lauf_(["--back", "--yes"]);
+    assert(run.status === 0 && zustand.gestartet.join() === "POST /api/v1/external/update/zurueck" && zustand.nummer === "1.0.0", `Rückweg fehlgeschlagen: ${run.stdout}`);
+    assert(/Zurückgegangen und geprüft/.test(readFileSync(join(akte, "reports", berichte().sort().pop()), "utf8")), "der Bericht des Rückwegs fehlt");
+
+    // 7. Ein Lauf, den das Gerät zurückrollt: nicht sauber, und der Schlüssel wird trotzdem widerrufen.
+    zustand.verhalten = "zurueckgerollt";
+    zustand.widerrufen = [];
+    run = await lauf_(["--apply", "--yes"]);
+    assert(run.status === 1 && /nicht gesund/.test(run.stdout) && /Fassung danach: 1\.0\.0/.test(run.stdout), `Zurückgerollt nicht gemeldet: ${run.stdout}`);
+    assert(zustand.widerrufen.join() === "7", "nach einem Misserfolg blieb der Schlüssel gültig");
+    zustand.verhalten = "gut";
+
+    // 8. Trägt der Kit-Schlüssel den Bereich, nimmt das Kit ihn und legt keinen an.
+    writeFrontmatter(join(akte, "device.md"), { api_key_ref: "SELFTEST_KITKEY" });
+    zustand.kitTraegtBereich = true;
+    zustand.angelegt = 0;
+    zustand.widerrufen = [];
+    run = await lauf_(["--apply", "--yes"]);
+    assert(run.status === 0 && zustand.angelegt === 0 && zustand.widerrufen.length === 0, `mit dem Kit-Schlüssel wurde einer angelegt: ${run.stdout}`);
+    assert(/Kit-Schlüssel trägt den Bereich/.test(run.stdout) && /Fassung danach: 1\.1\.0/.test(run.stdout), `Lauf mit Kit-Schlüssel: ${run.stdout}`);
+
+    // 9. Ohne Schlüssel mit dem Bereich und ohne Sitzung: ein Satz, der SSH als Rückfall nennt, nichts am Gerät.
+    zustand.nummer = "1.0.0";
+    zustand.kitTraegtBereich = false;
+    zustand.gestartet = [];
+    run = await toolAsync("upgrade.mjs", ["--device", name, "--apply", "--yes"], env);
+    assert(run.status === 1 && /--ssh/.test(run.stdout) && zustand.gestartet.length === 0, `ohne Zugang kein klarer Satz: ${run.stdout}`);
+    return "Plan ohne Änderung, ohne --yes nichts, Gleiches abgewiesen, Schlüssel für den Anlass, Zusehen, Umschalten, Vergleich, Rückweg, Zurückgerollt, Kit-Schlüssel, SSH als Rückfall genannt";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(heim, { recursive: true, force: true });
   }
 });
 

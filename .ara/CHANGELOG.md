@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.65.0 (2026-10-02)
+
+Contract: up to 7
+
+- **`/maintain` rolls an update in through the interface of the device, no longer over SSH (K28).** `upgrade.mjs` asks the device to update itself (J39) and watches: the device fetches the package, checks the checksum, backs up first, builds while it keeps running and switches over. The plan names version on the device and newest, the measured duration with date and device, the way back as the device's contract words it, and the key. The run shows each step and the new lines of the device's log, waits while the device does not answer during the switch, ends with what the device reports (a run it rolled back is not clean), and compares accounts, licence, apps, flows, models and company folders before and after. A customer needs no SSH access for it.
+- **The key.** `system:update` lies in no key by itself and not in the kit key. If the kit key carries it, the kit uses it; otherwise it creates a key for this one occasion with the administrator session, with that one scope, running out after three hours, and revokes it at the end, also after a failed run. Never shown, in no report.
+- **`--back --yes`** asks the device to go back to the previous version (the program, not the data), and says so in one sentence if the device names none.
+- **SSH is an explicit fallback:** `--ssh` brings back the old route unchanged (artifact fetched by the kit, `install.sh` at the device, restart of the computer).
+- Measured at the Orin on 0.8.16, the newest release: plan, pre-check, the refusal "already current", and the key route (key for the occasion created, contract read, state and newest version read, the same version answered with 409, key revoked and refused afterwards with 401). The real run with the next release is still to be measured; the numbers for the duration come from the platform's own measurement of 02.10.2026 until then.
+
 ## 0.64.5 (2026-10-02)
 
 Contract: up to 7

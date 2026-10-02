@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.65.0 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **`/maintain` spielt ein Update über die Schnittstelle des Geräts ein, nicht mehr über SSH (K28).** `upgrade.mjs` bittet das Gerät, sich selbst zu aktualisieren (J39), und sieht zu: das Gerät holt das Paket, prüft die Prüfsumme, sichert zuerst, baut, während es weiterläuft, und schaltet um. Der Plan nennt Fassung am Gerät und neueste, die gemessene Dauer mit Datum und Gerät, den Rückweg so, wie der Kontrakt des Geräts ihn nennt, und den Schlüssel. Der Lauf zeigt jeden Schritt und die neuen Zeilen des Protokolls, wartet, solange das Gerät beim Umschalten nicht antwortet, endet mit dem, was das Gerät meldet (ein Lauf, den es zurückgerollt hat, ist nicht sauber), und vergleicht Konten, Lizenz, Apps, Flows, Modelle und Firmenordner vorher und nachher. Ein Kunde braucht dafür keinen SSH-Zugang.
+- **Der Schlüssel.** `system:update` steckt in keinem Schlüssel von selbst und nicht im Kit-Schlüssel. Trägt der Kit-Schlüssel ihn, nimmt das Kit ihn; sonst legt es mit der Sitzung als Administrator einen Schlüssel für diesen einen Anlass an, mit genau diesem Bereich, nach drei Stunden abgelaufen, und widerruft ihn am Ende, auch nach einem gescheiterten Lauf. Er wird nie angezeigt und steht in keinem Bericht.
+- **`--back --yes`** bittet das Gerät, auf die vorige Fassung zurückzugehen (das Programm, nicht die Daten), und sagt es in einem Satz, wenn das Gerät keine nennt.
+- **SSH ist ein ausdrücklicher Rückfall:** `--ssh` bringt den alten Weg unverändert zurück (Artefakt vom Kit geholt, `install.sh` am Gerät, Neustart des Rechners).
+- Am Orin auf 0.8.16 gemessen, dem neuesten Release: Plan, Vorprüfung, die Abweisung „schon aktuell“ und der Weg des Schlüssels (Schlüssel für den Anlass angelegt, Kontrakt gelesen, Stand und neueste Fassung gelesen, dieselbe Fassung mit 409 beantwortet, Schlüssel widerrufen und danach mit 401 abgewiesen). Der Echtlauf mit dem nächsten Release steht noch aus; die Zahlen für die Dauer stammen bis dahin aus der eigenen Messung der Plattform vom 02.10.2026.
+
 ## 0.64.5 (2026-10-02)
 
 Kontrakt: bis 7
