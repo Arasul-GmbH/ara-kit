@@ -1,21 +1,33 @@
 #!/usr/bin/env node
 /**
- * Deploy a new version of Arasul on a device: say the duration and the way back first,
- * back up, fetch the artifact the customer's way, deploy it, measure afterwards.
+ * Bring a device to a new version of Arasul: say the duration and the way back first, ask
+ * the device to update itself through its interface, watch it, measure before and after.
  *
  *   node .ara/tools/upgrade.mjs --device orin                      the plan, changes nothing
  *   node .ara/tools/upgrade.mjs --customer mueller --device werk2
- *   node .ara/tools/upgrade.mjs --device orin --prepare --yes      snapshot and backup, nothing deployed
- *   node .ara/tools/upgrade.mjs --device orin --apply --yes        deploy, restart, compare
+ *   node .ara/tools/upgrade.mjs --device orin --apply --yes        update, watch, compare
+ *   node .ara/tools/upgrade.mjs --device orin --back --yes         back to the previous version
+ *
+ * **The way is the device's interface, not SSH (K28).** The device fetches the package itself,
+ * checks its checksum, backs up, builds and switches, and reports each step. The kit needs
+ * a key with the scope system:update: the kit key if it carries it, else a key for this one
+ * occasion that the kit creates with the administrator session and revokes at the end. No SSH
+ * access is needed. The way over SSH (kit fetches the artifact, ships it, runs install.sh,
+ * restarts the computer) stays as an explicit fallback: add --ssh to any call below.
+ *
+ *   node .ara/tools/upgrade.mjs --device orin --ssh --prepare --yes   snapshot and backup, nothing deployed (SSH only)
+ *   node .ara/tools/upgrade.mjs --device orin --ssh --apply --yes     deploy over SSH, restart, compare
  *
  * Options:
+ *   --ssh                   the explicit fallback: everything below except --back goes over SSH
+ *   --back                  ask the device to go back to the previous version (interface only)
  *   --login-user <name> --password-ref <NAME>   the account for the administrator session
- *   --github                the artifact from the public release file with its checksum, as
+ *   --github                (SSH only) the artifact from the public release file with its checksum, as
  *                           an explicit choice. Without a customer token nothing else is
  *                           offered, and it is never taken silently
- *   --repo <owner/name>     where the release lies, when the mirror does not name it
- *   --version <x.y.z>       a particular release instead of the newest (GitHub only)
- *   --no-reboot             leave out the restart (the report says so)
+ *   --repo <owner/name>     (SSH only) where the release lies, when the mirror does not name it
+ *   --version <x.y.z>       a particular release instead of the newest
+ *   --no-reboot             (SSH only) leave out the restart (the report says so)
  *   --insecure              accept a self-signed certificate
  *
  * **The plan comes first, and it changes nothing.** It names the version on the device and
@@ -41,22 +53,34 @@
  *
  * === deutsch ===
  *
- * Eine neue Fassung von Arasul auf ein Gerät spielen: vorher Dauer und Rückweg sagen,
- * sichern, das Artefakt über den Kundenweg holen, einspielen, danach messen.
+ * Ein Gerät auf eine neue Fassung von Arasul bringen: vorher Dauer und Rückweg sagen, das Gerät
+ * über seine Schnittstelle bitten, sich selbst zu aktualisieren, zusehen, vorher und nachher messen.
  *
  *   node .ara/tools/upgrade.mjs --device orin                      der Plan, ändert nichts
  *   node .ara/tools/upgrade.mjs --customer mueller --device werk2
- *   node .ara/tools/upgrade.mjs --device orin --prepare --yes      Stand festhalten und sichern, nichts einspielen
- *   node .ara/tools/upgrade.mjs --device orin --apply --yes        einspielen, neu starten, vergleichen
+ *   node .ara/tools/upgrade.mjs --device orin --apply --yes        aktualisieren, zusehen, vergleichen
+ *   node .ara/tools/upgrade.mjs --device orin --back --yes         zurück auf die vorige Fassung
+ *
+ * **Der Weg ist die Schnittstelle des Geräts, nicht SSH (K28).** Das Gerät holt das Paket selbst,
+ * prüft die Prüfsumme, sichert, baut und schaltet um und meldet jeden Schritt. Das Kit braucht einen
+ * Schlüssel mit dem Bereich system:update: den Kit-Schlüssel, wenn er ihn trägt, sonst einen Schlüssel
+ * für diesen einen Anlass, den das Kit mit der Sitzung als Administrator anlegt und am Ende widerruft.
+ * Ein SSH-Zugang ist nicht nötig. Der Weg über SSH (das Kit holt das Artefakt, schiebt es hin, startet
+ * install.sh, startet den Rechner neu) bleibt als ausdrücklicher Rückfall: --ssh zu jedem Aufruf unten.
+ *
+ *   node .ara/tools/upgrade.mjs --device orin --ssh --prepare --yes   Stand festhalten und sichern, nichts einspielen (nur SSH)
+ *   node .ara/tools/upgrade.mjs --device orin --ssh --apply --yes     über SSH einspielen, neu starten, vergleichen
  *
  * Optionen:
+ *   --ssh                   der ausdrückliche Rückfall: alles unten außer --back geht über SSH
+ *   --back                  das Gerät bitten, auf die vorige Fassung zurückzugehen (nur Schnittstelle)
  *   --login-user <name> --password-ref <NAME>   das Konto für die Sitzung als Administrator
- *   --github                das Artefakt aus der öffentlichen Release-Datei samt Prüfsumme, als
+ *   --github                (nur SSH) das Artefakt aus der öffentlichen Release-Datei samt Prüfsumme, als
  *                           ausdrückliche Wahl. Ohne Kunden-Token wird nichts anderes angeboten,
  *                           und der Weg wird nie still genommen
- *   --repo <inhaber/name>   wo das Release liegt, wenn der Spiegel es nicht nennt
- *   --version <x.y.z>       ein bestimmtes Release statt des neuesten (nur GitHub)
- *   --no-reboot             den Neustart auslassen (der Bericht sagt es)
+ *   --repo <inhaber/name>   (nur SSH) wo das Release liegt, wenn der Spiegel es nicht nennt
+ *   --version <x.y.z>       ein bestimmtes Release statt des neuesten
+ *   --no-reboot             (nur SSH) den Neustart auslassen (der Bericht sagt es)
  *   --insecure              ein selbst ausgestelltes Zertifikat annehmen
  *
  * **Der Plan kommt zuerst, und er ändert nichts.** Er nennt die Fassung am Gerät und die
@@ -111,33 +135,35 @@ if (!str(arg.device) && !str(arg.customer)) {
   console.log(
     t(
       [
-        "Deploy a new version: plan, backup, fetch, deploy, compare",
+        "Update a device through its interface: plan, update, watch, compare",
         "",
         "  --device <name>        which device",
         "  --customer <name>      for a customer device",
         "  (nothing more)         the plan, nothing is changed",
-        "  --prepare --yes        snapshot and backup, nothing is deployed",
-        "  --apply --yes          deploy, restart, compare",
+        "  --apply --yes          the device updates itself, the kit watches and compares",
+        "  --back --yes           the device goes back to the previous version",
+        "  --ssh                  the explicit fallback: over SSH, with --prepare or --apply",
         "  --login-user <name> --password-ref <NAME>   account of the administrator session",
-        "  --github               the public release file with its checksum, as an explicit choice",
-        "  --repo <owner/name>    where the release lies",
-        "  --version <x.y.z>      a particular release (GitHub only)",
-        "  --no-reboot            leave out the restart",
+        "  --github               (SSH) the public release file with its checksum, as an explicit choice",
+        "  --repo <owner/name>    (SSH) where the release lies",
+        "  --version <x.y.z>      a particular release",
+        "  --no-reboot            (SSH) leave out the restart",
         "  --insecure             accept a self-signed certificate",
       ].join("\n"),
       [
-        "Eine neue Fassung einspielen: Plan, Sicherung, Holen, Einspielen, Vergleich",
+        "Ein Gerät über seine Schnittstelle aktualisieren: Plan, Update, Zusehen, Vergleich",
         "",
         "  --device <name>        welches Gerät",
         "  --customer <name>      bei einem Kundengerät",
         "  (nichts weiter)        der Plan, es wird nichts geändert",
-        "  --prepare --yes        Stand festhalten und sichern, nichts wird eingespielt",
-        "  --apply --yes          einspielen, neu starten, vergleichen",
+        "  --apply --yes          das Gerät aktualisiert sich selbst, das Kit sieht zu und vergleicht",
+        "  --back --yes           das Gerät geht auf die vorige Fassung zurück",
+        "  --ssh                  der ausdrückliche Rückfall: über SSH, mit --prepare oder --apply",
         "  --login-user <name> --password-ref <NAME>   Konto der Sitzung als Administrator",
-        "  --github               die öffentliche Release-Datei samt Prüfsumme, als ausdrückliche Wahl",
-        "  --repo <inhaber/name>  wo das Release liegt",
-        "  --version <x.y.z>      ein bestimmtes Release (nur GitHub)",
-        "  --no-reboot            den Neustart auslassen",
+        "  --github               (SSH) die öffentliche Release-Datei samt Prüfsumme, als ausdrückliche Wahl",
+        "  --repo <inhaber/name>  (SSH) wo das Release liegt",
+        "  --version <x.y.z>      ein bestimmtes Release",
+        "  --no-reboot            (SSH) den Neustart auslassen",
         "  --insecure             ein selbst ausgestelltes Zertifikat annehmen",
       ].join("\n")
     )
@@ -152,18 +178,28 @@ try {
   fail(error.message);
 }
 const place = device.customer ? `${device.customer}/${device.device}` : device.device;
-const mode = arg.apply ? "apply" : arg.prepare ? "prepare" : "plan";
-const call_ = `node .ara/tools/upgrade.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device}`;
+const mode = arg.back ? "back" : arg.apply ? "apply" : arg.prepare ? "prepare" : "plan";
+const call_ = `node .ara/tools/upgrade.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device}${arg.ssh ? " --ssh" : ""}`;
+
+if (mode === "back" && arg.ssh) {
+  fail(t("Going back exists only through the interface of the device, not over SSH.", "Der Rückweg gibt es nur über die Schnittstelle des Geräts, nicht über SSH."));
+}
 
 if (mode !== "plan" && !arg.yes) {
   fail(
     t(
-      `${mode === "apply" ? "Deploying" : "Backing up"} changes ${place}. First the plan: ${call_}\n` +
+      `${mode === "apply" ? "Deploying" : mode === "back" ? "Going back" : "Backing up"} changes ${place}. First the plan: ${call_}\n` +
         "When the human has confirmed intent, target and way back, add --yes.",
-      `${mode === "apply" ? "Das Einspielen" : "Das Sichern"} ändert ${place}. Erst der Plan: ${call_}\n` +
+      `${mode === "apply" ? "Das Einspielen" : mode === "back" ? "Der Rückweg" : "Das Sichern"} ändert ${place}. Erst der Plan: ${call_}\n` +
         "Hat der Mensch Absicht, Ziel und Rückweg bestätigt, kommt --yes dazu."
     )
   );
+}
+
+// Der Weg ist die Schnittstelle des Geräts. SSH ist der ausdrückliche Rückfall (--ssh).
+if (!arg.ssh) {
+  const { runViaInterface } = await import("./lib/upgrade-api.mjs");
+  process.exit(await runViaInterface({ device, arg, mode, place, call_ }));
 }
 
 /** Eine Zeile an den Menschen, mit Zeit, damit das Protokoll der Läufe lesbar bleibt. */

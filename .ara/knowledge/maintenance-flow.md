@@ -128,7 +128,11 @@ more at an extension than any sales conversation.
 ### 3. Deploy an update
 
 An update is an intervention, not a click. The kit leads the way with its own tool, so
-nobody writes a line of shell and nobody guesses how long it takes:
+nobody writes a line of shell and nobody guesses how long it takes. **The way is the interface
+of the device, not SSH.** Since the device takes updates on request, it does the work itself:
+it fetches the package from the release, checks the checksum, backs up first (and stops without
+changing anything if the backup fails), builds the new images while it keeps running, switches
+over and reports every step. A customer needs no SSH access for maintenance.
 
 ```
 node .ara/tools/upgrade.mjs --device <device> --login-user <account> --password-ref <NAME>
@@ -136,71 +140,69 @@ node .ara/tools/upgrade.mjs --customer <customer> --device <device> ...
 ```
 
 1. **The plan first, and it changes nothing.** Without further options the tool names the
-   version on the device and the newest one, where the artifact would come from, what
-   happens, how long it takes and the way back. Pass it on and name it to the customer
-   beforehand; an update during working hours is a disruption.
-   - **The version on the device** is read from three places and the plan says which: the
-     contract, the folder `install.sh` set up last, and the status route. The status route
-     can name a state from a deploy (`20261001-759a2b8`) instead of a release number; only
-     the number is compared, the state is named next to it.
-   - **The newest version** comes from the portal (`GET /api/download?token=<token>&pruefen=1`)
-     when the customer token is stored, otherwise from the public release file. Which
-     repository holds it, the mirror or the delivery manual on the device says, or
-     `--repo <owner/name>`.
-   - **How long:** the plan states the measured numbers with date and device (2.5 minutes to
-     deploy and 3 minutes after a restart until all containers are healthy, measured on
-     01.10.2026 at a Jetson AGX Orin from 0.8.12 to 0.8.14), plus the backup. A number
-     measured elsewhere is not promised. The platform is not reachable while it restarts.
-   - **The way back:** the tool reads `ops/AUSLIEFERUNG.md` and `ops/BACKUP_SYSTEM.md` on the
-     device and shows what they say about going back to the previous version. **If they say
-     nothing, the plan says exactly that: the product names no way back.** What the backup
-     restores is the data (`POST /api/backup/wiederherstellung`), not the version, and the
-     kit does not sell the one as the other. Tell the customer: the update is a step
-     forward, and if the new version is bad the way is a fixed release. That is a finding
-     for the product, not a trifle.
+   version on the device and the newest one, what happens, how long it takes, the way back and
+   the key it will use. Pass it on and name it to the customer beforehand; an update during
+   working hours is a disruption.
+   - **The version on the device and the newest one** come from the device itself: its
+     state route and its own question to the release. The plan says if the device names no
+     version. Only the number is compared; a state from a deploy (`20261001-759a2b8`) is named
+     next to it and is not a release number.
+   - **How long:** the plan states the measured numbers with date and device (4 and 19 minutes
+     through this route, measured on 02.10.2026 at a Jetson AGX Orin, from 0.8.14 to 0.8.16
+     and to 0.8.15). A number measured elsewhere is not promised. The device is not reachable
+     for some minutes while it switches, and that is not a fault. The kit's own measurement
+     with the next release replaces these numbers.
+   - **The way back:** the plan quotes what the device's contract says about the route and
+     whether the device knows a previous version right now. The way back brings the program of
+     the previous version, **not the data**. The backup the device takes first lies ready if the
+     data should go back too, and that is a person's decision. Tell the customer.
    - **Nothing is deployed that is not newer.** With the same or an older version the
-     command ends with one sentence, before it backs anything up.
-2. **The session as administrator.** The backup and the comparison need one, and the kit key
-   does not open them. The tool takes it from `device.mjs --admin-login`, so pass
-   `--login-user` and `--password-ref` of a named account. Not as `admin` when a read or
-   probe account exists. The password is never shown.
+     command ends with one sentence, before it creates a key or asks the device for anything.
+2. **The key.** The scope `system:update` lies in no key by itself and not in the kit key
+   (`app:deploy`): whoever may roll an app in may not swap the device. If the kit key carries
+   the scope, the kit uses it. **Otherwise it creates a key for this one occasion** with the
+   session as administrator (`--login-user` and `--password-ref` of a named account, not `admin`
+   when a read or probe account exists), with that one scope, running out by itself after three
+   hours, and revokes it at the end, also after a failed run. Whoever has neither a kit key with
+   the scope nor an administrator session gets one sentence and nothing is changed. The key is
+   never shown and stands in no report.
 3. **The human confirms** intent (from version to version), target (the device) and way back
    (the sentence from the plan). Only then `--yes`. That is a level 2 confirmation, see
    `.ara/knowledge/security.md`.
-4. **`--prepare --yes` is the dry run that is still real:** it notes the state and makes the
-   backup, deploys nothing. Use it a day ahead when the window is tight.
-5. **`--apply --yes` does the rest:**
-   - notes the state: accounts, licence, apps with their data, flows, models, company
-     folders;
-   - fetches the artifact **the customer's way**, from `arasul.de/api/download` with the
-     token from the secret store, and holds it against the checksum of the release file. A
-     wrong sum ends the run before the device is touched. **Without a customer token the
-     tool says so in one sentence and stops.** The public release file with its checksum is
-     the other way, taken only with `--github`, as an explicit choice and never silently;
-   - asks the device for a backup (`POST /api/backup/sicherung`, it answers only when done)
-     and **checks** that new backups lie in the list (`GET /api/backup/sicherungen`). No
-     new backup, no update;
-   - puts the artifact onto the device and runs its `install.sh` there;
-   - waits until the containers that were ready before are ready again;
-   - **restarts the computer** and waits again. The restart belongs to the evidence: a
-     platform that only runs because nothing restarted it has not been shown to start.
-     `--no-reboot` leaves it out when the customer's window does not allow it, and the
-     report says so;
-   - compares the state with the one before and files report, runsheet entry and, for a
-     customer, an entry in `history/`.
+4. **`--apply --yes` does the rest:**
+   - notes the state with the administrator session: accounts, licence, apps with their data,
+     flows, models, company folders (without a session the run goes on and says that the
+     comparison was not measured);
+   - asks the device to update (`POST` on the update route its contract names; the kit calls
+     nothing the contract does not name);
+   - **shows the progress as it comes:** the step the device reports and the new lines of its
+     log. While the device switches it does not answer; the kit says so once and asks again;
+   - ends with what the device reports: done, or rolled back, or failed, or cut off. A run that
+     the device rolled back by itself is not clean and the tool says so;
+   - compares version and state with the one before and files report (with the device's own log),
+     runsheet entry and, for a customer, an entry in `history/`.
+   The computer itself is not restarted on this route.
+5. **`--back --yes` goes back** to the previous version when the device names one. One
+   sentence and nothing else if it names none.
 6. **Afterwards the evidence from `.ara/knowledge/handover.md`** on top: services healthy, a
    question about substance answered, remote access stands. The tool's comparison does not
    replace that. What it compares are the lists the device gives out; the contents of the
-   app databases it does not read row by row, it compares which ones the backup keeps.
-   **Something missing afterwards is a finding, not a trifle:** the run ends red and the
-   report names it.
+   app databases it does not read row by row. **Something missing afterwards is a finding,
+   not a trifle:** the run ends red and the report names it. The mirror of the kit still holds
+   the earlier artifact after the run: `node .ara/tools/mirror.mjs --refresh`.
 
-Which routes the tool asks for it takes from the device's own API reference, and it calls
-none that the reference does not list: `GET /api/update/status`, `GET /api/benutzer`,
-`GET /api/license/info`, `GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`,
-`GET /api/firmenordner/ordner`, `GET /api/firmenordner/platz`, `GET /api/backup/sicherungen`,
-`POST /api/backup/sicherung`. If one is missing there, the topic stands as "not measured" and
-the report says why.
+**The fallback is SSH, and it is explicit:** add `--ssh` to the call. Then the kit fetches the
+artifact itself (the customer's way from the portal with the token, or with `--github` the public
+release file with its checksum, never silently), asks for a backup and checks it in the list
+(`--prepare --yes` does only that), ships the artifact, runs its `install.sh`, restarts the
+computer and waits (`--no-reboot` leaves that out, the report says so). Use it only when the
+interface route is not open: an older device without the update route, a device the interface does
+not reach. The tool names it in the sentence where the interface route stops.
+
+The routes for the comparison are the same as before: `GET /api/benutzer`, `GET /api/license/info`,
+`GET /api/apps`, `GET /api/flows`, `GET /api/models/installed`, `GET /api/firmenordner/ordner`,
+`GET /api/firmenordner/platz`. If the device does not know one, the topic stands as "not measured"
+and the report says why.
 
 ### 4. Build an extension
 
