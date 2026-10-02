@@ -4537,7 +4537,7 @@ await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfsk
 
   // Und /app schlägt das Muster vor, wenn eine Kanzlei oder Buchhaltung beschrieben wird.
   const vorschlag = (text) => spawnSync(process.execPath, [join(ROOT, ".ara", "tools", "app.mjs"), "--patterns", text], { encoding: "utf8", env: { ...process.env, ARA_LANGUAGE: "en" } });
-  for (const text of ["Wir sind eine Kanzlei und brauchen eine App für Belege", "Buchhaltung für drei Mandanten, der Steuerberater will eine DATEV-Datei", "Our tax adviser wants the receipts as a file"]) {
+  for (const text of ["Wir sind eine Kanzlei und brauchen eine App für Belege", "Buchhaltung für drei Mandanten, der Steuerberater will eine DATEV-Datei", "Our tax adviser wants the receipts as a file", "Steuerkanzlei Mandanten"]) {
     const ausgabe = vorschlag(text);
     assert(ausgabe.status === 0 && /pattern 9|Muster 9/.test(ausgabe.stdout) && /datev\/README/.test(ausgabe.stdout), `${text}: kein Vorschlag, ${ausgabe.stdout}`);
   }
@@ -10204,9 +10204,13 @@ await checkAsync("Die Brücke listet Apps mit Routen, schreibt APP.md nur für z
       lauf = await bruecke(w, ["call", ...args]);
       assert(lauf.status !== 0, `${was} wird aufgerufen`);
     }
-    const hinaus = geraet.gesehen.slice(vorher).map((f) => `${f.verb} ${f.pfad}`).filter((z) => !/\/agent$/.test(z));
+    const hinaus = geraet.gesehen.slice(vorher).map((f) => `${f.verb} ${f.pfad}`).filter((z) => !/\/agent$/.test(z) && z !== "GET /api/apps/meine");
     assert(hinaus.length === 0, `dabei ging etwas an das Gerät, das kein Aufruf sein durfte: ${hinaus.join(", ")}`);
     assert(!geraet.gesehen.some((f) => f.pfad === "/api/admin"), "die Route mit .. hat das Gerät erreicht");
+
+    // Eine App, die niemandem zugewiesen ist, wird als solche gesagt und nicht als abgewiesener Ausweis.
+    lauf = await bruecke(w, ["call", "fremde-app", "antraege"]);
+    assert(lauf.status !== 0 && /nicht zugewiesen/.test(lauf.stderr) && /Anmeldung ist in Ordnung/.test(lauf.stderr) && !/weist den Ausweis ab/.test(lauf.stderr), `call ohne zugewiesene App sagt es nicht: ${lauf.stderr}`);
 
     // Ein Ausweis, den das Gerät nicht mehr annimmt, wird gesagt und nicht überspielt.
     const daten = JSON.parse(readFileSync(join(w.ausweise, "credentials.json"), "utf8"));
@@ -10681,6 +10685,7 @@ await checkAsync("Die Brücke gleicht am Mac im Hintergrund ab: Passwort im Schl
     assert(spawnSync("/usr/bin/security", ["find-generic-password", "-s", "Arasul Firmenordner", h.schluesselbund]).status !== 0, "der Zugang liegt nach --uninstall noch im Schlüsselbund");
     // Das Gerät ist hier aus: das Token lässt sich nicht widerrufen, und das wird gesagt, mit seinem Ende.
     assert(/ließ sich am Dateidienst gerade nicht widerrufen: es endet am 2027-09-27/.test(lauf.stdout), `--uninstall sagt nicht, dass das App-Token bleibt: ${lauf.stdout}`);
+    assert(/Ausweis: der Ausweis dieses Rechners für .* gilt weiter und wird hier nicht widerrufen/.test(lauf.stdout) && /in der Oberfläche des Geräts/.test(lauf.stdout), `--uninstall sagt nicht, wo der Ausweis widerrufen wird: ${lauf.stdout}`);
     assert(/nicht im Hintergrund/.test(await status()), `status sagt nach --uninstall noch Hintergrund: ${await status()}`);
     lauf = await bruecke(w, ["sync", "--uninstall"], { env: umgebung });
     assert(lauf.status === 0 && /war kein Abgleich im Hintergrund eingerichtet/.test(lauf.stdout), `ein zweites --uninstall sagt nicht, dass nichts da war: ${lauf.stdout}`);

@@ -156,6 +156,9 @@ export function reachLine(contract, manifest) {
   return t(
     `- This app reaches exactly these addresses on the internet and nothing else: ${hosts.join(", ")}.`,
     `- Diese App erreicht im Internet genau diese Adressen und sonst nichts: ${hosts.join(", ")}.`
+  ) + "\n" + t(
+    "  It gets there only through the device's outgoing gate, with an access of its own, named in HTTPS_PROXY in the app's environment. A program in the app that ignores HTTPS_PROXY gets no connection, and the wget of the small Linux in the container ignores NO_PROXY. Use a client that follows HTTPS_PROXY, and do not let a health check of the app call an address outside.",
+    "  Sie kommt nur über den Ausgang des Geräts dorthin, mit einem eigenen Zugang, der in der Umgebung der App unter HTTPS_PROXY steht. Ein Programm in der App, das HTTPS_PROXY nicht beachtet, bekommt keine Verbindung, und das wget des kleinen Linux im Container überhört NO_PROXY. Nimm einen Klienten, der HTTPS_PROXY befolgt, und lass keine Gesundheitsprüfung der App eine Adresse draußen aufrufen."
   );
 }
 

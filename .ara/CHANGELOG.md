@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.64.1 (2026-10-02)
+
+Contract: up to 7
+
+- **Small finds of the night (K24).** `call` on an app nobody assigned to this person now says so, and that the login is fine, instead of "credential refused (403)". `sync --uninstall` says that the credential of this computer stays valid and where to revoke it, because a credential may not revoke credentials. `app.mjs --patterns` suggests pattern 9 for every word with `kanzlei` in it, "Steuerkanzlei" too. For an app with `verbindungen` the plan line says that it reaches the outside only through the device's outgoing gate, that a program ignoring `HTTPS_PROXY` gets no connection and that the small Linux's `wget` ignores `NO_PROXY`.
+
 ## 0.64.0 (2026-10-02)
 
 Contract: up to 7
