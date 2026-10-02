@@ -211,7 +211,7 @@ const ONLY = process.env.ARA_SELFTEST_ONLY ? new RegExp(process.env.ARA_SELFTEST
 function report(name, ok, hint) {
   // Sofort ausgeben, damit man bei einem hängenden Lauf sieht, wo es klemmt.
   console.log(`${ok ? "ok  " : "FEHL"} ${name}${hint ? `: ${hint}` : ""}`);
-  results.push({ name, ok, hint });
+  results.push({ name, ok, hint, skipped: ok && /^übersprungen/.test(hint || "") });
   if (!ok) failures++;
 }
 
@@ -516,7 +516,8 @@ check("Jeder Skill liegt unter .agents/skills, und .claude/skills zeigt per Link
     tracked.status === 0 ? tracked.stdout.split("\0").filter(Boolean).map((f) => f.split("/")[2]) : skills
   );
   const kit = skills.filter((name) => getrackt.has(name));
-  assert(kit.length >= 6 && kit.includes("init"), `nur ${kit.length} Skills im Kit: ${kit.join(", ")}`);
+  // Ein Unternehmen hat sales, pricing und customers nach /init nicht mehr.
+  assert(kit.length >= (PARTNER_MATERIAL ? 6 : 3) && kit.includes("init"), `nur ${kit.length} Skills im Kit: ${kit.join(", ")}`);
   for (const name of kit) {
     const datei = join(ROOT, ".agents", "skills", name, "SKILL.md");
     assert(existsSync(datei), `${name}: SKILL.md fehlt`);
@@ -616,7 +617,7 @@ check("commands.mjs legt jeden Befehl auch als Skill fuer Codex an, aus derselbe
       assert(!link, `Unternehmen: .claude/skills/${name} blieb als Link ohne Ziel liegen`);
     }
     // Der Arbeitsordner, aus dem kopiert wurde, ist unberuehrt.
-    assert(existsSync(join(ROOT, ".agents", "skills", "sales", "SKILL.md")), "der Schnitt im Klon hat den Skill sales im Arbeitsordner geloescht");
+    assert(!PARTNER_MATERIAL || existsSync(join(ROOT, ".agents", "skills", "sales", "SKILL.md")), "der Schnitt im Klon hat den Skill sales im Arbeitsordner geloescht");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -6917,7 +6918,8 @@ check("Kein Preis für Arasul steht im Kit", () => {
     ".ara/knowledge/sales.de.md",
   ];
   const betrag = /\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?\s*(?:Euro|EUR|€)|(?:Euro|EUR|€)\s*\d/;
-  for (const datei of dateien) {
+  // Was ein Unternehmen nicht hat (sales.md), kann auch keinen Preis nennen.
+  for (const datei of dateien.filter((d) => PARTNER_MATERIAL || !partnerOnly(d))) {
     const text = readFileSync(join(ROOT, datei), "utf8");
     const treffer = text.match(betrag);
     assert(!treffer, `${datei} nennt einen Betrag: ${treffer?.[0]}`);
@@ -12716,6 +12718,8 @@ check("Jeder der neun Befehle führt eine Liste, was geklärt sein muss, und die
     invoice: "invoicing", device: "device", maintain: "maintenance-flow", root: "root",
   };
   for (const [befehl, datei] of Object.entries(wissen)) {
+    // Das Wissen der Partnerbefehle liegt in einem Unternehmen nicht mehr da.
+    if (!PARTNER_MATERIAL && partnerOnly(`.ara/knowledge/${datei}.md`)) continue;
     assert(agents.includes(`\`${datei}.md\``), `AGENTS.md nennt ${datei}.md nicht in der Regel`);
     for (const [endung, titel] of [[".md", "What must be clear"], [".de.md", "Was geklärt sein muss"]]) {
       const text = readFileSync(join(ROOT, ".ara", "knowledge", `${datei}${endung}`), "utf8");
@@ -13830,6 +13834,8 @@ check("Verweise auf Abschnitte treffen eine Ueberschrift in der Sprache des Blat
       const sprache = datei.endsWith(".mjs") ? (de ? "de" : "en") : deutsch(rel) ? "de" : "en";
       const ziel = basis + (sprache === "de" ? ".de.md" : ".md");
       gezaehlt++;
+      // Ein Unternehmen hat das Blatt der Partnerware nicht, der Verweis darauf bleibt gueltig.
+      if (!PARTNER_MATERIAL && partnerOnly(ziel)) continue;
       if (!existsSync(join(ROOT, ziel))) falsch.push(`${rel} → ${ziel} gibt es nicht`);
       else if (!titel(join(ROOT, ziel)).has(gesucht)) falsch.push(`${rel} → ${ziel} hat keinen Abschnitt "${gesucht}"`);
     }
@@ -14475,6 +14481,9 @@ check("Der Selbsttest ist in einem blanken Klon gruen", () => {
 
 console.log(
   `\n${results.length - failures} von ${results.length} Prüfungen bestanden.` +
+    (results.some((r) => r.skipped)
+      ? `\n${results.filter((r) => r.skipped).length} davon übersprungen, weil sie hier nichts messen können.`
+      : "") +
     (failures ? "\n\nDas Kit ist in diesem Zustand nicht verlässlich." : "") +
     (ONLY ? `\n\nNur die Prüfungen zu /${ONLY.source}/ liefen. Das ist kein Nachweis vor einem Merge.` : "")
 );

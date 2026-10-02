@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.65.1 (2026-10-02)
+
+Contract: up to 7
+
+- **Der Selbsttest ist auch im Zweig Unternehmen grün, wie ihn ein übergebenes Kunden-Repo hat (K25).** In einem Klon, auf dem `commands.mjs --apply --role company` gelaufen ist (Partnerdateien wie `sales.md` fehlen, skip-worktree), wurden fünf Prüfungen rot: die Zahl der Skills, die Prüfung des Schnitts im Klon, die Preisprüfung, die Listen „Was geklärt sein muss" und die Verweise auf Abschnitte in Partnerblättern. Sie messen jetzt nur, was dieser Zweig hat, und sagen für den Rest „übersprungen"; die Zusammenfassung zählt die übersprungenen Prüfungen in einer eigenen Zeile. Der Zweig Partner misst genau wie vorher.
+
 ## 0.65.0 (2026-10-02)
 
 Kontrakt: bis 7
