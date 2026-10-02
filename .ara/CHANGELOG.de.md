@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.64.5 (2026-10-02)
+
+Kontrakt: bis 7
+
+- **Der Test „eine fremde Akte gibt 404“ erreicht ein Gerät mit selbst ausgestelltem Zertifikat (K24).** In Codex gegen den Orin gelaufen, konnte der Test das Zertifikat nicht annehmen, und der Agent schaltete die Zertifikatsprüfung für den ganzen Prozess ab, um durchzukommen. Der Test kennt jetzt `--unsicher` und nimmt dann dieses Zertifikat nur für seine eigenen Anfragen an; ohne den Schalter sagt er in einem Satz, was nicht stimmt, statt einen Stapelabzug zu drucken. Am Orin in Codex 0.160.0 gemessen: das Interview von `/app` mit der Antwortdatei in drei Runden zu je drei Fragen, die App mit Muster 7, zehn von zehn Prüfungen 404, 403 und 401 wie erwartet, und eine Übernahme mit `transfer.mjs`, `--prove` Ausgang 0.
+
 ## 0.64.4 (2026-10-02)
 
 Kontrakt: bis 7

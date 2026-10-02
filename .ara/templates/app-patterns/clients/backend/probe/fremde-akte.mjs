@@ -17,8 +17,16 @@
  * Akten "Probe-…" und eine Akte darin, in Arbeit, ohne Lauf. Die Zuordnungen löst sie am Ende
  * wieder, danach sieht niemand diese Akten mehr.
  *
+ * Ein Gerät mit selbst ausgestelltem Zertifikat (`tls: selfsigned` in der Geräteakte) braucht
+ * `--unsicher`: dann nimmt der Test dieses Zertifikat an, für seine eigenen Anfragen und sonst
+ * nirgends. Ohne den Schalter prüft er das Zertifikat. Die Prüfung im ganzen Prozess abzuschalten
+ * (`NODE_TLS_REJECT_UNAUTHORIZED=0`) ist der falsche Weg.
+ *
  * Ausgang 0, wenn alles hält, sonst 1 mit dem Satz, was nicht hielt.
  */
+
+import http from "node:http";
+import https from "node:https";
 
 function argument(name) {
   const stelle = process.argv.indexOf(`--${name}`);
@@ -33,6 +41,7 @@ function mensch(name) {
   return m;
 }
 
+const unsicher = process.argv.includes("--unsicher");
 const basis = (argument("basis") || "").replace(/\/+$/, "");
 if (!basis) {
   console.error("--basis fehlt: die Adresse der laufenden App, bis einschließlich /api.");
@@ -42,13 +51,36 @@ const verwaltung = mensch("verwaltung");
 const a = mensch("a");
 const b = mensch("b");
 
+function anfrage(methode, adresse, kopf, rumpf) {
+  const url = new URL(adresse);
+  const modul = url.protocol === "https:" ? https : http;
+  const optionen = { method: methode, headers: kopf, ...(url.protocol === "https:" && unsicher ? { rejectUnauthorized: false } : {}) };
+  return new Promise((fertig) => {
+    const req = modul.request(url, optionen, (antwort) => {
+      const teile = [];
+      antwort.on("data", (t) => teile.push(t));
+      antwort.on("end", () => fertig({ status: antwort.statusCode, text: Buffer.concat(teile).toString("utf8") }));
+    });
+    req.on("error", (e) => {
+      const zertifikat = /certificate|SELF_SIGNED|DEPTH_ZERO/i.test(`${e.code} ${e.message}`);
+      console.error(
+        zertifikat
+          ? "Das Zertifikat der App ist selbst ausgestellt und das Gerät hat es nicht beglaubigt. Ist es das Gerät, das Sie kennen, lassen Sie den Test noch einmal mit --unsicher laufen."
+          : `Die App antwortet nicht (${e.code || e.message}). Läuft sie, und stimmt --basis?`
+      );
+      process.exit(2);
+    });
+    if (rumpf) req.write(rumpf);
+    req.end();
+  });
+}
+
 async function ruf(wer, methode, pfad, rumpf) {
   const kopf = { "content-type": "application/json", ...wer.kopf };
-  const antwort = await fetch(`${basis}${pfad}`, { method: methode, headers: kopf, body: rumpf ? JSON.stringify(rumpf) : undefined });
-  const text = await antwort.text();
+  const antwort = await anfrage(methode, `${basis}${pfad}`, kopf, rumpf ? JSON.stringify(rumpf) : undefined);
   let daten = null;
   try {
-    daten = JSON.parse(text);
+    daten = JSON.parse(antwort.text);
   } catch {
     // Keine JSON-Antwort: die Prüfung unten sagt es.
   }
