@@ -126,7 +126,7 @@ export function connectionFindings(contract, manifest) {
   if (!manifest || manifest.verbindungen === undefined) return [];
   const schema = contract?.app_json?.schema;
   if (!schema) return [];
-  if (schema.properties && "verbindungen" in schema.properties) return [];
+  if (schema.properties && "verbindungen" in schema.properties) return plainHostFindings(manifest.verbindungen);
   if (schema.additionalProperties === false) return [];
   return [
     t(
@@ -134,4 +134,59 @@ export function connectionFindings(contract, manifest) {
       "verbindungen steht in app.json, und der Kontrakt dieses Geräts nennt das Feld noch nicht. Es ist ungeprüft, und das Gerät hält die App nicht daran."
     ),
   ];
+}
+
+/**
+ * Ein Satz fuer den Menschen: wohin diese App von sich aus kommt.
+ *
+ * Nur wenn der Kontrakt des Geraets ein Netz ohne Internet nennt (`netz.internet` ist `false`),
+ * sonst weiss das Kit nichts ueber den Ausgang und sagt nichts. Die Hostnamen sind die der App,
+ * das Kit setzt keinen eigenen dazu.
+ */
+export function reachLine(contract, manifest) {
+  const netz = contract?.netz;
+  if (!netz || netz.internet !== false || !manifest) return null;
+  const hosts = Array.isArray(manifest.verbindungen) ? manifest.verbindungen : [];
+  if (!hosts.length) {
+    return t(
+      "- This app does not reach the internet: it has no entry in verbindungen. A call to the outside fails. Models and documents it gets through the device.",
+      "- Diese App kommt nicht ins Internet: sie hat keinen Eintrag in verbindungen. Ein Aufruf nach draußen scheitert. Modelle und Dokumente bekommt sie über das Gerät."
+    );
+  }
+  return t(
+    `- This app reaches exactly these addresses on the internet and nothing else: ${hosts.join(", ")}.`,
+    `- Diese App erreicht im Internet genau diese Adressen und sonst nichts: ${hosts.join(", ")}.`
+  );
+}
+
+/**
+ * Was an einem Eintrag nicht stimmt, in den Worten eines Menschen.
+ *
+ * Das Schema des Geraets urteilt ueber die Form und nennt ein Muster, das niemand liest. Hier
+ * steht, was ein Mensch daran aendern kann: nur der Name der Seite, klein, ohne `https://`, ohne
+ * Port, ohne Pfad, ohne Stern, keine Zahlenadresse. Das ist die Lesung des Kits, keine Aussage
+ * ueber das Geraet; ob der Eintrag gilt, entscheidet dessen Schema.
+ */
+function plainHostFindings(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const entry of list) {
+    if (typeof entry !== "string") continue;
+    let why = null;
+    if (/^[a-z]+:\/\//i.test(entry)) why = t("it starts with https:// or similar", "es beginnt mit https:// oder Ähnlichem");
+    else if (/[\/?#]/.test(entry)) why = t("it has a path after the name", "hinter dem Namen steht ein Pfad");
+    else if (/:\d*$/.test(entry)) why = t("it has a port", "es hat einen Port");
+    else if (/\*/.test(entry)) why = t("it has a star, and the device takes whole names only", "es hat einen Stern, und das Gerät nimmt nur ganze Namen");
+    else if (/^[\d.]+$/.test(entry) || entry.includes("[")) why = t("it is a number address, not a name", "es ist eine Zahlenadresse, kein Name");
+    else if (entry !== entry.toLowerCase()) why = t("it has capital letters", "es hat Großbuchstaben");
+    if (why) {
+      out.push(
+        t(
+          `verbindungen: "${entry}" does not fit, ${why}. Write only the name of the site, in small letters, for example api.example.org.`,
+          `verbindungen: "${entry}" passt nicht, ${why}. Schreib nur den Namen der Seite, klein, zum Beispiel api.example.org.`
+        )
+      );
+    }
+  }
+  return out;
 }

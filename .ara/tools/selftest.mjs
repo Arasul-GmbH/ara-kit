@@ -2662,6 +2662,23 @@ check("Das Kit kennt die höchste Fassung, die es versteht", () => {
   return `Kit versteht bis ${KIT_CONTRACT_VERSION}`;
 });
 
+check("Kontrakt 7: das Kit versteht ihn, liest das Netz und sagt, wohin eine App kommt", async () => {
+  assert(KIT_CONTRACT_VERSION >= 7, "das Kit versteht Kontrakt 7 nicht");
+  const sieben = checkVersion({ ...KONTRAKT, kontrakt: 7, netz: { name: "x", internet: false, regeln: [] } });
+  assert(sieben.ok, "ein Gerät mit Kontrakt 7 hält das Kit an: " + sieben.text);
+  const { reachLine, connectionFindings } = await import("./lib/connections.mjs");
+  const netz = { netz: { internet: false } };
+  assert(/nicht ins Internet|not reach the internet/.test(reachLine(netz, {})), "eine App ohne Eintrag wird nicht als ohne Internet gemeldet");
+  const mit = reachLine(netz, { verbindungen: ["api.example.org"] });
+  assert(/api\.example\.org/.test(mit), "der Eintrag steht nicht im Satz");
+  assert(reachLine({}, {}) === null, "ohne Netz im Kontrakt sagt das Kit nichts über den Ausgang");
+  const schema = { app_json: { schema: { properties: { verbindungen: { type: "array" } } } } };
+  const befund = connectionFindings(schema, { verbindungen: ["HTTPS://Foo:80", "api.example.org"] });
+  assert(befund.length === 1 && /HTTPS:\/\/Foo:80/.test(befund[0]), "ein Eintrag, der nicht passt, wird nicht in einem Satz benannt");
+  assert(connectionFindings(schema, { verbindungen: ["api.example.org"] }).length === 0, "ein guter Eintrag bekommt einen Befund");
+  return "Fassung 7 bedient, Netz gelesen, Einträge in einem Satz geprüft";
+});
+
 check("Welche Ordner ein Manifest verspricht, sagt der Kontrakt", () => {
   // Das Kit zählt die Felder nicht auf, es liest die Platzhalter aus der Wurzel
   // des Pakets. Kommt dort einer dazu, muss im Kit nichts nachgezogen werden.

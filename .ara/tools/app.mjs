@@ -125,7 +125,7 @@ import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mj
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
-import { connectionFindings, describeConnections } from "./lib/connections.mjs";
+import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
@@ -1075,6 +1075,22 @@ function contractRuleSections() {
       ...freigaben.map((r) => `- ${r}`)
     );
   }
+  const netz = contract?.netz;
+  if (netz?.regeln?.length) {
+    sections.push(
+      "",
+      t("## The network of an app", "## Das Netz einer App"),
+      "",
+      t(
+        `They stand word for word in the contract, under \`netz\`. Network \`${netz.name ?? "?"}\`, internet: ${netz.internet ? "yes" : "no"}. ` +
+          `An app without an entry in \`${netz.forderung ?? "verbindungen"}\` does not reach the internet.`,
+        `Sie stehen wörtlich im Kontrakt, unter \`netz\`. Netz \`${netz.name ?? "?"}\`, Internet: ${netz.internet ? "ja" : "nein"}. ` +
+          `Eine App ohne Eintrag in \`${netz.forderung ?? "verbindungen"}\` kommt nicht ins Internet.`
+      ),
+      "",
+      ...netz.regeln.map((r) => `- ${r}`)
+    );
+  }
   return sections.concat(readingSections());
 }
 
@@ -1426,6 +1442,8 @@ function reportManifest(where, result, delivery) {
   ];
   if (result.ok) {
     lines.push(t("- This device's schema accepts the manifest.", "- Das Schema dieses Geräts nimmt das Manifest an."));
+    const reach = reachLine(contract, result.manifest);
+    if (reach) lines.push(reach);
   } else {
     lines.push(
       "",

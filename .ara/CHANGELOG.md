@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.64.0 (2026-10-02)
+
+Contract: up to 7
+
+- **The kit understands contract 7 (K24).** The devices that carry it no longer stop the kit. An app runs in a network of its own that has no way to the internet, and what it should reach outside it names in `verbindungen`, a list of site names. `--contract` prints the network of an app word for word from the device (`netz`), `--check` holds `verbindungen` against the schema of the device and says in one sentence which sites the app reaches, or that it reaches none. An entry that does not fit (capital letters, `https://`, port, path, star, number address) gets a sentence a person can act on, next to the device's own refusal. The kit knows no site by itself and sets none.
+- **The knowledge says it plainly:** an app without an entry does not get onto the internet. `/app` tells the human so once, in the interview about what leaves the device. Whether the device already enforces the list is for its contract to say, not for the kit.
+- **No more "unread fields" for the device.** `netz`, `protokoll`, `auslesen`, `warten` and `bilder` were read for some time but not listed as read, so a device of contract 7 was told the kit made nothing of them.
+
 ## 0.63.1 (2026-10-02)
 
 Contract: up to 6

@@ -52,6 +52,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 6,
     kann: "Eine App nennt im Manifest die Routen, die sie einem Agenten anbietet (`agent`): das Kit liest das Feld, reicht es unverändert an das Gerät weiter und hält jede Route, die es nennt, gegen den Quelltext des Backends. Wie das Feld geformt sein muss, sagt das Schema dieses Geräts.",
   },
+  {
+    version: 7,
+    kann: "Eine App läuft in einem eigenen Netz und kommt ohne Eintrag nicht ins Internet. Was sie nach draußen braucht, nennt sie im Manifest unter `verbindungen`: das Kit liest das Feld, prüft es gegen das Schema dieses Geräts, reicht es unverändert weiter und sagt dem Menschen, dass eine App ohne Eintrag nichts nach draußen schickt. Ob das Gerät die Einträge schon durchsetzt, sagt sein Kontrakt, nicht das Kit.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */
@@ -77,6 +81,11 @@ const READ_FIELDS = new Set([
   "endpunkte",
   "daten",
   "freigaben",
+  "netz",
+  "protokoll",
+  "auslesen",
+  "warten",
+  "bilder",
 ]);
 
 /** Was dieses Gerät im Kontrakt nennt und dieses Kit nicht liest. */
