@@ -413,7 +413,7 @@ export function dependencyFindings(library, packageJson) {
  * freiwillig, eine leere waere keine: das Geraet weist sie ab, und die App
  * kaeme wegen einer Auskunft nicht an, die sie gar nicht machen musste.
  */
-export function noteVersion(appDir, fassung) {
+export function noteVersion(appDir, fassung, { laufzeit = null } = {}) {
   const path = join(appDir, "app.json");
   if (!existsSync(path)) return false;
   let manifest = null;
@@ -424,8 +424,15 @@ export function noteVersion(appDir, fassung) {
   }
   if (!manifest || typeof manifest !== "object") return false;
   if (fassung) {
-    if (manifest.marken === fassung) return false;
-    manifest.marken = fassung;
+    // Zwei Formen, und die App entscheidet (Kontrakt 9): nur die Hauptzahl
+    // heisst, sie laedt die Bibliothek zur Laufzeit vom Geraet, drei Zahlen
+    // heissen, die Kopie steckt im Buendel. `laufzeit: null` laesst die Form
+    // stehen, die die App schon hat; ohne Feld gilt die ganze Fassung.
+    const bisher = typeof manifest.marken === "string" && /^\d+$/.test(manifest.marken);
+    const alsHaupt = laufzeit === null ? bisher : laufzeit;
+    const nun = alsHaupt ? fassung.split(".")[0] : fassung;
+    if (manifest.marken === nun) return false;
+    manifest.marken = nun;
   } else {
     if (!("marken" in manifest)) return false;
     delete manifest.marken;

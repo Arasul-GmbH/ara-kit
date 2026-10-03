@@ -3,8 +3,12 @@
 Eine App läuft in einem Rahmen in der Oberfläche von Arasul, und zwei Erscheinungsbilder auf einem
 Bildschirm sind ein Fehler. Darum gibt es eine Bibliothek für beide Seiten, ausgeliefert als
 **Paket**: `marken.json` nennt die Fassung, die Abhängigkeiten und jede Datei mit ihrem sha256. Jede
-App trägt eine Kopie unter `frontend/src/marken/`. Wie die Kopien zusammenhängen:
-`.ara/knowledge/design-guard.de.md`.
+App hat eine Kopie unter `frontend/src/marken/`, nur als Quelltext: Typen, `npm run dev`, eine
+Vorschau ohne Gerät. **Am Gerät kommt die Bibliothek vom Gerät.** In `app.json` steht
+`"marken": "<Hauptzahl>"` (`--new` schreibt es), die Seite lädt Bausteine und Stylesheet von der
+festen Adresse, die der Abschnitt `marken` des Kontrakts nennt, das Paket trägt keine Kopie, und ein
+Update des Geräts bringt die neue Fassung ohne Neubau. Drei Zahlen in `marken` oder
+`npm run build:kopie` bündeln stattdessen die Kopie. Kopien: `.ara/knowledge/design-guard.de.md`.
 
 ## Drei Sätze, zwei Stilblätter, eine Quelle für das Thema
 
@@ -16,7 +20,8 @@ App trägt eine Kopie unter `frontend/src/marken/`. Wie die Kopien zusammenhäng
 
 Ein ganzes Formular ist ein Muster: nachgebaut sind es zweihundert Zeilen, die die nächste App
 anders schreibt. `marken/theme.css` (beide Themen, der `@theme`-Block) wird **ohne Schicht** geladen,
-`marken/marken.css` **mit** `layer(components)`; die `stil.css` der Vorlage tut beides, lass es so.
+`marken/marken.css` **mit** `layer(components)`; die `kopie.css` der Vorlage tut beides, lass es so. Die `geraet.css` überlässt die Bibliothek dem
+Gerät und liest nur deine eigenen Klassen.
 
 **Das Thema kommt vom Gerät.** Die Shell setzt die Klasse `dark` und `data-theme="dark"` am
 `<html>` und schickt `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` liest und rät nicht; nur
@@ -34,7 +39,8 @@ sortiert nach einem Zeitstempel), `Formularseite` mit einer `Feldgruppe` je Absc
 `seiten/neu.tsx`, und `Seitenleiste` in `SidebarProvider` und `SidebarInset` in
 `rahmen/seitenleiste.tsx`, wo die App den aktiven Eintrag nennt. Die Anordnung der Seite gehört der
 Bibliothek. Eigene Regeln stehen am Ende von `stil.css`, nur mit Namen von Marken, ohne Farbe,
-Schrift oder Radius.
+Schrift oder Radius. Am Gerät kommen die Klassen der Bibliothek nur aus deren `marken.css`: was du
+selbst gestaltest, schreib dort mit Marken.
 
 ## Was jede Seite hält
 
@@ -71,9 +77,10 @@ und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build
   oder `Datenliste`, `<dialog>` statt `Dialog`, `<fieldset>` statt `Feldgruppe`, eine Reiterleiste
   mit `role="tablist"` statt `Tabs`. Ebenso verboten: ein `<div className="karte">` neben `Karte`,
   eine Liste mit Suchfeld neben `Datenliste`.
-- **Das Feld `marken` in `app.json` fehlt oder ist veraltet.** Eine App mit `frontend/src/marken/`
-  nennt dort die Fassung der Kopie, das Feld ohne Kopie ist ebenso rot. `--new` schreibt es,
-  `marken.mjs --sync` hält es.
+- **Das Feld `marken` in `app.json` fehlt oder ist veraltet.** Die Hauptzahl allein braucht keine
+  passende Kopie, drei Zahlen müssen zur Kopie passen. `--new` schreibt es, `marken.mjs --sync`
+  hält es. Gegen ein Gerät hält `--check` auch eine Hauptzahl an, die das Gerät nicht ausliefert,
+  und weist bei einer gealterten Kopie nur hin.
 
 Gemessen wird der eigene Quelltext der App, nicht der Spiegel. **Ein fremder Container ist
 ausgenommen**: ohne `frontend`, mit fertigem `image`, bringt er keine Oberfläche mit. Der Selbsttest

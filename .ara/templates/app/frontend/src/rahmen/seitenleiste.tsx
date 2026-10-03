@@ -17,7 +17,7 @@
  * der App bleiben eine Ebene tief (siehe `basis.ts`).
  */
 
-import { FilePlusIcon, InboxIcon } from "lucide-react";
+import { CircleCheckIcon, ClockIcon, FilePlusIcon, InboxIcon, type LucideIcon } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from "@marken";
 
@@ -27,6 +27,13 @@ export const ANSICHTEN = [
   { id: "offen", wort: "Offen" },
   { id: "entschieden", wort: "Entschieden" },
 ] as const;
+
+/** Je Ansicht ein eigenes Zeichen: zugeklappt bleibt von der Leiste nur das Symbol, und dreimal dasselbe sagt nichts. */
+const SYMBOLE: Record<(typeof ANSICHTEN)[number]["id"], LucideIcon> = {
+  alle: InboxIcon,
+  offen: ClockIcon,
+  entschieden: CircleCheckIcon,
+};
 
 export type Ansicht = (typeof ANSICHTEN)[number]["id"];
 
@@ -55,13 +62,16 @@ export function AppSeitenleiste({ name }: { name: string }) {
   const gruppen: SeitenleistenGruppe[] = [
     {
       titel: "Vorgänge",
-      eintraege: ANSICHTEN.map((eintrag) => ({
-        kennung: `ansicht-${eintrag.id}`,
-        name: eintrag.wort,
-        symbol: <InboxIcon />,
-        aktiv: aufListe && eintrag.id === ansicht,
-        aufKlick: () => gehe(eintrag.id === "alle" ? "/" : `/?ansicht=${eintrag.id}`),
-      })),
+      eintraege: ANSICHTEN.map((eintrag) => {
+        const Symbol = SYMBOLE[eintrag.id];
+        return {
+          kennung: `ansicht-${eintrag.id}`,
+          name: eintrag.wort,
+          symbol: <Symbol />,
+          aktiv: aufListe && eintrag.id === ansicht,
+          aufKlick: () => gehe(eintrag.id === "alle" ? "/" : `/?ansicht=${eintrag.id}`),
+        };
+      }),
     },
     {
       titel: "Einreichen",

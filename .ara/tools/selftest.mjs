@@ -146,6 +146,7 @@ import {
   classesWithoutRule,
   dependencyFindings,
   hashOf,
+  noteVersion,
   readLibrary,
   readPackage,
   sets,
@@ -153,6 +154,7 @@ import {
   unreachable,
 } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
+import { frontendLoadsLibrary, libraryFindings, libraryHints, librarySection, majorOf, readServed, runtimeMajor } from "./lib/laufzeit.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
   needsParameter,
@@ -3657,9 +3659,10 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
     assert(tool("marken.mjs", []).status === 0, "der Waechter faellt ueber die frisch angelegte App");
     const manifest = JSON.parse(readFileSync(join(dir, "app.json"), "utf8"));
     assert(manifest.id === name && manifest.name === "Probe", "die Platzhalter der Vorlage wurden nicht ersetzt");
-    // Auf welcher Fassung die App steht, sagt sie im Manifest (Kontrakt 4).
+    // Eine neue App lädt die Bibliothek zur Laufzeit vom Gerät (Kontrakt 9): im
+    // Manifest steht nur die Hauptzahl der Kopie, die Kopie ist Quelltext.
     assert(
-      manifest.marken === bibliothek.fassung,
+      manifest.marken === bibliothek.fassung.split(".")[0],
       `app.json nennt marken ${manifest.marken}, die Bibliothek steht auf ${bibliothek.fassung}`
     );
     assert(
@@ -6144,15 +6147,25 @@ check("Das Aussehen einer App kommt aus der Bibliothek und aus sonst nichts", ()
   // Die Reihenfolge und die Schichten stehen so in der EINBAU.md des Pakets,
   // und beide Angaben sind Bedingungen: `@theme` in einer Schicht ist keins
   // mehr, und ungeschichtetes CSS gewinnt gegen jede Utility.
-  const stil = readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "src", "stil.css"), "utf8");
+  const quellen = join(ROOT, ".ara", "templates", "app", "frontend", "src");
+  const stil = readFileSync(join(quellen, "kopie.css"), "utf8");
   const reihe = ['@import "tailwindcss"', '@import "tw-animate-css"', './marken/theme.css";', './marken/marken.css" layer(components);'];
   let zuletzt = -1;
   for (const stueck of reihe) {
     const stelle = stil.indexOf(stueck);
-    assert(stelle > zuletzt, `in stil.css steht ${stueck} nicht nach dem davor`);
+    assert(stelle > zuletzt, `in kopie.css steht ${stueck} nicht nach dem davor`);
     zuletzt = stelle;
   }
-  assert(!stil.includes("design.css\""), "stil.css laedt noch eine design.css");
+  assert(!stil.includes("design.css\""), "kopie.css laedt noch eine design.css");
+  // Vom Geraet kommt die Bibliothek fertig: das Stylesheet fuer diesen Weg
+  // uebersetzt sie nicht noch einmal, und die eigenen Regeln stehen in einer
+  // Datei, die beide Wege teilen.
+  const geraet = readFileSync(join(quellen, "geraet.css"), "utf8");
+  assert(!/@import\s+["']\.\/marken\/marken\.css/.test(geraet), "geraet.css uebersetzt die Bibliothek mit, statt sie vom Geraet zu laden");
+  assert(/@reference\s+["']\.\/marken\/theme\.css/.test(geraet), "geraet.css kennt die Marken nur als Verweis nicht");
+  assert(!/@import\s+["']tailwindcss["']/.test(geraet), "geraet.css holt das ganze Tailwind samt Basis, die kommt vom Geraet");
+  assert(!/@import/.test(readFileSync(join(quellen, "stil.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "")), "stil.css holt selbst etwas, das gehoert in kopie.css und geraet.css");
+  assert(/@import\s+["']\.\/stil\.css["']/.test(stil) && /@import\s+["']\.\/stil\.css["']/.test(geraet), "die eigenen Regeln stehen nicht in beiden Wegen");
   assert(!existsSync(join(ROOT, ".ara", "tools", "lib", "design.mjs")), "lib/design.mjs liegt noch da");
 
   // Zwei Themen, und Hell setzt nichts. Das ist der Vertrag des Geraets, und
@@ -6166,7 +6179,7 @@ check("Das Aussehen einer App kommt aus der Bibliothek und aus sonst nichts", ()
   assert(theme.includes(":root {"), "theme.css traegt keinen :root-Block");
   assert(/\[data-theme=['"]dark['"]\]/.test(theme), "theme.css traegt keinen Block fuer Dunkel");
 
-  return `theme.css und marken.css im Spiegel, stil.css in der Reihenfolge der EINBAU.md, zwei Themen`;
+  return `theme.css und marken.css im Spiegel, kopie.css in der Reihenfolge der EINBAU.md, geraet.css ohne die Bibliothek, zwei Themen`;
 });
 
 check("Die Vorlage steht auf Marken 5.1.0, ein Diagramm kommt nur über @marken/diagramm", () => {
@@ -6459,6 +6472,152 @@ await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zei
     server?.close();
     rmSync(work, { recursive: true, force: true });
   }
+});
+
+await checkAsync("Das Gerüst lädt die Bausteine vom Gerät und trägt keine Kopie, ohne Gerät fällt es auf die Kopie zurück", async () => {
+  // Kontrakt 9: steht im Manifest nur die Hauptzahl, bleibt die Bibliothek
+  // ausserhalb des Buendels und die Seite laedt sie von der festen Adresse des
+  // Geraets. Gemessen am gebauten Gerüst: was in `dist/` steht, geht ins Paket.
+  if (process.env.ARA_SELFTEST_KLON) return "übersprungen, im Klon liegt dieselbe Vorlage, der Worktree misst sie";
+  if (spawnSync("npm", ["--version"], { encoding: "utf8" }).status !== 0) return "übersprungen, hier gibt es kein npm";
+
+  const work = mkdtempSync(join(tmpdir(), "ara-laufzeit-"));
+  const front = join(work, "frontend");
+  const laufen = (befehl, args, cwd) =>
+    new Promise((fertig) => {
+      const kind = spawn(befehl, args, { cwd });
+      let ausgabe = "";
+      kind.stdout.on("data", (d) => (ausgabe += d));
+      kind.stderr.on("data", (d) => (ausgabe += d));
+      kind.on("close", (status) => fertig({ status, ausgabe }));
+    });
+  const lesen = (ordner) => {
+    const assets = join(ordner, "assets");
+    const dateien = readdirSync(assets);
+    const js = dateien.filter((n) => n.endsWith(".js")).map((n) => readFileSync(join(assets, n), "utf8")).join("");
+    const css = dateien.filter((n) => n.endsWith(".css")).map((n) => readFileSync(join(assets, n), "utf8")).join("");
+    return { js, css, html: readFileSync(join(ordner, "index.html"), "utf8") };
+  };
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app", "frontend"), front, {
+      recursive: true,
+      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
+    });
+    for (const datei of ["package.json", "index.html", join("src", "app.tsx")]) {
+      const pfad = join(front, datei);
+      writeFileSync(pfad, readFileSync(pfad, "utf8").replace(/\{\{id\}\}/g, "laufzeit").replace(/\{\{name\}\}/g, "Laufzeit"));
+    }
+    writeFileSync(join(work, "app.json"), JSON.stringify({ id: "laufzeit", marken: "5" }));
+    const geholt = await laufen("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], front);
+    if (geholt.status !== 0) return `übersprungen, npm install ging nicht: ${geholt.ausgabe.trim().split("\n").pop()}`;
+
+    // Mit der Hauptzahl: vom Geraet.
+    const vomGeraet = await laufen("npm", ["run", "build"], front);
+    assert(vomGeraet.status === 0, `das Gerüst baut nicht vom Gerät:\n${vomGeraet.ausgabe.split("\n").slice(-12).join("\n")}`);
+    const g = lesen(join(front, "dist"));
+    assert(/href="\/marken\/5\/marken\.css"/.test(g.html), "die index.html laedt marken.css nicht von der Adresse des Geraets");
+    for (const datei of ["marken.js", "react.js", "react-dom-client.js", "jsx-runtime.js"]) {
+      assert(g.js.includes(`/marken/5/${datei}`), `das Buendel laedt ${datei} nicht vom Geraet`);
+    }
+    assert(frontendLoadsLibrary(join(front, "dist"), "5"), "frontendLoadsLibrary erkennt den Bau vom Geraet nicht");
+    const kbGeraet = Math.round((Buffer.byteLength(g.js) + Buffer.byteLength(g.css)) / 1024);
+    assert(kbGeraet < 200, `das Bündel vom Gerät hat ${kbGeraet} KB: die Bibliothek steckt wohl drin`);
+    assert(!/recharts|radix/i.test(g.js), "Radix oder Recharts stecken im Buendel, die Bibliothek ist nicht ausserhalb");
+    assert(!existsSync(join(front, "dist", "assets", "pdf-dateien")), "die Stuetzdateien von pdf.js liegen im Paket, sie kommen vom Geraet");
+
+    // Ohne Geraet: die Kopie, mit denselben Quelltexten.
+    const kopie = await laufen("npm", ["run", "build:kopie"], front);
+    assert(kopie.status === 0, `das Gerüst baut nicht aus der Kopie:\n${kopie.ausgabe.split("\n").slice(-12).join("\n")}`);
+    const k = lesen(join(front, "dist"));
+    assert(!/\/marken\/5\//.test(k.html + k.js), "der Bau aus der Kopie zeigt noch auf das Geraet");
+    assert(!frontendLoadsLibrary(join(front, "dist"), "5"), "frontendLoadsLibrary haelt eine Kopie fuer den Bau vom Geraet");
+    const kbKopie = Math.round((Buffer.byteLength(k.js) + Buffer.byteLength(k.css)) / 1024);
+    assert(kbKopie > 300, `der Bau aus der Kopie hat nur ${kbKopie} KB: die Bibliothek fehlt`);
+
+    // Nennt das Manifest drei Zahlen, gilt die Kopie, auch ohne den Schalter.
+    writeFileSync(join(work, "app.json"), JSON.stringify({ id: "laufzeit", marken: "5.1.0" }));
+    const ganze = await laufen("npm", ["run", "build"], front);
+    assert(ganze.status === 0, "das Gerüst baut mit einer ganzen Fassung nicht");
+    assert(!/\/marken\/5\//.test(lesen(join(front, "dist")).js), "eine App mit drei Zahlen laedt vom Geraet");
+    return `vom Gerät ${kbGeraet} KB und ohne Bibliothek, aus der Kopie ${kbKopie} KB, drei Zahlen im Manifest heissen Kopie`;
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Kontrakt 9: was das Kit zur Bibliothek zur Laufzeit hält, sagt und liest", async () => {
+  const neun = {
+    marken: {
+      adresse: "/marken/<haupt>/",
+      verzeichnis: "/marken/marken.json",
+      regeln: ["Eine App KANN die Bibliothek zur Laufzeit laden."],
+    },
+  };
+  const vomGeraet = { id: "x", marken: "5" };
+  assert(runtimeMajor(vomGeraet) === "5" && runtimeMajor({ marken: "5.2.1" }) === null && runtimeMajor({}) === null, "die zwei Formen von marken werden nicht auseinandergehalten");
+  assert(majorOf("5.3.1") === "5" && majorOf("x") === null, "die Hauptzahl einer Fassung wird nicht gelesen");
+
+  // Ein Geraet ohne den Abschnitt liefert nichts aus: die Seite bliebe leer, also haelt das Kit an.
+  const ohne = libraryFindings({}, vomGeraet, {});
+  assert(ohne.length === 1 && /kein.* marken|no section marken/i.test(ohne[0]), `ein Gerät ohne Abschnitt marken hält die App nicht an: ${ohne.join(" | ")}`);
+  assert(libraryFindings(neun, vomGeraet, { served: { haupt: "5", fassung: "5.3.1" } }).length === 0, "die passende Hauptzahl wird beanstandet");
+  const andere = libraryFindings(neun, vomGeraet, { served: { haupt: "6", fassung: "6.0.0" } });
+  assert(andere.length === 1 && /6/.test(andere[0]), `eine andere Hauptzahl am Gerät hält die App nicht an: ${andere.join(" | ")}`);
+  assert(libraryFindings(neun, vomGeraet, { served: null }).length === 0, "eine Antwort, die nicht zu lesen war, hält die App an");
+  assert(libraryFindings({}, { id: "x", marken: "5.2.1" }, {}).length === 0, "eine Kopie wird an einem Gerät ohne Abschnitt angehalten: sie bleibt gültig");
+
+  // Eine Kopie veraltet still: das Kit sagt es als Hinweis und haelt nichts an.
+  const hinweis = libraryHints(neun, { id: "x", marken: "5.2.1" }, { served: { haupt: "5", fassung: "5.3.1" } });
+  assert(hinweis.length === 1 && /5\.3\.1/.test(hinweis[0]), `eine Kopie bekommt keinen Hinweis: ${hinweis.join(" | ")}`);
+  assert(libraryHints({}, { id: "x", marken: "5.2.1" }, {}).length === 0, "ein Gerät ohne Abschnitt bekommt einen Hinweis zur Kopie");
+  assert(libraryHints(neun, vomGeraet, { served: null }).some((z) => /Not checked|Nicht geprüft/.test(z)), "eine nicht lesbare Antwort wird nicht als ungeprüft gesagt");
+  assert(librarySection(neun).some((z) => z.includes("Eine App KANN")), "der Abschnitt marken steht nicht wörtlich im Bericht");
+
+  // Der Weg des Pakets: die gebaute Oberflaeche muss auf die Adresse zeigen.
+  const dir = mkdtempSync(join(tmpdir(), "ara-laufzeit-paket-"));
+  try {
+    mkdirSync(join(dir, "assets"), { recursive: true });
+    writeFileSync(join(dir, "index.html"), "<!doctype html>");
+    writeFileSync(join(dir, "assets", "a.js"), 'import{h}from"/marken/5/marken.js";');
+    assert(libraryFindings(neun, vomGeraet, { frontendDir: dir, served: { haupt: "5", fassung: "5.3.1" } }).length === 0, "ein Paket, das vom Gerät lädt, wird beanstandet");
+    writeFileSync(join(dir, "assets", "a.js"), "var x=1;");
+    assert(libraryFindings(neun, vomGeraet, { frontendDir: dir, served: { haupt: "5", fassung: "5.3.1" } }).length === 1, "ein Paket, das die Bibliothek nicht vom Gerät lädt, hält nichts an");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // Was das Geraet ausliefert, steht ohne Anmeldung in der Datei, die der Kontrakt nennt.
+  const server = createServer((anfrage, antwort) => {
+    antwort.writeHead(anfrage.url === "/marken/marken.json" ? 200 : 404, { "content-type": "application/json" });
+    antwort.end(anfrage.url === "/marken/marken.json" ? JSON.stringify({ fassung: "5.3.1", haupt: 5, adresse: "/marken/5/" }) : "{}");
+  });
+  await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
+  try {
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const gelesen = await readServed(neun, { base });
+    assert(gelesen?.haupt === "5" && gelesen.fassung === "5.3.1", `die ausgelieferte Fassung wird nicht gelesen: ${JSON.stringify(gelesen)}`);
+    assert((await readServed({}, { base })) === null, "ein Gerät ohne Abschnitt wird gefragt");
+    assert((await readServed({ marken: { adresse: "/marken/<haupt>/", verzeichnis: "/gibt-es-nicht.json" } }, { base })) === null, "eine Absage zählt als Antwort");
+  } finally {
+    server.close();
+  }
+
+  // noteVersion behaelt die Form, die die App hat.
+  const app = mkdtempSync(join(tmpdir(), "ara-notiz-"));
+  try {
+    writeFileSync(join(app, "app.json"), JSON.stringify({ id: "x", marken: "5" }));
+    noteVersion(app, "5.4.0");
+    assert(JSON.parse(readFileSync(join(app, "app.json"), "utf8")).marken === "5", "marken.mjs --sync macht aus der Hauptzahl eine Kopie");
+    writeFileSync(join(app, "app.json"), JSON.stringify({ id: "x", marken: "5.2.1" }));
+    noteVersion(app, "5.4.0");
+    assert(JSON.parse(readFileSync(join(app, "app.json"), "utf8")).marken === "5.4.0", "marken.mjs --sync laesst die Fassung einer Kopie stehen");
+    noteVersion(app, "6.0.0");
+    noteVersion(app, "6.0.0", { laufzeit: true });
+    assert(JSON.parse(readFileSync(join(app, "app.json"), "utf8")).marken === "6", "laufzeit: true schreibt nicht die Hauptzahl");
+  } finally {
+    rmSync(app, { recursive: true, force: true });
+  }
+  return "zwei Formen, Halte, Hinweise, Paket am Bündel, Verzeichnis des Geräts gelesen, noteVersion behält die Form";
 });
 
 await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Breite, keine Seite ist breiter als das Fenster", async () => {

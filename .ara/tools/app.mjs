@@ -125,6 +125,7 @@ import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mj
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
+import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
 import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
 import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
@@ -424,7 +425,11 @@ function createApp(name) {
   // Auf welcher Fassung des Designsystems diese App steht, sagt sie im
   // Manifest (Kontrakt 4, freiwillig). Nicht in der Vorlage als Platzhalter:
   // welche Fassung hier landet, entscheidet sich erst eine Zeile darueber.
-  noteVersion(dir, library?.fassung || null);
+  // Eine neue App lädt die Bibliothek zur Laufzeit vom Gerät (Kontrakt 9): im
+  // Manifest steht nur die Hauptzahl, die Kopie unter `frontend/src/marken/` ist
+  // der Quelltext für Typen, `npm run dev` und den Rückfall ohne Gerät. Wer eine
+  // Kopie im Bündel will, schreibt die ganze Fassung in `marken`.
+  noteVersion(dir, library?.fassung || null, { laufzeit: true });
 
   writeState({ app: name });
   console.log(
@@ -451,10 +456,14 @@ function createApp(name) {
       ...(Object.keys(fields).length ? [`  ${writtenNotPromised()}`] : []),
       library
         ? t(
-            `- Design system: version ${library.fassung}, ${library.files.size} files, ` +
-              `${source ? "out of the mirror" : "the copy of the scaffold.\n  node .ara/tools/mirror.mjs --refresh fetches the artifact"}`,
-            `- Designsystem: Fassung ${library.fassung}, ${library.files.size} Dateien, ` +
-              `${source ? "aus dem Spiegel" : "die Kopie der Vorlage.\n  node .ara/tools/mirror.mjs --refresh holt das Artefakt"}`
+            `- Design system: the app loads it from the device at runtime (marken "${library.fassung.split(".")[0]}"), the package carries no copy.\n` +
+              `  The copy under frontend/src/marken (version ${library.fassung}, ${library.files.size} files, ` +
+              `${source ? "out of the mirror" : "the copy of the scaffold.\n  node .ara/tools/mirror.mjs --refresh fetches the artifact"}) ` +
+              "is only source: types, npm run dev and a preview without a device.",
+            `- Designsystem: die App lädt es zur Laufzeit vom Gerät (marken "${library.fassung.split(".")[0]}"), das Paket trägt keine Kopie.\n` +
+              `  Die Kopie unter frontend/src/marken (Fassung ${library.fassung}, ${library.files.size} Dateien, ` +
+              `${source ? "aus dem Spiegel" : "die Kopie der Vorlage.\n  node .ara/tools/mirror.mjs --refresh holt das Artefakt"}) ` +
+              "ist nur Quelltext: Typen, npm run dev und eine Vorschau ohne Gerät."
           )
         : t("- Design system: none, the scaffold carries no library", "- Designsystem: keines, die Vorlage trägt keine Bibliothek"),
       "",
@@ -1070,6 +1079,30 @@ try {
 
 const { base, contract, version } = link;
 
+// Was das Gerät an Bibliothek ausliefert, einmal gefragt und nur, wenn ein Weg es braucht.
+let servedAnswer;
+const servedLibrary = async () => (servedAnswer === undefined ? (servedAnswer = await readServed(contract, { base, insecure: link.insecure })) : servedAnswer);
+
+/** Der Ordner der Oberfläche in einem Paket, wenn das Manifest einen nennt. */
+function frontendDirOf(dir, manifest) {
+  const folder = manifest?.frontend?.verzeichnis;
+  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return null;
+  return join(dir, folder);
+}
+
+/** Alles, was im Paket nicht zum Manifest und zu diesem Gerät passt, in Sätzen. */
+async function deliveryFindings(dir, manifest, result) {
+  const served = await servedLibrary();
+  return [
+    ...checkDelivery(dir, manifest),
+    ...checkBuild(dir, manifest),
+    ...agentFindings(dir, manifest, result.problems),
+    ...connectionFindings(contract, manifest),
+    ...flowFindings(dir, manifest),
+    ...libraryFindings(contract, manifest, { frontendDir: frontendDirOf(dir, manifest), served }),
+  ];
+}
+
 /**
  * Die Regeln für einen Flow aus dem Paket, wörtlich aus dem Kontrakt.
  *
@@ -1145,7 +1178,7 @@ function contractRuleSections() {
       ...netz.regeln.map((r) => `- ${r}`)
     );
   }
-  return sections.concat(readingSections());
+  return sections.concat(librarySection(contract), readingSections());
 }
 
 /** Der Typ eines Feldes aus einem JSON-Schema, lesbar: `object | null`. */
@@ -1580,7 +1613,7 @@ function umlautSection(dir, manifest) {
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest), ...flowFindings(dir, manifest)];
+  const delivery = await deliveryFindings(dir, manifest, result);
   if (arg.json) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
@@ -1591,6 +1624,7 @@ if (arg.check !== undefined) {
       spaced([
         ...reportManifest(relative(ROOT, dir) || dir, result, delivery).split("\n"),
         ...umlautSection(dir, manifest),
+        ...libraryHints(contract, manifest, { served: await servedLibrary() }),
         ...arrangementSection(dir, manifest),
         ...addressSection(dir),
         ...versionSection(),
@@ -1605,12 +1639,14 @@ if (arg.check !== undefined) {
 if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest), ...flowFindings(dir, manifest)];
+  const delivery = await deliveryFindings(dir, manifest, result);
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
   }
   console.log(umlautSection(dir, manifest).join("\n"));
+  const libraryNotes = libraryHints(contract, manifest, { served: await servedLibrary() });
+  if (libraryNotes.length) console.log(libraryNotes.join("\n"));
 
   // „Nichts eingespielt" allein schickt den Menschen in seine App. Der Grund
   // liegt hier im Kit, und der Weg heraus steht in derselben Meldung.
