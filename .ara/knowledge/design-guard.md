@@ -60,7 +60,9 @@ yes.
 controlled; pulling it up is a matter for the kit and not a handgrip in a partner's clone.
 It also writes `marken` into the app's `app.json`: since contract 4 the app says in its
 manifest which version it stands on, and a number left standing after a pull is exactly the
-answer the device uses to spot an ageing copy.
+answer the device uses to spot an ageing copy. An app that names only the major number
+(contract 9) keeps that form: the pull writes the new major number and pulls the copy, which
+for such an app is source for types and `npm run dev` and never goes into the package.
 
 **`/init` asks it.** Whoever brings the kit up to date sees while doing so whether their
 apps still stand at the library, and pulls them up in one step. Afterwards the app is built

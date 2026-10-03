@@ -60,7 +60,10 @@ ja.
 Versionsverwaltung; sie nachzuziehen ist Sache des Kits und kein Handgriff im Klon eines
 Partners. Es schreibt außerdem `marken` in die `app.json` der App: seit Kontrakt 4 sagt eine
 App in ihrem Manifest, auf welcher Fassung sie steht, und eine Zahl, die nach dem Nachziehen
-stehen bleibt, ist genau die Auskunft, an der das Gerät eine veraltete Kopie erkennen soll.
+stehen bleibt, ist genau die Auskunft, an der das Gerät eine veraltete Kopie erkennen soll. Eine App,
+die nur die Hauptzahl nennt (Kontrakt 9), behält diese Form: das Nachziehen schreibt die neue
+Hauptzahl und zieht die Kopie nach, die für eine solche App Quelltext für Typen und `npm run dev`
+ist und nie ins Paket geht.
 
 **`/init` fragt ihn.** Wer das Kit aktualisiert, sieht dabei, ob seine Apps noch an der
 Bibliothek stehen, und zieht sie in einem Schritt nach. Danach wird die App neu gebaut: die

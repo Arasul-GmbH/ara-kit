@@ -1,0 +1,32 @@
+/**
+ * Das Stylesheet, wenn die Bibliothek vom Gerät kommt (der Weg dieser Vorlage).
+ *
+ * Tokens, Regeln der Bausteine und die Klassen der Bibliothek stehen fertig in
+ * `/marken/<haupt>/marken.css`, die Seite lädt sie vor diesem Stylesheet (der
+ * Bau setzt den Link in die `index.html`). Hier steht deshalb nur, was die App
+ * selbst braucht:
+ *
+ *   `utilities`   die Werkzeugklassen, die in DEN EIGENEN Dateien der App
+ *                 stehen und sonst in keiner. Der Ordner `marken/` bleibt
+ *                 außen: seine Klassen kommen vom Gerät, und eine Kopie davon
+ *                 hier wäre die zweite Wahrheit.
+ *   `theme.css`   nur als Verweis (`@reference`): Tailwind kennt damit
+ *                 `bg-primary` und `text-ui-sm`, schreibt aber keinen Wert
+ *                 aus. Welche Farbe das Gerät heute meint, sagt sein
+ *                 `marken.css`.
+ *
+ * Was eine App selbst gestaltet, schreibt sie am liebsten mit Marken wie
+ * `var(--ara-kante)` in `stil.css`. Die Werkzeugklassen sind für Anordnung und
+ * Abstand da.
+ */
+
+@import "tailwindcss/theme.css" layer(theme) theme(reference);
+@reference "./marken/theme.css";
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "./app.tsx";
+@source "./main.tsx";
+@source "./rahmen";
+@source "./seiten";
+@import "./stil.css";
+
+@custom-variant dark (&:is(.dark *));

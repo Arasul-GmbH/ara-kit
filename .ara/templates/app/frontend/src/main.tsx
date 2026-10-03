@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./stil.css";
+import "@stil";
 import { App } from "./app";
 
 const wurzel = document.getElementById("app");

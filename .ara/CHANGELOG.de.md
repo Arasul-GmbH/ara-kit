@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.68.0 (2026-10-03)
+
+Contract: up to 9
+
+- **Eine neue App lädt die Bibliothek des Designsystems vom Gerät (M5).** `--new` schreibt nur die Hauptzahl in `marken` (`"5"`). Die Vorlage baut mit `npm run build` so, dass Bausteine, React und Stylesheet von der festen Adresse kommen, unter der das Gerät sie ausliefert (`/marken/<Hauptzahl>/`, im Kontrakt im Abschnitt `marken` genannt): das Bündel schrumpft auf den eigenen Code der App und trägt keine Kopie, und ein Update des Geräts bringt die neue Fassung ohne Neubau. Ohne Gerät fällt die Vorlage auf die Kopie unter `frontend/src/marken/` zurück: `npm run dev` und `npm run build:kopie`, und eine App, deren Manifest drei Zahlen nennt, baut ebenso. Die Kopie wird nie ausgerollt, ins Paket geht nur das Ergebnis des Baus. `stil.css` trägt jetzt nur die eigenen Regeln der App, `kopie.css` und `geraet.css` sind die zwei Wege zur Bibliothek.
+- **`--check` und `--deploy` halten das neue Feld gegen das Gerät.** Eine Hauptzahl, die das Gerät nicht ausliefert (kein Abschnitt `marken` im Kontrakt oder eine andere Hauptzahl in seinem Verzeichnis), und eine gebaute Oberfläche, die nicht von der Adresse des Geräts lädt, halten an. Eine App mit Kopie bleibt gültig, und eine gealterte Kopie ist nur ein Hinweis. Der Abschnitt `marken` des Kontrakts steht wörtlich im Bericht. `marken.mjs --sync` behält die Form, die die App hat.
+- **Die Seitenleiste der Vorlage** zeigt je Ansicht ein eigenes Symbol, damit die zugeklappte Leiste etwas sagt.
+
 ## 0.67.0 (2026-10-03)
 
 Contract: up to 9

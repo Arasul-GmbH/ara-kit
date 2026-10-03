@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.68.0 (2026-10-03)
+
+Contract: up to 9
+
+- **A new app loads the design library from the device (M5).** `--new` writes only the major number into `marken` (`"5"`). The scaffold builds with `npm run build` so that blocks, React and the stylesheet come from the fixed address the device serves under (`/marken/<major>/`, named by the contract's section `marken`): the bundle shrinks to the app's own code and carries no copy, and a device update brings the new version without a rebuild. Without a device the scaffold falls back to the copy under `frontend/src/marken/`: `npm run dev` and `npm run build:kopie`, and an app whose manifest names three numbers builds that way too. The copy is never rolled out, only the result of the build goes into the package. `stil.css` now holds only the app's own rules, `kopie.css` and `geraet.css` are the two ways to the library.
+- **`--check` and `--deploy` hold the new field against the device.** A major number the device does not serve (no section `marken` in its contract, or another major number in its directory), and a built interface that does not load from the device's address, stop. An app with a copy stays valid, and a copy that has aged is only a hint. The contract's section `marken` stands word for word in the report. `marken.mjs --sync` keeps the form the app has.
+- **The sidebar of the scaffold** shows a symbol of its own per view, so that the collapsed bar says something.
+
 ## 0.67.0 (2026-10-03)
 
 Contract: up to 9

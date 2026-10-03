@@ -1,47 +1,17 @@
 /**
- * Das Stylesheet der App. Vier Teile, und nur der vierte gehört ihr.
+ * Das Stylesheet der App, die eigenen Regeln. Die Bibliothek steht nicht hier.
  *
- *   `tailwindcss`        die Werkzeugklassen, für Anordnung und Abstand
- *   `tw-animate-css`     die Bewegungen, die die Primitive benutzen
- *   `marken/theme.css`   die Werte des Geräts, je Thema. OHNE Schicht
- *   `marken/marken.css`  die Regeln der sechs Bausteine. MIT `layer(components)`
+ * Wie die Bibliothek ans Stylesheet kommt, entscheidet der Bau, und es gibt
+ * zwei Wege. Die Datei dafür heißt in `main.tsx` `@stil`:
  *
- * Die Reihenfolge steht so in der EINBAU.md des Pakets, und die beiden
- * Schichtangaben sind keine Nachlässigkeit:
+ *   `geraet.css`   vom Gerät: die Bibliothek lädt die Seite von `/marken/<haupt>/`
+ *   `kopie.css`    aus einer Kopie: die Bibliothek wird mit der App übersetzt
  *
- *   `theme.css` ohne Schicht, weil ein `@theme` in einem `layer(...)`-Import
- *   keins mehr ist. Es gäbe dann kein `bg-primary`, und die
- *   sechsundvierzig Primitive ständen ohne Farbe da.
- *
- *   `marken.css` mit `layer(components)`, weil ungeschichtetes CSS gegen jede
- *   Schicht gewinnt, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an
- *   einem Baustein wäre sonst wirkungslos, und genau das erwartet niemand,
- *   der sie dorthin schreibt.
- *
- * **Die Werte stehen in der Bibliothek und nicht hier.** Bis zum 29.08.2026
- * schrieb das Kit sie beim Anlegen als `design.css` daneben, aus dem Spiegel
- * abgelesen. Seit die Bibliothek als Paket kommt, trägt sie ihre Tokens
- * selbst (`theme.css`), und zwei Dateien, die dieselben Marken setzen, sind
- * die zweite Wahrheit: die eine sagte, Hell sei die Vorgabe, die andere,
- * Schwarz. Der ganze Ordner `marken/` wird beim nächsten Stand ersetzt, und
- * was hier unten steht, bleibt.
- *
- * Ganz unten stehen die eigenen Regeln. **Kein Farbwert steht darin**, nur
- * Marken: `var(--ara-kante)` statt `rgba(...)`. Eine Farbe, die hier stünde,
- * bliebe beim nächsten Stand zurück.
+ * Beide holen als letztes diese Datei, und was hier steht, ist in beiden Wegen
+ * dasselbe. **Kein Farbwert steht darin**, nur Marken: `var(--ara-kante)`
+ * statt `rgba(...)`. Eine Farbe, die hier stünde, bliebe beim nächsten Stand
+ * des Geräts zurück.
  */
-
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "./marken/theme.css";
-@import "./marken/marken.css" layer(components);
-
-/* Dunkel ist kein Systemzustand, sondern der, den das Gerät nennt. Die Shell
-   setzt beides an das Dokument dieser App: die Klasse `dark` und
-   `data-theme="dark"`. Hell setzt gar nichts, denn `:root` IST hell. Diese
-   Zeile steht wortgleich in der `index.css` des Geräts; ohne Rahmen schreibt
-   `rahmen/thema.ts` dieselben zwei Dinge. */
-@custom-variant dark (&:is(.dark *));
 
 /* --- Eigene Regeln ---------------------------------------------------------
 

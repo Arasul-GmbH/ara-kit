@@ -19,12 +19,29 @@ Plan erledigt ist:
 - Die Liste zeigt, woran ein Vorgang hängt, und zieht den Stand alle paar Sekunden nach,
   solange etwas offen ist. Ein Klick auf eine Zeile klappt den Vorgang darunter auf, mit
   allem, was an ihm hängt.
-- Links stehen die Bereiche: die Ansichten der Liste (alle, offene, entschiedene) und der
-  Weg zum Formular. Unter 900 Pixeln stehen dieselben Einträge im Menü über der Seite.
+- Links zeichnet die App ihre eigene Seitenleiste: die Ansichten der Liste (alle, offene,
+  entschiedene) und der Weg zum Formular. Ein Knopf oben klappt sie auf Symbolbreite zu und
+  wieder auf. Unter 900 Pixeln steht sie als Blatt über der Seite. Sie folgt dem hellen
+  und dem dunklen Erscheinungsbild des Geräts.
 - Nach der Entscheidung steht am Vorgang, wer entschieden hat, bei einer Ablehnung die
   Begründung, und der Satz, den der Flow danach geschrieben hat.
 
 Der erste Plan steht unter `plans/offen/`. Was die App danach kann, gehört hierher.
+
+## Woher die Bausteine kommen
+
+**Vom Gerät, zur Laufzeit.** Seitenleiste, Liste, Formular und der Rest kommen aus der
+Bibliothek des Designsystems, und die liefert das Gerät selbst aus, unter einer festen
+Adresse (`/marken/<Hauptzahl>/`). Die App trägt davon nichts in ihrem Paket. In der
+`app.json` steht dafür nur die Hauptzahl (`"marken": "5"`), und wenn das Gerät sich
+aktualisiert, steht in der App die neue Fassung, ohne dass jemand neu baut.
+
+Unter `frontend/src/marken/` liegt trotzdem eine **Kopie**. Sie ist nur Quelltext: die
+Typen für den Editor, und das, was `npm run dev` und eine lokale Vorschau zeigen, wo es
+kein Gerät gibt. Ausgerollt wird sie nie, denn ins Paket geht nur das Ergebnis von
+`npm run build`. Wer die Bibliothek ausdrücklich mitbringen will, etwa für ein Gerät, das
+sie noch nicht ausliefert, schreibt die ganze Fassung der Kopie (drei Zahlen) in `marken` und baut mit
+`npm run build:kopie`. `node .ara/tools/marken.mjs --sync` zieht die Kopie nach.
 
 ## Wer da ist
 

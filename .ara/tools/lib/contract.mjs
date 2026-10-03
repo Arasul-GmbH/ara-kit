@@ -62,7 +62,7 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
   },
   {
     version: 9,
-    kann: "Eine App darf die Bibliothek des Designsystems zur Laufzeit vom Gerät laden, statt eine Kopie mitzubringen: das Kit liest das Feld `marken` in beiden Formen (nur die Hauptzahl heißt zur Laufzeit, drei Zahlen heißen Kopie), hält bei der Hauptzahl keine Kopie in der App fest und reicht das Feld unverändert weiter. Welche Hauptzahl das Gerät ausliefert, sagt sein Kontrakt, nicht das Kit.",
+    kann: "Eine App darf die Bibliothek des Designsystems zur Laufzeit vom Gerät laden, statt eine Kopie mitzubringen: das Kit liest das Feld `marken` in beiden Formen (nur die Hauptzahl heißt zur Laufzeit, drei Zahlen heißen Kopie), das Gerüst baut dann ohne Kopie im Bündel (`npm run build`) und fällt ohne Gerät auf die Kopie zurück (`npm run dev`, `npm run build:kopie`), und `--check` hält eine Hauptzahl an, die das Gerät nicht ausliefert, und weist bei einer gealterten Kopie nur hin. Welche Hauptzahl das Gerät ausliefert, sagt sein Kontrakt, nicht das Kit.",
   },
 ]);
 

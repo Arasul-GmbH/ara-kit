@@ -1,0 +1,39 @@
+/**
+ * Das Stylesheet, wenn die Bibliothek aus einer Kopie kommt: `npm run dev`,
+ * `npm run build:kopie` und jede App, deren Manifest eine ganze Fassung nennt.
+ * Vier Teile, dann die eigenen Regeln der App:
+ *
+ *   `tailwindcss`        die Werkzeugklassen, für Anordnung und Abstand
+ *   `tw-animate-css`     die Bewegungen, die die Primitive benutzen
+ *   `marken/theme.css`   die Werte des Geräts, je Thema. OHNE Schicht
+ *   `marken/marken.css`  die Regeln der Bausteine. MIT `layer(components)`
+ *
+ * Die Reihenfolge steht so in der EINBAU.md des Pakets, und die beiden
+ * Schichtangaben sind keine Nachlässigkeit:
+ *
+ *   `theme.css` ohne Schicht, weil ein `@theme` in einem `layer(...)`-Import
+ *   keins mehr ist. Es gäbe dann kein `bg-primary`, und die
+ *   sechsundvierzig Primitive ständen ohne Farbe da.
+ *
+ *   `marken.css` mit `layer(components)`, weil ungeschichtetes CSS gegen jede
+ *   Schicht gewinnt, auch gegen die Werkzeugklassen. Eine Tailwind-Klasse an
+ *   einem Baustein wäre sonst wirkungslos, und genau das erwartet niemand,
+ *   der sie dorthin schreibt.
+ *
+ * Die Werte stehen in der Bibliothek und nicht hier: der ganze Ordner
+ * `marken/` wird beim nächsten Stand ersetzt, und was in `stil.css` steht,
+ * bleibt.
+ */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./marken/theme.css";
+@import "./marken/marken.css" layer(components);
+@import "./stil.css";
+
+/* Dunkel ist kein Systemzustand, sondern der, den das Gerät nennt. Die Shell
+   setzt beides an das Dokument dieser App: die Klasse `dark` und
+   `data-theme="dark"`. Hell setzt gar nichts, denn `:root` IST hell. Diese
+   Zeile steht wortgleich in der `index.css` des Geräts; ohne Rahmen schreibt
+   `rahmen/thema.ts` dieselben zwei Dinge. */
+@custom-variant dark (&:is(.dark *));

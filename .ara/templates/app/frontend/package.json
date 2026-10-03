@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",
+    "build:kopie": "tsc --noEmit && MARKEN_KOPIE=1 vite build",
     "dev": "vite",
     "typen": "tsc --noEmit"
   },

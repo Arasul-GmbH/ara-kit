@@ -2,8 +2,12 @@
 
 An app runs in a frame inside Arasul's interface, and two appearances on one screen are a fault.
 So there is one library for both sides, shipped as a **package**: `marken.json` names the version,
-the dependencies and every file with its sha256. Every app carries a copy under
-`frontend/src/marken/`. How the copies hang together: `.ara/knowledge/design-guard.md`.
+the dependencies and every file with its sha256. Every app has a copy under `frontend/src/marken/`,
+only as source for types, `npm run dev` and a preview without a device. **At the device the library
+comes from the device**: `app.json` says `"marken": "<major>"`, the page loads it from the address
+the contract's section `marken` names, the package carries no copy, and a device update needs no
+rebuild. Three numbers in `marken` or `npm run build:kopie` bundle the copy instead.
+Copies: `.ara/knowledge/design-guard.md`.
 
 ## Three sets, two stylesheets, one theme source
 
@@ -15,7 +19,7 @@ the dependencies and every file with its sha256. Every app carries a copy under
 
 A whole form is a pattern: rebuilt, it is two hundred lines the next app writes differently.
 `marken/theme.css` (both themes, the `@theme` block) is loaded **without a layer**, `marken/marken.css`
-**with** `layer(components)`; the scaffold's `stil.css` does both, keep it that way.
+**with** `layer(components)`; the scaffold's `kopie.css` does both, keep it that way.
 
 **The theme comes from the device.** The shell sets the class `dark` and `data-theme="dark"` at
 `<html>` and sends `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` reads and does not guess; only
@@ -68,9 +72,9 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
   `Datenliste`, `<dialog>` for `Dialog`, `<fieldset>` for `Feldgruppe`, a tab bar with
   `role="tablist"` for `Tabs`. Just as forbidden: a `<div className="karte">` beside `Karte`, a list
   with a search field beside `Datenliste`.
-- **The field `marken` in `app.json` missing or stale.** An app carrying `frontend/src/marken/` names
-  the copy's version there, the field without the copy is red too. `--new` writes it,
-  `marken.mjs --sync` keeps it.
+- **The field `marken` in `app.json` missing or stale.** The major number alone needs no copy to
+  match; three numbers must match the copy. `--new` writes it, `marken.mjs --sync` keeps it.
+  `--check` against a device stops a major number it does not serve, and only hints at an aged copy.
 
 Measured is the app's own source, not the mirror. **A foreign container is exempt**: without
 `frontend`, with a finished `image`, it brings no interface. The self-test holds the scaffold to the
