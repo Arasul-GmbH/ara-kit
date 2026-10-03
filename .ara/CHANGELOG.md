@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.67.0 (2026-10-03)
+
+Contract: up to 9
+
+- **The kit understands contract 9 and the field `marken` in both forms (M5).** A device with contract 9 no longer stops it. `marken` with only the major number (`"5"`) means the app loads the design library from the device at runtime; three numbers (`"5.2.1"`) mean a copy. For the major number `--check` holds no copy in the app to a version; for three numbers the copy is held as before. Which major number a device serves its contract says, not the kit.
+
 ## 0.66.2 (2026-10-03)
 
 Contract: up to 8
