@@ -484,7 +484,7 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
 
     /** Ein Satz für das Protokoll beim Start. Der Schlüssel steht nicht darin, nur sein Name. */
     herkunft() {
-      return `${name} spricht mit ${vereinbarung.geraet || "dem Geraet"} über ${basisName}, Schlüssel aus ${schluesselName}.`;
+      return `${name} spricht mit ${vereinbarung.geraet || "dem Gerät"} über ${basisName}, Schlüssel aus ${schluesselName}.`;
     },
 
     geraetename() {

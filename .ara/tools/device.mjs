@@ -194,8 +194,10 @@ import {
   now,
   parseArgs,
   readFrontmatter,
+  readState,
   today,
   writeFrontmatter,
+  writeState,
 } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
 import { forgetSecret, getSecret, hasSecret, otherStore, setSecret } from "./lib/secrets.mjs";
@@ -216,7 +218,6 @@ import {
   unlockLines,
 } from "./lib/licence.mjs";
 import {
-  createKey,
   existingData,
   fetchMirror,
   hardeningNotice,
@@ -237,7 +238,6 @@ import {
   ship,
 } from "./lib/install.mjs";
 
-const STATE = join(ROOT, ".ara", "state.json");
 const TEMPLATE = localized(join(ROOT, ".ara", "templates", "device.md"));
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
 const INSTALLABLE = ["docker", "ollama", "arasul"];
@@ -430,20 +430,6 @@ async function licencePath() {
 if (wantsLicence && (arg.store || !str(arg.name))) {
   await licencePath();
   process.exit(0);
-}
-
-// --- Merker -----------------------------------------------------------------
-
-function readState() {
-  try {
-    return JSON.parse(readFileSync(STATE, "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-function writeState(changes) {
-  writeFileSync(STATE, JSON.stringify({ ...readState(), ...changes }, null, 2) + "\n");
 }
 
 // --- Welche Akte -------------------------------------------------------------
@@ -1888,11 +1874,10 @@ if (!changes.tls && !existing.tls && arasulRunning(svc.arasul.state) && (existin
 /**
  * Versteht dieses Kit, was dieses Gerät verspricht?
  *
- * Die Frage gehört hierher und nicht erst an den Deploy. Am 30.08.2026 stand
- * eine Werkstatt auf Kontrakt 3, der Orin führte 5, und der Partner erfuhr es
- * daran, dass `--deploy` mit „Nichts eingespielt" abbrach. Er suchte den Fehler
- * danach in seiner App. Beim ersten Kontakt mit dem Gerät ist die Zahl schon
- * lesbar, und der Weg heraus ist ein Aufruf.
+ * Die Frage gehört hierher und nicht erst an den Deploy: sonst erfährt der Partner es daran,
+ * dass `--deploy` mit „Nichts eingespielt" abbricht, und sucht den Fehler in seiner App.
+ * Beim ersten Kontakt mit dem Gerät ist die Zahl schon lesbar, und der Weg heraus ist ein
+ * Aufruf.
  *
  * Gelesen wird nur der Kontrakt, der einzige Pfad, den das Kit auswendig kennt.
  * Was nicht zu lesen war, wird gesagt und nicht geraten: eine Plattform, die
@@ -2266,9 +2251,8 @@ function nextSteps() {
           )
         );
       }
-      // Fund 4 des Fremdtests am 29.08.2026: dass ein Geraet Kit-Schluessel
-      // sammelt und man seinen eigenen wiederfinden koennen muss, stand nur im
-      // Blatt. Wer nur die naechsten Schritte liest, erfuhr es nicht.
+      // Ein Geraet sammelt Kit-Schluessel, und man muss seinen eigenen wiederfinden koennen.
+      // Wer nur die naechsten Schritte liest, soll das auch erfahren.
       steps.push(
         t(
           `Which kit keys lie on the device, and which of them is this kit's: node .ara/tools/device.mjs ` +

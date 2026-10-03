@@ -102,7 +102,6 @@ import {
   hardeningPort,
   installCommand,
   installTarget,
-  KEY_ONLY,
   installerEntry,
   keyLogin,
   mirrorState,
@@ -146,14 +145,11 @@ import {
   classesWithoutRule,
   dependencyFindings,
   hashOf,
-  libraryInMirror,
   readLibrary,
   readPackage,
-  readSource,
   sets,
   stampOf,
   unreachable,
-  writeLibrary,
 } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
@@ -2566,6 +2562,7 @@ const KONTRAKT = {
     // erkennt das Kit, welche Felder des Manifests einen Ordner versprechen.
     wurzel: ["app.json", "<frontend.verzeichnis>/", "<flows.verzeichnis>/", "<backend.bauen.verzeichnis>/"],
     max_archiv_bytes: 200 * 1024 * 1024,
+    felder: { aenderungstext: { pflicht: true, laenge: [1, 1000] } },
   },
   apps: { basis: "/apps/<id>/", teststand: "/apps/<id>/test/" },
   // Seit dem 26.09.2026 nennt das Gerät die Antwort des Auslesens und wie ein
@@ -13380,6 +13377,20 @@ check("Das Ausrollen warnt vor Ersatzschreibung in sichtbaren Texten", () => {
   } finally {
     rmSync(schlecht.dir, { recursive: true, force: true });
     rmSync(sauber.dir, { recursive: true, force: true });
+  }
+
+  // Die Meldungen im Backend der Vorlage lesen Menschen auch: dort steht keine Ersatzschreibung
+  {
+    const ordner = join(ROOT, ".ara", "templates", "app", "backend");
+    const treffer = [];
+    for (const datei of readdirSync(ordner).filter((n) => n.endsWith(".mjs"))) {
+      const quelltext = readFileSync(join(ordner, datei), "utf8").split("\n").filter((z) => !/^\s*(\/\/|\*|\/\*)/.test(z)).join("\n");
+      for (const m of quelltext.matchAll(/"([^"\n]{12,})"|`([^`\n]{12,})`/g)) {
+        const woerter = ersatzwoerter((m[1] ?? m[2]).replace(/\$\{[^}]*\}/g, " "));
+        if (woerter.length) treffer.push(`${datei}: ${woerter.join(", ")}`);
+      }
+    }
+    assert(treffer.length === 0, `Ersatzschreibung in einer Meldung des Backends der Vorlage: ${treffer.join(" | ")}`);
   }
 
   // Und es ist verdrahtet: --check und --deploy sagen es

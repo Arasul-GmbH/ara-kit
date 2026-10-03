@@ -102,8 +102,7 @@ export function unreadFields(contract) {
  *
  * Er steht als Aufruf da und nicht als Befehl im Gespräch: `/init` führt daran
  * vorbei, aber ein Partner, dessen Deploy gerade abgebrochen ist, liest eine
- * Zeile und keine Anleitung. Am 30.08.2026 stand die Werkstatt auf Kontrakt 3,
- * der Orin führte 5, und der Weg heraus hieß genau das hier.
+ * Zeile und keine Anleitung.
  */
 export const UPDATE_CALL = "node .ara/tools/update.mjs";
 

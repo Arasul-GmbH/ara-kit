@@ -27,7 +27,7 @@ export const LEDGER = join(BUSINESS, "invoices.md");
  * darum englisch wie jedes andere Feld, das ein Werkzeug liest, und nicht wie
  * der Fliesstext darum herum.
  *
- * Ein Nummernkreis, der vor Phase E10 angelegt wurde, traegt die deutschen
+ * Ein Nummernkreis, der aus der Zeit vor den englischen Ueberschriften stammt, traegt die deutschen
  * Namen. Gelesen werden beide, geschrieben wird in die Ueberschrift, die in der
  * Datei steht: eine bestehende Liste umzubenennen waere eine Aenderung an einem
  * Buchungsbeleg, und die macht kein Werkzeug ungefragt.
@@ -49,9 +49,9 @@ function columnsOf(content) {
 
 /** Die Staende einer Rechnung. Ein vergebener Zettel verschwindet nie. */
 export const STATES = {
-  entwurf: "geschrieben, noch nicht gedruckt",
-  gestellt: "gedruckt und beim Kunden",
-  storniert: "zurueckgenommen, die Nummer bleibt vergeben",
+  entwurf: t("written, not yet printed", "geschrieben, noch nicht gedruckt"),
+  gestellt: t("printed and with the customer", "gedruckt und beim Kunden"),
+  storniert: t("withdrawn, the number stays taken", "zurückgenommen, die Nummer bleibt vergeben"),
 };
 
 /** Die Steuerfaelle, die dieses Werkzeug kennt. */

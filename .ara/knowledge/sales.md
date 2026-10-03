@@ -84,7 +84,7 @@ themselves.
 
 **Somebody who wants to buy needs no command.** Account and token come from
 <https://www.arasul.de/kaufen>: an account is free and brings exactly one free device token for
-personal use, a device with it runs on community (up to 3 accounts and 3 apps). Every further
+personal use, a device with it runs on community, with limits on accounts and apps. Every further
 installation and commercial use are bought there, and a bought token is at the same time the licence
 code: the kit unlocks the device with it, without limits. **You name no price**, it stands on the
 page. That is as of 2026-09-25 and stands in `.ara/knowledge/device.md`, "The token" and "The

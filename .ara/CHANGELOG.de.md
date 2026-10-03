@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.66.2 (2026-10-03)
+
+Kontrakt: bis 8
+
+- **Das Kit fragt den Kontrakt, nicht eine Versionsnummer, ob das Gerät einen Änderungstext nimmt (M5).** `--deploy` verlangt und schickt `--aenderungstext`, wenn der Kontrakt des Geräts das Feld nennt, nicht mehr ab Kontrakt 8. Das Wissen sagt dasselbe.
+- **Aufräumen nach einer Prüfung (M5).** Keine Produktzahlen im Lizenzabschnitt von `device.md` und `sales.md` (die Grenzen nennt das Gerät), keine internen Bezüge (Phasen, Funde, Daten einzelner Fälle) in Wissen, Kommentaren und `AGENTS.md`, echte Umlaute und `t(en, de)` in den sichtbaren Texten, die noch Ersatzschreibungen trugen (Hinweis der Vereinbarung einer eingespielten App, Meldungen der ZUGFeRD-Prüfung, Stände der Rechnung, das Gerüst der Kunden-App). Das Wissensblatt zur Leistungsbeschreibung hat jetzt einen englischen Dateinamen, `service-description.md`. `AGENTS.md` passt wieder zu den Wissensdateien (die Interviewliste von `app.md`, die drei Stellen, der Riegel in der Werkzeugtabelle). Toter Code und ungenutzte Importe sind weg. `readState`, `writeState`, `mirrorDir` und `adminSession` stehen einmal in `lib/kit.mjs`; `upgrade.mjs` reicht jetzt alle fünf Anmelde-Schalter an die Administrator-Anmeldung durch, wie `app.mjs`. Der Kopf von `lib/patterns.mjs` sagt, dass nur das Buchungsstapel-Muster an Wörtern erkannt wird.
+
 ## 0.66.1 (2026-10-03)
 
 Contract: up to 8

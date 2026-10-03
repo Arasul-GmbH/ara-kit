@@ -166,18 +166,6 @@ export function parseFingerprints(output) {
 
 // --- Die Übergabedatei -------------------------------------------------------------
 
-/**
- * Was die Übergabedatei je Gerät festhält, als Felder des Kopfes.
- * Flach, weil das Kit nur flache Köpfe liest.
- */
-export function deviceFields(slug, { sshFingerprint = "", kitPrefix = "" } = {}) {
-  return {
-    [`old_ssh_${slug}`]: sshFingerprint,
-    [`old_kit_${slug}`]: kitPrefix,
-    [`done_${slug}`]: "",
-  };
-}
-
 /** Eine Zahl in Worten für den, der nicht zählt: "ein Gerät", "zwei Geräte". */
 const countWord = (n) => t(n === 1 ? "one device" : `${n} devices`, n === 1 ? "ein Gerät" : `${n} Geräte`);
 

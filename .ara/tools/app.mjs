@@ -104,7 +104,7 @@ import {
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join, relative, resolve } from "node:path";
-import { ROOT, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
+import { ROOT, adminSession, ensureDir, fail, helpOnly, now, parseArgs, readDevice, readState, sshArgs, today, writeState } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
 import { call, reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
@@ -131,6 +131,7 @@ import { describePatterns } from "./lib/patterns.mjs";
 import {
   applyFlowFields,
   flowFieldFindings,
+  contractKnowsChangeText,
   parseAenderungstext,
   parseArten,
   parseAusloeser,
@@ -153,7 +154,6 @@ const FLAG_AENDERUNG = "--aenderungstext";
 const str = (v) => (typeof v === "string" ? v : null);
 const TEMPLATE = join(ROOT, ".ara", "templates", "app");
 const PLAN_TEMPLATE = localized(join(ROOT, ".ara", "templates", "plan.md"));
-const STATE = join(ROOT, ".ara", "state.json");
 
 // Ohne jedes Argument die Liste der Schalter. --help beantwortet der Kopf der
 // Datei, wie bei jedem Werkzeug des Kits.
@@ -282,19 +282,6 @@ if (arg.patterns !== undefined) {
 }
 
 // --- Welche App -------------------------------------------------------------
-
-/** Der Merker. Er hält fest, woran zuletzt gearbeitet wurde, mehr nicht. */
-function readState() {
-  try {
-    return JSON.parse(readFileSync(STATE, "utf8"));
-  } catch {
-    return {};
-  }
-}
-
-function writeState(changes) {
-  writeFileSync(STATE, JSON.stringify({ ...readState(), ...changes }, null, 2) + "\n");
-}
 
 /**
  * Ohne Angabe gilt die Reihenfolge des Grundrisses: der Merker, dann die
@@ -1632,11 +1619,12 @@ if (arg.deploy !== undefined) {
   // nichts, und gesucht wurde danach in der App.
   if (!version.ok) fail(`${t("Nothing deployed.", "Nichts eingespielt.")} ${version.text}`);
 
-  // Ab Kontrakt 8 nimmt das Geraet neben dem Paket ein paar Saetze, was neu ist. Das Kit verlangt
-  // sie: wer ausrollt, sagt, was er ausrollt. Ein aelteres Geraet kennt das Feld nicht, dann wird
-  // nichts verlangt und nichts geschickt.
+  // Nennt der Kontrakt des Geraets das Feld `aenderungstext`, nimmt es neben dem Paket ein paar
+  // Saetze, was neu ist. Das Kit verlangt sie: wer ausrollt, sagt, was er ausrollt. Ein Geraet,
+  // dessen Kontrakt das Feld nicht nennt, kennt es nicht, dann wird nichts verlangt und nichts
+  // geschickt.
   let changeText = null;
-  if ((contract?.kontrakt ?? 0) >= 8) {
+  if (contractKnowsChangeText(contract)) {
     if (arg.aenderungstext === true) fail(t(`${FLAG_AENDERUNG} needs the text: ${FLAG_AENDERUNG} "<text>".`, `${FLAG_AENDERUNG} braucht den Text: ${FLAG_AENDERUNG} "<text>".`));
     const parsed = parseAenderungstext(arg.aenderungstext);
     if (parsed.error) fail(parsed.error);
@@ -1654,8 +1642,8 @@ if (arg.deploy !== undefined) {
   } else if (arg.aenderungstext !== undefined) {
     console.log(
       t(
-        "This device carries a contract before version 8 and takes no text of the change. It is not sent.",
-        "Dieses Gerät führt einen Kontrakt vor Version 8 und nimmt keinen Änderungstext. Er wird nicht geschickt."
+        "This device's contract does not name a text of the change, so the device takes none. It is not sent.",
+        "Der Kontrakt dieses Geräts nennt keinen Änderungstext, das Gerät nimmt also keinen. Er wird nicht geschickt."
       )
     );
   }
@@ -1955,25 +1943,13 @@ function shareSource() {
   return { tried };
 }
 
-/**
- * Eine Sitzung als Administrator, aus `device.mjs --admin-login`.
- *
- * Nicht nachgebaut: die Anmeldung, ihre Quelle für Weg und Felder und die
- * Sätze bei einer Abweisung stehen dort. `--password-ref` und `--login-user`
- * gehen durch, das Passwort bleibt im anderen Prozess, und zurück kommt nur
- * der Ausweis.
- */
-function adminSession() {
-  const args = [join(ROOT, ".ara", "tools", "device.mjs"), ...(device.customer ? ["--customer", device.customer] : []), "--name", device.device, "--admin-login", "--token"];
-  for (const name of ["password-ref", "login-user", "login-path", "login-user-field", "login-password-field"]) {
-    if (str(arg[name])) args.push(`--${name}`, str(arg[name]));
+/** Der Ausweis einer Sitzung als Administrator, sonst bricht es ab. */
+function adminToken() {
+  const session = adminSession(device, arg);
+  if (!session.ok) {
+    fail(t("No session as administrator, so no share:\n", "Keine Sitzung als Administrator, also keine Freigabe:\n") + session.reason);
   }
-  if (arg.insecure) args.push("--insecure");
-  const run = spawnSync(process.execPath, args, { encoding: "utf8" });
-  if (run.status !== 0 || !run.stdout.trim()) {
-    fail(t("No session as administrator, so no share:\n", "Keine Sitzung als Administrator, also keine Freigabe:\n") + (run.stderr || run.stdout).trim());
-  }
-  return run.stdout.trim();
+  return session.bearer;
 }
 
 async function share() {
@@ -2009,7 +1985,7 @@ async function share() {
     );
   }
 
-  const token = adminSession();
+  const token = adminToken();
   const ask = (method, path, json = null) =>
     call({ base, method, path, json, key: `Bearer ${token}`, keyHeader: "Authorization", insecure: link.insecure }).catch((error) => fail(error.message));
 

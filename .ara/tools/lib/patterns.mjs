@@ -2,6 +2,10 @@
  * Muster fuer eine App erkennen: aus der Beschreibung des Hauses das Muster nennen, dessen Code im
  * Kit schon liegt.
  *
+ * **Erkannt wird heute nur ein Muster, das Buchungsstapel-Muster (9).** Die uebrigen Muster unter
+ * `.ara/templates/app-patterns/` erkennt dieses Modul nicht an Woertern; sie kommen ueber das
+ * Interview und die Liste in `.ara/knowledge/app-patterns.md` ins Gespraech.
+ *
  * Ein Mensch sagt "wir sind eine Kanzlei" oder "die Belege fuer den Steuerberater", nicht "ein
  * Buchungsstapel im DATEV-Format". Dieses Modul liest die Beschreibung und nennt das Muster, das
  * dazu passt, mit dem Blatt, das der Plan dann liest. Es entscheidet nichts: der Vorschlag wird im

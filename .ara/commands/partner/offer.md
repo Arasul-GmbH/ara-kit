@@ -7,7 +7,7 @@ Offer for: **$1**
 
 Read `.ara/knowledge/paperwork.md` and work along it. What stands here is the way through
 that procedure, not a second one beside it. Knowledge this command loads:
-`.ara/knowledge/paperwork.md`, `.ara/knowledge/leistungsbeschreibung.md`,
+`.ara/knowledge/paperwork.md`, `.ara/knowledge/service-description.md`,
 `.ara/knowledge/pricing.md`, `.ara/knowledge/sales.md`, `.ara/knowledge/crm.md`,
 `.ara/knowledge/live-knowledge.md` for every product value. Plus `business/profile.md` and
 `business/company.md` for sender and rates.

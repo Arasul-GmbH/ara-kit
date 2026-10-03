@@ -192,7 +192,7 @@ node .ara/tools/app.mjs --device <device> --app <name> --deploy
 node .ara/tools/app.mjs --device <device> --app <name> --live
 ```
 
-**A deploy needs a few sentences on what is new** from contract 8 on:
+**A deploy needs a few sentences on what is new** when the device's contract names the field `aenderungstext`:
 `--deploy --aenderungstext "<text>"`, 1 to 1000 characters. Ask in the human's words ("What is new for the people who use
 it?"); the kit stops without it, and it goes next to the package, not into `app.json`.
 
