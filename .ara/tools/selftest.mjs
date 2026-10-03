@@ -76,6 +76,7 @@ import {
 import {
   CONTRACT_PATH,
   KIT_CONTRACT_VERSION,
+  KIT_CONTRACT_VERSIONS,
   checkManifest,
   checkVersion,
   findEndpoint,
@@ -2683,6 +2684,64 @@ check("Kontrakt 7: das Kit versteht ihn, liest das Netz und sagt, wohin eine App
   return "Fassung 7 bedient, Netz gelesen, Einträge in einem Satz geprüft";
 });
 
+check("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderungstext stehen so im Gerüst, wie der Kontrakt sie beschreibt", async () => {
+  assert(KIT_CONTRACT_VERSION >= 8, "das Kit versteht Kontrakt 8 nicht");
+  const acht = KIT_CONTRACT_VERSIONS.find((e) => e.version === 8);
+  assert(acht && acht.kann.length > 40, "Fassung 8 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 8 }).ok, "ein Gerät mit Kontrakt 8 hält das Kit an");
+  const f = await import("./lib/felder.mjs");
+  assert(f.parseSymbol("file-text").symbol === "file-text" && f.parseSymbol("BE").symbol === "BE", "ein gutes Symbol wird abgewiesen");
+  assert(["ABCD", "File_Text", "", "Datei", "b e"].every((x) => f.parseSymbol(x).error), "ein schlechtes Symbol geht durch");
+  const stufen = f.parseStufen("Prüfung, Leitung").stufen;
+  assert(stufen.map((x) => x.name).join() === "pruefung,leitung" && stufen[0].bezeichnung === "Prüfung", "Stufen werden nicht in Kennung und Anzeigename gelesen");
+  assert(f.parseStufen("a,b,c,d,e,f").error && f.parseStufen("Prüfung,pruefung").error, "zu viele oder doppelte Stufen gehen durch");
+  assert(f.parseArten("autonom,bestätigen").arten.join() === "autonom,ergebnis_bestaetigen" && f.parseArten("irgendwie").error, "Arten werden nicht auf die Namen des Kontrakts abgebildet");
+  const aus = f.parseAusloeser("hand,zeitplan:0 6 * * 1-5,ereignis:vorgang.neu").ausloeser;
+  assert(aus.length === 3 && aus[1].zeitplan === "0 6 * * 1-5", "Auslöser werden nicht gelesen");
+  assert(f.parseAusloeser("zeitplan:morgens").error && f.parseAusloeser("hand,hand").error, "ein Zeitplan ohne fünf Felder oder ein doppelter Auslöser geht durch");
+  assert(f.parseAenderungstext("x".repeat(1001)).error && f.parseAenderungstext("  ").missing && f.parseAenderungstext("Neu: Symbol").text === "Neu: Symbol", "der Änderungstext wird nicht auf 1 bis 1000 Zeichen gehalten");
+  assert(Object.keys(f.setSymbol({ id: "a", beschreibung: "b", version: "1" }, "BE")).join() === "id,beschreibung,symbol,version", "das Symbol steht nicht hinter der Beschreibung");
+
+  const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
+  const mit = f.applyFlowFields(vorlage, { arten: ["autonom"], ausloeser: aus, stufen });
+  assert(/^arten: \[autonom\]$/m.test(mit) && /^stufen:\n  - name: pruefung\n    bezeichnung: "Prüfung"/m.test(mit), "Arten und Stufen stehen nicht im Kopf des Flows");
+  assert(/name: entscheiden_pruefung[\s\S]*stufe: pruefung[\s\S]*name: entscheiden_leitung[\s\S]*stufe: leitung/.test(mit), "aus den Stufen werden nicht Schritte mit Stufe");
+  assert(f.flowFieldFindings("freigabe", mit).length === 0, "ein sauberer Flow bekommt einen Befund");
+  const falsch = mit.replace("stufe: leitung", "stufe: chef").replace(/^ {4}werkzeug: freigabe_anfordern\n/m, "    werkzeug: freigabe_anfordern\n    faehigkeiten:\n      text: true\n");
+  const befund = f.flowFieldFindings("freigabe", falsch);
+  assert(befund.length === 2 && befund.some((b) => /chef/.test(b)) && befund.some((b) => /faehigkeiten/.test(b)), "eine unbekannte Stufe und `faehigkeiten` an einem Werkzeug-Schritt werden nicht benannt: " + JSON.stringify(befund));
+  assert(applyOhne(f, vorlage) === vorlage, "ohne Felder ändert sich der Flow");
+
+  // Der Änderungstext geht als Textfeld neben dem Paket mit.
+  const { call } = await import("./lib/arasul.mjs");
+  const { createServer: http } = await import("node:http");
+  const datei = join(mkdtempSync(join(tmpdir(), "ara-m5-")), "paket.tgz");
+  writeFileSync(datei, "inhalt");
+  let gesehen = "";
+  const server = http((req, res) => {
+    const teile = [];
+    req.on("data", (c) => teile.push(c));
+    req.on("end", () => {
+      gesehen = Buffer.concat(teile).toString("utf8");
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ data: { ok: true } }));
+    });
+  });
+  await new Promise((fertig) => server.listen(0, "127.0.0.1", fertig));
+  try {
+    const antwort = await call({ base: `http://127.0.0.1:${server.address().port}`, method: "POST", path: "/apps", file: datei, fields: { aenderungstext: "Neu: ein Symbol." } });
+    assert(antwort.ok, "der Aufruf mit Textfeld scheitert");
+    assert(/name="aenderungstext"\r\n\r\nNeu: ein Symbol\./.test(gesehen) && /name="paket"; filename="paket.tgz"/.test(gesehen), "Textfeld und Paket stehen nicht beide im Rumpf");
+  } finally {
+    server.close();
+  }
+  return "Fassung 8 bedient, Felder geschrieben und geprüft, Änderungstext geht neben dem Paket mit";
+});
+
+function applyOhne(f, text) {
+  return f.applyFlowFields(text, {});
+}
+
 check("Welche Ordner ein Manifest verspricht, sagt der Kontrakt", () => {
   // Das Kit zählt die Felder nicht auf, es liest die Platzhalter aus der Wurzel
   // des Pakets. Kommt dort einer dazu, muss im Kit nichts nachgezogen werden.
@@ -2717,7 +2776,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
 
   // Das Gerät, gespielt. Es prüft den Schlüssel in der Kopfzeile, nimmt genau ein
   // Multipart-Feld `paket` an und antwortet im Umschlag, den Arasul benutzt.
-  const gesehen = { key: null, paket: false, inhalt: [], geschaltet: [], entfernt: null };
+  const gesehen = { key: null, aenderungstext: null, paket: false, inhalt: [], geschaltet: [], entfernt: null };
   const server = createServer((request, response) => {
     const antwort = (status, body) => {
       response.writeHead(status, { "Content-Type": "application/json" });
@@ -2736,7 +2795,8 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       if (pfad === "/api/v1/external/contract") return antwort(200, { data: KONTRAKT });
       if (pfad === "/api/v1/external/apps" && request.method === "POST") {
         gesehen.paket =
-          /name="paket"/.test(rumpf.toString("latin1").slice(0, 400)) && rumpf.includes(Buffer.from([0x1f, 0x8b]));
+          /name="paket"/.test(rumpf.toString("latin1").slice(0, 2000)) && rumpf.includes(Buffer.from([0x1f, 0x8b]));
+        gesehen.aenderungstext = rumpf.toString("latin1").match(/name="aenderungstext"\r\n\r\n([^\r]*)/)?.[1] ?? null;
         // Was im Paket liegt, wird ausgepackt und nicht geglaubt: der Umschlag
         // des Multipart fällt weg, der Rest ist das Archiv.
         gesehen.inhalt = [];
@@ -2821,9 +2881,16 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       `--check meldet das Duzen nicht, oder es hält an: ${run.status} ${run.stdout}`
     );
 
+    gesehen.paket = false;
     run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    assert(run.status !== 0 && !gesehen.paket && /ein paar Sätze/.test(run.stdout + run.stderr), `ein Einspielen ohne Änderungstext wird nicht angehalten: ${run.status} ${run.stdout}${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "x".repeat(1001)], env);
+    assert(run.status !== 0 && !gesehen.paket, "ein Änderungstext über 1000 Zeichen wird eingespielt");
+
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
     assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.paket, "am Gerät kam kein gepacktes Paket im Feld paket an");
+    assert(gesehen.aenderungstext === "Probelauf.", `der Änderungstext kam nicht neben dem Paket an: ${gesehen.aenderungstext}`);
     assert(/Teststand/.test(run.stdout), "der Teststand wird nicht genannt");
     // Fund 1 des zweiten Fremdtests: eingespielt ist nicht sichtbar. Ohne
     // Startpasswort in der Ablage ist der Weg die Oberflaeche, nicht die Sitzung.
@@ -2834,7 +2901,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     // Ein zweites Einspielen derselben App: die Freigabe gilt der App und ihrem
     // Stand, nicht der Fassung, und das Kit sagt nicht wieder, niemand habe sie
     // gesehen. Der Fremdtest am 25.09.2026 las genau das, mit freigegebenen Testern.
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
     assert(run.status === 0, `zweites Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(/Davor lag hier Fassung/.test(run.stdout) && /Freigaben bleiben stehen/.test(run.stdout), `das zweite Einspielen sagt nicht, dass Freigaben bleiben: ${run.stdout}`);
     assert(!/Gesehen hat es noch niemand/.test(run.stdout), "nach dem zweiten Einspielen heißt es wieder, niemand habe die App gesehen");
@@ -2844,7 +2911,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     const merkerJetzt = JSON.parse(readFileSync(join(ROOT, ".ara", "state.json"), "utf8"));
     for (const eintrag of Object.values(merkerJetzt.apps || {})) delete eintrag[name];
     writeFileSync(join(ROOT, ".ara", "state.json"), JSON.stringify(merkerJetzt, null, 2));
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], {
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], {
       ...env,
       ARASUL_START_SELFTEST_ARASUL: "probe-passwort",
     });
@@ -2883,7 +2950,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     gesehen.paket = false;
     run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
     assert(run.status !== 0 && /verspricht/.test(run.stdout), "der versprochene Ordner fehlt und fällt nicht auf");
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
     assert(run.status !== 0 && !gesehen.paket, "ein Manifest ohne den versprochenen Ordner wurde eingespielt");
 
     // Ein leerer Ordner ist auch keine Lieferung.
@@ -2895,7 +2962,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     writeFileSync(join(quelle, "flows", "bericht.md"), "---\nname: bericht\n---\n\nFasse zusammen.\n");
     run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
     assert(run.status === 0, `Manifest mit Flows abgelehnt: ${run.stdout}${run.stderr}`);
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
     assert(run.status === 0 && gesehen.paket, `Einspielen mit Flows fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.inhalt.includes("./flows/bericht.md"), `die Flow-Datei fehlt im Paket: ${gesehen.inhalt.join(", ")}`);
 
@@ -2909,7 +2976,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     // Ein Manifest, das das Gerät abweisen würde, wird gar nicht erst geschickt.
     writeFileSync(join(quelle, "app.json"), JSON.stringify({ ...MANIFEST, version: "eins" }));
     gesehen.paket = false;
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--base", base], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--base", base, "--aenderungstext", "Probelauf."], env);
     assert(run.status !== 0 && !gesehen.paket, "ein ungültiges Manifest wurde eingespielt");
 
     // Der Weg, den /app geht: nicht ein Ordner, sondern eine App aus apps/.
@@ -2931,7 +2998,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build", "--no-plan"], env)).status === 0, "Bau der App fehlgeschlagen");
     gesehen.paket = false;
     gesehen.inhalt = [];
-    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base, "--aenderungstext", "Probelauf."], env);
     assert(run.status === 0 && gesehen.paket, `Einspielen aus der App-Akte fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.inhalt.includes("./frontend/index.html"), `die Oberfläche fehlt im Paket: ${gesehen.inhalt.join(", ")}`);
     assert(
@@ -2952,7 +3019,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert(run.status !== 0, "der Quelltext im Paket ging als Bau durch");
     assert(/package.json/.test(run.stdout), `--check sagt nicht, woran es liegt: ${run.stdout}`);
     gesehen.paket = false;
-    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base, "--aenderungstext", "Probelauf."], env);
     assert(run.status !== 0 && !gesehen.paket, "der Quelltext wurde eingespielt");
     rmSync(join(appDir, "frontend", "package.json"), { force: true });
     rmSync(join(appDir, "frontend", "src"), { recursive: true, force: true });
@@ -2996,7 +3063,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
 
     gesehen.paket = false;
     gesehen.inhalt = [];
-    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base, "--aenderungstext", "Probelauf."], env);
     assert(run.status === 0 && gesehen.paket, `Einspielen mit Backend fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(
       gesehen.inhalt.includes("./backend/arasul.json"),
@@ -7829,7 +7896,7 @@ await checkAsync("Ein Geraet, das weiter ist als das Kit, faellt beim ersten Kon
     assert(/update\.mjs/.test(schluss), `der Weg steht nicht am Schluss: ${schluss}`);
 
     // 4. Und --deploy laesst niemanden mit "Nichts eingespielt" allein.
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
     assert(run.status !== 0, "ein Geraet, das weiter ist, bekam ein Paket");
     assert(/Nichts eingespielt/.test(run.stderr), `die Absage fehlt: ${run.stderr}`);
     assert(/update\.mjs/.test(run.stderr), `die Absage nennt den Weg nicht: ${run.stderr}`);

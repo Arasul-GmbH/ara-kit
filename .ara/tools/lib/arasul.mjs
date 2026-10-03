@@ -87,6 +87,8 @@ export async function call({
   file = null,
   fileField = "paket",
   fileName = "paket.tgz",
+  // Textfelder neben der Datei, nur bei `file`: Name und Wert, beides Zeichenketten.
+  fields = {},
   keyHeader = DEFAULT_KEY_HEADER,
   insecure = false,
   // Leerlauf, nicht Gesamtdauer. Eine Minute reicht für jede Auskunft; ein
@@ -108,8 +110,15 @@ export async function call({
     headers["Content-Length"] = body.length;
   } else if (file) {
     const boundary = `----ara${randomBytes(12).toString("hex")}`;
+    const textFields = Object.entries(fields)
+      .map(
+        ([name, value]) =>
+          `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${String(value)}\r\n`
+      )
+      .join("");
     const head = Buffer.from(
-      `--${boundary}\r\n` +
+      textFields +
+        `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="${fileField}"; filename="${fileName}"\r\n` +
         "Content-Type: application/gzip\r\n\r\n"
     );

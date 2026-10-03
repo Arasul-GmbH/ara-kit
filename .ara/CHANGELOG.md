@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.66.0 (2026-10-03)
+
+Contract: up to 8
+
+- **The kit understands contract 8 and writes its new fields (M5).** `--new` takes `--symbol` (an icon name such as `file-text`, or one to three capitals), `--stufen` (named approval stages, at most five), `--arten` and `--ausloeser` (kinds and triggers of the flow) and writes them the way the device's contract describes: `symbol` into `app.json`, `arten`, `ausloeser` and `stufen` into the header of the flow, one approval step per stage with its `stufe`. `--check` stops at what no schema carries: `faehigkeiten` on a tool step, and a stage a step names that the header does not declare. `/app` asks in plain words for the picture of the app and the stages, and where a flow needs it for kinds and triggers. The kit writes the fields and does not promise that the device already acts on them: that is what its contract says.
+- **A deploy needs a few sentences on what is new.** Against a device with contract 8 or more, `--deploy` stops without `--aenderungstext "<text>"` (1 to 1000 characters) and sends it as a form field next to the package, not inside `app.json`. A device before 8 gets nothing sent. The umlaut warning leaves the new header keys and stage names alone, they are identifiers.
+
 ## 0.65.3 (2026-10-02)
 
 Contract: up to 7
