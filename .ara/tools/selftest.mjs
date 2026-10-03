@@ -1272,11 +1272,16 @@ await checkAsync("Der Kaufweg: eingefügter Token wird geprüft, hinterlegt, und
   const work = mkdtempSync(join(tmpdir(), "ara-kauf-"));
   const envFile = join(work, "env");
   writeFileSync(envFile, `ARASUL_BASIS=${base}\n`);
-  const env = { ARA_ENV_FILE: envFile };
+  // Ein eigenes, leeres devices/ und customers/: was der Mensch im Kit liegen hat, zählt hier nicht.
+  const geraete = join(work, "devices");
+  const kunden = join(work, "customers");
+  mkdirSync(geraete);
+  mkdirSync(kunden);
+  const env = { ARA_ENV_FILE: envFile, ARA_DEVICES: geraete, ARA_CUSTOMERS: kunden };
   const akten = ["_selftest-kauf-a", "_selftest-kauf-b"];
   const anlegen = (name, arasul) => {
-    mkdirSync(join(ROOT, "devices", name), { recursive: true });
-    writeFileSync(join(ROOT, "devices", name, "device.md"), `---\nname: ${name}\nverdict: supported\narasul: ${arasul}\n---\n`);
+    mkdirSync(join(geraete, name), { recursive: true });
+    writeFileSync(join(geraete, name, "device.md"), `---\nname: ${name}\nverdict: supported\narasul: ${arasul}\n---\n`);
   };
   const store = (token) =>
     new Promise((done) => {
@@ -1354,7 +1359,6 @@ await checkAsync("Der Kaufweg: eingefügter Token wird geprüft, hinterlegt, und
   } finally {
     server.close();
     rmSync(work, { recursive: true, force: true });
-    for (const n of akten) rmSync(join(ROOT, "devices", n), { recursive: true, force: true });
   }
 });
 
@@ -13362,6 +13366,15 @@ check("Das Ausrollen warnt vor Ersatzschreibung in sichtbaren Texten", () => {
     assert(funde.some((f) => f.wo.startsWith("flows")), `der Flow schlaegt nicht an: ${orte}`);
     assert(funde.some((f) => f.wo.endsWith("App.tsx") && f.woerter.includes("Aenderung")), `das Frontend schlaegt nicht an: ${orte}`);
     assert(!funde.some((f) => f.woerter.includes("Geraet") || f.woerter.includes("geraet")), "Kommentar oder Bezeichner im Frontend schlaegt an");
+    // Fund vom 03.10.2026: gebaute Dateien (pdf.worker.min.js) schlugen als Ersatzschreibung an.
+    const assets = join(schlecht.dir, "frontend", "assets", "pdf-dateien");
+    mkdirSync(assets, { recursive: true });
+    const gebaut = 'var a="Geraet fuer die Aenderung";' + "x=1;".repeat(400) + "\n";
+    writeFileSync(join(assets, "pdf.worker.min.js"), gebaut);
+    writeFileSync(join(assets, "bundle.js"), gebaut);
+    const mitAssets = sichtbareErsatzfunde(schlecht.dir, schlecht.manifest);
+    assert(!mitAssets.some((f) => f.wo.includes("assets")), `gebaute Datei schlaegt an: ${mitAssets.map((f) => f.wo).join(" | ")}`);
+    assert(mitAssets.some((f) => f.wo.endsWith("App.tsx") && f.woerter.includes("Aenderung")), "echte Prosa schlaegt nach den Assets nicht mehr an");
     const gut = sichtbareErsatzfunde(sauber.dir, sauber.manifest);
     assert(gut.length === 0, `eine saubere App schlaegt an: ${JSON.stringify(gut)}`);
   } finally {

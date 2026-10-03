@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.66.1 (2026-10-03)
+
+Contract: up to 8
+
+- **Die Umlautwarnung lässt gebaute Dateien in Ruhe (M5).** `app.mjs --check` und `--deploy` melden `*.min.js` und gebaute Bündel (eine Zeile über 1000 Zeichen) im Frontend nicht mehr als Ersatzschreibung. Echte Ersatzwörter in Prosa werden weiter gemeldet.
+- **Der Selbsttest hängt nicht mehr an `devices/`.** Der Fall zum Kaufweg nutzt eigene leere Ordner (`ARA_DEVICES`, neben `ARA_CUSTOMERS`) und bleibt grün, wenn im Kit eine Akte liegt. Beide Befunde haben einen eigenen Fall im Selbsttest.
+
 ## 0.66.0 (2026-10-03)
 
 Contract: up to 8

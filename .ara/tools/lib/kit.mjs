@@ -111,7 +111,9 @@ export function writeFrontmatter(path, changes) {
  * (Vorführung, Übung). Kundengeräte liegen unter customers/<kunde>/devices/<gerät>/.
  * Überall dort, wo ein Kunde stehen kann, heißt "kein Kunde" darum: devices/.
  */
-export const DEVICES = join(ROOT, "devices");
+// Wie ARA_CUSTOMERS: der Selbsttest lenkt die Geräteakten in einen leeren Wegwerfordner,
+// damit eine Akte des Menschen unter devices/ keinen Fall verändert.
+export const DEVICES = process.env.ARA_DEVICES || join(ROOT, "devices");
 
 /** Pfad zum Kundenordner. Prüft nicht, ob er existiert. */
 export function customerPath(customer) {
