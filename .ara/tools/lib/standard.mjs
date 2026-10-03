@@ -193,7 +193,13 @@ export function standardFindings(dir, { manifest = undefined, scaffold = false }
     const hasMirror = existsSync(mirror) && statSync(mirror).isDirectory();
     const fassung = hasMirror ? readLibrary(mirror)?.fassung || null : null;
     const feld = typeof found.marken === "string" && found.marken ? found.marken : null;
-    if (hasMirror && !feld) {
+    // Nur die Hauptzahl (`"5"`) heißt: die App lädt die Bibliothek zur Laufzeit
+    // vom Gerät (Kontrakt 9). Dann gibt es keine Fassung, die eine Kopie
+    // tragen müsste, und die Kopie darf fehlen.
+    const zurLaufzeit = feld !== null && /^\d+$/.test(feld);
+    if (zurLaufzeit) {
+      // nichts zu halten: das Gerät liefert die Fassung, die es führt
+    } else if (hasMirror && !feld) {
       out.push(
         t(
           "app.json carries no field `marken`. An app on the design system says which version it stands on; --new writes the field, marken.mjs --sync keeps it current.",

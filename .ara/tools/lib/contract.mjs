@@ -60,6 +60,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 8,
     kann: "Eine App bekommt ein Symbol (`symbol`) und ein Flow nennt seine Arten, Auslöser und Freigabestufen (`arten`, `ausloeser`, `stufen`), ein Schritt seine Fähigkeiten (`faehigkeiten`, nie an einem Werkzeug-Schritt): das Gerüst schreibt die Felder nach dem Kontrakt des Geräts, /app fragt in einfacher Sprache danach, und das Ausrollen verlangt ein paar Sätze, was neu ist, und reicht sie als `aenderungstext` neben dem Paket weiter. Ob das Gerät die Felder schon wirken lässt, sagt sein Kontrakt, nicht das Kit.",
   },
+  {
+    version: 9,
+    kann: "Eine App darf die Bibliothek des Designsystems zur Laufzeit vom Gerät laden, statt eine Kopie mitzubringen: das Kit liest das Feld `marken` in beiden Formen (nur die Hauptzahl heißt zur Laufzeit, drei Zahlen heißen Kopie), hält bei der Hauptzahl keine Kopie in der App fest und reicht das Feld unverändert weiter. Welche Hauptzahl das Gerät ausliefert, sagt sein Kontrakt, nicht das Kit.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */
@@ -90,6 +94,7 @@ const READ_FIELDS = new Set([
   "auslesen",
   "warten",
   "bilder",
+  "marken",
 ]);
 
 /** Was dieses Gerät im Kontrakt nennt und dieses Kit nicht liest. */

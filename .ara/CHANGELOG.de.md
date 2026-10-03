@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.67.0 (2026-10-03)
+
+Contract: up to 9
+
+- **Das Kit versteht Kontrakt 9 und das Feld `marken` in beiden Formen (M5).** Ein Gerät mit Kontrakt 9 hält es nicht mehr an. `marken` mit nur der Hauptzahl (`"5"`) heißt, die App lädt die Bibliothek des Designsystems zur Laufzeit vom Gerät; drei Zahlen (`"5.2.1"`) heißen Kopie. Bei der Hauptzahl hält `--check` keine Kopie in der App an einer Fassung fest, bei drei Zahlen wie bisher. Welche Hauptzahl ein Gerät ausliefert, sagt sein Kontrakt, nicht das Kit.
+
 ## 0.66.2 (2026-10-03)
 
 Kontrakt: bis 8

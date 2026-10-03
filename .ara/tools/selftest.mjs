@@ -81,6 +81,7 @@ import {
   checkVersion,
   findEndpoint,
   promisedFolders,
+  unreadFields,
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
@@ -2737,6 +2738,25 @@ check("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderungstext stehe
     server.close();
   }
   return "Fassung 8 bedient, Felder geschrieben und geprüft, Änderungstext geht neben dem Paket mit";
+});
+
+check("Kontrakt 9: das Feld marken heißt mit der Hauptzahl zur Laufzeit, mit drei Zahlen Kopie", () => {
+  assert(KIT_CONTRACT_VERSION >= 9, "das Kit versteht Kontrakt 9 nicht");
+  const neun = KIT_CONTRACT_VERSIONS.find((e) => e.version === 9);
+  assert(neun && neun.kann.length > 40, "Fassung 9 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 9 }).ok, "ein Gerät mit Kontrakt 9 hält das Kit an");
+  assert(!unreadFields({ marken: {} }).includes("marken"), "der Abschnitt marken gilt dem Kit als ungelesen");
+  const dir = mkdtempSync(join(tmpdir(), "ara-marken9-"));
+  try {
+    mkdirSync(join(dir, "frontend", "src"), { recursive: true });
+    writeFileSync(join(dir, "frontend", "src", "main.tsx"), "export {};\n");
+    const mit = (marken) => standardFindings(dir, { manifest: { id: "x", frontend: { verzeichnis: "frontend" }, marken } });
+    assert(mit("5").length === 0, `die Hauptzahl ohne Kopie wird rot: ${mit("5").join(" | ")}`);
+    assert(mit("5.2.1").some((b) => /marken 5\.2\.1/.test(b)), "eine Kopie, die es nicht gibt, fällt nicht auf");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  return "Fassung 9 bedient, die Hauptzahl braucht keine Kopie";
 });
 
 function applyOhne(f, text) {
