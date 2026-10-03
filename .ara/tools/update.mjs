@@ -60,7 +60,6 @@ import {
   readlinkSync,
   rmSync,
   statSync,
-  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";

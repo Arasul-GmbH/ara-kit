@@ -200,7 +200,7 @@ node .ara/tools/app.mjs --device <gerät> --app <name> --deploy
 node .ara/tools/app.mjs --device <gerät> --app <name> --live
 ```
 
-**Ein Einspielen braucht ab Kontrakt 8 ein paar Sätze, was neu ist**:
+**Ein Einspielen braucht ein paar Sätze, was neu ist**, wenn der Kontrakt des Geräts das Feld `aenderungstext` nennt:
 `--deploy --aenderungstext "<text>"`, 1 bis 1000 Zeichen. Frag in den Worten des Menschen („Was ist neu für die, die damit
 arbeiten?"); ohne den Text hält das Kit an, und er geht neben dem Paket mit, nicht in die `app.json`.
 

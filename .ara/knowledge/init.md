@@ -404,7 +404,7 @@ steps, in this order:
    from the kit stays.
 
    **A retired command is the only case in which the tool deletes something.** `/angebot` has been
-   called `/offer` since phase E6, `/kalkulation` has been called `/calculation` since phase E10. If
+   called `/offer`, `/kalkulation` has been called `/calculation`. If
    both stayed, the old one would keep leading through a procedure that no longer exists. Only the
    unchanged copy gets deleted, recognisable by the remembered hash; one the human has touched gets
    named and stays. Tell them in that case what the command is called today, and that they may delete

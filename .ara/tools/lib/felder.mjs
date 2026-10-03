@@ -166,6 +166,14 @@ export function parseAusloeser(value) {
   return { ausloeser: list };
 }
 
+/**
+ * Kennt der Kontrakt des Geraets das Feld `aenderungstext`? Das Kit fragt den Kontrakt, nicht eine
+ * Versionsnummer: nennt er das Feld irgendwo, nimmt das Geraet den Text neben dem Paket an.
+ */
+export function contractKnowsChangeText(contract) {
+  return JSON.stringify(contract ?? {}).includes('"aenderungstext"');
+}
+
 /** Der `aenderungstext` beim Ausrollen: ein paar Sätze, 1 bis 1000 Zeichen. */
 export function parseAenderungstext(value) {
   const text = typeof value === "string" ? value.trim() : "";

@@ -21,7 +21,6 @@
  */
 
 import { LANGUAGES } from "./i18n.mjs";
-import { t } from "./i18n.mjs";
 
 /** Die zwei Zweige des Kits. Ein Partner hat Kunden, ein Betrieb nicht. */
 export const ROLES = Object.freeze(["partner", "company"]);
@@ -37,12 +36,3 @@ export const CLOSED_FIELDS = Object.freeze({
   invoice: Object.freeze(["yes", "no", "later"]),
   first_device_state: Object.freeze(["present", "ordered", "none"]),
 });
-
-/** Der Satz, der in einer Antwortdatei ueber dem Wertevorrat steht. */
-export function vocabularyNote(language) {
-  return t(
-    "The fields below only know these values. Everything else is refused by --answers, with the list in the message.",
-    "Die Felder darunter kennen nur diese Werte. Alles andere weist --answers ab, samt Liste in der Meldung.",
-    language
-  );
-}

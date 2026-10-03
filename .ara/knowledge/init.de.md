@@ -423,7 +423,7 @@ Stand des Kits. Acht Schritte, in dieser Reihenfolge:
    dem Kit stammt, bleibt liegen.
 
    **Ein abgelöster Befehl ist der einzige Fall, in dem das Werkzeug etwas löscht.**
-   `/angebot` heißt seit Phase E6 `/offer`, `/kalkulation` seit Phase E10 `/calculation`.
+   `/angebot` heißt heute `/offer`, `/kalkulation` heißt heute `/calculation`.
    Blieben beide liegen, führte der alte weiter
    durch ein Verfahren, das es nicht mehr gibt. Gelöscht wird nur die unveränderte Kopie,
    erkennbar am gemerkten Hash; eine, die der Mensch angefasst hat, wird genannt und bleibt.

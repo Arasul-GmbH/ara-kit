@@ -7,7 +7,7 @@ Angebot für: **$1**
 
 Lies `.ara/knowledge/paperwork.de.md` und arbeite danach. Was hier steht, ist der Weg
 durch dieses Verfahren, nicht ein zweites daneben. Wissen, das dieser Befehl lädt:
-`.ara/knowledge/paperwork.de.md`, `.ara/knowledge/leistungsbeschreibung.de.md`,
+`.ara/knowledge/paperwork.de.md`, `.ara/knowledge/service-description.de.md`,
 `.ara/knowledge/pricing.de.md`, `.ara/knowledge/sales.de.md`, `.ara/knowledge/crm.de.md`,
 `.ara/knowledge/live-knowledge.de.md` für jeden Produktwert. Dazu `business/profile.md`
 und `business/company.md` für Absender und Sätze.

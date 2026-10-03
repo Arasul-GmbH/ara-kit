@@ -87,7 +87,8 @@ These values change in the product all the time. They stand in exactly three pla
    `node .ara/tools/mirror.mjs --show` says which one it is. The platform catalogue lies
    there too, `config/platforms/*.json`, and with it the field `verification`: whether a
    profile was verified on the device or only built from manufacturer documentation.
-4. **Nowhere else.**
+
+**Nowhere else.**
 
 **The device profiles under `.ara/knowledge/devices/` are not a fourth place.** They say
 which hardware the kit recognises; model, engine, memory budget and verification level stand
@@ -117,8 +118,7 @@ Procedure: `.ara/knowledge/paperwork.md`
 | `/maintain [<device>]` | Look after a running device: status line, then what is due in free text, self-healing first when something of Arasul does not run. `<customer>/<device>` for a customer device | `.ara/knowledge/maintenance-flow.md`, `.ara/knowledge/self-healing.md` |
 | `/root [<path>]` | Lay out the root folder of a whole house outside of the kit, with rules, skills, places and a check script, enrol its proposal after consent, check it, put it onto the device | `.ara/knowledge/root.md` |
 
-`/kalkulation` was renamed to `/calculation` in phase E10, `/angebot` to `/offer` in phase
-E6. If somebody types the old name, say what it is called today.
+`/kalkulation` is now called `/calculation`, `/angebot` is now called `/offer`. If somebody types the old name, say what it is called today.
 
 **There is no command for buying Arasul**, no command called kaufen or licence. The way hangs on
 `/device`, which asks a supported device without a token for one; asked without a device, the
@@ -159,6 +159,7 @@ Call them instead of rebuilding what they do. They all live under `.ara/tools/`.
 | `invoice.mjs` | Invoice with number range, section 14 UStG check and ZUGFeRD PDF: `.ara/knowledge/invoicing.md` |
 | `evidence.mjs` | Picture evidence per line of the service description, wired into no procedure yet |
 | `service-description.mjs` | Service description with values measured on the device |
+| `guard.mjs` | The guard: stops dangerous commands before they run, as a hook for both agents: `.ara/knowledge/security.md` |
 | `marken.mjs` | Guard of the design system's copies: `.ara/knowledge/design-guard.md` |
 | `pdf.mjs` | Markdown becomes a PDF in the house style |
 | `secrets.mjs` | Store secrets and look up what is set, never showing a value |
@@ -201,7 +202,7 @@ itself the first time, because it creates the file in the first place.
   question allows a free answer**, and what the human writes there holds, even against
   your choice. Only when they start themselves do you answer normally.
 - **Every command asks to full depth.** Each of the nine commands has a list "What must be
-  clear" in its knowledge file (`app.md`, `init.md`, `customer-file.md`, `pricing.md`,
+  clear" in its knowledge file (in `app.md` it is called "The interview checklist"; the others are `init.md`, `customer-file.md`, `pricing.md`,
   `paperwork.md`, `invoicing.md`, `device.md`, `maintenance-flow.md`, `root.md`). You ask until
   every point on it is answered, readable from a file or the device, or open. A round that is
   over does not end the interview, the list does.

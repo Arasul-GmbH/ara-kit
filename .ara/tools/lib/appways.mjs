@@ -360,9 +360,12 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
       : null;
 
   return {
-    hinweis:
-      "Vom Ara-Kit beim Einspielen aus dem Kontrakt des Geraets geschrieben, nicht von Hand. " +
-      "Was hier steht, ist zwischen App und Geraet vereinbart; die App raet keinen dieser Werte.",
+    hinweis: t(
+      "Written by the Ara-Kit at deploy time from the device's contract, not by hand. " +
+        "What stands here is agreed between app and device; the app guesses none of these values.",
+      "Vom Ara-Kit beim Einspielen aus dem Kontrakt des Geräts geschrieben, nicht von Hand. " +
+        "Was hier steht, ist zwischen App und Gerät vereinbart; die App rät keinen dieser Werte."
+    ),
     geraet: device,
     erzeugt: date,
     kontrakt: typeof contract?.kontrakt === "number" ? contract.kontrakt : null,

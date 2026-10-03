@@ -114,14 +114,14 @@ import { join, relative } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { t } from "./lib/i18n.mjs";
-import { ROOT, customerPath, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
+import { ROOT, adminSession, customerPath, ensureDir, fail, helpOnly, now, parseArgs, readDevice, sshArgs, today } from "./lib/kit.mjs";
 import { baseUrl, call, reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
 import { APPLEDOUBLE, installCommand, installTarget, installerEntry, packEnv, releaseData, releaseVersion, runInstaller, runRemote, ship } from "./lib/install.mjs";
 import { portalBase } from "./lib/licence.mjs";
 import { getSecret } from "./lib/secrets.mjs";
 import { HEALTH_PROBE, parseHealth, readHealth } from "./lib/maintain.mjs";
-import { TOPICS, INSTALLATION_PROBE, compareSnapshots, readTopic, durationSentence, githubRelease, installedVersion, lostAnything, minutes, parseFacts, parseSha256, repoFrom, routeListed, routeRows, sha256File, verdict, verdictSentence, versionIn, wayBackLines } from "./lib/upgrade.mjs";
+import { TOPICS, INSTALLATION_PROBE, compareSnapshots, readTopic, durationSentence, githubRelease, installedVersion, lostAnything, minutes, parseFacts, parseSha256, repoFrom, routeListed, routeRows, verdict, verdictSentence, versionIn, wayBackLines } from "./lib/upgrade.mjs";
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -252,34 +252,6 @@ const routes = apiReference ? routeRows(apiReference) : [];
 
 // --- Die Sitzung als Administrator -------------------------------------------
 
-/**
- * Das Kit hat einen Schlüssel und keine Sitzung. Die Anmeldung geht durch
- * `device.mjs --admin-login`, damit es eine einzige Stelle gibt, die ein Passwort aus der
- * Ablage in eine Anmeldung verwandelt. Der Ausweis kommt über den Ausgabestrom dieses
- * Prozesses zurück und wird nie ausgegeben.
- */
-function adminSession() {
-  const run = spawnSync(
-    "node",
-    [
-      join(ROOT, ".ara", "tools", "device.mjs"),
-      ...(device.customer ? ["--customer", device.customer] : []),
-      "--name",
-      device.device,
-      "--admin-login",
-      "--token",
-      ...(str(arg["login-user"]) ? ["--login-user", str(arg["login-user"])] : []),
-      ...(str(arg["password-ref"]) ? ["--password-ref", str(arg["password-ref"])] : []),
-      ...(arg.insecure ? ["--insecure"] : []),
-    ],
-    { encoding: "utf8" }
-  );
-  if (run.status !== 0 || !run.stdout.trim()) {
-    return { ok: false, reason: (run.stderr || run.stdout || "").trim().split("\n").slice(0, 3).join(" ") };
-  }
-  return { ok: true, bearer: run.stdout.trim() };
-}
-
 let base;
 try {
   base = baseUrl(device.fields.api_base || address);
@@ -287,7 +259,8 @@ try {
   fail(error.message);
 }
 const insecure = Boolean(arg.insecure) || String(device.fields.tls || "").toLowerCase() === "selfsigned";
-const session = adminSession();
+const session = adminSession(device, arg);
+if (!session.ok) session.reason = session.reason.split("\n").slice(0, 3).join(" ");
 
 /** Ein Aufruf mit der Sitzung. Fehler werden Antworten, keine Abstürze. */
 async function admin(method, path, options = {}) {

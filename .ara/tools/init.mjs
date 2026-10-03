@@ -52,7 +52,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { LANGUAGES, language, localized, setLanguage, t } from "./lib/i18n.mjs";
+import { language, localized, setLanguage, t } from "./lib/i18n.mjs";
 import {
   BUSINESS,
   ROOT,
@@ -350,11 +350,9 @@ function status() {
   }
   const company = readFrontmatter(COMPANY);
   const role = profile.fields.role;
-  // Fund 7 der Werkstatt am 29.08.2026: `invoice` und `invoice_tool` gehoeren
-  // nur dem Partner, und /init leert sie fuer ein Unternehmen mit Absicht.
-  // Trotzdem zaehlte der Zaehler sie als Luecke, und ein sauber ausgefuelltes
-  // Unternehmensprofil meldete dauerhaft zwei, die keine sind. Echte Luecken
-  // gehen darin unter.
+  // `invoice` und `invoice_tool` gehoeren nur dem Partner, und /init leert sie fuer ein
+  // Unternehmen mit Absicht. Sie zaehlen dort nicht als Luecke, sonst gingen die echten darin
+  // unter.
   const foreign = OTHER_BRANCH[role] || [];
   const own = Object.entries(profile.fields).filter(([k]) => !foreign.includes(k));
   const set = own.filter(([, v]) => v).map(([k]) => k);
@@ -473,12 +471,8 @@ if (arg.answers) {
   console.log(t(`Written: ${result.written.join(", ")}`, `Geschrieben: ${result.written.join(", ")}`));
   console.log(result.commands);
   console.log("");
-  // Fund 8 der Werkstatt am 29.08.2026: der Weg ueber die Antwortdatei sagte
-  // "Es fehlt nichts, was ein Befehl braucht", obwohl zwei Felder leer
-  // geblieben waren. Die zweite Regel dieses Verfahrens heisst "nichts
-  // stillschweigend durchgehen lassen", und sie griff hier nicht: die Luecken
-  // nannte nur `--show`, und nur, wenn jemand es aufrief. Jetzt endet der Lauf
-  // mit derselben Zeile.
+  // Nichts stillschweigend durchgehen lassen: auch der Weg ueber die Antwortdatei endet mit
+  // denselben Zeilen wie `--show`, mit den Luecken, die geblieben sind.
   printAhead(lage);
   printGaps(lage);
   printConsequences(lage);

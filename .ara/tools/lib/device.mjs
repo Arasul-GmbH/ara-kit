@@ -237,11 +237,10 @@ export function services(facts) {
  * Dienste, die das Wort arasul im Namen tragen und trotzdem nicht zur Plattform
  * gehören.
  *
- * Der Actions-Runner von GitHub heißt nach dem Repo, für das er baut, am Orin
- * `actions.runner.<besitzer>-arasul-jet.<gerät>.service`. Am 25.09.2026 hielt
- * das Kit ihn für einen Rest der Plattform, und die Installation ging nur mit
- * --despite-traces weiter: ein Schalter, der für echte Reste gedacht ist, wurde
- * für einen Dienst gebraucht, der mit dem Gerät als Produkt nichts zu tun hat.
+ * Der Actions-Runner von GitHub heißt nach dem Repo, für das er baut,
+ * `actions.runner.<besitzer>-<repo>.<gerät>.service`. Er ist kein Rest der
+ * Plattform: --despite-traces ist für echte Reste gedacht, nicht für einen
+ * Dienst, der mit dem Gerät als Produkt nichts zu tun hat.
  */
 export const FOREIGN_UNITS = [/^actions\.runner\./i];
 
@@ -261,9 +260,8 @@ export function arasulRunning(state) {
  *
  * Der Name steht in der Schluesselliste des Geraets, und dort liest ihn spaeter
  * ein Mensch. `business/company.md` legt `/init` nur im Partner-Zweig an; im
- * Unternehmens-Zweig blieb der Ausdruck darum auf seinem letzten Zweig stehen,
- * und der Schluessel hiess "Ara-Kit Partner" (Fund 3 der Werkstatt am
- * 29.08.2026). Das Profil gibt es in beiden Zweigen und traegt `company`.
+ * Unternehmens-Zweig darf der Name darum nicht an diesem Ausdruck haengen,
+ * sonst hiesse der Schluessel dort "Ara-Kit Partner". Das Profil gibt es in beiden Zweigen und traegt `company`.
  *
  * Kein Rueckfall auf ein Wort, das nach einem Namen aussieht: steht nirgends
  * einer, heisst der Schluessel "Ara-Kit" und behauptet nichts.
@@ -296,8 +294,7 @@ export function startRefName(customer, device) {
  * `installed` ist der Name aus einer Installation, die dieser Lauf gemacht hat.
  * Gab es keine, zaehlt trotzdem, ob in der Ablage ein Eintrag unter dem
  * erwarteten Namen liegt: ein Geraet, auf dem Arasul schon lief, bekam das Feld
- * sonst nie, obwohl `--admin-login` sich damit anmeldete (Fund 4 der Werkstatt
- * am 29.08.2026). Was schon in der Akte steht, bleibt stehen.
+ * sonst nie, obwohl `--admin-login` sich damit anmeldete. Was schon in der Akte steht, bleibt stehen.
  *
  * `null` heisst: nichts zu schreiben.
  */

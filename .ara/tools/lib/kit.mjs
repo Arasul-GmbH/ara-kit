@@ -337,11 +337,10 @@ export const USER_FOLDERS = Object.freeze(["business", "customers", "devices", "
  *
  * Es gibt Klone, fuer die das richtig ist: ein Betrieb, der mit dem Kit seine
  * EIGENEN Geraete und Apps fuehrt, will genau das in seiner Sicherung haben.
- * Die Werkstatt am 29.08.2026 war so einer, und das Kit hielt sie an vier
- * Stellen fuer einen Fehler: drei Pruefungen des Selbsttests fielen, und
- * `--plan-aktiv` verweigerte mitten in der Arbeit.
+ * Fuer so einen Betrieb waere "verfolgt" ein Fehler: Selbsttest und `--plan-aktiv` duerfen ihn
+ * nicht dafuer anhalten.
  *
- * Der Grund war eine verwechselte Frage. Gemeint ist "kam diese Datei mit dem
+ * Es geht um zwei verschiedene Fragen. Gemeint ist "kam diese Datei mit dem
  * Kit", geprueft wurde "verfolgt git sie". Fuer den Klon eines Partners ist das
  * dasselbe, fuer den eigenen Betrieb nicht. Das Feld `versioned:` im Profil
  * sagt es, und ohne das Feld bleibt alles, wie es war: der Schutz fuer
@@ -401,4 +400,50 @@ export function ensureDir(path) {
 export function fail(message) {
   console.error(message);
   process.exit(1);
+}
+
+/** Wo der Merker liegt: woran zuletzt gearbeitet wurde, mehr nicht. */
+const STATE = join(ROOT, ".ara", "state.json");
+
+/** Der Merker. Fehlt die Datei oder ist sie kaputt, ist er leer. */
+export function readState() {
+  try {
+    return JSON.parse(readFileSync(STATE, "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+export function writeState(changes) {
+  writeFileSync(STATE, JSON.stringify({ ...readState(), ...changes }, null, 2) + "\n");
+}
+
+/**
+ * Wo der Spiegel liegt. Als Funktion und nicht als Konstante, damit ein Lauf
+ * ihn umlenken kann (ARA_MIRROR), ohne einen echten Spiegel zu überschreiben.
+ */
+export function mirrorDir() {
+  return process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
+}
+
+/**
+ * Eine Sitzung als Administrator, aus `device.mjs --admin-login`.
+ *
+ * Nicht nachgebaut: die Anmeldung, ihre Quelle für Weg und Felder und die Sätze bei einer
+ * Abweisung stehen dort. Alle fünf Anmelde-Schalter und `--insecure` gehen durch, das Passwort
+ * bleibt im anderen Prozess, und zurück kommt nur der Ausweis. `arg` sind die Schalter des
+ * Aufrufers, `device` seine Akte (`device`, `customer`).
+ */
+export function adminSession(device, arg) {
+  const text = (v) => (typeof v === "string" && v ? v : null);
+  const args = [join(ROOT, ".ara", "tools", "device.mjs"), ...(device.customer ? ["--customer", device.customer] : []), "--name", device.device, "--admin-login", "--token"];
+  for (const name of ["password-ref", "login-user", "login-path", "login-user-field", "login-password-field"]) {
+    if (text(arg[name])) args.push(`--${name}`, text(arg[name]));
+  }
+  if (arg.insecure) args.push("--insecure");
+  const run = spawnSync(process.execPath, args, { encoding: "utf8" });
+  if (run.status !== 0 || !run.stdout.trim()) {
+    return { ok: false, reason: (run.stderr || run.stdout || "").trim() };
+  }
+  return { ok: true, bearer: run.stdout.trim() };
 }

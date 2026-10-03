@@ -47,17 +47,12 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT, readFrontmatter } from "./kit.mjs";
+import { ROOT, mirrorDir, readFrontmatter } from "./kit.mjs";
 import { isVariant, localized, t } from "./i18n.mjs";
 
 /** Wo die Profile liegen. */
 export function profileDir() {
   return join(ROOT, ".ara", "knowledge", "devices");
-}
-
-/** Wo der Spiegel liegt. Dieselbe Umlenkung wie in lib/install.mjs. */
-function mirrorDir() {
-  return process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
 }
 
 /** Was ein Profil tragen muss, um überhaupt erkennen zu können. */
@@ -254,9 +249,8 @@ export function verificationOf(platformId, dir = mirrorDir()) {
  */
 export function verificationLine(check) {
   if (!check?.level) {
-    // Fund 2 der Werkstatt am 29.08.2026: der Satz sagte, es gebe keinen
-    // Spiegel, und nicht, wie man an einen kommt. Das Kit weiss hier genau,
-    // was fehlt, und sagte es nur halb.
+    // Fehlt der Spiegel, sagt der Satz auch, wie man an einen kommt: das Kit weiss hier genau,
+    // was fehlt.
     const weg = check?.missing === "mirror"
       ? t(
           " node .ara/tools/mirror.mjs --refresh fetches the artifact, also without an installation.",

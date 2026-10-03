@@ -24,16 +24,8 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ROOT } from "./kit.mjs";
+import { ROOT, mirrorDir } from "./kit.mjs";
 import { t } from "./i18n.mjs";
-
-/**
- * Wo der Spiegel liegt. Als Funktion und nicht als Konstante, damit ein Lauf
- * ihn umlenken kann (ARA_MIRROR), ohne einen echten Spiegel zu überschreiben.
- */
-function mirrorDir() {
-  return process.env.ARA_MIRROR || join(ROOT, ".ara", "mirror");
-}
 
 /**
  * Wohin das Artefakt am Gerät ausgepackt wird.
@@ -98,7 +90,7 @@ const VERSION_FIELDS = ["fassung", "version", "produktversion", "stand", "releas
 const OPTION_PASSWORD = "--passwort";
 const OPTION_NAME = "--name";
 
-/** Der Name der Datei, die am Gerät den Kit-Schlüssel ausstellt (Jet-Phase C5). */
+/** Der Name der Datei, die am Gerät den Kit-Schlüssel ausstellt. */
 const KEY_SCRIPT = "kit-schluessel.sh";
 
 /**
@@ -710,7 +702,7 @@ export function runInstaller(sshArgs, transport, command, { secrets = [] } = {})
  *
  * Ohne Angabe ist das der Spiegel: das ist der Weg, für den die Funktion
  * entstanden ist. `from` gibt es, weil derselbe Weg noch einmal gebraucht wird,
- * wenn eine App auf ein Gerät ohne Arasul geht (Phase E5): zwei Nachbauten
+ * wenn eine App auf ein Gerät ohne Arasul geht: zwei Nachbauten
  * desselben Rohrs liefen auseinander, und der zweite wäre der ungetestete.
  */
 export async function ship(sshArgs, transport, target = installTarget(mirrorState()?.version), from = mirrorDir()) {

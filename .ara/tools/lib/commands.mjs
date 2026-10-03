@@ -19,15 +19,15 @@
  * den neuen daneben. Sonst liest jemand von einem Befehl, den es nicht gibt.
  */
 export const RETIRED = Object.freeze({
-  // Phase E1, 26.08.2026: /start und /update sind in /init aufgegangen. Das
+  // /start und /update sind in /init aufgegangen. Das
   // erste Mal und jedes weitere Mal ist derselbe Befehl, er sieht selbst nach,
   // welcher der beiden Faelle vorliegt.
   start: "init",
   update: "init",
-  // Phase E6, 27.08.2026: /offer nach kit-grundriss.md, englisch wie die
+  // /angebot heisst /offer, nach kit-grundriss.md, englisch wie die
   // uebrigen Befehle.
   angebot: "offer",
-  // Phase E10, 28.08.2026: Englisch ist die Hauptsprache des Kits, und ein
+  // Englisch ist die Hauptsprache des Kits, und ein
   // Befehlsname ist keine Ausnahme. Er heisst wie sein Werkzeug.
   kalkulation: "calculation",
 });

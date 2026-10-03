@@ -37,8 +37,6 @@
     ".ara/mirror",
     // Interne Planung, liegt nur lokal.
     "entwicklung",
-    "PHASE.md",
-    "NACHTRAG.md",
     "AUFTRAG.md"
   ]
 }

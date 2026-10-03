@@ -29,7 +29,7 @@
  *   node .ara/tools/agenda.mjs --json          maschinenlesbar
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { t } from "./lib/i18n.mjs";
 import {

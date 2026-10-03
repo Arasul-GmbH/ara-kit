@@ -414,8 +414,8 @@ geht:
 | `none` | nichts gefunden | der normale Weg |
 
 **Der Actions-Runner von GitHub ist kein Rest.** Sein Dienst trägt den Namen des Repos, für
-das er baut, `actions.runner.<besitzer>-arasul-jet.<gerät>.service`, und bis zum 25.09.2026
-hielt das Kit ihn für einen Rest der Plattform. Er zählt nicht mehr.
+das er baut, `actions.runner.<besitzer>-<repo>.<gerät>.service`, und er zählt nicht als Rest
+der Plattform.
 
 `traces` ist der Zustand nach einem abgebrochenen Versuch oder nach einem Werksreset, bei
 dem etwas stehen geblieben ist. **Sieh vorher nach, was da liegt** (`node
@@ -488,12 +488,11 @@ Administrator, dem er gehört.
 
 ### Die Lizenz
 
-**Ein Gerät ohne Lizenz läuft auf community**, Stand 2026-09-25 (Beschluss in arasul-jet,
-J35): bis zu **3 Konten und 3 Apps**, ohne Ablauf. **Die gekaufte Lizenz ist ohne
-Grenzen** (Stufe professional), einmal bezahlt und unbefristet; an der Wartung hängen nur
-die Updates. Das sind die Stufen, die du nennen darfst. Welche Grenzen ein bestimmtes Gerät
-gerade hat, sagt das Gerät selbst, und das Werkzeug zeigt es an: wo Gerät und dieses Blatt
-auseinandergehen, gilt das Gerät.
+**Ein Gerät ohne Lizenz läuft auf community**, ohne Ablauf, mit Grenzen bei Konten und
+Apps. **Die gekaufte Lizenz ist ohne Grenzen** (Stufe professional), einmal bezahlt und
+unbefristet; an der Wartung hängen nur die Updates. Das sind die Stufen, die du nennen
+darfst, ohne Zahl dazu. Welche Grenzen ein bestimmtes Gerät gerade hat, sagt das Gerät
+selbst, und das Werkzeug zeigt es an.
 
 **Nach `--install arasul` schaltet das Werkzeug das Gerät von selbst frei**, mit dem
 hinterlegten Token:
@@ -568,7 +567,7 @@ bis jemand abgleicht, das sagt die API-Referenz selbst.
 | Erste Antwort | 12 Sekunden | die erste Anfrage nach dem Start des Sprachmodell-Dienstes, aus seinem Protokoll: Laden in den Speicher plus Antwort |
 
 Das Herunterladen wächst mit der Größe und der Leitung. Die Größe steht im Katalog des
-Geräts neben dem Modell; die Leitung beim Kunden ist eine andere als in unserer Werkstatt.
+Geräts neben dem Modell; die Leitung beim Kunden ist eine andere als bei dir.
 Schätze die Zeit als Größe durch Bandbreite und plane sie vor der Übergabe ein, nicht
 währenddessen. Danach bleibt das Modell nach jeder Nutzung eine Weile im Speicher und lädt
 bei der nächsten wieder, dann wieder in Sekunden.

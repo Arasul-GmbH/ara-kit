@@ -390,8 +390,8 @@ The trace search knows three answers, and the difference decides what goes next:
 | `none` | nothing found | the normal way |
 
 **The GitHub Actions runner is no trace.** Its service carries the name of the repository it
-builds for, `actions.runner.<owner>-arasul-jet.<device>.service`, and until 25.09.2026 the kit took
-it for a remnant of the platform. It no longer counts.
+builds for, `actions.runner.<owner>-<repo>.<device>.service`, and it does not count as a remnant of
+the platform.
 
 `traces` is the state after an aborted attempt or after a factory reset where something stayed
 behind. **Look first at what lies there** (`node .ara/tools/remote.mjs --device <device> --command
@@ -457,12 +457,11 @@ whoever wants that does it on the device, as the administrator it belongs to.
 
 ### The licence
 
-**A device without a licence runs on community**, as of 2026-09-25 (decision in arasul-jet,
-J35): up to **3 accounts and 3 apps**, without an end date. **The bought licence has no
-limits** (level professional), paid once and unlimited in time; only the updates hang on
-maintenance. Those are the levels you may name. Which limits a particular device has right
-now the device says itself, and the tool shows it: where device and this sheet part, the
-device holds.
+**A device without a licence runs on community**, without an end date, with limits on
+accounts and apps. **The bought licence has no limits** (level professional), paid once and
+unlimited in time; only the updates hang on maintenance. Those are the levels you may name,
+no number with them. Which limits a particular device has right now the device says itself,
+and the tool shows it.
 
 **After `--install arasul` the tool unlocks the device by itself**, with the stored token:
 

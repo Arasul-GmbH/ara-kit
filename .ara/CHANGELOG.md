@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.66.2 (2026-10-03)
+
+Contract: up to 8
+
+- **The kit asks the contract, not a version number, whether the device takes a text of the change (M5).** `--deploy` demands and sends `--aenderungstext` when the device's contract names the field, no longer from contract 8 on. The knowledge says the same.
+- **Tidy-up after a review (M5).** No product numbers in the licence passage of `device.md` and `sales.md` (the device says its limits), no internal references (phases, findings, dates of single cases) in knowledge, comments and `AGENTS.md`, real umlauts and `t(en, de)` in the visible texts that still had substitute spellings (arrangement note of a deployed app, ZUGFeRD check messages, invoice states, the customer-app scaffold). The knowledge sheet on the service description now has an English file name, `service-description.md`. `AGENTS.md` fits the knowledge files again (the interview list of `app.md`, the three places, the guard in the tool table). Dead code and unused imports are gone. `readState`, `writeState`, `mirrorDir` and `adminSession` live once in `lib/kit.mjs`; `upgrade.mjs` now passes all five login switches to the administrator login, as `app.mjs` does. The header of `lib/patterns.mjs` says that only the booking-batch pattern is recognised by words.
+
 ## 0.66.1 (2026-10-03)
 
 Contract: up to 8

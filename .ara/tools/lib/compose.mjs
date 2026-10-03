@@ -1,7 +1,7 @@
 /**
  * Eine App auf einem Gerät **ohne** Arasul: zwei Container, von Hand gestellt.
  *
- * Das ist der zweite Weg der Phase E5 und ausdrücklich der kleinere. Auf einem
+ * Das ist der zweite Weg, App und Gerät zusammenzubringen, und ausdrücklich der kleinere. Auf einem
  * Gerät mit Arasul geht ein Paket über die Schnittstelle, das Gerät baut, prüft,
  * hält einen Teststand und einen Livestand. Ohne Arasul gibt es nichts davon:
  * ein Webserver liefert die Oberfläche aus, ein Container trägt das Backend, und

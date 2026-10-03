@@ -574,26 +574,26 @@ export function checkRules(root) {
 
   const spec = pick(context, "ram:GuidelineSpecifiedDocumentContextParameter", "ram:ID");
   if (!spec) say("BR-01", "die Kennung der Spezifikation fehlt");
-  else if (!spec.startsWith(PROFILE.id)) say("BR-01", `die Kennung "${spec}" gehoert nicht zur EN 16931`);
+  else if (!spec.startsWith(PROFILE.id)) say("BR-01", t(`the identifier "${spec}" does not belong to EN 16931`, `die Kennung "${spec}" gehört nicht zur EN 16931`));
   if (!pick(head, "ram:ID")) say("BR-02", "die Rechnungsnummer fehlt");
   if (!pick(head, "ram:IssueDateTime", "udt:DateTimeString")) say("BR-03", "das Rechnungsdatum fehlt");
   const type = pick(head, "ram:TypeCode");
   if (!type) say("BR-04", "der Rechnungstyp fehlt");
-  else if (type !== TYPE_CODE) say("BR-CL-01", `der Typcode ${type} ist fuer eine Rechnung nicht ${TYPE_CODE}`);
+  else if (type !== TYPE_CODE) say("BR-CL-01", t(`the type code ${type} is not ${TYPE_CODE}, as an invoice needs`, `der Typcode ${type} ist für eine Rechnung nicht ${TYPE_CODE}`));
   const currency = pick(settlement, "ram:InvoiceCurrencyCode");
-  if (!/^[A-Z]{3}$/.test(currency)) say("BR-05", `"${currency}" ist kein Waehrungscode nach ISO 4217`);
+  if (!/^[A-Z]{3}$/.test(currency)) say("BR-05", `"${currency}" ist kein Währungscode nach ISO 4217`);
 
   const seller = child(agreement, "ram:SellerTradeParty");
   const buyer = child(agreement, "ram:BuyerTradeParty");
-  if (!pick(seller, "ram:Name")) say("BR-06", "der Name des Verkaeufers fehlt");
-  if (!pick(buyer, "ram:Name")) say("BR-07", "der Name des Kaeufers fehlt");
-  if (!child(seller, "ram:PostalTradeAddress")) say("BR-08", "die Anschrift des Verkaeufers fehlt");
+  if (!pick(seller, "ram:Name")) say("BR-06", "der Name des Verkäufers fehlt");
+  if (!pick(buyer, "ram:Name")) say("BR-07", "der Name des Käufers fehlt");
+  if (!child(seller, "ram:PostalTradeAddress")) say("BR-08", "die Anschrift des Verkäufers fehlt");
   if (!/^[A-Z]{2}$/.test(pick(seller, "ram:PostalTradeAddress", "ram:CountryID"))) {
-    say("BR-09", "das Land des Verkaeufers fehlt oder ist kein Code nach ISO 3166");
+    say("BR-09", "das Land des Verkäufers fehlt oder ist kein Code nach ISO 3166");
   }
-  if (!child(buyer, "ram:PostalTradeAddress")) say("BR-10", "die Anschrift des Kaeufers fehlt");
+  if (!child(buyer, "ram:PostalTradeAddress")) say("BR-10", "die Anschrift des Käufers fehlt");
   if (!/^[A-Z]{2}$/.test(pick(buyer, "ram:PostalTradeAddress", "ram:CountryID"))) {
-    say("BR-11", "das Land des Kaeufers fehlt oder ist kein Code nach ISO 3166");
+    say("BR-11", "das Land des Käufers fehlt oder ist kein Code nach ISO 3166");
   }
   if (!lines.length) say("BR-16", "die Rechnung hat keine Position");
 
@@ -645,7 +645,7 @@ export function checkRules(root) {
     const basis = cents(pick(group, "ram:BasisAmount"));
     const calculated = cents(pick(group, "ram:CalculatedAmount"));
     if (basis === null || calculated === null) {
-      say("BR-45", `die Steuergruppe ${category} hat keinen vollstaendigen Betrag`);
+      say("BR-45", `die Steuergruppe ${category} hat keinen vollständigen Betrag`);
       continue;
     }
     sumOfTax += calculated;
@@ -655,17 +655,17 @@ export function checkRules(root) {
     }
     if (category === "S" && !(rate > 0)) say("BR-S-05", "eine Gruppe mit Kategorie S hat den Steuersatz null");
     if (category !== "S" && category !== "Z" && rate !== 0) {
-      say("BR-E-05", `die Gruppe ${category} ist steuerfrei und traegt trotzdem den Satz ${rate}`);
+      say("BR-E-05", `die Gruppe ${category} ist steuerfrei und trägt trotzdem den Satz ${rate}`);
     }
     if ((category === "E" || category === "AE" || category === "O") && !pick(group, "ram:ExemptionReason")) {
-      say("BR-E-10", `die Gruppe ${category} nennt keinen Grund fuer die Steuerbefreiung`);
+      say("BR-E-10", t(`the group ${category} gives no reason for the tax exemption`, `die Gruppe ${category} nennt keinen Grund für die Steuerbefreiung`));
     }
   }
   if (taxTotal !== null && taxTotal !== sumOfTax) {
     say("BR-CO-14", `die Steuersumme ist ${money(taxTotal)}, die Gruppen ergeben ${money(sumOfTax)}`);
   }
   const taxNode = child(sums, "ram:TaxTotalAmount");
-  if (taxNode && !taxNode.attrs.currencyID) say("BR-53", "der Steuersumme fehlt die Waehrung");
+  if (taxNode && !taxNode.attrs.currencyID) say("BR-53", "der Steuersumme fehlt die Währung");
   if (basisTotal !== null && taxTotal !== null && grandTotal !== null && grandTotal !== basisTotal + taxTotal) {
     say("BR-CO-15", `der Bruttobetrag ist ${money(grandTotal)}, Netto plus Steuer ergibt ${money(basisTotal + taxTotal)}`);
   }
