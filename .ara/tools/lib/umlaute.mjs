@@ -117,6 +117,11 @@ function dateien(ordner, passt) {
   return raus;
 }
 
+/** Eine Zeile über 1000 Zeichen: Quelltext, den ein Mensch schreibt, sieht anders aus. */
+function gebaut(quelle) {
+  return quelle.split("\n").some((zeile) => zeile.length > 1000);
+}
+
 /**
  * Ersatzschreibungen in dem, was Menschen an einer App lesen. Eine Liste von
  * `{ wo, woerter }`, leer heisst gut.
@@ -136,8 +141,11 @@ export function sichtbareErsatzfunde(dir, manifest) {
     melde(relative(dir, pfad), ersatzwoerter(readFileSync(pfad, "utf8").replace(FLOW_BEZEICHNER, "")));
   }
   const front = typeof manifest?.frontend?.verzeichnis === "string" ? manifest.frontend.verzeichnis : "frontend";
-  for (const pfad of dateien(join(dir, front), (n) => /\.(tsx|jsx|ts|js|html)$/.test(n))) {
+  // Gebaute Dateien (pdf.worker.min.js, ein Bundle in assets/) sind keine Prosa: sie tragen
+  // Bezeichner und Fremdtext, und niemand schreibt sie von Hand.
+  for (const pfad of dateien(join(dir, front), (n) => /\.(tsx|jsx|ts|js|html)$/.test(n) && !/\.min\.[a-z]+$/.test(n))) {
     const quelle = readFileSync(pfad, "utf8");
+    if (gebaut(quelle)) continue;
     const text = prosaBereiche(quelle, pfad, { sichtbar: true })
       .map(([von, bis]) => quelle.slice(von, bis))
       .join("\n");

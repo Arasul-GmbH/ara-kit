@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.66.1 (2026-10-03)
+
+Contract: up to 8
+
+- **The umlaut warning leaves built files alone (M5).** `app.mjs --check` and `--deploy` no longer report `*.min.js` files or built bundles (a line over 1000 characters) in the frontend as a substitute spelling. Real substitute words in prose are still reported.
+- **The self-test no longer depends on `devices/`.** The purchase-path case uses its own empty folders (`ARA_DEVICES`, next to `ARA_CUSTOMERS`) and stays green when a device file lies in the kit. Both findings have a case of their own in the self-test.
+
 ## 0.66.0 (2026-10-03)
 
 Contract: up to 8
