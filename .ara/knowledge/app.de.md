@@ -38,6 +38,7 @@ bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht i
 | **Rollen und Zuweisung** | **Wird immer gefragt.** Vorgabe: ein Admin und Mitarbeiter. Der Admin weist Mitarbeitern Akten zu (Mandanten, Projekte, Fälle); ein Mitarbeiter sieht nur die ihm zugewiesenen Akten samt den Freigaben, die ihn betreffen. Weitere Rollen nur mit Grund. Siehe „Drei Fragen, die jede App bekommt" |
 | **Was ins Netz geht** | **Wird immer gefragt.** Mail, ein Register, ein Zahlungsdienst, eine Suche im Internet. Vorgabe: nichts verlässt das Gerät. Jede Verbindung nach außen wird einzeln vereinbart |
 | **Welches Modell je Flow** | **Wird immer gefragt.** Jede Stelle, an der ein Sprachmodell arbeitet, bekommt einen Vorschlag, den der Admin am Gerät umstellen darf |
+| **Bild, Freigabestufen** | Das Symbol in der Seitenleiste, und eine oder mehrere Personen hintereinander je Freigabe. Siehe „Zwei weitere Fragen" |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
 | **Welche Gestalt sie annimmt** | Die neun Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
@@ -124,6 +125,27 @@ bekommt beim ersten Mal einen Satz.
 **„Genug" lässt diese drei nicht fallen.** Was offen bleibt, wird zur sicheren Vorgabe und laut
 gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf des Flows.
 
+### Zwei weitere Fragen
+
+In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. **Das Kit schreibt die Felder
+und verspricht nicht, dass das Gerät schon danach handelt**: `--contract` sagt, was jedes heute tut.
+
+1. **Das Bild der App.** „Welches kleine Bild für die Seitenleiste? Vorschlag: die Buchstaben des
+   Namens, BE für Belege, oder ein Symbol." Geht an `--symbol`: ein Bildname
+   (`file-text`) oder ein bis drei Großbuchstaben oder Ziffern. Ohne Antwort nimmt das Gerät die
+   Buchstaben selbst.
+2. **Wer freigibt, in welchen Schritten.** Nur, wo die App eine Freigabe hat. „Eine Person, oder zwei
+   hintereinander, erst die Kollegin, die prüft, dann die Leitung?" Die Namen gehen an
+   `--stufen "Prüfung,Leitung"`, höchstens fünf. **Wer** je Schritt entscheidet, legt der
+   Administrator am Gerät fest, nicht die App.
+3. **Nur, wo ein Flow es braucht.** „Beginnt er von Hand, zu einer Zeit der Woche oder wenn etwas
+   geschieht?" (`--ausloeser`: `hand`, `zeitplan:<fünf Felder wie bei cron>`, `ereignis:<name>`) und
+   „von allein, oder bestätigt ein Mensch das Ergebnis?" (`--arten`: `autonom`,
+   `ergebnis_bestaetigen`). Sag laut, dass Zeitplan und Arten vielleicht noch nicht wirken.
+
+„Genug" lässt diese fallen. `faehigkeiten` gehören nur an Modell-Schritte, `--check` hält einen
+Werkzeug-Schritt damit an.
+
 ### Wie gefragt wird, und wann Schluss ist
 
 - **Eine vage Antwort bohrst du nach.** „Mit Freigaben" ist keine Antwort. Die Folgefrage bietet
@@ -177,6 +199,10 @@ node .ara/tools/app.mjs --device <gerät> --app <name> --check
 node .ara/tools/app.mjs --device <gerät> --app <name> --deploy
 node .ara/tools/app.mjs --device <gerät> --app <name> --live
 ```
+
+**Ein Einspielen braucht ab Kontrakt 8 ein paar Sätze, was neu ist**:
+`--deploy --aenderungstext "<text>"`, 1 bis 1000 Zeichen. Frag in den Worten des Menschen („Was ist neu für die, die damit
+arbeiten?"); ohne den Text hält das Kit an, und er geht neben dem Paket mit, nicht in die `app.json`.
 
 Ohne Akte unter `devices/` kein Kontrakt und kein `--check`: dann kommt `/device` zuerst. Der Weg
 eines Pakets steht in `.ara/knowledge/deploy.de.md`, was das Gerät mitbringt in

@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.66.0 (2026-10-03)
+
+Contract: up to 8
+
+- **Das Kit versteht Kontrakt 8 und schreibt seine neuen Felder (M5).** `--new` nimmt `--symbol` (ein Bildname wie `file-text` oder ein bis drei Großbuchstaben), `--stufen` (benannte Freigabestufen, höchstens fünf), `--arten` und `--ausloeser` (Arten und Auslöser des Flows) und schreibt sie so, wie der Kontrakt des Geräts sie beschreibt: `symbol` in die `app.json`, `arten`, `ausloeser` und `stufen` in den Kopf des Flows, je Stufe ein Freigabe-Schritt mit seiner `stufe`. `--check` hält an dem an, was kein Schema trägt: `faehigkeiten` an einem Werkzeug-Schritt und eine Stufe, die ein Schritt nennt und der Kopf nicht aufführt. `/app` fragt in einfachen Worten nach dem Bild der App und den Stufen, und wo ein Flow es braucht, nach Arten und Auslösern. Das Kit schreibt die Felder und verspricht nicht, dass das Gerät schon danach handelt: das sagt sein Kontrakt.
+- **Ein Einspielen braucht ein paar Sätze, was neu ist.** Gegen ein Gerät mit Kontrakt 8 oder mehr hält `--deploy` ohne `--aenderungstext "<text>"` (1 bis 1000 Zeichen) an und schickt ihn als Formularfeld neben dem Paket mit, nicht in der `app.json`. Ein Gerät vor 8 bekommt nichts geschickt. Die Umlautwarnung lässt die neuen Schlüssel im Kopf und die Namen der Stufen in Ruhe, es sind Bezeichner.
+
 ## 0.65.3 (2026-10-02)
 
 Contract: up to 7

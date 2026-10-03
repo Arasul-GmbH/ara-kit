@@ -128,6 +128,17 @@ import { agentFindings } from "./lib/agentfield.mjs";
 import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
 import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
+import {
+  applyFlowFields,
+  flowFieldFindings,
+  parseAenderungstext,
+  parseArten,
+  parseAusloeser,
+  parseStufen,
+  parseSymbol,
+  setSymbol,
+  writtenNotPromised,
+} from "./lib/felder.mjs";
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
@@ -135,6 +146,10 @@ import { contractRows, fillPath, listOf, routeRows, shareWays } from "./lib/admi
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
+// Die Namen der Schalter stehen als Konstanten da: ein Bezeichner mit ASCII-Umschrift in einer Zeichenkette
+// mit Leerraum sähe für die Umlautprüfung wie ein Wort aus.
+const FLAG_AUSLOESER = "--ausloeser";
+const FLAG_AENDERUNG = "--aenderungstext";
 const str = (v) => (typeof v === "string" ? v : null);
 const TEMPLATE = join(ROOT, ".ara", "templates", "app");
 const PLAN_TEMPLATE = localized(join(ROOT, ".ara", "templates", "plan.md"));
@@ -153,6 +168,10 @@ if (process.argv.length <= 2) {
         "  --new                    create the file from the scaffold",
         '  --titel "<title>"        display name of the app, otherwise the id',
         '  --beschreibung "<line>"  what the app is for',
+        "  --symbol <name|XY>       with --new: the picture of the app, an icon name (file-text) or one to three capitals",
+        '  --stufen "<a>,<b>"       with --new: named approval stages of the flow, at most five',
+        "  --arten <a>,<b>          with --new: kinds of the flow, autonom and/or ergebnis_bestaetigen",
+        `  ${FLAG_AUSLOESER} "<list>"     with --new: triggers, hand, zeitplan:<five fields>, ereignis:<name>`,
         '  --plan "<title>"         new plan file under plans/offen/',
         "  --plan-aktiv <file>      plan from open to active, at most one",
         "  --plan-erledigt <file>   plan from active to done",
@@ -167,6 +186,7 @@ if (process.argv.length <= 2) {
         "  --contract               fetch the device's contract and check it",
         "  --check [<folder>]       check app.json against this device's contract",
         "  --deploy [<folder>]      pack and deploy, always rolls into staging",
+        `  ${FLAG_AENDERUNG} "<text>"  with --deploy: a few sentences on what is new in this version, 1 to 1000 characters`,
         "  --status                 which version stands in staging, which is live",
         "  --live                   switch staging live",
         "  --back                   back to the previous live version",
@@ -190,6 +210,10 @@ if (process.argv.length <= 2) {
         "  --new                    Akte aus der Vorlage anlegen",
         '  --titel "<titel>"        Anzeigename der App, sonst die Kennung',
         '  --beschreibung "<satz>"  wozu die App da ist',
+        "  --symbol <name|XY>       mit --new: das Bild der App, ein Bildname (file-text) oder ein bis drei Großbuchstaben",
+        '  --stufen "<a>,<b>"       mit --new: benannte Freigabestufen des Flows, höchstens fünf',
+        "  --arten <a>,<b>          mit --new: Arten des Flows, autonom und/oder `ergebnis_bestaetigen`",
+        `  ${FLAG_AUSLOESER} "<liste>"    mit --new: Auslöser, hand, zeitplan:<fünf Felder>, ereignis:<name>`,
         '  --plan "<titel>"         neue Plandatei unter plans/offen/',
         "  --plan-aktiv <datei>     Plan von offen nach aktiv, höchstens einer",
         "  --plan-erledigt <datei>  Plan von aktiv nach erledigt",
@@ -204,6 +228,7 @@ if (process.argv.length <= 2) {
         "  --contract               den Kontrakt des Geräts holen und prüfen",
         "  --check [<ordner>]       app.json gegen den Kontrakt dieses Geräts prüfen",
         "  --deploy [<ordner>]      packen und einspielen, rollt immer in den Teststand",
+        `  ${FLAG_AENDERUNG} "<text>"  mit --deploy: ein paar Sätze, was in dieser Version neu ist, 1 bis 1000 Zeichen`,
         "  --status                 welche Version steht im Teststand, welche live",
         "  --live                   den Teststand live schalten",
         "  --back                   auf die vorige Live-Version zurück",
@@ -345,6 +370,22 @@ function createApp(name) {
     fail(t(`The scaffold is missing: ${relative(ROOT, TEMPLATE)}`, `Die Vorlage fehlt: ${relative(ROOT, TEMPLATE)}`));
   }
 
+  // Die Felder von Kontrakt 8 werden geprueft, bevor irgendetwas angelegt wird: eine Angabe, die
+  // nicht passt, soll keine halbe App hinterlassen.
+  const fields = {};
+  for (const [flag, parse, key] of [
+    ["symbol", parseSymbol, "symbol"],
+    ["stufen", parseStufen, "stufen"],
+    ["arten", parseArten, "arten"],
+    ["ausloeser", parseAusloeser, "ausloeser"],
+  ]) {
+    if (arg[flag] === undefined) continue;
+    if (arg[flag] === true) fail(t(`--${flag} needs a value.`, `--${flag} braucht eine Angabe.`));
+    const parsed = parse(arg[flag]);
+    if (parsed.error) fail(parsed.error);
+    fields[key] = parsed[key];
+  }
+
   const titel = str(arg.titel) || name;
   const beschreibung =
     str(arg.beschreibung) || t(`${titel}, built with the Ara-Kit.`, `${titel}, gebaut mit dem Ara-Kit.`);
@@ -360,6 +401,17 @@ function createApp(name) {
     marken: scaffoldLibrary?.fassung || "",
   });
   for (const state of ["offen", "aktiv", "erledigt"]) ensureDir(join(dir, "plans", state));
+
+  // Die Felder von Kontrakt 8: Symbol in app.json, Arten, Auslöser und Stufen im Kopf des Flows.
+  if (fields.symbol) {
+    const manifestFile = join(dir, "app.json");
+    const written = setSymbol(JSON.parse(readFileSync(manifestFile, "utf8")), fields.symbol);
+    writeFileSync(manifestFile, `${JSON.stringify(written, null, 2)}\n`);
+  }
+  if (fields.arten || fields.ausloeser || fields.stufen) {
+    const flowFile = join(dir, "flows", "freigabe.md");
+    writeFileSync(flowFile, applyFlowFields(readFileSync(flowFile, "utf8"), fields));
+  }
 
   // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Es ist EIN Stueck:
   // der Ordner `marken/`, das Paket der Bibliothek. Er traegt die Bausteine,
@@ -396,6 +448,20 @@ function createApp(name) {
         "- frontend, backend and one flow with an approval lie in it as a scaffold",
         "- Oberfläche, Backend und ein Flow mit Freigabe liegen als Vorlage darin"
       ),
+      ...(fields.symbol ? [t(`- Symbol: ${fields.symbol}`, `- Symbol: ${fields.symbol}`)] : []),
+      ...(fields.stufen
+        ? [
+            t(
+              `- Approval stages: ${fields.stufen.map((x) => x.bezeichnung).join(", ")}`,
+              `- Freigabestufen: ${fields.stufen.map((x) => x.bezeichnung).join(", ")}`
+            ),
+          ]
+        : []),
+      ...(fields.arten ? [t(`- Kinds of the flow: ${fields.arten.join(", ")}`, `- Arten des Flows: ${fields.arten.join(", ")}`)] : []),
+      ...(fields.ausloeser
+        ? [t(`- Triggers of the flow: ${fields.ausloeser.map((o) => o.typ).join(", ")}`, `- Auslöser des Flows: ${fields.ausloeser.map((o) => o.typ).join(", ")}`)]
+        : []),
+      ...(Object.keys(fields).length ? [`  ${writtenNotPromised()}`] : []),
       library
         ? t(
             `- Design system: version ${library.fassung}, ${library.files.size} files, ` +
@@ -1318,6 +1384,17 @@ function checkDelivery(dir, manifest) {
   return problems;
 }
 
+/** Was kein Schema traegt, in den Flow-Dateien der App: `faehigkeiten` am Werkzeug, eine Stufe ohne Kopfeintrag. */
+function flowFindings(dir, manifest) {
+  const folder = manifest?.flows?.verzeichnis;
+  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return [];
+  const path = join(dir, folder);
+  if (!existsSync(path) || !statSync(path).isDirectory()) return [];
+  return readdirSync(path)
+    .filter((file) => file.endsWith(".md"))
+    .flatMap((file) => flowFieldFindings(file.replace(/\.md$/, ""), readFileSync(join(path, file), "utf8")));
+}
+
 /**
  * Ist im Paket die Oberflaeche, oder ist es ihr Quelltext?
  *
@@ -1516,7 +1593,7 @@ function umlautSection(dir, manifest) {
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest), ...flowFindings(dir, manifest)];
   if (arg.json) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
@@ -1541,7 +1618,7 @@ if (arg.check !== undefined) {
 if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
-  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest)];
+  const delivery = [...checkDelivery(dir, manifest), ...checkBuild(dir, manifest), ...agentFindings(dir, manifest, result.problems), ...connectionFindings(contract, manifest), ...flowFindings(dir, manifest)];
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
@@ -1554,6 +1631,34 @@ if (arg.deploy !== undefined) {
   // wer eine Absage liest, liest ihre letzte Zeile. Am 30.08.2026 stand dort
   // nichts, und gesucht wurde danach in der App.
   if (!version.ok) fail(`${t("Nothing deployed.", "Nichts eingespielt.")} ${version.text}`);
+
+  // Ab Kontrakt 8 nimmt das Geraet neben dem Paket ein paar Saetze, was neu ist. Das Kit verlangt
+  // sie: wer ausrollt, sagt, was er ausrollt. Ein aelteres Geraet kennt das Feld nicht, dann wird
+  // nichts verlangt und nichts geschickt.
+  let changeText = null;
+  if ((contract?.kontrakt ?? 0) >= 8) {
+    if (arg.aenderungstext === true) fail(t(`${FLAG_AENDERUNG} needs the text: ${FLAG_AENDERUNG} "<text>".`, `${FLAG_AENDERUNG} braucht den Text: ${FLAG_AENDERUNG} "<text>".`));
+    const parsed = parseAenderungstext(arg.aenderungstext);
+    if (parsed.error) fail(parsed.error);
+    if (parsed.missing) {
+      fail(
+        t(
+          `Nothing deployed. Say in a few sentences what is new in ${manifest.id} ${manifest.version}, the people who look at it later will read it:\n` +
+            `  node .ara/tools/app.mjs --device ${device.device} --app ${manifest.id} --deploy ${FLAG_AENDERUNG} "<what is new>"`,
+          `Nichts eingespielt. Sag in ein paar Sätzen, was in ${manifest.id} ${manifest.version} neu ist, wer es später ansieht, liest es:\n` +
+            `  node .ara/tools/app.mjs --device ${device.device} --app ${manifest.id} --deploy ${FLAG_AENDERUNG} "<was neu ist>"`
+        )
+      );
+    }
+    changeText = parsed.text;
+  } else if (arg.aenderungstext !== undefined) {
+    console.log(
+      t(
+        "This device carries a contract before version 8 and takes no text of the change. It is not sent.",
+        "Dieses Gerät führt einen Kontrakt vor Version 8 und nimmt keinen Änderungstext. Er wird nicht geschickt."
+      )
+    );
+  }
 
   // Bevor gepackt wird, bekommt die App die Vereinbarung dieses Geräts: unter
   // welchen Namen es ihr Adresse und Schlüssel in den Container legt, in
@@ -1613,6 +1718,7 @@ if (arg.deploy !== undefined) {
     const sent = await endpoint("POST", "/api/v1/external/apps", {
       file: archive,
       fileField: "paket",
+      ...(changeText ? { fields: { aenderungstext: changeText } } : {}),
       // Das Gerät baut das Backend, bevor es antwortet. Das dauert Minuten,
       // und in der Zeit fließt nichts über die Leitung.
       timeout: 30 * 60_000,

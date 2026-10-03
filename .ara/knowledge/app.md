@@ -39,6 +39,7 @@ asks to full depth"; the four levels below are what it means for an app.
 | **Roles and assignment** | **Always asked.** Default: an administrator and employees. The administrator hands files (clients, projects, cases) to employees; an employee sees only the files handed to them, with the approvals that concern them. Another role only with a reason. See "Three questions every app gets" |
 | **What leaves the device** | **Always asked.** Mail, a register, a payment service, a search on the internet. Default: nothing leaves. Every outside connection is agreed one by one |
 | **Which model per flow** | **Always asked.** Each place where a language model works gets a suggestion the administrator may switch on the device |
+| **Picture, approval stages** | The sidebar symbol, and one or several people in a row per approval. See "Two more questions" |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention: `.ara/knowledge/app-professional.md` |
 | **Which shape it takes** | The nine patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
@@ -121,6 +122,24 @@ Speak plainly (`AGENTS.md`, "Plain language"): a technical word gets one sentenc
 **"Enough" does not drop these three.** What stays open becomes the safe default and is said aloud:
 administrator and employees, nothing goes out, the suggestion of the flow's header.
 
+### Two more questions
+
+Asked in **every** `/app` interview, with drafts as options. **The kit writes the fields and does
+not promise that the device acts on them yet**: `--contract` says what each does today.
+
+1. **The picture of the app.** "Which small picture for the sidebar? Suggestion: the letters of its
+   name, BE for Belege, or an icon." Goes to `--symbol`: an icon name
+   (`file-text`) or one to three capitals or digits. No answer: the device uses the letters itself.
+2. **Who approves, in which steps.** Only where the app has an approval. "One person, or two in a
+   row, first the colleague who checks, then management?" Names go to `--stufen "Check,Management"`,
+   at most five. **Who** decides in each step the administrator sets on the device, not the app.
+3. **Only where a flow needs it.** "Does it start by hand, at a time of the week, or when something
+   happens?" (`--ausloeser`: `hand`, `zeitplan:<five cron fields>`, `ereignis:<name>`) and "by
+   itself, or a person confirms the result?" (`--arten`: `autonom`, `ergebnis_bestaetigen`). Say
+   aloud that schedule and kinds may not act yet.
+
+"Enough" drops these. `faehigkeiten` belong to model steps only, `--check` stops a tool step with them.
+
 ### How to ask, and when to stop
 
 - **Probe a vague answer.** "With approvals" is not an answer. The follow-up question offers
@@ -172,6 +191,10 @@ node .ara/tools/app.mjs --device <device> --app <name> --check
 node .ara/tools/app.mjs --device <device> --app <name> --deploy
 node .ara/tools/app.mjs --device <device> --app <name> --live
 ```
+
+**A deploy needs a few sentences on what is new** from contract 8 on:
+`--deploy --aenderungstext "<text>"`, 1 to 1000 characters. Ask in the human's words ("What is new for the people who use
+it?"); the kit stops without it, and it goes next to the package, not into `app.json`.
 
 Without a file under `devices/` no contract and no `--check`: `/device` comes first. The way of a
 package stands in `.ara/knowledge/deploy.md`, what the device brings in

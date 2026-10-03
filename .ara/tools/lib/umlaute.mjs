@@ -100,7 +100,7 @@ function manifestTexte(wert, pfad = "", schluessel = "") {
 }
 
 /** Zeilen eines Flows, deren Wert ein Bezeichner ist und kein Text. */
-const FLOW_BEZEICHNER = /^\s*-?\s*(?:name|typ|werkzeug|werkzeuge|modell|methode|pfad|quelle|ziel):.*$/gm;
+const FLOW_BEZEICHNER = /^\s*-?\s*(?:name|typ|werkzeug|werkzeuge|modell|methode|pfad|quelle|ziel|arten|ausloeser|stufen|stufe|zeitplan|ereignis|faehigkeiten):.*$/gm;
 
 function dateien(ordner, passt) {
   const raus = [];

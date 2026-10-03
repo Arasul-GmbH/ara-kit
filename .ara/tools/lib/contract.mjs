@@ -56,6 +56,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 7,
     kann: "Eine App läuft in einem eigenen Netz und kommt ohne Eintrag nicht ins Internet. Was sie nach draußen braucht, nennt sie im Manifest unter `verbindungen`: das Kit liest das Feld, prüft es gegen das Schema dieses Geräts, reicht es unverändert weiter und sagt dem Menschen, dass eine App ohne Eintrag nichts nach draußen schickt. Ob das Gerät die Einträge schon durchsetzt, sagt sein Kontrakt, nicht das Kit.",
   },
+  {
+    version: 8,
+    kann: "Eine App bekommt ein Symbol (`symbol`) und ein Flow nennt seine Arten, Auslöser und Freigabestufen (`arten`, `ausloeser`, `stufen`), ein Schritt seine Fähigkeiten (`faehigkeiten`, nie an einem Werkzeug-Schritt): das Gerüst schreibt die Felder nach dem Kontrakt des Geräts, /app fragt in einfacher Sprache danach, und das Ausrollen verlangt ein paar Sätze, was neu ist, und reicht sie als `aenderungstext` neben dem Paket weiter. Ob das Gerät die Felder schon wirken lässt, sagt sein Kontrakt, nicht das Kit.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */
