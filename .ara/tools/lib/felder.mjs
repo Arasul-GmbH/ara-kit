@@ -168,10 +168,18 @@ export function parseAusloeser(value) {
 
 /**
  * Kennt der Kontrakt des Geraets das Feld `aenderungstext`? Das Kit fragt den Kontrakt, nicht eine
- * Versionsnummer: nennt er das Feld irgendwo, nimmt das Geraet den Text neben dem Paket an.
+ * Versionsnummer. Zwei Stellen gelten: der Schluessel unter `paket.felder` und der Satz am
+ * Deploy-Endpunkt (POST auf `/apps`, ohne `:id`). Der Satz nennt das Feld mit Backticks, nicht als
+ * Schluessel: am 03.10.2026 fand die Suche nach `"aenderungstext"` ihn am echten Geraet nicht. Ein
+ * Satz an einem anderen Endpunkt zaehlt nicht, er sagt nichts darueber, was der Deploy annimmt.
  */
 export function contractKnowsChangeText(contract) {
-  return JSON.stringify(contract ?? {}).includes('"aenderungstext"');
+  const wort = /(^|[^a-z0-9_])aenderungstext($|[^a-z0-9_])/i;
+  if (Object.hasOwn(contract?.paket?.felder ?? {}, "aenderungstext")) return true;
+  const deploy = (contract?.endpunkte ?? []).filter(
+    (e) => String(e?.verb).toUpperCase() === "POST" && /\/apps\/?$/.test(String(e?.pfad ?? ""))
+  );
+  return deploy.some((e) => wort.test(JSON.stringify(e)));
 }
 
 /** Der `aenderungstext` beim Ausrollen: ein paar Sätze, 1 bis 1000 Zeichen. */

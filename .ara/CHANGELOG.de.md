@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.68.1 (2026-10-03)
+
+Contract: up to 9
+
+- **Das Kit erkennt den Änderungstext an einem echten Gerät (M5).** Seit 0.66.2 suchte es im Kontrakt nach `"aenderungstext"` in Anführungszeichen, das Gerät nennt das Feld aber nur in einem Satz mit Backticks, am Deploy-Endpunkt. Deshalb ging kein Text mit. Die Prüfung liest jetzt den Schlüssel unter `paket.felder` oder den Satz des Deploy-Endpunkts (der POST, der das Paket annimmt), Wort für Wort. Ein Satz an einem anderen Endpunkt zählt nicht. Der Selbsttest hat einen Kontrakt, der das Feld nur in Backticks nennt.
+- **Das Suchfeld der Vorlage zeigt den Anfang seines Platzhalters wieder.** Die eigenen Werkzeugklassen der App stehen im Stylesheet nach denen des Geräts, und ihr `px-3` stach das `pl-8`, das Platz für die Lupe lässt. Eine Regel in `stil.css` ohne Ebene hält den Platz jetzt frei, in jedem Stand des Geräts.
+- **Der Hauptknopf der Vorlage hat im dunklen Thema vollen Kontrast.** Das Blau der Marke ist dort ein mattes, helles Blau und wirkte abgeschaltet. Der Knopf trägt jetzt die Textfarbe als Fläche und die Fläche der Seite als Schrift, beides Marken des Geräts. Im hellen Thema bleibt das Blau.
+
 ## 0.68.0 (2026-10-03)
 
 Contract: up to 9

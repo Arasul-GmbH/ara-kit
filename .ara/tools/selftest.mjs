@@ -2704,6 +2704,14 @@ check("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderungstext stehe
   assert(aus.length === 3 && aus[1].zeitplan === "0 6 * * 1-5", "Auslöser werden nicht gelesen");
   assert(f.parseAusloeser("zeitplan:morgens").error && f.parseAusloeser("hand,hand").error, "ein Zeitplan ohne fünf Felder oder ein doppelter Auslöser geht durch");
   assert(f.parseAenderungstext("x".repeat(1001)).error && f.parseAenderungstext("  ").missing && f.parseAenderungstext("Neu: Symbol").text === "Neu: Symbol", "der Änderungstext wird nicht auf 1 bis 1000 Zeichen gehalten");
+  // So nennt ihn der echte Kontrakt (Orin, 03.10.2026): nur im Satz des Deploy-Endpunkts, in Backticks.
+  const nurImSatz = { paket: { format: "tar.gz" }, endpunkte: [
+    { verb: "POST", pfad: "/api/v1/external/apps", was: "Ein Paket einspielen. Optional ein Multipart-Feld `aenderungstext` (ein paar Saetze)" },
+    { verb: "POST", pfad: "/api/v1/external/apps/:id/schalten", was: "Livestand schalten" },
+  ] };
+  assert(f.contractKnowsChangeText(nurImSatz), "der Änderungstext wird im Satz des Deploy-Endpunkts nicht erkannt");
+  assert(f.contractKnowsChangeText({ paket: { felder: { aenderungstext: { pflicht: true } } } }), "der Schlüssel unter paket.felder wird nicht erkannt");
+  assert(!f.contractKnowsChangeText({ endpunkte: [{ verb: "POST", pfad: "/api/v1/external/apps", was: "Ein Paket einspielen" }, { verb: "GET", pfad: "/api/v1/external/apps/:id", was: "nennt keinen aenderungstext" }] }) && !f.contractKnowsChangeText({}), "ein Kontrakt ohne das Feld am Deploy gilt als Treffer");
   assert(Object.keys(f.setSymbol({ id: "a", beschreibung: "b", version: "1" }, "BE")).join() === "id,beschreibung,symbol,version", "das Symbol steht nicht hinter der Beschreibung");
 
   const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
