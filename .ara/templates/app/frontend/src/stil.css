@@ -42,6 +42,25 @@
   max-width: 96rem;
 }
 
+/* Das Suchfeld der Liste lässt links Platz für die Lupe. Die Bibliothek setzt
+   dafür `pl-8` auf das Feld, aber die Werkzeugklassen dieser App stehen im
+   Stylesheet NACH denen des Geräts, und ihr `px-3` (der Kopf der Seite
+   braucht es) sticht das `pl-8`: der Anfang des Platzhalters lag unter der
+   Lupe. Eine Regel ohne Ebene sticht beide, in jedem Stand des Geräts. */
+[data-slot="datenliste"] input[type="search"] {
+  padding-inline-start: 2rem;
+}
+
+/* Der Hauptknopf im dunklen Thema. Das Blau der Marke ist dort ein helles,
+   mattes Blau und wirkte neben der dunklen Fläche wie ein abgeschalteter
+   Knopf. Hier trägt er die Textfarbe als Fläche und die Fläche der Seite als
+   Schrift: voller Kontrast, beides Marken des Geräts, im hellen Thema bleibt
+   das Blau. */
+.dark [data-slot="button"][data-variant="solid"]:not(:disabled) {
+  background-color: var(--ara-text);
+  color: var(--ara-flaeche);
+}
+
 /* Wie ein Vorgang steht. Das Wort trägt die Aussage und steht in der
    Textfarbe: so hält es 4,5:1 in beiden Themen, auch auf der gewählten
    Zeile. Die Farbe trägt nur das Zeichen davor. Bis zum 26.09.2026 stand das

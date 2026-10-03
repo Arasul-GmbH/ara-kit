@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.68.1 (2026-10-03)
+
+Contract: up to 9
+
+- **The kit recognises the text of the change on a real device (M5).** Since 0.66.2 it looked for `"aenderungstext"` in quotes in the contract, but the device names the field only in a sentence with backticks, at the deploy endpoint. So no text was sent. The check now reads the key under `paket.felder` or the sentence of the deploy endpoint (the POST that takes the package), word for word. A sentence at another endpoint does not count. The self-test has a contract that names the field only in backticks.
+- **The scaffold's search field shows the start of its placeholder again.** The app's own utility classes come after the device's in the stylesheet, and their `px-3` beat the `pl-8` that leaves room for the magnifier. A rule in `stil.css` without a layer now keeps the room, in every state of the device.
+- **The main button of the scaffold has full contrast in the dark theme.** The brand blue is a muted light blue there and looked switched off. The button now takes the text colour as its surface and the page surface as its writing, both tokens of the device. In the light theme the blue stays.
+
 ## 0.68.0 (2026-10-03)
 
 Contract: up to 9
