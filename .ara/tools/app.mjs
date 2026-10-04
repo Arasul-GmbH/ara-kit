@@ -133,6 +133,7 @@ import { setZeigtFreigaben, zeigtFreigabenFindings, zeigtFreigabenHints } from "
 import {
   ABSCHLUSS_STANDARD,
   abschlussFindings,
+  contractThirteenFindings,
   applyAbschluss,
   applyFlowFields,
   applyRecognition,
@@ -1511,6 +1512,7 @@ function flowFindings(dir, manifest, deviceContract) {
       return [
         ...flowFieldFindings(name, text),
         ...contractTenFindings(name, text, deviceContract),
+        ...contractThirteenFindings(name, text, { backend: Boolean(manifest?.backend), deviceContract }),
         ...abschlussFindings(name, text, {
           backend: Boolean(manifest?.backend),
           imQuelltext: (route) => backendNamesRoute(dir, manifest, route),
