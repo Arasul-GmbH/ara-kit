@@ -266,3 +266,11 @@ Die Route steht in `backend/server.mjs`, was sie prüft in `backend/kern/abschlu
 Die Tabelle `abschluesse` hält das Ergebnis, die Felder und die Korrekturen als Text; was die App damit
 tut, steht dort noch nicht: das Gerüst legt es nur sicher ab. Eine Fach-App liest von hier und führt ihre
 Vorgänge nach.
+
+## Die App zeigt ihre Freigaben selbst
+
+In `app.json` steht `"zeigt_freigaben": true`, weil diese App eine Seite für Freigaben hat. Damit öffnet
+ein Klick in „Für Sie" die App mit `?freigabe=<nummer>` in der Adresse (ohne das Feld öffnet das Gerät die
+Freigabe in Arasul). `src/app.tsx` führt vom Anfang der App zur Seite `src/seiten/freigaben.tsx`, die genau
+diese Freigabe zeigt, auch nach dem Neuladen. Eine Nummer, die es nicht (mehr) gibt, zeigt die Liste mit einem
+kurzen Hinweis. Wer die Seite entfernt, nimmt das Feld mit heraus.

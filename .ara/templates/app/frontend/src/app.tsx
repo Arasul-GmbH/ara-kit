@@ -26,7 +26,7 @@
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import { Button, Meldung, SidebarInset, SidebarProvider, SidebarTrigger } from "@marken";
 import { basisPfad } from "./rahmen/basis";
 import { useThema } from "./rahmen/thema";
@@ -75,10 +75,21 @@ function Unbekannt() {
   );
 }
 
+/**
+ * Der Anfang der App. Öffnet das Gerät sie mit `?freigabe=<nummer>` (ein Klick in „Für Sie",
+ * `zeigt_freigaben` in `app.json`), führt der Weg zur Freigabe selbst und nimmt die Nummer mit.
+ */
+function Start() {
+  const [suche] = useSearchParams();
+  const nummer = suche.get("freigabe");
+  if (nummer) return <Navigate to={`/freigaben?freigabe=${encodeURIComponent(nummer)}`} replace />;
+  return <Vorgaenge />;
+}
+
 function Wege() {
   return (
     <Routes>
-      <Route path="/" element={<Vorgaenge />} />
+      <Route path="/" element={<Start />} />
       <Route path="/freigaben" element={<Freigaben />} />
       <Route path="/neu" element={<Neu />} />
       <Route path="*" element={<Unbekannt />} />

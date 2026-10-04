@@ -11,7 +11,11 @@
  *
  * **Welche geöffnet ist, steht in der Adresse** (`?freigabe=17`), aus demselben
  * Grund wie bei den Vorgängen: ein Verweis bleibt einer, und die Wege der App
- * bleiben eine Ebene tief, wie es `basis.ts` verlangt.
+ * bleiben eine Ebene tief, wie es `basis.ts` verlangt. Das Gerät nutzt genau
+ * diesen Verweis (`zeigt_freigaben` in `app.json`): ein Klick in „Für Sie"
+ * öffnet die App mit `?freigabe=<nummer>`, `app.tsx` führt hierher. Die
+ * Nummer bleibt beim Neuladen stehen; eine, die es nicht (mehr) gibt, zeigt die
+ * Liste mit einem kurzen Hinweis.
  *
  * **Das Muster wirft nicht, diese Seite sagt, was schiefging.** Es lässt das
  * Feld offen und den Text stehen, wenn ein Aufruf scheitert; den Satz dazu
@@ -48,6 +52,11 @@ export function Freigaben() {
       {meldung && (
         <Meldung art={meldung.art} kennzeichen="freigabe-meldung">
           {meldung.text}
+        </Meldung>
+      )}
+      {gewaehlt && !meldung && freigaben.data && !freigaben.data.some((eintrag) => String(eintrag.id) === gewaehlt) && (
+        <Meldung art="hinweis" kennzeichen="freigabe-unbekannt">
+          Diese Freigabe gibt es nicht mehr, oder sie wartet nicht auf Sie. Hier steht, was auf Ihre Entscheidung wartet.
         </Meldung>
       )}
       <AsyncBoundary

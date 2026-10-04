@@ -129,6 +129,7 @@ import { libraryFindings, libraryHints, librarySection, readServed } from "./lib
 import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
 import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
+import { setZeigtFreigaben, zeigtFreigabenFindings, zeigtFreigabenHints } from "./lib/tieflink.mjs";
 import {
   ABSCHLUSS_STANDARD,
   abschlussFindings,
@@ -433,6 +434,12 @@ function createApp(name) {
     const written = setSymbol(JSON.parse(readFileSync(manifestFile, "utf8")), fields.symbol);
     writeFileSync(manifestFile, `${JSON.stringify(written, null, 2)}\n`);
   }
+  // Hat die Vorlage eine Seite Freigaben, die `?freigabe=<nummer>` öffnet, sagt die App es dem Gerät (Kontrakt 12).
+  const zeigtFreigaben = existsSync(join(dir, "frontend", "src", "seiten", "freigaben.tsx"));
+  if (zeigtFreigaben) {
+    const manifestFile = join(dir, "app.json");
+    writeFileSync(manifestFile, `${JSON.stringify(setZeigtFreigaben(JSON.parse(readFileSync(manifestFile, "utf8"))), null, 2)}\n`);
+  }
   if (fields.arten || fields.ausloeser || fields.stufen || fields.felder) {
     const flowFile = join(dir, "flows", "freigabe.md");
     // Liefert der Flow ein Ergebnis, übergibt das Gerät es nach der letzten Stufe an die Route des Backends.
@@ -501,6 +508,14 @@ function createApp(name) {
             t(
               `- Result: after the last stage the device hands it to ${fields.abschluss} in the backend, which checks the device's secret and keeps each run once`,
               `- Ergebnis: nach der letzten Stufe übergibt das Gerät es an ${fields.abschluss} im Backend, das das Geheimnis des Geräts prüft und jeden Lauf nur einmal behält`
+            ),
+          ]
+        : []),
+      ...(zeigtFreigaben
+        ? [
+            t(
+              "- Approvals: the app shows them itself, `zeigt_freigaben` is set, and a click in \"For you\" opens the app at that approval (`?freigabe=<number>`)",
+              "- Freigaben: die App zeigt sie selbst, `zeigt_freigaben` ist gesetzt, und ein Klick in „Für Sie\" öffnet die App bei genau dieser Freigabe (`?freigabe=<nummer>`)"
             ),
           ]
         : []),
@@ -1154,6 +1169,7 @@ async function deliveryFindings(dir, manifest, result) {
     ...agentFindings(dir, manifest, result.problems),
     ...connectionFindings(contract, manifest),
     ...flowFindings(dir, manifest, contract?.kontrakt),
+    ...zeigtFreigabenFindings(manifest, contract?.kontrakt),
     ...libraryFindings(contract, manifest, { frontendDir: frontendDirOf(dir, manifest), served }),
   ];
 }
@@ -1714,6 +1730,7 @@ if (arg.check !== undefined) {
         ...reportManifest(relative(ROOT, dir) || dir, result, delivery).split("\n"),
         ...umlautSection(dir, manifest),
         ...libraryHints(contract, manifest, { served: await servedLibrary() }),
+        ...zeigtFreigabenHints(manifest, frontendDirOf(dir, manifest), contract?.kontrakt),
         ...arrangementSection(dir, manifest),
         ...addressSection(dir),
         ...versionSection(),
@@ -1736,6 +1753,8 @@ if (arg.deploy !== undefined) {
   console.log(umlautSection(dir, manifest).join("\n"));
   const libraryNotes = libraryHints(contract, manifest, { served: await servedLibrary() });
   if (libraryNotes.length) console.log(libraryNotes.join("\n"));
+  const tieflinkNotes = zeigtFreigabenHints(manifest, frontendDirOf(dir, manifest), contract?.kontrakt);
+  if (tieflinkNotes.length) console.log(tieflinkNotes.join("\n"));
 
   // „Nichts eingespielt" allein schickt den Menschen in seine App. Der Grund
   // liegt hier im Kit, und der Weg heraus steht in derselben Meldung.
