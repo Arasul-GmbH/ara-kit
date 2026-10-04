@@ -38,6 +38,10 @@ by a timestamp), `Formularseite` with a `Feldgruppe` per section in `seiten/neu.
 app names the active entry. The page layout belongs to the library. Rules of your own stand at the
 end of `stil.css`, with token names only, no colour, font or radius.
 
+**An approval is the pattern `Freigabe`, never an imitation** (from library 5.4.0): `seiten/freigaben.tsx`
+shows it, `freigaben.ts` brings the entries from the device. Which fields a person may change the flow
+declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the end of its path**.
+
 ## What every page keeps
 
 - **Nothing falls out.** A long title ends with "…" (`kuerzen`) and stands whole beside it; at 1280

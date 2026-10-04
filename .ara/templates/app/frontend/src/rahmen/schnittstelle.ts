@@ -67,13 +67,11 @@ export function satzZumStatus(status: number): string {
   return "Das hat das Gerät nicht angenommen.";
 }
 
-export async function hole<T>(pfad: string, optionen?: RequestInit): Promise<T> {
+/** Der eine Aufruf, durch den alles geht: Fehler benennen, Umschlag abnehmen. */
+async function sende<T>(url: string, pfad: string, optionen: RequestInit): Promise<T> {
   let antwort: Response;
   try {
-    antwort = await fetch(weg(pfad), {
-      headers: { "content-type": "application/json" },
-      ...optionen,
-    });
+    antwort = await fetch(url, optionen);
   } catch (fehler) {
     console.error(`${pfad} war nicht erreichbar`, fehler);
     throw new SchnittstellenFehler(satzZumStatus(0), 0);
@@ -91,4 +89,34 @@ export async function hole<T>(pfad: string, optionen?: RequestInit): Promise<T> 
     throw new SchnittstellenFehler(satz ?? satzZumStatus(antwort.status), antwort.status);
   }
   return inhalt(daten) as T;
+}
+
+export function hole<T>(pfad: string, optionen?: RequestInit): Promise<T> {
+  return sende<T>(weg(pfad), pfad, {
+    headers: { "content-type": "application/json" },
+    ...optionen,
+  });
+}
+
+/** Das Zeichen gegen gefälschte Aufrufe, aus dem Cookie, das das Gerät setzt. */
+function csrfZeichen(): string {
+  const treffer = /(?:^|;\s*)arasul_csrf=([^;]*)/.exec(document.cookie);
+  return treffer?.[1] ? decodeURIComponent(treffer[1]) : "";
+}
+
+/**
+ * Ein Weg des Geräts selbst, etwa `/api/freigabe-anfragen`.
+ *
+ * Er liegt auf der Herkunft des Geräts und nicht unter dem Pfad dieser App, deshalb geht er nicht
+ * durch `weg()`. Die Anmeldung fährt mit (dasselbe Sitzungscookie); schreibende Aufrufe, also
+ * solche mit Rumpf, tragen zusätzlich das Zeichen aus dem Cookie `arasul_csrf`, sonst weist das
+ * Gerät sie ab.
+ */
+export function holeGeraet<T>(pfad: string, rumpf?: unknown): Promise<T> {
+  return sende<T>(pfad, pfad, {
+    method: rumpf === undefined ? "GET" : "POST",
+    credentials: "same-origin",
+    headers: rumpf === undefined ? {} : { "content-type": "application/json", "x-csrf-token": csrfZeichen() },
+    body: rumpf === undefined ? undefined : JSON.stringify(rumpf),
+  });
 }

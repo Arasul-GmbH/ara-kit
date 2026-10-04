@@ -39,7 +39,7 @@ asks to full depth"; the four levels below are what it means for an app.
 | **Roles and assignment** | **Always asked.** Default: an administrator and employees. The administrator hands files (clients, projects, cases) to employees; an employee sees only the files handed to them, with the approvals that concern them. Another role only with a reason. See "Three questions every app gets" |
 | **What leaves the device** | **Always asked.** Mail, a register, a payment service, a search on the internet. Default: nothing leaves. Every outside connection is agreed one by one |
 | **Which model per flow** | **Always asked.** Each place where a language model works gets a suggestion the administrator may switch on the device |
-| **Picture, approval stages** | The sidebar symbol, and one or several people in a row per approval. See "Two more questions" |
+| **Picture, approval stages, what is read** | The sidebar symbol, one or several people in a row per approval, and for an app that reads documents which fields a person may change. See "More questions" |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention: `.ara/knowledge/app-professional.md` |
 | **Which shape it takes** | The nine patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
@@ -122,7 +122,7 @@ Speak plainly (`AGENTS.md`, "Plain language"): a technical word gets one sentenc
 **"Enough" does not drop these three.** What stays open becomes the safe default and is said aloud:
 administrator and employees, nothing goes out, the suggestion of the flow's header.
 
-### Two more questions
+### More questions
 
 Asked in **every** `/app` interview, with drafts as options. **The kit writes the fields and does
 not promise that the device acts on them yet**: `--contract` says what each does today.
@@ -138,7 +138,19 @@ not promise that the device acts on them yet**: `--contract` says what each does
    itself, or a person confirms the result?" (`--arten`: `autonom`, `ergebnis_bestaetigen`). Say
    aloud that schedule and kinds may not act yet.
 
+4. **Only where the device reads a document** (receipt, form, scan). Say what that is: "the device
+   reads the paper and fills in the fields; where it is unsure, a person sees the paper next to the
+   fields first." Ask with drafts: which details it reads (`--felder "Amount,Date"`, at most ten) and
+   which of them the person may correct, suggesting only the often misread ones (`--aenderbar
+   "Date"`, or `keine`). **Never all by habit**: a changeable field can be changed by mistake. The
+   paper on the left is `--original`: by default a sheet drawn from the submitted text, with real
+   documents the route that delivers them, **ending in .png, .jpg, .svg or .pdf** (the approval tells
+   image from PDF by the end of the path). With several stages the first belongs to the reading: the
+   device puts its request there when unsure; a sure reading asks nobody. Say that aloud.
+
 "Enough" drops these. `faehigkeiten` belong to model steps only, `--check` stops a tool step with them.
+`--check` holds the declaration against the reading (a changeable field the role does not read,
+an original at a step that reads nothing, a forbidden path, a device before contract 10).
 
 ### How to ask, and when to stop
 

@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.69.0 (2026-10-04)
+
+Contract: up to 10
+
+- **Das Kit versteht Kontrakt 10 (M5).** Ein Gerät mit Kontrakt 10 hält es nicht mehr an. Was er dazugibt, steht im Kontrakt des Geräts und wird nicht aus dem Gedächtnis gesagt: eine Rolle eines Flows kann erklären, welche ihrer erkannten Felder ein Mensch ändern darf (`ergebnis.aenderbar`), ein Schritt, der liest, nennt das Original, das er zeigt (`original`), und eine Rolle kann die Felder, bei denen sie unsicher ist, unter `unsicher` aufzählen.
+- **Eine neue App kann eine Freigabe mit dem Baustein des Geräts zeigen (M5).** `--new` nimmt `--felder "Betrag,Datum"` (was das Gerät aus einem Dokument liest, höchstens zehn), `--aenderbar "Datum"` (welche davon ein Mensch in der Freigabe ändern darf, oder `keine`) und `--original <pfad>` (das Dokument, das links steht). Es schreibt eine Rolle `leser` mit der Deklaration und einen Schritt `lesen`, der das Original nennt, in den Flow `freigabe`. Bei zwei oder mehr Stufen gehört die erste der Erkennung, denn das Gerät legt dort selbst eine Anfrage an, wenn es unsicher ist, mit den Feldern; die übrigen Stufen folgen als Schritte. `/app` fragt in einfachen Worten, welche Angaben gelesen werden und welche ein Mensch verbessern darf, und bietet nicht aus Gewohnheit alle an.
+- **Die Vorlage zeigt die Freigabe mit dem Muster `Freigabe`, nicht mit einer Kopie (M5).** Eine neue Seite `Freigaben` (`seiten/freigaben.tsx`, `freigaben.ts`) zeigt, was auf die angemeldete Person wartet: links das Original, zoombar, rechts die erkannten Felder, was unsicher ist oben mit „prüfen" und ohne Prozentzahl, ein Satz dazu, was bisher geschah, frühere Stufen zum Aufklappen, und nach der Entscheidung wieder die Liste. Bestätigt und abgelehnt wird über die Wege, die auch die Verwaltung des Geräts benutzt; das Gerät liefert nur, was die Person entscheiden darf. Das Backend zeichnet aus dem Text eines eingereichten Vorgangs ein Blatt (`kern/blatt.mjs`, Weg `original.svg`), damit eine neue App sofort ein Original zeigt; eine App mit echten Dokumenten liefert deren. Die Kopie der Bibliothek in der Vorlage steht jetzt auf Fassung 5.4.0, die das Muster trägt.
+- **`--check` hält die Deklaration (M5).** Es nennt ein änderbares Feld, das die Rolle nicht liest, ein Original an einem Schritt, der nichts liest, eine Rolle, die ein Schritt nennt und der Kopf nicht führt, einen Pfad des Originals, den der Kontrakt verbietet (Schrägstrich am Anfang, `..`, Schema, `%`, `?`, `#`) oder der keine Endung hat, die die Anzeige lesen kann (sie erkennt Bild und PDF am Ende des Pfades: `.png`, `.jpg`, `.svg`, `.pdf`), und ein Gerät vor Kontrakt 10, das den ganzen Flow abweist. Die Umlautwarnung lässt die neuen Schlüssel im Kopf in Ruhe.
+- **Am Orin mit einer Wegwerf-App gemessen (M5).** Eine Freigabe mit einem unsicheren Feld, ein festes Modell, damit nichts vom Zufall abhängt, eine Korrektur des Feldes und die Bestätigung, der Satz zur früheren Stufe mit der aufgeklappten Änderung, Original und Felder nebeneinander, Zoom, helles und dunkles Thema.
+
 ## 0.68.1 (2026-10-03)
 
 Contract: up to 9

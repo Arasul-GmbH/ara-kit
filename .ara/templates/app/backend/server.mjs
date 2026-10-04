@@ -44,6 +44,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { oeffnen } from "./ablage/db.mjs";
 import { vorgangsAblage } from "./ablage/vorgaenge.mjs";
+import { blatt } from "./kern/blatt.mjs";
 import { vorgaenge as kern } from "./kern/vorgaenge.mjs";
 import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";
 
@@ -164,6 +165,17 @@ const server = createServer(async (anfrage, antwort) => {
     });
     const { vorgang } = await vorgangsKern.einreichen(angelegt.id);
     return json(antwort, 201, { vorgang });
+  }
+
+  // Das Original zu einem Vorgang, das die Freigabe links zeigt (Flow `freigabe`,
+  // Schritt `lesen`). Der Pfad endet auf `.svg`: die Freigabe erkennt Bild und PDF am Ende des Pfades. Die Vorlage zeichnet es aus dem Text des Vorgangs, siehe
+  // `kern/blatt.mjs`; eine App mit echten Dokumenten liefert hier deren Bytes.
+  const original = /^\/vorgaenge\/(\d+)\/original\.svg$/.exec(pfad);
+  if (original && anfrage.method === "GET") {
+    const vorgang = await vorgangsKern.holen(Number(original[1]));
+    if (!vorgang) return json(antwort, 404, { fehler: `Vorgang ${original[1]} gibt es nicht.` });
+    antwort.writeHead(200, { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "no-store" });
+    return antwort.end(blatt(vorgang));
   }
 
   json(antwort, 404, { fehler: `${NAME} kennt ${pfad} nicht.` });

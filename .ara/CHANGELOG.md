@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.69.0 (2026-10-04)
+
+Contract: up to 10
+
+- **The kit understands contract 10 (M5).** A device with contract 10 no longer stops it. What it adds is read from the device's contract and not from memory: a role of a flow can declare which of its recognised fields a person may change (`ergebnis.aenderbar`), a step that reads names the original it shows (`original`), and a role may list the fields it is unsure about under `unsicher`.
+- **A new app can show an approval with the building block of the device (M5).** `--new` takes `--felder "Amount,Date"` (what the device reads out of a document, at most ten), `--aenderbar "Date"` (which of them a person may change in the approval, or `keine`) and `--original <path>` (the document shown on the left). It writes a role `leser` with the declaration and a step `lesen` that names the original into the flow `freigabe`. With two or more stages the first belongs to the reading, because the device itself puts a request there when it is unsure, with the fields; the other stages follow as steps. `/app` asks in plain words which details are read and which a person may correct, and never offers all of them out of habit.
+- **The scaffold shows the approval with the pattern `Freigabe`, not with a copy (M5).** A new page `Freigaben` (`seiten/freigaben.tsx`, `freigaben.ts`) shows what waits for the logged-in person: the original on the left and zoomable, the recognised fields on the right, what is unsure on top marked "prüfen" and without a percentage, a sentence on what has happened so far, earlier stages that unfold, and the list again after the decision. Confirming and rejecting go over the routes the device's administration uses, the device hands over only what the person may decide. The backend draws a sheet from the text of a submitted item (`kern/blatt.mjs`, route `original.svg`) so that a new app shows an original at once; an app with real documents delivers theirs. The copy of the library in the scaffold is now version 5.4.0, which carries the pattern.
+- **`--check` holds the declaration (M5).** It names a changeable field the role does not read, an original at a step that reads nothing, a role a step names that the header does not declare, a path of the original the contract forbids (leading slash, `..`, scheme, `%`, `?`, `#`) or that has no ending the display can read (it tells an image from a PDF by the end of the path: `.png`, `.jpg`, `.svg`, `.pdf`), and a device before contract 10, which refuses the whole flow. The umlaut warning leaves the new header keys alone.
+- **Measured on the Orin with a throwaway app (M5).** An approval with an unsure field, a fixed model so that nothing depends on chance, a correction of the field and the confirmation, the sentence on the earlier stage with the unfolded change, original and fields side by side, zoom, light and dark theme.
+
 ## 0.68.1 (2026-10-03)
 
 Contract: up to 9

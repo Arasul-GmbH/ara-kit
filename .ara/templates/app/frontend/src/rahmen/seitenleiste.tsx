@@ -17,7 +17,7 @@
  * der App bleiben eine Ebene tief (siehe `basis.ts`).
  */
 
-import { CircleCheckIcon, ClockIcon, FilePlusIcon, InboxIcon, type LucideIcon } from "lucide-react";
+import { CircleCheckIcon, ClipboardCheckIcon, ClockIcon, FilePlusIcon, InboxIcon, type LucideIcon } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from "@marken";
 
@@ -72,6 +72,18 @@ export function AppSeitenleiste({ name }: { name: string }) {
           aufKlick: () => gehe(eintrag.id === "alle" ? "/" : `/?ansicht=${eintrag.id}`),
         };
       }),
+    },
+    {
+      titel: "Entscheiden",
+      eintraege: [
+        {
+          kennung: "weg-freigaben",
+          name: "Freigaben",
+          symbol: <ClipboardCheckIcon />,
+          aktiv: ort.pathname === "/freigaben",
+          aufKlick: () => gehe("/freigaben"),
+        },
+      ],
     },
     {
       titel: "Einreichen",

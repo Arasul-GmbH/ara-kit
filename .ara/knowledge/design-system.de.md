@@ -42,6 +42,10 @@ Bibliothek. Eigene Regeln stehen am Ende von `stil.css`, nur mit Namen von Marke
 Schrift oder Radius. Am Gerät kommen die Klassen der Bibliothek nur aus deren `marken.css`: was du
 selbst gestaltest, schreib dort mit Marken.
 
+**Eine Freigabe ist das Muster `Freigabe`, nie eine Nachbildung** (ab Bibliothek 5.4.0): `seiten/freigaben.tsx`
+zeigt es, `freigaben.ts` holt die Einträge vom Gerät. Welche Felder ein Mensch ändern darf, erklärt der
+Flow (`ergebnis.aenderbar`). Das Original zeigt die Anzeige als Bild oder PDF **am Ende seines Pfades**.
+
 ## Was jede Seite hält
 
 - **Nichts fällt heraus.** Ein langer Titel endet mit „…" (`kuerzen`) und steht daneben ganz; bei
