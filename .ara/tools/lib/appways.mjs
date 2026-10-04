@@ -120,6 +120,13 @@ export const APP_WAYS = Object.freeze([
     was: t("take the text out of a document", "den Text aus einem Dokument holen"),
   },
   {
+    key: "ereignis_melden",
+    verb: "POST",
+    pfad: `${EXTERNAL_PREFIX}/ereignisse/{name}`,
+    pflicht: false,
+    was: t("report an event of the app", "ein Ereignis der App melden"),
+  },
+  {
     key: "modell_fragen",
     verb: "POST",
     pfad: `${EXTERNAL_PREFIX}/llm/chat`,

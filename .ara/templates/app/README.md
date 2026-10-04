@@ -281,7 +281,8 @@ Eine App kann dem Gerät sagen, dass etwas geschehen ist: `POST /api/v1/external
 Schlüssel der App, Körper `{"daten": {…}, "einreicher": "<Konto>"}`, beides freiwillig. Das Gerät startet jeden
 Flow dieser App, der im Kopf unter `ausloeser` `{typ: ereignis, ereignis: <name>}` nennt, und antwortet sofort
 mit `laeufe` und `nicht_gestartet`, ohne auf die Läufe zu warten. `daten` werden die Argumente des Flows mit
-demselben Namen. Den Auslöser schreibt `--ausloeser "ereignis:<name>"` bei `--new`.
+demselben Namen. Den Weg schreibt das Kit beim Einspielen aus dem Kontrakt in `backend/arasul.json` unter
+`wege.ereignis_melden`, steht dort `null`, kennt das Gerät ihn nicht. Den Auslöser schreibt `--ausloeser "ereignis:<name>"` bei `--new`.
 
 Ein Flow kann umgekehrt Routen einer App rufen: im Kopf `routen` (je Eintrag `methode`, `pfad`, freiwillig `app`
 und `zweck`, höchstens 20), im Ablauf das Werkzeug `route_aufrufen`. Das eine gilt nur mit dem anderen.

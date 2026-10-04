@@ -3107,6 +3107,10 @@ check("Kontrakt 13: das Kit versteht Ereignis und route_aufrufen, --check hält 
   assert(befunde(mit(ein("GET", "/a") + ein("GET", "/a"))).length === 1 && befunde(mit(ein("GET", "/a") + ein("POST", "/a"))).length === 0, "doppelt wird falsch beurteilt");
   assert(befunde(mit(Array.from({ length: 21 }, (_, i) => ein("GET", `/r${i}`)).join(""))).length === 1, "21 Routen werden nicht gehalten");
   assert(befunde(mit(ein("GET", "/a")), { backend: false }).length === 1, "eine eigene Route ohne Backend wird nicht gehalten");
+  // Der Weg zum Ereignis kommt aus dem Kontrakt des Geräts in die Vereinbarung, und fehlt er dort, steht null.
+  const mitEreignis = { ...KONTRAKT, endpunkte: [...KONTRAKT.endpunkte, { verb: "POST", pfad: "/api/v1/external/ereignisse/:name", bereich: "flow:run", was: "Ein Ereignis der App melden" }] };
+  assert(appArrangement(mitEreignis).wege.ereignis_melden?.pfad === "/api/v1/external/ereignisse/{name}", `der Weg zum Ereignis fehlt: ${JSON.stringify(appArrangement(mitEreignis).wege.ereignis_melden)}`);
+  assert(!appArrangement(KONTRAKT).wege.ereignis_melden, "ein Gerät ohne den Weg bekommt einen");
   // Ein Gerät vor Kontrakt 13 weist den Flow ab.
   assert(befunde(gut, { deviceContract: 12 }).length === 1 && /Kontrakt 12|contract 12/.test(befunde(gut, { deviceContract: 12 })[0]), "ein Gerät vor Kontrakt 13 wird nicht benannt");
   assert(befunde(gut, { deviceContract: undefined }).length === 0, "ohne Zahl des Geräts gibt es einen Befund");
