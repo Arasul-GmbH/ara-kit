@@ -3080,6 +3080,39 @@ check("Kontrakt 12: das Gerüst sagt zeigt_freigaben und öffnet die Freigabe au
   return "Fassung 12 bedient: Feld bei Seite Freigaben geschrieben, Anfang führt zur Freigabe, Hinweis ohne Feld bei eigener Seite, Feld vor Kontrakt 12 gehalten";
 });
 
+check("Kontrakt 13: das Kit versteht Ereignis und route_aufrufen, --check hält routen und Werkzeug zusammen", async () => {
+  assert(KIT_CONTRACT_VERSION >= 13, "das Kit versteht Kontrakt 13 nicht");
+  const dreizehn = KIT_CONTRACT_VERSIONS.find((e) => e.version === 13);
+  assert(dreizehn && dreizehn.kann.length > 40, "Fassung 13 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 13 }).ok, "ein Gerät mit Kontrakt 13 hält das Kit an");
+  const f = await import("./lib/felder.mjs");
+  const flow = (kopf) => `---\nname: x\n${kopf}\n---\nText\n`;
+  const gut = flow(
+    'ausloeser:\n  - typ: "ereignis"\n    ereignis: "vorgang.neu"\n' +
+      'routen:\n  - methode: POST\n    pfad: "/vorgaenge/{id}/pruefen"\n    zweck: "Prüft einen Vorgang"\n  - methode: GET\n    pfad: /vorgaenge\n    app: andere-app\nwerkzeuge: [route_aufrufen]\nschritte:\n  - name: rufen\n    typ: werkzeug\n    werkzeug: route_aufrufen\n'
+  );
+  const eintraege = f.routenEintraege(gut.split(/^---\s*$/m)[1]);
+  assert(eintraege.length === 2 && eintraege[0].methode === "POST" && eintraege[0].pfad === "/vorgaenge/{id}/pruefen" && eintraege[1].app === "andere-app", `routen nicht gelesen: ${JSON.stringify(eintraege)}`);
+  const befunde = (text, opt = {}) => f.contractThirteenFindings("x", text, { backend: true, deviceContract: 13, ...opt });
+  assert(befunde(gut).length === 0, `ein guter Flow bekommt Befunde: ${befunde(gut)}`);
+  assert(befunde(flow("werkzeuge: [freigabe_anfordern]")).length === 0, "ein Flow ohne routen bekommt Befunde");
+  // Feld und Werkzeug gehören zusammen.
+  assert(befunde(flow('routen:\n  - methode: GET\n    pfad: /a\nwerkzeuge: [freigabe_anfordern]')).some((b) => /kein Schritt|no step/.test(b)), "routen ohne Werkzeug wird nicht gehalten");
+  assert(befunde(flow("werkzeuge: [route_aufrufen]")).some((b) => /keine `routen`|no `routen`/.test(b)), "Werkzeug ohne routen wird nicht gehalten");
+  // Methode, Pfad, doppelt, mehr als 20, eigene Route ohne Backend.
+  const ein = (m, p) => `  - methode: ${m}\n    pfad: ${p}\n`;
+  const mit = (zeilen) => flow(`routen:\n${zeilen}werkzeuge: [route_aufrufen]`);
+  assert(befunde(mit(ein("FETCH", "/a"))).length === 1, "eine falsche Methode wird nicht gehalten");
+  assert(befunde(mit(ein("GET", "a"))).length === 1 && befunde(mit(ein("GET", "/a?x=1"))).length === 1 && befunde(mit(ein("GET", "/a/../b"))).length === 1, "ein ungültiger Pfad wird nicht gehalten");
+  assert(befunde(mit(ein("GET", "/a") + ein("GET", "/a"))).length === 1 && befunde(mit(ein("GET", "/a") + ein("POST", "/a"))).length === 0, "doppelt wird falsch beurteilt");
+  assert(befunde(mit(Array.from({ length: 21 }, (_, i) => ein("GET", `/r${i}`)).join(""))).length === 1, "21 Routen werden nicht gehalten");
+  assert(befunde(mit(ein("GET", "/a")), { backend: false }).length === 1, "eine eigene Route ohne Backend wird nicht gehalten");
+  // Ein Gerät vor Kontrakt 13 weist den Flow ab.
+  assert(befunde(gut, { deviceContract: 12 }).length === 1 && /Kontrakt 12|contract 12/.test(befunde(gut, { deviceContract: 12 })[0]), "ein Gerät vor Kontrakt 13 wird nicht benannt");
+  assert(befunde(gut, { deviceContract: undefined }).length === 0, "ohne Zahl des Geräts gibt es einen Befund");
+  return "Fassung 13 bedient: routen gelesen, Werkzeug und Feld gehören zusammen, Methode, Pfad, doppelt, mehr als 20, Backend und Gerät vor 13 gehalten";
+});
+
 function applyOhne(f, text) {
   return f.applyFlowFields(text, {});
 }

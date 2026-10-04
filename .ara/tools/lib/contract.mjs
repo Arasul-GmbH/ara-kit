@@ -76,6 +76,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 12,
     kann: "Eine App darf ihre Freigaben selbst zeigen und das dem Gerät sagen (`zeigt_freigaben`, freiwillig): dann öffnet ein Klick in „Für Sie\" die App beim Vorgang, mit `?freigabe=<nummer>` in der Adresse, statt die Freigabe in Arasul zu zeigen. Das Gerüst schreibt das Feld nur, wenn die Vorlage eine Seite Freigaben hat, und diese Seite öffnet bei `?freigabe=<nummer>` genau diese Freigabe, auch nach dem Neuladen. `--check` weist bei einer App mit eigener Freigabe-Seite ohne das Feld hin und hält das Feld an einem Gerät vor Kontrakt 12 an. Was das Gerät ohne das Feld tut, sagt sein Kontrakt, nicht das Kit.",
   },
+  {
+    version: 13,
+    kann: "Eine App darf dem Gerät ein Ereignis melden und ein Flow darf Routen der App rufen. Das Ereignis: `POST /api/v1/external/ereignisse/<name>` mit dem Schlüssel der App startet jeden Flow, der unter `ausloeser` auf den Namen hört; das Gerät wartet nicht auf die Läufe. Die Routen: ein Flow nennt im Kopf `routen` (Methode, Pfad, freiwillig `app` und `zweck`, höchstens 20) und ruft sie mit dem Werkzeug `route_aufrufen`. `--check` hält `routen` ohne das Werkzeug, das Werkzeug ohne `routen`, einen ungültigen oder doppelten Eintrag, eine eigene Route ohne Backend und beides an einem Gerät vor Kontrakt 13 an. Wer das Ereignis meldet, wer die Route rufen darf und was das Gerät dabei prüft, sagt sein Kontrakt, nicht das Kit.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */

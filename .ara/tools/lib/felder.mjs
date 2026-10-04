@@ -566,6 +566,106 @@ export function abschlussFindings(name, text, { backend = true, imQuelltext = ()
   return findings;
 }
 
+/** Die Einträge von `routen` im Kopf eines Flows: je Eintrag `methode`, `pfad`, `app`, `zweck` (fehlende als `undefined`). */
+export function routenEintraege(header) {
+  const block = /^routen:[ \t]*\n((?: {2,}.*\n|[ \t]*\n)*)/m.exec(`${header}\n`);
+  if (!block) return null;
+  const wert = (zeile, feld) => {
+    const m = new RegExp(`^\\s*(?:-\\s+)?${feld}:\\s*(?:"([^"\\n]*)"|'([^'\\n]*)'|([^\\s#][^\\n#]*?))\\s*$`).exec(zeile);
+    return m ? (m[1] ?? m[2] ?? m[3]) : undefined;
+  };
+  return block[1]
+    .split(/^ {2,}- /m)
+    .slice(1)
+    .map((teil) => {
+      const zeilen = `- ${teil}`.split("\n");
+      const aus = (feld) => zeilen.map((z) => wert(z, feld)).find((v) => v !== undefined);
+      return { methode: aus("methode"), pfad: aus("pfad"), app: aus("app"), zweck: aus("zweck") };
+    });
+}
+
+/** Ruft der Flow das Werkzeug `route_aufrufen`, als Schritt oder in der Liste `werkzeuge`? */
+function nenntRouteAufrufen(header) {
+  return /^werkzeuge:.*\broute_aufrufen\b/m.test(header) || /^ {4}werkzeug:\s*"?route_aufrufen\b/m.test(header);
+}
+
+/**
+ * Was kein Schema trägt an `routen` und `route_aufrufen` (Kontrakt 13). Das Gerät prüft Methode und Pfad
+ * beim Aufruf; hier steht, was sich vorher sagen lässt: Feld und Werkzeug gehören zusammen, höchstens
+ * 20 Einträge, keiner doppelt, der Pfad wie bei der Abschluss-Route (dazu `{name}` für ein Wegstück),
+ * eine eigene Route braucht ein Backend, und ein Gerät vor Kontrakt 13 weist den Flow ab.
+ */
+export function contractThirteenFindings(name, text, { backend = true, deviceContract } = {}) {
+  const header = text.split(/^---\s*$/m)[1] ?? text;
+  const eintraege = routenEintraege(header);
+  const werkzeug = nenntRouteAufrufen(header);
+  if (!eintraege && !werkzeug) return [];
+  const findings = [];
+  if (eintraege && !werkzeug) {
+    findings.push(
+      t(
+        `Flow ${name} names \`routen\` and no step calls the tool \`route_aufrufen\`: the field is only valid with the tool, and the device refuses the flow.`,
+        `Flow ${name} nennt \`routen\`, und kein Schritt ruft das Werkzeug \`route_aufrufen\`: das Feld gilt nur mit dem Werkzeug, und das Gerät weist den Flow ab.`
+      )
+    );
+  }
+  if (werkzeug && !eintraege?.length) {
+    findings.push(
+      t(
+        `Flow ${name} uses the tool \`route_aufrufen\` and names no \`routen\`: the tool only calls what the header lists, and the device refuses the flow.`,
+        `Flow ${name} nutzt das Werkzeug \`route_aufrufen\` und nennt keine \`routen\`: das Werkzeug ruft nur, was der Kopf aufführt, und das Gerät weist den Flow ab.`
+      )
+    );
+  }
+  const gesehen = new Set();
+  for (const { methode, pfad, app } of eintraege ?? []) {
+    if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(methode)) {
+      findings.push(
+        t(
+          `Flow ${name}, route ${pfad ?? "?"}: the method "${methode ?? ""}" is not valid. Possible: GET, POST, PUT, PATCH, DELETE.`,
+          `Flow ${name}, Route ${pfad ?? "?"}: die Methode „${methode ?? ""}" gilt nicht. Möglich: GET, POST, PUT, PATCH, DELETE.`
+        )
+      );
+    }
+    const wert = pfad ?? "";
+    const grund = !wert
+      ? t("the path is missing", "der Pfad fehlt")
+      : !wert.startsWith("/")
+        ? t("it has to start with `/`", "er muss mit `/` beginnen")
+        : /[^A-Za-z0-9._~\-/{}]/.test(wert.replace(/\{[A-Za-z0-9_]+\}/g, ""))
+          ? t("only letters, digits, `. _ ~ - /` and `{name}` for one segment are allowed (no host, scheme or query)", "erlaubt sind nur Buchstaben, Ziffern, `. _ ~ - /` und `{name}` für ein Wegstück (ohne Host, Schema und Abfrage)")
+          : wert.includes("//") || wert.split("/").includes("..")
+            ? t("`//` and `..` are not allowed", "`//` und `..` sind nicht erlaubt")
+            : null;
+    if (grund) findings.push(t(`Flow ${name}, route "${wert}": ${grund}.`, `Flow ${name}, Route „${wert}": ${grund}.`));
+    const schluessel = `${app ?? ""} ${methode} ${wert}`;
+    if (gesehen.has(schluessel)) {
+      findings.push(t(`Flow ${name}: the route ${methode} ${wert} stands twice in \`routen\`.`, `Flow ${name}: die Route ${methode} ${wert} steht zweimal unter \`routen\`.`));
+    }
+    gesehen.add(schluessel);
+    if (!app && !backend) {
+      findings.push(
+        t(
+          `Flow ${name} calls the route ${methode} ${wert} of its own app, and the app has no \`backend\`. The device refuses the package.`,
+          `Flow ${name} ruft die Route ${methode} ${wert} der eigenen App, und die App hat kein \`backend\`. Das Gerät weist das Paket ab.`
+        )
+      );
+    }
+  }
+  if ((eintraege?.length ?? 0) > 20) {
+    findings.push(t(`Flow ${name} names ${eintraege.length} \`routen\`, at most 20 fit.`, `Flow ${name} nennt ${eintraege.length} \`routen\`, es passen höchstens 20.`));
+  }
+  if (Number.isFinite(deviceContract) && deviceContract < 13) {
+    findings.push(
+      t(
+        `Flow ${name} names \`routen\` or the tool \`route_aufrufen\`, and this device carries contract ${deviceContract}: both came with contract 13, an older device refuses the flow.`,
+        `Flow ${name} nennt \`routen\` oder das Werkzeug \`route_aufrufen\`, und dieses Gerät trägt Kontrakt ${deviceContract}: beides kam mit Kontrakt 13, ein älteres Gerät weist den Flow ab.`
+      )
+    );
+  }
+  return findings;
+}
+
 /** Eine Zeile je Flow-Datei: was kein Schema traegt. Der Text ist die Datei, `name` ihr Name. */
 export function flowFieldFindings(name, text) {
   const findings = [];
