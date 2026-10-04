@@ -3015,6 +3015,71 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
   return "Fassung 11 bedient: Route geschrieben, Geheimnis falsch 401, derselbe Schlüssel legt einmal an, 2xx erst nach dem Speichern, Abschluss ohne Backend wird gehalten";
 });
 
+check("Kontrakt 12: das Gerüst sagt zeigt_freigaben und öffnet die Freigabe aus der Adresse, --check hält das Feld", async () => {
+  assert(KIT_CONTRACT_VERSION >= 12, "das Kit versteht Kontrakt 12 nicht");
+  const zwoelf = KIT_CONTRACT_VERSIONS.find((e) => e.version === 12);
+  assert(zwoelf && zwoelf.kann.length > 40, "Fassung 12 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 12 }).ok, "ein Gerät mit Kontrakt 12 hält das Kit an");
+  const z = await import("./lib/tieflink.mjs");
+
+  // Das Feld steht im Manifest, hinter dem Symbol oder der Beschreibung, und ändert sonst nichts.
+  const mf = { schema: 1, id: "x", beschreibung: "B", symbol: "file-text", frontend: { verzeichnis: "frontend" } };
+  const mit = z.setZeigtFreigaben(mf);
+  assert(mit.zeigt_freigaben === true && Object.keys(mit).join() === "schema,id,beschreibung,symbol,zeigt_freigaben,frontend", `Reihenfolge: ${Object.keys(mit)}`);
+  assert(z.setZeigtFreigaben({ id: "x" }).zeigt_freigaben === true, "ohne Beschreibung kommt das Feld nicht");
+
+  // --check: das Feld an einem Gerät vor Kontrakt 12 hält an, sonst nicht; ohne Feld nie.
+  assert(z.zeigtFreigabenFindings(mit, 11).length === 1 && /Kontrakt 11/.test(z.zeigtFreigabenFindings(mit, 11)[0]), "ein Gerät vor Kontrakt 12 wird nicht benannt");
+  assert(z.zeigtFreigabenFindings(mit, 12).length === 0 && z.zeigtFreigabenFindings(mit, undefined).length === 0, "ein Gerät mit Kontrakt 12 bekommt einen Befund");
+  assert(z.zeigtFreigabenFindings(mf, 11).length === 0, "ohne das Feld gibt es einen Befund");
+
+  // Der Hinweis: nur bei eigener Freigabe-Seite ohne das Feld, nie an einem Gerät vor Kontrakt 12, nie in der Bibliothek.
+  const dir = mkdtempSync(join(tmpdir(), "ara-tieflink-"));
+  try {
+    mkdirSync(join(dir, "src", "marken"), { recursive: true });
+    mkdirSync(join(dir, "src", "node_modules", "x"), { recursive: true });
+    writeFileSync(join(dir, "src", "marken", "Freigabe.tsx"), "export const x = <Freigabe />;");
+    writeFileSync(join(dir, "src", "node_modules", "x", "i.js"), "fetch('/api/freigabe-anfragen')");
+    writeFileSync(join(dir, "src", "main.tsx"), "render(<App />);");
+    assert(!z.hatFreigabeSeite(dir), "die Bibliothek oder node_modules gelten als eigene Seite");
+    assert(z.zeigtFreigabenHints(mf, dir, 12).length === 0, "ohne eigene Seite gibt es einen Hinweis");
+    writeFileSync(join(dir, "src", "seite.tsx"), "export const S = () => <Freigabe eintraege={[]} />;");
+    assert(z.hatFreigabeSeite(dir), "eine eigene Freigabe-Seite wird nicht erkannt");
+    const hinweis = z.zeigtFreigabenHints({ id: "x" }, dir, 12);
+    assert(hinweis.length === 1 && /zeigt_freigaben/.test(hinweis[0]), "eine eigene Seite ohne das Feld bekommt keinen Hinweis");
+    assert(z.zeigtFreigabenHints(mit, dir, 12).length === 0, "mit dem Feld gibt es einen Hinweis");
+    assert(z.zeigtFreigabenHints({ id: "x" }, dir, 11).length === 0, "ein Gerät vor Kontrakt 12 bekommt einen Hinweis");
+    assert(!z.hatFreigabeSeite(join(dir, "gibt-es-nicht")) && !z.hatFreigabeSeite(null), "ein fehlender Ordner gilt als Seite");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // Die Vorlage: Weg vom Anfang zur Freigabe, und der Hinweis auf eine Nummer, die es nicht gibt.
+  const vorlageSrc = join(ROOT, ".ara", "templates", "app", "frontend", "src");
+  const wege = readFileSync(join(vorlageSrc, "app.tsx"), "utf8");
+  assert(/<Navigate to=\{`\/freigaben\?freigabe=/.test(wege) && /path="\/" element=\{<Start \/>\}/.test(wege), "der Anfang der App führt nicht zur Freigabe");
+  assert(/kennzeichen="freigabe-unbekannt"/.test(readFileSync(join(vorlageSrc, "seiten", "freigaben.tsx"), "utf8")), "eine unbekannte Nummer bekommt keinen Hinweis");
+
+  // `--new` schreibt das Feld, weil die Vorlage die Seite hat, und `--check` lässt es am Gerät mit Kontrakt 12 in Ruhe.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const appDir = join(ROOT, "apps", "selftest-tieflink");
+  try {
+    const neu = tool("app.mjs", ["--app", "selftest-tieflink", "--new", "--titel", "Tieflink"]);
+    assert(neu.status === 0, `Anlegen scheitert: ${neu.stderr}${neu.stdout}`);
+    const manifest = JSON.parse(readFileSync(join(appDir, "app.json"), "utf8"));
+    assert(manifest.zeigt_freigaben === true, "die neue App sagt dem Gerät nicht, dass sie Freigaben zeigt");
+    assert(/zeigt_freigaben/.test(neu.stdout), "die Ausgabe nennt die Freigaben nicht");
+    assert(!/written, not promised|geschrieben, nicht versprochen/i.test(neu.stdout), "das Feld allein löst den Satz über geschriebene Felder aus");
+    assert(z.zeigtFreigabenHints(manifest, join(appDir, "frontend"), 12).length === 0, "die neue App bekommt einen Hinweis auf das, was sie schon hat");
+  } finally {
+    rmSync(appDir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+  return "Fassung 12 bedient: Feld bei Seite Freigaben geschrieben, Anfang führt zur Freigabe, Hinweis ohne Feld bei eigener Seite, Feld vor Kontrakt 12 gehalten";
+});
+
 function applyOhne(f, text) {
   return f.applyFlowFields(text, {});
 }

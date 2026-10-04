@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.71.0 (2026-10-04)
+
+Contract: up to 12
+
+- **The kit understands contract 12 (M5).** A device with contract 12 no longer stops it. What it adds is read from the device's contract and not from memory: an app can say in its manifest that it shows its approvals itself (`zeigt_freigaben`, optional, a boolean). The manifest is strict on the device, so the field is only valid from contract 12. With the field a click in "For you" opens the app with `?freigabe=<number>` in the address; without it, or with `false`, the device opens the approval in Arasul itself.
+- **A new app writes the field and opens the approval (M5).** `--new` writes `zeigt_freigaben: true` only if the scaffold has a page for approvals, and it has. The app opens at `?freigabe=<number>`, leads to the page and shows exactly that approval, also after reloading. A number that does not exist (any more) shows the list with a short note.
+- **`--check` holds the field (M5).** An app with its own approval page and without the field gets a hint, no stop: without it the device opens the approval in Arasul and not in the app. The field on a device before contract 12 stops, because the device would refuse the package.
+- **Measured on the Orin with a throwaway app (M5).** An approval comes into being without a model, a person clicks it in "For you" and lands in the app at exactly that process.
+
 ## 0.70.0 (2026-10-04)
 
 Contract: up to 11

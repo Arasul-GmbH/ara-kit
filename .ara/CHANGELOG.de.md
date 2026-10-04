@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.71.0 (2026-10-04)
+
+Contract: up to 12
+
+- **Das Kit versteht Kontrakt 12 (M5).** Ein Gerät mit Kontrakt 12 hält es nicht mehr an. Was er dazugibt, steht im Kontrakt des Geräts und wird nicht aus dem Gedächtnis gesagt: eine App kann im Manifest sagen, dass sie ihre Freigaben selbst zeigt (`zeigt_freigaben`, freiwillig, ein Wahrheitswert). Das Manifest ist beim Gerät streng, das Feld gilt also erst ab Kontrakt 12. Mit dem Feld öffnet ein Klick in „Für Sie“ die App mit `?freigabe=<nummer>` in der Adresse; ohne es, oder mit `false`, öffnet das Gerät die Freigabe selbst in Arasul.
+- **Eine neue App schreibt das Feld und öffnet die Freigabe (M5).** `--new` schreibt `zeigt_freigaben: true` nur, wenn die Vorlage eine Seite für Freigaben hat, und sie hat eine. Die App öffnet bei `?freigabe=<nummer>`, führt zur Seite und zeigt genau diese Freigabe, auch nach dem Neuladen. Eine Nummer, die es nicht (mehr) gibt, zeigt die Liste mit einem kurzen Hinweis.
+- **`--check` hält das Feld (M5).** Eine App mit eigener Freigabe-Seite ohne das Feld bekommt einen Hinweis, keinen Halt: ohne das Feld öffnet das Gerät die Freigabe in Arasul und nicht in der App. Das Feld an einem Gerät vor Kontrakt 12 hält an, weil das Gerät das Paket abweist.
+- **Am Orin mit einer Wegwerf-App gemessen (M5).** Eine Freigabe entsteht ohne Modell, ein Mensch klickt sie in „Für Sie“ an und landet in der App bei genau diesem Vorgang.
+
 ## 0.70.0 (2026-10-04)
 
 Contract: up to 11

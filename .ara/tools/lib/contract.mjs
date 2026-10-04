@@ -72,6 +72,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 11,
     kann: "Ein Flow darf sein Ergebnis an eine Route der eigenen App übergeben (`abschluss: { route }`): das Gerüst schreibt sie in den Flow, der ein Ergebnis liefert, und gibt dem Backend der Vorlage die Route dazu, die das Geheimnis des Geräts prüft (`ARASUL_ABSCHLUSS_TOKEN`), den Idempotency-Key beachtet und erst nach dem Speichern 2xx antwortet. `--check` hält eine Abschluss-Route ohne Backend, ohne Route im Quelltext und für ein Gerät vor Kontrakt 11 an. /app erklärt das in einfacher Sprache nur, wenn es gebraucht wird. Wann das Gerät die Route ruft und was es danach mit dem Lauf tut, sagt sein Kontrakt, nicht das Kit.",
   },
+  {
+    version: 12,
+    kann: "Eine App darf ihre Freigaben selbst zeigen und das dem Gerät sagen (`zeigt_freigaben`, freiwillig): dann öffnet ein Klick in „Für Sie\" die App beim Vorgang, mit `?freigabe=<nummer>` in der Adresse, statt die Freigabe in Arasul zu zeigen. Das Gerüst schreibt das Feld nur, wenn die Vorlage eine Seite Freigaben hat, und diese Seite öffnet bei `?freigabe=<nummer>` genau diese Freigabe, auch nach dem Neuladen. `--check` weist bei einer App mit eigener Freigabe-Seite ohne das Feld hin und hält das Feld an einem Gerät vor Kontrakt 12 an. Was das Gerät ohne das Feld tut, sagt sein Kontrakt, nicht das Kit.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */
