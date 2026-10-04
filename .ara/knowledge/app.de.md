@@ -159,6 +159,15 @@ Werkzeug-Schritt damit an. `--check` hält die Deklaration gegen die Erkennung (
 Rolle nicht liest, ein Original an einem Schritt, der nichts liest, ein verbotener Pfad, ein Gerät
 vor Kontrakt 10).
 
+**Das Ergebnis geht an die App zurück (Kontrakt 11).** Bei einem Flow, der ein Ergebnis liefert (er liest ein
+Dokument, oder ein Mensch bestätigt sein Ergebnis), schreibt `--new` `abschluss: { route: "/abschluss/freigabe" }`,
+und das Backend der Vorlage bringt die Route mit: sie prüft das Geheimnis des Geräts, behält jede Nummer eines
+Laufs einmal und antwortet erst nach dem Speichern mit 2xx. **Dazu wird nichts gefragt.** Nur wenn der Mensch
+fragt, wo das Ergebnis landet, oder ein Lauf auf „nicht übergeben“ steht, sagen: „Das Gerät gibt das Ergebnis an
+die App, und der Lauf ist erst fertig, wenn die App es angenommen hat; ein Administrator drückt in der
+Läufe-Ansicht ‚erneut‘.“ `--check` hält einen Abschluss ohne `backend` an, eine Route, die keine Datei des
+Backends nennt, eine ungültige Route und ein Gerät vor Kontrakt 11.
+
 ### Wie gefragt wird, und wann Schluss ist
 
 - **Eine vage Antwort bohrst du nach.** „Mit Freigaben" ist keine Antwort. Die Folgefrage bietet

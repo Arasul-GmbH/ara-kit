@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.70.0 (2026-10-04)
+
+Contract: up to 11
+
+- **Das Kit versteht Kontrakt 11 (M5).** Ein Gerät mit Kontrakt 11 hält es nicht mehr an. Was er dazugibt, steht im Kontrakt des Geräts und wird nicht aus dem Gedächtnis gesagt: ein Flow kann sein Ergebnis an eine Route der eigenen App übergeben (`abschluss: { route }`). Nach der letzten Stufe ruft das Gerät sie mit dem Ergebnis, den Feldern, wie sie mit den Korrekturen eines Menschen gelten, und der Nummer des Laufs, mit den Köpfen `Authorization: Bearer <ARASUL_ABSCHLUSS_TOKEN>` und `Idempotency-Key`; erst eine 2xx-Antwort macht den Lauf fertig.
+- **Eine neue App schreibt den Abschluss und bringt die Route mit (M5).** Bei einem Flow, der ein Ergebnis liefert (`--felder`, oder die Art `ergebnis_bestaetigen`), schreibt `--new` `abschluss: { route: "/abschluss/freigabe" }` in den Flow. Das Backend der Vorlage hat die Route: sie prüft das Geheimnis (falsch oder ohne: 401, nichts wird angelegt; kennt die App selbst keines: 503), verlangt, dass der `Idempotency-Key` die Nummer des Laufs ist, behält ein Ergebnis je Nummer genau einmal in der neuen Tabelle `abschluesse` (ein zweiter Aufruf mit demselben Schlüssel antwortet 2xx und legt nichts doppelt an, auch wenn sich zwei Aufrufe kreuzen) und antwortet erst nach dem Speichern mit 2xx (scheitert die Ablage: 500, der Lauf bleibt auf „nicht übergeben“). Ein Flow ohne Ergebnis wird geschrieben wie vorher.
+- **`--check` hält den Abschluss (M5).** Es hält eine Route an einer App ohne `backend` an, eine Route, die keine Datei des Backends nennt (das Gerät bekäme 404), eine Route, die der Kontrakt verbietet (Schrägstrich am Anfang, nur Buchstaben, Ziffern und `. _ ~ - /`, kein `//`, kein `..`) und ein Gerät vor Kontrakt 11, das den Flow abweist. Die Umlautwarnung lässt die neuen Schlüssel im Kopf in Ruhe.
+- **`/app` erklärt es nur, wenn es nötig ist.** Es fragt dazu nichts und sagt in einem Satz, wo das Ergebnis landet, nur wenn der Mensch fragt oder ein Lauf auf „nicht übergeben“ steht.
+- **Am Orin mit einer Wegwerf-App gemessen (M5).** Ein Lauf wird über die Route fertig, zwei weitere Aufrufe über die Schnittstelle lassen das Ergebnis nur einmal in der Tabelle, ohne Modell.
+
 ## 0.69.0 (2026-10-04)
 
 Contract: up to 10

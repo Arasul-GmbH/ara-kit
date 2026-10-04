@@ -130,10 +130,14 @@ import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
 import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
 import {
+  ABSCHLUSS_STANDARD,
+  abschlussFindings,
+  applyAbschluss,
   applyFlowFields,
   applyRecognition,
   contractTenFindings,
   flowFieldFindings,
+  liefertErgebnis,
   originalProblem,
   ORIGINAL_STANDARD,
   parseAenderbar,
@@ -431,7 +435,9 @@ function createApp(name) {
   }
   if (fields.arten || fields.ausloeser || fields.stufen || fields.felder) {
     const flowFile = join(dir, "flows", "freigabe.md");
-    writeFileSync(flowFile, applyRecognition(applyFlowFields(readFileSync(flowFile, "utf8"), fields), fields));
+    // Liefert der Flow ein Ergebnis, übergibt das Gerät es nach der letzten Stufe an die Route des Backends.
+    fields.abschluss = liefertErgebnis(fields) ? ABSCHLUSS_STANDARD : null;
+    writeFileSync(flowFile, applyAbschluss(applyRecognition(applyFlowFields(readFileSync(flowFile, "utf8"), fields), fields), { route: fields.abschluss }));
   }
 
   // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Es ist EIN Stueck:
@@ -487,6 +493,14 @@ function createApp(name) {
             t(
               `- Recognised fields: ${fields.felder.join(", ")}; a person may change: ${fields.aenderbar.join(", ") || "none"}; original: ${fields.original}`,
               `- Erkannte Felder: ${fields.felder.join(", ")}; ein Mensch darf ändern: ${fields.aenderbar.join(", ") || "keines"}; Original: ${fields.original}`
+            ),
+          ]
+        : []),
+      ...(fields.abschluss
+        ? [
+            t(
+              `- Result: after the last stage the device hands it to ${fields.abschluss} in the backend, which checks the device's secret and keeps each run once`,
+              `- Ergebnis: nach der letzten Stufe übergibt das Gerät es an ${fields.abschluss} im Backend, das das Geheimnis des Geräts prüft und jeden Lauf nur einmal behält`
             ),
           ]
         : []),
@@ -1445,6 +1459,28 @@ function checkDelivery(dir, manifest) {
   return problems;
 }
 
+/**
+ * Nennt eine Datei des Backends den Pfad? Gesucht wird im Bauordner, ohne `node_modules`, in Quelltext
+ * jeder Art: wo die Route steht, legt die App fest, ob als Zeichenkette oder als Muster. Ein Bauordner,
+ * den das Kit nicht sicher lesen kann (kein Eintrag, außerhalb), gilt als „ja": das Kit mahnt nur, was
+ * es sieht.
+ */
+function backendNamesRoute(dir, manifest, route) {
+  const folder = manifest?.backend?.bauen?.verzeichnis;
+  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return true;
+  const root = join(dir, folder);
+  if (!existsSync(root)) return true;
+  const walk = (path) =>
+    readdirSync(path, { withFileTypes: true }).some((entry) => {
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) return false;
+      const full = join(path, entry.name);
+      if (entry.isDirectory()) return walk(full);
+      if (!/\.(m?js|cjs|ts|py|go|rb|php|java|json)$/.test(entry.name) || statSync(full).size > 2_000_000) return false;
+      return readFileSync(full, "utf8").includes(route);
+    });
+  return walk(root);
+}
+
 /** Was kein Schema traegt, in den Flow-Dateien der App: `faehigkeiten` am Werkzeug, eine Stufe ohne Kopfeintrag. */
 function flowFindings(dir, manifest, deviceContract) {
   const folder = manifest?.flows?.verzeichnis;
@@ -1456,7 +1492,15 @@ function flowFindings(dir, manifest, deviceContract) {
     .flatMap((file) => {
       const name = file.replace(/\.md$/, "");
       const text = readFileSync(join(path, file), "utf8");
-      return [...flowFieldFindings(name, text), ...contractTenFindings(name, text, deviceContract)];
+      return [
+        ...flowFieldFindings(name, text),
+        ...contractTenFindings(name, text, deviceContract),
+        ...abschlussFindings(name, text, {
+          backend: Boolean(manifest?.backend),
+          imQuelltext: (route) => backendNamesRoute(dir, manifest, route),
+          deviceContract,
+        }),
+      ];
     });
 }
 

@@ -2854,6 +2854,167 @@ check("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbaren Felder u
   return "Fassung 10 bedient, Erkennung, Deklaration und Original geschrieben und geprüft, Baustein statt Nachbildung";
 });
 
+check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft Geheimnis und Kennung, --check hält sie", async () => {
+  assert(KIT_CONTRACT_VERSION >= 11, "das Kit versteht Kontrakt 11 nicht");
+  const elf = KIT_CONTRACT_VERSIONS.find((e) => e.version === 11);
+  assert(elf && elf.kann.length > 40, "Fassung 11 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 11 }).ok, "ein Gerät mit Kontrakt 11 hält das Kit an");
+  const f = await import("./lib/felder.mjs");
+
+  // Der Kopf: beide Schreibweisen, und was der Kontrakt an der Route verlangt.
+  assert(f.abschlussRoute('abschluss: { route: "/abschluss/beleg" }\nwerkzeuge: []') === "/abschluss/beleg", "die Klammerform wird nicht gelesen");
+  assert(f.abschlussRoute("abschluss:\n  route: /abschluss/beleg\nwerkzeuge: []") === "/abschluss/beleg", "die Zeilenform wird nicht gelesen");
+  assert(f.abschlussRoute("werkzeuge: []") === null, "ohne Abschluss wird eine Route erfunden");
+  assert(f.abschlussProblem("/abschluss/freigabe") === null && f.abschlussProblem("/a/b.c_d~e-f") === null, "eine gültige Route wird abgewiesen");
+  for (const falsch of ["", "abschluss/x", "/a//b", "/a/../b", "/a?x=1", "https://x/a", "/a b", "/a#b", "/a%2e"]) {
+    assert(f.abschlussProblem(falsch), `die Route „${falsch}" geht durch`);
+  }
+
+  // Der Flow: nur ein Flow, der ein Ergebnis liefert, bekommt die Route.
+  const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
+  assert(f.liefertErgebnis({ felder: ["betrag"] }) && f.liefertErgebnis({ arten: ["ergebnis_bestaetigen"] }), "ein Flow mit Ergebnis liefert keines");
+  assert(!f.liefertErgebnis({}) && !f.liefertErgebnis({ arten: ["autonom"] }) && !f.liefertErgebnis({ felder: [] }), "ein Flow ohne Ergebnis liefert eines");
+  assert(f.applyAbschluss(vorlage, {}) === vorlage, "ohne Route ändert sich der Flow");
+  const mit = f.applyAbschluss(vorlage, { route: f.ABSCHLUSS_STANDARD });
+  assert(/^abschluss: \{ route: "\/abschluss\/freigabe" \}$/m.test(mit), "der Kopf nennt die Route nicht");
+  assert(f.abschlussRoute(mit) === "/abschluss/freigabe", "die geschriebene Route wird nicht gelesen");
+  assert(f.flowFieldFindings("freigabe", mit).length === 0, "der Flow mit Abschluss bekommt Befunde, die kein Abschluss sind");
+
+  // --check: ohne Backend, ohne Route im Quelltext, Gerät vor Kontrakt 11, und der saubere Fall.
+  assert(f.abschlussFindings("freigabe", mit, { deviceContract: 11 }).length === 0, "ein sauberer Abschluss bekommt Befunde");
+  assert(f.abschlussFindings("freigabe", vorlage, { backend: false, deviceContract: 10 }).length === 0, "ein Flow ohne Abschluss bekommt Befunde");
+  const ohneBackend = f.abschlussFindings("freigabe", mit, { backend: false, deviceContract: 11 });
+  assert(ohneBackend.length === 1 && /backend/.test(ohneBackend[0]), `ohne Backend: ${ohneBackend.join(" | ")}`);
+  const ohneQuelltext = f.abschlussFindings("freigabe", mit, { imQuelltext: () => false, deviceContract: 11 });
+  assert(ohneQuelltext.length === 1 && /404|Backends/.test(ohneQuelltext[0]), `ohne Route im Quelltext: ${ohneQuelltext.join(" | ")}`);
+  assert(f.abschlussFindings("freigabe", mit, { deviceContract: 10 }).some((b) => /Kontrakt 10/.test(b)), "ein Gerät vor Kontrakt 11 wird nicht benannt");
+  assert(f.abschlussFindings("freigabe", mit.replace("/abschluss/freigabe", "/a//b"), { deviceContract: 11 }).length === 1, "eine ungültige Route wird nicht benannt");
+
+  // Das Backend der Vorlage, mit seiner eigenen Ablage in SQLite: Geheimnis falsch, Idempotenz, 2xx erst nach dem Speichern.
+  const backend = pathToFileURL(join(ROOT, ".ara", "templates", "app", "backend")).href;
+  const { oeffnen } = await import(`${backend}/ablage/db.mjs`);
+  const { abschlussAblage } = await import(`${backend}/ablage/abschluesse.mjs`);
+  const { abschluss, KENNUNG } = await import(`${backend}/kern/abschluss.mjs`);
+  const arbeit = mkdtempSync(join(tmpdir(), "ara-abschluss-"));
+  try {
+    const { db } = await oeffnen({ adresse: null, datei: join(arbeit, "a.db") });
+    const ablage = abschlussAblage(db);
+    const kern = abschluss({ ablage, geheimnis: "geheim-1" });
+    const rumpf = { lauf: 41, flow: "freigabe", app: "x", argumente: { vorgang: "7" }, ergebnis: "Anna hat bestätigt.", felder: { betrag: "12" }, korrekturen: [{ feld: "betrag", vorschlag: "11", wert: "12", von: "anna", am: "heute" }] };
+    const kopf = { authorization: "Bearer geheim-1", "idempotency-key": `${KENNUNG}41` };
+    const ruf = (k, r = rumpf) => kern.annehmen({ kopf: k, rumpf: r });
+
+    // Geheimnis falsch oder fehlend: 401, und es liegt nichts da.
+    for (const falsch of [{ ...kopf, authorization: "Bearer anderes" }, { ...kopf, authorization: undefined }, { ...kopf, authorization: "geheim-1" }, { ...kopf, authorization: "Bearer " }]) {
+      assert((await ruf(falsch)).status === 401, `ein falsches Geheimnis geht durch: ${JSON.stringify(falsch.authorization)}`);
+    }
+    assert((await ablage.anzahl()) === 0, "ein Aufruf ohne Geheimnis hat etwas angelegt");
+    // Die App kennt selbst keines: sie nimmt nichts an, auch nicht mit leerem Bearer.
+    assert((await abschluss({ ablage, geheimnis: "" }).annehmen({ kopf: { authorization: "Bearer ", "idempotency-key": `${KENNUNG}41` }, rumpf })).status === 503, "ohne eigenes Geheimnis nimmt die App an");
+    assert((await ablage.anzahl()) === 0, "ohne eigenes Geheimnis ist etwas angelegt");
+    // Die Kennung muss die Nummer des Laufs sein.
+    assert((await ruf({ authorization: kopf.authorization })).status === 400, "ohne Idempotency-Key geht es durch");
+    assert((await ruf({ ...kopf, "idempotency-key": `${KENNUNG}42` })).status === 400, "eine fremde Nummer im Kopf geht durch");
+    assert((await ruf(kopf, null)).status === 400 && (await ruf(kopf, { flow: "freigabe" })).status === 400, "ein unlesbarer Rumpf geht durch");
+    assert((await ablage.anzahl()) === 0, "ein abgewiesener Aufruf hat etwas angelegt");
+
+    // Der erste Aufruf legt an, der zweite und dritte mit demselben Schlüssel nicht, alle antworten 2xx.
+    const erster = await ruf(kopf);
+    assert(erster.status === 201 && erster.antwort.neu === true, `der erste Aufruf: ${erster.status}`);
+    const zweiter = await ruf(kopf);
+    const dritter = await ruf(kopf);
+    assert(zweiter.status === 200 && dritter.status === 200 && zweiter.antwort.neu === false, "ein weiterer Aufruf mit demselben Schlüssel antwortet nicht mit 2xx");
+    assert((await ablage.anzahl()) === 1, `dasselbe Ergebnis liegt ${await ablage.anzahl()} Mal da`);
+    const da = await ablage.eines(41);
+    assert(da.ergebnis === "Anna hat bestätigt." && da.vorgang === "7" && da.felder.betrag === "12" && da.korrekturen[0].von === "anna", "das gespeicherte Ergebnis ist nicht das übergebene, mit den Korrekturen");
+    // Eine zweite Nummer ist ein zweites Ergebnis, und zwei Aufrufe, die sich kreuzen, legen eines an.
+    const kreuz = await Promise.all([1, 2, 3].map(() => ruf({ authorization: kopf.authorization, "idempotency-key": `${KENNUNG}43` }, { ...rumpf, lauf: 43 })));
+    assert(kreuz.every((r) => r.status < 300) && kreuz.filter((r) => r.antwort.neu).length === 1 && (await ablage.anzahl()) === 2, "sich kreuzende Aufrufe legen mehr als eines an");
+
+    // 2xx erst nach dem Speichern: scheitert die Ablage, kommt kein 2xx.
+    const kaputt = abschluss({ ablage: { speichern: async () => { throw new Error("Datenbank weg"); } }, geheimnis: "geheim-1" });
+    assert((await kaputt.annehmen({ kopf, rumpf })).status === 500, "bei gescheiterter Ablage kommt 2xx");
+    await db.schliessen();
+  } finally {
+    rmSync(arbeit, { recursive: true, force: true });
+  }
+
+  // Derselbe Weg über HTTP, am echten server.mjs der Vorlage: ohne Geheimnis 401, mit 201, noch einmal 200, ohne eigenes 503.
+  const paket = mkdtempSync(join(tmpdir(), "ara-abschluss-srv-"));
+  const starten = async (token) => {
+    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
+    const umgebung = { ...process.env, PORT: "0", ARASUL_APP_NAME: "Probe", APP_DATEN: join(paket, "daten") };
+    delete umgebung.ARASUL_ABSCHLUSS_TOKEN;
+    if (token) umgebung.ARASUL_ABSCHLUSS_TOKEN = token;
+    const app = spawn("node", [join(paket, "server.mjs")], { env: umgebung, stdio: ["ignore", "pipe", "pipe"] });
+    let ausgabe = "";
+    app.stderr.on("data", (c) => (ausgabe += String(c)));
+    const url = await new Promise((done, failed) => {
+      const zeit = setTimeout(() => failed(new Error(`die App hat nicht gestartet: ${ausgabe}`)), 10_000);
+      app.stdout.on("data", (c) => {
+        ausgabe += String(c);
+        const m = ausgabe.match(/auf (\d+)/);
+        if (m) {
+          clearTimeout(zeit);
+          done(`http://127.0.0.1:${m[1]}`);
+        }
+      });
+    });
+    return { app, url };
+  };
+  try {
+    const { app, url } = await starten("geheim-http");
+    try {
+      const post = (kopf) =>
+        fetch(`${url}/abschluss/freigabe`, {
+          method: "POST",
+          headers: { "content-type": "application/json", ...kopf },
+          body: JSON.stringify({ lauf: 9, flow: "freigabe", argumente: { vorgang: "1" }, ergebnis: "ok", felder: null, korrekturen: null }),
+        }).then((r) => r.status);
+      assert((await post({ "idempotency-key": "arasul-lauf-9" })) === 401, "ohne Geheimnis geht es über HTTP durch");
+      assert((await post({ authorization: "Bearer falsch", "idempotency-key": "arasul-lauf-9" })) === 401, "mit falschem Geheimnis geht es über HTTP durch");
+      const gut = { authorization: "Bearer geheim-http", "idempotency-key": "arasul-lauf-9" };
+      assert((await post(gut)) === 201 && (await post(gut)) === 200 && (await post(gut)) === 200, "erst 201 und dann 200, über HTTP");
+      assert((await fetch(`${url}/abschluss/freigabe`)).status === 404, "die Route antwortet auf GET");
+    } finally {
+      app.kill();
+    }
+    rmSync(paket, { recursive: true, force: true });
+    mkdirSync(paket, { recursive: true });
+    const ohne = await starten("");
+    try {
+      const status = await fetch(`${ohne.url}/abschluss/freigabe`, { method: "POST", headers: { authorization: "Bearer ", "idempotency-key": "arasul-lauf-1", "content-type": "application/json" }, body: JSON.stringify({ lauf: 1, flow: "freigabe" }) }).then((r) => r.status);
+      assert(status === 503, `ohne Geheimnis in der Umgebung antwortet die App ${status}`);
+    } finally {
+      ohne.app.kill();
+    }
+  } finally {
+    rmSync(paket, { recursive: true, force: true });
+  }
+
+  // `--new` schreibt die Route nur bei einem Flow, der ein Ergebnis liefert.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const dirs = ["selftest-abschluss-mit", "selftest-abschluss-ohne"].map((n) => join(ROOT, "apps", n));
+  try {
+    const mitLauf = tool("app.mjs", ["--app", "selftest-abschluss-mit", "--new", "--titel", "Mit", "--felder", "Betrag"]);
+    assert(mitLauf.status === 0, `Anlegen mit Ergebnis scheitert: ${mitLauf.stderr}${mitLauf.stdout}`);
+    const flow = readFileSync(join(dirs[0], "flows", "freigabe.md"), "utf8");
+    assert(f.abschlussRoute(flow) === "/abschluss/freigabe", "der Flow mit Ergebnis nennt die Route nicht");
+    assert(/\/abschluss\/freigabe/.test(mitLauf.stdout), "die Ausgabe nennt die Übergabe nicht");
+    assert(readFileSync(join(dirs[0], "backend", "server.mjs"), "utf8").includes('"/abschluss/freigabe"'), "das Backend der neuen App nennt die Route nicht");
+    assert(existsSync(join(dirs[0], "backend", "ablage", "migrationen", "002-abschluesse.sql")), "die Tabelle der Abschlüsse fehlt");
+    const ohneLauf = tool("app.mjs", ["--app", "selftest-abschluss-ohne", "--new", "--titel", "Ohne", "--stufen", "Prüfung"]);
+    assert(ohneLauf.status === 0, `Anlegen ohne Ergebnis scheitert: ${ohneLauf.stderr}${ohneLauf.stdout}`);
+    assert(f.abschlussRoute(readFileSync(join(dirs[1], "flows", "freigabe.md"), "utf8")) === null, "ein Flow ohne Ergebnis bekommt eine Route");
+  } finally {
+    for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+  return "Fassung 11 bedient: Route geschrieben, Geheimnis falsch 401, derselbe Schlüssel legt einmal an, 2xx erst nach dem Speichern, Abschluss ohne Backend wird gehalten";
+});
+
 function applyOhne(f, text) {
   return f.applyFlowFields(text, {});
 }
@@ -6032,8 +6193,11 @@ check("Die Vorlage hält ihre Nähte auseinander", () => {
   const mitSql = backendDateien(join(vorlage, "backend")).filter(
     (datei) => datei !== naht && /\b(SELECT|INSERT INTO|UPDATE|DELETE FROM)\s/i.test(ohneKommentar(readFileSync(datei, "utf8")))
   );
+  // Eine Ablage je Entität, alle unter `ablage/`: die Vorgänge in `vorgaenge.mjs`, die Abschlüsse der Läufe
+  // (Kontrakt 11) in `abschluesse.mjs`. Keine Tabelle hat zwei Ablagen, und im Kern steht kein SQL.
+  const ablageOrdner = join(vorlage, "backend", "ablage");
   assert(
-    mitSql.length === 1 && mitSql[0].endsWith(join("ablage", "vorgaenge.mjs")),
+    mitSql.length > 0 && mitSql.every((d) => dirname(d) === ablageOrdner) && mitSql.some((d) => d.endsWith(join("ablage", "vorgaenge.mjs"))),
     `das SQL der Vorlage liegt an ${mitSql.length} Stellen: ${mitSql.map((d) => relative(ROOT, d)).join(", ")}`
   );
   const tabellenDerNaht = [...ohneKommentar(readFileSync(naht, "utf8")).matchAll(/\b(?:FROM|INSERT INTO|UPDATE|DELETE FROM|TABLE IF NOT EXISTS)\s+(\w+)/gi)].map((m) => m[1]);

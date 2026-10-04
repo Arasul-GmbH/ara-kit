@@ -7,7 +7,9 @@
  *
  *   `server.mjs`            Wege, Kopfzeilen, Statuscodes
  *   `kern/vorgaenge.mjs`    was mit einem Vorgang passiert
+ *   `kern/abschluss.mjs`    was passiert, wenn das Gerät das Ergebnis eines Flows übergibt
  *   `ablage/vorgaenge.mjs`  wo er liegt. Die eine Naht zur Datenbank
+ *   `ablage/abschluesse.mjs` wo das übergebene Ergebnis eines Laufs liegt
  *   `ablage/db.mjs`         die Datenbank und ihre Migrationen
  *   `arasul.mjs`            die Naht zum Gerät
  *
@@ -43,7 +45,9 @@ import { createServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { oeffnen } from "./ablage/db.mjs";
+import { abschlussAblage } from "./ablage/abschluesse.mjs";
 import { vorgangsAblage } from "./ablage/vorgaenge.mjs";
+import { abschluss as abschlussKern } from "./kern/abschluss.mjs";
 import { blatt } from "./kern/blatt.mjs";
 import { vorgaenge as kern } from "./kern/vorgaenge.mjs";
 import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";
@@ -52,6 +56,10 @@ const HIER = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 8080);
 const NAME = process.env.ARASUL_APP_NAME || "{{name}}";
 const FLOW = "freigabe";
+// Die Route, die der Kopf des Flows als `abschluss.route` nennt. Das Gerät ruft sie nach der letzten
+// Stufe; erst ihre 2xx-Antwort macht den Lauf fertig. Sie steht hier als ganze Zeichenkette, damit
+// `--check` sie im Quelltext findet.
+const ABSCHLUSS = "/abschluss/freigabe";
 // Ohne Gerät: wo die SQLite-Datei liegt. Ohne Angabe neben dem Quelltext, und
 // das ist im Container die schreibbare Schicht: sie überlebt einen Neustart
 // und nicht das nächste Einspielen.
@@ -81,6 +89,9 @@ const vorgangsKern = kern({
   name: NAME,
   regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),
 });
+// Das Geheimnis legt das Gerät beim Einspielen in den Container, je App und Stand. Fehlt es, nimmt die
+// Route nichts an, und das sagt sie.
+const abschlussAnnahme = abschlussKern({ ablage: abschlussAblage(db), geheimnis: process.env.ARASUL_ABSCHLUSS_TOKEN || "" });
 
 /**
  * Was die App über sich sagt: das Feld `agent` ihres Manifests, mit Kennung, Name und Version.
@@ -145,6 +156,12 @@ const server = createServer(async (anfrage, antwort) => {
       // Und ob bleibt, was sie ablegt. Nur die Datenbank des Geräts bleibt.
       ablage: { art: db.art, dauerhaft: db.dauerhaft },
     });
+  }
+
+  // Das Gerät übergibt das Ergebnis eines Laufs. Was geprüft wird und warum, steht in `kern/abschluss.mjs`.
+  if (pfad === ABSCHLUSS && anfrage.method === "POST") {
+    const { status, antwort: inhalt } = await abschlussAnnahme.annehmen({ kopf: anfrage.headers, rumpf: await rumpfLesen(anfrage) });
+    return json(antwort, status, inhalt);
   }
 
   if (pfad === "/vorgaenge" && anfrage.method === "GET") {

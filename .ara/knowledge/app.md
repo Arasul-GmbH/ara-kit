@@ -152,6 +152,14 @@ not promise that the device acts on them yet**: `--contract` says what each does
 `--check` holds the declaration against the reading (a changeable field the role does not read,
 an original at a step that reads nothing, a forbidden path, a device before contract 10).
 
+**The result goes back to the app (contract 11).** For a flow that delivers a result (reads a
+document, or a person confirms its result) `--new` writes `abschluss: { route: "/abschluss/freigabe" }`
+and the scaffold's backend brings the route: it checks the device's secret, keeps each run number once
+and answers 2xx only after saving. **Ask nothing about it.** Only if asked where the result lands, or
+a run stands on "not handed over", say: the run is finished only once the app has taken the result; an
+administrator presses "again" in the run view. `--check`
+stops a closing without a `backend`, a route no backend file names and a device before contract 11.
+
 ### How to ask, and when to stop
 
 - **Probe a vague answer.** "With approvals" is not an answer. The follow-up question offers

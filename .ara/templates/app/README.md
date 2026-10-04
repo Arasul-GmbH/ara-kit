@@ -244,3 +244,25 @@ die Wege des Backends unter `api/` dürfen tiefer gehen.
 Warum, steht im Kopf von `src/rahmen/basis.ts`: die Seite verweist relativ auf ihre Bündel,
 weil sie beim Bauen nicht weiß, ob sie im Teststand oder live hängt. Was ein Verweis auf ein
 einzelnes Ding braucht, gehört in die Suchanfrage.
+
+## Das Ergebnis eines Flows geht an die App zurück
+
+Liefert der Flow ein Ergebnis (`--felder`, oder ein Mensch bestätigt es), steht im Kopf von
+`flows/freigabe.md` `abschluss: { route: "/abschluss/freigabe" }`. Nach der letzten Stufe ruft das Gerät
+diese Route des Backends mit dem Ergebnis, den Feldern samt den Korrekturen eines Menschen und der Nummer
+des Laufs. **Erst wenn die App mit 2xx antwortet, ist der Lauf fertig**; sonst steht er auf „nicht
+übergeben", und ein Administrator löst in der Läufe-Ansicht „erneut" aus.
+
+Die Route steht in `backend/server.mjs`, was sie prüft in `backend/kern/abschluss.mjs`:
+
+- **Das Geheimnis.** Der Aufruf trägt `Authorization: Bearer <ARASUL_ABSCHLUSS_TOKEN>`. Ohne oder mit einem
+  falschen antwortet die App 401 und legt nichts an. Kennt sie selbst keines (eine laufende App bekommt es
+  erst mit dem nächsten Einspielen), antwortet sie 503.
+- **Die Kennung.** `Idempotency-Key: arasul-lauf-<nummer>`. Zu einer Nummer liegt ein Ergebnis genau einmal
+  in `abschluesse`; derselbe Aufruf bei „erneut" bekommt wieder 2xx und legt nichts doppelt an.
+- **Erst speichern, dann 2xx.** Scheitert die Ablage, antwortet die App 500, und der Lauf bleibt „nicht
+  übergeben".
+
+Die Tabelle `abschluesse` hält das Ergebnis, die Felder und die Korrekturen als Text; was die App damit
+tut, steht dort noch nicht: das Gerüst legt es nur sicher ab. Eine Fach-App liest von hier und führt ihre
+Vorgänge nach.
