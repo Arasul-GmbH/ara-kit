@@ -13,21 +13,21 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Skeleton } from './skeleton';
 
 /**
- * Die Seitenleiste einer Anwendung -- die Mechanik, nicht die Navigation.
+ * Die Seitenleiste einer Anwendung: die Mechanik, nicht die Navigation.
  *
  * WAS SIE IST UND WAS NICHT. Hier liegt das Gerüst: auf und zu, breit oder
  * nur Symbole, unter 900 px ein Blatt statt einer Spalte, ein Griff am Rand,
- * das Tastenkuerzel. Was DARIN steht -- Eintraege, Ziele, welcher gerade
- * aktiv ist -- ist die Sache dessen, der sie benutzt; wer eine Navigation
+ * das Tastenkuerzel. Was DARIN steht (Eintraege, Ziele, welcher gerade
+ * aktiv ist), ist die Sache dessen, der sie benutzt; wer eine Navigation
  * aus einer Liste will, nimmt `Seitenleiste` aus den Mustern.
  *
  * UNTER 900 PX GIBT ES KEINE SEITENLEISTE, SONDERN EIN BLATT. Das ist
  * dieselbe Schwelle wie in der Shell (`useSchmalesFenster`) und dieselbe
- * Entscheidung wie in D7: ein geschrumpfter Desktop ist kein Telefon-Aufbau.
+ * Entscheidung wie dort: ein geschrumpfter Desktop ist kein Telefon-Aufbau.
  * 160 px Leiste neben 230 px Inhalt sind zwei zu schmale Spalten statt einer
  * brauchbaren.
  *
- * HIER ZAEHLT DAS FENSTER UND NICHT DER BEHAELTER -- anders als bei der
+ * HIER ZAEHLT DAS FENSTER UND NICHT DER BEHAELTER, anders als bei der
  * `Datenliste` (seit 5.1.0). Die Leiste teilt sich das Fenster mit dem Rest
  * der Seite, und in einer App im Rahmen des Geraets IST das Fenster der
  * Rahmen: `matchMedia` im iframe misst genau ihn. Ihren eigenen Kasten kann
@@ -70,8 +70,8 @@ function useSidebar() {
  *
  * Er ist gesteuert ODER ungesteuert: wer `offen` und `aufOffen` uebergibt,
  * behaelt den Zustand bei sich (etwa im Store der Anwendung), wer nichts
- * uebergibt, bekommt ihn hier. KEIN Cookie und kein `localStorage` -- was
- * ein Mensch einstellt, gehoert seit H1 zu ihm und nicht zu dem Rechner, vor
+ * uebergibt, bekommt ihn hier. KEIN Cookie und kein `localStorage`: was
+ * ein Mensch einstellt, gehoert zu ihm und nicht zu dem Rechner, vor
  * dem er zufaellig sitzt. Wer die Einstellung ueberleben lassen will,
  * speichert sie dort, wo er auch sein Theme speichert.
  */
@@ -92,7 +92,7 @@ function SidebarProvider({
    * Die Leiste steht IN einer Flaeche und nicht am Rand des Fensters.
    *
    * Vorgabe ist das Fenster: die Leiste ist `fixed` und so hoch wie der
-   * Bildschirm -- die Form, in der eine Anwendung ihre eigene Seite baut.
+   * Bildschirm, die Form, in der eine Anwendung ihre eigene Seite baut.
    * Steht sie dagegen in einem Panel (die Shell dieses Geraets ist selbst
    * dreispaltig, und eine Schauseite zeigt sie in einem Kasten), muss sie
    * `absolute` in DIESEM Kasten liegen. Ohne den Unterschied legt sie sich
@@ -194,7 +194,7 @@ function Sidebar({
           style={{ '--sidebar-breite-blatt': SEITENLEISTE_BLATT } as React.CSSProperties}
         >
           {/* Ein Blatt ohne zugaenglichen Namen ist fuer einen Screenreader
-              ein Kasten ohne Auskunft -- und Radix sagt es in der Konsole,
+              ein Kasten ohne Auskunft, und Radix sagt es in der Konsole,
               die die Schauseite je Zelle mitliest. */}
           <SheetHeader className="sr-only">
             <SheetTitle>Seitenleiste</SheetTitle>
@@ -242,7 +242,7 @@ function Sidebar({
       >
         <div
           data-sidebar="sidebar"
-          className="flex h-full w-full flex-col bg-background group-data-[form=schwebend]:rounded-lg group-data-[form=schwebend]:border group-data-[form=schwebend]:border-border"
+          className="flex h-full w-full flex-col overflow-hidden bg-background group-data-[form=schwebend]:rounded-lg group-data-[form=schwebend]:border group-data-[form=schwebend]:border-border"
         >
           {children}
         </div>
@@ -305,9 +305,9 @@ function SidebarRail({ className, ...props }: React.ComponentProps<'button'>) {
  * Die Flaeche neben der Leiste.
  *
  * `min-w-0`, weil sie ein Flex-Kind ist: ohne das schrumpft sie nicht unter
- * die Breite ihres Inhalts, sondern schiebt ihn aus dem Rahmen. Am Orin
- * (26.09.2026) stand so eine Tabelle neben der Seitenleiste einer App 100 px
- * ueber dem Rand -- der Rollkasten der Tabelle kam nie zum Zug, weil die
+ * die Breite ihres Inhalts, sondern schiebt ihn aus dem Rahmen. So stand
+ * einmal eine Tabelle neben der Seitenleiste einer App 100 px
+ * ueber dem Rand: der Rollkasten der Tabelle kam nie zum Zug, weil die
  * Flaeche um ihn mitwuchs.
  */
 function SidebarInset({ className, ...props }: React.ComponentProps<'main'>) {
@@ -358,7 +358,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="sidebar-content"
       data-sidebar="content"
-      // `relative` gehoert zu `overflow-auto` (Fund der G1-Abnahme): ein
+      // `relative` gehoert zu `overflow-auto`: ein
       // absolut gesetztes Kind entkaeme dem Rollkasten sonst und zaehlte zur
       // Rollbreite des Dokuments.
       className={cn(
@@ -457,7 +457,10 @@ function SidebarMenuButton({
   asChild = false,
   aktiv = false,
   variant,
-  size,
+  // Die Vorgabe steht hier und nicht nur in `cva`: `data-size` muss auch
+  // ohne ausdrueckliche Groesse am Knopf stehen, sonst findet die Zahl
+  // daneben (`SidebarMenuBadge`) ihre Hoehe nicht und rutscht unter die Zeile.
+  size = 'default',
   className,
   ...props
 }: React.ComponentProps<'button'> & {

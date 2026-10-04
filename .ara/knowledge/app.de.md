@@ -38,7 +38,7 @@ bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht i
 | **Rollen und Zuweisung** | **Wird immer gefragt.** Vorgabe: ein Admin und Mitarbeiter. Der Admin weist Mitarbeitern Akten zu (Mandanten, Projekte, Fälle); ein Mitarbeiter sieht nur die ihm zugewiesenen Akten samt den Freigaben, die ihn betreffen. Weitere Rollen nur mit Grund. Siehe „Drei Fragen, die jede App bekommt" |
 | **Was ins Netz geht** | **Wird immer gefragt.** Mail, ein Register, ein Zahlungsdienst, eine Suche im Internet. Vorgabe: nichts verlässt das Gerät. Jede Verbindung nach außen wird einzeln vereinbart |
 | **Welches Modell je Flow** | **Wird immer gefragt.** Jede Stelle, an der ein Sprachmodell arbeitet, bekommt einen Vorschlag, den der Admin am Gerät umstellen darf |
-| **Bild, Freigabestufen** | Das Symbol in der Seitenleiste, und eine oder mehrere Personen hintereinander je Freigabe. Siehe „Zwei weitere Fragen" |
+| **Bild, Freigabestufen, was gelesen wird** | Das Symbol in der Seitenleiste, eine oder mehrere Personen hintereinander je Freigabe, und bei einer App, die Dokumente liest, welche Felder ein Mensch ändern darf. Siehe „Weitere Fragen" |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
 | **Welche Gestalt sie annimmt** | Die neun Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
@@ -125,7 +125,7 @@ bekommt beim ersten Mal einen Satz.
 **„Genug" lässt diese drei nicht fallen.** Was offen bleibt, wird zur sicheren Vorgabe und laut
 gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf des Flows.
 
-### Zwei weitere Fragen
+### Weitere Fragen
 
 In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. **Das Kit schreibt die Felder
 und verspricht nicht, dass das Gerät schon danach handelt**: `--contract` sagt, was jedes heute tut.
@@ -143,8 +143,21 @@ und verspricht nicht, dass das Gerät schon danach handelt**: `--contract` sagt,
    „von allein, oder bestätigt ein Mensch das Ergebnis?" (`--arten`: `autonom`,
    `ergebnis_bestaetigen`). Sag laut, dass Zeitplan und Arten vielleicht noch nicht wirken.
 
+4. **Nur, wo das Gerät ein Dokument liest** (Beleg, Formular, Scan). Sag, was das ist: „Das Gerät liest
+   das Blatt und füllt die Felder aus; wo es unsicher ist, sieht ein Mensch zuerst das Blatt neben
+   den Feldern an." Frag mit Entwürfen: welche Angaben es liest (`--felder "Betrag,Datum"`, höchstens
+   zehn) und welche davon der Mensch verbessern darf, vorgeschlagen nur die oft falsch gelesenen
+   (`--aenderbar "Datum"`, oder `keine`). **Nie alle aus Gewohnheit**: ein änderbares Feld lässt sich
+   auch aus Versehen ändern. Das Blatt links ist `--original`: vorgabemäßig ein Blatt aus dem
+   eingereichten Text, bei echten Dokumenten der Weg, der sie liefert, **mit der Endung .png, .jpg,
+   .svg oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades). Bei mehreren Stufen
+   gehört die erste der Erkennung: das Gerät legt dort bei Unsicherheit seine Anfrage an, eine
+   sichere Erkennung fragt niemanden. Sag das laut.
+
 „Genug" lässt diese fallen. `faehigkeiten` gehören nur an Modell-Schritte, `--check` hält einen
-Werkzeug-Schritt damit an.
+Werkzeug-Schritt damit an. `--check` hält die Deklaration gegen die Erkennung (ein änderbares Feld, das die
+Rolle nicht liest, ein Original an einem Schritt, der nichts liest, ein verbotener Pfad, ein Gerät
+vor Kontrakt 10).
 
 ### Wie gefragt wird, und wann Schluss ist
 

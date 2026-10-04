@@ -9,13 +9,13 @@ import { cn } from '../cn';
  *
  * Die Varianten sind die des Geraets und nicht die von shadcn: `default` ist
  * ruhig (die Flaeche der Karte), `success`, `warning` und `destructive` tragen
- * ihre Farbe als 12-%-Wisch mit farbigem Text und farbigem Rand -- dieselbe
- * Entschaerfung wie beim destruktiven Knopf (Plan 016). Ein flaechig roter
+ * ihre Farbe als 12-%-Wisch mit farbigem Text und farbigem Rand, dieselbe
+ * Entschaerfung wie beim destruktiven Knopf. Ein flaechig roter
  * Punkt neben einem Namen liest sich als Alarm, und das ist er meistens nicht.
  *
- * Die Namen sind die Bedeutung, die Farbe folgt daraus (30.08.2026): `success`
+ * Die Namen sind die Bedeutung, die Farbe folgt daraus: `success`
  * ist Blau, `warning` ist Grau, `destructive` ist Rot. Gruen und Orange gibt
- * es in der Palette nicht mehr -- ein Abzeichen sagt im Wort, was es ist, und
+ * es in der Palette nicht mehr: ein Abzeichen sagt im Wort, was es ist, und
  * eine App, die `warning` schreibt, bekommt dieselbe graue Marke wie das
  * Geraet.
  */

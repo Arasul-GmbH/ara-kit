@@ -12,7 +12,7 @@ import { cn } from '../cn';
  * Der Unterschied zu `Switch`: der Schalter sagt „an oder aus" und traegt
  * seinen Namen daneben; dieser hier ist ein KNOPF, der zusaetzlich einen
  * Zustand hat (fett, kursiv, Filter aktiv). Er sitzt in einer Leiste und
- * traegt meist nur ein Symbol -- dann braucht er ein `aria-label`, sonst
+ * traegt meist nur ein Symbol; dann braucht er ein `aria-label`, sonst
  * hoert ein Screenreader nichts.
  */
 const toggleVariants = cva(

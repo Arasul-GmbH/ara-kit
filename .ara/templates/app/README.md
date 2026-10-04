@@ -25,6 +25,29 @@ Plan erledigt ist:
   und dem dunklen Erscheinungsbild des Geräts.
 - Nach der Entscheidung steht am Vorgang, wer entschieden hat, bei einer Ablehnung die
   Begründung, und der Satz, den der Flow danach geschrieben hat.
+- Unter „Freigaben" steht, was auf die Entscheidung der angemeldeten Person wartet, gezeichnet
+  mit dem Baustein `Freigabe` der Bibliothek und nicht nachgebaut. Wer einen Vorgang
+  eingereicht hat, sieht ihn dort nicht: das Gerät liefert nur, was die Person entscheiden
+  darf. Bestätigt und abgelehnt wird über dieselben Wege wie in der Verwaltung des Geräts.
+
+## Eine Freigabe, die ein Dokument zeigt
+
+Wurde die App mit `--felder` angelegt (`--aenderbar`, `--original`), liest der Flow
+`freigabe` zuerst ein Dokument (Schritt `lesen`, Rolle `leser`). Die Freigabe zeigt dann
+**links das Original, zoombar, rechts die erkannten Felder**: was das Gerät nicht sicher
+erkannt hat, steht oben mit „prüfen", ohne Prozentzahl. Ändern darf ein Mensch genau die
+Felder, die die Rolle unter `ergebnis.aenderbar` nennt, ein anderes weist das Gerät ab.
+Gespeichert wird, was die KI vorschlug und was der Mensch geändert hat; der weitere Lauf
+arbeitet mit dem neuen Wert. Oben steht ein Satz, was bisher geschah, frühere Stufen
+klappen auf, und nach der Entscheidung steht wieder die Liste da.
+
+Das Original kommt aus dem Pfad `original` am Schritt `lesen`, relativ zur App. Die Vorlage
+zeichnet unter `backend/kern/blatt.mjs` ein Blatt aus dem Text des Vorgangs; eine App mit
+echten Dokumenten liefert stattdessen deren Bytes aus dem Weg in `server.mjs` und lässt den
+Pfad auf ihn zeigen. **Der Pfad muss auf `.png`, `.jpg`, `.svg` oder `.pdf` enden**: die
+Anzeige erkennt Bild und PDF am Ende des Pfades. Bei mehreren Stufen gehört die erste der
+Erkennung: ist sie unsicher, legt das Gerät dort selbst eine Freigabe an, und die übrigen
+Stufen folgen als Schritte des Flows.
 
 Der erste Plan steht unter `plans/offen/`. Was die App danach kann, gehört hierher.
 

@@ -9,6 +9,11 @@
  * Schema traegt: dass ein Werkzeug-Schritt keine `faehigkeiten` hat und dass eine Stufe, die ein
  * Schritt nennt, im Kopf des Flows steht.
  *
+ * Seit Kontrakt 10 kommen die erkannten Felder einer Freigabe dazu: `rollen[].ergebnis.felder`,
+ * `rollen[].ergebnis.aenderbar` (welche davon ein Mensch in der Freigabe ändern darf) und `original`
+ * an einem erkennenden Schritt (das Bild oder PDF, das die Freigabe links zeigt). Auch sie stehen im
+ * Kontrakt des Geräts; das Kit schreibt sie und prüft, was kein Schema trägt.
+ *
  * **Die Felder sind geschrieben, nicht versprochen.** Dass das Geraet sie schon wirken laesst,
  * sagt sein Kontrakt (`--contract`, Abschnitt Regeln fuer einen Flow). Das Kit sagt es nie von
  * sich aus: Stufen mit Standardperson, der Zeitplaner und die Arten kommen im Geraet spaeter.
@@ -197,6 +202,123 @@ export function parseAenderungstext(value) {
   return { text };
 }
 
+/** Ein Name, wie der Kontrakt ihn für ein Feld einer Rolle verlangt: klein, Ziffern, `_`, höchstens 31 Zeichen. */
+const FELD_NAME = /^[a-z][a-z0-9_]{0,30}$/;
+
+/**
+ * `--felder "Betrag,Datum"`: die Angaben, die die KI aus dem Dokument erkennt, als Namen des
+ * Kontrakts. Höchstens zehn, keine doppelt. Ein Anzeigename wird zur Kennung.
+ */
+export function parseFelder(value) {
+  const felder = [];
+  for (const word of split(value)) {
+    const name = slug(word);
+    if (!FELD_NAME.test(name)) {
+      return {
+        error: t(
+          `The field "${word}" does not fit: it needs a letter at the start, then letters, digits or underscores.`,
+          `Das Feld „${word}" passt nicht: es braucht vorn einen Buchstaben, dann Buchstaben, Ziffern oder Unterstriche.`
+        ),
+      };
+    }
+    if (felder.includes(name)) {
+      return { error: t(`The field "${word}" stands twice.`, `Das Feld „${word}" steht zweimal.`) };
+    }
+    felder.push(name);
+  }
+  if (!felder.length) return { error: t("At least one field is needed.", "Es braucht mindestens ein Feld.") };
+  if (felder.length > 10) {
+    return { error: t("At most ten fields fit into one reading.", "In eine Erkennung passen höchstens zehn Felder.") };
+  }
+  return { felder };
+}
+
+/**
+ * `--aenderbar "Datum"`: welche der erkannten Felder ein Mensch in der Freigabe ändern darf. Nur
+ * Namen aus `--felder`; ein Feld, das dort nicht steht, weist das Gerät beim Bestätigen mit 400 ab.
+ * `keine` heißt: alle bleiben unveränderlich, ein Mensch bestätigt oder lehnt ab.
+ */
+export function parseAenderbar(value, felder) {
+  if (/^\s*(keine?|none)\s*$/i.test(String(value ?? ""))) return { aenderbar: [] };
+  const aenderbar = [];
+  for (const word of split(value)) {
+    const name = slug(word);
+    if (!(felder ?? []).includes(name)) {
+      return {
+        error: t(
+          `"${word}" is not among the recognised fields (${(felder ?? []).join(", ") || "none given"}). A person can only change a field the device reads out of the document.`,
+          `„${word}" steht nicht unter den erkannten Feldern (${(felder ?? []).join(", ") || "keine genannt"}). Ändern lässt sich nur ein Feld, das das Gerät aus dem Dokument liest.`
+        ),
+      };
+    }
+    if (!aenderbar.includes(name)) aenderbar.push(name);
+  }
+  return { aenderbar };
+}
+
+/**
+ * Der Pfad des Originals, wie der Kontrakt ihn beschreibt: relativ zur Adresse der App, ohne `/` am
+ * Anfang, ohne `..`, ohne Schema, ohne `%`, `?` und `#`, höchstens 500 Zeichen. Platzhalter wie
+ * `{{vorgang}}` setzt das Gerät beim Lauf ein.
+ */
+export function originalProblem(path) {
+  const value = String(path ?? "");
+  if (!value.trim() || value.length > 500) {
+    return t("The path of the original must be between 1 and 500 characters.", "Der Pfad des Originals muss 1 bis 500 Zeichen lang sein.");
+  }
+  if (value.startsWith("/") || /^[a-z][a-z0-9+.-]*:/i.test(value) || value.split("/").includes("..") || /[%?#]/.test(value)) {
+    return t(
+      `The path of the original "${value}" does not fit: relative to the app, without a slash at the start, without "..", without a scheme and without % ? #.`,
+      `Der Pfad des Originals „${value}" passt nicht: relativ zur App, ohne Schrägstrich am Anfang, ohne „..", ohne Schema und ohne % ? #.`
+    );
+  }
+  // Die Anzeige erkennt Bild und PDF am Ende des Pfades und nicht am Inhalt: ohne Endung steht dort
+  // „Dieses Format kann hier nicht angezeigt werden". Endet der Pfad auf einen Platzhalter, kann die
+  // Endung im eingesetzten Wert stehen (`4711.pdf`), dann ist er nicht zu beurteilen.
+  if (!value.endsWith("}}") && !ORIGINAL_ENDUNG.test(value)) {
+    return t(
+      `The path of the original "${value}" has no ending the approval can read: it shows an image or a PDF by the end of the path (.png, .jpg, .svg, .pdf). Without one it says that it cannot show the format.`,
+      `Der Pfad des Originals „${value}" hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .svg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
+    );
+  }
+  return null;
+}
+
+/** Die Endungen, an denen die Anzeige der Freigabe ein Bild oder ein PDF erkennt. */
+const ORIGINAL_ENDUNG = /\.(png|jpe?g|gif|webp|avif|bmp|svg|pdf)$/i;
+
+/** Der Pfad des Originals, den das Gerüst vorgibt: das Blatt, das das Backend zu einem Vorgang zeichnet. */
+export const ORIGINAL_STANDARD = "api/vorgaenge/{{vorgang}}/original.svg";
+
+/**
+ * Die Erkennung in den Flow `freigabe` schreiben: eine Rolle `leser` mit den Feldern und ihrer
+ * Deklaration, und ein Schritt `lesen` vor der Freigabe, der das Original nennt. Die Freigabe zeigt
+ * dann Original links und Felder rechts, und `ergebnis.aenderbar` sagt, was ein Mensch ändern darf.
+ */
+export function applyRecognition(text, { felder, aenderbar = [], original = ORIGINAL_STANDARD } = {}) {
+  if (!felder?.length) return text;
+  const list = (names) => `[${names.join(", ")}]`;
+  const rolle = [
+    "rollen:",
+    "  - name: leser",
+    '    beschreibung: "Liest die Angaben aus dem Dokument des Vorgangs."',
+    `    ergebnis: { felder: ${list(felder)}${aenderbar.length ? `, aenderbar: ${list(aenderbar)}` : ""} }`,
+    `    prompt: ${quote(`Aufgabe: ein Dokument lesen und genau diese Angaben als JSON ausgeben: ${felder.join(", ")}. Eine Angabe, die nicht zu finden ist, bleibt leer. Unter "unsicher" stehen die Namen der Angaben, bei denen die Erkennung nicht sicher ist.`)}`,
+    "",
+  ].join("\n");
+  const schritt = [
+    "  - name: lesen",
+    "    typ: subagent",
+    "    rolle: leser",
+    `    auftrag: ${quote("Lies das Dokument zum Vorgang {{vorgang}} und gib die Angaben als JSON aus.")}`,
+    "    faehigkeiten: { text: true, bild: true }",
+    `    original: ${quote(original)}`,
+  ].join("\n");
+  return text
+    .replace(/^werkzeuge: \[freigabe_anfordern\]/m, "werkzeuge: [subagent, freigabe_anfordern]")
+    .replace(/^schritte:\n/m, `${rolle}schritte:\n${schritt}\n`);
+}
+
 /** Das Feld `symbol` in app.json, hinter `beschreibung`. */
 export function setSymbol(manifest, symbol) {
   const out = {};
@@ -215,7 +337,7 @@ const quote = (s) => JSON.stringify(s);
  * `entscheiden`: mit mehr als einer Stufe wird daraus ein Schritt je Stufe, der die Stufe in
  * `parameter.stufe` nennt, wie der Kontrakt es verlangt.
  */
-export function applyFlowFields(text, { arten, ausloeser, stufen } = {}) {
+export function applyFlowFields(text, { arten, ausloeser, stufen, felder } = {}) {
   let out = text;
   const head = [];
   if (arten?.length) head.push(`arten: [${arten.join(", ")}]`);
@@ -240,16 +362,122 @@ export function applyFlowFields(text, { arten, ausloeser, stufen } = {}) {
     const block = out.match(/^ {2}- name: entscheiden\n[\s\S]*?(?=^grenzen:)/m);
     if (block) {
       const many = stufen.length > 1;
-      const steps = stufen.map((s) => {
+      // Liest der Flow ein Dokument, legt das Gerät bei unsicherer Erkennung selbst eine Freigabe in
+      // der ersten Stufe an, mit den Feldern. Diese Stufe ist dann die der Erkennung und braucht
+      // keinen eigenen Schritt; die übrigen Stufen folgen als Schritte.
+      const eigene = felder?.length && many ? stufen.slice(1) : stufen;
+      const steps = eigene.map((s) => {
         let step = block[0].replace(/ {6}titel:/, `      stufe: ${s.name}\n      titel:`);
         if (many) step = step.replace("- name: entscheiden", `- name: entscheiden_${s.name}`);
         return step;
       });
       out = out.replace(block[0], steps.join(""));
-      if (many) out = out.replace("der Schritt „entscheiden\"", "die Schritte „entscheiden_…\"");
+      if (many) {
+        const nennt = eigene.length === 1 ? `„entscheiden_${eigene[0].name}"` : "„entscheiden_…\"";
+        out = out.replace("der Schritt „entscheiden\"", eigene.length === 1 ? `der Schritt ${nennt}` : `die Schritte ${nennt}`);
+      }
     }
   }
   return out;
+}
+
+/** Der Teil des Flow-Kopfes unter einem Schlüssel der obersten Ebene, bis zum nächsten. */
+function section(header, key) {
+  const match = header.match(new RegExp(`^${key}:[^\\n]*\\n((?: {2,}.*\\n|\\n)*)`, "m"));
+  return match ? match[0] : "";
+}
+
+/** Die Einträge `  - name: …` eines Abschnitts: je Eintrag sein Name und sein Text. */
+function items(block) {
+  return block
+    .split(/^ {2}- name:/m)
+    .slice(1)
+    .map((body) => ({ name: body.split("\n")[0].trim().replace(/^"|"$/g, ""), body }));
+}
+
+/** Eine Liste hinter einem Schlüssel, in Klammern (`[a, b]`) oder als Zeilen (`- a`). `null`, wenn es den Schlüssel nicht gibt. */
+function listAfter(body, key) {
+  const inline = body.match(new RegExp(`${key}:\\s*\\[([^\\]]*)\\]`));
+  if (inline) return inline[1].split(",").map((x) => x.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
+  const block = body.match(new RegExp(`^\\s*${key}:\\s*\\n((?:\\s+- .*\\n?)+)`, "m"));
+  if (block) return [...block[1].matchAll(/-\s*"?([^"\n]+)"?/g)].map((m) => m[1].trim());
+  return null;
+}
+
+/**
+ * Was kein Schema trägt an der Erkennung (Kontrakt 10): ein änderbares Feld, das die Rolle nicht
+ * liest, ein `original` an einem Schritt, der nichts erkennt oder dessen Pfad nicht passt, ein
+ * Schritt mit einer Rolle, die es nicht gibt, und eine Deklaration, die niemand zeigen kann.
+ */
+function recognitionFindings(name, header) {
+  const findings = [];
+  const roles = items(section(header, "rollen"));
+  const steps = items(section(header, "schritte"));
+  for (const role of roles) {
+    const felder = listAfter(role.body, "felder") ?? [];
+    const aenderbar = listAfter(role.body, "aenderbar") ?? [];
+    const fremd = aenderbar.filter((feld) => !felder.includes(feld));
+    if (fremd.length) {
+      findings.push(
+        t(
+          `Flow ${name}, role ${role.name}: \`aenderbar\` names ${fremd.join(", ")}, and the role does not read ${fremd.length === 1 ? "that field" : "those fields"} (\`felder\`: ${felder.join(", ") || "none"}). The device refuses a change to a field that is not declared.`,
+          `Flow ${name}, Rolle ${role.name}: \`aenderbar\` nennt ${fremd.join(", ")}, und die Rolle liest ${fremd.length === 1 ? "dieses Feld" : "diese Felder"} nicht (\`felder\`: ${felder.join(", ") || "keine"}). Eine Änderung an einem Feld, das nicht deklariert ist, weist das Gerät ab.`
+        )
+      );
+    }
+    const gezeigt = steps.some(
+      (step) => /^ {4}rolle:\s*"?([a-z0-9_]+)"?/m.exec(step.body)?.[1] === role.name && /bild:\s*true/.test(step.body)
+    );
+    if (aenderbar.length && !gezeigt) {
+      findings.push(
+        t(
+          `Flow ${name}, role ${role.name}: it declares changeable fields, but no step with \`faehigkeiten.bild: true\` uses it. Only an approval that comes out of a reading shows fields, so nobody could change them.`,
+          `Flow ${name}, Rolle ${role.name}: sie erklärt Felder für änderbar, aber kein Schritt mit \`faehigkeiten.bild: true\` benutzt sie. Nur eine Freigabe aus einer Erkennung zeigt Felder, also könnte niemand sie ändern.`
+        )
+      );
+    }
+  }
+  for (const step of steps) {
+    const rolle = /^ {4}rolle:\s*"?([a-z0-9_]+)"?/m.exec(step.body)?.[1];
+    if (rolle && roles.length && !roles.some((r) => r.name === rolle)) {
+      findings.push(
+        t(
+          `Flow ${name}, step ${step.name}: it names the role "${rolle}", and the header of the flow does not declare it under \`rollen\`.`,
+          `Flow ${name}, Schritt ${step.name}: er nennt die Rolle „${rolle}", und der Kopf des Flows führt sie nicht unter \`rollen\` auf.`
+        )
+      );
+    }
+    const original = /^ {4}original:\s*(.+)$/m.exec(step.body)?.[1]?.trim().replace(/^["']|["']$/g, "");
+    if (original === undefined) continue;
+    if (!/^ {4}typ:\s*subagent\b/m.test(step.body) || !/bild:\s*true/.test(step.body)) {
+      findings.push(
+        t(
+          `Flow ${name}, step ${step.name}: \`original\` belongs to a step that reads (\`typ: subagent\` with \`faehigkeiten.bild: true\`). The device refuses the flow otherwise.`,
+          `Flow ${name}, Schritt ${step.name}: \`original\` gehört an einen Schritt, der liest (\`typ: subagent\` mit \`faehigkeiten.bild: true\`). Sonst weist das Gerät den Flow ab.`
+        )
+      );
+    }
+    const problem = originalProblem(original);
+    if (problem) findings.push(`Flow ${name}, ${step.name}: ${problem}`);
+  }
+  return findings;
+}
+
+/**
+ * Nennt ein Flow `aenderbar` oder `original`, braucht er ein Gerät mit Kontrakt 10: ein älteres
+ * kennt beide Schlüssel nicht und weist den Flow ab. Gefragt wird die Zahl, die das Gerät nennt.
+ */
+export function contractTenFindings(name, text, deviceContract) {
+  if (!Number.isFinite(deviceContract) || deviceContract >= 10) return [];
+  const header = text.split(/^---\s*$/m)[1] ?? text;
+  const nennt = [/\baenderbar:/.test(header) && "ergebnis.aenderbar", /^ {4}original:/m.test(header) && "original"].filter(Boolean);
+  if (!nennt.length) return [];
+  return [
+    t(
+      `Flow ${name} names ${nennt.join(" and ")}, and this device carries contract ${deviceContract}: the fields came with contract 10, an older device refuses the flow.`,
+      `Flow ${name} nennt ${nennt.join(" und ")}, und dieses Gerät trägt Kontrakt ${deviceContract}: die Felder kamen mit Kontrakt 10, ein älteres Gerät weist den Flow ab.`
+    ),
+  ];
 }
 
 /** Eine Zeile je Flow-Datei: was kein Schema traegt. Der Text ist die Datei, `name` ihr Name. */
@@ -261,6 +489,7 @@ export function flowFieldFindings(name, text) {
     for (const m of stufenBlock[1].matchAll(/^ {2}- name:\s*"?([a-z0-9_]+)"?/gm)) declared.add(m[1]);
   }
   const header = text.split(/^---\s*$/m)[1] ?? text;
+  findings.push(...recognitionFindings(name, header));
   const steps = header.split(/^ {2}- name:/m).slice(1);
   for (const step of steps) {
     const stepName = step.split("\n")[0].trim();

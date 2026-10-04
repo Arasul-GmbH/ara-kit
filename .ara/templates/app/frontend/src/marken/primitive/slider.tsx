@@ -10,7 +10,7 @@ import { cn } from '../cn';
  *
  * Er ist die richtige Form dort, wo die GROESSENORDNUNG zaehlt und nicht die
  * genaue Zahl (Lautstaerke, ein Schwellwert in Prozent), und die falsche
- * ueberall dort, wo jemand einen bestimmten Wert im Kopf hat -- dann ist ein
+ * ueberall dort, wo jemand einen bestimmten Wert im Kopf hat. Dann ist ein
  * Feld schneller und genauer.
  *
  * Er kann mehr als einen Griff (`value={[10, 40]}`), also wird die Zahl der

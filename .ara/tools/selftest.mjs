@@ -2769,6 +2769,91 @@ check("Kontrakt 9: das Feld marken heißt mit der Hauptzahl zur Laufzeit, mit dr
   return "Fassung 9 bedient, die Hauptzahl braucht keine Kopie";
 });
 
+check("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbaren Felder und das Original, und --check hält sie", async () => {
+  assert(KIT_CONTRACT_VERSION >= 10, "das Kit versteht Kontrakt 10 nicht");
+  const zehn = KIT_CONTRACT_VERSIONS.find((e) => e.version === 10);
+  assert(zehn && zehn.kann.length > 40, "Fassung 10 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 10 }).ok, "ein Gerät mit Kontrakt 10 hält das Kit an");
+  const f = await import("./lib/felder.mjs");
+
+  // Was der Mensch sagt, wird zu den Namen des Kontrakts.
+  assert(f.parseFelder("Betrag, Datum").felder.join() === "betrag,datum", "Felder werden nicht zu Kennungen");
+  assert(f.parseFelder("a,a").error && f.parseFelder("").error && f.parseFelder("a,b,c,d,e,f,g,h,i,j,k").error, "doppelte, keine oder zu viele Felder gehen durch");
+  assert(f.parseAenderbar("datum", ["betrag", "datum"]).aenderbar.join() === "datum", "ein änderbares Feld wird abgewiesen");
+  assert(f.parseAenderbar("summe", ["betrag"]).error, "ein änderbares Feld, das nicht erkannt wird, geht durch");
+  assert(f.parseAenderbar("keine", ["betrag"]).aenderbar.length === 0, "„keine“ heißt nicht: nichts änderbar");
+
+  // Der Pfad des Originals nach dem Kontrakt: relativ, ohne .., ohne Schema, ohne % ? #, mit Endung der Anzeige.
+  assert(f.originalProblem(f.ORIGINAL_STANDARD) === null, "der Standardpfad gilt als falsch");
+  assert(f.originalProblem("api/belege/{{beleg}}") === null, "ein Pfad, der auf einen Platzhalter endet, wird beurteilt");
+  for (const falsch of ["/api/x.png", "../x.png", "https://x/y.png", "api/x.png?a=1", "api/%2e%2e/x.png", "", "api/x"]) {
+    assert(f.originalProblem(falsch), `der Pfad „${falsch}“ geht durch`);
+  }
+
+  // Die Vorlage des Flows mit Erkennung und zwei Stufen: die erste gehört der Erkennung.
+  const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
+  const stufen = f.parseStufen("Prüfung, Leitung").stufen;
+  const mit = f.applyRecognition(f.applyFlowFields(vorlage, { stufen, felder: ["betrag", "datum"] }), { felder: ["betrag", "datum"], aenderbar: ["datum"] });
+  assert(/^werkzeuge: \[subagent, freigabe_anfordern\]$/m.test(mit), "der Flow nennt das Werkzeug subagent nicht");
+  assert(/^ {4}ergebnis: \{ felder: \[betrag, datum\], aenderbar: \[datum\] \}$/m.test(mit), "die Rolle trägt die Deklaration nicht");
+  assert(/^ {4}original: "api\/vorgaenge\/\{\{vorgang\}\}\/original\.svg"$/m.test(mit), "der Schritt nennt das Original nicht");
+  assert(/name: entscheiden_leitung/.test(mit) && !/name: entscheiden_pruefung/.test(mit), "die erste Stufe bekommt einen eigenen Schritt, obwohl die Erkennung sie hat");
+  assert(f.flowFieldFindings("freigabe", mit).length === 0, `ein sauberer Flow bekommt Befunde: ${f.flowFieldFindings("freigabe", mit).join(" | ")}`);
+  const einStufig = f.applyRecognition(f.applyFlowFields(vorlage, { stufen: f.parseStufen("Prüfung").stufen, felder: ["betrag"] }), { felder: ["betrag"] });
+  assert(/name: entscheiden\n/.test(einStufig), "mit einer Stufe fehlt der Schritt der Freigabe");
+  assert(f.applyRecognition(vorlage, {}) === vorlage, "ohne Felder ändert sich der Flow");
+
+  // Was kein Schema trägt.
+  const wrong = (von, nach) => f.flowFieldFindings("freigabe", mit.replace(von, nach));
+  assert(wrong("aenderbar: [datum]", "aenderbar: [datum, summe]").some((b) => /summe/.test(b)), "ein änderbares Feld ohne Erkennung wird nicht benannt");
+  assert(wrong("faehigkeiten: { text: true, bild: true }", "faehigkeiten: { text: true }").length >= 2, "original und Rolle ohne Bild werden nicht benannt");
+  assert(wrong("rolle: leser", "rolle: fremd").some((b) => /fremd/.test(b)), "eine Rolle, die es nicht gibt, wird nicht benannt");
+  assert(wrong("original.svg", "original").some((b) => /Endung/.test(b)), "ein Pfad ohne Endung wird nicht benannt");
+  const ohneBlock = mit.replace(/^ {4}ergebnis:.*\n/m, "    ergebnis:\n      felder:\n        - betrag\n        - datum\n      aenderbar:\n        - summe\n");
+  assert(f.flowFieldFindings("freigabe", ohneBlock).some((b) => /summe/.test(b)), "die Liste in Zeilenform wird nicht gelesen");
+  assert(f.contractTenFindings("freigabe", mit, 9).length === 1 && f.contractTenFindings("freigabe", mit, 10).length === 0 && f.contractTenFindings("freigabe", vorlage, 8).length === 0, "Kontrakt 10 wird nicht an den Feldern festgemacht");
+
+  // `--new` schreibt es, ohne etwas anzulegen, wenn eine Angabe nicht passt.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const name = "selftest-felder";
+  const dir = join(ROOT, "apps", name);
+  try {
+    for (const args of [["--aenderbar", "datum"], ["--felder", "betrag", "--aenderbar", "summe"], ["--felder", "betrag", "--original", "/x.png"]]) {
+      const run = tool("app.mjs", ["--app", name, "--new", ...args]);
+      assert(run.status !== 0 && !existsSync(dir), `eine falsche Angabe legt eine App an: ${args.join(" ")}`);
+    }
+    const run = tool("app.mjs", ["--app", name, "--new", "--titel", "Felder", "--stufen", "Prüfung,Leitung", "--felder", "Betrag,Datum", "--aenderbar", "Datum"]);
+    assert(run.status === 0, `Anlegen mit Feldern scheitert: ${run.stderr}${run.stdout}`);
+    const flow = readFileSync(join(dir, "flows", "freigabe.md"), "utf8");
+    assert(/aenderbar: \[datum\]/.test(flow) && /name: lesen/.test(flow), "der Flow der neuen App trägt die Erkennung nicht");
+    assert(f.flowFieldFindings("freigabe", flow).length === 0, "der Flow der neuen App bekommt Befunde");
+    assert(/Recognised fields|Erkannte Felder/.test(run.stdout), "die Ausgabe nennt die Felder nicht");
+    for (const datei of ["frontend/src/seiten/freigaben.tsx", "frontend/src/freigaben.ts", "backend/kern/blatt.mjs"]) {
+      assert(existsSync(join(dir, datei)), `aus der Vorlage fehlt: ${datei}`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+
+  // Die Oberfläche zeichnet die Freigabe nicht nach: sie nimmt den Baustein der Bibliothek und das
+  // Gerät entscheidet über dieselben Wege wie die Verwaltung.
+  const seite = readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "src", "seiten", "freigaben.tsx"), "utf8");
+  const wege = readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "src", "freigaben.ts"), "utf8");
+  assert(/import \{[^}]*\bFreigabe\b[^}]*\} from "@marken"/.test(seite) && /<Freigabe\b/.test(seite), "die Seite nimmt den Baustein Freigabe nicht");
+  assert(!/%/.test(seite.replace(/\/\*[\s\S]*?\*\//g, "")), "die Seite zeigt eine Prozentzahl");
+  const naht = readFileSync(join(ROOT, ".ara", "templates", "app", "frontend", "src", "rahmen", "schnittstelle.ts"), "utf8");
+  assert(/\/api\/freigabe-anfragen/.test(wege) && /bestaetigen/.test(wege) && /ablehnen/.test(wege) && /holeGeraet/.test(wege), "die Wege zum Gerät fehlen");
+  assert(/arasul_csrf/.test(naht) && /x-csrf-token/.test(naht) && !/\bfetch\s*\(/.test(wege), "das Zeichen gegen gefälschte Aufrufe fehlt, oder die Wege holen an einer zweiten Stelle");
+  const { blatt, umbrechen } = await import(pathToFileURL(join(ROOT, ".ara", "templates", "app", "backend", "kern", "blatt.mjs")).href);
+  const svg = blatt({ id: 3, titel: "Tank <b>&</b>", von: "anna", text: `${"x".repeat(100)}\nzweite Zeile` });
+  assert(!/<b>/.test(svg) && /&lt;b&gt;&amp;/.test(svg), "das Blatt entschärft den Text nicht");
+  assert(umbrechen("x".repeat(100), 44).every((z) => z.length <= 44) && umbrechen("a b", 44).length === 1, "das Blatt bricht nicht um");
+  return "Fassung 10 bedient, Erkennung, Deklaration und Original geschrieben und geprüft, Baustein statt Nachbildung";
+});
+
 function applyOhne(f, text) {
   return f.applyFlowFields(text, {});
 }
@@ -6368,7 +6453,11 @@ await checkAsync("Das gebaute Gerüst hält bei 1280 px jede Spalte, mit 120 Zei
     // 5.0.0 mit dem Diagramm ausserhalb des Sammelexports: 415 KB roh am
     // 26.09.2026, mit dem Diagramm darin waren es 690. Die Grenze liegt
     // dazwischen und faengt ein Diagramm, das zurueck ins Buendel rutscht.
-    const kb = Math.round(Buffer.byteLength(buendel) / 1024);
+    // Seit 0.69.0 zeigt das Gerüst eine Freigabe, und die Anzeige des Originals bringt pdf.js mit.
+    // Das liegt in einem eigenen Stück (`pdf-*.js`), das erst lädt, wer ein PDF öffnet: es zählt
+    // nicht zum Bündel, das jeder beim Öffnen der App holt. Das Gerät liefert es ohnehin selbst.
+    const sofort = skripte.filter((name) => !/^pdf-/.test(name));
+    const kb = Math.round(Buffer.byteLength(sofort.map((name) => readFileSync(join(front, "dist", "assets", name), "utf8")).join("")) / 1024);
     assert(kb < 500, `das Bündel des Gerüsts hat ${kb} KB, mehr als 500`);
 
     const TITEL = "Rahmenvertrag Wartung und Bereitschaft für die Filiale Nord, verlängert um zwölf Monate mit neuer Preisstaffel ab Januar 2027";
@@ -14015,10 +14104,12 @@ const FACH_APP_LADESATZ = {
  * kosten rund 1.900 Tokens, und ohne sie rät der Agent genau dort. Seit 0.60.0 18.000: die
  * drei Fragen, die jede App bekommt (Rollen, Internet, Modell), kosten rund 1.000 Tokens, und
  * ohne sie baut der Agent eine App, in der jeder alles sieht und niemand weiß, was hinausgeht.
+ * Seit 0.69.0 18.500: die Frage nach dem Dokument, das das Gerät liest, kostet rund 350 Tokens, und
+ * ohne sie rät der Agent, welche Felder ein Mensch in der Freigabe ändern darf.
  */
-const FACH_APP_GRENZE = 18000;
+const FACH_APP_GRENZE = 18500;
 
-check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 18.000 Tokens, in beiden Sprachen", () => {
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 18.500 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
   // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
   // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit

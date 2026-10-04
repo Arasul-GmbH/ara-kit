@@ -33,6 +33,7 @@ import { useThema } from "./rahmen/thema";
 import { AnmeldungRahmen } from "./rahmen/anmeldung";
 import { Fehlerwand } from "./rahmen/async-boundary";
 import { AppSeitenleiste } from "./rahmen/seitenleiste";
+import { Freigaben } from "./seiten/freigaben";
 import { Vorgaenge } from "./seiten/liste";
 import { Neu } from "./seiten/neu";
 
@@ -78,6 +79,7 @@ function Wege() {
   return (
     <Routes>
       <Route path="/" element={<Vorgaenge />} />
+      <Route path="/freigaben" element={<Freigaben />} />
       <Route path="/neu" element={<Neu />} />
       <Route path="*" element={<Unbekannt />} />
     </Routes>

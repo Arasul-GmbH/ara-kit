@@ -8,16 +8,16 @@ import { cn } from '../cn';
  * Die kurze Meldung, die von selbst wieder geht.
  *
  * PRAESENTATION, KEINE MECHANIK. Wann eine Meldung erscheint, wie lange sie
- * steht und wer sie wegnimmt, weiss die Anwendung -- in der Shell ist das
+ * steht und wer sie wegnimmt, weiss die Anwendung; in der Shell ist das
  * `contexts/ToastContext.tsx`. Hier steht nur, wie sie aussieht. So kann eine
  * App ihre eigene Warteschlange fuehren und trotzdem dieselbe Meldung zeigen.
  *
  * Die Farbe sitzt am linken Rand und nicht auf der Flaeche: eine flaechig rote
  * Meldung liest sich als Alarm, und die meisten sind keiner. Dieselbe
- * Entschaerfung wie beim destruktiven Knopf (Plan 016) und beim Abzeichen.
+ * Entschaerfung wie beim destruktiven Knopf und beim Abzeichen.
  * Und es sind drei Farben fuer vier Arten: `success` ist Blau wie `info`,
- * `warning` ist Grau, `error` ist Rot -- Gruen und Orange sind seit dem
- * 30.08.2026 nicht mehr in der Palette; was fuer eine Meldung es ist, sagt
+ * `warning` ist Grau, `error` ist Rot. Gruen und Orange sind nicht mehr
+ * in der Palette; was fuer eine Meldung es ist, sagt
  * das Symbol und der Text.
  *
  * `pointer-events-none` am Behaelter und `-auto` an der Meldung: der Streifen
@@ -43,7 +43,7 @@ const toastVariants = cva(
 
 /**
  * Der Platz, an dem die Meldungen stehen: oben rechts, und unter 480 px unten
- * ueber die volle Breite -- dort ist rechts oben die Hand des Menschen.
+ * ueber die volle Breite, dort ist rechts oben die Hand des Menschen.
  */
 function ToastViewport({ className, ...props }: React.ComponentProps<'div'>) {
   return (

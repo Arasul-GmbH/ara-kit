@@ -5,22 +5,22 @@ import * as React from 'react';
 import { cn } from '../cn';
 
 /**
- * Die Tabelle -- und der Rollkasten, in dem sie steht.
+ * Die Tabelle, und der Rollkasten, in dem sie steht.
  *
  * DER ROLLKASTEN TRAEGT `relative`, UND DAS IST KEINE KOSMETIK. `overflow`
  * klammert nur ab, was auch IN dem Kasten liegt: ein absolut gesetztes Kind
  * (ein `.sr-only` in einem Knopf der Zeile) liegt in seinem naechsten
  * POSITIONIERTEN Vorfahren, und ist der Rollkasten `static`, ist das
  * irgendein Kasten weiter oben. Das Kind entkommt, rollt nicht mit, wird
- * nicht abgeklammert -- und seine Breite zaehlt zur Rollbreite des DOKUMENTS.
+ * nicht abgeklammert, und seine Breite zaehlt zur Rollbreite des DOKUMENTS.
  * Genau so schoben sieben je einen Pixel breite `.sr-only` die
- * Mitarbeiter-Tabelle bei 1024 px auf 1042 px (Fund der G1-Abnahme, behoben
- * in G2). Hier steht es von vornherein.
+ * Mitarbeiter-Tabelle bei 1024 px auf 1042 px. Hier steht es von
+ * vornherein.
  *
  * UND SIE ROLLT UEBERHAUPT. Eine Tabelle mit sechs Spalten passt bei 390 px
  * nicht, und die Alternative zum eigenen Rollkasten waere, dass sie die
  * ganze Seite schiebt. Wer eine Form braucht, die auf einem Telefon
- * WIRKLICH funktioniert, nimmt `Datenliste` -- die schaltet unter 900 px
+ * WIRKLICH funktioniert, nimmt `Datenliste`: die schaltet unter 900 px
  * auf Karten um.
  */
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
@@ -108,7 +108,7 @@ function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
 }
 
 /**
- * Die Bildunterschrift der Tabelle -- und zugleich das, was ein
+ * Die Bildunterschrift der Tabelle, und zugleich das, was ein
  * Screenreader als Erstes hoert. Sie ist kein Zusatz: „Vier Mitarbeiter,
  * nach Name sortiert" ist die Auskunft, die ein Bild von selbst gibt.
  */

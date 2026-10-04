@@ -7,13 +7,13 @@ import { cn } from '../cn';
 /**
  * Ein Blatt, das von einer Kante hereinfaehrt.
  *
- * Es ist derselbe Radix-Dialog wie `Dialog` -- Fokusfalle, Escape, Klick
- * daneben --, nur an einer Kante statt in der Mitte. Deshalb steht es hier und
+ * Es ist derselbe Radix-Dialog wie `Dialog` (Fokusfalle, Escape, Klick
+ * daneben), nur an einer Kante statt in der Mitte. Deshalb steht es hier und
  * nicht als eigene Mechanik: zwei handgebaute Dialoge nebeneinander sind genau
- * das, wogegen `scripts/test/bausteine.py` seit Plan 023 antritt.
+ * das, wogegen `scripts/test/bausteine.py` antritt.
  *
- * UNTER 900 PX IST DAS BLATT NICHT DIE ANTWORT AUF ALLES. Die Shell hatte in
- * D6 ihre Notizen als Blatt ueber der Mitte und hat es in D7 wieder
+ * UNTER 900 PX IST DAS BLATT NICHT DIE ANTWORT AUF ALLES. Die Shell hatte
+ * einmal ihre Notizen als Blatt ueber der Mitte und hat es wieder
  * abgeschafft: es nahm der Ansicht darunter zwar keine Pixel mehr weg,
  * verdeckte sie aber weiter, und auf einem Telefon war das eine App im
  * Halbdunkel. Ein Blatt ist fuer etwas Kurzes, das man wieder zumacht.

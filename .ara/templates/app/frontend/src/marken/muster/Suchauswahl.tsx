@@ -16,12 +16,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '../primitive/popover';
 
 /**
- * Die Suchauswahl -- anderswo »Combobox«.
+ * Die Suchauswahl, anderswo »Combobox«.
  *
  * EIN DING, EIN NAME. shadcn fuehrt »Combobox« nicht als Baustein, sondern
  * als Rezept: `Popover` plus `Command` plus `Button`, in jeder Anwendung neu
  * zusammengesetzt. Genau daraus entstehen zwanzig Kopfstellen mit derselben
- * Klassenkette (Plan 023). Hier ist es ein Baustein, und er heisst wie das,
+ * Klassenkette. Hier ist es ein Baustein, und er heisst wie das,
  * was er tut.
  *
  * WANN STATT `Select`. Ein `Select` zeigt alles und laesst waehlen; bis etwa
@@ -37,7 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../primitive/popover';
 export interface SuchauswahlMoeglichkeit {
   /** Der Wert, der nach aussen geht. */
   wert: string;
-  /** Was der Mensch liest -- und wonach gesucht wird. */
+  /** Was der Mensch liest, und wonach gesucht wird. */
   name: string;
   /** Eine zweite Zeile darunter, etwa eine Kennung. Wird mitgesucht. */
   hinweis?: string;

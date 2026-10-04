@@ -16,19 +16,19 @@ import { cn } from '../cn';
 import { Label } from './label';
 
 /**
- * Das Formular als Bausatz -- der Teil, den sonst jede Seite neu erfindet.
+ * Das Formular als Bausatz: der Teil, den sonst jede Seite neu erfindet.
  *
  * WAS ES WIRKLICH LOEST, IST NICHT DAS AUSSEHEN, SONDERN DIE VERDRAHTUNG.
  * Ein Feld mit einer Fehlermeldung braucht vier zusammenhaengende Dinge:
  * eine Kennung, ein `htmlFor` daran, ein `aria-describedby` auf Hinweis UND
  * Meldung, und ein `aria-invalid`. Wer das von Hand schreibt, schreibt es
- * beim dritten Feld anders, und bei einem lässt er es weg -- dann sagt der
+ * beim dritten Feld anders, und bei einem lässt er es weg. Dann sagt der
  * Screenreader „Textfeld" und nicht, was daran falsch ist.
  * `FormItem` vergibt die Kennung, `useFormField` gibt sie allen darin
  * weiter, und keiner der drei Bausteine muss sie kennen.
  *
  * Es steht auf `react-hook-form`, das die Shell fuer Anmeldung und
- * Administrator-Anlage ohnehin benutzt -- keine neue Abhaengigkeit, und
+ * Administrator-Anlage ohnehin benutzt: keine neue Abhaengigkeit, und
  * kein zweiter Formular-Zustand neben dem, den es schon gibt.
  */
 const Form = FormProvider;
@@ -130,7 +130,7 @@ function FormDescription({ className, ...props }: React.ComponentProps<'p'>) {
 }
 
 /**
- * Die Fehlermeldung eines Feldes. Steht keine an, steht hier nichts --
+ * Die Fehlermeldung eines Feldes. Steht keine an, steht hier nichts:
  * ein leerer Kasten, der Platz reserviert, sagt „hier war mal ein Fehler".
  */
 function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {

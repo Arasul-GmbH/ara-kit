@@ -12,12 +12,12 @@ import { cn } from '../cn';
  * Der Unterschied zu `DropdownMenu`: dort ist EIN Knopf mit EINEM Menue
  * darunter, hier sind mehrere nebeneinander, und ist eines offen, geht beim
  * Hinueberfahren das naechste auf. Das ist keine Kosmetik, sondern die
- * Erwartung, die jeder von einer Menueleiste hat -- und der Grund, warum sie
+ * Erwartung, die jeder von einer Menueleiste hat, und der Grund, warum sie
  * nicht aus mehreren `DropdownMenu` nebeneinander zu bauen ist.
  *
  * WANN NICHT. Eine Menueleiste ist die Form fuer ein Programm mit vielen
  * selten gebrauchten Befehlen. Eine Fachanwendung mit sechs Handgriffen
- * braucht sie nicht -- dort stehen die Handgriffe als Knoepfe da, wo sie
+ * braucht sie nicht: dort stehen die Handgriffe als Knoepfe da, wo sie
  * wirken.
  */
 function Menubar({ className, ...props }: React.ComponentProps<typeof MenubarPrimitive.Root>) {
@@ -190,7 +190,7 @@ function MenubarSeparator({
 }
 
 /**
- * Das Tastenkuerzel rechts im Eintrag. Es SAGT nur, was gilt -- gebunden
+ * Das Tastenkuerzel rechts im Eintrag. Es SAGT nur, was gilt; gebunden
  * wird die Taste dort, wo der Befehl steht.
  */
 function MenubarShortcut({ className, ...props }: React.ComponentProps<'span'>) {

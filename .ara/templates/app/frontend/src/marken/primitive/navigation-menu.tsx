@@ -13,7 +13,7 @@ import { cn } from '../cn';
  * Der Unterschied zu `Menubar` steht in genau diesem Satz. Eine Menueleiste
  * fuehrt Befehle aus (speichern, kopieren, schliessen); eine Navigation
  * fuehrt an einen anderen Ort. Deshalb sind ihre Eintraege `<a>` und keine
- * Knoepfe, und deshalb traegt der aktive Eintrag `data-active` -- wer schon
+ * Knoepfe, und deshalb traegt der aktive Eintrag `data-active`: wer schon
  * da ist, soll das sehen.
  *
  * `viewport` gibt es, weil beides vorkommt: mit Viewport oeffnet sich EIN

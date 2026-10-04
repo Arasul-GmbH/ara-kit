@@ -6,9 +6,9 @@ import { cn } from '../cn';
 /**
  * Ein Rollbereich mit einem Balken, der in beiden Themen dasselbe Grau hat.
  *
- * EIN FUND AUS D4 STEHT HIER ALS REGEL. Radix legt um den Inhalt ein Element
+ * EIN FRUEHERER FUND STEHT HIER ALS REGEL. Radix legt um den Inhalt ein Element
  * mit `display: table`, und das richtet sich nach dem INHALT statt nach der
- * Spalte -- die Einstellungsseite war deshalb bei 1440 px mit offener
+ * Spalte; die Einstellungsseite war deshalb bei 1440 px mit offener
  * Notizspalte abgeschnitten. `[&>div]:!block` nimmt dem Ding das `table`
  * wieder weg; wer den Rollbereich benutzt, soll nicht denselben Nachmittag
  * noch einmal haben.

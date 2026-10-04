@@ -3,13 +3,13 @@ import type { ReactNode } from 'react';
 import { cn } from '../cn';
 
 /**
- * Eine Feldgruppe innerhalb einer Seite -- und `Formularseite`, die Spalte
+ * Eine Feldgruppe innerhalb einer Seite, und `Formularseite`, die Spalte
  * darum, die die Trennlinien setzt.
  *
  * SIE ERSETZT FUENF ARTEN, EINE FELDGRUPPE ZU TRENNEN: `pb-6 border-b`,
  * `pt-6 border-t`, `space-y-3` ganz ohne Linie, `space-y-5` mit `mb-1` am
  * Titel, und ein alleinstehendes `<div className="border-t" />` als eigenes
- * Trennstueck zwischen zwei Abschnitten (Plan 023 C1). Seit H4 steht sie in
+ * Trennstueck zwischen zwei Abschnitten. Sie steht in
  * der Bibliothek statt in der Shell: eine Fachanwendung mit einem Formular
  * braucht dieselbe Form, und die sechste Art waere ihre.
  *
@@ -19,7 +19,7 @@ import { cn } from '../cn';
  * muss daran denken, sie am alten letzten wieder einzuschalten. Genau so ist
  * seinerzeit die doppelte Linie zwischen zwei Abschnitten entstanden. Jetzt
  * traegt jeder Abschnitt seine Linie, und `Formularseite` nimmt sie dem
- * letzten wieder ab -- eine Stelle, die es entscheidet, und sie sieht die
+ * letzten wieder ab: eine Stelle, die es entscheidet, und sie sieht die
  * Reihenfolge.
  *
  * UEBERSCHRIFTENEBENE IST `h2`: unterhalb des einen `h1` aus `Kopf` ist das
@@ -77,7 +77,7 @@ export interface FormularseiteProps {
  *
  * `last-child` und ausdruecklich nicht `last-of-type`: die Linie faellt nur
  * weg, wenn nach der Gruppe gar nichts mehr kommt. Steht dahinter noch
- * etwas, das keine Gruppe ist, behaelt sie ihre Linie -- mit `last-of-type`
+ * etwas, das keine Gruppe ist, behaelt sie ihre Linie; mit `last-of-type`
  * verschwaende sie, weil der Waehler nur die `section` untereinander sieht
  * und nicht das, was danach steht.
  *

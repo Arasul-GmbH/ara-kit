@@ -131,7 +131,13 @@ import { connectionFindings, describeConnections, reachLine } from "./lib/connec
 import { describePatterns } from "./lib/patterns.mjs";
 import {
   applyFlowFields,
+  applyRecognition,
+  contractTenFindings,
   flowFieldFindings,
+  originalProblem,
+  ORIGINAL_STANDARD,
+  parseAenderbar,
+  parseFelder,
   contractKnowsChangeText,
   parseAenderungstext,
   parseArten,
@@ -152,6 +158,7 @@ const arg = parseArgs();
 // mit Leerraum sähe für die Umlautprüfung wie ein Wort aus.
 const FLAG_AUSLOESER = "--ausloeser";
 const FLAG_AENDERUNG = "--aenderungstext";
+const FLAG_AENDERBAR = "--aenderbar";
 const str = (v) => (typeof v === "string" ? v : null);
 const TEMPLATE = join(ROOT, ".ara", "templates", "app");
 const PLAN_TEMPLATE = localized(join(ROOT, ".ara", "templates", "plan.md"));
@@ -173,6 +180,9 @@ if (process.argv.length <= 2) {
         '  --stufen "<a>,<b>"       with --new: named approval stages of the flow, at most five',
         "  --arten <a>,<b>          with --new: kinds of the flow, autonom and/or ergebnis_bestaetigen",
         `  ${FLAG_AUSLOESER} "<list>"     with --new: triggers, hand, zeitplan:<five fields>, ereignis:<name>`,
+        '  --felder "<a>,<b>"       with --new: what the device reads out of a document, shown in the approval (at most ten)',
+        `  ${FLAG_AENDERBAR} "<a>"        with --new: which of those fields a person may change in the approval, or "keine"`,
+        "  --original <path>        with --new: the document the approval shows on the left, relative to the app",
         '  --plan "<title>"         new plan file under plans/offen/',
         "  --plan-aktiv <file>      plan from open to active, at most one",
         "  --plan-erledigt <file>   plan from active to done",
@@ -215,6 +225,9 @@ if (process.argv.length <= 2) {
         '  --stufen "<a>,<b>"       mit --new: benannte Freigabestufen des Flows, höchstens fünf',
         "  --arten <a>,<b>          mit --new: Arten des Flows, autonom und/oder `ergebnis_bestaetigen`",
         `  ${FLAG_AUSLOESER} "<liste>"    mit --new: Auslöser, hand, zeitplan:<fünf Felder>, ereignis:<name>`,
+        '  --felder "<a>,<b>"       mit --new: was das Gerät aus einem Dokument liest und die Freigabe zeigt (höchstens zehn)',
+        `  ${FLAG_AENDERBAR} "<a>"        mit --new: welche dieser Felder ein Mensch in der Freigabe ändern darf, oder "keine"`,
+        "  --original <pfad>        mit --new: das Dokument, das die Freigabe links zeigt, relativ zur App",
         '  --plan "<titel>"         neue Plandatei unter plans/offen/',
         "  --plan-aktiv <datei>     Plan von offen nach aktiv, höchstens einer",
         "  --plan-erledigt <datei>  Plan von aktiv nach erledigt",
@@ -373,6 +386,26 @@ function createApp(name) {
     if (parsed.error) fail(parsed.error);
     fields[key] = parsed[key];
   }
+  // Die Erkennung (Kontrakt 10): Felder, welche davon änderbar sind, und das Original links.
+  for (const flag of ["aenderbar", "original"]) {
+    if (arg[flag] !== undefined && arg.felder === undefined) {
+      fail(t(`--${flag} needs --felder: it says something about the fields the device reads.`, `--${flag} braucht --felder: es sagt etwas über die Felder, die das Gerät liest.`));
+    }
+  }
+  if (arg.felder !== undefined) {
+    if (arg.felder === true) fail(t("--felder needs a value.", "--felder braucht eine Angabe."));
+    const parsed = parseFelder(arg.felder);
+    if (parsed.error) fail(parsed.error);
+    fields.felder = parsed.felder;
+    if (arg.aenderbar === true) fail(t(`${FLAG_AENDERBAR} needs a value.`, `${FLAG_AENDERBAR} braucht eine Angabe.`));
+    const aenderbar = arg.aenderbar === undefined ? { aenderbar: [] } : parseAenderbar(arg.aenderbar, fields.felder);
+    if (aenderbar.error) fail(aenderbar.error);
+    fields.aenderbar = aenderbar.aenderbar;
+    if (arg.original === true) fail(t("--original needs a path.", "--original braucht einen Pfad."));
+    fields.original = arg.original === undefined ? ORIGINAL_STANDARD : String(arg.original).trim();
+    const problem = originalProblem(fields.original);
+    if (problem) fail(problem);
+  }
 
   const titel = str(arg.titel) || name;
   const beschreibung =
@@ -396,9 +429,9 @@ function createApp(name) {
     const written = setSymbol(JSON.parse(readFileSync(manifestFile, "utf8")), fields.symbol);
     writeFileSync(manifestFile, `${JSON.stringify(written, null, 2)}\n`);
   }
-  if (fields.arten || fields.ausloeser || fields.stufen) {
+  if (fields.arten || fields.ausloeser || fields.stufen || fields.felder) {
     const flowFile = join(dir, "flows", "freigabe.md");
-    writeFileSync(flowFile, applyFlowFields(readFileSync(flowFile, "utf8"), fields));
+    writeFileSync(flowFile, applyRecognition(applyFlowFields(readFileSync(flowFile, "utf8"), fields), fields));
   }
 
   // Das Aussehen kommt aus dem Spiegel, wenn einer da ist. Es ist EIN Stueck:
@@ -446,6 +479,14 @@ function createApp(name) {
             t(
               `- Approval stages: ${fields.stufen.map((x) => x.bezeichnung).join(", ")}`,
               `- Freigabestufen: ${fields.stufen.map((x) => x.bezeichnung).join(", ")}`
+            ),
+          ]
+        : []),
+      ...(fields.felder
+        ? [
+            t(
+              `- Recognised fields: ${fields.felder.join(", ")}; a person may change: ${fields.aenderbar.join(", ") || "none"}; original: ${fields.original}`,
+              `- Erkannte Felder: ${fields.felder.join(", ")}; ein Mensch darf ändern: ${fields.aenderbar.join(", ") || "keines"}; Original: ${fields.original}`
             ),
           ]
         : []),
@@ -1098,7 +1139,7 @@ async function deliveryFindings(dir, manifest, result) {
     ...checkBuild(dir, manifest),
     ...agentFindings(dir, manifest, result.problems),
     ...connectionFindings(contract, manifest),
-    ...flowFindings(dir, manifest),
+    ...flowFindings(dir, manifest, contract?.kontrakt),
     ...libraryFindings(contract, manifest, { frontendDir: frontendDirOf(dir, manifest), served }),
   ];
 }
@@ -1405,14 +1446,18 @@ function checkDelivery(dir, manifest) {
 }
 
 /** Was kein Schema traegt, in den Flow-Dateien der App: `faehigkeiten` am Werkzeug, eine Stufe ohne Kopfeintrag. */
-function flowFindings(dir, manifest) {
+function flowFindings(dir, manifest, deviceContract) {
   const folder = manifest?.flows?.verzeichnis;
   if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return [];
   const path = join(dir, folder);
   if (!existsSync(path) || !statSync(path).isDirectory()) return [];
   return readdirSync(path)
     .filter((file) => file.endsWith(".md"))
-    .flatMap((file) => flowFieldFindings(file.replace(/\.md$/, ""), readFileSync(join(path, file), "utf8")));
+    .flatMap((file) => {
+      const name = file.replace(/\.md$/, "");
+      const text = readFileSync(join(path, file), "utf8");
+      return [...flowFieldFindings(name, text), ...contractTenFindings(name, text, deviceContract)];
+    });
 }
 
 /**

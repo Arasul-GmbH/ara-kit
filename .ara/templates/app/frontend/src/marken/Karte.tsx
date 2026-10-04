@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
 /**
- * Eine Karte: die erhabene Flaeche fuer ein Ding, das fuer sich steht -- eine
- * App, eine offene Freigabe, ein Antrag.
+ * Eine Karte: die erhabene Flaeche fuer ein Ding, das fuer sich steht (eine
+ * App, eine offene Freigabe, ein Antrag).
  *
  * Mit `onKlick` wird sie ein Knopf und ohne ihn ein Kasten. Das ist der
  * einzige Unterschied; eine Karte, die anklickbar AUSSIEHT und keine ist, ist

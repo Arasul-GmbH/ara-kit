@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
  * Der Kopf einer Seite: ein Titel, ein Satz darunter, Aktionen rechts.
  *
  * Er ist der Nachfolger von `components/ui/PageHeader.tsx` und hat ihn
- * ersetzt, statt neben ihm zu stehen (Phase D7). Zwei Seitenkoepfe -- einer
- * fuer die Shell, einer fuer die Apps -- waeren genau die Doppelung, die
+ * ersetzt, statt neben ihm zu stehen. Zwei Seitenkoepfe (einer fuer die
+ * Shell, einer fuer die Apps) waeren genau die Doppelung, die
  * dieses Designsystem abschaffen soll; und der Unterschied zwischen ihnen
  * waere in vier Wochen keine Entscheidung mehr, sondern ein Zufall.
  *
@@ -24,11 +24,11 @@ export interface KopfProps {
   /** Aktionen rechts. Unter 900 px rutschen sie unter den Titel. */
   aktionen?: ReactNode;
   /**
-   * Mittig und ohne Trennlinie -- die Form einer Seite, die aus nichts als
+   * Mittig und ohne Trennlinie: die Form einer Seite, die aus nichts als
    * sich selbst besteht: die Anmeldung, das erste Konto, ein Absturz.
    *
-   * Sie kam mit H5 dazu, weil `scripts/test/bausteine.py` seither auch
-   * `components/ui/` liest und dort zwei handgeschriebene `h1` fand. Beide
+   * Es gibt sie, weil `scripts/test/bausteine.py` auch `components/ui/`
+   * liest und dort zwei handgeschriebene `h1` fand. Beide
    * waren dieselbe Sache wie dieser Baustein, nur zentriert; der Unterschied
    * ist eine Eigenschaft und kein zweiter Seitenkopf.
    */

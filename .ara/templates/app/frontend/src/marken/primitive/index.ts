@@ -1,30 +1,30 @@
 /**
- * Die Primitive (Phase H3, erweitert in H4 am 29.08.2026).
+ * Die Primitive.
  *
  * Sechsundvierzig Grundbausteine auf Radix und Tailwind, aus denen eine
  * Oberflaeche besteht: Knoepfe, Felder, Dialoge, Menues, Reiter, Abzeichen.
- * Sie standen bis H3 in `apps/dashboard-frontend/src/components/ui/shadcn/`
- * und gehoerten damit der Shell allein -- eine App, die einen Knopf brauchte,
+ * Sie standen frueher in `apps/dashboard-frontend/src/components/ui/shadcn/`
+ * und gehoerten damit der Shell allein: eine App, die einen Knopf brauchte,
  * baute ihren eigenen, und der sah anders aus.
  *
  * WOFUER SIE NICHT DA SIND. Ein Primitiv weiss nichts von Arasul: es kennt
  * keine Route, keinen Endpunkt, keinen Benutzer. Was eine Zusammensetzung
- * aus mehreren von ihnen ist und dabei etwas ueber dieses Geraet weiss --
- * `Modal`, `Section`, `FilterBar`, `AuthCard` --, bleibt in der Shell.
+ * aus mehreren von ihnen ist und dabei etwas ueber dieses Geraet weiss
+ * (`Modal`, `Section`, `FilterBar`, `AuthCard`), bleibt in der Shell.
  *
- * WAS H4 DAZUGELEGT HAT und was NICHT. Dazu kamen die zwanzig, die zum
- * Satz noch fehlten -- vom Akkordeon bis zur Tabelle, samt den vieren, die
+ * WAS DAZUGELEGT WURDE und was NICHT. Dazu kamen die zwanzig, die zum
+ * Satz noch fehlten, vom Akkordeon bis zur Tabelle, samt den vieren, die
  * eine Bibliothek von aussen brauchen (`cmdk` fuer die Suchliste,
  * `react-day-picker` fuer den Kalender, `embla-carousel-react` fuer das
  * Karussell, `input-otp` fuer den Einmalcode). NICHT dazu kamen zwei, die
  * shadcn fuehrt und dieses Geraet schon hat: `Drawer` ist `Sheet` von der
  * unteren Kante, und `Sonner` ist `Toast` samt seiner Warteschlange. Zwei
- * Bausteine unter einer Sache sind die Verwechslung selbst -- derselbe
+ * Bausteine unter einer Sache sind die Verwechslung selbst, derselbe
  * Grund, aus dem `marken.py` (Punkt 7) keinen Namen zweimal duldet.
  *
  * ZWEI LAUFZEITEN, UND DAS IST DER UNTERSCHIED ZU DEN SECHS BAUSTEINEN
  * DANEBEN. Die Primitive sind auf Tailwind geschrieben; sie brauchen einen
- * Bau und die Tokens aus `theme.css`. Die sechs Bausteine aus D7 (Kopf,
+ * Bau und die Tokens aus `theme.css`. Die sechs Bausteine (Kopf,
  * Liste, Karte, Formular, Meldung, Menue) sind auf reinem CSS geschrieben und
  * laufen in einer App OHNE Bau, die nur `browser/marken.js` und `marken.css`
  * laedt. Wer einen Bau hat, nimmt die Primitive.

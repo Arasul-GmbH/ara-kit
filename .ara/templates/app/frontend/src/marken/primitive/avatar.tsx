@@ -4,12 +4,12 @@ import { Avatar as AvatarPrimitive } from 'radix-ui';
 import { cn } from '../cn';
 
 /**
- * Das Bild eines Menschen -- und das, was dasteht, wenn es keines gibt.
+ * Das Bild eines Menschen, und das, was dasteht, wenn es keines gibt.
  *
  * `AvatarFallback` ist kein Beiwerk: auf diesem Geraet hat fast niemand ein
  * Bild hinterlegt, also ist der Rueckfall der Normalfall. Radix zeigt ihn
  * erst, wenn das Laden wirklich fehlgeschlagen ist, und nicht schon waehrend
- * es laeuft -- sonst blitzten die Initialen bei jedem Aufbau kurz auf.
+ * es laeuft, sonst blitzten die Initialen bei jedem Aufbau kurz auf.
  */
 function Avatar({ className, ...props }: React.ComponentProps<typeof AvatarPrimitive.Root>) {
   return (
