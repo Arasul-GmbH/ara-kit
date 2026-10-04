@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.70.0 (2026-10-04)
+
+Contract: up to 11
+
+- **The kit understands contract 11 (M5).** A device with contract 11 no longer stops it. What it adds is read from the device's contract and not from memory: a flow can hand its result to a route of the app itself (`abschluss: { route }`). After the last stage the device calls it with the result, the fields as they apply with a person's corrections and the run number, with the header `Authorization: Bearer <ARASUL_ABSCHLUSS_TOKEN>` and `Idempotency-Key`; only a 2xx answer makes the run finished.
+- **A new app writes the closing and brings the route (M5).** For a flow that delivers a result (`--felder`, or the kind `ergebnis_bestaetigen`) `--new` writes `abschluss: { route: "/abschluss/freigabe" }` into the flow. The backend of the scaffold has the route: it checks the secret (wrong or missing: 401, nothing is created; the app knows none: 503), requires the `Idempotency-Key` to be the run number, keeps a result per run number exactly once in the new table `abschluesse` (a second call with the same key answers 2xx and creates nothing twice, also when two calls cross) and answers 2xx only after saving (a failing store: 500, the run stays on "not handed over"). A flow without a result is written as before.
+- **`--check` holds the closing (M5).** It stops a route in an app without a `backend`, a route that no file of the backend names (the device would get 404), a route the contract forbids (leading slash, only letters, digits and `. _ ~ - /`, no `//`, no `..`) and a device before contract 11, which refuses the flow. The umlaut warning leaves the new header keys alone.
+- **`/app` explains it only when needed.** It asks nothing about it and says in one sentence where the result lands only when the human asks or a run stands on "not handed over".
+- **Measured on the Orin with a throwaway app (M5).** A run is finished through the route, calling it twice more over the API leaves the result once in the table, with no model involved.
+
 ## 0.69.0 (2026-10-04)
 
 Contract: up to 10

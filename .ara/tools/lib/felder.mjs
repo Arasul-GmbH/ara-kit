@@ -480,6 +480,92 @@ export function contractTenFindings(name, text, deviceContract) {
   ];
 }
 
+/** Der Anfang jeder Abschluss-Route, die das Gerüst schreibt: je Flow eine, `/abschluss/<flow>`. */
+export const ABSCHLUSS_VORSATZ = "/abschluss/";
+
+/** Der Pfad, den das Backend der Vorlage für den Abschluss des Flows `freigabe` anbietet. */
+export const ABSCHLUSS_STANDARD = `${ABSCHLUSS_VORSATZ}freigabe`;
+
+/**
+ * Was ein Flow ist, der ein Ergebnis liefert, und deshalb eine Abschluss-Route bekommt: einer, der
+ * ein Dokument liest (`--felder`), oder einer, dessen Ergebnis ein Mensch bestätigt
+ * (`ergebnis_bestaetigen`). Ein Flow, der nur eine Entscheidung festhält, braucht keine.
+ */
+export function liefertErgebnis({ felder, arten } = {}) {
+  return Boolean(felder?.length) || Boolean(arten?.includes("ergebnis_bestaetigen"));
+}
+
+/**
+ * Die Abschluss-Route in den Kopf des Flows schreiben, vor `werkzeuge:`. Ohne Route bleibt der Text, wie
+ * er ist: ein Flow ohne `abschluss` wird fertig wie bisher.
+ */
+export function applyAbschluss(text, { route } = {}) {
+  if (!route) return text;
+  return text.replace(/^werkzeuge:/m, `abschluss: { route: ${quote(route)} }\nwerkzeuge:`);
+}
+
+/** Die Route, die der Kopf eines Flows nennt, oder `null`. Beide Schreibweisen: in Klammern und als Zeilen. */
+export function abschlussRoute(header) {
+  const m = /^abschluss:\s*(?:\{[^}\n]*\broute:\s*|\n\s+route:\s*)(?:"([^"\n]*)"|'([^'\n]*)'|([^\s,}]+))/m.exec(header);
+  return m ? (m[1] ?? m[2] ?? m[3]) : null;
+}
+
+/**
+ * Was der Kontrakt an der Route verlangt: ein Pfad des Backends, wie die App ihn sieht. Führender `/`,
+ * Buchstaben, Ziffern und `. _ ~ - /`, ohne Host, Schema, Abfrage, `..` und `//`. `null`, wenn sie gilt.
+ */
+export function abschlussProblem(route) {
+  const wert = String(route ?? "");
+  if (!wert) return t("The route of the closing is empty.", "Die Abschluss-Route ist leer.");
+  const grund = !wert.startsWith("/")
+    ? t("it has to start with `/`", "sie muss mit `/` beginnen")
+    : /[^A-Za-z0-9._~\-/]/.test(wert)
+      ? t("only letters, digits and `. _ ~ - /` are allowed (no host, scheme or query)", "erlaubt sind nur Buchstaben, Ziffern und `. _ ~ - /` (ohne Host, Schema und Abfrage)")
+      : wert.includes("//") || wert.split("/").includes("..")
+        ? t("`//` and `..` are not allowed", "`//` und `..` sind nicht erlaubt")
+        : null;
+  return grund ? t(`The route of the closing "${wert}" is not valid: ${grund}.`, `Die Abschluss-Route „${wert}" gilt nicht: ${grund}.`) : null;
+}
+
+/**
+ * Was kein Schema trägt am Abschluss (Kontrakt 11). `backend` sagt, ob die App eines hat, `imQuelltext`
+ * (Route zu wahr/falsch), ob der Quelltext des Backends den Pfad nennt, `deviceContract` die Zahl des
+ * Geräts. Ohne Backend weist das Gerät das Paket ab; ohne Route im Quelltext käme die Antwort 404 und der
+ * Lauf bliebe auf „nicht übergeben".
+ */
+export function abschlussFindings(name, text, { backend = true, imQuelltext = () => true, deviceContract } = {}) {
+  const header = text.split(/^---\s*$/m)[1] ?? text;
+  const route = abschlussRoute(header);
+  if (route === null) return [];
+  const findings = [];
+  const problem = abschlussProblem(route);
+  if (problem) findings.push(`Flow ${name}: ${problem}`);
+  if (!backend) {
+    findings.push(
+      t(
+        `Flow ${name} hands its result to the route ${route}, and the app has no \`backend\`. A route needs a backend of the app, and the device refuses the package.`,
+        `Flow ${name} übergibt sein Ergebnis an die Route ${route}, und die App hat kein \`backend\`. Eine Route braucht ein Backend der App, und das Gerät weist das Paket ab.`
+      )
+    );
+  } else if (!problem && !imQuelltext(route)) {
+    findings.push(
+      t(
+        `Flow ${name} hands its result to the route ${route}, and no file of the backend names it. The device would call it, get 404, and the run would stay on "not handed over".`,
+        `Flow ${name} übergibt sein Ergebnis an die Route ${route}, und keine Datei des Backends nennt sie. Das Gerät riefe sie, bekäme 404, und der Lauf bliebe auf „nicht übergeben".`
+      )
+    );
+  }
+  if (Number.isFinite(deviceContract) && deviceContract < 11) {
+    findings.push(
+      t(
+        `Flow ${name} names \`abschluss\`, and this device carries contract ${deviceContract}: the closing came with contract 11, an older device refuses the flow.`,
+        `Flow ${name} nennt \`abschluss\`, und dieses Gerät trägt Kontrakt ${deviceContract}: der Abschluss kam mit Kontrakt 11, ein älteres Gerät weist den Flow ab.`
+      )
+    );
+  }
+  return findings;
+}
+
 /** Eine Zeile je Flow-Datei: was kein Schema traegt. Der Text ist die Datei, `name` ihr Name. */
 export function flowFieldFindings(name, text) {
   const findings = [];
