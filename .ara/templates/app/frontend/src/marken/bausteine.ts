@@ -1,5 +1,5 @@
 /**
- * Die sechs Bausteine aus D7 -- die Sorte, die OHNE Bau laeuft.
+ * Die sechs Bausteine: die Sorte, die OHNE Bau laeuft.
  *
  * Sie sind auf reinem CSS geschrieben (`marken.css`, Klassen `ara-*`) und
  * brauchen weder Tailwind noch einen Buendler. Genau darum stehen sie in
@@ -7,15 +7,15 @@
  * Bibliothek. Das Buendel `browser/marken.js` traegt damit weiter nur das,
  * was in einer App ohne Bau auch wirklich aussieht wie etwas.
  *
- * Die Primitive (Phase H3) und die Muster (H4) sind die anderen Saetze:
+ * Die Primitive und die Muster sind die anderen Saetze:
  * Tailwind, ein Bau, die Tokens aus `theme.css`. Wer beides in einer App hat,
- * hat einen Bau -- dann nimmt er die Primitive.
+ * hat einen Bau, und dann nimmt er die Primitive.
  *
- * `useSchmalesFenster` steht seit H4 mit hier drin und nicht bei den
+ * `useSchmalesFenster` steht mit hier drin und nicht bei den
  * Primitiven: er ist reines React, braucht keinen Bau, und er traegt die EINE
  * Schwelle des Produkts (900 px). Eine App ohne Bau, die unter 900 px eine
- * Spalte zeigen soll, kann sie damit lesen, statt sich eine zweite auszudenken
- * -- und `Sidebar` liest dieselbe.
+ * Spalte zeigen soll, kann sie damit lesen, statt sich eine zweite auszudenken;
+ * und `Sidebar` liest dieselbe.
  *
  * `useSchmalerBehaelter` (seit 5.1.0) ist sein Geschwister fuer die Frage
  * „passt es in MEINEN Kasten?": eine App im Rahmen teilt ihr Fenster noch

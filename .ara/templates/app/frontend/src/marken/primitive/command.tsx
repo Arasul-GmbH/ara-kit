@@ -12,18 +12,18 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
  *
  * SIE IST DIE FORM FUER „ICH WEISS, WIE ES HEISST". Ein `Select` zeigt alles
  * und laesst waehlen; das ist bis etwa zehn Eintraegen die schnellere Form.
- * Darueber sucht ein Mensch, statt zu lesen -- und dann ist eine Liste, die
+ * Darueber sucht ein Mensch, statt zu lesen, und dann ist eine Liste, die
  * beim Tippen enger wird, kein Zusatz, sondern der ganze Weg.
  *
  * DIE TASTATUR IST HIER DER HAUPTWEG UND NICHT DER ZWEITE. Pfeile bewegen
  * die Auswahl, Enter nimmt sie, und die Liste bleibt dabei gescrollt.
  * `cmdk` bringt das mit, samt der Suche selbst; eine handgebaute Version
  * davon ist die Wette gegen eine geprueste Bibliothek, gegen die dieses
- * Repo seit Plan 023 antritt.
+ * Repo antritt.
  *
  * ZWEI FORMEN. `Command` allein steht IN einer Seite (in einem `Popover`
  * ist es die `Suchauswahl`); `CommandDialog` legt dieselbe Liste als
- * Fenster ueber die Seite -- die Schnellwahl, die man mit einem
+ * Fenster ueber die Seite: die Schnellwahl, die man mit einem
  * Tastenkuerzel oeffnet.
  */
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
@@ -48,7 +48,7 @@ function CommandDialog({
   return (
     <Dialog {...props}>
       <DialogContent className="overflow-hidden p-0" showCloseButton={false}>
-        {/* Titel und Beschreibung stehen nur fuer den Screenreader da -- und
+        {/* Titel und Beschreibung stehen nur fuer den Screenreader da, und
             INNERHALB des Inhalts, nicht daneben: Radix sucht den Titel im
             Dialog und warnt in der Konsole, wenn er ihn dort nicht findet.
             Die Schauseite fragt jede Zelle, ob die Konsole schweigt. */}
@@ -92,7 +92,7 @@ function CommandList({ className, ...props }: React.ComponentProps<typeof Comman
       data-slot="command-list"
       // `relative` gehoert zu `overflow-y-auto`: ein absolut gesetztes Kind
       // entkaeme dem Rollkasten sonst und zaehlte zur Rollbreite des
-      // Dokuments (Fund der G1-Abnahme, Regel in check-design-system.js).
+      // Dokuments (Regel in check-design-system.js).
       className={cn(
         'relative max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto',
         className

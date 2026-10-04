@@ -10,7 +10,7 @@ import { Button } from './button';
 /**
  * Ein Band von Karten, durch das man blaettert.
  *
- * WANN ES DAS RICHTIGE IST -- und das ist selten. Ein Karussell versteckt
+ * WANN ES DAS RICHTIGE IST (und das ist selten). Ein Karussell versteckt
  * seinen Inhalt: was nicht gerade dasteht, findet niemand, und die Suche im
  * Browser findet es auch nicht. Fuer eine LISTE ist es deshalb die falsche
  * Form; dafuer gibt es `Datenliste`. Richtig ist es dort, wo die Stuecke

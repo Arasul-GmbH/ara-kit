@@ -7,7 +7,7 @@ import { cn } from '../cn';
  *
  * `aria-hidden`, und das ist der Punkt: ein Screenreader soll nicht sieben
  * graue Balken vorlesen. Wer den Ladezustand ANSAGEN will, setzt darum herum
- * ein `role="status"` mit einem Satz -- so machen es die Zusammensetzungen in
+ * ein `role="status"` mit einem Satz. So machen es die Zusammensetzungen in
  * der Shell (`SkeletonList`).
  *
  * `width`/`height` als Props und nicht nur als Klasse: der haeufigste Fall ist

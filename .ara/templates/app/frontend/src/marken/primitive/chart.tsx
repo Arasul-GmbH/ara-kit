@@ -1,14 +1,14 @@
 /**
- * Chart — Linien-Diagramm, und Sparkline — die kleine Form davon.
+ * Chart: Linien-Diagramm, und Sparkline, die kleine Form davon.
  *
- * Seit **H4** liegt es in der Bibliothek und nicht mehr in der Shell. Ein
+ * Es liegt in der Bibliothek und nicht mehr in der Shell. Ein
  * Diagramm weiß nichts von Arasul: es bekommt Zahlen, Reihen und zwei
  * Formatierer. Eine Fachanwendung, die einen Verlauf zeigt, hätte sich sonst
- * ihr eigenes recharts zusammengesetzt — und dann gäbe es auf einem Bildschirm
+ * ihr eigenes recharts zusammengesetzt, und dann gäbe es auf einem Bildschirm
  * zwei Diagramme mit zwei Farbreihen und zwei Achsenformen.
  *
  * MIT DEM UMZUG SIND DIE TOKENS GEWECHSELT, UND ZWAR NOTGEDRUNGEN. Es stand
- * auf `--text-muted`, `--bg-card`, `--text-primary` und `--shadow-md` — das
+ * auf `--text-muted`, `--bg-card`, `--text-primary` und `--shadow-md`. Das
  * sind Aliasse der Shell aus `index.css`, und die gibt es in einer App nicht.
  * Jetzt stehen dort die Tokens aus `theme.css`, auf die diese Aliasse ohnehin
  * zeigen (`--muted-foreground`, `--card`, `--foreground`). Der Schatten am
@@ -27,8 +27,8 @@
  *    drei Werte derselben Einheit behaupten eine Bedeutung, die es nicht gibt.
  *    SERIENFARBEN hat drei Einträge, von Blau über Schwarz nach Grau. Wer mehr
  *    Reihen übergibt, bekommt Wiederholungen; drei ist bewusst die Grenze,
- *    innerhalb derer sich Linien noch unterscheiden lassen. Seit dem
- *    30.08.2026 gibt es auch keine Diagrammpalette (`--color-chart-*`) mehr:
+ *    innerhalb derer sich Linien noch unterscheiden lassen. Es gibt
+ *    auch keine Diagrammpalette (`--color-chart-*`) mehr:
  *    die Linien nehmen dieselben Tokens wie alles andere.
  * 2. Keine Karte drumherum. Die Fläche stellt der Aufrufer, das Diagramm
  *    bringt nur die Linien mit.
@@ -50,7 +50,7 @@ import { cn } from '../cn';
 /**
  * Drei Werte von Blau ueber Schwarz nach Grau.
  *
- * Alle drei stehen in `theme.css` und folgen damit dem Thema -- recharts
+ * Alle drei stehen in `theme.css` und folgen damit dem Thema. recharts
  * nimmt die rohe CSS-Variable und keine Tailwind-Klasse, also muss der Name
  * hier der des Tokens sein und nicht der der Utility. Drei ist bewusst die
  * Grenze: darueber lassen sich Linien derselben Einheit nicht mehr
@@ -74,7 +74,7 @@ interface ChartSeries {
    *
    * Es gibt sie, weil eine Reihe mit anderer Einheit auf einer fremden Achse
    * eine falsche Aussage zeichnet, nicht nur eine unschoene. Im Systemstatus
-   * lief die Temperatur bis zum 20.08.2026 auf der Prozentachse: 52 Grad
+   * lief die Temperatur frueher auf der Prozentachse: 52 Grad
    * landeten auf der Linie, an der „50%" steht, und ein Leser sah eine
    * halbvolle Maschine, wo eine kuehle stand.
    */
@@ -173,7 +173,7 @@ export function Chart<Datum extends object>({
             labelFormatter={wert => formatX(Number(wert))}
             formatter={(wert, name) => {
               const zahl = typeof wert === 'number' ? wert : Number(wert);
-              // de-DE: Komma statt Punkt (J35).
+              // de-DE: Komma statt Punkt.
               return [
                 `${zahl.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}${einheiten.get(String(name)) ?? ''}`,
                 String(name),

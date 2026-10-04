@@ -16,7 +16,7 @@ import { buttonVariants } from './button';
  * alles nicht, und der Unterschied faellt erst dem auf, der die dritte Seite
  * jemandem schicken will.
  *
- * Die aktuelle Seite traegt `aria-current="page"` -- daran und nicht an der
+ * Die aktuelle Seite traegt `aria-current="page"`. Daran und nicht an der
  * Farbe erkennt ein Screenreader, wo er ist.
  */
 function Pagination({ className, ...props }: React.ComponentProps<'nav'>) {

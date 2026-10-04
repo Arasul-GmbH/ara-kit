@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /**
- * Eine Reihe von Eintraegen -- die Apps im Menue, die Staende einer App, was
+ * Eine Reihe von Eintraegen: die Apps im Menue, die Staende einer App, was
  * eine App aufzaehlt.
  *
  * Ein Eintrag ist ein KNOPF, sobald er etwas tut, und sonst eine Zeile. Ein
@@ -15,11 +15,10 @@ export interface ListeProps {
   /**
    * Enge Zeilen fuer eine Spalte, die mit der Maus bedient wird.
    *
-   * Die Voreinstellung ist fingerbreit (44 px, Apple-HIG) -- richtig fuer ein
+   * Die Voreinstellung ist fingerbreit (44 px, Apple-HIG), richtig fuer ein
    * Menue auf einem Telefon und zu gross fuer eine Seitenspalte, in der
-   * zwanzig Zeilen untereinander stehen. Bis H5 gab es dafuer eine zweite,
-   * handgeschriebene Liste in der Shell; ein Umschalter ist die kleinere
-   * Antwort als zwei Listen.
+   * zwanzig Zeilen untereinander stehen. Ein Umschalter ist die kleinere
+   * Antwort als eine zweite, handgeschriebene Liste in der Shell.
    */
   dicht?: boolean;
   children: ReactNode;

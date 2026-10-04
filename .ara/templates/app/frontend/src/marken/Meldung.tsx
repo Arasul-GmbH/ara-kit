@@ -8,7 +8,7 @@ export type MeldungsArt = 'hinweis' | 'erfolg' | 'warnung' | 'fehler';
  *
  * `role` haengt an der Art: ein Fehler ist eine `alert` (der Screenreader
  * unterbricht), alles andere ein `status` (er liest es, wenn er dran ist).
- * Und die Art steht immer auch im TEXT -- eine Meldung, die nur an ihrer
+ * Und die Art steht immer auch im TEXT: eine Meldung, die nur an ihrer
  * Farbe zu erkennen ist, ist fuer manche Menschen keine.
  */
 export interface MeldungProps {

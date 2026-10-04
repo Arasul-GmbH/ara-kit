@@ -12,8 +12,8 @@ import { cn } from '../cn';
  * Der Unterschied zu `Tabs`: dort steht der Inhalt NEBEN den Schaltern und
  * ist immer gleich hoch, hier steht er DARUNTER und die Seite waechst. Das
  * ist die richtige Form fuer eine Reihe langer Abschnitte, die man selten
- * alle braucht -- eine Liste von Fragen und Antworten, die Schritte eines
- * Laufs -- und die falsche fuer zwei Ansichten derselben Sache.
+ * alle braucht (eine Liste von Fragen und Antworten, die Schritte eines
+ * Laufs), und die falsche fuer zwei Ansichten derselben Sache.
  *
  * Die Hoehe kommt aus `--radix-accordion-content-height`; ohne die Animation
  * springt der Inhalt, und das liest sich wie ein Fehler.

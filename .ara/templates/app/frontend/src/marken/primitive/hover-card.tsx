@@ -6,7 +6,7 @@ import { HoverCard as HoverCardPrimitive } from 'radix-ui';
 import { cn } from '../cn';
 
 /**
- * Eine Vorschau, die beim Verweilen aufgeht -- und nur dann.
+ * Eine Vorschau, die beim Verweilen aufgeht, und nur dann.
  *
  * Der Unterschied zu `Tooltip`: dort steht EIN Satz, hier steht Inhalt
  * (ein Bild, ein Steckbrief, drei Zeilen zu einem Verweis). Und der

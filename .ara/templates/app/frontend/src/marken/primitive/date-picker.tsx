@@ -14,9 +14,9 @@ const LANG = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' });
 /**
  * Ein Datum waehlen: der Knopf, der den Kalender aufmacht.
  *
- * SHADCN GIBT DAFUER EIN REZEPT UND KEINEN BAUSTEIN -- `Popover` plus
+ * SHADCN GIBT DAFUER EIN REZEPT UND KEINEN BAUSTEIN: `Popover` plus
  * `Calendar` plus `Button`, in jeder Anwendung neu zusammengesetzt. Genau
- * so entstehen zwanzig Kopfstellen mit derselben Klassenkette (Plan 023).
+ * so entstehen zwanzig Kopfstellen mit derselben Klassenkette.
  * Hier ist es EIN Baustein, und das Datumsformat steht darin: `de-DE`,
  * lang geschrieben. „04.09.2026" und „09/04/2026" sind dieselben Zeichen in
  * anderer Reihenfolge, und wer sich einmal vertut, merkt es nie.

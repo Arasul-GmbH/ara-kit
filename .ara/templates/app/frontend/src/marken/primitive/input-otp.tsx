@@ -17,7 +17,7 @@ import { cn } from '../cn';
  * Textfelder vor. Hier steht EIN Feld dahinter, das den Code als Ganzes
  * haelt; die Kaesten sind nur das Bild davon.
  *
- * WANN. Bestaetigungscodes -- aus einer App, aus einer Nachricht. Nicht
+ * WANN. Bestaetigungscodes, aus einer App, aus einer Nachricht. Nicht
  * fuer eine PIN, die man sich merkt, und nicht fuer ein Passwort.
  */
 function InputOTP({

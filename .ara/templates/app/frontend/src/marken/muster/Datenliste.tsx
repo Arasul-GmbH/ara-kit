@@ -23,7 +23,7 @@ import { Leerzustand } from './Leerzustand';
  *
  * SIE IST EIN BAUSTEIN UND KEINE TABELLE. Eine Tabelle ist eine
  * Darstellung; hier ist die Frage die: „ich habe Zeilen und will sie
- * zeigen, sortieren, durchsuchen -- und auf einem Telefon soll es auch
+ * zeigen, sortieren, durchsuchen, und auf einem Telefon soll es auch
  * gehen". Das sind vier Dinge, und jede Seite, die sie einzeln loest, loest
  * sie anders.
  *
@@ -33,7 +33,7 @@ import { Leerzustand } from './Leerzustand';
  * dass niemand die Spalte findet, die ihn interessiert.
  *
  * GEMESSEN WIRD DER BEHAELTER, NICHT DAS FENSTER (seit 5.1.0). Bis dahin
- * fragte die Liste `useSchmalesFenster` -- und eine App im Rahmen des Geraets
+ * fragte die Liste `useSchmalesFenster`, und eine App im Rahmen des Geraets
  * hat neben ihr noch ihre eigene Seitenleiste. Am Orin bei 1440 px: Rahmen
  * 1052 px, also Tabelle, und 100 px davon abgeschnitten. Die Schwelle ist
  * deshalb eine andere Frage als die 900 px der Shell: die fragen, ob DREI
@@ -43,25 +43,25 @@ import { Leerzustand } from './Leerzustand';
  *
  * IMMER NUR EINE FORM IM DOKUMENT. Nicht beide mit `hidden` nebeneinander:
  * jede Kennung staende dann doppelt da, und ein Screenreader liest die
- * Liste zweimal. Dieselbe Falle wie bei den Verwaltungstabellen aus D5.
+ * Liste zweimal. Dieselbe Falle wie bei den Verwaltungstabellen.
  *
  * DIE SPALTEN SIND DATEN UND KEIN MARKUP. Eine `Spalte` sagt, wie sie
- * heisst, was in der Zelle steht (`zelle`) und -- wenn sie sortierbar oder
- * durchsuchbar sein soll -- welchen VERGLEICHBAREN Wert sie hat (`wert`).
+ * heisst, was in der Zelle steht (`zelle`) und (wenn sie sortierbar oder
+ * durchsuchbar sein soll) welchen VERGLEICHBAREN Wert sie hat (`wert`).
  * Beides getrennt, weil das, was man sieht, selten das ist, wonach man
  * sortiert: „vor 3 Tagen" sortiert nach einem Zeitstempel, „2,1 GB" nach
  * einer Zahl. Wer beides in einen Topf wirft, sortiert Zeichenketten und
  * bekommt 10 vor 9.
  */
 export interface Spalte<Zeile> {
-  /** Stabile Kennung der Spalte -- sie steht im Sortierzustand. */
+  /** Stabile Kennung der Spalte; sie steht im Sortierzustand. */
   schluessel: string;
   titel: string;
   /** Was in der Zelle steht. */
   zelle: (zeile: Zeile) => React.ReactNode;
   /**
    * Der vergleichbare Wert dieser Spalte: wonach sortiert und worin gesucht
-   * wird. Ohne ihn ist die Spalte weder sortierbar noch durchsuchbar -- eine
+   * wird. Ohne ihn ist die Spalte weder sortierbar noch durchsuchbar. Eine
    * Spalte mit einem Knopf darin hat keinen Wert, und das ist richtig so.
    */
   wert?: (zeile: Zeile) => string | number | null | undefined;
@@ -72,7 +72,7 @@ export interface Spalte<Zeile> {
    * Eine lange Zelle endet mit „…" statt die Tabelle zu verbreitern. Die
    * Spalte nimmt dann den Platz, der uebrig bleibt, und nicht mehr: ein
    * langer Titel schob sonst bei 1280 px die Spalten rechts von ihm aus der
-   * Tabelle (Audit des Kit-Geruests, 26.09.2026). Der volle Text steht im
+   * Tabelle. Der volle Text steht im
    * `title`, sofern die Spalte einen `wert` hat.
    */
   kuerzen?: boolean;
@@ -90,7 +90,7 @@ export interface DatenlisteProps<Zeile> {
   /** Die Kennung einer Zeile. Sie ist der `key` und muss eindeutig sein. */
   kennung: (zeile: Zeile) => string;
   /**
-   * Wozu diese Liste da ist -- als Bildunterschrift und als erste Auskunft
+   * Wozu diese Liste da ist: als Bildunterschrift und als erste Auskunft
    * fuer ein Vorlesewerkzeug. Pflicht: „Tabelle" ist keine.
    */
   beschriftung: string;
@@ -104,14 +104,14 @@ export interface DatenlisteProps<Zeile> {
   /** Was dasteht, wenn der Filter alles wegnimmt. */
   leerGefiltert?: string;
   /**
-   * Ein Klick auf die Zeile -- oder Enter und Leertaste, wenn sie den Fokus
-   * hat. Ohne ihn ist die Zeile nichts zum Anklicken und steht auch nicht in
+   * Ein Klick auf die Zeile (oder Enter und Leertaste, wenn sie den Fokus
+   * hat). Ohne ihn ist die Zeile nichts zum Anklicken und steht auch nicht in
    * der Tab-Reihenfolge.
    */
   aufZeile?: (zeile: Zeile) => void;
   /**
    * Die Kennung der gewaehlten Zeile. Sie traegt `aria-selected` und einen
-   * Hintergrund samt Linie am Anfang -- bis 5.0.0 zeigte die Liste nicht,
+   * Hintergrund samt Linie am Anfang. Bis 5.0.0 zeigte die Liste nicht,
    * welche Zeile gerade rechts im Detail steht. Die Auswahl gehoert dem
    * Aufrufer: er weiss, was „gewaehlt" bei ihm heisst.
    */
@@ -179,7 +179,7 @@ export function Datenliste<Zeile>({
   className,
 }: DatenlisteProps<Zeile>) {
   const [behaelter, zuSchmal, breite] = useSchmalerBehaelter<HTMLDivElement>(LISTE_SCHMAL_AB_PX);
-  // Wie breit die Tabelle mindestens sein will -- gemessen, als sie zuletzt
+  // Wie breit die Tabelle mindestens sein will, gemessen, als sie zuletzt
   // dastand und nicht in ihren Kasten passte. Siehe `LISTE_SCHMAL_AB_PX`.
   const tabelle = React.useRef<HTMLTableElement>(null);
   const [tabellenBreite, setTabellenBreite] = React.useState<number | null>(null);
@@ -373,7 +373,7 @@ export function Datenliste<Zeile>({
                     key={spalte.schluessel}
                     className={spalte.ausrichtung === 'rechts' ? 'text-right' : undefined}
                     // Der Kopf nimmt nur die Breite; `max-width: 0` der
-                    // gekuerzten Zelle gehoert nicht hierher -- der Titel
+                    // gekuerzten Zelle gehoert nicht hierher, der Titel
                     // steht sonst ueber der Nachbarspalte.
                     style={spalte.breite ? { width: spalte.breite } : undefined}
                     // `aria-sort` ist die Auskunft, die ein Screenreader
@@ -420,7 +420,7 @@ export function Datenliste<Zeile>({
                   onClick={aufZeile ? () => aufZeile(zeile) : undefined}
                   // Die ganze Zeile ist per Tastatur erreichbar, nicht nur
                   // mit der Maus. Enter und Leertaste nur, wenn die Zeile
-                  // SELBST den Fokus hat -- ein Knopf in einer Zelle behaelt
+                  // SELBST den Fokus hat; ein Knopf in einer Zelle behaelt
                   // seine eigene Taste.
                   tabIndex={aufZeile ? 0 : undefined}
                   onKeyDown={
@@ -442,7 +442,7 @@ export function Datenliste<Zeile>({
                     // Die Flaeche ist ein Wisch aus `--foreground` und nicht
                     // `bg-muted`: im Dunkeln ist `--muted` gleich `--card`,
                     // und die Auswahl waere in einer Karte unsichtbar. Dazu
-                    // die Linie am Anfang (H5: der aktive Zustand ist keine
+                    // die Linie am Anfang (der aktive Zustand ist keine
                     // Flaeche allein).
                     'data-[state=selected]:bg-foreground/8 data-[state=selected]:shadow-[inset_3px_0_0_var(--color-foreground)]'
                   )}

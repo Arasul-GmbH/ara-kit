@@ -1,7 +1,7 @@
 /**
- * Ist das Fenster zu schmal für drei Spalten? (Plan 023 F5)
+ * Ist das Fenster zu schmal für drei Spalten?
  *
- * Am 22.08.2026 am Gerät gemessen. Die Arbeitsfläche verlangt nebeneinander:
+ * Am Gerät gemessen. Die Arbeitsfläche verlangt nebeneinander:
  *
  *   Aktivitätsleiste   rund 48 px, immer sichtbar
  *   Dateibaum          mindestens 160 px

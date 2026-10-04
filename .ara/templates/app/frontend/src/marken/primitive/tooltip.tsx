@@ -9,7 +9,7 @@ import { cn } from '../cn';
  * WAS EIN TOOLTIP NICHT IST: die einzige Stelle, an der etwas steht. Er
  * erscheint nicht auf einem Telefon, nicht bei Tastaturbedienung ohne Fokus
  * und nicht im Ausdruck. Der Name eines Knopfes gehoert deshalb in ein
- * `aria-label` und die Erklaerung daneben -- hier steht das, was das Bild
+ * `aria-label` und die Erklaerung daneben. Hier steht das, was das Bild
  * ergaenzt, nicht das, was es ersetzt.
  *
  * `TooltipProvider` steht mit im Baustein: Radix verlangt ihn, und ein

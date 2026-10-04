@@ -9,8 +9,8 @@ import { cn } from '../cn';
 /**
  * Spalten (oder Zeilen), deren Breite der Mensch selbst zieht.
  *
- * Die Shell des Geraets steht seit D1 darauf: Sidebar, Mitte, Notizen. Was
- * hier liegt, ist dasselbe Werkzeug ohne die Shell darum -- eine
+ * Die Shell des Geraets steht darauf: Sidebar, Mitte, Notizen. Was
+ * hier liegt, ist dasselbe Werkzeug ohne die Shell darum: eine
  * Fachanwendung, die eine Liste neben einem Detail zeigt, soll dieselbe
  * Bedienung haben und nicht ihre eigene erfinden.
  *

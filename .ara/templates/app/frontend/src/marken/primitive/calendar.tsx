@@ -15,12 +15,12 @@ import { Button, buttonVariants } from './button';
  * deutschen Unternehmen; die Woche faengt am Montag an, die Monate heissen
  * Januar bis Dezember, und das Datum wird als Tag.Monat.Jahr gelesen. Wer
  * das in jeder App neu einstellt, hat irgendwann eine App, in der die Woche
- * am Sonntag anfaengt -- und der Mensch davor waehlt den falschen Tag, ohne
+ * am Sonntag anfaengt, und der Mensch davor waehlt den falschen Tag, ohne
  * es zu merken. `locale` bleibt ueberschreibbar, die Vorgabe ist Deutsch.
  *
  * KEIN EIGENES STYLESHEET. `react-day-picker` bringt eines mit; hier wird
  * stattdessen jede seiner Klassen ersetzt, damit der Kalender aus denselben
- * Tokens lebt wie alles andere -- sonst haette das Geraet eine Flaeche, die
+ * Tokens lebt wie alles andere. Sonst haette das Geraet eine Flaeche, die
  * dem Theme nicht folgt, und genau die faellt in einer App auf, die gerade
  * niemand ansieht.
  */

@@ -6,8 +6,8 @@ import { Knopf } from '../Formular';
 /**
  * Die Dokumentanzeige: PDF und Bilder, im Kasten der Anwendung.
  *
- * WARUM ES SIE GIBT. Die Dateiablage nimmt PDFs an und zeigte sie nicht --
- * ohne einen Anzeige-Baustein baut jeder Partner seinen eigenen Betrachter,
+ * WARUM ES SIE GIBT. Die Dateiablage nimmt PDFs an und zeigte sie nicht.
+ * Ohne einen Anzeige-Baustein baut jeder Partner seinen eigenen Betrachter,
  * oder gar keinen, und Dokumente bleiben Downloads. Ein Dokument, das ein
  * Mensch hochgeladen hat, soll er ansehen koennen, ohne das Geraet zu
  * verlassen.
@@ -25,18 +25,18 @@ import { Knopf } from '../Formular';
  *
  * CSP-KONFORM OHNE EVAL. pdf.js ab Fassung 6 enthaelt kein `eval` und kein
  * `new Function` mehr; der Worker ist eine Datei GLEICHER HERKUNFT
- * (`pdf-dateien/pdf.worker.min.js`), kein blob: und kein data: -- die Policy
+ * (`pdf-dateien/pdf.worker.min.js`), kein blob: und kein data:, die Policy
  * dieses Geraets laesst beides fuer Skripte nicht zu. Schlaegt der echte
  * Worker fehl, faellt pdf.js selbst auf den Hauptfaden zurueck
  * (`import(workerSrc)`), und auch das ist eine Adresse gleicher Herkunft.
  *
- * WOHER DIE STUETZDATEIEN KOMMEN. Worker, WASM (JPEG-2000 und JBIG2 --
+ * WOHER DIE STUETZDATEIEN KOMMEN. Worker, WASM (JPEG-2000 und JBIG2,
  * gescannte PDFs), Standardschriften, CMaps und ICC-Profile liegen als
  * Ordner `pdf-dateien/` NEBEN dem uebersetzten JavaScript: neben
  * `browser/marken.js` (der Bau der Bibliothek legt sie hin, eingecheckt)
  * und neben den Chunks der Shell (`pdf-dateien.mjs` in ihrer
  * `vite.config.ts`). Aufgeloest wird zur Laufzeit relativ zu
- * `import.meta.url` -- absichtlich OHNE Vite-Asset-Import: im
+ * `import.meta.url`, absichtlich OHNE Vite-Asset-Import: im
  * Bibliotheks-Bau bettet Vite jedes Asset als data:-URI ein, und einen
  * data:-Worker laesst die CSP nicht zu.
  */
@@ -89,7 +89,7 @@ function artVon(quelle: Blob | string, art?: DokumentArt): DokumentArt | null {
  *
  * KEIN STRING-LITERAL IM `new URL`: Vite schreibt ein statisches
  * `new URL('...', import.meta.url)` beim Uebersetzen um und bettet es im
- * Bibliotheks-Bau als data:-URI ein -- genau das, was die CSP verbietet.
+ * Bibliotheks-Bau als data:-URI ein, genau das, was die CSP verbietet.
  * Der zusammengesetzte erste Parameter laesst die Zeile in Ruhe; die Datei
  * legt jeder Bau daneben (siehe Kopf dieser Datei).
  */
@@ -105,7 +105,7 @@ let pdfjsLadung: Promise<PdfBibliothek> | null = null;
 function pdfBibliothek(): Promise<PdfBibliothek> {
   pdfjsLadung ??= import('pdfjs-dist').then(pdfjs => {
     // Nur setzen, wenn die Anwendung nicht schon selbst einen Worker
-    // eingerichtet hat -- die Einstellung ist global fuer das Dokument.
+    // eingerichtet hat; die Einstellung ist global fuer das Dokument.
     if (!pdfjs.GlobalWorkerOptions.workerSrc && !pdfjs.GlobalWorkerOptions.workerPort) {
       pdfjs.GlobalWorkerOptions.workerSrc = stuetzUrl('pdf.worker.min.js');
     }
@@ -140,7 +140,7 @@ export function Dokumentanzeige({
   const [stand, setStand] = React.useState<Stand>({ stufe: 'leer' });
   const [seite, setSeite] = React.useState(1);
   const [seiten, setSeiten] = React.useState(0);
-  /** `null` heisst „passend zur Breite" -- die erste Seite setzt den Wert. */
+  /** `null` heisst „passend zur Breite", die erste Seite setzt den Wert. */
   const [zoom, setZoom] = React.useState<number | null>(null);
   const [vollbild, setVollbild] = React.useState(false);
   const [bildBreite, setBildBreite] = React.useState<number | null>(null);
@@ -225,7 +225,7 @@ export function Dokumentanzeige({
         if (weg) return;
         if (zoom === null) {
           // Erste Anzeige: passend zur Breite der Flaeche. Das setzt `zoom`
-          // und laesst diesen Lauf enden -- der naechste zeichnet.
+          // und laesst diesen Lauf enden, der naechste zeichnet.
           const breite = flaeche.current?.clientWidth ?? 640;
           const roh = seiteObj.getViewport({ scale: 1 });
           setZoom(begrenzt((breite - POLSTER_PX) / roh.width));
@@ -288,7 +288,7 @@ export function Dokumentanzeige({
     try {
       void rahmen.current?.requestFullscreen?.().catch(() => undefined);
     } catch {
-      // aelterer Browser ohne Promise -- der feste Kasten steht schon
+      // aelterer Browser ohne Promise: der feste Kasten steht schon
     }
   };
 

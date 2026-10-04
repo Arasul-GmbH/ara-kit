@@ -17,7 +17,7 @@ function groesseInWorten(bytes: number): string {
     wert /= 1024;
     i += 1;
   }
-  // de-DE: „1,5 MB“ und nicht „1.5 MB“ (J35).
+  // de-DE: „1,5 MB“ und nicht „1.5 MB“.
   return `${wert.toLocaleString('de-DE', { maximumFractionDigits: wert < 10 ? 1 : 0 })} ${einheiten[i]}`;
 }
 
@@ -26,12 +26,12 @@ function groesseInWorten(bytes: number): string {
  *
  * ZIEHEN IST DER ZWEITE WEG UND NIE DER EINZIGE. Eine Flaeche, auf die man
  * nur etwas fallen lassen kann, ist mit der Tastatur nicht zu bedienen und
- * auf einem Telefon gar nicht -- dort gibt es kein Ziehen. Deshalb ist der
+ * auf einem Telefon gar nicht, dort gibt es kein Ziehen. Deshalb ist der
  * Kasten hier ein KNOPF: Enter oder Leertaste oeffnen die Dateiauswahl,
  * Ziehen tut dasselbe, und beides fuehrt an dieselbe Stelle.
  *
- * SIE LAEDT NICHTS HOCH. Was mit den Dateien geschieht, weiss die Anwendung
- * -- sie kennt den Weg, den Schluessel und die Fehler. Dieser Baustein sagt
+ * SIE LAEDT NICHTS HOCH. Was mit den Dateien geschieht, weiss die Anwendung:
+ * sie kennt den Weg, den Schluessel und die Fehler. Dieser Baustein sagt
  * nur, WELCHE Dateien gewaehlt sind, und zeigt sie an. Ein Baustein, der
  * selbst hochlaedt, muesste eine Adresse kennen, und dann wuesste er etwas
  * ueber die Anwendung.
@@ -40,10 +40,10 @@ function groesseInWorten(bytes: number): string {
  * aussen. Zwei Wahrheiten darueber, was gerade ausgewaehlt ist, sind eine
  * zu viel.
  *
- * SIE ZEIGT, WAS SIE ANGENOMMEN HAT (Auftrag bibliothek-dokumentanzeige).
+ * SIE ZEIGT, WAS SIE ANGENOMMEN HAT.
  * Ein PDF oder Bild in der Liste steht unter ihr in der `Dokumentanzeige`;
  * ein Klick auf einen Dateinamen wechselt dorthin. Ohne die Vorschau war
- * ein hochgeladenes Dokument nur ein Name mit einer Groesse -- ob es das
+ * ein hochgeladenes Dokument nur ein Name mit einer Groesse; ob es das
  * richtige ist, sah der Mensch erst nach dem Absenden, oder nie. Welche
  * Datei gerade gezeigt wird, ist Zustand DIESER Flaeche (wie `ueber`), keine
  * zweite Wahrheit ueber die Auswahl. `vorschau={false}` schaltet sie ab.
@@ -87,7 +87,7 @@ export function Dateiablage({
   const [vorschauWahl, setVorschauWahl] = React.useState<number | null>(null);
 
   // Abgeleitet, nicht synchronisiert: faellt die gewaehlte Datei aus der
-  // Liste, rueckt die erste anzeigbare nach -- ohne einen Effekt, der einem
+  // Liste, rueckt die erste anzeigbare nach, ohne einen Effekt, der einem
   // veralteten Index hinterherlaeuft.
   const gezeigt = React.useMemo(() => {
     if (!vorschau) return null;
@@ -160,7 +160,7 @@ export function Dateiablage({
         onChange={ereignis => {
           uebernehmen(ereignis.target.files);
           // Zuruecksetzen, sonst loest dieselbe Datei ein zweites Mal
-          // kein `change` aus -- der haeufigste stille Fehler an dieser Stelle.
+          // kein `change` aus. Der haeufigste stille Fehler an dieser Stelle.
           ereignis.target.value = '';
         }}
       />

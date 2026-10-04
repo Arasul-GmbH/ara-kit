@@ -6,15 +6,15 @@ import { cn } from '../cn';
 /**
  * Was an der Stelle einer leeren Liste steht.
  *
- * ER SAGT, WIE SIE SICH FUELLT -- das ist sein Zweck und nicht ein Zusatz.
+ * ER SAGT, WIE SIE SICH FUELLT, das ist sein Zweck und nicht ein Zusatz.
  * Eine leere Flaeche mit „Keine Einträge" ist eine Sackgasse: sie erklaert
  * den Zustand und laesst den Menschen damit stehen. Deshalb ist `aktion` der
  * wichtigste Teil, und deshalb ist `titel` Pflicht.
  *
- * SEIT H4 IN DER BIBLIOTHEK. Er stand als `components/ui/EmptyState.tsx` in
+ * IN DER BIBLIOTHEK. Er stand frueher als `components/ui/EmptyState.tsx` in
  * der Shell; eine Fachanwendung mit einer Liste braucht ihn genauso und
  * haette sich einen zweiten gebaut. Was beim Umzug blieb, sind die drei
- * Schaerfungen aus Plan 023 C1, alle an dem gemessen, was die Aufrufer
+ * Schaerfungen, alle an dem gemessen, was die Aufrufer
  * wirklich uebergeben: der Titel ist Pflicht; die Groesse des Symbols setzt
  * der Baustein und nicht der Aufrufer (`text-5xl` an einer Umhuellung wirkt
  * auf ein SVG mit eigener Groessenklasse nicht, und das voreingestellte

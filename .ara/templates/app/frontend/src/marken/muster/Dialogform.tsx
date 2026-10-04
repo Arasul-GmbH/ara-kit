@@ -24,9 +24,9 @@ import { XIcon } from 'lucide-react';
 /**
  * Die Form eines Dialogs: ein Titelbalken, ein rollender Rumpf, ein Fuss.
  *
- * SEIT H5 IN DER BIBLIOTHEK. Sie stand als `components/ui/Modal.tsx` in der
- * Shell und wusste dort nichts von Arasul -- ein Titel, ein Inhalt, ein Fuss
- * und vier Breiten. `muster/index.ts` fuehrte sie bis H4 ausdruecklich als
+ * IN DER BIBLIOTHEK. Sie stand frueher als `components/ui/Modal.tsx` in der
+ * Shell und wusste dort nichts von Arasul: ein Titel, ein Inhalt, ein Fuss
+ * und vier Breiten. `muster/index.ts` fuehrte sie frueher ausdruecklich als
  * etwas, das „ueber DIESES Geraet Bescheid weiss"; das war beim Nachlesen
  * schlicht falsch, und die Folge waere gewesen, dass die erste Fachanwendung
  * mit einem Dialog sich diese vierzig Zeilen noch einmal schreibt.
@@ -35,7 +35,7 @@ import { XIcon } from 'lucide-react';
  * das Primitiv: Radix' Mechanik plus die Teile (`DialogHeader`,
  * `DialogFooter`, `DialogTitle`). Wer sie einzeln zusammensetzt, schreibt in
  * jedem Aufrufer dieselbe Klassenkette fuer Polsterung, Trennlinie und
- * Rollbereich -- das ist die Doppelung, gegen die die Bibliothek gebaut ist.
+ * Rollbereich. Das ist die Doppelung, gegen die die Bibliothek gebaut ist.
  * `Dialogform` ist diese Zusammensetzung, einmal. Sie erfindet keine zweite
  * Mechanik: geoeffnet, geschlossen, Fokus und Escape macht weiterhin Radix.
  *
@@ -124,11 +124,11 @@ export function Dialogform({
  * Die Frage, die eine Antwort verlangt: Titel, ein Satz, zwei Knoepfe.
  *
  * SIE STEHT AUF `AlertDialog` UND NICHT AUF `Dialogform`, und das ist der
- * ganze Punkt. Bis H5 war sie ein `Modal` mit zwei Knoepfen darin: sie liess
+ * ganze Punkt. Frueher war sie ein `Modal` mit zwei Knoepfen darin: sie liess
  * sich mit Escape, mit einem Klick daneben und ueber ein Kreuz schliessen,
  * und alle drei Wege bedeuteten stillschweigend „Abbrechen". Radix'
  * `AlertDialog` laesst nur die zwei Knoepfe zu und legt den Fokus auf den
- * harmlosen -- „Geraet zuruecksetzen" ist damit nicht mehr dieselbe
+ * harmlosen. „Geraet zuruecksetzen" ist damit nicht mehr dieselbe
  * Handbewegung wie „Fenster zu".
  */
 export interface BestaetigungProps {

@@ -8,7 +8,7 @@ import { cn } from '../cn';
 import { toggleVariants } from './toggle';
 
 /**
- * Mehrere `Toggle` als eine Leiste -- entweder genau einer an (`type="single"`)
+ * Mehrere `Toggle` als eine Leiste: entweder genau einer an (`type="single"`)
  * oder beliebig viele (`type="multiple"`).
  *
  * Art und Groesse stehen an der GRUPPE und nicht am einzelnen Knopf: eine

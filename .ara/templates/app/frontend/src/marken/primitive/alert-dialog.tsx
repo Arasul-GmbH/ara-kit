@@ -10,7 +10,7 @@ import { buttonVariants } from './button';
  * Der Unterschied zu `Dialog` ist keine Optik: hier gibt es KEIN Kreuz und
  * kein Wegklicken daneben. Radix laesst einen AlertDialog nur ueber einen
  * seiner beiden Knoepfe schliessen und legt den Fokus auf den harmlosen von
- * beiden. Das ist der Grund, warum es ihn getrennt gibt -- „Geraet
+ * beiden. Das ist der Grund, warum es ihn getrennt gibt: „Geraet
  * zuruecksetzen" darf nicht dieselbe Handbewegung sein wie „Fenster zu".
  */
 function AlertDialog({ ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {

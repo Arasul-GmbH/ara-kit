@@ -1,18 +1,18 @@
 /* =============================================================================
-   Die Jet-Tokens (Phase H3, 29.08.2026)
+   Die Jet-Tokens
    =============================================================================
-   HIER STEHEN DIE WERTE. Bis H2 standen sie in
+   HIER STEHEN DIE WERTE. Frueher standen sie in
    `apps/dashboard-frontend/src/index.css` und die Bibliothek trug eine Kopie
-   davon als Rueckfall. Seit H3 ist es umgekehrt: die Bibliothek ist die
-   Quelle, und die Shell holt diese Datei (`@import`, ohne Schicht -- ein
+   davon als Rueckfall. Heute ist es umgekehrt: die Bibliothek ist die
+   Quelle, und die Shell holt diese Datei (`@import`, ohne Schicht; ein
    `@theme` in einer Schicht waere keins mehr).
 
-   WARUM DER UMZUG. Seit H3 liegen die Primitive (Button, Input, Dialog …) in
+   WARUM DER UMZUG. Die Primitive liegen (Button, Input, Dialog …) in
    dieser Bibliothek, und sie sind auf Tailwind geschrieben: `bg-secondary`,
    `text-muted-foreground`, `border-border`. Diese Utilities entstehen aus dem
-   `@theme`-Block. Eine App, die die Primitive benutzt, braucht ihn also --
+   `@theme`-Block. Eine App, die die Primitive benutzt, braucht ihn also,
    und haette ihn ohne diese Datei aus der Shell abschreiben muessen. Genau
-   die Kopie, gegen die `scripts/test/marken.py` seit D7 antritt.
+   die Kopie, gegen die `scripts/test/marken.py` antritt.
 
    VIER BLOECKE, UND JEDER HAT SEINE AUFGABE:
 
@@ -21,10 +21,10 @@
                      `p-ui-2`). Sie haengen an keinem Thema.
      @theme inline   Die Bruecke: `--color-background: var(--background)`.
                      `inline` heisst, dass Tailwind den `var()`-Ausdruck
-                     stehen laesst statt ihn aufzuloesen -- nur so ist
+                     stehen laesst statt ihn aufzuloesen; nur so ist
                      `bg-background` zur Laufzeit themenabhaengig.
      :root           Die Farben des Themas HELL. Es ist die Vorgabe und
-                     braucht keinen Selektor (Phase H1).
+                     braucht keinen Selektor.
      [data-theme='dark']
                      Nur das, was im Dunkeln abweicht. Eine Farbe, die es nur
                      hier gibt, ist eine, die im Hellen fehlt.
@@ -35,7 +35,7 @@
      eine App mit Bau (Kit-Vorlage)
                      `@import '@marken/theme.css'` neben ihrem Tailwind
      eine App ohne Bau
-                     gar nicht -- sie laedt `marken.css`, und dessen
+                     gar nicht: sie laedt `marken.css`, und dessen
                      `--ara-*` tragen dieselben Werte als Rueckfall.
                      `scripts/test/marken.py` haelt die beiden aneinander.
 
@@ -43,14 +43,13 @@
    hierher; in einem Primitiv oder einer Regel ist es ein Befund
    (`marken.py`, Punkt 6), in der Shell ebenso (`bausteine.py`, Punkt 7).
 
-   DIE PALETTE IST KLEIN, UND DAS IST DIE ENTSCHEIDUNG (Auftrag
-   farben-blau-grau-rot, 30.08.2026). Sie kennt Blau (`--primary`), drei
+   DIE PALETTE IST KLEIN, UND DAS IST DIE ENTSCHEIDUNG. Sie kennt Blau (`--primary`), drei
    Flaechenstufen (`--background`, `--card`, `--secondary`), zwei Textgrau
    (`--foreground`, `--muted-foreground`), Weiss, Schwarz und Rot
    (`--destructive`). Gruen (`--success`) und Orange (`--warning`) sind
    GESTRICHEN: jede weitere Farbe liest eine App als Freibrief fuer eigene,
    und das Bild aus Shell und Apps zerfaellt. Erfolg ist Blau, eine Warnung
-   ist Grau MIT TEXT, ein Fehler ist Rot -- die Art steht im Wort, die Farbe
+   ist Grau MIT TEXT, ein Fehler ist Rot: die Art steht im Wort, die Farbe
    daneben. Auch die Diagrammpalette ist weg: `Chart` nimmt Blau, Schwarz und
    Grau aus denselben Tokens.
    ========================================================================== */
@@ -68,7 +67,7 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', source-code-pro, Menlo, Monaco, Consolas, monospace;
 
   /* ========================================
-     DICHTE-SKALA (Plan 002 »Cursor-Shell«, Komfort-Kalibrierung Plan 004)
+     DICHTE-SKALA (Komfort-Kalibrierung)
      Komfort-Skala: 14px-Basistext + 5/10/14/18px-Abstandsstufen.
      Zusätzlich hebt ein globaler Root-Hebel (html { font-size }, siehe
      @layer base) alle rem-Einheiten plattformweit an, damit auch Nicht-
@@ -78,38 +77,38 @@
      Neue/normierte Ansichten (Workspace-Shell, Dashboard, Extensions)
      bauen ausschließlich auf dieser Skala auf.
      ======================================== */
-  --text-ui-xs: 0.75rem; /* 12px — Badges, Metadaten */
+  --text-ui-xs: 0.75rem; /* 12px: Badges, Metadaten */
   --text-ui-xs--line-height: 1.125rem; /* 18px */
-  --text-ui-sm: 0.8125rem; /* 13px — Sekundärtext, Labels */
+  --text-ui-sm: 0.8125rem; /* 13px: Sekundärtext, Labels */
   --text-ui-sm--line-height: 1.25rem; /* 20px */
-  --text-ui: 0.875rem; /* 14px — Basistext kompakter Flächen */
+  --text-ui: 0.875rem; /* 14px: Basistext kompakter Flächen */
   --text-ui--line-height: 1.375rem; /* 22px */
-  --text-ui-lg: 1rem; /* 16px — Karten-/Abschnittstitel */
+  --text-ui-lg: 1rem; /* 16px: Karten-/Abschnittstitel */
   --text-ui-lg--line-height: 1.5rem; /* 24px */
 
-  --spacing-ui-1: 0.3125rem; /* 5px  — Stufe 1 */
-  --spacing-ui-2: 0.625rem; /* 10px — Stufe 2 */
-  --spacing-ui-3: 0.875rem; /* 14px — Stufe 3 */
-  --spacing-ui-4: 1.125rem; /* 18px — Stufe 4 */
+  --spacing-ui-1: 0.3125rem; /* 5px, Stufe 1 */
+  --spacing-ui-2: 0.625rem; /* 10px, Stufe 2 */
+  --spacing-ui-3: 0.875rem; /* 14px, Stufe 3 */
+  --spacing-ui-4: 1.125rem; /* 18px, Stufe 4 */
 
-  /* Cursor-Eichung (Plan 009): kompakte Zeilenhöhe für Baum-/Listenzeilen
+  /* Cursor-Eichung: kompakte Zeilenhöhe für Baum-/Listenzeilen
      (Explorer, Store-Facetten, Tab-Leiste). Cursor nutzt ~22px; hier als
      rem, damit der globale Root-Hebel (html{font-size}) mitzieht.
      Utility: h-ui-row / min-h-ui-row. Die feine Trennlinie ist bereits
-     --border (rgba …, ~8–10% Alpha) — kein zweiter Kanten-Token nötig. */
+     --border (rgba …, ~8–10% Alpha), ein zweiter Kanten-Token ist nicht nötig. */
   --spacing-ui-row: 1.375rem; /* ~22px kompakte Baum-/Listenzeile */
 
-  /* Plan 016: EIN gemeinsamer Kopfzeilen-Höhen-Token für alle Panel-Köpfe
+  /* EIN gemeinsamer Kopfzeilen-Höhen-Token für alle Panel-Köpfe
      (Arbeitsbereich, Viewer, Flow-Editor, Chat, Sidebar). Vorher liefen die
      Köpfe auseinander (h-8/h-9/h-11/h-14); jetzt teilen sie diesen Wert, damit
      der Arbeitsbereich »aus einem Guss« wirkt. Deckungsgleich mit der bisher
      ruhigsten Shell-Höhe (h-9 = 36px). Utility: h-ui-header / min-h-ui-header. */
-  --spacing-ui-header: 2.25rem; /* 36px — einheitliche Panel-Kopfhöhe */
+  --spacing-ui-header: 2.25rem; /* 36px, einheitliche Panel-Kopfhöhe */
 }
 
 /* -----------------------------------------------------------------------------
    Die Bruecke zwischen Tailwind und dem Thema.
-   `--color-x: var(--x)` — Tailwind baut daraus `bg-x`, `text-x`, `border-x`,
+   `--color-x: var(--x)`: Tailwind baut daraus `bg-x`, `text-x`, `border-x`,
    und weil der `var()`-Ausdruck stehen bleibt (`inline`), zeigt dieselbe
    Utility im dunklen Thema auf den dunklen Wert.
    -------------------------------------------------------------------------- */
@@ -153,15 +152,15 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  /* Der Schleier unter einem Dialog. Er ist seit H3 eine Utility (`bg-backdrop`),
-     weil sonst jeder Dialog seinen eigenen erfindet -- `bg-black/50` stand im
+  /* Der Schleier unter einem Dialog. Er ist eine Utility (`bg-backdrop`),
+     weil sonst jeder Dialog seinen eigenen erfindet: `bg-black/50` stand im
      Dialog, `rgb(0 0 0 / 0.5)` in der Bibliothek, und keiner der beiden folgte
      dem Thema. */
   --color-backdrop: var(--backdrop-color);
 }
 
 /* -----------------------------------------------------------------------------
-   THEMA »HELL« — die Vorgabe (Phase H1)
+   THEMA »HELL«, die Vorgabe
    -----------------------------------------------------------------------------
    Cursor-Prinzip: zwei Hintergrundstufen (Chrome gegen Flaeche), EINE
    Randfarbe mit niedriger Alpha, Hover als Schwarz-Alpha, der Akzent
@@ -194,8 +193,8 @@
 
   /* Schriftgroessen-Skala. Sie ist keine Tailwind-Skala (die steht als
      `--text-ui-*` im `@theme` darueber), sondern die Reihe fuer handgeschrie-
-     benes CSS -- `Kopf` in der Bibliothek nimmt `--text-3xl` fuer den
-     Seitentitel. Bis H3 stand sie in `index.css`; eine Skala, von der die
+     benes CSS: `Kopf` in der Bibliothek nimmt `--text-3xl` fuer den
+     Seitentitel. Frueher stand sie in `index.css`; eine Skala, von der die
      Bibliothek die eine Haelfte braucht, wird nicht in der Mitte geteilt. */
   --text-2xs: 0.65rem; /* 10.4px */
   --text-xs: 0.75rem; /* 12px */
@@ -218,7 +217,7 @@
 }
 
 /* -----------------------------------------------------------------------------
-   THEMA »DUNKEL« — was von der Vorgabe abweicht (Phase H1)
+   THEMA »DUNKEL«: was von der Vorgabe abweicht
    -----------------------------------------------------------------------------
    Nichts unter dieser Zeile ist eine neue Farbe. Wer eine aendert, prueft die
    Vorgabe darueber mit: eine Farbe, die es nur hier gibt, ist eine Farbe, die
@@ -252,17 +251,17 @@
 }
 
 /* -----------------------------------------------------------------------------
-   BEWEGUNG (Phase H4)
+   BEWEGUNG
    -----------------------------------------------------------------------------
-   Die zwei Bilder des Ladezustands. Sie standen bis H4 in `index.css` und sind
+   Die zwei Bilder des Ladezustands. Sie standen frueher in `index.css` und sind
    mit `Ladezustand` (frueher `LoadingSpinner`) hierher gezogen: eine App mit
-   Bau laedt diese Datei und nicht die der Shell -- ohne sie waere der Kreisel
+   Bau laedt diese Datei und nicht die der Shell; ohne sie waere der Kreisel
    dort ein stillstehender Ring, und es faellt niemandem auf, der an der Shell
    arbeitet.
 
    Es sind bewusst nur diese zwei. Alles andere, was sich in dieser Bibliothek
    bewegt, kommt aus `tw-animate-css` (`animate-in`, `animate-accordion-down`,
-   `animate-caret-blink`) -- wer die Primitive benutzt, laedt das Paket ohnehin
+   `animate-caret-blink`), und wer die Primitive benutzt, laedt das Paket ohnehin
    neben Tailwind.
    -------------------------------------------------------------------------- */
 @keyframes spinner-rotate {
@@ -287,7 +286,7 @@
 /* Wer weniger Bewegung eingestellt hat, bekommt einen langsameren Kreisel und
    keinen stehenden: ein Ring, der sich nicht dreht, sieht aus wie ein Fehler.
    Die Regel haengt an den Klassen des `Ladezustand` und ist mit ihm aus
-   `index.css` hierher gezogen -- in einer App gaebe es sie sonst nicht. */
+   `index.css` hierher gezogen; in einer App gaebe es sie sonst nicht. */
 @media (prefers-reduced-motion: reduce) {
   .loading-spinner .spinner-ring,
   .spinner-animation .spinner-ring {

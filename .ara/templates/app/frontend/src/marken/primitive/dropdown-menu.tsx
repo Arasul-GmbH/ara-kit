@@ -7,7 +7,7 @@ import { cn } from '../cn';
 /**
  * Das Menue an einem Knopf.
  *
- * Dieselbe Form wie `ContextMenu` -- dasselbe Aussehen, ein anderer Ausloeser:
+ * Dieselbe Form wie `ContextMenu`, dasselbe Aussehen, ein anderer Ausloeser:
  * dort die rechte Maustaste, hier ein Klick. Wer beides in einer Oberflaeche
  * hat, soll nicht zwei Menues sehen.
  */

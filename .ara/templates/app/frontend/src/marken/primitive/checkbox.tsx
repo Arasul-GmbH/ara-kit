@@ -7,12 +7,12 @@ import { cn } from '../cn';
 /**
  * Ein Haekchen.
  *
- * Bis H3 stand hier eine eigene Bauart: ein `appearance-none`-Input mit einem
+ * Frueher stand hier eine eigene Bauart: ein `appearance-none`-Input mit einem
  * gezeichneten Kasten darueber. Der Grund war richtig (ein natives
  * `<input type="checkbox">` malt je nach Browser einen grossen weissen Kasten,
  * der im dunklen Thema fremd wirkt), die Loesung aber eine handgebaute Wette
- * gegen eine gepruefte Bibliothek -- dieselbe Wette, gegen die
- * `scripts/test/bausteine.py` seit Plan 023 beim Dialog antritt. Radix loest
+ * gegen eine gepruefte Bibliothek, dieselbe Wette, gegen die
+ * `scripts/test/bausteine.py` beim Dialog antritt. Radix loest
  * dasselbe Problem und bringt Tastatur, `aria-checked` und den
  * unbestimmten Zustand mit.
  *

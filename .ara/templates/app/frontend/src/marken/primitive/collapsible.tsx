@@ -6,7 +6,7 @@ import { Collapsible as CollapsiblePrimitive } from 'radix-ui';
 import { cn } from '../cn';
 
 /**
- * Ein einzelnes Stueck, das auf- und zugeht -- das Akkordeon ohne die Liste.
+ * Ein einzelnes Stueck, das auf- und zugeht: das Akkordeon ohne die Liste.
  *
  * Es bringt bewusst KEIN Aussehen mit: kein Rahmen, kein Pfeil, kein
  * Abstand. Wer eines braucht, nimmt `Accordion`; dieses hier ist die

@@ -6,15 +6,15 @@ import { cn } from '../cn';
  * Was dasteht, solange die Antwort unterwegs ist.
  *
  * ER IST NICHT DIE EINZIGE ANTWORT AUF „ES LAEDT". Wo die FORM des
- * Ergebnisses schon feststeht -- eine Liste, eine Karte, eine Tabelle --,
+ * Ergebnisses schon feststeht (eine Liste, eine Karte, eine Tabelle),
  * ist ein Platzhalter in dieser Form (`Skeleton`) die bessere: die Seite
  * springt beim Eintreffen nicht. Der Kreisel hier ist fuer den anderen Fall,
  * in dem noch gar nichts ueber das Ergebnis bekannt ist: der erste Aufbau
  * einer Ansicht, ein Vorgang, der laeuft.
  *
- * SEIT H4 IN DER BIBLIOTHEK. Er stand als `components/ui/LoadingSpinner.tsx`
+ * IN DER BIBLIOTHEK. Er stand frueher als `components/ui/LoadingSpinner.tsx`
  * in der Shell. Die zwei Bewegungen dahinter (`spinner-rotate`,
- * `message-pulse`) sind mit ihm nach `theme.css` gezogen -- eine App mit Bau
+ * `message-pulse`) sind mit ihm nach `theme.css` gezogen: eine App mit Bau
  * laedt die Tokens, und ohne die Bilder waere der Kreisel dort ein
  * stillstehender Ring.
  *
@@ -37,7 +37,7 @@ const MASSE = {
 } as const;
 
 /**
- * Vier Ringe, versetzt gestartet. Die Farbe wird nach hinten schwaecher --
+ * Vier Ringe, versetzt gestartet. Die Farbe wird nach hinten schwaecher;
  * das ist derselbe Verlauf wie in `SERIENFARBEN` und aus demselben Grund:
  * eine zweite Farbe wuerde eine zweite Bedeutung behaupten.
  */
@@ -62,7 +62,7 @@ export const Ladezustand = memo(function Ladezustand({
     <div
       // Die `loading-spinner*`-Klassen sind keine Zierde und kein Ueberrest:
       // an ihnen haengt die Regel fuer `prefers-reduced-motion` (der Kreisel
-      // wird langsamer, statt zu verschwinden). Sie steht seit H4 neben den
+      // wird langsamer, statt zu verschwinden). Sie steht neben den
       // Bildern in `theme.css`, damit sie auch in einer App gilt.
       className={cn(
         'loading-spinner flex flex-col items-center justify-center',

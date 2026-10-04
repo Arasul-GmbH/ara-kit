@@ -3,15 +3,15 @@ import type { ReactNode } from 'react';
 import { cn } from '../cn';
 
 /**
- * Eine Zahl mit ihrer Beschriftung -- und `Kennzahlen`, das Raster darum.
+ * Eine Zahl mit ihrer Beschriftung, und `Kennzahlen`, das Raster darum.
  *
- * SEIT H5 IN DER BIBLIOTHEK. Sie standen als `components/ui/StatTile.tsx` in
+ * IN DER BIBLIOTHEK. Sie standen frueher als `components/ui/StatTile.tsx` in
  * der Shell und wussten dort schon nichts von Arasul: eine Beschriftung, ein
  * Wert, eine Einheit, eine Zeile darunter. Jede Fachanwendung, die einen
- * Zustand anzeigt, braucht dieselbe Form -- und haette sich ihre eigene
+ * Zustand anzeigt, braucht dieselbe Form und haette sich ihre eigene
  * gebaut, mit einem anderen Abstand und einer anderen Schriftgroesse.
  *
- * ZWEI ENTSCHEIDUNGEN AUS DEM RUNDGANG VOM 19.08.2026 GELTEN WEITER:
+ * ZWEI ENTSCHEIDUNGEN GELTEN:
  *
  *   KEIN SYMBOL. Ein Herz neben „Arbeitsspeicher" traegt nichts bei, was die
  *   Beschriftung nicht schon sagt, kostet aber ein Drittel der Breite.
@@ -21,9 +21,9 @@ import { cn } from '../cn';
  *   Fensterbreite drei plus eine allein in der zweiten Zeile. `Kennzahlen`
  *   legt die Spaltenzahl fest: eine, zwei, vier. Nie drei.
  *
- * UND EINE KAM IN H5 DAZU: KEINE ZWEITE FLAECHE. Die Kachel stand auf
- * `bg-card`, also auf einem eigenen Weiss ueber dem Grau der Seite. Seit H5
- * gibt es eine Flaeche und Linien darauf -- die Kachel ist ein Kasten mit
+ * UND EINE DRITTE: KEINE ZWEITE FLAECHE. Die Kachel stand auf
+ * `bg-card`, also auf einem eigenen Weiss ueber dem Grau der Seite. Jetzt
+ * gibt es eine Flaeche und Linien darauf: die Kachel ist ein Kasten mit
  * Rand, kein Stueck Papier. Was uebrig bleibt, ist der Unterschied, auf den
  * es ankommt: die Zahl ist gross, ihre Beschriftung klein.
  */

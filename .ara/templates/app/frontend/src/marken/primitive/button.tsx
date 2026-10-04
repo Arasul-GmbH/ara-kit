@@ -13,7 +13,7 @@ const buttonVariants = cva(
         default:
           'bg-secondary text-primary border border-border hover:bg-secondary/80 active:bg-secondary/70',
         solid: 'bg-primary text-primary-foreground hover:bg-primary/85 active:bg-primary/75',
-        // Plan 016: entschärft — statt flächigem Rot (weiß auf Vollrot) ein
+        // Entschärft: statt flächigem Rot (weiß auf Vollrot) ein
         // ruhiger roter Ton mit rotem Text und dezentem Rahmen. Klar destruktiv,
         // aber nicht mehr aggressiv; deckt sich mit dem weichen Löschen-Muster
         // aus dem Flow-Editor und der „eine Flächenfarbe"-Regel.
@@ -24,7 +24,7 @@ const buttonVariants = cva(
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
-        // Erfolg ist Blau, eine Warnung ist Grau (30.08.2026): die Palette
+        // Erfolg ist Blau, eine Warnung ist Grau: die Palette
         // kennt kein Gruen und kein Orange mehr, und ein Knopf, der warnt,
         // sagt das in seiner Beschriftung.
         success:
@@ -74,7 +74,7 @@ function Button({
   }) {
   const Comp = asChild ? Slot.Root : 'button';
   // Slot forwards to a single child element, so we can't prepend a spinner there.
-  // When asChild, `content` MUST stay exactly `children` (one element) — otherwise
+  // When asChild, `content` MUST stay exactly `children` (one element); otherwise
   // Slot receives an array and throws React.Children.only.
   const showSpinner = loading && !asChild;
   const content = showSpinner ? (

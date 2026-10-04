@@ -7,28 +7,28 @@ import { cn } from '../cn';
  * Eine Leiste, die zwischen Ansichten umschaltet.
  *
  * Die Form ist die der Shell: eine Unterstreichung am aktiven Reiter, kein
- * gefuellter Kasten. `border-b-2` steht deshalb HIER und nirgends sonst --
+ * gefuellter Kasten. `border-b-2` steht deshalb HIER und nirgends sonst:
  * `scripts/test/bausteine.py` meldet die Klasse ueberall in `src/` als
  * handgebaute Tab-Leiste.
  *
  * DER AKTIVE REITER HEBT SICH UEBER DIE SCHRIFTSTAERKE AB, nicht ueber die
- * Farbe (H5; die Regel steht seit langem in `docs/development/DESIGN.md`,
- * Punkt 2, und wurde hier nicht eingehalten). Bis dahin trug die
+ * Farbe (die Regel steht in `docs/development/DESIGN.md`, Punkt 2, und
+ * wurde hier frueher nicht eingehalten). Bis dahin trug die
  * Unterstreichung `border-primary`: der Akzent ist die Farbe der
  * PRIMAERAKTION, und wenn er zugleich „hier bist du" bedeutet, bedeutet er
  * beides nicht mehr. Jetzt traegt sie `border-foreground`, und der Wechsel
- * von `font-medium` auf `font-semibold` macht den Unterschied lesbar -- auch
+ * von `font-medium` auf `font-semibold` macht den Unterschied lesbar, auch
  * fuer jemanden, der die zwei Farben nicht unterscheiden kann.
  *
- * SEIT H5 IST SIE DIE EINZIGE TAB-LEISTE DES PRODUKTS. `FilterBar` in der
- * Shell war eine zweite, mit derselben Form und eigener Tastaturmechanik --
+ * SIE IST DIE EINZIGE TAB-LEISTE DES PRODUKTS. `FilterBar` in der
+ * Shell war eine zweite, mit derselben Form und eigener Tastaturmechanik,
  * und dabei tut Radix genau das schon: umlaufende Pfeile, Pos1 und Ende, und
  * nur der aktive Reiter im Tabulator-Lauf.
  *
  * Der Rollkasten traegt `relative`: `overflow` klammert nur ab, was auch IN
  * dem Kasten liegt, und ein absolut gesetztes Kind (ein `.sr-only` in einem
- * Reiter) entkaeme sonst und schoebe die ganze Seite breiter. Das ist der Fund
- * der G1-Abnahme, hier von vornherein eingebaut.
+ * Reiter) entkaeme sonst und schoebe die ganze Seite breiter. Das ist hier
+ * von vornherein eingebaut.
  */
 function Tabs({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Root>) {
   return (
