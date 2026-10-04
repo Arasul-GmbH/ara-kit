@@ -20,7 +20,7 @@ Contract: up to 13
 - **The kit understands contract 13 (M5).** A device with contract 13 no longer stops it. What it adds is read from the device's contract and not from memory: an app reports an event to the device (`POST /api/v1/external/ereignisse/<name>` with the key of the app), and the device starts every flow of that app that listens to the name under `ausloeser`. And a flow can call routes of an app: it names them in its header under `routen` (method, path, optional `app` and `zweck`, at most 20) and calls them with the tool `route_aufrufen`.
 - **`--check` holds `routen` (M5).** It stops `routen` without the tool and the tool without `routen`, a method or a path that is not valid, an entry that stands twice, more than 20 entries, a route of the own app without a `backend`, and both on a device before contract 13, because the device would refuse the flow. Who may be called and what the device checks on the call, its contract says, not the kit.
 - **Explained in the scaffold README (M5).** The way to the event is written into `backend/arasul.json` from the device's contract (`wege.ereignis_melden`). How an app reports an event and how a flow calls a route stands in `.ara/templates/app/README.md`, so that the knowledge file of `/app` stays within its limit.
-- **Measured on the Orin with a throwaway app (M5).** The app reports an event with its key, the event starts a flow without a model, and the runs are cancelled and the app removed afterwards.
+- **Measured on the Orin with a throwaway app (M5).** The app reports an event with its key, the event starts a flow without a model (the run carries the trigger `ereignis` and the name), and removing the app ends the waiting run as cancelled.
 
 ## 0.71.0 (2026-10-04)
 
