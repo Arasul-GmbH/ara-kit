@@ -140,6 +140,7 @@ import {
   applyRecognition,
   contractTenFindings,
   flowFieldFindings,
+  flowNameFindings,
   liefertErgebnis,
   originalProblem,
   ORIGINAL_STANDARD,
@@ -1168,7 +1169,7 @@ async function deliveryFindings(dir, manifest, result) {
     ...checkBuild(dir, manifest),
     ...agentFindings(dir, manifest, result.problems),
     ...connectionFindings(contract, manifest),
-    ...flowFindings(dir, manifest, contract?.kontrakt),
+    ...flowFindings(dir, manifest, contract),
     ...zeigtFreigabenFindings(manifest, contract?.kontrakt),
     ...libraryFindings(contract, manifest, { frontendDir: frontendDirOf(dir, manifest), served }),
   ];
@@ -1490,7 +1491,8 @@ function backendNamesRoute(dir, manifest, route) {
 }
 
 /** Was kein Schema traegt, in den Flow-Dateien der App: `faehigkeiten` am Werkzeug, eine Stufe ohne Kopfeintrag. */
-function flowFindings(dir, manifest, deviceContract) {
+function flowFindings(dir, manifest, contract) {
+  const deviceContract = contract?.kontrakt;
   const path = safeFolder(dir, manifest, "flows.verzeichnis");
   if (!path || !existsSync(path) || !statSync(path).isDirectory()) return [];
   return readdirSync(path)
@@ -1499,6 +1501,7 @@ function flowFindings(dir, manifest, deviceContract) {
       const name = file.replace(/\.md$/, "");
       const text = readFileSync(join(path, file), "utf8");
       return [
+        ...flowNameFindings(name, contract),
         ...flowFieldFindings(name, text),
         ...contractTenFindings(name, text, deviceContract),
         ...contractThirteenFindings(name, text, { backend: Boolean(manifest?.backend), deviceContract }),

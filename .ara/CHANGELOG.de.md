@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.73.1 (2026-10-05)
+
+Contract: up to 13
+
+- **`--check` hält einen Flow-Dateinamen an, den das Gerät abweist.** Das Gerät nimmt den Dateinamen als Namen des Flows und weist einen wie `beleg_pruefen.md` mit 400 ab, was `--check` vorher nicht sagte. Jetzt nennt es die Datei, sagt, wie sie richtig heißt (`beleg-pruefen.md`, auch Umlaute und Leerzeichen sind umgesetzt) und dass ein `name:` im Kopf mitgeht. Die Form kommt aus dem Kontrakt des Geräts, `flow_frontmatter.schema.properties.name.pattern`, nicht aus dem Kit. Ein Gerät, das keine nennt, bekommt keinen Befund. `--new` schreibt nur `freigabe.md`, der Selbsttest hält dessen Namen gegen dieselbe Form. An einem echten Gerät mit einer Wegwerf-App erprobt: `--check` hielt `beleg_pruefen.md` an, und ohne die Prüfung wies das Gerät das Paket mit 400 ab.
+
 ## 0.73.0 (2026-10-05)
 
 Contract: up to 13
