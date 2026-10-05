@@ -30,6 +30,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, posix, relative, sep } from "node:path";
 import { t } from "./i18n.mjs";
+import { walkFiles } from "./files.mjs";
+import { runtimeMajor } from "./laufzeit.mjs";
 import { readLibrary } from "./marken.mjs";
 
 /** Woran gemessen wird: die Quelldateien der Oberfläche. */
@@ -90,22 +92,11 @@ function stripComments(text) {
 
 /** Jede eigene Quelldatei der Oberfläche, als Pfad relativ zum App-Ordner. */
 function sourceFiles(front) {
-  const out = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (entry.name.startsWith(".")) continue;
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (SKIP_DIRS.has(entry.name)) continue;
-        if (relative(front, path).split(sep).join(posix.sep) === LIBRARY_MIRROR) continue;
-        walk(path);
-        continue;
-      }
-      if (entry.isFile() && SOURCE.test(entry.name)) out.push(path);
-    }
-  };
-  if (existsSync(front) && statSync(front).isDirectory()) walk(front);
-  return out;
+  return walkFiles(front, {
+    match: SOURCE,
+    skip: [...SKIP_DIRS],
+    skipDir: (path) => relative(front, path).split(sep).join(posix.sep) === LIBRARY_MIRROR,
+  });
 }
 
 /**
@@ -196,7 +187,7 @@ export function standardFindings(dir, { manifest = undefined, scaffold = false }
     // Nur die Hauptzahl (`"5"`) heißt: die App lädt die Bibliothek zur Laufzeit
     // vom Gerät (Kontrakt 9). Dann gibt es keine Fassung, die eine Kopie
     // tragen müsste, und die Kopie darf fehlen.
-    const zurLaufzeit = feld !== null && /^\d+$/.test(feld);
+    const zurLaufzeit = runtimeMajor(found) !== null;
     if (zurLaufzeit) {
       // nichts zu halten: das Gerät liefert die Fassung, die es führt
     } else if (hasMirror && !feld) {

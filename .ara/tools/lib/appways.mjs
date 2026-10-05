@@ -246,6 +246,20 @@ function relativeWay(contract, entry, pfad) {
 }
 
 /**
+ * Die Kennung, die das Gerät beim Aufruf einer Abschluss-Route in `Idempotency-Key` schickt, mit dem
+ * Platzhalter `<nummer>` für den Lauf, so wie die Regel zu `abschluss` sie schreibt. `null`, wenn keine
+ * Regel des Flow-Kopfes sie nennt: dann nimmt die Route der Vorlage nichts an, statt eine Form zu raten.
+ */
+export function closingKey(contract) {
+  const regeln = Array.isArray(contract?.flow_frontmatter?.regeln) ? contract.flow_frontmatter.regeln : [];
+  for (const regel of regeln) {
+    const m = /Idempotency-Key:\s*([A-Za-z0-9._~-]*<nummer>)/.exec(String(regel));
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/**
  * Die Vereinbarung zwischen diesem Gerät und einer App darauf.
  *
  * Zurück kommt beides: was gilt, und was das Gerät nicht verspricht. Der zweite
@@ -265,6 +279,9 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
   // überlebt. Das ist kein Widerspruch zum Wissen, es sind zwei Orte: was
   // dauerhaft ist, sagt der Kontrakt unter `daten`.
   const datenbank = envName(umgebung?.datenbank);
+  // Woran die App den Aufruf ihrer Abschluss-Route erkennt (Kontrakt 11): der Name des Geheimnisses
+  // steht unter `umgebung.abschluss_token`, das Format der Kennung nur im Satz der Regel zu `abschluss`.
+  const abschlussToken = envName(umgebung?.abschluss_token);
 
   if (!umgebung || typeof umgebung !== "object") {
     missing.push(
@@ -382,6 +399,7 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
       datenbank,
       praefix: typeof umgebung?.praefix === "string" ? umgebung.praefix : null,
       basis_enthaelt_praefix: umgebung?.basis_enthaelt_praefix === true,
+      abschluss_token: abschlussToken,
       laut_kontrakt: umgebung ?? null,
     },
     kopf,
@@ -389,6 +407,7 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
     wege,
     freigaben,
     daten,
+    abschluss: { kennung: closingKey(contract) },
     warten,
     protokoll: logArrangement(contract),
     missing,

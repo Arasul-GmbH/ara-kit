@@ -17,8 +17,8 @@ Plan erledigt ist:
 - Jeder Vorgang startet den Flow `freigabe`. Dessen erster Schritt fordert eine Freigabe
   an, und damit hält der Lauf an.
 - Die Liste zeigt, woran ein Vorgang hängt, und zieht den Stand alle paar Sekunden nach,
-  solange etwas offen ist. Ein Klick auf eine Zeile klappt den Vorgang darunter auf, mit
-  allem, was an ihm hängt.
+  solange etwas offen ist. Ein Klick auf eine Zeile zeigt den Vorgang mit allem, was an ihm
+  hängt: ab 900 Pixeln neben der Liste, darunter als Blatt von unten.
 - Links zeichnet die App ihre eigene Seitenleiste: die Ansichten der Liste (alle, offene,
   entschiedene) und der Weg zum Formular. Ein Knopf oben klappt sie auf Symbolbreite zu und
   wieder auf. Unter 900 Pixeln steht sie als Blatt über der Seite. Sie folgt dem hellen
@@ -56,7 +56,7 @@ Der erste Plan steht unter `plans/offen/`. Was die App danach kann, gehört hier
 **Vom Gerät, zur Laufzeit.** Seitenleiste, Liste, Formular und der Rest kommen aus der
 Bibliothek des Designsystems, und die liefert das Gerät selbst aus, unter einer festen
 Adresse (`/marken/<Hauptzahl>/`). Die App trägt davon nichts in ihrem Paket. In der
-`app.json` steht dafür nur die Hauptzahl (`"marken": "5"`), und wenn das Gerät sich
+`app.json` steht dafür nur die Hauptzahl (`"marken": "<Hauptzahl>"`), und wenn das Gerät sich
 aktualisiert, steht in der App die neue Fassung, ohne dass jemand neu baut.
 
 Unter `frontend/src/marken/` liegt trotzdem eine **Kopie**. Sie ist nur Quelltext: die
@@ -102,9 +102,12 @@ entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert.
 
 ## Wo entschieden wird
 
-**Nicht in dieser App.** Sie liest ihre Freigaben und erteilt keine. Entschieden wird in
-der Oberfläche von Arasul, unter den offenen Freigaben, und zwar von jedem, dem diese App
-freigegeben ist. Der Flow nennt dafür keine Person und keine Rolle. Den Kreis enger ziehen
+**Auf der Seite „Freigaben" dieser App oder in der Oberfläche von Arasul**, unter den offenen
+Freigaben: beide zeigen dieselbe Anfrage mit demselben Baustein. Bestätigt und abgelehnt wird
+mit der Sitzung des Menschen über die Wege, die auch die Verwaltung des Geräts benutzt; die App
+erteilt keine Freigabe aus eigenem Recht und kann niemandem eine geben, der sie nicht bekommen
+hat. Entscheiden darf jeder, dem diese App freigegeben ist. Der Flow nennt dafür keine Person
+und keine Rolle. Den Kreis enger ziehen
 kann die App beim Start des Laufs: `VIER_AUGEN` in `backend/server.mjs` schließt den
 Einreicher aus, und eine Regel im Kern kann die Konten nennen, die für einen Vorgang
 zuständig sind. Das Gerät setzt beides durch, sobald sein Kontrakt `freigaben` führt.
@@ -124,7 +127,7 @@ Lauf ohne Entscheidung, und der Vorgang steht auf abgelaufen. Das ist kein Fehle
   seinen eigenen, beim ersten Mal also leer.
 - **Ohne Gerät bleibt nichts.** Über `--compose` oder auf dem eigenen Rechner liegen die
   Vorgänge in einer SQLite-Datei unter `daten/` im Container, und die überlebt das nächste
-  Einspielen nicht. `GET /lage` sagt, welcher der beiden Fälle gilt.
+  Einspielen nicht. `GET /lage` sagt, welcher der beiden Fälle gilt (ohne Gerät `dauerhaft: false`).
 - Ohne Arasul entscheidet niemand: der Vorgang wird angenommen und bleibt liegen. Die Seite
   sagt das dann selbst.
 - Ein Satz an dieser Stelle erspart später eine Enttäuschung. Trag hier ein, was
@@ -152,18 +155,21 @@ Die Oberfläche, von außen nach innen:
 | `src/rahmen/schnittstelle.ts` | Die eine Stelle, an der etwas geholt wird |
 | `src/rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage, an einer Stelle |
 | `src/rahmen/seitenleiste.tsx` | Die Bereiche, im Muster `Seitenleiste`: als Spalte, unter 900 px als Blatt über der Seite |
-| `src/marken/` | Die Bibliothek des Geräts, gespiegelt: 46 Primitive, 10 Muster, 6 Bausteine, beide Stylesheets. Import über `@marken`. Wird ersetzt, nicht bearbeitet |
+| `src/marken/` | Die Bibliothek des Geräts, gespiegelt: Primitive, Muster, Bausteine, beide Stylesheets. Import über `@marken`. Wird ersetzt, nicht bearbeitet |
 | `src/vorgaenge.ts` | Typen und Abfragen der einen Entität dieser App |
-| `src/seiten/liste.tsx` | Die Datenliste, mit dem einen ausgewählten Vorgang darunter |
+| `src/seiten/liste.tsx` | Die Datenliste, mit dem einen ausgewählten Vorgang daneben, schmal als Blatt |
 | `src/seiten/neu.tsx` | Die Formularseite: einen Vorgang einreichen |
+| `src/seiten/freigaben.tsx`, `src/freigaben.ts` | Was auf die angemeldete Person wartet, im Muster `Freigabe`, und die Wege dazu |
 
 Das Backend, von außen nach innen:
 
 | Datei | Was sie tut |
 | --- | --- |
 | `server.mjs` | Wege, Kopfzeilen, Statuscodes. Sonst nichts |
-| `kern/vorgaenge.mjs` | Was mit einem Vorgang passiert. Kennt zwei Anschlüsse und die Welt sonst nicht |
-| `ablage/vorgaenge.mjs` | Die eine Naht zur Datenbank. Hier steht das SQL der Vorgänge |
+| `kern/vorgaenge.mjs` | Was mit einem Vorgang passiert. Kennt zwei Anschlüsse, die hereingereicht werden, eine Ablage und ein Gerät, und die Welt sonst nicht: so lässt sich jeder Fall ohne beide prüfen |
+| `kern/abschluss.mjs` | Was die Abschluss-Route prüft, bevor sie ein Ergebnis annimmt |
+| `kern/csv.mjs` | Ein Export als CSV |
+| `ablage/vorgaenge.mjs` | Die eine Naht zur Datenbank. Hier steht das SQL der Vorgänge, im Dialekt von PostgreSQL. Eine Ablage je Entität, keine zweite |
 | `ablage/db.mjs` | Die Datenbank und ihre Migrationen: am Gerät PostgreSQL, ohne Gerät SQLite, dasselbe SQL. Der Stand steht in der Datenbank selbst |
 | `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst |
 | `package.json` | Die eine Abhängigkeit, `pg`. Das Gerät holt sie beim Bau |
@@ -178,8 +184,23 @@ Die Schnittstelle des Backends, hinter `/apps/{{id}}/api/`:
 | `GET /vorgaenge` | Alle Vorgänge, vorher am Gerät nachgezogen |
 | `POST /vorgaenge` | Vorgang einreichen und den Flow starten |
 | `GET /gesund` | Für den Gesundheitscheck des Containers |
+| `GET /agent` | Das Feld `agent` der `app.json`, mit Kennung, Name und Version |
+| `POST /abschluss/freigabe` | Das Ergebnis des Flows annehmen, nur vom Gerät |
+| `GET /vorgaenge/<nummer>/original.svg` | Das Blatt, das die Freigabe links zeigt |
 
 `GET /api/me` steht nicht in dieser Liste: den beantwortet die Plattform.
+
+**Jedes Ding hat genau eine Stelle.** Die Oberfläche ist gebaut wie die des Geräts: Vite, React,
+TypeScript, Tailwind, `react-router`, TanStack Query. Fünf Stellen im Rahmen gibt es je einmal:
+`rahmen/basis.ts` liest den Pfad, unter dem die App hängt (`/apps/<id>/`, im Teststand
+`/apps/<id>/test/`), `rahmen/thema.ts` das Thema, `rahmen/schnittstelle.ts` ist der einzige
+`fetch` (Pfad, Anmeldung, Umschlag der Antwort), `rahmen/anmeldung.tsx` sagt, wer da ist und mit
+welcher Rolle, und durch `rahmen/async-boundary.tsx` geht jede Abfrage: lädt, ging schief, ist da.
+
+**Sie beschreibt sich selbst für Agenten.** Das Feld `agent` in `app.json` nennt die Routen, die
+ein Agent rufen darf, und das Backend beantwortet `GET agent` aus einer Kopie der `app.json`, die
+der Bau daneben legt. `--check` und `--deploy` halten das Feld gegen die App. Seine Form und was
+das CLI einer Wurzel damit tut: `.ara/knowledge/root.de.md`, „Die Brücke zum Gerät“.
 
 ## Womit man arbeitet
 
@@ -203,22 +224,22 @@ Gerät als leere Seite anzukommen.
 Ein Stück, und es gehört dem Gerät: die Bibliothek unter `frontend/src/marken/`. Sie ist
 ein **Spiegel** des Pakets `packages/marken` aus dem Produkt, Datei für Datei, und
 `frontend/src/marken/mirror.json` sagt, aus welcher Fassung sie kommt, welche
-Abhängigkeiten sie braucht und mit welchen Hashes. Drei Sätze liegen darin:
+Dateien und Abhängigkeiten sie hat und mit welchen Hashes. Drei Sätze liegen darin:
 
-| Satz | Wo | Wie viele |
-| --- | --- | --- |
-| Primitive | `marken/primitive/` | 46 |
-| Muster | `marken/muster/` | 10 |
-| Bausteine (laufen auch ohne Bau) | `marken/*.tsx` | 6 |
+| Satz | Wo |
+| --- | --- |
+| Primitive | `marken/primitive/` |
+| Muster | `marken/muster/` |
+| Bausteine (laufen auch ohne Bau) | `marken/*.tsx` |
 
 Dazu die beiden Stylesheets: `marken/theme.css` trägt die Werte beider Themen,
-`marken/marken.css` die Regeln der sechs Bausteine. Die `stil.css` dieser App lädt sie in
+`marken/marken.css` die Regeln der Bausteine. Die `stil.css` dieser App lädt sie in
 der Reihenfolge, die das Paket nennt, und mit den zwei Schichtangaben, die dort stehen.
 
 **Das Thema kommt vom Gerät und nicht aus dieser App.** Es gibt zwei, Hell und Dunkel, und
 Hell setzt gar nichts: `:root` ist hell. Die Shell schreibt Klasse und `data-theme` in das
 Dokument dieser App, bei jedem Wechsel und bei jedem Laden, und schickt denselben Wert als
-Nachricht. `rahmen/thema.ts` liest das und rät nicht. Ohne Rahmen gilt die Einstellung des
+Nachricht (`{typ: "arasul:theme", theme}`). `rahmen/thema.ts` liest das und rät nicht. Ohne Rahmen gilt die Einstellung des
 Betriebssystems, und erst dann schreibt die App selbst.
 
 **Der ganze Ordner wird ersetzt, nicht fortgeschrieben.** Wer darin eine Zeile ändert,
@@ -255,17 +276,27 @@ des Laufs. **Erst wenn die App mit 2xx antwortet, ist der Lauf fertig**; sonst s
 
 Die Route steht in `backend/server.mjs`, was sie prüft in `backend/kern/abschluss.mjs`:
 
-- **Das Geheimnis.** Der Aufruf trägt `Authorization: Bearer <ARASUL_ABSCHLUSS_TOKEN>`. Ohne oder mit einem
-  falschen antwortet die App 401 und legt nichts an. Kennt sie selbst keines (eine laufende App bekommt es
-  erst mit dem nächsten Einspielen), antwortet sie 503.
-- **Die Kennung.** `Idempotency-Key: arasul-lauf-<nummer>`. Zu einer Nummer liegt ein Ergebnis genau einmal
-  in `abschluesse`; derselbe Aufruf bei „erneut" bekommt wieder 2xx und legt nichts doppelt an.
+- **Das Geheimnis.** Der Aufruf trägt `Authorization: Bearer <Geheimnis>`. Unter welchem Namen das Gerät es
+  in den Container legt, schreibt das Kit beim Einspielen aus dem Kontrakt nach `backend/arasul.json`
+  (`umgebung.abschluss_token`). Ohne oder mit einem falschen antwortet die App 401 und legt nichts an. Kennt
+  sie selbst keines (eine laufende App bekommt es erst mit dem nächsten Einspielen), antwortet sie 503.
+- **Die Kennung.** `Idempotency-Key` trägt die Nummer des Laufs in der Form, die der Kontrakt nennt; das Kit
+  schreibt sie nach `backend/arasul.json` (`abschluss.kennung`), fehlt sie dort, antwortet die App 503. Zu
+  einer Nummer liegt ein Ergebnis genau einmal in `abschluesse`; derselbe Aufruf bei „erneut" bekommt wieder
+  2xx und legt nichts doppelt an.
 - **Erst speichern, dann 2xx.** Scheitert die Ablage, antwortet die App 500, und der Lauf bleibt „nicht
   übergeben".
 
 Die Tabelle `abschluesse` hält das Ergebnis, die Felder und die Korrekturen als Text; was die App damit
 tut, steht dort noch nicht: das Gerüst legt es nur sicher ab. Eine Fach-App liest von hier und führt ihre
 Vorgänge nach.
+
+Ein Flow ohne Ergebnis, der nur eine Entscheidung festhält, bekommt keine Route und wird fertig wie bisher.
+`/app` fragt nach alldem nicht. Erst wenn jemand wissen will, wo das Ergebnis landet, oder ein Lauf auf
+„nicht übergeben" steht, sagt es in einem Satz: der Lauf ist erst fertig, wenn die App das Ergebnis
+angenommen hat, und ein Administrator löst in der Läufe-Ansicht „erneut" aus. `--check` hält eine
+Abschluss-Route ohne `backend` an, eine Route, die keine Datei des Backends nennt, eine, die der Kontrakt
+nicht erlaubt, und ein Gerät vor Kontrakt 11.
 
 ## Die App zeigt ihre Freigaben selbst
 
@@ -277,14 +308,15 @@ kurzen Hinweis. Wer die Seite entfernt, nimmt das Feld mit heraus.
 
 ## Ein Ereignis melden, eine Route rufen (Kontrakt 13)
 
-Eine App kann dem Gerät sagen, dass etwas geschehen ist: `POST /api/v1/external/ereignisse/<name>` mit dem
-Schlüssel der App, Körper `{"daten": {…}, "einreicher": "<Konto>"}`, beides freiwillig. Das Gerät startet jeden
+Eine App kann dem Gerät sagen, dass etwas geschehen ist: über den Weg `wege.ereignis_melden` aus
+`backend/arasul.json`, mit dem Schlüssel der App, Körper `{"daten": {…}, "einreicher": "<Konto>"}`, beides freiwillig. Das Gerät startet jeden
 Flow dieser App, der im Kopf unter `ausloeser` `{typ: ereignis, ereignis: <name>}` nennt, und antwortet sofort
 mit `laeufe` und `nicht_gestartet`, ohne auf die Läufe zu warten. `daten` werden die Argumente des Flows mit
-demselben Namen. Den Weg schreibt das Kit beim Einspielen aus dem Kontrakt in `backend/arasul.json` unter
-`wege.ereignis_melden`, steht dort `null`, kennt das Gerät ihn nicht. Den Auslöser schreibt `--ausloeser "ereignis:<name>"` bei `--new`.
+demselben Namen. Den Weg schreibt das Kit beim Einspielen aus dem Kontrakt dorthin; steht dort `null`, kennt
+das Gerät ihn nicht. Den Auslöser schreibt `--ausloeser "ereignis:<name>"` bei `--new`.
 
 Ein Flow kann umgekehrt Routen einer App rufen: im Kopf `routen` (je Eintrag `methode`, `pfad`, freiwillig `app`
-und `zweck`, höchstens 20), im Ablauf das Werkzeug `route_aufrufen`. Das eine gilt nur mit dem anderen.
+und `zweck`, höchstens 20), im Ablauf das Werkzeug `route_aufrufen`. Das eine gilt nur mit dem anderen. Beide Schreibweisen gehen,
+als Zeilen und in Klammern (`routen: [{ methode: GET, pfad: /vorgaenge }]`, `werkzeuge: [route_aufrufen]`).
 `--check` hält beides zusammen. Wer das Ereignis melden darf, wen das Gerät als Rufenden einsetzt und was es
 vor dem Aufruf prüft, sagt `app.mjs --device <gerät> --contract`, nicht diese Seite.

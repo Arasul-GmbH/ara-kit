@@ -20,7 +20,7 @@ function alsAbschluss(zeile) {
 export function abschlussAblage(db) {
   return {
     /** Das Ergebnis eines Laufs ablegen. `neu` ist `false`, wenn zu dieser Nummer schon eines lag. */
-    async speichern({ lauf, flow, vorgang, ergebnis, felder, korrekturen, angenommen }) {
+    async speichern({ lauf, flow, vorgang, ergebnis, felder, korrekturen }) {
       const angelegt = await db.ausfuehren(
         `INSERT INTO abschluesse (lauf, flow, vorgang, ergebnis, felder, korrekturen, angenommen)
          VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (lauf) DO NOTHING`,
@@ -37,11 +37,15 @@ export function abschlussAblage(db) {
       return { neu: angelegt > 0 };
     },
 
+    // Die beiden Lesewege ruft das Gerüst selbst nicht, nur sein Selbsttest. Sie stehen für die Fach-App
+    // bereit, die ihre Vorgänge aus den Abschlüssen nachführt, damit ihr SQL hier bleibt und nicht im Kern.
+
     /** Das Ergebnis zu einer Nummer, oder `null`. */
     async eines(lauf) {
       return alsAbschluss(await db.eine("SELECT lauf, flow, vorgang, ergebnis, felder, korrekturen, angenommen FROM abschluesse WHERE lauf = $1", [String(lauf)]));
     },
 
+    /** Wie viele Ergebnisse vorliegen. */
     async anzahl() {
       return Number((await db.eine("SELECT COUNT(*) AS n FROM abschluesse"))?.n ?? 0);
     },

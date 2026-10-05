@@ -19,6 +19,8 @@ wenn ihr Moment kommt.
   Freigabe, Flow, Auslesen eines Dokuments.
 - `.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst.
 - `.ara/knowledge/deploy.de.md`, sobald ein Paket an ein Gerät geht.
+- `.ara/templates/app/README.md`, wenn du die Vorlage einer App änderst: ihre Stellen, wo eine
+  Freigabe entschieden wird, wie sie das Ergebnis eines Flows annimmt.
 
 Sicherheitsstufen und Produktwerte: `.claude/CLAUDE.md`. Vorher liest du `business/profile.md`:
 Sprache, Zweig, Detailtiefe, Sicherheitsstufe, womit das Haus arbeitet.

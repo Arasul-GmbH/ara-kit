@@ -36,20 +36,15 @@ asks to full depth"; the four levels below are what it means for an app.
 | **Where a flow is needed** | Where a language model really does the work. Shifting data is a program, not a flow |
 | **Where a human decides** | Every approval, when an item is complete enough for it, who decides and who explicitly not |
 | **Who may see what** | Everything for everybody inside, or only their clients, departments, files. The app decides that |
-| **Roles and assignment** | **Always asked.** Default: an administrator and employees. The administrator hands files (clients, projects, cases) to employees; an employee sees only the files handed to them, with the approvals that concern them. Another role only with a reason. See "Three questions every app gets" |
-| **What leaves the device** | **Always asked.** Mail, a register, a payment service, a search on the internet. Default: nothing leaves. Every outside connection is agreed one by one |
-| **Which model per flow** | **Always asked.** Each place where a language model works gets a suggestion the administrator may switch on the device |
-| **Picture, approval stages, what is read** | The sidebar symbol, one or several people in a row per approval, and for an app that reads documents which fields a person may change. See "More questions" |
+| **Roles, what leaves the device, which model per flow** | **Always asked**, because nobody without programming experience raises them. Defaults: an administrator and employees who see only their files, nothing leaves, a model suggestion per flow. See "Three questions every app gets" |
+| **Picture, approval stages, what is read** | See "More questions" |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention: `.ara/knowledge/app-professional.md` |
 | **Which shape it takes** | The nine patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | Something that gets checked is an afternoon. Something that may never be wrong is a project |
-| **Screens and layout** | Which pages, what stands on each, list and single item, what you see first. Without it the builder invents the interface |
-| **Fields per form** | Per field: label, type, required or not, example value, check rule. A field nobody named is a field the builder guesses |
-| **Buttons per role** | Which action stands where for whom, and what happens after it. Roles see different buttons |
-| **Automation and context** | Per automation: trigger, what goes to the model, what comes out, who checks, what happens on failure, who is told |
+| **Screens and layout, fields per form, buttons per role, automation and context** | Without them the builder invents the interface, guesses fields and buttons, and nobody knows what goes to the model. See "The four levels, point by point" |
 
 ### The four levels, point by point
 
@@ -119,7 +114,7 @@ Speak plainly (`AGENTS.md`, "Plain language"): a technical word gets one sentenc
    comes from `--contract`, the catalogue from the mirror. The suggestion stands in the header of
    the flow file; the plan lists flow, task, suggestion and reason under `Models per flow`.
 
-**"Enough" does not drop these three.** What stays open becomes the safe default and is said aloud:
+**"Enough" does not drop the three questions above.** What stays open becomes the safe default and is said aloud:
 administrator and employees, nothing goes out, the suggestion of the flow's header.
 
 ### More questions
@@ -148,33 +143,28 @@ not promise that the device acts on them yet**: `--contract` says what each does
    image from PDF by the end of the path). With several stages the first belongs to the reading: the
    device puts its request there when unsure; a sure reading asks nobody. Say that aloud.
 
-"Enough" drops these. `faehigkeiten` belong to model steps only, `--check` stops a tool step with them.
-`--check` holds the declaration against the reading (a changeable field the role does not read,
-an original at a step that reads nothing, a forbidden path, a device before contract 10).
+"Enough" drops these four questions: what stays open the kit does not write. `--check` stops
+`faehigkeiten` at a tool step (they belong to model steps only) and holds the declaration against the
+reading: a changeable field the role does not read, an original at a step that reads nothing, a
+forbidden path, a device before contract 10.
 
-**The result goes back to the app (contract 11).** For a flow that delivers a result (reads a
-document, or a person confirms its result) `--new` writes `abschluss: { route: "/abschluss/freigabe" }`
-and the scaffold's backend brings the route: it checks the device's secret, keeps each run number once
-and answers 2xx only after saving. **Ask nothing about it.** Only if asked where the result lands, or
-a run stands on "not handed over", say: the run is finished only once the app has taken the result; an
-administrator presses "again" in the run view. `--check`
-stops a closing without a `backend`, a route no backend file names and a device before contract 11.
+**Ask nothing about where the result goes.** A flow that delivers a result hands it to a route of the
+app, which `--new` writes and the scaffold's backend brings; what to say when asked, and what `--check`
+holds, stands in `.ara/templates/app/README.md`, "Das Ergebnis eines Flows geht an die App zurück".
 
 ### How to ask, and when to stop
 
-- **Probe a vague answer.** "With approvals" is not an answer. The follow-up question offers
-  **finished drafts**, derived from the pattern and from what the house works with: "Request with
-  four fields: from, to, kind of leave, substitute", "Two steps: team lead, then personnel".
-  Never a blank "which fields?".
-- **Layout questions carry a sketch per option** under Claude Code, a short line in the
-  description under Codex.
+How deep to ask, drafts instead of a blank "which fields?", a sketch per layout option, "enough" and
+never questioning Arasul stand in `AGENTS.md`, "Every command asks to full depth". For `/app` in
+addition:
+
+- **Probe from the pattern.** "With approvals" is not an answer; the drafts come from the pattern
+  and from what the house works with: "Two steps: team lead, then personnel".
 - **Look first.** What the profile, the house's own documents or the scaffold already say is
   proposed, not asked.
-- **Stop** when every line of the four levels is answered or the human writes "enough" in free
-  text. What is still open goes into the plan under `Assumptions`, one line each. Nothing is
-  guessed to close a gap, and no later step builds on an unmarked guess.
-- **Do not question the choice.** Whether the house uses Arasul is not asked. The aim is the app
-  that brings the house most, with digital sovereignty first: data and models stay on the device.
+- **Stop** when every line of the four levels is answered or the human writes "enough". What is
+  still open goes into the plan under `Assumptions`, one line each, and no later step builds on an
+  unmarked guess. The aim is the app that brings the house most: data and models stay on the device.
 
 ```
 node .ara/tools/app.mjs --app <name> --new --titel "<display name>"
@@ -187,38 +177,14 @@ Plans lie under `apps/<name>/plans/`, and the folder is the state. **At most one
 tool allows no second. A plan is done when its version stands **live**, not when the code is
 finished.
 
-## Building
+## Building and onto a device
 
-```
-node .ara/tools/app.mjs --app <name> --build
-```
-
-The package comes under `build/`, without plans, README and build; a folder with a build of its own
-gets built, the rest moves as it is.
-
-- **Locally the build runs, not the app.** What it does you see on the device, with a real login and
-  a real model.
-- **A build older than the source does not get deployed**, the tool stops.
-- **The type checker runs before the bundler**, `tsc --noEmit && vite build`: a type error stops the
-  build instead of arriving as an empty page.
-- **Into the package goes the build, not the source.** `--check` stops at `package.json`, `src/` or
-  `tsconfig.json` in the frontend folder: the browser would get an empty page.
-
-## Onto a device
-
-```
-node .ara/tools/app.mjs --device <device> --app <name> --check
-node .ara/tools/app.mjs --device <device> --app <name> --deploy
-node .ara/tools/app.mjs --device <device> --app <name> --live
-```
-
-**A deploy needs a few sentences on what is new** when the device's contract names the field `aenderungstext`:
-`--deploy --aenderungstext "<text>"`, 1 to 1000 characters. Ask in the human's words ("What is new for the people who use
-it?"); the kit stops without it, and it goes next to the package, not into `app.json`.
-
-Without a file under `devices/` no contract and no `--check`: `/device` comes first. The way of a
-package stands in `.ara/knowledge/deploy.md`, what the device brings in
-`.ara/knowledge/platform-services.md`, the look in `.ara/knowledge/design-system.md`.
+`--build`, then `--check`, `--deploy` and `--live` against the device. **Locally the build runs, not the app**: what it does you see on the device, with a real login and a
+real model. **A deploy needs a few sentences on what is new**: ask in the human's words ("What is new
+for the people who use it?"). Without a file under `devices/` no contract and no `--check`: `/device`
+comes first. What the build does and the way of a package stand in `.ara/knowledge/deploy.md`, what
+the device brings in `.ara/knowledge/platform-services.md`, the look in
+`.ara/knowledge/design-system.md`.
 
 ## Data that stays
 
@@ -226,39 +192,18 @@ package stands in `.ara/knowledge/deploy.md`, what the device brings in
 says under `daten`; its address arrives as `umgebung.datenbank` in `arasul.json`. It survives every
 deploy and is backed up every night, restored as `daten.wiederherstellen` says. **Nothing else
 stays**: every deploy replaces the container, its file system, a `VOLUME`, a SQLite file. An upload
-belongs in a column (`BYTEA`). The scaffold's `backend/ablage/db.mjs` does this already; without a
-device it takes SQLite, and `lage` says `dauerhaft: false`.
-
-**The database starts empty**, the app's migrations create the schema, one file per step under
-`backend/ablage/migrationen/`. **What has run once never gets touched again.**
+belongs in a column (`BYTEA`). **The database starts empty**, the app's migrations create the
+schema. How the scaffold does both, and what it keeps without a device: its README.
 
 ## What the scaffold already is
 
 The scaffold lies under `.ara/templates/app/`, and what `--new` makes of it runs from the first
 minute: an item in the device's database, the flow `freigabe` with number and submitter, a human
-decides in Arasul, the item stands approved or rejected. Asked what an app looks like, create one
-and show it.
-
-The stack is the device interface's: **Vite, React, TypeScript, Tailwind, `react-router`, TanStack
-Query.** Five places, each exists once:
-
-| Place | What stands there |
-| --- | --- |
-| `rahmen/basis.ts` | The path the app hangs under, read from the address: `/apps/<id>/`, staging `/apps/<id>/test/`. So **routes stay one level deep**, the rest goes into the query |
-| `rahmen/thema.ts` | The theme, read at the app's own document |
-| `rahmen/schnittstelle.ts` | The only `fetch`: path, login, envelope of the answer |
-| `rahmen/anmeldung.tsx` | Who is there, out of `api/me`, with role |
-| `rahmen/async-boundary.tsx` | Loading, went wrong, is there. Every query goes through it |
-
-The backend: `server.mjs` does HTTP, `kern/vorgaenge.mjs` the cases with **two connections** handed
-in, a store and a device, so every case is checked without either. One store per entity with the
-only SQL for it, in PostgreSQL's dialect; `ablage/db.mjs` translates it for SQLite. `kern/csv.mjs`
-writes an export.
-
-**It describes itself for agents**: the field `agent` in `app.json` lists the routes an agent may
-call, and the backend answers the route `agent` out of a copy of `app.json` the build lays beside
-it. `--check` and `--deploy` hold the field against the app. Its form, and what the CLI of a root
-does with it: `.ara/knowledge/root.md`, "The bridge to the device".
+decides on the app's own page `Freigaben` (or in Arasul, which shows the same request), the item
+stands approved or rejected. Asked what an app looks like, create one and show it. Its stack, the
+five places that each exist once, the backend's two connections, how it describes itself for agents
+and how it takes a flow's result: `.ara/templates/app/README.md`. **Routes stay one level deep**, the
+rest goes into the query.
 
 ## What you do not do while doing this
 

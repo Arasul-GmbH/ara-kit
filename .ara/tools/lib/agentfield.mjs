@@ -25,8 +25,9 @@
  * Reine Funktionen bis auf das Lesen des Backend-Ordners.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { safeFolder, walkFiles } from "./files.mjs";
 import { language, t } from "./i18n.mjs";
 import { readAgent, relativePath, speak } from "../../templates/root/arasul.mjs";
 
@@ -35,17 +36,10 @@ const MAX_FILES = 400;
 
 /** Der Quelltext des Backends: Dateien mit Endung, ohne Abhaengigkeiten, mit einer Grenze. */
 function backendSources(folder) {
-  const found = [];
-  const walk = (dir) => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (found.length >= MAX_FILES || entry.name === "node_modules" || entry.name.startsWith(".")) continue;
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) walk(path);
-      else if (SOURCE.test(entry.name) && statSync(path).size < 1_000_000) found.push({ path, text: readFileSync(path, "utf8") });
-    }
-  };
-  walk(folder);
-  return found;
+  return walkFiles(folder, { match: SOURCE, skip: ["node_modules"], maxBytes: 1_000_000, limit: MAX_FILES }).map((path) => ({
+    path,
+    text: readFileSync(path, "utf8"),
+  }));
 }
 
 const escaped = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -113,14 +107,15 @@ export function agentFindings(dir, manifest, refused = []) {
     .map((problem) => `agent: ${problem}`);
 
   const folder = manifest.backend?.bauen?.verzeichnis;
-  if (!folder || folder.startsWith("/") || folder.split("/").includes("..") || !existsSync(join(dir, folder))) {
+  const path = safeFolder(dir, manifest, "backend.bauen.verzeichnis");
+  if (!path || !existsSync(path)) {
     findings.push(t(
       "agent names routes, but the manifest has no backend folder to build (backend.bauen.verzeichnis) that could answer them.",
       "agent nennt Routen, aber das Manifest hat keinen Backend-Ordner zum Bauen (backend.bauen.verzeichnis), der sie beantworten könnte."
     ));
     return findings;
   }
-  const sources = backendSources(join(dir, folder));
+  const sources = backendSources(path);
   if (!hasPath(sources, "agent", "GET")) {
     findings.push(t(
       "The backend has no route agent. The app answers GET agent with this field, id, name and version, so that agents find out what it can do.",
@@ -139,8 +134,8 @@ export function agentFindings(dir, manifest, refused = []) {
 
   // Eine App, die aus dem Bau kommt, traegt ihr Manifest neben dem Backend. Der Ordner einer App
   // (mit `plans/`) ist noch kein Paket und braucht es nicht.
-  const dockerfile = join(dir, folder, "Dockerfile");
-  if (existsSync(dockerfile) && /app\.json/.test(readFileSync(dockerfile, "utf8")) && !existsSync(join(dir, "plans")) && !existsSync(join(dir, folder, "app.json"))) {
+  const dockerfile = join(path, "Dockerfile");
+  if (existsSync(dockerfile) && /app\.json/.test(readFileSync(dockerfile, "utf8")) && !existsSync(join(dir, "plans")) && !existsSync(join(path, "app.json"))) {
     findings.push(t(
       `The Dockerfile of ${folder}/ copies app.json, and it does not lie there. The build puts it next to the backend: node .ara/tools/app.mjs --app <name> --build`,
       `Das Dockerfile von ${folder}/ kopiert app.json, und sie liegt dort nicht. Der Bau legt sie neben das Backend: node .ara/tools/app.mjs --app <name> --build`

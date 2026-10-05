@@ -27,5 +27,5 @@ grenzen:
 ---
 
 Über den Vorgang {{vorgang}} von {{von}} ist entschieden worden. Gesucht ist
-genau ein Satz darüber, wer entschieden hat und wie; der Schritt „entscheiden"
+genau ein Satz darüber, wer entschieden hat und wie; der Schritt „entscheiden“
 nennt beides. Keine Anrede, keine Erfindungen, keine Empfehlung.

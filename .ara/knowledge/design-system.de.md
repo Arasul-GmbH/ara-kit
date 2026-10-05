@@ -23,9 +23,8 @@ anders schreibt. `marken/theme.css` (beide Themen, der `@theme`-Block) wird **oh
 `marken/marken.css` **mit** `layer(components)`; die `kopie.css` der Vorlage tut beides, lass es so. Die `geraet.css` überlässt die Bibliothek dem
 Gerät und liest nur deine eigenen Klassen.
 
-**Das Thema kommt vom Gerät.** Die Shell setzt die Klasse `dark` und `data-theme="dark"` am
-`<html>` und schickt `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` liest und rät nicht; nur
-ohne Rahmen folgt es dem Betriebssystem.
+**Das Thema kommt vom Gerät**: `rahmen/thema.ts` liest, was die Shell setzt, und rät nicht, siehe die
+README der Vorlage.
 
 ## Wie eine App sie einsetzt
 
@@ -33,25 +32,24 @@ ohne Rahmen folgt es dem Betriebssystem.
 import { Button, Datenliste, Kopf, Meldung, Seitenleiste } from "@marken";
 ```
 
-`@marken` ist auch der Alias der Oberfläche des Geräts. Die Vorlage zeigt `Datenliste` in
-`seiten/liste.tsx`, ihre Spalten als Daten (`zelle` zeigt, `wert` sortiert und sucht: „vor 3 Tagen"
-sortiert nach einem Zeitstempel), `Formularseite` mit einer `Feldgruppe` je Abschnitt in
-`seiten/neu.tsx`, und `Seitenleiste` in `SidebarProvider` und `SidebarInset` in
-`rahmen/seitenleiste.tsx`, wo die App den aktiven Eintrag nennt. Die Anordnung der Seite gehört der
+`@marken` ist auch der Alias der Oberfläche des Geräts; wo die Vorlage welches Muster einsetzt, sagt
+ihre README. Eine `Datenliste` nimmt ihre Spalten als Daten (`zelle` zeigt, `wert` sortiert und sucht:
+„vor 3 Tagen" sortiert nach einem Zeitstempel), eine `Seitenleiste` steht in `SidebarProvider` und
+`SidebarInset`, und die App nennt den aktiven Eintrag. Die Anordnung der Seite gehört der
 Bibliothek. Eigene Regeln stehen am Ende von `stil.css`, nur mit Namen von Marken, ohne Farbe,
 Schrift oder Radius. Am Gerät kommen die Klassen der Bibliothek nur aus deren `marken.css`: was du
 selbst gestaltest, schreib dort mit Marken.
 
-**Eine Freigabe ist das Muster `Freigabe`, nie eine Nachbildung** (ab Bibliothek 5.4.0): `seiten/freigaben.tsx`
+**Eine Freigabe ist das Muster `Freigabe`, nie eine Nachbildung**: `seiten/freigaben.tsx`
 zeigt es, `freigaben.ts` holt die Einträge vom Gerät. Welche Felder ein Mensch ändern darf, erklärt der
 Flow (`ergebnis.aenderbar`). Das Original zeigt die Anzeige als Bild oder PDF **am Ende seines Pfades**.
 
 ## Was jede Seite hält
 
-- **Nichts fällt heraus.** Ein langer Titel endet mit „…" (`kuerzen`) und steht daneben ganz; bei
-  1280 Pixeln verlässt keine Spalte die Tabelle. Seit Marken 5.1.0 misst die `Datenliste` ihren
-  eigenen Kasten, nicht das Fenster: unter 640 Pixeln, oder wenn ihre Tabelle nicht hineinpasst,
-  zeigt sie Karten. Der Selbsttest baut die Vorlage und misst sie.
+- **Nichts fällt heraus.** Ein langer Titel endet mit „…" (`kuerzen`) und steht daneben ganz; in
+  Schreibtischbreite verlässt keine Spalte die Tabelle. Die `Datenliste` misst ihren eigenen Kasten,
+  nicht das Fenster: wird er schmal, oder passt ihre Tabelle nicht hinein, zeigt sie Karten. Der
+  Selbsttest baut die Vorlage und misst sie.
 - **Liste und Einzelheiten nebeneinander** ab 900 Pixeln, die Einzelheiten mitlaufend, darunter als
   Blatt von unten. Nie unter der Liste.
 - **Die Auswahl ist die der Bibliothek**: `gewaehlt` markiert die Zeile, Tab und Eingabe erreichen
@@ -64,8 +62,7 @@ Flow (`ergebnis.aenderbar`). Das Original zeigt die Anzeige als Bild oder PDF **
 - **Der `hinweis` einer Karte trägt ein paar Wörter**: Stand, Fassung, Frist. Ein Satz steht im Inhalt.
 - **Die App redet wie das Gerät**: mit Sie oder ohne Anrede. `--check` meldet du und dir.
 - **Der Stand in der Textfarbe**, 4,5:1 in beiden Themen, die Farbe an einem Zeichen daneben.
-- **Ein Diagramm nur aus `@marken/diagramm`**, am besten mit `lazy`: der Sammelexport trägt seit
-  5.0.0 keines.
+- **Ein Diagramm nur aus `@marken/diagramm`**, am besten mit `lazy`: der Sammelexport trägt keines.
 
 ## Was das Kit anhält, und was sonst verboten ist
 

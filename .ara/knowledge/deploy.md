@@ -1,6 +1,6 @@
 # Procedure: bringing apps onto a device
 
-> **When do you need this?** When an app should land on a device: check, deploy, release, switch
+> **When do you need this?** When an app should land on a device: build, check, deploy, release, switch
 > live and back, remove, or put it onto a device without Arasul. What the app uses there:
 > `.ara/knowledge/platform-services.md`.
 
@@ -24,6 +24,16 @@ The kit knows the highest **contract version** it understands:
 
 Deployment happens only in the first two cases.
 
+## Building the package
+
+```
+node .ara/tools/app.mjs --app <name> --build
+```
+
+The package comes under `build/`, without plans, README and build; a folder with a build of its own
+gets built (types checked first), the rest moves as it is. A build older than the source does not get
+deployed.
+
 ## Checking a package before it flies
 
 ```
@@ -33,7 +43,8 @@ node .ara/tools/app.mjs --device <device> --app <name> --check
 `app.json` lies at the package's root, next to the folders the manifest names. **Flows are a
 delivery**: a promised flow folder exists and brings one file per flow. The tool holds the manifest
 against **this** device's schema, names every deviation and what it could not check, checks that
-the frontend is a **build**, and prints `arasul.json`. Yourself you read, word for word, **the rules
+the frontend is a **build** (`package.json`, `src/` or `tsconfig.json` there would be an empty page),
+and prints `arasul.json`. Yourself you read, word for word, **the rules
 no schema carries**, "at least one of frontend and backend", "with a backend a port": the device
 rejects a manifest that breaks one even when the schema holds. And **what the contract says about
 the package**: packing, what stays out, size, flows.
@@ -41,8 +52,12 @@ the package**: packing, what stays out, size, flows.
 ## Deploying, and why it is not yet visible
 
 ```
-node .ara/tools/app.mjs --device <device> --app <name> --deploy
+node .ara/tools/app.mjs --device <device> --app <name> --deploy --aenderungstext "<text>"
 ```
+
+**A few sentences on what is new** go along when the device's contract names the field
+`aenderungstext`: 1 to 1000 characters, next to the package and not into `app.json`. The kit stops
+without them; ask in the human's words.
 
 The tool checks, packs the folder's **contents**, compares with the size limit and sends; a
 rejection comes with the device's reason, read it instead of repeating. The device builds the

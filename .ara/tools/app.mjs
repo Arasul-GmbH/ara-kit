@@ -126,6 +126,7 @@ import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } f
 import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
+import { leavesPackage, safeFolder, walkFiles } from "./lib/files.mjs";
 import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
 import { connectionFindings, describeConnections, reachLine } from "./lib/connections.mjs";
 import { describePatterns } from "./lib/patterns.mjs";
@@ -516,7 +517,7 @@ function createApp(name) {
         ? [
             t(
               "- Approvals: the app shows them itself, `zeigt_freigaben` is set, and a click in \"For you\" opens the app at that approval (`?freigabe=<number>`)",
-              "- Freigaben: die App zeigt sie selbst, `zeigt_freigaben` ist gesetzt, und ein Klick in „Für Sie\" öffnet die App bei genau dieser Freigabe (`?freigabe=<nummer>`)"
+              "- Freigaben: die App zeigt sie selbst, `zeigt_freigaben` ist gesetzt, und ein Klick in „Für Sie“ öffnet die App bei genau dieser Freigabe (`?freigabe=<nummer>`)"
             ),
           ]
         : []),
@@ -662,7 +663,7 @@ function failOnStandard(app) {
       "",
       t(
         'The rule with examples stands in .ara/knowledge/design-system.md under "What stops the kit, and what else is forbidden".',
-        'Die Regel mit Beispielen steht in .ara/knowledge/design-system.de.md unter „Was das Kit anhält, und was sonst verboten ist".'
+        'Die Regel mit Beispielen steht in .ara/knowledge/design-system.de.md unter „Was das Kit anhält, und was sonst verboten ist“.'
       ),
     ].join("\n")
   );
@@ -1156,9 +1157,7 @@ const servedLibrary = async () => (servedAnswer === undefined ? (servedAnswer = 
 
 /** Der Ordner der Oberfläche in einem Paket, wenn das Manifest einen nennt. */
 function frontendDirOf(dir, manifest) {
-  const folder = manifest?.frontend?.verzeichnis;
-  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return null;
-  return join(dir, folder);
+  return safeFolder(dir, manifest, "frontend.verzeichnis");
 }
 
 /** Alles, was im Paket nicht zum Manifest und zu diesem Gerät passt, in Sätzen. */
@@ -1315,7 +1314,7 @@ function readingSections() {
  *
  * Das Gerät schreibt jeden Modellaufruf einer App in sein Protokoll, den
  * Menschen dazu aber nur, wenn die App ihn nennt. Ohne diesen Abschnitt stand
- * im Protokoll einer Kanzlei „App X hat gefragt" und nicht, für wen. Die
+ * im Protokoll einer Kanzlei „App X hat gefragt“ und nicht, für wen. Die
  * Vorlage liest die Namen aus `arasul.json`, das Kit schreibt sie aus diesem
  * Abschnitt dorthin.
  */
@@ -1343,7 +1342,7 @@ function logSection() {
  *
  * `--check` gab bis 0.19.1 den Rückgabecode 1 aus, ohne dass die Ursache am
  * Ende stand: die Kontraktzeile stand als dritter Punkt oben, direkt darunter
- * „Das Schema dieses Geräts nimmt das Manifest an", und wer den Bericht von
+ * „Das Schema dieses Geräts nimmt das Manifest an“, und wer den Bericht von
  * unten liest, sieht ein angenommenes Manifest und eine 1. Am 30.08.2026 war
  * das der Grund, aus dem in einer App gesucht wurde, was im Kit lag.
  *
@@ -1445,7 +1444,7 @@ function readManifest(folder) {
 function checkDelivery(dir, manifest) {
   const problems = [];
   for (const { field, folder } of promisedFolders(contract, manifest)) {
-    if (folder.startsWith("/") || folder.split("/").includes("..")) {
+    if (leavesPackage(folder)) {
       problems.push(
         t(
           `\`${field}\` points out of the package with \`${folder}\`. Into a package goes only what lies in it.`,
@@ -1479,31 +1478,21 @@ function checkDelivery(dir, manifest) {
 /**
  * Nennt eine Datei des Backends den Pfad? Gesucht wird im Bauordner, ohne `node_modules`, in Quelltext
  * jeder Art: wo die Route steht, legt die App fest, ob als Zeichenkette oder als Muster. Ein Bauordner,
- * den das Kit nicht sicher lesen kann (kein Eintrag, außerhalb), gilt als „ja": das Kit mahnt nur, was
+ * den das Kit nicht sicher lesen kann (kein Eintrag, außerhalb), gilt als „ja“: das Kit mahnt nur, was
  * es sieht.
  */
 function backendNamesRoute(dir, manifest, route) {
-  const folder = manifest?.backend?.bauen?.verzeichnis;
-  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return true;
-  const root = join(dir, folder);
-  if (!existsSync(root)) return true;
-  const walk = (path) =>
-    readdirSync(path, { withFileTypes: true }).some((entry) => {
-      if (entry.name === "node_modules" || entry.name.startsWith(".")) return false;
-      const full = join(path, entry.name);
-      if (entry.isDirectory()) return walk(full);
-      if (!/\.(m?js|cjs|ts|py|go|rb|php|java|json)$/.test(entry.name) || statSync(full).size > 2_000_000) return false;
-      return readFileSync(full, "utf8").includes(route);
-    });
-  return walk(root);
+  const root = safeFolder(dir, manifest, "backend.bauen.verzeichnis");
+  if (!root || !existsSync(root)) return true;
+  return walkFiles(root, { match: /\.(m?js|cjs|ts|py|go|rb|php|java|json)$/, skip: ["node_modules"], maxBytes: 2_000_000 }).some((path) =>
+    readFileSync(path, "utf8").includes(route)
+  );
 }
 
 /** Was kein Schema traegt, in den Flow-Dateien der App: `faehigkeiten` am Werkzeug, eine Stufe ohne Kopfeintrag. */
 function flowFindings(dir, manifest, deviceContract) {
-  const folder = manifest?.flows?.verzeichnis;
-  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return [];
-  const path = join(dir, folder);
-  if (!existsSync(path) || !statSync(path).isDirectory()) return [];
+  const path = safeFolder(dir, manifest, "flows.verzeichnis");
+  if (!path || !existsSync(path) || !statSync(path).isDirectory()) return [];
   return readdirSync(path)
     .filter((file) => file.endsWith(".md"))
     .flatMap((file) => {
@@ -1539,9 +1528,8 @@ function flowFindings(dir, manifest, deviceContract) {
  */
 function checkBuild(dir, manifest) {
   const folder = manifest?.frontend?.verzeichnis;
-  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return [];
-  const path = join(dir, folder);
-  if (!existsSync(path) || !statSync(path).isDirectory()) return [];
+  const path = safeFolder(dir, manifest, "frontend.verzeichnis");
+  if (!path || !existsSync(path) || !statSync(path).isDirectory()) return [];
 
   const problems = [];
   const quelle = ["package.json", "tsconfig.json", "src", "vite.config.ts", "vite.config.js"].filter((name) =>
@@ -1577,9 +1565,9 @@ function checkBuild(dir, manifest) {
  * das Kit nichts hinein.
  */
 function arrangementPath(dir, manifest) {
-  const folder = manifest?.backend?.bauen?.verzeichnis;
-  if (!folder || folder.startsWith("/") || folder.split("/").includes("..")) return null;
-  const file = join(dir, folder, ARRANGEMENT_FILE);
+  const folder = safeFolder(dir, manifest, "backend.bauen.verzeichnis");
+  if (!folder) return null;
+  const file = join(folder, ARRANGEMENT_FILE);
   return existsSync(file) ? file : null;
 }
 
@@ -1623,7 +1611,7 @@ function arrangementSection(dir, manifest) {
  * Zeilen eines Berichts, vor jeder Überschrift genau eine Leerzeile.
  *
  * Die Abschnitte kommen aus verschiedenen Händen, und der Kontrakt entscheidet,
- * welche es gibt. Am 26.09.2026 stand „What the app gets from" ohne Leerzeile
+ * welche es gibt. Am 26.09.2026 stand „What the app gets from“ ohne Leerzeile
  * direkt unter der letzten Regel des Kontrakts, und Markdown las die
  * Überschrift als Fortsetzung der Liste. Hier wird das einmal geregelt statt in
  * jedem Abschnitt.
@@ -1717,6 +1705,14 @@ function umlautSection(dir, manifest) {
     : [t("Umlaut check: visible texts carry real umlauts, no finding.", "Umlautprüfung: sichtbare Texte tragen echte Umlaute, kein Befund.")];
 }
 
+/** Was am Paket auffällt und nichts anhält, für `--check` und `--deploy`: Bibliothek und Freigabe-Seite. */
+async function packageHints(dir, manifest) {
+  return [
+    ...libraryHints(contract, manifest, { served: await servedLibrary() }),
+    ...zeigtFreigabenHints(manifest, frontendDirOf(dir, manifest), contract?.kontrakt),
+  ];
+}
+
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
@@ -1731,8 +1727,7 @@ if (arg.check !== undefined) {
       spaced([
         ...reportManifest(relative(ROOT, dir) || dir, result, delivery).split("\n"),
         ...umlautSection(dir, manifest),
-        ...libraryHints(contract, manifest, { served: await servedLibrary() }),
-        ...zeigtFreigabenHints(manifest, frontendDirOf(dir, manifest), contract?.kontrakt),
+        ...(await packageHints(dir, manifest)),
         ...arrangementSection(dir, manifest),
         ...addressSection(dir),
         ...versionSection(),
@@ -1753,14 +1748,12 @@ if (arg.deploy !== undefined) {
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
   }
   console.log(umlautSection(dir, manifest).join("\n"));
-  const libraryNotes = libraryHints(contract, manifest, { served: await servedLibrary() });
-  if (libraryNotes.length) console.log(libraryNotes.join("\n"));
-  const tieflinkNotes = zeigtFreigabenHints(manifest, frontendDirOf(dir, manifest), contract?.kontrakt);
-  if (tieflinkNotes.length) console.log(tieflinkNotes.join("\n"));
+  const hints = await packageHints(dir, manifest);
+  if (hints.length) console.log(hints.join("\n"));
 
-  // „Nichts eingespielt" allein schickt den Menschen in seine App. Der Grund
+  // „Nichts eingespielt“ allein schickt den Menschen in seine App. Der Grund
   // liegt hier im Kit, und der Weg heraus steht in derselben Meldung.
-  // „Nichts eingespielt" zuerst, der Grund gleich dahinter und der Weg zuletzt:
+  // „Nichts eingespielt“ zuerst, der Grund gleich dahinter und der Weg zuletzt:
   // wer eine Absage liest, liest ihre letzte Zeile. Am 30.08.2026 stand dort
   // nichts, und gesucht wurde danach in der App.
   if (!version.ok) fail(`${t("Nothing deployed.", "Nichts eingespielt.")} ${version.text}`);
@@ -1798,7 +1791,7 @@ if (arg.deploy !== undefined) {
   // welchen Namen es ihr Adresse und Schlüssel in den Container legt, in
   // welcher Kopfzeile der Schlüssel mitgeht, welche Wege es dafür führt. Ohne
   // das müsste die App raten, und eine App, die rät, findet auf einem Gerät mit
-  // anderen Namen nichts und hält das für „hier läuft kein Arasul".
+  // anderen Namen nichts und hält das für „hier läuft kein Arasul“.
   const arrangementTarget = arrangementPath(dir, manifest);
   if (arrangementTarget) {
     const arrangement = appArrangement(contract, { device: place, date: today() });
@@ -1870,7 +1863,7 @@ if (arg.deploy !== undefined) {
     // längst: sie gilt der App und ihrem Stand, nicht der Fassung. Das Kit weiß
     // es aus seinem Merker oder aus der Antwort des Geräts, das eine vorige
     // Fassung nennt. Am 25.09.2026 sagte es nach der zweiten Fassung wieder
-    // „Gesehen hat es noch niemand", während die Tester sie längst sahen.
+    // „Gesehen hat es noch niemand“, während die Tester sie längst sahen.
     const vorher = readState().apps?.[sent.data?.app_id ?? manifest.id]?.[place]?.deployed || null;
     const frueher = vorher?.version || sent.data?.vorige_version || null;
 

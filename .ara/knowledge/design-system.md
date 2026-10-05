@@ -19,11 +19,11 @@ Copies: `.ara/knowledge/design-guard.md`.
 
 A whole form is a pattern: rebuilt, it is two hundred lines the next app writes differently.
 `marken/theme.css` (both themes, the `@theme` block) is loaded **without a layer**, `marken/marken.css`
-**with** `layer(components)`; the scaffold's `kopie.css` does both, keep it that way.
+**with** `layer(components)`; the scaffold's `kopie.css` does both, keep it that way. The `geraet.css` leaves the library to the
+device and reads only your own classes.
 
-**The theme comes from the device.** The shell sets the class `dark` and `data-theme="dark"` at
-`<html>` and sends `{typ: "arasul:theme", theme}`. `rahmen/thema.ts` reads and does not guess; only
-without a frame does it follow the operating system.
+**The theme comes from the device**: `rahmen/thema.ts` reads what the shell sets and does not guess,
+see the scaffold's README.
 
 ## How an app uses them
 
@@ -31,23 +31,22 @@ without a frame does it follow the operating system.
 import { Button, Datenliste, Kopf, Meldung, Seitenleiste } from "@marken";
 ```
 
-`@marken` is the device interface's alias too. The scaffold shows `Datenliste` in
-`seiten/liste.tsx`, its columns as data (`zelle` shows, `wert` sorts and searches: "3 days ago" sorts
-by a timestamp), `Formularseite` with a `Feldgruppe` per section in `seiten/neu.tsx`, and
-`Seitenleiste` inside `SidebarProvider` and `SidebarInset` in `rahmen/seitenleiste.tsx`, where the
-app names the active entry. The page layout belongs to the library. Rules of your own stand at the
-end of `stil.css`, with token names only, no colour, font or radius.
+`@marken` is the device interface's alias too; where the scaffold uses which pattern, its README
+says. A `Datenliste` takes its columns as data (`zelle` shows, `wert` sorts and searches: "3 days
+ago" sorts by a timestamp), a `Seitenleiste` lives inside `SidebarProvider` and `SidebarInset`, and
+the app names the active entry. The page layout belongs to the library. Rules of your own stand at
+the end of `stil.css`, with token names only, no colour, font or radius. At the device the library's
+classes come only from its `marken.css`: what you style yourself, write there with tokens.
 
-**An approval is the pattern `Freigabe`, never an imitation** (from library 5.4.0): `seiten/freigaben.tsx`
+**An approval is the pattern `Freigabe`, never an imitation**: `seiten/freigaben.tsx`
 shows it, `freigaben.ts` brings the entries from the device. Which fields a person may change the flow
 declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the end of its path**.
 
 ## What every page keeps
 
-- **Nothing falls out.** A long title ends with "…" (`kuerzen`) and stands whole beside it; at 1280
-  pixels no column leaves the table. Since marken 5.1.0 `Datenliste` measures its own box, not the
-  window: under 640 pixels, or when its table does not fit, it shows cards. The self-test builds the
-  scaffold and measures it.
+- **Nothing falls out.** A long title ends with "…" (`kuerzen`) and stands whole beside it; at desk
+  width no column leaves the table. `Datenliste` measures its own box, not the window: when it gets
+  narrow, or its table does not fit, it shows cards. The self-test builds the scaffold and measures it.
 - **List and details side by side** from 900 pixels, the details following along, below as a sheet
   from the bottom. Never under the list.
 - **Selection is the library's**: `gewaehlt` marks the row, Tab and Enter reach it, arrows via
@@ -60,7 +59,7 @@ declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the 
 - **A card's `hinweis` holds a few words**: status, version, deadline. A sentence goes into the card.
 - **The app speaks like the device**: Sie, or without address. `--check` reports du and dir.
 - **Status in the text colour**, 4.5:1 in both themes, the colour on a mark beside it.
-- **A chart only from `@marken/diagramm`**, best with `lazy`: the barrel carries none since 5.0.0.
+- **A chart only from `@marken/diagramm`**, best with `lazy`: the barrel carries none.
 
 ## What stops the kit, and what else is forbidden
 

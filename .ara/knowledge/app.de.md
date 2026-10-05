@@ -35,20 +35,15 @@ bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht i
 | **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Daten schieben ist ein Programm, kein Flow |
 | **Wo ein Mensch entscheidet** | Jede Freigabe, wann ein Vorgang vollständig genug dafür ist, wer entscheidet und wer ausdrücklich nicht |
 | **Wer was sehen darf** | Jeder darin alles, oder nur seine Mandanten, Abteilungen, Akten. Das entscheidet die App |
-| **Rollen und Zuweisung** | **Wird immer gefragt.** Vorgabe: ein Admin und Mitarbeiter. Der Admin weist Mitarbeitern Akten zu (Mandanten, Projekte, Fälle); ein Mitarbeiter sieht nur die ihm zugewiesenen Akten samt den Freigaben, die ihn betreffen. Weitere Rollen nur mit Grund. Siehe „Drei Fragen, die jede App bekommt" |
-| **Was ins Netz geht** | **Wird immer gefragt.** Mail, ein Register, ein Zahlungsdienst, eine Suche im Internet. Vorgabe: nichts verlässt das Gerät. Jede Verbindung nach außen wird einzeln vereinbart |
-| **Welches Modell je Flow** | **Wird immer gefragt.** Jede Stelle, an der ein Sprachmodell arbeitet, bekommt einen Vorschlag, den der Admin am Gerät umstellen darf |
-| **Bild, Freigabestufen, was gelesen wird** | Das Symbol in der Seitenleiste, eine oder mehrere Personen hintereinander je Freigabe, und bei einer App, die Dokumente liest, welche Felder ein Mensch ändern darf. Siehe „Weitere Fragen" |
+| **Rollen, was ins Netz geht, welches Modell je Flow** | **Wird immer gefragt**, weil niemand ohne Programmiererfahrung es von selbst anspricht. Vorgaben: ein Admin und Mitarbeiter, die nur ihre Akten sehen, nichts verlässt das Gerät, ein Modellvorschlag je Flow. Siehe „Drei Fragen, die jede App bekommt" |
+| **Bild, Freigabestufen, was gelesen wird** | Siehe „Weitere Fragen" |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
 | **Welche Gestalt sie annimmt** | Die neun Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |
-| **Bildschirme und Aufbau** | Welche Seiten, was auf jeder steht, Liste und Einzelheit, was man zuerst sieht. Ohne das erfindet der Bauende die Oberfläche |
-| **Felder je Formular** | Je Feld: Beschriftung, Typ, Pflicht oder nicht, Beispielwert, Prüfregel. Ein Feld, das keiner nannte, ist ein Feld, das der Bauende rät |
-| **Buttons je Rolle** | Welche Aktion wo für wen steht, und was danach passiert. Rollen sehen verschiedene Buttons |
-| **Automatik und Kontext** | Je Automatik: Auslöser, was ans Modell geht, was herauskommt, wer prüft, was bei einem Fehler geschieht, wer Bescheid bekommt |
+| **Bildschirme und Aufbau, Felder je Formular, Buttons je Rolle, Automatik und Kontext** | Ohne sie erfindet der Bauende die Oberfläche, rät Felder und Buttons, und niemand weiß, was ans Modell geht. Siehe „Die vier Ebenen, Punkt für Punkt" |
 
 ### Die vier Ebenen, Punkt für Punkt
 
@@ -122,7 +117,7 @@ bekommt beim ersten Mal einen Satz.
    Kopf**: was das Gerät hat, kommt aus `--contract`, der Katalog aus dem Spiegel. Der Vorschlag steht
    im Kopf der Flow-Datei; der Plan listet Flow, Aufgabe, Vorschlag und Grund unter `Modelle je Flow`.
 
-**„Genug" lässt diese drei nicht fallen.** Was offen bleibt, wird zur sicheren Vorgabe und laut
+**„Genug" lässt die drei Fragen oben nicht fallen.** Was offen bleibt, wird zur sicheren Vorgabe und laut
 gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf des Flows.
 
 ### Weitere Fragen
@@ -154,37 +149,30 @@ und verspricht nicht, dass das Gerät schon danach handelt**: `--contract` sagt,
    gehört die erste der Erkennung: das Gerät legt dort bei Unsicherheit seine Anfrage an, eine
    sichere Erkennung fragt niemanden. Sag das laut.
 
-„Genug" lässt diese fallen. `faehigkeiten` gehören nur an Modell-Schritte, `--check` hält einen
-Werkzeug-Schritt damit an. `--check` hält die Deklaration gegen die Erkennung (ein änderbares Feld, das die
-Rolle nicht liest, ein Original an einem Schritt, der nichts liest, ein verbotener Pfad, ein Gerät
-vor Kontrakt 10).
+„Genug" lässt diese vier Fragen fallen: was offen bleibt, schreibt das Kit nicht. `--check` hält
+`faehigkeiten` an einem Werkzeug-Schritt an (sie gehören nur an Modell-Schritte) und hält die Deklaration
+gegen die Erkennung: ein änderbares Feld, das die Rolle nicht liest, ein Original an einem Schritt, der
+nichts liest, ein verbotener Pfad, ein Gerät vor Kontrakt 10.
 
-**Das Ergebnis geht an die App zurück (Kontrakt 11).** Bei einem Flow, der ein Ergebnis liefert (er liest ein
-Dokument, oder ein Mensch bestätigt sein Ergebnis), schreibt `--new` `abschluss: { route: "/abschluss/freigabe" }`,
-und das Backend der Vorlage bringt die Route mit: sie prüft das Geheimnis des Geräts, behält jede Nummer eines
-Laufs einmal und antwortet erst nach dem Speichern mit 2xx. **Dazu wird nichts gefragt.** Nur wenn der Mensch
-fragt, wo das Ergebnis landet, oder ein Lauf auf „nicht übergeben“ steht, sagen: „Das Gerät gibt das Ergebnis an
-die App, und der Lauf ist erst fertig, wenn die App es angenommen hat; ein Administrator drückt in der
-Läufe-Ansicht ‚erneut‘.“ `--check` hält einen Abschluss ohne `backend` an, eine Route, die keine Datei des
-Backends nennt, eine ungültige Route und ein Gerät vor Kontrakt 11.
+**Wohin das Ergebnis geht, wird nicht gefragt.** Ein Flow, der ein Ergebnis liefert, gibt es an eine Route
+der App, die `--new` schreibt und das Backend der Vorlage mitbringt; was zu sagen ist, wenn jemand fragt,
+und was `--check` hält, steht in `.ara/templates/app/README.md`, „Das Ergebnis eines Flows geht an die App
+zurück".
 
 ### Wie gefragt wird, und wann Schluss ist
 
-- **Eine vage Antwort bohrst du nach.** „Mit Freigaben" ist keine Antwort. Die Folgefrage bietet
-  **fertige Entwürfe**, abgeleitet aus dem Muster und aus dem, womit das Haus arbeitet: „Antrag
-  mit vier Feldern: von, bis, Art des Urlaubs, Vertretung", „Zwei Stufen: Teamleitung, dann
-  Personal". Nie ein leeres „welche Felder?".
-- **Layout-Fragen tragen eine Skizze je Option** unter Claude Code, unter Codex eine knappe Zeile
-  in der Beschreibung.
+Wie tief gefragt wird, Entwürfe statt eines leeren „welche Felder?", eine Skizze je Layout-Option,
+„genug" und dass Arasul nie infrage gestellt wird, steht in `AGENTS.md`, „Every command asks to full
+depth". Für `/app` dazu:
+
+- **Aus dem Muster nachbohren.** „Mit Freigaben" ist keine Antwort; die Entwürfe kommen aus dem Muster
+  und aus dem, womit das Haus arbeitet: „Zwei Stufen: Teamleitung, dann Personal".
 - **Erst nachsehen.** Was das Profil, die eigenen Unterlagen des Hauses oder die Vorlage schon
   sagen, wird vorgeschlagen, nicht gefragt.
-- **Schluss** ist, wenn jede Zeile der vier Ebenen beantwortet ist oder der Mensch im Freitext
-  „genug" schreibt. Was dann offen ist, kommt in den Plan unter `Annahmen`, eine Zeile je Punkt.
-  Nichts wird geraten, um eine Lücke zu schließen, und kein späterer Schritt baut auf einer
-  ungekennzeichneten Vermutung.
-- **Die Wahl nicht infrage stellen.** Ob das Haus Arasul nutzt, wird nicht gefragt. Ziel ist die
-  App, die dem Haus am meisten bringt, digitale Souveränität zuerst: Daten und Modelle bleiben am
-  Gerät.
+- **Schluss** ist, wenn jede Zeile der vier Ebenen beantwortet ist oder der Mensch „genug" schreibt.
+  Was dann offen ist, kommt in den Plan unter `Annahmen`, eine Zeile je Punkt, und kein späterer
+  Schritt baut auf einer ungekennzeichneten Vermutung. Ziel ist die App, die dem Haus am meisten
+  bringt: Daten und Modelle bleiben am Gerät.
 
 ```
 node .ara/tools/app.mjs --app <name> --new --titel "<Anzeigename>"
@@ -197,38 +185,14 @@ Pläne liegen unter `apps/<name>/plans/`, und der Ordner ist der Stand. **Aktiv 
 einer**, das Werkzeug lässt keinen zweiten zu. Erledigt ist ein Plan, wenn seine Fassung **live**
 steht, nicht wenn der Code fertig ist.
 
-## Bauen
+## Bauen und auf ein Gerät
 
-```
-node .ara/tools/app.mjs --app <name> --build
-```
-
-Das Paket entsteht unter `build/`, ohne Pläne, README und Bau; ein Ordner mit eigenem Bau wird
-gebaut, der Rest wandert, wie er ist.
-
-- **Lokal läuft der Bau, nicht die App.** Was sie tut, sieht man am Gerät, mit echter Anmeldung und
-  echtem Modell.
-- **Ein Bau, der älter ist als der Quelltext, wird nicht eingespielt**, das Werkzeug hört auf.
-- **Der Typprüfer läuft vor dem Bündler**, `tsc --noEmit && vite build`: ein Typfehler hält den Bau
-  an, statt als leere Seite anzukommen.
-- **Ins Paket geht der Bau, nicht der Quelltext.** `--check` hält an bei `package.json`, `src/`
-  oder `tsconfig.json` im Ordner der Oberfläche: der Browser bekäme eine leere Seite.
-
-## Auf ein Gerät
-
-```
-node .ara/tools/app.mjs --device <gerät> --app <name> --check
-node .ara/tools/app.mjs --device <gerät> --app <name> --deploy
-node .ara/tools/app.mjs --device <gerät> --app <name> --live
-```
-
-**Ein Einspielen braucht ein paar Sätze, was neu ist**, wenn der Kontrakt des Geräts das Feld `aenderungstext` nennt:
-`--deploy --aenderungstext "<text>"`, 1 bis 1000 Zeichen. Frag in den Worten des Menschen („Was ist neu für die, die damit
-arbeiten?"); ohne den Text hält das Kit an, und er geht neben dem Paket mit, nicht in die `app.json`.
-
-Ohne Akte unter `devices/` kein Kontrakt und kein `--check`: dann kommt `/device` zuerst. Der Weg
-eines Pakets steht in `.ara/knowledge/deploy.de.md`, was das Gerät mitbringt in
-`.ara/knowledge/platform-services.de.md`, das Aussehen in `.ara/knowledge/design-system.de.md`.
+`--build`, dann `--check`, `--deploy` und `--live` am Gerät. **Lokal läuft der Bau, nicht die App**: was sie tut, sieht man am Gerät, mit echter Anmeldung und
+echtem Modell. **Ein Einspielen braucht ein paar Sätze, was neu ist**: frag in den Worten des Menschen
+(„Was ist neu für die, die damit arbeiten?"). Ohne Akte unter `devices/` kein Kontrakt und kein
+`--check`: dann kommt `/device` zuerst. Was der Bau tut und der Weg eines Pakets stehen in
+`.ara/knowledge/deploy.de.md`, was das Gerät mitbringt in `.ara/knowledge/platform-services.de.md`,
+das Aussehen in `.ara/knowledge/design-system.de.md`.
 
 ## Daten, die bleiben
 
@@ -236,39 +200,19 @@ eines Pakets steht in `.ara/knowledge/deploy.de.md`, was das Gerät mitbringt in
 unter `daten` sagt; ihre Adresse kommt als `umgebung.datenbank` in `arasul.json`. Sie überlebt
 jedes Einspielen und wird jede Nacht gesichert, zurückgeholt, wie `daten.wiederherstellen` sagt.
 **Sonst bleibt nichts**: jedes Einspielen ersetzt den Container, sein Dateisystem, ein `VOLUME`,
-eine SQLite-Datei. Hochgeladenes gehört in eine Spalte (`BYTEA`). Die `backend/ablage/db.mjs` der
-Vorlage tut das schon; ohne Gerät nimmt sie SQLite, und `lage` sagt `dauerhaft: false`.
-
-**Die Datenbank beginnt leer**, die Migrationen der App legen das Schema an, eine Datei je Schritt
-unter `backend/ablage/migrationen/`. **Was einmal gelaufen ist, wird nie mehr angefasst.**
+eine SQLite-Datei. Hochgeladenes gehört in eine Spalte (`BYTEA`). **Die Datenbank beginnt leer**, die
+Migrationen der App legen das Schema an. Wie die Vorlage beides tut, und was sie ohne Gerät behält:
+ihre README.
 
 ## Was die Vorlage schon ist
 
 Die Vorlage liegt unter `.ara/templates/app/`, und was `--new` daraus macht, läuft ab der ersten
 Minute: ein Vorgang in der Datenbank des Geräts, der Flow `freigabe` mit Nummer und Einreicher, ein
-Mensch entscheidet in Arasul, der Vorgang steht als genehmigt oder abgelehnt da. Fragt jemand, wie
-eine App aussieht, leg eine an und zeig sie.
-
-Der Stapel ist der der Oberfläche des Geräts: **Vite, React, TypeScript, Tailwind,
-`react-router`, TanStack Query.** Fünf Stellen, jede gibt es einmal:
-
-| Stelle | Was dort steht |
-| --- | --- |
-| `rahmen/basis.ts` | Der Pfad, unter dem die App hängt, aus der Adresse gelesen: `/apps/<id>/`, im Teststand `/apps/<id>/test/`. Darum **bleiben die Routen eine Ebene tief**, der Rest geht in die Abfrage |
-| `rahmen/thema.ts` | Das Thema, am eigenen Dokument der App gelesen |
-| `rahmen/schnittstelle.ts` | Das einzige `fetch`: Pfad, Anmeldung, Hülle der Antwort |
-| `rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, mit Rolle |
-| `rahmen/async-boundary.tsx` | Lädt, ging schief, ist da. Jede Abfrage geht hindurch |
-
-Das Backend: `server.mjs` macht HTTP, `kern/vorgaenge.mjs` die Fälle mit **zwei Anschlüssen**, einer
-Ablage und einem Gerät, darum wird jeder Fall ohne beides geprüft. Eine Ablage je Entität mit dem
-einzigen SQL dafür, im Dialekt von PostgreSQL; `ablage/db.mjs` übersetzt es für SQLite.
-`kern/csv.mjs` schreibt einen Export.
-
-**Sie beschreibt sich selbst für Agenten**: das Feld `agent` in `app.json` nennt die Routen, die ein
-Agent rufen darf, und das Backend beantwortet die Route `agent` aus einer Kopie der `app.json`, die
-der Bau danebenlegt. `--check` und `--deploy` halten das Feld gegen die App. Seine Form, und was das
-CLI einer Wurzel damit tut: `.ara/knowledge/root.de.md`, „Die Brücke zum Gerät".
+Mensch entscheidet auf der eigenen Seite `Freigaben` der App (oder in Arasul, das dieselbe Anfrage
+zeigt), der Vorgang steht als genehmigt oder abgelehnt da. Fragt jemand, wie eine App aussieht, leg
+eine an und zeig sie. Ihr Stapel, die fünf Stellen, die es je einmal gibt, die zwei Anschlüsse des
+Backends, wie sie sich für Agenten beschreibt und wie sie das Ergebnis eines Flows annimmt:
+`.ara/templates/app/README.md`. **Die Routen bleiben eine Ebene tief**, der Rest geht in die Abfrage.
 
 ## Was du dabei nicht tust
 
