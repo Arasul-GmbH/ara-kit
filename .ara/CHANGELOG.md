@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.73.1 (2026-10-05)
+
+Contract: up to 13
+
+- **`--check` stops a flow file name the device refuses.** The device takes the file name as the name of the flow and refuses one like `beleg_pruefen.md` with a 400, which `--check` did not say beforehand. Now it names the file, says how it is called correctly (`beleg-pruefen.md`, umlauts and spaces turned too) and that a `name:` in the header goes along. The form comes from the contract of the device, `flow_frontmatter.schema.properties.name.pattern`, and not from the kit. A device that names none gets no finding. `--new` writes only `freigabe.md`, the self-test holds its name against the same form. Tried on a real device with a throwaway app: `--check` stopped `beleg_pruefen.md`, and without the check the device refused the package with 400.
+
 ## 0.73.0 (2026-10-05)
 
 Contract: up to 13

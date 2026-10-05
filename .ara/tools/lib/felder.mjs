@@ -715,6 +715,51 @@ export function contractThirteenFindings(name, text, { backend = true, deviceCon
   return findings;
 }
 
+/**
+ * Die Form, die ein Flow-Name haben muss, aus dem Kontrakt: `flow_frontmatter.schema.properties.name.pattern`.
+ * Der Dateiname IST der Name (Regel des Kontrakts), also gilt die Form auch für ihn. `null`, wenn das Gerät
+ * keine nennt oder sie sich nicht lesen lässt: dann sagt das Kit nichts, statt eine Form zu raten.
+ */
+export function flowNamePattern(contract) {
+  const pattern = contract?.flow_frontmatter?.schema?.properties?.name?.pattern;
+  if (typeof pattern !== "string") return null;
+  try {
+    return new RegExp(pattern);
+  } catch {
+    return null;
+  }
+}
+
+/** Ein Dateiname, der der Form näher kommt: klein, ohne Umlaut, `-` statt allem Anderen. */
+function flowNameSuggestion(name, regex) {
+  const suggestion = name
+    .replace(/[äöüßÄÖÜ]/g, (c) => UMLAUTE[c])
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return regex.test(suggestion) ? suggestion : null;
+}
+
+/**
+ * Weist das Gerät den Namen der Flow-Datei ab? `name` ist der Dateiname ohne `.md`. Der Satz sagt, wie er
+ * richtig heißt, wenn sich das aus der Form des Kontrakts ableiten lässt.
+ */
+export function flowNameFindings(name, contract) {
+  const regex = flowNamePattern(contract);
+  if (!regex || regex.test(name)) return [];
+  const right = flowNameSuggestion(name, regex);
+  return [
+    t(
+      `The flow file \`${name}.md\` has a name the device refuses: the file name is the name of the flow.` +
+        (right ? ` Rename the file to \`${right}.md\`, and a \`name:\` in its header with it.` : "") +
+        ` The form the contract allows: ${regex.source}`,
+      `Die Flow-Datei \`${name}.md\` hat einen Namen, den das Gerät abweist: der Dateiname ist der Name des Flows.` +
+        (right ? ` Nenne die Datei \`${right}.md\`, und ein \`name:\` in ihrem Kopf gleich mit.` : "") +
+        ` Die Form, die der Kontrakt erlaubt: ${regex.source}`
+    ),
+  ];
+}
+
 /** Eine Zeile je Flow-Datei: was kein Schema traegt. Der Text ist die Datei, `name` ihr Name. */
 export function flowFieldFindings(name, text) {
   const findings = [];

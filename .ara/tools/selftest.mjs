@@ -2547,7 +2547,7 @@ const KONTRAKT = {
     regeln: ["Mindestens eines von frontend und backend. Eine App ohne beides ist nichts."],
   },
   flow_frontmatter: {
-    schema: { type: "object", properties: { name: { type: "string" } } },
+    schema: { type: "object", properties: { name: { type: "string", pattern: "^[a-z0-9][a-z0-9-]{0,48}[a-z0-9]$|^[a-z0-9]$" } } },
     rumpf: "Der Auftrag steht als Text unter dem Kopf, nicht im Kopf.",
     regeln: ["Eine Datei je Flow, der Dateiname ist der Name."],
   },
@@ -2790,6 +2790,17 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
     assert(f.originalProblem(falsch), `der Pfad „${falsch}“ geht durch`);
   }
 
+  // Der Name der Flow-Datei: die Form kommt aus dem Kontrakt des Geräts, das Kit rät keine.
+  for (const gut of ["freigabe", "beleg-pruefen", "a", "r2d2"]) {
+    assert(f.flowNameFindings(gut, KONTRAKT).length === 0, `der Flow-Name „${gut}“ wird beanstandet`);
+  }
+  const unterstrich = f.flowNameFindings("beleg_pruefen", KONTRAKT);
+  assert(unterstrich.length === 1 && unterstrich[0].includes("beleg-pruefen.md"), `ein Unterstrich wird nicht mit dem richtigen Namen gemeldet: ${unterstrich}`);
+  assert(f.flowNameFindings("Prüfung Beleg", KONTRAKT)[0]?.includes("pruefung-beleg.md"), "Umlaut und Leerzeichen werden nicht in einen Namen übersetzt");
+  assert(f.flowNameFindings("-", KONTRAKT).length === 1 && !f.flowNameFindings("-", KONTRAKT)[0].includes("Rename the file") && !f.flowNameFindings("-", KONTRAKT)[0].includes("Nenne die Datei"), "für einen Namen ohne Ableitung wird einer erfunden");
+  const ohneForm = { ...KONTRAKT, flow_frontmatter: { ...KONTRAKT.flow_frontmatter, schema: { type: "object" } } };
+  assert(f.flowNameFindings("beleg_pruefen", ohneForm).length === 0 && f.flowNameFindings("x", {}).length === 0, "ein Gerät ohne Form bekommt eine geraten");
+
   // Die Vorlage des Flows mit Erkennung und zwei Stufen: die erste gehört der Erkennung.
   const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
   const stufen = f.parseStufen("Prüfung, Leitung").stufen;
@@ -2828,6 +2839,7 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
     const flow = readFileSync(join(dir, "flows", "freigabe.md"), "utf8");
     assert(/aenderbar: \[datum\]/.test(flow) && /name: lesen/.test(flow), "der Flow der neuen App trägt die Erkennung nicht");
     assert(f.flowFieldFindings("freigabe", flow).length === 0, "der Flow der neuen App bekommt Befunde");
+    assert(f.flowNameFindings("freigabe", KONTRAKT).length === 0, "der Name des Flows der neuen App wird beanstandet");
     assert(/Recognised fields|Erkannte Felder/.test(run.stdout), "die Ausgabe nennt die Felder nicht");
     for (const datei of ["frontend/src/seiten/freigaben.tsx", "frontend/src/freigaben.ts", "backend/kern/blatt.mjs"]) {
       assert(existsSync(join(dir, datei)), `aus der Vorlage fehlt: ${datei}`);
