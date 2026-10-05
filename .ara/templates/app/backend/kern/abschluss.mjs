@@ -5,13 +5,16 @@
  * Flows) und macht den Lauf erst fertig, wenn sie mit 2xx antwortet. Drei Dinge hängen daran, und alle
  * drei stehen hier und nicht im Weg:
  *
- *   **Das Geheimnis.** Der Aufruf trägt `Authorization: Bearer <ARASUL_ABSCHLUSS_TOKEN>`. Nur das
+ *   **Das Geheimnis.** Der Aufruf trägt `Authorization: Bearer <Geheimnis>`; unter welchem Namen das
+ *   Gerät es in den Container legt, steht in `arasul.json` (`umgebung.abschluss_token`). Nur das
  *   Gerät kennt es; wer die Route aus dem Netz ruft, ohne es, bekommt 401 und legt nichts an. Kennt die
  *   App selbst keines (das Gerät hat es nicht in den Container gelegt, etwa vor dem nächsten
  *   Einspielen), antwortet sie 503 und nimmt gar nichts an: ohne Geheimnis kann sie niemanden
  *   erkennen, und „jeder darf" wäre die falsche Antwort darauf.
  *
- *   **Die Kennung.** `Idempotency-Key: arasul-lauf-<nummer>`. Zu einer Nummer legt die App ein Ergebnis
+ *   **Die Kennung.** `Idempotency-Key` trägt die Nummer des Laufs in der Form, die `arasul.json` unter
+ *   `abschluss.kennung` nennt, mit `<nummer>` als Platzhalter. Fehlt sie, antwortet die App 503 wie
+ *   ohne Geheimnis: eine geratene Form wiese jeden echten Aufruf ab. Zu einer Nummer legt die App ein Ergebnis
  *   genau einmal an; derselbe Aufruf kommt bei „erneut" noch einmal und bekommt wieder 2xx, ohne dass
  *   etwas doppelt entsteht. Die Nummer im Kopf und die im Rumpf müssen dieselbe sein.
  *
@@ -19,14 +22,11 @@
  *   „nicht übergeben" stehen, und der Administrator löst „erneut" aus. Ein 2xx vor dem Speichern wäre
  *   ein Ergebnis, das verloren geht, während der Lauf als fertig gilt.
  *
- * Kein `process.env`, kein SQL, kein HTTP hier: die Ablage und das Geheimnis kommen als Argument herein,
+ * Kein `process.env`, kein SQL, kein HTTP hier: die Ablage, das Geheimnis und die Kennung kommen als Argument herein,
  * der Weg in `server.mjs` übersetzt die Antwort `{ status, antwort }`.
  */
 
 import { createHash, timingSafeEqual } from "node:crypto";
-
-/** Der Anfang der Kennung, den das Gerät vor die Nummer des Laufs setzt. */
-export const KENNUNG = "arasul-lauf-";
 
 /** Zwei Zeichenketten gleich lang vergleichen und ohne Zeitunterschied: erst Hash, dann Vergleich. */
 function gleich(a, b) {
@@ -34,15 +34,16 @@ function gleich(a, b) {
   return timingSafeEqual(hash(a), hash(b));
 }
 
-export function abschluss({ ablage, geheimnis }) {
+export function abschluss({ ablage, geheimnis, kennung }) {
+  const erwartet = (lauf) => String(kennung).replace("<nummer>", lauf);
   return {
     /**
      * Einen Aufruf des Geräts annehmen. `kopf` sind die Kopfzeilen in Kleinbuchstaben, `rumpf` das
      * gelesene JSON oder `null`, wenn es keines war. Zurück kommt `{ status, antwort }`.
      */
     async annehmen({ kopf = {}, rumpf }) {
-      if (!geheimnis) {
-        return { status: 503, antwort: { fehler: "Diese App kennt das Geheimnis des Geräts nicht und nimmt deshalb nichts an. Es kommt mit dem nächsten Einspielen." } };
+      if (!geheimnis || !kennung?.includes("<nummer>")) {
+        return { status: 503, antwort: { fehler: "Diese App kennt das Geheimnis des Geräts oder die Form seiner Kennung nicht und nimmt deshalb nichts an. Beides kommt mit dem nächsten Einspielen." } };
       }
       const bearer = /^Bearer (.+)$/.exec(String(kopf.authorization || ""));
       if (!bearer || !gleich(bearer[1], geheimnis)) {
@@ -55,8 +56,8 @@ export function abschluss({ ablage, geheimnis }) {
       if (!lauf || typeof rumpf.flow !== "string" || !rumpf.flow) {
         return { status: 400, antwort: { fehler: "Es fehlt die Nummer des Laufs oder der Name des Flows." } };
       }
-      if (kopf["idempotency-key"] !== `${KENNUNG}${lauf}`) {
-        return { status: 400, antwort: { fehler: `Der Kopf Idempotency-Key muss ${KENNUNG}${lauf} lauten, die Nummer des Laufs.` } };
+      if (kopf["idempotency-key"] !== erwartet(lauf)) {
+        return { status: 400, antwort: { fehler: `Der Kopf Idempotency-Key muss ${erwartet(lauf)} lauten, mit der Nummer des Laufs.` } };
       }
 
       let gespeichert;

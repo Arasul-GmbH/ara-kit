@@ -18,8 +18,9 @@
  * anschlaegt und was nicht.
  */
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
+import { walkFiles } from "./files.mjs";
 
 /**
  * Woerter, die ein Muster tragen und trotzdem richtig sind: Fremdwoerter,
@@ -103,18 +104,7 @@ function manifestTexte(wert, pfad = "", schluessel = "") {
 const FLOW_BEZEICHNER = /^\s*-?\s*(?:name|typ|werkzeug|werkzeuge|modell|methode|pfad|quelle|ziel|arten|ausloeser|stufen|stufe|zeitplan|ereignis|faehigkeiten|rolle|ergebnis|original|aenderbar|abschluss|route):.*$/gm;
 
 function dateien(ordner, passt) {
-  const raus = [];
-  const gehe = (dir) => {
-    if (!existsSync(dir) || !statSync(dir).isDirectory()) return;
-    for (const eintrag of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (eintrag.name.startsWith(".") || ["node_modules", "dist", "build", "marken"].includes(eintrag.name)) continue;
-      const pfad = join(dir, eintrag.name);
-      if (eintrag.isDirectory()) gehe(pfad);
-      else if (passt(eintrag.name)) raus.push(pfad);
-    }
-  };
-  gehe(ordner);
-  return raus;
+  return walkFiles(ordner, { match: passt, skip: ["node_modules", "dist", "build", "marken"] });
 }
 
 /** Eine Zeile über 1000 Zeichen: Quelltext, den ein Mensch schreibt, sieht anders aus. */

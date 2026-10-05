@@ -1,27 +1,41 @@
 /**
- * Die Felder, die Kontrakt 8 einer App und ihren Flows gibt: `symbol`, `arten`, `ausloeser`,
- * `stufen`, `faehigkeiten`, und der `aenderungstext` beim Ausrollen.
+ * Die Felder, die eine App und ihre Flows seit Kontrakt 8 tragen können: `symbol`, `arten`, `ausloeser`,
+ * `stufen`, `faehigkeiten` und der `aenderungstext` beim Ausrollen; dazu die erkannten Felder einer
+ * Freigabe (`rollen[].ergebnis.felder`, `ergebnis.aenderbar`, `original` an einem erkennenden Schritt),
+ * die Abschluss-Route (`abschluss`), und `routen` mit dem Werkzeug `route_aufrufen`. Ab welcher Fassung
+ * ein Gerät welches Feld kennt, steht in `FELD_SEIT`.
  *
- * **Die Form steht im Kontrakt des Geraets, nicht hier.** `checkManifest` haelt `app.json` gegen
- * dessen Schema, und was ein Flow-Kopf tragen darf, sagt `flow_frontmatter` im selben Kontrakt.
- * Dieses Modul schreibt die Felder beim Anlegen einer App in die Form, die der Kontrakt dieses
- * Geraets beschreibt (Stand beim Bau: Kontrakt 8 am Orin), und es prueft zwei Dinge, die kein
- * Schema traegt: dass ein Werkzeug-Schritt keine `faehigkeiten` hat und dass eine Stufe, die ein
- * Schritt nennt, im Kopf des Flows steht.
+ * **Die Form steht im Kontrakt des Geräts, nicht hier.** `checkManifest` hält `app.json` gegen dessen
+ * Schema, und was ein Flow-Kopf tragen darf, sagt `flow_frontmatter` im selben Kontrakt. Dieses Modul
+ * schreibt die Felder beim Anlegen einer App in diese Form und prüft, was kein Schema trägt: einen
+ * Werkzeug-Schritt ohne `faehigkeiten`, eine Stufe, die im Kopf steht, eine Deklaration, die zur
+ * Erkennung passt, einen Pfad, wie der Kontrakt ihn verlangt, und ein Gerät, das ein Feld noch nicht kennt.
  *
- * Seit Kontrakt 10 kommen die erkannten Felder einer Freigabe dazu: `rollen[].ergebnis.felder`,
- * `rollen[].ergebnis.aenderbar` (welche davon ein Mensch in der Freigabe ändern darf) und `original`
- * an einem erkennenden Schritt (das Bild oder PDF, das die Freigabe links zeigt). Auch sie stehen im
- * Kontrakt des Geräts; das Kit schreibt sie und prüft, was kein Schema trägt.
- *
- * **Die Felder sind geschrieben, nicht versprochen.** Dass das Geraet sie schon wirken laesst,
- * sagt sein Kontrakt (`--contract`, Abschnitt Regeln fuer einen Flow). Das Kit sagt es nie von
- * sich aus: Stufen mit Standardperson, der Zeitplaner und die Arten kommen im Geraet spaeter.
+ * **Die Felder sind geschrieben, nicht versprochen.** Ob das Gerät sie schon wirken lässt, sagt sein
+ * Kontrakt (`--contract`, Abschnitt Regeln für einen Flow). Das Kit sagt es nie von sich aus.
  *
  * Reine Funktionen, ohne Netz und ohne Dateien.
  */
 
 import { t } from "./i18n.mjs";
+
+/**
+ * Ab welcher Fassung des Kontrakts ein Gerät ein Feld kennt. Ein älteres weist den Flow oder das Paket ab,
+ * deshalb hält `--check` das Feld dort an. Eine Tabelle für alle Felder, die nach Kontrakt 8 kamen.
+ */
+export const FELD_SEIT = Object.freeze({
+  aenderbar: 10,
+  original: 10,
+  abschluss: 11,
+  zeigt_freigaben: 12,
+  routen: 13,
+  route_aufrufen: 13,
+});
+
+/** Kennt ein Gerät mit dieser Kontraktzahl das Feld noch nicht? Ohne Zahl des Geräts wird nichts behauptet. */
+export function geraetZuAlt(feld, deviceContract) {
+  return Number.isFinite(deviceContract) && deviceContract < FELD_SEIT[feld];
+}
 
 /** Das Kuerzel einer App im Namen der App: ein Lucide-Name oder 1 bis 3 Grossbuchstaben oder Ziffern. */
 const SYMBOL_NAME = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -69,7 +83,7 @@ export function parseSymbol(value) {
   return {
     error: t(
       `The symbol "${symbol}" does not fit. Write the name of an icon in small letters with hyphens (file-text), or a short mark of one to three capital letters or digits (BE).`,
-      `Das Symbol „${symbol}" passt nicht. Schreib den Namen eines Bildes klein und mit Bindestrichen (file-text) oder ein Kürzel aus einem bis drei Großbuchstaben oder Ziffern (BE).`
+      `Das Symbol „${symbol}“ passt nicht. Schreib den Namen eines Bildes klein und mit Bindestrichen (file-text) oder ein Kürzel aus einem bis drei Großbuchstaben oder Ziffern (BE).`
     ),
   };
 }
@@ -84,12 +98,12 @@ export function parseStufen(value) {
       return {
         error: t(
           `The stage "${label}" does not fit: it needs at least one letter.`,
-          `Die Stufe „${label}" passt nicht: sie braucht mindestens einen Buchstaben.`
+          `Die Stufe „${label}“ passt nicht: sie braucht mindestens einen Buchstaben.`
         ),
       };
     }
     if (stufen.some((s) => s.name === name)) {
-      return { error: t(`The stage "${label}" stands twice.`, `Die Stufe „${label}" steht zweimal.`) };
+      return { error: t(`The stage "${label}" stands twice.`, `Die Stufe „${label}“ steht zweimal.`) };
     }
     stufen.push({ name, bezeichnung: label.slice(0, 60) });
   }
@@ -109,7 +123,7 @@ export function parseArten(value) {
       return {
         error: t(
           `The kind "${word}" is not known. Possible: autonom (it runs by itself), ergebnis_bestaetigen (a person confirms the result).`,
-          `Die Art „${word}" kennt das Kit nicht. Möglich: autonom (läuft von allein), \`ergebnis_bestaetigen\` (ein Mensch bestätigt das Ergebnis).`
+          `Die Art „${word}“ kennt das Kit nicht. Möglich: autonom (läuft von allein), \`ergebnis_bestaetigen\` (ein Mensch bestätigt das Ergebnis).`
         ),
       };
     }
@@ -138,7 +152,7 @@ export function parseAusloeser(value) {
         return {
           error: t(
             `The schedule "${rest}" needs five fields like cron, for example "0 6 * * 1-5". A comma inside it does not work here, write the days as a range.`,
-            `Der Zeitplan „${rest}" braucht fünf Felder wie bei cron, zum Beispiel „0 6 * * 1-5". Ein Komma darin geht hier nicht, schreib die Tage als Bereich.`
+            `Der Zeitplan „${rest}“ braucht fünf Felder wie bei cron, zum Beispiel „0 6 * * 1-5“. Ein Komma darin geht hier nicht, schreib die Tage als Bereich.`
           ),
         };
       }
@@ -148,7 +162,7 @@ export function parseAusloeser(value) {
         return {
           error: t(
             `The event name "${rest}" does not fit: small letters, digits, dot, hyphen, underscore.`,
-            `Der Name des Ereignisses „${rest}" passt nicht: Kleinbuchstaben, Ziffern, Punkt, Bindestrich, Unterstrich.`
+            `Der Name des Ereignisses „${rest}“ passt nicht: Kleinbuchstaben, Ziffern, Punkt, Bindestrich, Unterstrich.`
           ),
         };
       }
@@ -157,12 +171,12 @@ export function parseAusloeser(value) {
       return {
         error: t(
           `The trigger "${entry}" is not known. Possible: hand, zeitplan:<five fields>, ereignis:<name>.`,
-          `Den Auslöser „${entry}" kennt das Kit nicht. Möglich: hand, zeitplan:<fünf Felder>, ereignis:<name>.`
+          `Den Auslöser „${entry}“ kennt das Kit nicht. Möglich: hand, zeitplan:<fünf Felder>, ereignis:<name>.`
         ),
       };
     }
     if (list.some((o) => JSON.stringify(o) === JSON.stringify(item))) {
-      return { error: t(`The trigger "${entry}" stands twice.`, `Der Auslöser „${entry}" steht zweimal.`) };
+      return { error: t(`The trigger "${entry}" stands twice.`, `Der Auslöser „${entry}“ steht zweimal.`) };
     }
     list.push(item);
   }
@@ -175,7 +189,7 @@ export function parseAusloeser(value) {
  * Kennt der Kontrakt des Geraets das Feld `aenderungstext`? Das Kit fragt den Kontrakt, nicht eine
  * Versionsnummer. Zwei Stellen gelten: der Schluessel unter `paket.felder` und der Satz am
  * Deploy-Endpunkt (POST auf `/apps`, ohne `:id`). Der Satz nennt das Feld mit Backticks, nicht als
- * Schluessel: am 03.10.2026 fand die Suche nach `"aenderungstext"` ihn am echten Geraet nicht. Ein
+ * Schluessel, deshalb sucht das Kit das Wort und nicht `"aenderungstext"` in Anführungszeichen. Ein
  * Satz an einem anderen Endpunkt zaehlt nicht, er sagt nichts darueber, was der Deploy annimmt.
  */
 export function contractKnowsChangeText(contract) {
@@ -217,12 +231,12 @@ export function parseFelder(value) {
       return {
         error: t(
           `The field "${word}" does not fit: it needs a letter at the start, then letters, digits or underscores.`,
-          `Das Feld „${word}" passt nicht: es braucht vorn einen Buchstaben, dann Buchstaben, Ziffern oder Unterstriche.`
+          `Das Feld „${word}“ passt nicht: es braucht vorn einen Buchstaben, dann Buchstaben, Ziffern oder Unterstriche.`
         ),
       };
     }
     if (felder.includes(name)) {
-      return { error: t(`The field "${word}" stands twice.`, `Das Feld „${word}" steht zweimal.`) };
+      return { error: t(`The field "${word}" stands twice.`, `Das Feld „${word}“ steht zweimal.`) };
     }
     felder.push(name);
   }
@@ -247,7 +261,7 @@ export function parseAenderbar(value, felder) {
       return {
         error: t(
           `"${word}" is not among the recognised fields (${(felder ?? []).join(", ") || "none given"}). A person can only change a field the device reads out of the document.`,
-          `„${word}" steht nicht unter den erkannten Feldern (${(felder ?? []).join(", ") || "keine genannt"}). Ändern lässt sich nur ein Feld, das das Gerät aus dem Dokument liest.`
+          `„${word}“ steht nicht unter den erkannten Feldern (${(felder ?? []).join(", ") || "keine genannt"}). Ändern lässt sich nur ein Feld, das das Gerät aus dem Dokument liest.`
         ),
       };
     }
@@ -269,16 +283,16 @@ export function originalProblem(path) {
   if (value.startsWith("/") || /^[a-z][a-z0-9+.-]*:/i.test(value) || value.split("/").includes("..") || /[%?#]/.test(value)) {
     return t(
       `The path of the original "${value}" does not fit: relative to the app, without a slash at the start, without "..", without a scheme and without % ? #.`,
-      `Der Pfad des Originals „${value}" passt nicht: relativ zur App, ohne Schrägstrich am Anfang, ohne „..", ohne Schema und ohne % ? #.`
+      `Der Pfad des Originals „${value}“ passt nicht: relativ zur App, ohne Schrägstrich am Anfang, ohne „..“, ohne Schema und ohne % ? #.`
     );
   }
   // Die Anzeige erkennt Bild und PDF am Ende des Pfades und nicht am Inhalt: ohne Endung steht dort
-  // „Dieses Format kann hier nicht angezeigt werden". Endet der Pfad auf einen Platzhalter, kann die
+  // „Dieses Format kann hier nicht angezeigt werden“. Endet der Pfad auf einen Platzhalter, kann die
   // Endung im eingesetzten Wert stehen (`4711.pdf`), dann ist er nicht zu beurteilen.
   if (!value.endsWith("}}") && !ORIGINAL_ENDUNG.test(value)) {
     return t(
       `The path of the original "${value}" has no ending the approval can read: it shows an image or a PDF by the end of the path (.png, .jpg, .svg, .pdf). Without one it says that it cannot show the format.`,
-      `Der Pfad des Originals „${value}" hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .svg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
+      `Der Pfad des Originals „${value}“ hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .svg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
     );
   }
   return null;
@@ -373,8 +387,8 @@ export function applyFlowFields(text, { arten, ausloeser, stufen, felder } = {})
       });
       out = out.replace(block[0], steps.join(""));
       if (many) {
-        const nennt = eigene.length === 1 ? `„entscheiden_${eigene[0].name}"` : "„entscheiden_…\"";
-        out = out.replace("der Schritt „entscheiden\"", eigene.length === 1 ? `der Schritt ${nennt}` : `die Schritte ${nennt}`);
+        const nennt = eigene.length === 1 ? `„entscheiden_${eigene[0].name}“` : "„entscheiden_…“";
+        out = out.replace("der Schritt „entscheiden“", eigene.length === 1 ? `der Schritt ${nennt}` : `die Schritte ${nennt}`);
       }
     }
   }
@@ -443,7 +457,7 @@ function recognitionFindings(name, header) {
       findings.push(
         t(
           `Flow ${name}, step ${step.name}: it names the role "${rolle}", and the header of the flow does not declare it under \`rollen\`.`,
-          `Flow ${name}, Schritt ${step.name}: er nennt die Rolle „${rolle}", und der Kopf des Flows führt sie nicht unter \`rollen\` auf.`
+          `Flow ${name}, Schritt ${step.name}: er nennt die Rolle „${rolle}“, und der Kopf des Flows führt sie nicht unter \`rollen\` auf.`
         )
       );
     }
@@ -468,20 +482,20 @@ function recognitionFindings(name, header) {
  * kennt beide Schlüssel nicht und weist den Flow ab. Gefragt wird die Zahl, die das Gerät nennt.
  */
 export function contractTenFindings(name, text, deviceContract) {
-  if (!Number.isFinite(deviceContract) || deviceContract >= 10) return [];
+  if (!geraetZuAlt("aenderbar", deviceContract)) return [];
   const header = text.split(/^---\s*$/m)[1] ?? text;
   const nennt = [/\baenderbar:/.test(header) && "ergebnis.aenderbar", /^ {4}original:/m.test(header) && "original"].filter(Boolean);
   if (!nennt.length) return [];
   return [
     t(
-      `Flow ${name} names ${nennt.join(" and ")}, and this device carries contract ${deviceContract}: the fields came with contract 10, an older device refuses the flow.`,
-      `Flow ${name} nennt ${nennt.join(" und ")}, und dieses Gerät trägt Kontrakt ${deviceContract}: die Felder kamen mit Kontrakt 10, ein älteres Gerät weist den Flow ab.`
+      `Flow ${name} names ${nennt.join(" and ")}, and this device carries contract ${deviceContract}: the fields came with contract ${FELD_SEIT.aenderbar}, an older device refuses the flow.`,
+      `Flow ${name} nennt ${nennt.join(" und ")}, und dieses Gerät trägt Kontrakt ${deviceContract}: die Felder kamen mit Kontrakt ${FELD_SEIT.aenderbar}, ein älteres Gerät weist den Flow ab.`
     ),
   ];
 }
 
 /** Der Anfang jeder Abschluss-Route, die das Gerüst schreibt: je Flow eine, `/abschluss/<flow>`. */
-export const ABSCHLUSS_VORSATZ = "/abschluss/";
+const ABSCHLUSS_VORSATZ = "/abschluss/";
 
 /** Der Pfad, den das Backend der Vorlage für den Abschluss des Flows `freigabe` anbietet. */
 export const ABSCHLUSS_STANDARD = `${ABSCHLUSS_VORSATZ}freigabe`;
@@ -511,27 +525,36 @@ export function abschlussRoute(header) {
 }
 
 /**
- * Was der Kontrakt an der Route verlangt: ein Pfad des Backends, wie die App ihn sieht. Führender `/`,
- * Buchstaben, Ziffern und `. _ ~ - /`, ohne Host, Schema, Abfrage, `..` und `//`. `null`, wenn sie gilt.
+ * Was der Kontrakt an einem Pfad des Backends verlangt, wie die App ihn sieht: führender `/`, Buchstaben,
+ * Ziffern und `. _ ~ - /`, ohne Host, Schema, Abfrage, `..` und `//`. Mit `platzhalter` gilt dazu `{name}`
+ * für ein Wegstück, wie bei `routen`. Der Grund, warum der Pfad nicht gilt, oder `null`.
  */
+export function pfadProblem(wert, { platzhalter = false } = {}) {
+  const pfad = String(wert ?? "");
+  if (!pfad) return t("the path is missing", "der Pfad fehlt");
+  if (!pfad.startsWith("/")) return t("it has to start with `/`", "der Pfad muss mit `/` beginnen");
+  if (/[^A-Za-z0-9._~\-/]/.test(platzhalter ? pfad.replace(/\{[A-Za-z0-9_]+\}/g, "") : pfad)) {
+    return platzhalter
+      ? t("only letters, digits, `. _ ~ - /` and `{name}` for one segment are allowed (no host, scheme or query)", "erlaubt sind nur Buchstaben, Ziffern, `. _ ~ - /` und `{name}` für ein Wegstück (ohne Host, Schema und Abfrage)")
+      : t("only letters, digits and `. _ ~ - /` are allowed (no host, scheme or query)", "erlaubt sind nur Buchstaben, Ziffern und `. _ ~ - /` (ohne Host, Schema und Abfrage)");
+  }
+  if (pfad.includes("//") || pfad.split("/").includes("..")) return t("`//` and `..` are not allowed", "`//` und `..` sind nicht erlaubt");
+  return null;
+}
+
+/** Was der Kontrakt an der Abschluss-Route verlangt, als Satz: `pfadProblem` ohne Platzhalter. `null`, wenn sie gilt. */
 export function abschlussProblem(route) {
   const wert = String(route ?? "");
   if (!wert) return t("The route of the closing is empty.", "Die Abschluss-Route ist leer.");
-  const grund = !wert.startsWith("/")
-    ? t("it has to start with `/`", "sie muss mit `/` beginnen")
-    : /[^A-Za-z0-9._~\-/]/.test(wert)
-      ? t("only letters, digits and `. _ ~ - /` are allowed (no host, scheme or query)", "erlaubt sind nur Buchstaben, Ziffern und `. _ ~ - /` (ohne Host, Schema und Abfrage)")
-      : wert.includes("//") || wert.split("/").includes("..")
-        ? t("`//` and `..` are not allowed", "`//` und `..` sind nicht erlaubt")
-        : null;
-  return grund ? t(`The route of the closing "${wert}" is not valid: ${grund}.`, `Die Abschluss-Route „${wert}" gilt nicht: ${grund}.`) : null;
+  const grund = pfadProblem(wert);
+  return grund ? t(`The route of the closing "${wert}" is not valid: ${grund}.`, `Die Abschluss-Route „${wert}“ gilt nicht: ${grund}.`) : null;
 }
 
 /**
  * Was kein Schema trägt am Abschluss (Kontrakt 11). `backend` sagt, ob die App eines hat, `imQuelltext`
  * (Route zu wahr/falsch), ob der Quelltext des Backends den Pfad nennt, `deviceContract` die Zahl des
  * Geräts. Ohne Backend weist das Gerät das Paket ab; ohne Route im Quelltext käme die Antwort 404 und der
- * Lauf bliebe auf „nicht übergeben".
+ * Lauf bliebe auf „nicht übergeben“.
  */
 export function abschlussFindings(name, text, { backend = true, imQuelltext = () => true, deviceContract } = {}) {
   const header = text.split(/^---\s*$/m)[1] ?? text;
@@ -551,42 +574,76 @@ export function abschlussFindings(name, text, { backend = true, imQuelltext = ()
     findings.push(
       t(
         `Flow ${name} hands its result to the route ${route}, and no file of the backend names it. The device would call it, get 404, and the run would stay on "not handed over".`,
-        `Flow ${name} übergibt sein Ergebnis an die Route ${route}, und keine Datei des Backends nennt sie. Das Gerät riefe sie, bekäme 404, und der Lauf bliebe auf „nicht übergeben".`
+        `Flow ${name} übergibt sein Ergebnis an die Route ${route}, und keine Datei des Backends nennt sie. Das Gerät riefe sie, bekäme 404, und der Lauf bliebe auf „nicht übergeben“.`
       )
     );
   }
-  if (Number.isFinite(deviceContract) && deviceContract < 11) {
+  if (geraetZuAlt("abschluss", deviceContract)) {
     findings.push(
       t(
-        `Flow ${name} names \`abschluss\`, and this device carries contract ${deviceContract}: the closing came with contract 11, an older device refuses the flow.`,
-        `Flow ${name} nennt \`abschluss\`, und dieses Gerät trägt Kontrakt ${deviceContract}: der Abschluss kam mit Kontrakt 11, ein älteres Gerät weist den Flow ab.`
+        `Flow ${name} names \`abschluss\`, and this device carries contract ${deviceContract}: the closing came with contract ${FELD_SEIT.abschluss}, an older device refuses the flow.`,
+        `Flow ${name} nennt \`abschluss\`, und dieses Gerät trägt Kontrakt ${deviceContract}: der Abschluss kam mit Kontrakt ${FELD_SEIT.abschluss}, ein älteres Gerät weist den Flow ab.`
       )
     );
   }
   return findings;
 }
 
-/** Die Einträge von `routen` im Kopf eines Flows: je Eintrag `methode`, `pfad`, `app`, `zweck` (fehlende als `undefined`). */
+/** Teilt den Inhalt einer Klammer (`a, {b, c}, "d,e"`) an den Kommas der obersten Ebene. */
+function teileFlussform(inhalt) {
+  const teile = [];
+  let tiefe = 0;
+  let zitat = null;
+  let anfang = 0;
+  for (let i = 0; i < inhalt.length; i += 1) {
+    const c = inhalt[i];
+    if (zitat) {
+      if (c === zitat) zitat = null;
+    } else if (c === '"' || c === "'") zitat = c;
+    else if (c === "{" || c === "[") tiefe += 1;
+    else if (c === "}" || c === "]") tiefe -= 1;
+    else if (c === "," && tiefe === 0) {
+      teile.push(inhalt.slice(anfang, i));
+      anfang = i + 1;
+    }
+  }
+  teile.push(inhalt.slice(anfang));
+  return teile.map((teil) => teil.trim()).filter(Boolean);
+}
+
+/** Ein Eintrag in Klammerform (`{ methode: GET, pfad: "/a" }`) als Zeilen `feld: wert`. */
+function flussZeilen(eintrag) {
+  const inhalt = eintrag.trim().replace(/^\{/, "").replace(/\}$/, "");
+  return teileFlussform(inhalt);
+}
+
+/**
+ * Die Einträge von `routen` im Kopf eines Flows: je Eintrag `methode`, `pfad`, `app`, `zweck` (fehlende als
+ * `undefined`). Beide Schreibweisen wie bei `listAfter`: als Zeilen (`- methode: GET`, auch `- { … }`) und in
+ * Klammern (`routen: [{ … }, { … }]`).
+ */
 export function routenEintraege(header) {
-  const block = /^routen:[ \t]*\n((?: {2,}.*\n|[ \t]*\n)*)/m.exec(`${header}\n`);
-  if (!block) return null;
   const wert = (zeile, feld) => {
     const m = new RegExp(`^\\s*(?:-\\s+)?${feld}:\\s*(?:"([^"\\n]*)"|'([^'\\n]*)'|([^\\s#][^\\n#]*?))\\s*$`).exec(zeile);
     return m ? (m[1] ?? m[2] ?? m[3]) : undefined;
   };
+  const eintrag = (zeilen) => {
+    const aus = (feld) => zeilen.map((z) => wert(z, feld)).find((v) => v !== undefined);
+    return { methode: aus("methode"), pfad: aus("pfad"), app: aus("app"), zweck: aus("zweck") };
+  };
+  const inline = /^routen:[ \t]*\[(.*)\][ \t]*$/m.exec(header);
+  if (inline) return teileFlussform(inline[1]).map((teil) => eintrag(flussZeilen(teil)));
+  const block = /^routen:[ \t]*\n((?: {2,}.*\n|[ \t]*\n)*)/m.exec(`${header}\n`);
+  if (!block) return null;
   return block[1]
     .split(/^ {2,}- /m)
     .slice(1)
-    .map((teil) => {
-      const zeilen = `- ${teil}`.split("\n");
-      const aus = (feld) => zeilen.map((z) => wert(z, feld)).find((v) => v !== undefined);
-      return { methode: aus("methode"), pfad: aus("pfad"), app: aus("app"), zweck: aus("zweck") };
-    });
+    .map((teil) => (teil.trimStart().startsWith("{") ? eintrag(flussZeilen(teil.trim())) : eintrag(`- ${teil}`.split("\n"))));
 }
 
-/** Ruft der Flow das Werkzeug `route_aufrufen`, als Schritt oder in der Liste `werkzeuge`? */
+/** Ruft der Flow das Werkzeug `route_aufrufen`, als Schritt oder in der Liste `werkzeuge` (in Klammern oder als Zeilen)? */
 function nenntRouteAufrufen(header) {
-  return /^werkzeuge:.*\broute_aufrufen\b/m.test(header) || /^ {4}werkzeug:\s*"?route_aufrufen\b/m.test(header);
+  return (listAfter(section(`${header}\n`, "werkzeuge"), "werkzeuge") ?? []).includes("route_aufrufen") || /^ {4}werkzeug:\s*["']?route_aufrufen\b/m.test(header);
 }
 
 /**
@@ -623,21 +680,13 @@ export function contractThirteenFindings(name, text, { backend = true, deviceCon
       findings.push(
         t(
           `Flow ${name}, route ${pfad ?? "?"}: the method "${methode ?? ""}" is not valid. Possible: GET, POST, PUT, PATCH, DELETE.`,
-          `Flow ${name}, Route ${pfad ?? "?"}: die Methode „${methode ?? ""}" gilt nicht. Möglich: GET, POST, PUT, PATCH, DELETE.`
+          `Flow ${name}, Route ${pfad ?? "?"}: die Methode „${methode ?? ""}“ gilt nicht. Möglich: GET, POST, PUT, PATCH, DELETE.`
         )
       );
     }
     const wert = pfad ?? "";
-    const grund = !wert
-      ? t("the path is missing", "der Pfad fehlt")
-      : !wert.startsWith("/")
-        ? t("it has to start with `/`", "er muss mit `/` beginnen")
-        : /[^A-Za-z0-9._~\-/{}]/.test(wert.replace(/\{[A-Za-z0-9_]+\}/g, ""))
-          ? t("only letters, digits, `. _ ~ - /` and `{name}` for one segment are allowed (no host, scheme or query)", "erlaubt sind nur Buchstaben, Ziffern, `. _ ~ - /` und `{name}` für ein Wegstück (ohne Host, Schema und Abfrage)")
-          : wert.includes("//") || wert.split("/").includes("..")
-            ? t("`//` and `..` are not allowed", "`//` und `..` sind nicht erlaubt")
-            : null;
-    if (grund) findings.push(t(`Flow ${name}, route "${wert}": ${grund}.`, `Flow ${name}, Route „${wert}": ${grund}.`));
+    const grund = pfadProblem(wert, { platzhalter: true });
+    if (grund) findings.push(t(`Flow ${name}, route "${wert}": ${grund}.`, `Flow ${name}, Route „${wert}“: ${grund}.`));
     const schluessel = `${app ?? ""} ${methode} ${wert}`;
     if (gesehen.has(schluessel)) {
       findings.push(t(`Flow ${name}: the route ${methode} ${wert} stands twice in \`routen\`.`, `Flow ${name}: die Route ${methode} ${wert} steht zweimal unter \`routen\`.`));
@@ -655,11 +704,11 @@ export function contractThirteenFindings(name, text, { backend = true, deviceCon
   if ((eintraege?.length ?? 0) > 20) {
     findings.push(t(`Flow ${name} names ${eintraege.length} \`routen\`, at most 20 fit.`, `Flow ${name} nennt ${eintraege.length} \`routen\`, es passen höchstens 20.`));
   }
-  if (Number.isFinite(deviceContract) && deviceContract < 13) {
+  if (geraetZuAlt("routen", deviceContract)) {
     findings.push(
       t(
-        `Flow ${name} names \`routen\` or the tool \`route_aufrufen\`, and this device carries contract ${deviceContract}: both came with contract 13, an older device refuses the flow.`,
-        `Flow ${name} nennt \`routen\` oder das Werkzeug \`route_aufrufen\`, und dieses Gerät trägt Kontrakt ${deviceContract}: beides kam mit Kontrakt 13, ein älteres Gerät weist den Flow ab.`
+        `Flow ${name} names \`routen\` or the tool \`route_aufrufen\`, and this device carries contract ${deviceContract}: both came with contract ${FELD_SEIT.routen}, an older device refuses the flow.`,
+        `Flow ${name} nennt \`routen\` oder das Werkzeug \`route_aufrufen\`, und dieses Gerät trägt Kontrakt ${deviceContract}: beides kam mit Kontrakt ${FELD_SEIT.routen}, ein älteres Gerät weist den Flow ab.`
       )
     );
   }
@@ -692,7 +741,7 @@ export function flowFieldFindings(name, text) {
       findings.push(
         t(
           `Flow ${name}, step ${stepName}: it names the stage "${stufe[1]}", and the header of the flow does not declare it under \`stufen\`.`,
-          `Flow ${name}, Schritt ${stepName}: er nennt die Stufe „${stufe[1]}", und der Kopf des Flows führt sie nicht unter \`stufen\` auf.`
+          `Flow ${name}, Schritt ${stepName}: er nennt die Stufe „${stufe[1]}“, und der Kopf des Flows führt sie nicht unter \`stufen\` auf.`
         )
       );
     }

@@ -48,6 +48,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, posix, relative, sep } from "node:path";
+import { walkFiles } from "./files.mjs";
+import { runtimeMajor } from "./laufzeit.mjs";
 
 /** Was zur Bibliothek gehoert. Alles andere im Ordner ist etwas anderes. */
 export const LIBRARY = /\.(ts|tsx|css)$/;
@@ -78,17 +80,8 @@ export const hashOf = (text) => createHash("sha256").update(text, "utf8").digest
 const asKey = (from, path) => relative(from, path).split(sep).join(posix.sep);
 
 /** Jede Datei der Bibliothek in einem Ordner, rekursiv, als Pfad relativ zu ihm. */
-function walk(dir, base = dir) {
-  const out = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      out.push(...walk(path, base));
-      continue;
-    }
-    if (entry.isFile() && LIBRARY.test(entry.name)) out.push(asKey(base, path));
-  }
-  return out;
+function walk(dir) {
+  return walkFiles(dir, { match: LIBRARY, dots: true }).map((path) => asKey(dir, path));
 }
 
 /** Die Fassung, wie `fassung.ts` sie nennt. */
@@ -428,7 +421,7 @@ export function noteVersion(appDir, fassung, { laufzeit = null } = {}) {
     // heisst, sie laedt die Bibliothek zur Laufzeit vom Geraet, drei Zahlen
     // heissen, die Kopie steckt im Buendel. `laufzeit: null` laesst die Form
     // stehen, die die App schon hat; ohne Feld gilt die ganze Fassung.
-    const bisher = typeof manifest.marken === "string" && /^\d+$/.test(manifest.marken);
+    const bisher = runtimeMajor(manifest) !== null;
     const alsHaupt = laufzeit === null ? bisher : laufzeit;
     const nun = alsHaupt ? fassung.split(".")[0] : fassung;
     if (manifest.marken === nun) return false;

@@ -19,6 +19,8 @@ its moment comes.
   login, approval, flow, reading a document.
 - `.ara/knowledge/design-system.md` as soon as you touch an interface.
 - `.ara/knowledge/deploy.md` as soon as a package goes to a device.
+- `.ara/templates/app/README.md` when you change the scaffold of an app: its places, where an
+  approval is decided, how it takes a flow's result.
 
 Security levels and product values: `.claude/CLAUDE.md`. Beforehand you read
 `business/profile.md`: language, branch, detail level, security level, what the house works with.

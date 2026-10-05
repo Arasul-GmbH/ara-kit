@@ -120,7 +120,7 @@ import {
   validLine,
 } from "./lib/install.mjs";
 import { lastStand, movePlan, nextSteps } from "./lib/appfile.mjs";
-import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, releaseLines } from "./lib/appways.mjs";
+import { APP_WAYS, ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, closingKey, releaseLines } from "./lib/appways.mjs";
 import { contractRows, fillPath, routeRows, shareWays } from "./lib/adminways.mjs";
 import { loginSpec, pickToken } from "./lib/session.mjs";
 import {
@@ -154,7 +154,7 @@ import {
   unreachable,
 } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
-import { frontendLoadsLibrary, libraryFindings, libraryHints, librarySection, majorOf, readServed, runtimeMajor } from "./lib/laufzeit.mjs";
+import { frontendLoadsLibrary, libraryAddress, libraryFindings, libraryHints, librarySection, majorOf, readServed, runtimeMajor } from "./lib/laufzeit.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
   needsParameter,
@@ -2671,7 +2671,7 @@ check("Das Kit kennt die höchste Fassung, die es versteht", () => {
   return `Kit versteht bis ${KIT_CONTRACT_VERSION}`;
 });
 
-check("Kontrakt 7: das Kit versteht ihn, liest das Netz und sagt, wohin eine App kommt", async () => {
+await checkAsync("Kontrakt 7: das Kit versteht ihn, liest das Netz und sagt, wohin eine App kommt", async () => {
   assert(KIT_CONTRACT_VERSION >= 7, "das Kit versteht Kontrakt 7 nicht");
   const sieben = checkVersion({ ...KONTRAKT, kontrakt: 7, netz: { name: "x", internet: false, regeln: [] } });
   assert(sieben.ok, "ein Gerät mit Kontrakt 7 hält das Kit an: " + sieben.text);
@@ -2688,7 +2688,7 @@ check("Kontrakt 7: das Kit versteht ihn, liest das Netz und sagt, wohin eine App
   return "Fassung 7 bedient, Netz gelesen, Einträge in einem Satz geprüft";
 });
 
-check("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderungstext stehen so im Gerüst, wie der Kontrakt sie beschreibt", async () => {
+await checkAsync("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderungstext stehen so im Gerüst, wie der Kontrakt sie beschreibt", async () => {
   assert(KIT_CONTRACT_VERSION >= 8, "das Kit versteht Kontrakt 8 nicht");
   const acht = KIT_CONTRACT_VERSIONS.find((e) => e.version === 8);
   assert(acht && acht.kann.length > 40, "Fassung 8 hat keinen kann-Satz");
@@ -2769,7 +2769,7 @@ check("Kontrakt 9: das Feld marken heißt mit der Hauptzahl zur Laufzeit, mit dr
   return "Fassung 9 bedient, die Hauptzahl braucht keine Kopie";
 });
 
-check("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbaren Felder und das Original, und --check hält sie", async () => {
+await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbaren Felder und das Original, und --check hält sie", async () => {
   assert(KIT_CONTRACT_VERSION >= 10, "das Kit versteht Kontrakt 10 nicht");
   const zehn = KIT_CONTRACT_VERSIONS.find((e) => e.version === 10);
   assert(zehn && zehn.kann.length > 40, "Fassung 10 hat keinen kann-Satz");
@@ -2854,7 +2854,7 @@ check("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbaren Felder u
   return "Fassung 10 bedient, Erkennung, Deklaration und Original geschrieben und geprüft, Baustein statt Nachbildung";
 });
 
-check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft Geheimnis und Kennung, --check hält sie", async () => {
+await checkAsync("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft Geheimnis und Kennung, --check hält sie", async () => {
   assert(KIT_CONTRACT_VERSION >= 11, "das Kit versteht Kontrakt 11 nicht");
   const elf = KIT_CONTRACT_VERSIONS.find((e) => e.version === 11);
   assert(elf && elf.kann.length > 40, "Fassung 11 hat keinen kann-Satz");
@@ -2878,6 +2878,12 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
   const mit = f.applyAbschluss(vorlage, { route: f.ABSCHLUSS_STANDARD });
   assert(/^abschluss: \{ route: "\/abschluss\/freigabe" \}$/m.test(mit), "der Kopf nennt die Route nicht");
   assert(f.abschlussRoute(mit) === "/abschluss/freigabe", "die geschriebene Route wird nicht gelesen");
+  // Derselbe Pfad steht an drei Stellen: im Kit, im Backend der Vorlage und in ihrer Migration. Sie bleiben gleich.
+  const backendQuelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "server.mjs"), "utf8");
+  const migration = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "ablage", "migrationen", "002-abschluesse.sql"), "utf8");
+  assert(backendQuelle.match(/^const ABSCHLUSS = "([^"]+)";$/m)?.[1] === f.ABSCHLUSS_STANDARD, "das Backend der Vorlage bietet eine andere Abschluss-Route an, als das Kit schreibt");
+  assert(migration.includes(`\`${f.ABSCHLUSS_STANDARD}\``), "die Migration der Abschlüsse nennt eine andere Route");
+  assert(f.ABSCHLUSS_VORSATZ === undefined, "der Vorsatz der Abschluss-Route ist wieder ausgeführt");
   assert(f.flowFieldFindings("freigabe", mit).length === 0, "der Flow mit Abschluss bekommt Befunde, die kein Abschluss sind");
 
   // --check: ohne Backend, ohne Route im Quelltext, Gerät vor Kontrakt 11, und der saubere Fall.
@@ -2894,12 +2900,21 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
   const backend = pathToFileURL(join(ROOT, ".ara", "templates", "app", "backend")).href;
   const { oeffnen } = await import(`${backend}/ablage/db.mjs`);
   const { abschlussAblage } = await import(`${backend}/ablage/abschluesse.mjs`);
-  const { abschluss, KENNUNG } = await import(`${backend}/kern/abschluss.mjs`);
+  const { abschluss } = await import(`${backend}/kern/abschluss.mjs`);
+  // Die Form der Kennung kommt aus der Regel des Kontrakts in die Vereinbarung, nicht aus der Vorlage.
+  const regel = "Das Gerät ruft sie mit POST auf: `lauf` (Nummer, zugleich Kopf `Idempotency-Key: probe-lauf-<nummer>`).";
+  const kennung = closingKey({ flow_frontmatter: { regeln: ["Andere Regel.", regel] } });
+  assert(kennung === "probe-lauf-<nummer>", `die Kennung wird nicht aus der Regel gelesen: ${kennung}`);
+  assert(closingKey(KONTRAKT) === null && closingKey({}) === null, "ohne Regel wird eine Kennung erfunden");
+  const mitAbschluss = appArrangement({ ...KONTRAKT, umgebung: { ...KONTRAKT.umgebung, abschluss_token: "PROBE_ABSCHLUSS" }, flow_frontmatter: { ...KONTRAKT.flow_frontmatter, regeln: [regel] } });
+  assert(mitAbschluss.umgebung.abschluss_token === "PROBE_ABSCHLUSS" && mitAbschluss.abschluss.kennung === "probe-lauf-<nummer>", `die Vereinbarung nennt Geheimnis oder Kennung nicht: ${JSON.stringify(mitAbschluss.abschluss)}`);
+  assert(appArrangement(KONTRAKT).umgebung.abschluss_token === null && appArrangement(KONTRAKT).abschluss.kennung === null, "ohne Kontrakt steht ein Name oder eine Kennung da");
+  const KENNUNG = "probe-lauf-";
   const arbeit = mkdtempSync(join(tmpdir(), "ara-abschluss-"));
   try {
     const { db } = await oeffnen({ adresse: null, datei: join(arbeit, "a.db") });
     const ablage = abschlussAblage(db);
-    const kern = abschluss({ ablage, geheimnis: "geheim-1" });
+    const kern = abschluss({ ablage, geheimnis: "geheim-1", kennung });
     const rumpf = { lauf: 41, flow: "freigabe", app: "x", argumente: { vorgang: "7" }, ergebnis: "Anna hat bestätigt.", felder: { betrag: "12" }, korrekturen: [{ feld: "betrag", vorschlag: "11", wert: "12", von: "anna", am: "heute" }] };
     const kopf = { authorization: "Bearer geheim-1", "idempotency-key": `${KENNUNG}41` };
     const ruf = (k, r = rumpf) => kern.annehmen({ kopf: k, rumpf: r });
@@ -2910,7 +2925,8 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
     }
     assert((await ablage.anzahl()) === 0, "ein Aufruf ohne Geheimnis hat etwas angelegt");
     // Die App kennt selbst keines: sie nimmt nichts an, auch nicht mit leerem Bearer.
-    assert((await abschluss({ ablage, geheimnis: "" }).annehmen({ kopf: { authorization: "Bearer ", "idempotency-key": `${KENNUNG}41` }, rumpf })).status === 503, "ohne eigenes Geheimnis nimmt die App an");
+    assert((await abschluss({ ablage, geheimnis: "", kennung }).annehmen({ kopf: { authorization: "Bearer ", "idempotency-key": `${KENNUNG}41` }, rumpf })).status === 503, "ohne eigenes Geheimnis nimmt die App an");
+    assert((await abschluss({ ablage, geheimnis: "geheim-1", kennung: null }).annehmen({ kopf, rumpf })).status === 503, "ohne Form der Kennung nimmt die App an");
     assert((await ablage.anzahl()) === 0, "ohne eigenes Geheimnis ist etwas angelegt");
     // Die Kennung muss die Nummer des Laufs sein.
     assert((await ruf({ authorization: kopf.authorization })).status === 400, "ohne Idempotency-Key geht es durch");
@@ -2932,7 +2948,7 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
     assert(kreuz.every((r) => r.status < 300) && kreuz.filter((r) => r.antwort.neu).length === 1 && (await ablage.anzahl()) === 2, "sich kreuzende Aufrufe legen mehr als eines an");
 
     // 2xx erst nach dem Speichern: scheitert die Ablage, kommt kein 2xx.
-    const kaputt = abschluss({ ablage: { speichern: async () => { throw new Error("Datenbank weg"); } }, geheimnis: "geheim-1" });
+    const kaputt = abschluss({ ablage: { speichern: async () => { throw new Error("Datenbank weg"); } }, geheimnis: "geheim-1", kennung });
     assert((await kaputt.annehmen({ kopf, rumpf })).status === 500, "bei gescheiterter Ablage kommt 2xx");
     await db.schliessen();
   } finally {
@@ -2943,9 +2959,14 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
   const paket = mkdtempSync(join(tmpdir(), "ara-abschluss-srv-"));
   const starten = async (token) => {
     cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
+    // Die Vereinbarung, wie das Kit sie beim Einspielen schreibt: Name des Geheimnisses und Form der Kennung.
+    const vereinbart = JSON.parse(readFileSync(join(paket, "arasul.json"), "utf8"));
+    vereinbart.umgebung.abschluss_token = "PROBE_ABSCHLUSS";
+    vereinbart.abschluss = { kennung: "arasul-lauf-<nummer>" };
+    writeFileSync(join(paket, "arasul.json"), JSON.stringify(vereinbart));
     const umgebung = { ...process.env, PORT: "0", ARASUL_APP_NAME: "Probe", APP_DATEN: join(paket, "daten") };
-    delete umgebung.ARASUL_ABSCHLUSS_TOKEN;
-    if (token) umgebung.ARASUL_ABSCHLUSS_TOKEN = token;
+    delete umgebung.PROBE_ABSCHLUSS;
+    if (token) umgebung.PROBE_ABSCHLUSS = token;
     const app = spawn("node", [join(paket, "server.mjs")], { env: umgebung, stdio: ["ignore", "pipe", "pipe"] });
     let ausgabe = "";
     app.stderr.on("data", (c) => (ausgabe += String(c)));
@@ -3015,7 +3036,7 @@ check("Kontrakt 11: das Gerüst schreibt die Abschluss-Route, das Backend prüft
   return "Fassung 11 bedient: Route geschrieben, Geheimnis falsch 401, derselbe Schlüssel legt einmal an, 2xx erst nach dem Speichern, Abschluss ohne Backend wird gehalten";
 });
 
-check("Kontrakt 12: das Gerüst sagt zeigt_freigaben und öffnet die Freigabe aus der Adresse, --check hält das Feld", async () => {
+await checkAsync("Kontrakt 12: das Gerüst sagt zeigt_freigaben und öffnet die Freigabe aus der Adresse, --check hält das Feld", async () => {
   assert(KIT_CONTRACT_VERSION >= 12, "das Kit versteht Kontrakt 12 nicht");
   const zwoelf = KIT_CONTRACT_VERSIONS.find((e) => e.version === 12);
   assert(zwoelf && zwoelf.kann.length > 40, "Fassung 12 hat keinen kann-Satz");
@@ -3050,6 +3071,13 @@ check("Kontrakt 12: das Gerüst sagt zeigt_freigaben und öffnet die Freigabe au
     assert(z.zeigtFreigabenHints(mit, dir, 12).length === 0, "mit dem Feld gibt es einen Hinweis");
     assert(z.zeigtFreigabenHints({ id: "x" }, dir, 11).length === 0, "ein Gerät vor Kontrakt 12 bekommt einen Hinweis");
     assert(!z.hatFreigabeSeite(join(dir, "gibt-es-nicht")) && !z.hatFreigabeSeite(null), "ein fehlender Ordner gilt als Seite");
+    // --check und --deploy sehen den Bau: dort steht der Baustein nur noch als Import im Bündel, ohne JSX.
+    const bau = join(dir, "bau");
+    mkdirSync(join(bau, "assets"), { recursive: true });
+    writeFileSync(join(bau, "assets", "index.js"), 'import{Button as m,Datenliste as h}from"/marken/5/marken.js";m();');
+    assert(!z.hatFreigabeSeite(bau), "ein Bau ohne den Baustein gilt als Seite");
+    writeFileSync(join(bau, "assets", "index.js"), 'import{Button as m,Freigabe as v,Input as y}from"/marken/5/marken.js";v();');
+    assert(z.hatFreigabeSeite(bau), "ein Bau, der den Baustein einbindet, wird nicht erkannt");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -3080,7 +3108,7 @@ check("Kontrakt 12: das Gerüst sagt zeigt_freigaben und öffnet die Freigabe au
   return "Fassung 12 bedient: Feld bei Seite Freigaben geschrieben, Anfang führt zur Freigabe, Hinweis ohne Feld bei eigener Seite, Feld vor Kontrakt 12 gehalten";
 });
 
-check("Kontrakt 13: das Kit versteht Ereignis und route_aufrufen, --check hält routen und Werkzeug zusammen", async () => {
+await checkAsync("Kontrakt 13: das Kit versteht Ereignis und route_aufrufen, --check hält routen und Werkzeug zusammen", async () => {
   assert(KIT_CONTRACT_VERSION >= 13, "das Kit versteht Kontrakt 13 nicht");
   const dreizehn = KIT_CONTRACT_VERSIONS.find((e) => e.version === 13);
   assert(dreizehn && dreizehn.kann.length > 40, "Fassung 13 hat keinen kann-Satz");
@@ -3107,6 +3135,21 @@ check("Kontrakt 13: das Kit versteht Ereignis und route_aufrufen, --check hält 
   assert(befunde(mit(ein("GET", "/a") + ein("GET", "/a"))).length === 1 && befunde(mit(ein("GET", "/a") + ein("POST", "/a"))).length === 0, "doppelt wird falsch beurteilt");
   assert(befunde(mit(Array.from({ length: 21 }, (_, i) => ein("GET", `/r${i}`)).join(""))).length === 1, "21 Routen werden nicht gehalten");
   assert(befunde(mit(ein("GET", "/a")), { backend: false }).length === 1, "eine eigene Route ohne Backend wird nicht gehalten");
+  // Klammern nur als ganzer Platzhalter `{name}`: eine leere, eine offene oder eine verdrehte gilt nicht.
+  for (const pfad of ['"/a/{}"', '"/a/{"', '"/a/x}{y"', '"/a/}"']) {
+    assert(befunde(mit(ein("GET", pfad))).length === 1, `der Pfad ${pfad} geht durch`);
+  }
+  assert(befunde(mit(ein("GET", '"/a/{id}/b"'))).length === 0, "ein Pfad mit Platzhalter wird abgewiesen");
+  assert(f.pfadProblem("/a/{id}") && !f.pfadProblem("/a/{id}", { platzhalter: true }), "der Platzhalter gilt ohne platzhalter oder nicht mit");
+  // Beide Schreibweisen: `werkzeuge` als Zeilen und `routen` in Klammern, auch gemischt.
+  const block = flow('routen: [{ methode: POST, pfad: "/vorgaenge/{id}", zweck: "Prüft, ob alles da ist" }, { methode: GET, pfad: /liste, app: andere-app }]\nwerkzeuge:\n  - freigabe_anfordern\n  - route_aufrufen');
+  const inKlammern = f.routenEintraege(block.split(/^---\s*$/m)[1]);
+  assert(inKlammern?.length === 2 && inKlammern[0].pfad === "/vorgaenge/{id}" && inKlammern[0].zweck === "Prüft, ob alles da ist" && inKlammern[1].app === "andere-app", `routen in Klammern nicht gelesen: ${JSON.stringify(inKlammern)}`);
+  assert(befunde(block).length === 0, `routen in Klammern und werkzeuge als Zeilen werden angehalten: ${befunde(block)}`);
+  assert(befunde(flow("routen:\n  - { methode: GET, pfad: /a }\nwerkzeuge:\n  - route_aufrufen")).length === 0, "ein Eintrag in Klammern unter routen als Zeilen wird angehalten");
+  assert(befunde(flow("routen: [{ methode: GET, pfad: /a }]\nwerkzeuge:\n  - freigabe_anfordern")).some((b) => /kein Schritt|no step/.test(b)), "routen in Klammern ohne Werkzeug wird nicht gehalten");
+  assert(befunde(flow("werkzeuge:\n  - route_aufrufen")).some((b) => /keine `routen`|no `routen`/.test(b)), "das Werkzeug als Zeile ohne routen wird nicht gehalten");
+  assert(befunde(flow("routen: [{ methode: GET, pfad: /a }, { methode: GET, pfad: /a }]\nwerkzeuge: [route_aufrufen]")).length === 1, "doppelt in Klammern wird nicht gehalten");
   // Der Weg zum Ereignis kommt aus dem Kontrakt des Geräts in die Vereinbarung, und fehlt er dort, steht null.
   const mitEreignis = { ...KONTRAKT, endpunkte: [...KONTRAKT.endpunkte, { verb: "POST", pfad: "/api/v1/external/ereignisse/:name", bereich: "flow:run", was: "Ein Ereignis der App melden" }] };
   assert(appArrangement(mitEreignis).wege.ereignis_melden?.pfad === "/api/v1/external/ereignisse/{name}", `der Weg zum Ereignis fehlt: ${JSON.stringify(appArrangement(mitEreignis).wege.ereignis_melden)}`);
@@ -6882,7 +6925,7 @@ await checkAsync("Das Gerüst lädt die Bausteine vom Gerät und trägt keine Ko
     for (const datei of ["marken.js", "react.js", "react-dom-client.js", "jsx-runtime.js"]) {
       assert(g.js.includes(`/marken/5/${datei}`), `das Buendel laedt ${datei} nicht vom Geraet`);
     }
-    assert(frontendLoadsLibrary(join(front, "dist"), "5"), "frontendLoadsLibrary erkennt den Bau vom Geraet nicht");
+    assert(frontendLoadsLibrary(join(front, "dist"), "/marken/5/"), "frontendLoadsLibrary erkennt den Bau vom Geraet nicht");
     const kbGeraet = Math.round((Buffer.byteLength(g.js) + Buffer.byteLength(g.css)) / 1024);
     assert(kbGeraet < 200, `das Bündel vom Gerät hat ${kbGeraet} KB: die Bibliothek steckt wohl drin`);
     assert(!/recharts|radix/i.test(g.js), "Radix oder Recharts stecken im Buendel, die Bibliothek ist nicht ausserhalb");
@@ -6893,7 +6936,7 @@ await checkAsync("Das Gerüst lädt die Bausteine vom Gerät und trägt keine Ko
     assert(kopie.status === 0, `das Gerüst baut nicht aus der Kopie:\n${kopie.ausgabe.split("\n").slice(-12).join("\n")}`);
     const k = lesen(join(front, "dist"));
     assert(!/\/marken\/5\//.test(k.html + k.js), "der Bau aus der Kopie zeigt noch auf das Geraet");
-    assert(!frontendLoadsLibrary(join(front, "dist"), "5"), "frontendLoadsLibrary haelt eine Kopie fuer den Bau vom Geraet");
+    assert(!frontendLoadsLibrary(join(front, "dist"), "/marken/5/"), "frontendLoadsLibrary haelt eine Kopie fuer den Bau vom Geraet");
     const kbKopie = Math.round((Buffer.byteLength(k.js) + Buffer.byteLength(k.css)) / 1024);
     assert(kbKopie > 300, `der Bau aus der Kopie hat nur ${kbKopie} KB: die Bibliothek fehlt`);
 
@@ -6932,6 +6975,11 @@ await checkAsync("Kontrakt 9: was das Kit zur Bibliothek zur Laufzeit hält, sag
   // Eine Kopie veraltet still: das Kit sagt es als Hinweis und haelt nichts an.
   const hinweis = libraryHints(neun, { id: "x", marken: "5.2.1" }, { served: { haupt: "5", fassung: "5.3.1" } });
   assert(hinweis.length === 1 && /5\.3\.1/.test(hinweis[0]), `eine Kopie bekommt keinen Hinweis: ${hinweis.join(" | ")}`);
+  // Adresse und Beispielzahl kommen aus Kontrakt, Antwort des Geräts oder Kopie, nie aus dem Kit.
+  const anderswo = { marken: { ...neun.marken, adresse: "/bibliothek/v<haupt>/" } };
+  assert(libraryAddress(anderswo, "7") === "/bibliothek/v7/", "die Adresse wird nicht aus dem Kontrakt gebildet");
+  assert(libraryHints(anderswo, { id: "x", marken: "7.0.1" }, { served: null }).some((z) => /"7"/.test(z)), "die Beispielzahl kommt nicht aus der Kopie");
+  assert(libraryHints(anderswo, { id: "x", marken: "kopie" }, { served: null }).every((z) => !/"5"/.test(z) && !/0\.68/.test(z)), "der Hinweis nennt eine Zahl aus dem Kopf");
   assert(libraryHints({}, { id: "x", marken: "5.2.1" }, {}).length === 0, "ein Gerät ohne Abschnitt bekommt einen Hinweis zur Kopie");
   assert(libraryHints(neun, vomGeraet, { served: null }).some((z) => /Not checked|Nicht geprüft/.test(z)), "eine nicht lesbare Antwort wird nicht als ungeprüft gesagt");
   assert(librarySection(neun).some((z) => z.includes("Eine App KANN")), "der Abschnitt marken steht nicht wörtlich im Bericht");
@@ -6943,6 +6991,7 @@ await checkAsync("Kontrakt 9: was das Kit zur Bibliothek zur Laufzeit hält, sag
     writeFileSync(join(dir, "index.html"), "<!doctype html>");
     writeFileSync(join(dir, "assets", "a.js"), 'import{h}from"/marken/5/marken.js";');
     assert(libraryFindings(neun, vomGeraet, { frontendDir: dir, served: { haupt: "5", fassung: "5.3.1" } }).length === 0, "ein Paket, das vom Gerät lädt, wird beanstandet");
+    assert(libraryFindings(anderswo, vomGeraet, { frontendDir: dir, served: { haupt: "5", fassung: "5.3.1" } }).some((z) => z.includes("/bibliothek/v5/")), "der Bau wird nicht an der Adresse des Kontrakts gemessen");
     writeFileSync(join(dir, "assets", "a.js"), "var x=1;");
     assert(libraryFindings(neun, vomGeraet, { frontendDir: dir, served: { haupt: "5", fassung: "5.3.1" } }).length === 1, "ein Paket, das die Bibliothek nicht vom Gerät lädt, hält nichts an");
   } finally {

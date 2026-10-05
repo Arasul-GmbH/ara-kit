@@ -1,6 +1,6 @@
 # Verfahren: Apps auf ein Gerät bringen
 
-> **Wann brauchst du das?** Wenn eine App auf einem Gerät landen soll: prüfen, einspielen,
+> **Wann brauchst du das?** Wenn eine App auf einem Gerät landen soll: bauen, prüfen, einspielen,
 > freigeben, live schalten und zurück, entfernen, oder auf ein Gerät ohne Arasul bringen. Was die
 > App dort benutzt: `.ara/knowledge/platform-services.de.md`.
 
@@ -26,6 +26,16 @@ Das Kit kennt die höchste **Kontraktversion**, die es versteht:
 
 Eingespielt wird nur in den ersten beiden Fällen.
 
+## Das Paket bauen
+
+```
+node .ara/tools/app.mjs --app <name> --build
+```
+
+Das Paket entsteht unter `build/`, ohne Pläne, README und Bau; ein Ordner mit eigenem Bau wird
+gebaut (vorher die Typen geprüft), der Rest wandert, wie er ist. Ein Bau, der älter ist als der
+Quelltext, wird nicht eingespielt.
+
 ## Ein Paket prüfen, bevor es fliegt
 
 ```
@@ -35,7 +45,8 @@ node .ara/tools/app.mjs --device <gerät> --app <name> --check
 `app.json` liegt an der Wurzel des Pakets, daneben die Ordner, die das Manifest nennt. **Flows sind
 eine Lieferung**: ein versprochener Flow-Ordner ist da und bringt eine Datei je Flow. Das Werkzeug
 hält das Manifest gegen das Schema **dieses** Geräts, nennt jede Abweichung und was es nicht prüfen
-konnte, prüft, dass die Oberfläche ein **Bau** ist, und gibt `arasul.json` aus. Selbst liest du,
+konnte, prüft, dass die Oberfläche ein **Bau** ist (`package.json`, `src/` oder `tsconfig.json` darin
+wären eine leere Seite), und gibt `arasul.json` aus. Selbst liest du,
 Wort für Wort, **die Regeln, die kein Schema trägt**, „mindestens eines von frontend und backend",
 „mit einem Backend ein Port": ein Manifest, das eine davon bricht, lehnt das Gerät ab, auch wenn das
 Schema hält. Und **was der Kontrakt über das Paket sagt**: Packen, was draußen bleibt, Größe, Flows.
@@ -43,8 +54,12 @@ Schema hält. Und **was der Kontrakt über das Paket sagt**: Packen, was drauße
 ## Einspielen, und warum es noch nicht sichtbar ist
 
 ```
-node .ara/tools/app.mjs --device <gerät> --app <name> --deploy
+node .ara/tools/app.mjs --device <gerät> --app <name> --deploy --aenderungstext "<text>"
 ```
+
+**Ein paar Sätze, was neu ist**, gehen mit, wenn der Kontrakt des Geräts das Feld `aenderungstext`
+nennt: 1 bis 1000 Zeichen, neben dem Paket und nicht in der `app.json`. Ohne sie hält das Kit an;
+frag in den Worten des Menschen.
 
 Das Werkzeug prüft, packt den **Inhalt** des Ordners, vergleicht mit der Größengrenze und schickt;
 eine Ablehnung kommt mit dem Grund des Geräts, lies ihn, statt zu wiederholen. Das Gerät baut das

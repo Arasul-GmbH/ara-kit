@@ -2,9 +2,9 @@
  * Die Bibliothek des Designsystems zur Laufzeit: was das Kit dazu prüft und sagt.
  *
  * Seit Kontrakt 9 kann ein Gerät die Bibliothek selbst ausliefern. Eine App, die
- * im Manifest nur die Hauptzahl nennt (`"marken": "5"`), lädt Bausteine und
- * Stylesheet von der festen Adresse des Geräts und bringt keine Kopie mit; drei
- * Zahlen (`"marken": "5.2.1"`) heißen weiter: die Kopie steckt im Bündel.
+ * im Manifest nur die Hauptzahl nennt (`"marken": "<haupt>"`), lädt Bausteine und
+ * Stylesheet von der festen Adresse des Geräts und bringt keine Kopie mit; die
+ * ganze Fassung (`"marken": "<fassung>"`) heißt weiter: die Kopie steckt im Bündel.
  *
  * **Hier steht kein Produktwert.** Die Adresse, die Datei mit der ausgelieferten
  * Fassung und die Regeln stehen im Abschnitt `marken` des Kontrakts, und was das
@@ -12,9 +12,10 @@
  * sind rein, nur `readServed` ruft das Gerät.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { call } from "./arasul.mjs";
+import { walkFiles } from "./files.mjs";
 import { t } from "./i18n.mjs";
 
 /** Die Hauptzahl, wenn das Manifest die Bibliothek zur Laufzeit meint, sonst `null`. */
@@ -39,8 +40,8 @@ export function contractServesLibrary(contract) {
  *
  * Die Datei liegt ohne Anmeldung offen, und ihren Pfad nennt der Kontrakt. Ein
  * Gerät ohne den Abschnitt wird nicht gefragt, und eine Antwort, die keine
- * Hauptzahl trägt, zählt wie keine: ein Kit, das aus „keine Antwort" ein
- * „anderes Gerät" macht, hielte eine gute App an.
+ * Hauptzahl trägt, zählt wie keine: ein Kit, das aus „keine Antwort“ ein
+ * „anderes Gerät“ macht, hielte eine gute App an.
  */
 export async function readServed(contract, { base, insecure = false }) {
   if (!contractServesLibrary(contract)) return null;
@@ -54,22 +55,16 @@ export async function readServed(contract, { base, insecure = false }) {
   }
 }
 
-/** Alle JavaScript-Dateien unter einem Ordner. */
-function scripts(dir) {
-  const out = [];
-  if (!existsSync(dir)) return out;
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) out.push(...scripts(path));
-    else if (/\.m?js$/.test(entry.name) && statSync(path).size < 8_000_000) out.push(path);
-  }
-  return out;
+/** Die Adresse, unter der das Gerät die Bibliothek mit dieser Hauptzahl ausliefert, wie sein Kontrakt sie schreibt. */
+export function libraryAddress(contract, haupt) {
+  return String(contract.marken.adresse).replace("<haupt>", haupt);
 }
 
-/** Zeigt der gebaute Ordner auf die Adresse des Geräts, statt die Bibliothek mitzubringen? */
-export function frontendLoadsLibrary(frontendDir, haupt) {
-  const adresse = `/marken/${haupt}/marken.js`;
-  return scripts(frontendDir).some((path) => readFileSync(path, "utf8").includes(adresse));
+/** Zeigt der gebaute Ordner auf die Adresse des Geräts (`libraryAddress`), statt die Bibliothek mitzubringen? */
+export function frontendLoadsLibrary(frontendDir, adresse) {
+  return walkFiles(frontendDir, { match: /\.m?js$/, skip: ["node_modules"], maxBytes: 8_000_000 }).some((path) =>
+    readFileSync(path, "utf8").includes(adresse)
+  );
 }
 
 /**
@@ -101,16 +96,19 @@ export function libraryFindings(contract, manifest, { frontendDir = null, served
   } else if (served && served.haupt !== haupt) {
     out.push(
       t(
-        `app.json says marken "${haupt}", this device serves the library under ${served.haupt}${served.fassung ? ` (version ${served.fassung})` : ""}. At ${contract.marken.adresse.replace("<haupt>", haupt)} there is nothing, and the page would stay empty. Build against ${served.haupt}: marken.mjs --sync pulls the copy up and writes the number.`,
-        `app.json nennt marken "${haupt}", dieses Gerät liefert die Hauptzahl ${served.haupt}${served.fassung ? ` (Fassung ${served.fassung})` : ""} aus. Unter ${contract.marken.adresse.replace("<haupt>", haupt)} liegt nichts, und die Seite bliebe leer. Gegen ${served.haupt} bauen: marken.mjs --sync zieht die Kopie nach und schreibt die Zahl.`
+        `app.json says marken "${haupt}", this device serves the library under ${served.haupt}${served.fassung ? ` (version ${served.fassung})` : ""}. At ${libraryAddress(contract, haupt)} there is nothing, and the page would stay empty. Build against ${served.haupt}: marken.mjs --sync pulls the copy up and writes the number.`,
+        `app.json nennt marken "${haupt}", dieses Gerät liefert die Hauptzahl ${served.haupt}${served.fassung ? ` (Fassung ${served.fassung})` : ""} aus. Unter ${libraryAddress(contract, haupt)} liegt nichts, und die Seite bliebe leer. Gegen ${served.haupt} bauen: marken.mjs --sync zieht die Kopie nach und schreibt die Zahl.`
       )
     );
   }
-  if (frontendDir && existsSync(join(frontendDir, "index.html")) && !frontendLoadsLibrary(frontendDir, haupt)) {
+  // Wohin die gebaute Oberfläche zeigen muss, sagt nur der Kontrakt. Nennt er keinen Abschnitt, steht der
+  // Halt dazu schon oben, und am Bau ist nichts zu vergleichen.
+  const adresse = contractServesLibrary(contract) ? libraryAddress(contract, haupt) : null;
+  if (adresse && frontendDir && existsSync(join(frontendDir, "index.html")) && !frontendLoadsLibrary(frontendDir, adresse)) {
     out.push(
       t(
-        `app.json says marken "${haupt}", but the built interface does not load the library from /marken/${haupt}/marken.js: it carries it itself, or nothing of it. The package is to carry no file of the library. Build with \`npm run build\`, not \`build:kopie\`.`,
-        `app.json nennt marken "${haupt}", aber die gebaute Oberfläche lädt die Bibliothek nicht von /marken/${haupt}/marken.js: sie trägt sie selbst, oder nichts davon. Das Paket soll keine Datei der Bibliothek tragen. Mit \`npm run build\` bauen, nicht mit \`build:kopie\`.`
+        `app.json says marken "${haupt}", but the built interface does not load the library from ${adresse}: it carries it itself, or nothing of it. The package is to carry no file of the library. Build with \`npm run build\`, not \`build:kopie\`.`,
+        `app.json nennt marken "${haupt}", aber die gebaute Oberfläche lädt die Bibliothek nicht von ${adresse}: sie trägt sie selbst, oder nichts davon. Das Paket soll keine Datei der Bibliothek tragen. Mit \`npm run build\` bauen, nicht mit \`build:kopie\`.`
       )
     );
   }
@@ -136,8 +134,8 @@ export function libraryHints(contract, manifest, { served = null } = {}) {
     } else if (served) {
       out.push(
         t(
-          `The library comes from the device: ${contract.marken.adresse.replace("<haupt>", haupt)}, version ${served.fassung ?? "unknown"} today. The package carries no copy, and a device update brings the new version without a rebuild.`,
-          `Die Bibliothek kommt vom Gerät: ${contract.marken.adresse.replace("<haupt>", haupt)}, heute in Fassung ${served.fassung ?? "unbekannt"}. Das Paket trägt keine Kopie, und ein Update des Geräts bringt die neue Fassung ohne Neubau.`
+          `The library comes from the device: ${libraryAddress(contract, haupt)}, version ${served.fassung ?? "unknown"} today. The package carries no copy, and a device update brings the new version without a rebuild.`,
+          `Die Bibliothek kommt vom Gerät: ${libraryAddress(contract, haupt)}, heute in Fassung ${served.fassung ?? "unbekannt"}. Das Paket trägt keine Kopie, und ein Update des Geräts bringt die neue Fassung ohne Neubau.`
         )
       );
     }
@@ -145,10 +143,13 @@ export function libraryHints(contract, manifest, { served = null } = {}) {
   }
   if (typeof manifest?.marken === "string" && manifest.marken && contractServesLibrary(contract)) {
     const nun = served ? ` (${t("now", "heute")} ${served.fassung ?? served.haupt})` : "";
+    // Die Hauptzahl als Beispiel nur, wenn das Gerät sie nennt oder die Kopie sie trägt; geraten wird keine.
+    const zahl = served?.haupt ?? majorOf(manifest.marken);
+    const beispiel = zahl ? ` (${t("for example", "etwa")} "${zahl}")` : "";
     out.push(
       t(
-        `Hint: this app carries a copy of the library (${manifest.marken}), and the device serves its own${nun}. The copy stays valid and ages with every device update. To load it from the device, write the major number into \`marken\` (for example "${served?.haupt ?? majorOf(manifest.marken) ?? "5"}") and build again with \`npm run build\`. Only apps made from the scaffold since 0.68.0 are set up for it.`,
-        `Hinweis: diese App trägt eine Kopie der Bibliothek (${manifest.marken}), und das Gerät liefert seine eigene aus${nun}. Die Kopie bleibt gültig und veraltet mit jedem Update des Geräts. Um sie vom Gerät zu laden, die Hauptzahl in \`marken\` schreiben (etwa "${served?.haupt ?? majorOf(manifest.marken) ?? "5"}") und mit \`npm run build\` neu bauen. Eingerichtet dafür sind nur Apps aus der Vorlage ab 0.68.0.`
+        `Hint: this app carries a copy of the library (${manifest.marken}), and the device serves its own${nun}. The copy stays valid and ages with every device update. To load it from the device, write the major number into \`marken\`${beispiel} and build again with \`npm run build\`. Set up for it is an app whose frontend builds both ways, \`build\` from the device and \`build:kopie\` with the copy, as the scaffold does.`,
+        `Hinweis: diese App trägt eine Kopie der Bibliothek (${manifest.marken}), und das Gerät liefert seine eigene aus${nun}. Die Kopie bleibt gültig und veraltet mit jedem Update des Geräts. Um sie vom Gerät zu laden, die Hauptzahl in \`marken\` schreiben${beispiel} und mit \`npm run build\` neu bauen. Eingerichtet dafür ist eine App, deren Oberfläche auf beide Arten baut, \`build\` vom Gerät und \`build:kopie\` mit der Kopie, wie die Vorlage.`
       )
     );
   }

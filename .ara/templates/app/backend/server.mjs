@@ -89,9 +89,15 @@ const vorgangsKern = kern({
   name: NAME,
   regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),
 });
-// Das Geheimnis legt das Gerät beim Einspielen in den Container, je App und Stand. Fehlt es, nimmt die
-// Route nichts an, und das sagt sie.
-const abschlussAnnahme = abschlussKern({ ablage: abschlussAblage(db), geheimnis: process.env.ARASUL_ABSCHLUSS_TOKEN || "" });
+// Das Geheimnis legt das Gerät beim Einspielen in den Container, je App und Stand, unter dem Namen aus
+// der Vereinbarung; dort steht auch die Form der Kennung. Fehlt eines davon, nimmt die Route nichts an,
+// und das sagt sie.
+const abschlussToken = vereinbarung.umgebung?.abschluss_token || null;
+const abschlussAnnahme = abschlussKern({
+  ablage: abschlussAblage(db),
+  geheimnis: (abschlussToken && process.env[abschlussToken]) || "",
+  kennung: vereinbarung.abschluss?.kennung || null,
+});
 
 /**
  * Was die App über sich sagt: das Feld `agent` ihres Manifests, mit Kennung, Name und Version.
