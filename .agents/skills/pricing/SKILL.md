@@ -3,7 +3,7 @@ name: pricing
 description: Calculate prices, costs and margins for Arasul devices and services. Use when somebody asks what something costs, what an offer should come to, what is left over from a job, whether something is worth it, or when hourly rates, markups and maintenance prices are in play.
 ---
 
-Procedure: `.ara/knowledge/pricing.md`
+Procedure: `.ara/knowledge/pricing.md` (`pricing.de.md` with `language: de`)
 
 Short:
 

@@ -94,6 +94,21 @@ has to be there live from the start, clients for instance. `--back` is a **swap*
 stands at the start again. After every switch one line into the customer's history or the device's
 runsheet: app, version, who wanted it, what was checked afterwards.
 
+**The device backs up live first and falls back by itself.** If the new version does not come up,
+mostly a change of the database structure that fails at its start, it puts version **and** data
+from before back and answers `LIVE_ZURUECKGESCHALTET`; staging stays untouched. So a failed change
+of structure must end the process with an exit code other than 0, never run on half done. The tool
+prints the device's help sentence and the container's last lines: read them, fix it in staging,
+switch again. The exact rule: `--contract`, `daten`.
+
+## When the app does not run in staging
+
+An empty page, a 502, a build that fails: the reason stands at the **end** of the output, and the
+tool prints that end. Beyond that, read the app's container on the device, reading only:
+`node .ara/tools/remote.mjs --device <device> --command "docker ps -a --filter name=<id>"` names
+it, `--command "docker logs --tail 60 <name>"` shows its last lines. The scaffold writes its
+state there at start, and the route `lage` of the app says the same.
+
 ## Removing
 
 ```

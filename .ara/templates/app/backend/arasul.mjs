@@ -40,7 +40,8 @@
  * holt das Ergebnis auf dem Weg ab, den die Vereinbarung unter
  * `wege.dokument_abholen` nennt, und schickt die Datei kein zweites Mal. Zum
  * Gerät gehen höchstens so viele Auslesungen zugleich, wie die Vereinbarung
- * unter `warten.gleichzeitig` erlaubt, ohne Angabe eine; die übrigen warten
+ * unter `warten.gleichzeitig` erlaubt (das Kit schreibt dort, was das Gerät
+ * unter `last` rechnet), ohne Angabe eine; die übrigen warten
  * hier in der Reihe und nicht in der Warteschlange des Geräts, die alle Apps
  * teilen.
  *
@@ -128,6 +129,8 @@ export function menschensatz(code, { tun = "es", modell = false, abgelaufen = fa
     return `Das Gerät war ausgelastet und hat nicht rechtzeitig geantwortet. ${erneut}`;
   }
   if (code === 0) return `Das Gerät war nicht erreichbar. ${erneut}`;
+  // Eine volle Warteschlange, auch nach den Versuchen der App: viele fragen gerade zugleich.
+  if (code === 503) return "Am Gerät warten gerade sehr viele Anfragen. In einer Minute noch einmal versuchen.";
   if (code === 401) return "Das Gerät hat den Schlüssel dieser App nicht angenommen. Das richtet der Administrator.";
   if (code === 403) {
     return tun === "es"
@@ -197,6 +200,16 @@ export function jsonAusAntwort(antwort) {
 export const ABHOLEN_ALLE_MS = 5_000;
 
 /**
+ * Wie lange die App wartet, bevor sie es nach einer vollen Warteschlange noch einmal versucht.
+ *
+ * Das Gerät rechnet eine Anfrage zur Zeit, die übrigen warten in einer Reihe, die alle Apps
+ * teilen. Ist sie voll, antwortet es mit 503, und eine App fängt das ab und versucht es nach
+ * einigen Sekunden noch einmal, statt es dem Menschen zu zeigen (`last` im Kontrakt). Zwei
+ * weitere Versuche; erst danach sieht der Mensch „ausgelastet".
+ */
+export const NOCHMAL_NACH_MS = Object.freeze([4_000, 10_000]);
+
+/**
  * Eine Reihe, die höchstens `grenze` Aufgaben zugleich laufen lässt. Die
  * übrigen warten, in der Reihenfolge, in der sie kamen.
  */
@@ -223,7 +236,7 @@ export function zugleich(grenze) {
  * sich der Fall "das Gerät hat den Wert nicht gesetzt" prüfen, ohne einen
  * Prozess zu starten.
  */
-export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABHOLEN_ALLE_MS }) {
+export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABHOLEN_ALLE_MS, nochmalNachMs = NOCHMAL_NACH_MS }) {
   const kopf = vereinbarung.kopf || null;
   const wege = vereinbarung.wege || {};
   const basisName = vereinbarung.umgebung?.basis || null;
@@ -300,6 +313,17 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
     };
   }
 
+  /** Ein Aufruf, der bei voller Warteschlange (503) wartet und es noch einmal versucht. */
+  async function mitGeduld(abschicken) {
+    for (const pause of nochmalNachMs) {
+      const antwort = await abschicken();
+      if (antwort.status !== 503) return antwort;
+      await antwort.arrayBuffer().catch(() => null);
+      await new Promise((weiter) => setTimeout(weiter, pause));
+    }
+    return abschicken();
+  }
+
   /**
    * Ein Aufruf an die Schnittstelle des Geräts.
    *
@@ -311,16 +335,18 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
     const ziel = weg(schalter, werte);
     if (!ziel) return { code: null, daten: null, fehler: `Der Kontrakt dieses Geräts nennt den Weg ${schalter} nicht.` };
     try {
-      const antwort = await fetch(`${basis}${ziel.pfad}`, {
-        method: ziel.verb,
-        headers: {
-          [kopf]: schluessel,
-          ...fuerWen(ziel.pfad, nutzer),
-          ...(rumpf ? { "content-type": "application/json" } : {}),
-        },
-        body: rumpf ? JSON.stringify(rumpf) : undefined,
-        signal: AbortSignal.timeout(frist),
-      });
+      const antwort = await mitGeduld(() =>
+        fetch(`${basis}${ziel.pfad}`, {
+          method: ziel.verb,
+          headers: {
+            [kopf]: schluessel,
+            ...fuerWen(ziel.pfad, nutzer),
+            ...(rumpf ? { "content-type": "application/json" } : {}),
+          },
+          body: rumpf ? JSON.stringify(rumpf) : undefined,
+          signal: AbortSignal.timeout(frist),
+        })
+      );
       const text = await antwort.text();
       let daten = null;
       try {
@@ -371,12 +397,14 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
       if (wert !== undefined && wert !== null) formular.append(feld, typeof wert === "string" ? wert : JSON.stringify(wert));
     }
     try {
-      const antwort = await fetch(`${basis}${ziel.pfad}`, {
-        method: ziel.verb,
-        headers: { [kopf]: schluessel, ...fuerWen(ziel.pfad, nutzer) },
-        body: formular,
-        signal: AbortSignal.timeout(frist),
-      });
+      const antwort = await mitGeduld(() =>
+        fetch(`${basis}${ziel.pfad}`, {
+          method: ziel.verb,
+          headers: { [kopf]: schluessel, ...fuerWen(ziel.pfad, nutzer) },
+          body: formular,
+          signal: AbortSignal.timeout(frist),
+        })
+      );
       const text = await antwort.text();
       let daten = null;
       try {

@@ -50,19 +50,24 @@ Ein Flow hält mit dem Werkzeug `freigabe_anfordern` an, mit Titel, Kontext und 
 wartet: **ohne Entscheidung geht nichts weiter**. Genehmigt, läuft der Lauf ab dem Schritt weiter;
 abgelehnt, endet er mit dem Grund; keine Entscheidung bis zur Frist, endet er ebenso.
 
-**Entschieden wird über die Sitzung eines Menschen**, in der Oberfläche des Geräts: kein Kontrakt
-nennt diese Wege, und das Kit ruft sie nicht. **Die App liest den Stand mit ihrem eigenen Schlüssel
-und entscheidet nie**: `GET /api/v1/external/freigaben`, mit der Laufnummer.
+**Entschieden wird über die Sitzung eines Menschen**, in Arasul oder auf der Seite „Freigaben" der
+App (`zeigt_freigaben` in `app.json`); das Kit ruft diese Wege nicht. **Die App liest den Stand mit
+ihrem eigenen Schlüssel**: `GET /api/v1/external/freigaben`, mit der Laufnummer.
 
-**Der Kreis.** Ein Flow nennt keine Person und keine Rolle. Ohne Regel entscheidet **jeder, für den
-die App freigegeben ist**, und sieht die Karte mit ihrem Text, auch für einen Mandanten, der nicht
-seiner ist. Der Kontrakt nennt unter `freigaben`, wie eine App den Kreis beim Start enger zieht, nie
-weiter: **`einreicher`**, der Benutzername dessen, der den Lauf auslöst;
-**`freigabe.ohne_einreicher: true`**, vier Augen; **`freigabe.entscheider`**, `{"rolle": "admin"}`
-oder `{"konten": [...]}`. Außerhalb des Kreises sieht niemand die Anfrage, und Entscheiden bekommt
-eine 403; bleibt niemand, lehnt das Gerät den Start ab. `--contract` gibt die Regeln aus,
-`arasul.json` sagt unter `freigaben`, ob ein Gerät sie kennt. Für Mandanten:
-`.ara/knowledge/app-professional.de.md`, „Freigaben in einer Fach-App".
+**Der Kreis.** Ein Flow nennt keine Person und keine Rolle. Im Kreis ist jeder, für den die App
+freigegeben ist, **außer dem Einreicher: wer eingereicht hat, entscheidet nie**, das hält das Gerät
+ohne Regel der App. Der Kontrakt nennt unter `freigaben`, wie eine App den Kreis beim Start enger
+zieht, nie weiter: **`einreicher`**, der Benutzername dessen, der den Lauf auslöst, und
+**`freigabe.entscheider`**, `{"rolle": "admin"}` oder `{"konten": [...]}`. Außerhalb des Kreises
+sieht niemand die Anfrage, und Entscheiden bekommt eine 403; bleibt niemand, lehnt das Gerät den
+Start ab. Für Mandanten: `.ara/knowledge/app-professional.de.md`, „Freigaben in einer Fach-App".
+
+**Bei wem sie liegt.** Der Administrator setzt am Gerät je App und Stufe eine Standardperson, nicht
+die App und nicht der Flow. Eine neue Anfrage liegt bei ihr, ohne sie bei allen im Kreis, und
+**entscheiden kann nur, bei dem sie liegt**. Jeder im Kreis kann sie übernehmen oder weitergeben;
+die Seite der Vorlage zeigt, was bei anderen liegt, und übernimmt es. Frag das Haus, wer je Stufe
+die Standardperson ist, und sag dem Administrator, dass er sie setzt. `--contract` gibt die Regeln
+aus, `arasul.json` sagt unter `freigaben`, ob ein Gerät sie kennt.
 
 **Verweise in die Anfrage, keine Inhalte.** Titel und Kontext stehen auf der Karte jedes
 Entscheiders: „Beleg 17, eingereicht von anna", der Entscheider öffnet ihn in der App. Beträge,
@@ -82,8 +87,12 @@ POST /api/v1/external/flows/<name>/run
 GET  /api/v1/external/flows/runs/<id>
 ```
 
-Der Schlüssel einer App sieht nur ihre eigenen Flows in ihrem Stand. Wiederkehrende Starts kommen
-über denselben Weg aus einem Zeitplan auf einem Rechner, der ohnehin läuft. **Ein Flow mit
+Der Schlüssel einer App sieht nur ihre eigenen Flows in ihrem Stand. **Wiederkehrende und
+ausgelöste Starts macht das Gerät selbst**, aus dem Kopf des Flows unter `ausloeser`: `zeitplan`
+startet ihn im Livestand zur genannten Zeit, ohne Argumente und ohne Einreicher; `ereignis` startet
+jeden Flow der App, der auf den Namen hört, wenn die App ihn meldet
+(`POST /api/v1/external/ereignisse/<name>`). Kein zweiter Rechner mit Zeitplan. Was genau gilt, sagt
+`--contract` unter `flow_frontmatter`. **Ein Flow mit
 Freigabe-Schritt wird gestartet, ohne zu warten**: die Laufnummer kommt sofort zurück, den Rest
 fragst du nach.
 
@@ -96,10 +105,11 @@ GET  /api/v1/external/llm/queue
 GET  /api/v1/external/models
 POST /api/v1/external/document/extract
 POST /api/v1/external/document/extract-structured
+GET  /api/v1/external/document/extract-structured/<id>
 POST /api/v1/external/document/analyze
 ```
 
-**Welche davon ein Gerät trägt, mit welchem Bereich, sagt sein Kontrakt**; ein Schlüssel ohne den
+**Welche davon ein Gerät trägt, mit welchem Bereich, sagt sein Kontrakt**, und nur er nennt sie alle; ein Schlüssel ohne den
 Bereich wird abgewiesen. Ein Dokument auslesen: `.ara/knowledge/app-professional.de.md`, „Dokumente
 und Bilder auslesen". Der Rest ist für das Kit und für Werkzeuge außerhalb einer App:
 `.ara/knowledge/extensions.de.md`, „Der Weg für fremde Werkzeuge". Der Schlüssel des Kits kommt aus

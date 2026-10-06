@@ -22,7 +22,7 @@ wenn ihr Moment kommt.
 - `.ara/templates/app/README.md`, wenn du die Vorlage einer App änderst: ihre Stellen, wo eine
   Freigabe entschieden wird, wie sie das Ergebnis eines Flows annimmt.
 
-Sicherheitsstufen und Produktwerte: `.claude/CLAUDE.md`. Vorher liest du `business/profile.md`:
+Sicherheitsstufen und Produktwerte: `AGENTS.md`, „How you work". Vorher liest du `business/profile.md`:
 Sprache, Zweig, Detailtiefe, Sicherheitsstufe, womit das Haus arbeitet.
 
 **Das Argument.** `<app>` ist die App unter `apps/<app>/`. Kein Argument: erst der Merker `.ara/state.json`, dann

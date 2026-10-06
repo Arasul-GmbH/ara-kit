@@ -35,7 +35,7 @@ the device.)
 
 **How the scaffold carries it.** Submitter and rule go only when `arasul.json` says under `freigaben`
 that the device takes them. `regel` returns the rule, a sentence starts no run; `zustaendig` checks a
-decision; `VIER_AUGEN` in `server.mjs` excludes the submitter. The flow gets the item's number and
+decision; the submitter the device keeps out by itself. The flow gets the item's number and
 the submitter, nothing else. After the approval the app asks for the flow's sentence until the run
 is finished.
 

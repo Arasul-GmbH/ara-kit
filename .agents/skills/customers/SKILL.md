@@ -3,7 +3,7 @@ name: customers
 description: Customer care and an overview of your own business. Use when somebody asks what is due, what to do today, how the customers are doing, when a maintenance contract runs out, who they wanted to get back to, or when the file should be brought up to date after a conversation.
 ---
 
-Procedure: `.ara/knowledge/crm.md`
+Procedure: `.ara/knowledge/crm.md` (`crm.de.md` with `language: de`)
 
 Short:
 

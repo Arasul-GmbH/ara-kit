@@ -1,9 +1,10 @@
 ---
 name: extensions
-description: Build your own extensions, automations and integrations for a customer. Use when a customer wants something the product cannot do out of the box, when work processes, interfaces, automation or integration with other systems come up, or when somebody asks whether something particular can be done with it.
+description: Build your own extensions, automations and integrations outside of an app. An app on the device (a form, an intake, an approval, an overview) is not this skill but build-app and the command /app. Use when a customer wants something the product cannot do out of the box, when work processes, interfaces, automation or integration with other systems come up, or when somebody asks whether something particular can be done with it.
 ---
 
-Procedure: `.ara/knowledge/extensions.md`
+Procedure: `.ara/knowledge/extensions.md` (`extensions.de.md` with `language: de`). **An app on the
+device goes along `/app`**: `.ara/commands/all/app.md`, not along this skill.
 
 Short:
 

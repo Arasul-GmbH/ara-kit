@@ -73,8 +73,8 @@ Say it as it is when somebody asks.
   multiple choice, no preview sketch. The lists "What must be clear" are the same, so an
   interview takes more rounds here, and the sketch of a layout option stands in a line of its
   description.
-- The permissions: Claude Code has an allow and a deny list in `.claude/settings.json`, Codex has
-  none of it. The guard is the one fence against reading `.env` and private keys, and it is a text
+- The permissions: Claude Code has a deny list in `.claude/settings.json` (it starts without
+  asking, `.ara/knowledge/security.md`, "The hard guard"), Codex has none of it. The guard is the one fence against reading `.env` and private keys, and it is a text
   search on shell calls. It also stops `remote.mjs --command "rm -rf /"`, but a call built around
   it gets past.
 - The first start asks two questions more, and `update.mjs` asks for one more approval.

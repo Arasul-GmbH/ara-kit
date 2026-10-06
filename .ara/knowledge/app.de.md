@@ -115,15 +115,16 @@ bekommt beim ersten Mal einen Satz.
    an der ein Modell arbeitet, eine Art Modell für die Aufgabe vor, mit Grund, und sag, dass der
    Admin es später am Gerät umstellen kann, ohne dass die App kaputtgeht. **Kein Modellname aus dem
    Kopf**: was das Gerät hat, kommt aus `--contract`, der Katalog aus dem Spiegel. Der Vorschlag steht
-   im Kopf der Flow-Datei; der Plan listet Flow, Aufgabe, Vorschlag und Grund unter `Modelle je Flow`.
+   im Kopf der Flow-Datei; der Plan listet Flow, Aufgabe, Vorschlag und Grund unter `Modelle je Flow`. Wie lange eine
+   Anfrage wartet, wenn viele zugleich fragen, sagt `--contract` unter `last`: sag es in Sekunden.
 
 **„Genug" lässt die drei Fragen oben nicht fallen.** Was offen bleibt, wird zur sicheren Vorgabe und laut
 gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf des Flows.
 
 ### Weitere Fragen
 
-In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. **Das Kit schreibt die Felder
-und verspricht nicht, dass das Gerät schon danach handelt**: `--contract` sagt, was jedes heute tut.
+In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit schreibt die Felder,
+`--contract` sagt, was jedes an diesem Gerät tut.
 
 1. **Das Bild der App.** „Welches kleine Bild für die Seitenleiste? Vorschlag: die Buchstaben des
    Namens, BE für Belege, oder ein Symbol." Geht an `--symbol`: ein Bildname
@@ -132,11 +133,14 @@ und verspricht nicht, dass das Gerät schon danach handelt**: `--contract` sagt,
 2. **Wer freigibt, in welchen Schritten.** Nur, wo die App eine Freigabe hat. „Eine Person, oder zwei
    hintereinander, erst die Kollegin, die prüft, dann die Leitung?" Die Namen gehen an
    `--stufen "Prüfung,Leitung"`, höchstens fünf. **Wer** je Schritt entscheidet, legt der
-   Administrator am Gerät fest, nicht die App.
+   Administrator am Gerät fest, nicht die App: frag, wer je Schritt die Standardperson ist, und
+   schreib es für den Administrator in den Plan. Wer eingereicht hat, entscheidet nie.
 3. **Nur, wo ein Flow es braucht.** „Beginnt er von Hand, zu einer Zeit der Woche oder wenn etwas
    geschieht?" (`--ausloeser`: `hand`, `zeitplan:<fünf Felder wie bei cron>`, `ereignis:<name>`) und
    „von allein, oder bestätigt ein Mensch das Ergebnis?" (`--arten`: `autonom`,
-   `ergebnis_bestaetigen`). Sag laut, dass Zeitplan und Arten vielleicht noch nicht wirken.
+   `ergebnis_bestaetigen`). Das Gerät handelt nach allen selbst: ein Zeitplan startet den Flow im
+   Livestand ohne Argumente und ohne Einreicher, ein Ereignis meldet die App. Unter Kontrakt 13
+   startet ein Ereignis noch nichts.
 
 4. **Nur, wo das Gerät ein Dokument liest** (Beleg, Formular, Scan). Sag, was das ist: „Das Gerät liest
    das Blatt und füllt die Felder aus; wo es unsicher ist, sieht ein Mensch zuerst das Blatt neben

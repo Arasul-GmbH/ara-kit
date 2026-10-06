@@ -3,7 +3,7 @@ name: sales
 description: Customer conversations, objections and offers. Use at first contact with a prospect, when a customer objects ("too expensive", "we already have a cloud solution", "can we not do that ourselves"), when an offer should be written or sharpened, or when it is about how to explain Arasul without promising too much.
 ---
 
-Procedure: `.ara/knowledge/sales.md`
+Procedure: `.ara/knowledge/sales.md` (`sales.de.md` with `language: de`)
 
 Short:
 

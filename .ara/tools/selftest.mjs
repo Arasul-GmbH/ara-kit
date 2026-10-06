@@ -556,6 +556,48 @@ check("Der Skill init in Codex ist derselbe Text wie der Befehl init in Claude C
   assert(/allow_implicit_invocation:\s*false/.test(yaml), "init darf in Codex von selbst gewaehlt werden");
 });
 
+check("Der Freitext „bau eine App für Belege mit Freigabe“ führt zu /app und app.md, nicht an ihm vorbei", () => {
+  // Ein Befehl lädt sich nie von selbst, ein Skill schon: nach seiner Beschreibung. Bis 0.73.1
+  // passte auf diesen Satz nur der Skill extensions, und der führte in ein Verfahren ohne
+  // Interview, ohne Muster und ohne Gerüst. Geprüft wird die Kette, die ein Agent geht.
+  const satz = "bau eine App für Belege mit Freigabe";
+  const skills = readdirSync(join(ROOT, ".agents", "skills"), { withFileTypes: true })
+    .filter((e) => e.isDirectory() && existsSync(join(ROOT, ".agents", "skills", e.name, "SKILL.md")))
+    .map((e) => ({ name: e.name, ...readFrontmatter(join(ROOT, ".agents", "skills", e.name, "SKILL.md")) }));
+  // 1. Genau ein Skill nimmt den Satz in seiner Beschreibung auf, und es ist build-app.
+  const anfang = satz.split(" ").slice(0, 3).join(" ").toLowerCase();
+  const greifen = skills.filter((skill) => String(skill.fields.description || "").toLowerCase().includes(anfang));
+  assert(greifen.length === 1 && greifen[0].name === "build-app", `auf „${satz}" greift: ${greifen.map((g) => g.name).join(", ") || "kein Skill"}`);
+  const bau = greifen[0];
+  for (const wort of ["app", "approval", "receipts"]) {
+    assert(bau.fields.description.toLowerCase().includes(wort), `die Beschreibung von build-app nennt ${wort} nicht`);
+  }
+  // Er darf von selbst greifen, auch unter Codex, und bleibt in jedem Zweig.
+  const yaml = join(ROOT, ".agents", "skills", "build-app", "agents", "openai.yaml");
+  assert(!existsSync(yaml) || !/allow_implicit_invocation:\s*false/.test(readFileSync(yaml, "utf8")), "build-app greift unter Codex nicht von selbst");
+  assert(!partnerOnly(".agents/skills/build-app/SKILL.md"), "build-app fehlt im Unternehmenszweig");
+  // 2. extensions schickt eine App weiter, statt sie zu bauen.
+  const erweiterung = skills.find((skill) => skill.name === "extensions");
+  assert(/build-app/.test(erweiterung.fields.description) && /\/app/.test(erweiterung.fields.description), "extensions schickt eine App nicht zu build-app und /app");
+  for (const endung of [".md", ".de.md"]) {
+    assert(/`\/app`/.test(readFileSync(join(ROOT, ".ara", "knowledge", `extensions${endung}`), "utf8").split("\n## ")[0]), `extensions${endung} nennt /app nicht vorne`);
+  }
+  // 3. build-app führt in die Quelle des Befehls, in beiden Sprachen, und die lädt app.md.
+  for (const [endung, wissen] of [[".md", ".ara/knowledge/app.md"], [".de.md", ".ara/knowledge/app.de.md"]]) {
+    const befehl = `.ara/commands/all/app${endung}`;
+    assert(bau.body.includes(befehl), `build-app nennt ${befehl} nicht`);
+    const text = readFileSync(join(ROOT, befehl), "utf8");
+    assert(text.includes(wissen) && /node \.ara\/tools\/app\.mjs --app <app>/.test(text), `${befehl} lädt ${wissen} nicht oder nennt den ersten Aufruf nicht`);
+    assert(existsSync(join(ROOT, wissen)) && /^#{2,3} .*(interview checklist|Prüfliste des Interviews)/im.test(readFileSync(join(ROOT, wissen), "utf8")), `${wissen} trägt keine Checkliste`);
+  }
+  // 4. AGENTS.md sagt dasselbe für den, der keinen Skill lädt.
+  const agents = readFileSync(join(ROOT, "AGENTS.md"), "utf8");
+  const zeile = agents.split("\n").find((z) => z.startsWith("| `/app"));
+  assert(zeile && zeile.includes("`.ara/knowledge/app.md`"), "die Befehlstabelle in AGENTS.md führt /app nicht zu app.md");
+  assert(/Somebody wants an app[^\n]*\n?[^\n]*`\/app`/.test(agents) && agents.includes("`build-app`"), "AGENTS.md sagt nicht, dass eine App über /app geht");
+  return "build-app greift, extensions schickt weiter, Befehl in beiden Sprachen lädt app.md, AGENTS.md sagt es auch";
+});
+
 check("commands.mjs legt jeden Befehl auch als Skill fuer Codex an, aus derselben Quelle", () => {
   const dir = mkdtempSync(join(tmpdir(), "ara-skills-"));
   try {
@@ -2497,6 +2539,14 @@ check("Was neu ist, richtet sich nach dem Stand, von dem jemand kommt", () => {
 const KONTRAKT = {
   kontrakt: KIT_CONTRACT_VERSION,
   arasul: "0.0.0-selbsttest",
+  // Wie viel Last ein Gerät trägt: Zahlen und Sätze erfunden, nur die Form ist die des Geräts.
+  last: {
+    geraet: "probegeraet",
+    modell: "probemodell",
+    gleichzeitig_rechnend: 1,
+    warteschlange_max: 3,
+    regeln: ["Ab der fünften gleichzeitigen Anfrage antwortet das Probegerät mit 503."],
+  },
   app_json: {
     schema: {
       type: "object",
@@ -3245,6 +3295,19 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       if (pfad === "/api/v1/external/apps/probeapp/schalten") {
         const ziel = JSON.parse(rumpf.toString("utf8")).ziel;
         gesehen.geschaltet.push(ziel);
+        if (gesehen.rueckfall) {
+          // So antwortet das Gerät, wenn die neue Fassung nicht hochkam und es selbst zurückschaltete.
+          return antwort(409, {
+            error: {
+              code: "LIVE_ZURUECKGESCHALTET",
+              message: "Die neue Fassung 1.0.0 ließ sich nicht starten, deshalb läuft probeapp wieder mit Fassung 0.9.0 und den Daten von vorher.",
+              details: {
+                hilfe: "Geben Sie die technischen Angaben an den Entwickler weiter.",
+                schaltung: { ergebnis: "zurueckgeschaltet", technik: { grund: "beendet", exit_code: 1, letzte_zeilen: `${"Start\n".repeat(400)}Migration gescheitert: Spalte betrag fehlt` } },
+              },
+            },
+          });
+        }
         return antwort(200, { data: { app_id: "probeapp", stand: "live", version: ziel === "live" ? "1.0.0" : "0.9.0" } });
       }
       if (pfad === "/api/v1/external/apps/probeapp" && request.method === "DELETE") {
@@ -3285,6 +3348,10 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       "die Kontraktversion fehlt in der Ausgabe"
     );
     assert(/Regeln für einen Flow/.test(run.stdout), "die Flow-Regeln des Kontrakts fehlen in der Ausgabe");
+    assert(
+      /## Wie viel Last das Gerät trägt/.test(run.stdout) && /probegeraet mit probemodell/.test(run.stdout) && /antwortet das Probegerät mit 503/.test(run.stdout),
+      "der Abschnitt last fehlt in der Ausgabe von --contract"
+    );
     // Die Antwort des Auslesens und der Weg für Bilder, wörtlich aus dem Kontrakt.
     assert(
       /document\/extract-structured` antwortet/.test(run.stdout) &&
@@ -3367,6 +3434,19 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     let merker = JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name];
     assert(merker?.deployed?.version === "1.0.0", `der Teststand steht nicht im Merker: ${JSON.stringify(merker)}`);
     assert(merker?.live?.version === "0.9.0", `das Zurückschalten steht nicht im Merker: ${JSON.stringify(merker)}`);
+
+    // Kam die neue Fassung nicht hoch, schaltet das Gerät selbst zurück. Das Kit sagt, dass Fassung
+    // und Daten von vorher laufen, was der nächste Schritt ist, und zeigt das Ende der Zeilen, wo
+    // der Grund steht, nicht ihren Anfang.
+    gesehen.rueckfall = true;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--live"], env);
+    gesehen.rueckfall = false;
+    const rueckfall = `${run.stdout}${run.stderr}`;
+    assert(run.status !== 0, "ein Rückfall beim Live schalten gilt als gelungen");
+    assert(/selbst zurückgeschaltet/.test(rueckfall) && /Teststand/.test(rueckfall), `der Rückfall wird nicht erklärt: ${rueckfall}`);
+    assert(/Geben Sie die technischen Angaben/.test(rueckfall), "die Hilfe des Geräts fehlt");
+    assert(/Migration gescheitert: Spalte betrag fehlt/.test(rueckfall), `das Ende der Zeilen fehlt: ${rueckfall.slice(-400)}`);
+    assert(JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name]?.live?.version === "0.9.0", "ein Rückfall ändert den Merker");
 
     // Entfernen ist unumkehrbar: ohne die abgetippte Kennung passiert nichts.
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove"], env);
@@ -5115,8 +5195,8 @@ await checkAsync("Das Muster Dokumente läuft im Backend der Vorlage: hochladen,
           'import { dokumentWege } from "./wege/dokumente.mjs";\n',
       ],
       [
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" +
+        "  regel: () => null,\n});\n",
+        "  regel: () => null,\n});\n" +
           "const dokumente = dokumentWege({\n" +
           "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
           "  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n" +
@@ -5281,8 +5361,8 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
           'import { auslesenWege } from "./wege/auslesen.mjs";\n',
       ],
       [
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" +
+        "  regel: () => null,\n});\n",
+        "  regel: () => null,\n});\n" +
           "const dokumente = dokumentWege({\n" +
           "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
           "  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n" +
@@ -5563,6 +5643,9 @@ await checkAsync("Ein Auslesen, das länger rechnet, als das Gerät wartet, holt
     );
     await Promise.all(Array.from({ length: 6 }, () => drei.auslesen(datei)));
     assert(hoechstens === 3, `mit gleichzeitig 3 gingen ${hoechstens} Auslesungen zugleich an das Gerät`);
+    // Das Gerät nennt die Zahl unter `last`, wie viele Anfragen es zugleich rechnet.
+    const ausLast = JSON.parse(arrangementFile(appArrangement({ ...kontrakt, last: { gleichzeitig_rechnend: 2 } }, {})));
+    assert(ausLast.warten?.gleichzeitig === 2, `last.gleichzeitig_rechnend wird nicht gelesen: ${JSON.stringify(ausLast.warten)}`);
 
     // Ein Gerät ohne `warten` nennt keinen Abholweg: das 202 wird ein Satz, keine leere Antwort.
     const { warten, ...ohneWarten } = kontrakt;
@@ -5574,6 +5657,44 @@ await checkAsync("Ein Auslesen, das länger rechnet, als das Gerät wartet, holt
     const quelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
     assert(!/extract-structured|abholung/.test(quelle), "die Vorlage trägt einen Weg des Geräts im Code");
     return "202 abgeholt mit einer Sendung, sechs ohne Verlust und einzeln, drei zugleich mit Angabe, ohne Abholweg ein Satz";
+  } finally {
+    geraet.close();
+  }
+});
+
+await checkAsync("Die Vorlage fängt eine volle Warteschlange des Geräts ab und versucht es noch einmal", async () => {
+  // Der Kontrakt sagt unter `last`: ab einer vollen Warteschlange antwortet das Gerät mit 503, und
+  // eine App versucht es nach einigen Sekunden noch einmal, statt es dem Menschen zu zeigen.
+  const { geraet: anschluss, NOCHMAL_NACH_MS } = await import(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"));
+  assert(NOCHMAL_NACH_MS.length >= 2 && NOCHMAL_NACH_MS.every((ms) => ms >= 1000), `die Pausen sind zu kurz: ${NOCHMAL_NACH_MS}`);
+  let voll = 0;
+  let anfragen = 0;
+  const geraet = createServer((anfrage, antwort) => {
+    anfrage.resume();
+    anfrage.on("end", () => {
+      anfragen += 1;
+      if (voll > 0) {
+        voll -= 1;
+        antwort.writeHead(503, { "content-type": "application/json" });
+        return antwort.end(JSON.stringify({ error: { message: "Die Warteschlange ist voll." } }));
+      }
+      antwort.writeHead(200, { "content-type": "application/json" });
+      antwort.end(JSON.stringify({ data: { freigaben: [] } }));
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    const umgebung = { ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest" };
+    const vereinbarung = JSON.parse(arrangementFile(appArrangement(VORLAGE_KONTRAKT, {})));
+    const g = anschluss(vereinbarung, umgebung, { name: "Probe", flow: "freigabe", nochmalNachMs: [5, 5] });
+    voll = 2;
+    const geduldig = await g.freigaben();
+    assert(geduldig.fehler === null && anfragen === 3, `zweimal 503, dann 200: ${JSON.stringify(geduldig)}, ${anfragen} Anfragen`);
+    voll = 9;
+    anfragen = 0;
+    const ausgelastet = await g.freigaben();
+    assert(anfragen === 3 && ausgelastet.fehler && !/503|Status/.test(ausgelastet.fehler), `immer 503: ${JSON.stringify(ausgelastet)}, ${anfragen} Anfragen`);
+    return "zweimal voll und dann angenommen, dreimal voll ein Satz ohne Status";
   } finally {
     geraet.close();
   }
@@ -5634,7 +5755,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + importe,
       ],
-      ["  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n", "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" + aufbau],
+      ["  regel: () => null,\n});\n", "  regel: () => null,\n});\n" + aufbau],
       ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
     ]) {
       assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
@@ -5936,8 +6057,8 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe,
       ],
       [
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau,
+        "  regel: () => null,\n});\n",
+        "  regel: () => null,\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau,
       ],
       [
         '  if (pfad === "/vorgaenge" && anfrage.method === "GET") {',
@@ -13385,6 +13506,42 @@ check("Der Kartenstapel einer Wurzel bewegt sich nach seinen Regeln", () => {
 
   const pruefung = inWurzel(root, "scripts/check.mjs");
   assert(pruefung.status === 0, `nach den Bewegungen meldet das Prüfskript:\n${pruefung.stdout}`);
+});
+
+check("Jedes Paar nennt dieselben Bezeichner, eine Korrektur in nur einer Sprache wird rot", () => {
+  // Die Prüfung des Kontexts vom 06.10.2026 fand die Paare deckungsgleich, aber jede Korrektur
+  // musste zweimal laufen. Verglichen wird, was in Backticks wie Code aussieht (Schalter, Felder
+  // mit Unterstrich, Werkzeuge, Pfade unter .ara/ und /api/); `x.de.md` zählt wie `x.md`. Nur das
+  // Englische erklärt, dass die Papiere unter .ara/vorlagen/ deutsch sind.
+  const paare = [];
+  const sammle = (dir) => {
+    for (const eintrag of readdirSync(dir, { withFileTypes: true })) {
+      const pfad = join(dir, eintrag.name);
+      if (eintrag.isDirectory()) {
+        if (eintrag.name !== "node_modules") sammle(pfad);
+      } else if (eintrag.name.endsWith(".de.md") && existsSync(pfad.replace(/\.de\.md$/, ".md"))) {
+        paare.push([pfad.replace(/\.de\.md$/, ".md"), pfad]);
+      }
+    }
+  };
+  for (const ordner of ["knowledge", "commands", "persona", "templates"]) sammle(join(ROOT, ".ara", ordner));
+  const bezeichner = (text) =>
+    new Set(
+      [...text.replace(/```[\s\S]*?```/g, "").matchAll(/`([^`\n]+)`/g)]
+        .map((m) => m[1].replace(/\.de\.md\b/g, ".md"))
+        .filter((x) => !/[<>\s]/.test(x) && (/^--[a-z]/.test(x) || /_/.test(x) || /\.mjs$/.test(x) || /^\.ara\//.test(x) || /^\/api\//.test(x)))
+    );
+  const falsch = [];
+  for (const [en, de] of paare) {
+    const a = bezeichner(readFileSync(en, "utf8"));
+    const b = bezeichner(readFileSync(de, "utf8"));
+    const nurEn = [...a].filter((x) => !b.has(x) && !x.startsWith(".ara/vorlagen/"));
+    const nurDe = [...b].filter((x) => !a.has(x));
+    if (nurEn.length || nurDe.length) falsch.push(`${relative(ROOT, en)}: nur en ${nurEn.join(", ") || "-"}, nur de ${nurDe.join(", ") || "-"}`);
+  }
+  assert(paare.length >= 60, `nur ${paare.length} Paare gefunden`);
+  assert(falsch.length === 0, `die Sprachen nennen Verschiedenes:\n${falsch.join("\n")}`);
+  return `${paare.length} Paare`;
 });
 
 check("Das Gerüst der Firmenwurzel liegt in beiden Sprachen vor", () => {

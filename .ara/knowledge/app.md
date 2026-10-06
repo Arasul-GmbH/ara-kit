@@ -112,26 +112,30 @@ Speak plainly (`AGENTS.md`, "Plain language"): a technical word gets one sentenc
    propose a kind of model for the task and say why, and say the administrator can switch it on the
    device later without the app breaking. **No model name from memory**: what the device has
    comes from `--contract`, the catalogue from the mirror. The suggestion stands in the header of
-   the flow file; the plan lists flow, task, suggestion and reason under `Models per flow`.
+   the flow file; the plan lists flow, task, suggestion and reason under `Models per flow`. How long
+   a request waits when many ask at once, `--contract` says under `last`: say it in seconds.
 
 **"Enough" does not drop the three questions above.** What stays open becomes the safe default and is said aloud:
 administrator and employees, nothing goes out, the suggestion of the flow's header.
 
 ### More questions
 
-Asked in **every** `/app` interview, with drafts as options. **The kit writes the fields and does
-not promise that the device acts on them yet**: `--contract` says what each does today.
+Asked in **every** `/app` interview, with drafts as options. The kit writes the fields, `--contract`
+says what each does on this device.
 
 1. **The picture of the app.** "Which small picture for the sidebar? Suggestion: the letters of its
    name, BE for Belege, or an icon." Goes to `--symbol`: an icon name
    (`file-text`) or one to three capitals or digits. No answer: the device uses the letters itself.
 2. **Who approves, in which steps.** Only where the app has an approval. "One person, or two in a
    row, first the colleague who checks, then management?" Names go to `--stufen "Check,Management"`,
-   at most five. **Who** decides in each step the administrator sets on the device, not the app.
+   at most five. **Who** decides in each step the administrator sets on the device, not the app: ask
+   who the default person per step is and write it into the plan for the administrator. Who
+   submitted never decides.
 3. **Only where a flow needs it.** "Does it start by hand, at a time of the week, or when something
    happens?" (`--ausloeser`: `hand`, `zeitplan:<five cron fields>`, `ereignis:<name>`) and "by
-   itself, or a person confirms the result?" (`--arten`: `autonom`, `ergebnis_bestaetigen`). Say
-   aloud that schedule and kinds may not act yet.
+   itself, or a person confirms the result?" (`--arten`: `autonom`, `ergebnis_bestaetigen`). The device acts
+   on all of them itself: a schedule starts the flow in the live slot without arguments and without a
+   submitter, an event the app reports. Below contract 13 an event does not start anything yet.
 
 4. **Only where the device reads a document** (receipt, form, scan). Say what that is: "the device
    reads the paper and fills in the fields; where it is unsure, a person sees the paper next to the

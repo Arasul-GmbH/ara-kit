@@ -188,7 +188,10 @@ function waitArrangement(contract) {
       vorgabe_sekunden: positiv(warten.vorgabe_sekunden),
       hoechstens_sekunden: positiv(warten.hoechstens_sekunden),
       aufbewahrt_sekunden: positiv(warten.aufbewahrt_sekunden),
-      gleichzeitig: positiv(warten.gleichzeitig) ?? positiv(contract?.auslesen?.gleichzeitig),
+      // Das Gerät nennt die Zahl unter `last.gleichzeitig_rechnend`; die beiden anderen Orte bleiben
+      // für ein Gerät, das sie dort nennen sollte.
+      gleichzeitig:
+        positiv(warten.gleichzeitig) ?? positiv(contract?.auslesen?.gleichzeitig) ?? positiv(contract?.last?.gleichzeitig_rechnend),
     },
     abholen,
   };

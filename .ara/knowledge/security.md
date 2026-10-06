@@ -94,3 +94,9 @@ Independently of all levels, some patterns are barred and get blocked by the gua
 (`.ara/tools/guard.mjs`) before you can run them, for instance recursive deletion at the
 root or writing to a system disk. If the guard strikes, do not try to get around it. Tell
 the human what you were about to do and why it was blocked.
+
+**Claude Code starts without asking** (`bypassPermissions` in `.claude/settings.json`), on
+purpose: somebody who has never built software cannot judge a prompt for every shell call, and
+would click yes to all of them. So the three levels above are kept by you, through the interview
+tool, and the deny list in the same file and this guard are the fence. The allow list there has no
+effect in this mode. A house that wants Claude Code to ask itself sets `acceptEdits` there.

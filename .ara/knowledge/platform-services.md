@@ -49,18 +49,24 @@ A flow stops with the tool `freigabe_anfordern`, with title, context and deadlin
 **without a decision nothing goes further**. Approved, the run carries on from the step; rejected,
 it ends with the reason; no decision by the deadline, it ends as well.
 
-**Deciding runs over a human's session**, in the device's interface: no contract names those
-routes, and the kit does not call them. **The app reads the state with its own key and never
-decides**: `GET /api/v1/external/freigaben`, with the run number.
+**Deciding runs over a human's session**, in Arasul or on the app's own page "Approvals"
+(`zeigt_freigaben` in `app.json`); the kit does not call those routes. **The app reads the state
+with its own key**: `GET /api/v1/external/freigaben`, with the run number.
 
-**The circle.** A flow names no person and no role. Without a rule **everybody the app is shared
-with** decides and sees the card with its text, also for a client not theirs. The contract names
-under `freigaben` how an app draws the circle narrower at the start, never wider: **`einreicher`**,
-the user name who triggers the run; **`freigabe.ohne_einreicher: true`**, four eyes;
-**`freigabe.entscheider`**, `{"rolle": "admin"}` or `{"konten": [...]}`. Outside the circle nobody
-sees the request, and deciding gets a 403; if nobody remains, the device refuses the start.
-`--contract` prints the rules, `arasul.json` says under `freigaben` whether a device knows them. For
-clients: `.ara/knowledge/app-professional.md`, "Approvals in a professional app".
+**The circle.** A flow names no person and no role. The circle is everybody the app is shared with,
+**except the submitter: who submitted never decides**, the device holds that without any rule of the
+app. The contract names under `freigaben` how an app draws the circle narrower at the start, never
+wider: **`einreicher`**, the user name who triggers the run, and **`freigabe.entscheider`**,
+`{"rolle": "admin"}` or `{"konten": [...]}`. Outside the circle nobody sees the request, and deciding
+gets a 403; if nobody remains, the device refuses the start. For clients:
+`.ara/knowledge/app-professional.md`, "Approvals in a professional app".
+
+**With whom it lies.** The administrator sets a default person per app and stage on the device, not
+the app and not the flow. A new request lies with that person, without one with everybody in the
+circle, and **only the person it lies with decides**. Everybody in the circle can take it over or
+pass it on; the scaffold's page shows what lies with others and takes it over. Ask the house who the
+default person per stage is, and tell the administrator to set it. `--contract` prints the rules,
+`arasul.json` says under `freigaben` whether a device knows them.
 
 **References in the request, no content.** Title and context stand on every decider's card: "receipt
 17, submitted by anna", the decider opens it in the app. Amounts, client names, texts stay in the app
@@ -79,8 +85,11 @@ POST /api/v1/external/flows/<name>/run
 GET  /api/v1/external/flows/runs/<id>
 ```
 
-An app's key sees only its own flows in its slot. Recurring starts come over the same route from a
-schedule on a computer that runs anyway. **A flow with an approval step is started without waiting**:
+An app's key sees only its own flows in its slot. **Recurring and triggered starts the device does
+itself**, from the flow's header under `ausloeser`: `zeitplan` starts it in the live slot at the
+given time, without arguments and without a submitter; `ereignis` starts every flow of the app that
+listens to the name, when the app reports it (`POST /api/v1/external/ereignisse/<name>`). No second
+computer with a schedule. What exactly holds, `--contract` says under `flow_frontmatter`. **A flow with an approval step is started without waiting**:
 the run number comes back at once, the rest you ask.
 
 ## The AI interface: with a key, without a session
@@ -92,10 +101,11 @@ GET  /api/v1/external/llm/queue
 GET  /api/v1/external/models
 POST /api/v1/external/document/extract
 POST /api/v1/external/document/extract-structured
+GET  /api/v1/external/document/extract-structured/<id>
 POST /api/v1/external/document/analyze
 ```
 
-**Which of them a device carries, with which scope, its contract says**; a key without the scope is
+**Which of them a device carries, with which scope, its contract says**, and only it lists them all; a key without the scope is
 refused. Reading a document: `.ara/knowledge/app-professional.md`, "Reading documents and images".
 The rest is for the kit and for tools outside an app: `.ara/knowledge/extensions.md`, "The route
 for outside tools". The kit's key comes from `--deploy-key`, an app's key the device puts into the

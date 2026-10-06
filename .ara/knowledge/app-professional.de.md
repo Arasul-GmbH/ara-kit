@@ -38,7 +38,7 @@ Status 400 vom Gerät.)
 
 **Wie die Vorlage es trägt.** Einreicher und Regel gehen nur mit, wenn `arasul.json` unter
 `freigaben` sagt, dass das Gerät sie annimmt. `regel` gibt die Regel, ein Satz startet keinen Lauf;
-`zustaendig` prüft eine Entscheidung; `VIER_AUGEN` in `server.mjs` schließt den Einreicher aus. Der
+`zustaendig` prüft eine Entscheidung; den Einreicher hält das Gerät von selbst heraus. Der
 Flow bekommt die Nummer des Vorgangs und den Einreicher, sonst nichts. Nach der Freigabe fragt die
 App nach dem Satz des Flows, bis der Lauf fertig ist.
 
