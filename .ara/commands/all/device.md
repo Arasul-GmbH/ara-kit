@@ -31,7 +31,8 @@ node .ara/tools/device.mjs --name <device>
 With `--customer <customer>` for a customer device. If the file already exists, the tool
 checks again and says where things stand. If it does not exist yet, it needs the address
 and the login name: `--host <address> --user <name>`, plus `--port` and `--key` if they
-differ from the usual. What you do not know of that, you ask in one bundle before you call
+differ from the usual. Who only builds apps and has no SSH leaves out `--user`: the file is then
+created over HTTPS, without an invented name. What you do not know of that, you ask in one bundle before you call
 the tool, not afterwards.
 
 The tool creates the file, checks SSH, recognises hardware and system, finds Docker,

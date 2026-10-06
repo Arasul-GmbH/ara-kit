@@ -32,7 +32,8 @@ node .ara/tools/device.mjs --name <gerät>
 Mit `--customer <kunde>` bei einem Kundengerät. Gibt es die Akte schon, prüft das
 Werkzeug erneut und sagt, wo es steht. Gibt es sie noch nicht, braucht es die Adresse
 und den Anmeldenamen: `--host <adresse> --user <name>`, dazu `--port` und `--key`, wenn
-sie vom Üblichen abweichen. Was du davon nicht weißt, fragst du gebündelt, bevor du
+sie vom Üblichen abweichen. Wer nur Apps baut und kein SSH hat, lässt `--user` weg: die Akte
+entsteht dann über HTTPS, ohne erfundenen Namen. Was du davon nicht weißt, fragst du gebündelt, bevor du
 das Werkzeug aufrufst, nicht danach.
 
 Das Werkzeug legt die Akte an, prüft SSH, erkennt Hardware und System, findet Docker,

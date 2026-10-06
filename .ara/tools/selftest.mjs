@@ -2326,6 +2326,8 @@ await checkAsync("Der Kit-Schlüssel entsteht ohne SSH über die Sitzung, und we
   // die API-Referenz an, zweimal daneben, und ergänzte die Akte selbst.
   const name = "selftest-https";
   const akte = join(ROOT, "devices", name);
+  const ohneSsh = "selftest-https-ohne";
+  const akteOhne = join(ROOT, "devices", ohneSsh);
   const work = mkdtempSync(join(tmpdir(), "ara-https-"));
   const envDatei = join(work, ".env");
   const ref = "ARASUL_START_SELFTEST_HTTPS";
@@ -2428,10 +2430,25 @@ await checkAsync("Der Kit-Schlüssel entsteht ohne SSH über die Sitzung, und we
     assert(!readFileSync(envDatei, "utf8").includes(schluessel[0].key), "der widerrufene Schlüssel liegt noch in der Ablage");
     felder = readFrontmatter(join(akte, "device.md")).fields;
     assert(!felder.api_key_ref, `api_key_ref steht nach dem Widerruf noch in der Akte: ${felder.api_key_ref}`);
-    return "über HTTPS angelegt, nur app:deploy, Klartext nur in der Ablage, Akte ergänzt, kein zweiter, Liste markiert, eigener Aufruf maskiert, widerrufen";
+
+    // Eine Akte ohne SSH-Namen (Fremdtest 06.10.2026: das Kit verlangte --user, der Tester erfand einen).
+    // Ohne --user entsteht sie über HTTPS, sagt ssh: none, und der Kit-Schlüssel geht danach von selbst
+    // über HTTPS.
+    run = await toolAsync("device.mjs", ["--host", base, "--name", ohneSsh], env);
+    assert(run.status === 0 && /ohne SSH|without SSH/.test(run.stdout) && /--deploy-key --via https/.test(run.stdout), `die Akte ohne SSH entsteht nicht: ${run.status} ${run.stdout}${run.stderr}`);
+    felder = readFrontmatter(join(akteOhne, "device.md")).fields;
+    assert(felder.ssh === "none" && !felder.ssh_user && felder.address === base, `die Akte ohne SSH sagt es nicht: ${JSON.stringify(felder)}`);
+    writeFrontmatter(join(akteOhne, "device.md"), { start_password_ref: ref });
+    run = await toolAsync("device.mjs", ["--name", ohneSsh, "--deploy-key"], env);
+    nichtsGezeigt(run, "--deploy-key an der Akte ohne SSH");
+    assert(run.status === 0 && /HTTPS/.test(run.stdout), `der Schlüssel an der Akte ohne SSH geht nicht über HTTPS: ${run.stdout}${run.stderr}`);
+    run = await toolAsync("device.mjs", ["--name", ohneSsh], env);
+    assert(run.status === 0 && /Kontrakt|contract/i.test(run.stdout) && !/--user <name>\.$/m.test(run.stdout), `die Akte ohne SSH lässt sich nicht nachprüfen: ${run.stdout}${run.stderr}`);
+    return "über HTTPS angelegt, nur app:deploy, Klartext nur in der Ablage, Akte ergänzt, kein zweiter, Liste markiert, eigener Aufruf maskiert, widerrufen; eine Akte ohne SSH-Namen entsteht über HTTPS";
   } finally {
     server.close();
     rmSync(akte, { recursive: true, force: true });
+    rmSync(akteOhne, { recursive: true, force: true });
     rmSync(work, { recursive: true, force: true });
   }
 });

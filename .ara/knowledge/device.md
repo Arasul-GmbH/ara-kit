@@ -10,9 +10,14 @@ file** it checks again and says where things stand. The same tool does both:
 
 ```
 node .ara/tools/device.mjs --host <address> --user <name> --name <device>   first time
+node .ara/tools/device.mjs --host <address> --name <device>                 first time, HTTPS only
 node .ara/tools/device.mjs --name <device>                                  every further time
 node .ara/tools/device.mjs --name <device> --json                           for evaluation
 ```
+
+**Without `--user` the file is created over HTTPS** (`ssh: none`): building apps needs no SSH. The
+tool measures address and certificate and reads the contract with a kit key; hardware and verdict
+stay open until `--user` is supplied. Installation and licence need SSH.
 
 For a customer device `--customer <customer>` comes along. The tool:
 

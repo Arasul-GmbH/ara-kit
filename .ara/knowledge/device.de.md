@@ -10,9 +10,14 @@ prüft er erneut und sagt, wo es steht. Beides macht dasselbe Werkzeug:
 
 ```
 node .ara/tools/device.mjs --host <adresse> --user <name> --name <gerät>   erstes Mal
+node .ara/tools/device.mjs --host <adresse> --name <gerät>                 erstes Mal, nur HTTPS
 node .ara/tools/device.mjs --name <gerät>                                  jedes weitere Mal
 node .ara/tools/device.mjs --name <gerät> --json                           für die Auswertung
 ```
+
+**Ohne `--user` entsteht die Akte über HTTPS** (`ssh: none`): Apps bauen braucht kein SSH. Das
+Werkzeug misst Adresse und Zertifikat und liest mit einem Kit-Schlüssel den Kontrakt; Hardware und
+Urteil bleiben offen, bis `--user` nachgereicht wird. Installation und Lizenz verlangen SSH.
 
 Bei einem Kundengerät kommt `--customer <kunde>` dazu. Das Werkzeug:
 
