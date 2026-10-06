@@ -2993,7 +2993,7 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
   const mit = f.applyRecognition(f.applyFlowFields(vorlage, { stufen, felder: ["betrag", "datum"] }), { felder: ["betrag", "datum"], aenderbar: ["datum"] });
   assert(/^werkzeuge: \[subagent, freigabe_anfordern\]$/m.test(mit), "der Flow nennt das Werkzeug subagent nicht");
   assert(/^ {4}ergebnis: \{ felder: \[betrag, datum\], aenderbar: \[datum\] \}$/m.test(mit), "die Rolle trägt die Deklaration nicht");
-  assert(/^ {4}original: "api\/vorgaenge\/\{\{vorgang\}\}\/original\.svg"$/m.test(mit), "der Schritt nennt das Original nicht");
+  assert(/^ {4}original: "api\/vorgaenge\/\{\{vorgang\}\}\/original\.png"$/m.test(mit), "der Schritt nennt das Original nicht");
   assert(/name: entscheiden_leitung/.test(mit) && !/name: entscheiden_pruefung/.test(mit), "die erste Stufe bekommt einen eigenen Schritt, obwohl die Erkennung sie hat");
   assert(f.flowFieldFindings("freigabe", mit).length === 0, `ein sauberer Flow bekommt Befunde: ${f.flowFieldFindings("freigabe", mit).join(" | ")}`);
   const einStufig = f.applyRecognition(f.applyFlowFields(vorlage, { stufen: f.parseStufen("Prüfung").stufen, felder: ["betrag"] }), { felder: ["betrag"] });
@@ -3005,7 +3005,9 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
   assert(wrong("aenderbar: [datum]", "aenderbar: [datum, summe]").some((b) => /summe/.test(b)), "ein änderbares Feld ohne Erkennung wird nicht benannt");
   assert(wrong("faehigkeiten: { text: true, bild: true }", "faehigkeiten: { text: true }").length >= 2, "original und Rolle ohne Bild werden nicht benannt");
   assert(wrong("rolle: leser", "rolle: fremd").some((b) => /fremd/.test(b)), "eine Rolle, die es nicht gibt, wird nicht benannt");
-  assert(wrong("original.svg", "original").some((b) => /Endung/.test(b)), "ein Pfad ohne Endung wird nicht benannt");
+  assert(f.originalProblem("api/x/original.svg") && /Original nicht lesbar/.test(f.originalProblem("api/x/original.svg")), "ein Pfad auf .svg wird nicht beanstandet");
+  assert(wrong("original.png", "original.svg").some((b) => /svg/i.test(b)), "--check meldet ein Original auf .svg nicht");
+  assert(wrong("original.png", "original").some((b) => /Endung/.test(b)), "ein Pfad ohne Endung wird nicht benannt");
   const ohneBlock = mit.replace(/^ {4}ergebnis:.*\n/m, "    ergebnis:\n      felder:\n        - betrag\n        - datum\n      aenderbar:\n        - summe\n");
   assert(f.flowFieldFindings("freigabe", ohneBlock).some((b) => /summe/.test(b)), "die Liste in Zeilenform wird nicht gelesen");
   assert(f.contractTenFindings("freigabe", mit, 9).length === 1 && f.contractTenFindings("freigabe", mit, 10).length === 0 && f.contractTenFindings("freigabe", vorlage, 8).length === 0, "Kontrakt 10 wird nicht an den Feldern festgemacht");
@@ -3046,8 +3048,11 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
   assert(/\/api\/freigabe-anfragen/.test(wege) && /bestaetigen/.test(wege) && /ablehnen/.test(wege) && /holeGeraet/.test(wege), "die Wege zum Gerät fehlen");
   assert(/arasul_csrf/.test(naht) && /x-csrf-token/.test(naht) && !/\bfetch\s*\(/.test(wege), "das Zeichen gegen gefälschte Aufrufe fehlt, oder die Wege holen an einer zweiten Stelle");
   const { blatt, umbrechen } = await import(pathToFileURL(join(ROOT, ".ara", "templates", "app", "backend", "kern", "blatt.mjs")).href);
-  const svg = blatt({ id: 3, titel: "Tank <b>&</b>", von: "anna", text: `${"x".repeat(100)}\nzweite Zeile` });
-  assert(!/<b>/.test(svg) && /&lt;b&gt;&amp;/.test(svg), "das Blatt entschärft den Text nicht");
+  const bild = blatt({ id: 3, titel: "Tank <b>&</b> Größe", von: "anna", text: `${"x".repeat(100)}\nzweite Zeile € ü` });
+  assert(Buffer.isBuffer(bild) && bild.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), "das Blatt ist kein PNG: das Bildmodell liest kein SVG");
+  assert(bild.readUInt32BE(16) === 600 && bild.readUInt32BE(20) > 100 && bild.includes(Buffer.from("IEND")), "das PNG des Blatts ist unvollständig");
+  const serverQuelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "server.mjs"), "utf8");
+  assert(/original\\\.png/.test(serverQuelle) && !/image\/svg/.test(serverQuelle), "das Backend liefert das Blatt nicht als PNG");
   assert(umbrechen("x".repeat(100), 44).every((z) => z.length <= 44) && umbrechen("a b", 44).length === 1, "das Blatt bricht nicht um");
   return "Fassung 10 bedient, Erkennung, Deklaration und Original geschrieben und geprüft, Baustein statt Nachbildung";
 });
@@ -3379,6 +3384,51 @@ check("Welche Ordner ein Manifest verspricht, sagt der Kontrakt", () => {
 check("Kein Schlüssel gerät in eine Ausgabe", () => {
   const text = scrub("  Schluessel  aras_abcdef1234567890\n  Praefix  aras_abcdef1");
   assert(!/aras_[A-Za-z0-9]/.test(text), `Schlüssel steht noch in der Ausgabe: ${text}`);
+});
+
+await checkAsync("Kontrakt 14: das Kit versteht Original, eine Prüfung und Titel, --new --felder baut ohne zweiten Schritt", async () => {
+  assert(KIT_CONTRACT_VERSION >= 14, "das Kit versteht Kontrakt 14 nicht");
+  const vierzehn = KIT_CONTRACT_VERSIONS.find((e) => e.version === 14);
+  assert(vierzehn && vierzehn.kann.length > 40, "Fassung 14 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 14 }).ok, "ein Gerät mit Kontrakt 14 hält das Kit an");
+  assert(!checkVersion({ ...KONTRAKT, kontrakt: 15 }).ok, "ein Gerät mit Kontrakt 15 hält das Kit nicht an");
+  const f = await import("./lib/felder.mjs");
+  const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
+  const bauen = (opt) => f.applyRecognition(f.applyFlowFields(vorlage, opt), { felder: opt.felder });
+  const schritte = (text) => [...text.slice(text.indexOf("\nschritte:")).matchAll(/^ {2}- name: (\S+)/gm)].map((m) => m[1]);
+
+  // Die Erkennung ist die Prüfung: kein Schritt `entscheiden`, kein Werkzeug dafür, kein Text von einer Entscheidung.
+  const eine = bauen({ arten: ["ergebnis_bestaetigen"], felder: ["betrag", "datum"] });
+  assert(schritte(eine).join() === "lesen", `bei ergebnis_bestaetigen mit Erkennung steht ein zweiter Schritt im Flow: ${schritte(eine)}`);
+  assert(/^werkzeuge: \[subagent\]$/m.test(eine) && !/freigabe_anfordern/.test(eine), "der Flow nennt das Werkzeug der zweiten Prüfung noch");
+  assert(!/„entscheiden/.test(eine) && f.flowFieldFindings("freigabe", eine).length === 0, "der Text spricht von einem Schritt, den es nicht gibt, oder der Flow bekommt Befunde");
+  // Eine weitere Stufe behält ihren Schritt, die erste gehört der Erkennung.
+  const zwei = bauen({ arten: ["ergebnis_bestaetigen"], felder: ["betrag"], stufen: f.parseStufen("Prüfung, Leitung").stufen });
+  assert(schritte(zwei).join() === "lesen,entscheiden_leitung", `mit zwei Stufen stimmen die Schritte nicht: ${schritte(zwei)}`);
+  // Ohne die Art, in der ein Mensch bestätigt, fragt die Erkennung nur bei Unsicherheit: der Schritt bleibt.
+  assert(schritte(bauen({ felder: ["betrag"] })).join() === "lesen,entscheiden", "ohne ergebnis_bestaetigen fehlt der Schritt der Prüfung");
+  assert(schritte(bauen({ arten: ["autonom"], felder: ["betrag"] })).join() === "lesen,entscheiden", "bei autonom fehlt der Schritt der Prüfung");
+  // Ohne Erkennung bleibt der Flow, wie er war.
+  assert(f.applyFlowFields(vorlage, { arten: ["ergebnis_bestaetigen"] }).includes("name: entscheiden\n"), "ohne Felder verschwindet der Schritt entscheiden");
+
+  // Das Gerüst: --new --felder schreibt den Flow so auf die Platte.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const dir = join(ROOT, "apps", "selftest-kontrakt14");
+  try {
+    const lauf = tool("app.mjs", ["--app", "selftest-kontrakt14", "--new", "--titel", "Beleg", "--arten", "bestaetigen", "--felder", "Betrag,Datum"]);
+    assert(lauf.status === 0, `Anlegen mit Erkennung scheitert: ${lauf.stderr}${lauf.stdout}`);
+    const flow = readFileSync(join(dir, "flows", "freigabe.md"), "utf8");
+    assert(schritte(flow).join() === "lesen", `--new --felder schreibt einen zweiten Schritt: ${schritte(flow)}`);
+    assert(f.flowFieldFindings("freigabe", flow).length === 0, "der Flow der neuen App bekommt Befunde");
+    // Das Backend der Vorlage kennt den Titel: der Start gibt ihn mit, wenn das Gerät ihn nennt.
+    assert(/titel/.test(readFileSync(join(dir, "backend", "arasul.json"), "utf8")), "arasul.json kennt freigaben.titel nicht");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+  return "Fassung 14 bedient: eine Prüfung statt zwei, Stufen und autonom behalten ihren Schritt, Titel geht als Verweis mit";
 });
 
 await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück", async () => {
@@ -4760,7 +4810,7 @@ const VORLAGE_KONTRAKT = {
   // Vorlage, die `x-arasul-user` fest im Quelltext trägt, findet hier niemanden.
   koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["admin", "mitarbeiter"] },
   umgebung: { basis: "ARASUL_BASIS_URL", schluessel: "ARASUL_APP_KEY" },
-  freigaben: { start: { properties: { args: {}, einreicher: { type: "string" }, freigabe: { type: "object" } } } },
+  freigaben: { start: { properties: { args: {}, einreicher: { type: "string" }, freigabe: { type: "object" }, titel: { type: "string" } } } },
   endpunkte: [
     { verb: "GET", pfad: "/api/v1/external/contract", was: "Dieser Kontrakt" },
     { verb: "POST", pfad: "/api/v1/external/flows/:name/run", was: "Einen Flow starten" },
@@ -4854,6 +4904,11 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
       // Das Gerät nimmt den Einreicher an, also geht er mit, aus der Anmeldung.
       assert(gesehen.rumpf?.einreicher === "Jürgen", `der Einreicher geht nicht mit: ${JSON.stringify(gesehen.rumpf)}`);
       assert(gesehen.rumpf?.freigabe === undefined, "die Vorlage zieht den Kreis enger, ohne dass jemand es verlangt");
+      // Kontrakt 14: der Titel des Laufs geht mit, als Verweis und nicht als Inhalt, denn die Karte sieht jeder im Kreis.
+      assert(
+        gesehen.rumpf?.titel === `Vorgang ${gestellt.daten.vorgang.id} von Jürgen`,
+        `der Start gibt keinen Titel als Verweis mit: ${JSON.stringify(gesehen.rumpf)}`
+      );
 
       // Ohne Titel gibt es keinen Vorgang, und die App sagt es.
       const leer = await ruf("/vorgaenge", { method: "POST", body: JSON.stringify({ text: "nur Text" }) });

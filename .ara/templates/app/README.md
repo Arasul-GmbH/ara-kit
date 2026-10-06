@@ -44,8 +44,8 @@ klappen auf, und nach der Entscheidung steht wieder die Liste da.
 Das Original kommt aus dem Pfad `original` am Schritt `lesen`, relativ zur App. Die Vorlage
 zeichnet unter `backend/kern/blatt.mjs` ein Blatt aus dem Text des Vorgangs; eine App mit
 echten Dokumenten liefert stattdessen deren Bytes aus dem Weg in `server.mjs` und lässt den
-Pfad auf ihn zeigen. **Der Pfad muss auf `.png`, `.jpg`, `.svg` oder `.pdf` enden**: die
-Anzeige erkennt Bild und PDF am Ende des Pfades. Bei mehreren Stufen gehört die erste der
+Pfad auf ihn zeigen. **Der Pfad muss auf `.png`, `.jpg` oder `.pdf` enden**: die
+Anzeige erkennt Bild und PDF am Ende des Pfades, und ab Kontrakt 14 liest das Bildmodell das Original selbst, ein SVG kann es nicht lesen. Bei mehreren Stufen gehört die erste der
 Erkennung: ist sie unsicher, legt das Gerät dort selbst eine Freigabe an, und die übrigen
 Stufen folgen als Schritte des Flows.
 
@@ -197,7 +197,7 @@ Die Schnittstelle des Backends, hinter `/apps/{{id}}/api/`:
 | `GET /gesund` | Für den Gesundheitscheck des Containers |
 | `GET /agent` | Das Feld `agent` der `app.json`, mit Kennung, Name und Version |
 | `POST /abschluss/freigabe` | Das Ergebnis des Flows annehmen, nur vom Gerät |
-| `GET /vorgaenge/<nummer>/original.svg` | Das Blatt, das die Freigabe links zeigt |
+| `GET /vorgaenge/<nummer>/original.png` | Das Blatt, das die Freigabe links zeigt |
 
 `GET /api/me` steht nicht in dieser Liste: den beantwortet die Plattform.
 

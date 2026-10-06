@@ -80,6 +80,10 @@ export const KIT_CONTRACT_VERSIONS = Object.freeze([
     version: 13,
     kann: "Eine App darf dem Gerät ein Ereignis melden und ein Flow darf Routen der App rufen. Das Ereignis: `POST /api/v1/external/ereignisse/<name>` mit dem Schlüssel der App startet jeden Flow, der unter `ausloeser` auf den Namen hört; das Gerät wartet nicht auf die Läufe. Die Routen: ein Flow nennt im Kopf `routen` (Methode, Pfad, freiwillig `app` und `zweck`, höchstens 20) und ruft sie mit dem Werkzeug `route_aufrufen`. `--check` hält `routen` ohne das Werkzeug, das Werkzeug ohne `routen`, einen ungültigen oder doppelten Eintrag, eine eigene Route ohne Backend und beides an einem Gerät vor Kontrakt 13 an. Wer das Ereignis meldet, wer die Route rufen darf und was das Gerät dabei prüft, sagt sein Kontrakt, nicht das Kit.",
   },
+  {
+    version: 14,
+    kann: "Die Erkennung liest das Original, hat genau eine Prüfung, und ein Lauf trägt einen Titel. Das Original: ein erkennender Schritt mit `original` bekommt die Datei als Bild (PNG, JPEG, ein PDF mit seinen ersten Seiten, bis zu einer Größe), und fehlt sie, hält der Lauf mit einer Freigabe und dem Grund an. Die Prüfung: ein erkennender Flow in der Art `ergebnis_bestaetigen` legt seine Freigabe immer an, mit den Feldern, und am Ende kommt keine zweite. Der Titel: der Start eines Laufs darf einen kurzen `titel` mitgeben, der vorn an jeder Freigabe steht. Das Gerüst baut `--new --felder` ohne eigenen Schritt `entscheiden`, wenn die Erkennung die Prüfung ist, und gibt dem Lauf einen Verweis auf den Vorgang als Titel mit, wenn das Gerät ihn kennt. Welche Dateien, wie groß und wie lang der Titel sein darf, sagt der Kontrakt des Geräts, nicht das Kit.",
+  },
 ]);
 
 /** Die höchste Fassung, die dieses Kit versteht. */

@@ -264,9 +264,11 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
       if (typeof freigabe === "string") {
         return { status: 409, vorgang: await ablage.fortschreiben(id, { ...vorgang, hinweis: freigabe }), fehler: freigabe };
       }
+      // Der Titel steht vorn an jeder Freigabe des Laufs, und die Karte sieht jeder, der entscheiden darf:
+      // wie die Anfrage selbst nennt er einen Verweis (Nummer, Einreicher), nie Titel oder Text des Vorgangs.
       const { lauf, fehler } = await geraet.flowStarten(
         { vorgang: String(vorgang.id), von: vorgang.von },
-        { einreicher: vorgang.von === "unbekannt" ? null : vorgang.von, freigabe }
+        { einreicher: vorgang.von === "unbekannt" ? null : vorgang.von, freigabe, titel: `Vorgang ${vorgang.id} von ${vorgang.von}` }
       );
       if (lauf !== null) {
         return { status: 200, vorgang: await ablage.fortschreiben(id, { ...vorgang, status: "wartet", lauf, hinweis: null }), fehler: null };

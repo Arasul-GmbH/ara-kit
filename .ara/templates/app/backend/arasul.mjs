@@ -619,15 +619,19 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
     /**
      * Einen Lauf anfordern. Zurück kommt seine Nummer, oder der Grund, warum keine kam.
      *
-     * `einreicher` und `freigabe` gehen nur mit, wenn das Gerät sie annimmt:
-     * ein Gerät vor dem 25.09.2026 weist einen Start mit einem Feld, das es
-     * nicht kennt, ab. Ob es sie kennt, sagt die Vereinbarung unter
-     * `freigaben`, und die kommt aus dem Kontrakt.
+     * `einreicher`, `freigabe` und `titel` gehen nur mit, wenn das Gerät sie
+     * annimmt: ein Gerät vor dem 25.09.2026 weist einen Start mit einem Feld,
+     * das es nicht kennt, ab (`titel` kam mit Kontrakt 14). Ob es sie kennt,
+     * sagt die Vereinbarung unter `freigaben`, und die kommt aus dem Kontrakt.
+     * Der Titel steht vorn an jeder Freigabe des Laufs; ohne ihn bildet das
+     * Gerät einen aus den erkannten Feldern.
      */
-    async flowStarten(argumente, { einreicher = null, freigabe = null } = {}) {
+    async flowStarten(argumente, { einreicher = null, freigabe = null, titel = null } = {}) {
       const kann = vereinbarung.freigaben || {};
       const rumpf = { args: argumente, wait_for_result: false };
       if (einreicher && kann.einreicher) rumpf.einreicher = einreicher;
+      const kurz = typeof titel === "string" ? titel.trim().slice(0, 120).trim() : "";
+      if (kurz && kann.titel) rumpf.titel = kurz;
       if (freigabe && kann.regel) rumpf.freigabe = freigabe;
       if (freigabe && !kann.regel) {
         return {

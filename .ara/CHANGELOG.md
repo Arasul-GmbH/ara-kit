@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.76.0 (2026-10-06)
+
+Contract: up to 14
+
+- **The kit understands contract 14.** The device's model now reads the original of a recognising step (PNG, JPEG, the first pages of a PDF; the limit stands in the contract), a flow with `ergebnis_bestaetigen` has exactly one check, the approval of the reading, always with the fields, and a run carries a short `titel`. Without this a kit stopped after the device's next update.
+- **`--new --felder` writes no step `entscheiden` when the reading is the check** (kind `ergebnis_bestaetigen`): the flow had two approvals, now one. A further stage keeps its step, `autonom` alone keeps it too. The body of the flow no longer speaks of a decision step that is not there.
+- **The scaffold hands a title with the start.** `flowStarten` sends `titel` (a reference, "Vorgang 7 von anna", never the title or text of the item, cut to 120 characters) when the device's contract names it in the start; `arasul.json` carries `freigaben.titel`.
+- **`app.md` and pattern 8 explain the original:** PNG, JPEG or PDF, the limit from the contract, what a missing original does (the run stops with a named reason), that the details of the item no longer belong into `auftrag`, and the title of the run.
+- **The scaffold's default original is a PNG, and `--check` names an `.svg`.** The sheet the backend draws from the text of an item (`kern/blatt.mjs`, route `original.png`) is now a PNG made with a built-in dot font and no dependency, because the image model reads PNG, JPEG and PDF and no SVG; `ORIGINAL_STANDARD` points to it. An original path ending in `.svg` is refused by `--new --original` and named by `--check`.
+
 ## 0.75.0 (2026-10-06)
 
 Contract: up to 13

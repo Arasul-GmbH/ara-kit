@@ -291,8 +291,14 @@ export function originalProblem(path) {
   // Endung im eingesetzten Wert stehen (`4711.pdf`), dann ist er nicht zu beurteilen.
   if (!value.endsWith("}}") && !ORIGINAL_ENDUNG.test(value)) {
     return t(
-      `The path of the original "${value}" has no ending the approval can read: it shows an image or a PDF by the end of the path (.png, .jpg, .svg, .pdf). Without one it says that it cannot show the format.`,
-      `Der Pfad des Originals „${value}“ hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .svg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
+      `The path of the original "${value}" has no ending the approval can read: it shows an image or a PDF by the end of the path (.png, .jpg, .pdf). Without one it says that it cannot show the format.`,
+      `Der Pfad des Originals „${value}“ hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
+    );
+  }
+  if (/\.svg$/i.test(value)) {
+    return t(
+      `The path of the original "${value}" ends in .svg: the display shows it, but from contract 14 the image model reads the original itself and cannot read an SVG, so the run stops with "Original nicht lesbar". Deliver a PNG, JPEG or PDF (.png, .jpg, .pdf).`,
+      `Der Pfad des Originals „${value}“ endet auf .svg: die Anzeige zeigt es, aber ab Kontrakt 14 liest das Bildmodell das Original selbst und kann kein SVG lesen, der Lauf hielte mit „Original nicht lesbar“. Liefere ein PNG, JPEG oder PDF (.png, .jpg, .pdf).`
     );
   }
   return null;
@@ -301,8 +307,8 @@ export function originalProblem(path) {
 /** Die Endungen, an denen die Anzeige der Freigabe ein Bild oder ein PDF erkennt. */
 const ORIGINAL_ENDUNG = /\.(png|jpe?g|gif|webp|avif|bmp|svg|pdf)$/i;
 
-/** Der Pfad des Originals, den das Gerüst vorgibt: das Blatt, das das Backend zu einem Vorgang zeichnet. */
-export const ORIGINAL_STANDARD = "api/vorgaenge/{{vorgang}}/original.svg";
+/** Der Pfad des Originals, den das Gerüst vorgibt: das Blatt, das das Backend zu einem Vorgang zeichnet (ein PNG: das Bildmodell liest kein SVG). */
+export const ORIGINAL_STANDARD = "api/vorgaenge/{{vorgang}}/original.png";
 
 /**
  * Die Erkennung in den Flow `freigabe` schreiben: eine Rolle `leser` mit den Feldern und ihrer
@@ -329,7 +335,7 @@ export function applyRecognition(text, { felder, aenderbar = [], original = ORIG
     `    original: ${quote(original)}`,
   ].join("\n");
   return text
-    .replace(/^werkzeuge: \[freigabe_anfordern\]/m, "werkzeuge: [subagent, freigabe_anfordern]")
+    .replace(/^werkzeuge: \[freigabe_anfordern\]/m, /^ {4}werkzeug:\s*freigabe_anfordern/m.test(text) ? "werkzeuge: [subagent, freigabe_anfordern]" : "werkzeuge: [subagent]")
     .replace(/^schritte:\n/m, `${rolle}schritte:\n${schritt}\n`);
 }
 
@@ -345,6 +351,22 @@ export function setSymbol(manifest, symbol) {
 }
 
 const quote = (s) => JSON.stringify(s);
+
+/**
+ * Ist die Freigabe der Erkennung die Prüfung des Flows? Seit Kontrakt 14 legt ein erkennender Schritt
+ * in der Art `ergebnis_bestaetigen` sie immer an, mit den Feldern; dann braucht der Flow keinen
+ * eigenen Schritt `entscheiden` in der ersten Stufe.
+ */
+export function erkennungIstPruefung({ felder, arten } = {}) {
+  return Boolean(felder?.length) && Boolean(arten?.includes("ergebnis_bestaetigen"));
+}
+
+/** Der Text unter dem Kopf, wenn kein Schritt mehr fragt: die Prüfung ist die Freigabe der Erkennung. */
+const KEIN_SCHRITT_TEXT = [
+  "Über den Vorgang {{vorgang}} von {{von}} sind die erkannten Angaben bestätigt worden.",
+  "Gesucht ist genau ein Satz darüber, was erkannt wurde und ob ein Mensch etwas geändert hat.",
+  "Keine Anrede, keine Erfindungen, keine Empfehlung.",
+].join("\n");
 
 /**
  * Die Felder in die Datei des Flows `freigabe` schreiben. Die Vorlage hat einen Schritt
@@ -372,24 +394,26 @@ export function applyFlowFields(text, { arten, ausloeser, stufen, felder } = {})
   }
   if (head.length) out = out.replace(/^werkzeuge:/m, `${head.join("\n")}\nwerkzeuge:`);
 
-  if (stufen?.length) {
-    const block = out.match(/^ {2}- name: entscheiden\n[\s\S]*?(?=^grenzen:)/m);
-    if (block) {
-      const many = stufen.length > 1;
-      // Liest der Flow ein Dokument, legt das Gerät bei unsicherer Erkennung selbst eine Freigabe in
-      // der ersten Stufe an, mit den Feldern. Diese Stufe ist dann die der Erkennung und braucht
-      // keinen eigenen Schritt; die übrigen Stufen folgen als Schritte.
-      const eigene = felder?.length && many ? stufen.slice(1) : stufen;
-      const steps = eigene.map((s) => {
-        let step = block[0].replace(/ {6}titel:/, `      stufe: ${s.name}\n      titel:`);
-        if (many) step = step.replace("- name: entscheiden", `- name: entscheiden_${s.name}`);
-        return step;
-      });
-      out = out.replace(block[0], steps.join(""));
-      if (many) {
-        const nennt = eigene.length === 1 ? `„entscheiden_${eigene[0].name}“` : "„entscheiden_…“";
-        out = out.replace("der Schritt „entscheiden“", eigene.length === 1 ? `der Schritt ${nennt}` : `die Schritte ${nennt}`);
-      }
+  // Liest der Flow ein Dokument und bestätigt ein Mensch sein Ergebnis (seit Kontrakt 14), legt das
+  // Gerät die Freigabe der Erkennung immer an, mit den Feldern, in der ersten Stufe: sie ist die
+  // Prüfung, und ein Schritt `entscheiden` danach gäbe zwei. Bei unsicherer Erkennung allein
+  // (`autonom`) legt es sie nur dann an; dort bleibt der Schritt.
+  const block = out.match(/^ {2}- name: entscheiden\n[\s\S]*?(?=^grenzen:)/m);
+  if (block && (stufen?.length || erkennungIstPruefung({ felder, arten }))) {
+    const liste = stufen?.length ? stufen : [null];
+    const many = liste.length > 1;
+    const eigene = erkennungIstPruefung({ felder, arten }) || (felder?.length && many) ? liste.slice(1) : liste;
+    const steps = eigene.map((s) => {
+      let step = s ? block[0].replace(/ {6}titel:/, `      stufe: ${s.name}\n      titel:`) : block[0];
+      if (many) step = step.replace("- name: entscheiden", `- name: entscheiden_${s.name}`);
+      return step;
+    });
+    out = out.replace(block[0], steps.join(""));
+    if (!steps.length) {
+      out = out.replace(/\n---\n[\s\S]*$/, `\n---\n\n${KEIN_SCHRITT_TEXT}\n`);
+    } else if (many) {
+      const nennt = eigene.length === 1 ? `„entscheiden_${eigene[0].name}“` : "„entscheiden_…“";
+      out = out.replace("der Schritt „entscheiden“", eigene.length === 1 ? `der Schritt ${nennt}` : `die Schritte ${nennt}`);
     }
   }
   return out;

@@ -22,6 +22,15 @@ für `bereit`, der Kopf von `frontend/src/seiten/belege.tsx` zeigt die Zeile in 
 die Belege gelten. Dann `--build`. **Mit Muster 9** kommt das Konto in der Freigabe aus dessen Liste
 der Konten, mit Namen, und ein geändertes Konto wird einmal nachgefragt (`backend/kern/feldlisten.mjs`).
 
+**Das Gerät liest den Beleg selbst** (ab Kontrakt 14): der Weg, der die Datei liefert (das `original`
+des Flows), muss ein **PNG, JPEG oder PDF** herausgeben, das das Gerät an den ersten Bytes erkennt.
+Von einem PDF sieht es die ersten Seiten; wie groß eine Datei und wie lang es sein darf, sagt der
+Kontrakt (`--contract`). Das Blatt ist die Quelle der Felder: schreib keine Beträge oder Daten des
+Vorgangs in den `auftrag` des Schritts. Fehlt die Datei, ist sie zu groß oder nicht lesbar, wird kein
+Modell gerufen, und der Lauf hält mit einer Freigabe an, die den Grund nennt. Mit `--felder` und
+`ergebnis_bestaetigen` ist die Freigabe der Erkennung die eine Prüfung, immer mit den Feldern, und der
+Start gibt einen Verweis auf den Vorgang als Titel mit, damit zwei Belege eines Mandanten zu unterscheiden sind.
+
 **Geprüft vom Selbsttest** gegen ein gespieltes Gerät: ein fremdes Dokument, seine Bytes, seine
 Auslesung und sein Protokoll 404; ein Beleg ohne Vorgang 400; kein Einreichen ohne Beleg; nach dem
 Einreichen 409; die Auslesung kommt am Gerät mit ihrem Menschen an.

@@ -375,6 +375,8 @@ export function appArrangement(contract, { device = null, date = null } = {}) {
   const freigaben = {
     einreicher: Boolean(start.einreicher),
     regel: Boolean(start.freigabe),
+    // Ein kurzer Titel für die Freigabekarten des Laufs (seit Kontrakt 14), am selben Schema gelesen.
+    titel: Boolean(start.titel),
     // Welche Rolle eine Regel als Entscheider nennen darf, wie der Kontrakt sie nennt.
     rollen: Array.isArray(contract?.freigaben?.rollen) ? contract.freigaben.rollen.filter((r) => typeof r === "string") : [],
   };
