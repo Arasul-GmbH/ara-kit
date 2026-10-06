@@ -437,6 +437,10 @@ one. Only the role admin may create keys on the device; for any other account th
 in plain text once, and whatever a call shows stands in the log of the work. On 06.10.2026 a
 stranger testing the kit did exactly that, twice wrongly, and left two unused keys behind.
 
+**Checked on the Orin on 06.10.2026**, with a test account as administrator and a file without SSH:
+created, the contract read with it, a second run created none, `--keys` marked it, `--revoke-key`
+revoked it; no key and no session stood in any output.
+
 **Over SSH** (`--via ssh`, or when SSH works and no `--password-ref` is given) a script on the
 device creates it. After `--install arasul` that happens by itself.
 

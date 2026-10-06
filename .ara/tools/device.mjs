@@ -1019,6 +1019,9 @@ async function keysHttps() {
 
   if (arg.keys) {
     if (!list.ok) fail(scrub(list.message));
+    // Ein Gerät sammelt Schlüssel: am Orin führte probe-admin am 06.10.2026 174, davon 2 gültige.
+    // Gezeigt werden die gültigen und der eigene; die widerrufenen nur auf Wunsch.
+    const shown = arg.all ? list.keys : list.keys.filter((entry) => entry.valid || entry.mine);
     if (arg.json) {
       console.log(JSON.stringify({ device: place, via: "https", key_ref: existing.api_key_ref || null, mine: list.mine?.prefix || null, keys: list.keys.map(({ prefix, name: label, scopes, valid, mine, line }) => ({ prefix, name: label, scopes, valid, mine, line })) }, null, 2));
       process.exit(0);
@@ -1028,10 +1031,10 @@ async function keysHttps() {
         t(`# Kit keys on ${place}, over HTTPS`, `# Kit-Schlüssel auf ${place}, über HTTPS`),
         "",
         list.keys.length
-          ? t(`${list.keys.length} created by "${session.spec.user}", as the device lists them:`, `${list.keys.length} von "${session.spec.user}" angelegt, so wie das Gerät sie auflistet:`)
+          ? t(`${list.keys.length} created by "${session.spec.user}", as the device lists them${shown.length < list.keys.length ? `; the ${list.keys.length - shown.length} revoked ones only counted (all: --all)` : ""}:`, `${list.keys.length} von "${session.spec.user}" angelegt, so wie das Gerät sie auflistet${shown.length < list.keys.length ? `; die ${list.keys.length - shown.length} widerrufenen nur gezählt (alle: --all)` : ""}:`)
           : t(`The device lists none created by "${session.spec.user}".`, `Das Gerät führt keinen, den "${session.spec.user}" angelegt hat.`),
         "",
-        ...list.keys.map((entry) => `  ${entry.line}${mark(entry)}`),
+        ...shown.map((entry) => `  ${entry.line}${mark(entry)}`),
         "",
         t(
           "The device lists only the keys this account created. Those of other accounts, and those created over SSH, stand under Settings, API keys on the device.",

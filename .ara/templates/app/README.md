@@ -119,7 +119,9 @@ Standardperson in der Verwaltung des Geräts. Eine neue Freigabe liegt bei ihr, 
 allen im Kreis, und entscheiden kann nur, bei dem sie liegt. Die Seite „Freigaben" zeigt
 darunter, was bei anderen liegt; mit „Übernehmen" liegt eine Freigabe danach bei einem selbst.
 Weitergeben an einen anderen geht in Arasul. Was genau gilt, sagt `--contract` unter
-`freigaben`.
+`freigaben`. **Am Orin gesehen am 06.10.2026** mit einer App aus dieser Vorlage (Kit 0.75.0) und
+zwei Probekonten: Standardperson der Stufe A, B sah den Vorgang unter „Bei anderen", übernahm
+ihn, A sah ihn danach bei B, B gab frei, der Vorgang stand auf „genehmigt", entschieden von B.
 
 **Auf der Karte der Freigabe steht die Nummer des Vorgangs, nicht sein Inhalt.** Was ein
 Lauf bekommt, liegt am Gerät bei jedem Lauf und auf der Karte; was im Vorgang steht, liegt

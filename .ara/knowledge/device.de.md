@@ -464,6 +464,10 @@ einmal im Klartext, und was ein Aufruf zeigt, steht im Protokoll der Arbeit. Am 
 Fremder, der das Kit testete, genau das getan, zweimal daneben, und zwei unbenutzte Schlüssel
 liegen lassen.
 
+**Am Orin geprüft am 06.10.2026**, mit einem Probekonto als Administrator und einer Akte ohne SSH:
+angelegt, damit den Kontrakt gelesen, ein zweiter Lauf legte keinen an, `--keys` markierte ihn,
+`--revoke-key` widerrief ihn; kein Schlüssel und keine Sitzung stand in einer Ausgabe.
+
 **Über SSH** (`--via ssh`, oder wenn SSH geht und kein `--password-ref` dabeisteht) legt ihn ein
 Skript am Gerät an. Nach `--install arasul` passiert das von selbst.
 
