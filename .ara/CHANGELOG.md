@@ -13,6 +13,18 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.74.0 (2026-10-06)
+
+Contract: up to 13
+
+- **"Build an app" leads into `/app`.** A command never loads by itself, a skill does, and on "build an app for receipts with approval" only the skill `extensions` fitted, which led past the interview, the patterns and the scaffold. The new skill `build-app` takes such a request and sends it into the command's source in the profile's language; `extensions` sends an app there too. The self-test follows the chain from the sentence to `app.md`.
+- **Approvals as the device holds them since 4 October.** Who submitted never decides, without any rule of the app; the switch `VIER_AUGEN` in the scaffold is gone, `regel` only names the deciders. The administrator sets a default person per app and stage, and only the person a request lies with decides. The scaffold's page "Freigaben" shows below what lies with others and takes it over. `app.md` asks for the default person per stage.
+- **Schedule and event act on the device.** The kit no longer says they may not act yet and no longer advises a schedule on a second computer: a schedule starts the flow in the live slot, an event the app reports.
+- **Going live explains the fallback.** If the new version does not come up, the device puts version and data from before back (`LIVE_ZURUECKGESCHALTET`); `--live` now says so and names the next step, `deploy.md` says why a failed change of structure must end the process. A refusal of the device shows its help sentence and the **end** of the build or container output, where the reason stands, instead of its start. `deploy.md` says how to read the app's container on the device.
+- **Load.** `--contract` prints the section `last` (waiting times, full queue), the arrangement takes the number of requests at a time from it, and the scaffold's backend waits and tries again twice on a full queue (503) before a human reads "busy".
+- **`AGENTS.md` shorter and aware of the branch.** From 250 to about 175 lines: the tools table names those for building an app, what only a partner needs stands in a section "Partner only" that a company skips. Every path `x.md` under `.ara/` means `x.de.md` with `language: de`; the skills name the German sheet too. Under Codex the note on trusting the folder stands in it. The persona describes somebody who builds apps, not only an installer.
+- **Smaller points.** `/app` no longer points to `.claude/CLAUDE.md` for the security levels, `platform-services.md` names the fetch route of a reading and says only the contract lists all routes, `security.md` explains why Claude Code starts without asking. The self-test compares the code identifiers of every language pair, a correction in one language only turns it red.
+
 ## 0.73.1 (2026-10-05)
 
 Contract: up to 13

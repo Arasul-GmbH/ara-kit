@@ -79,8 +79,8 @@ Sag es, wie es ist, wenn jemand fragt.
   Mehrfachauswahl, keine Vorschau als Skizze. Die Listen „Was geklärt sein muss" sind dieselben,
   ein Interview braucht hier also mehr Runden, und die Skizze einer Layout-Option steht in einer
   Zeile ihrer Beschreibung.
-- Die Berechtigungen: Claude Code hat eine Erlaubnis- und eine Sperrliste in
-  `.claude/settings.json`, Codex nichts davon. Der Riegel ist der eine Zaun gegen das Lesen von
+- Die Berechtigungen: Claude Code hat eine Sperrliste in `.claude/settings.json` (es startet,
+  ohne zu fragen, `.ara/knowledge/security.de.md`, „Der harte Riegel"), Codex nichts davon. Der Riegel ist der eine Zaun gegen das Lesen von
   `.env` und privaten Schlüsseln, und er ist eine Textsuche auf Shell-Aufrufe. Er hält auch
   `remote.mjs --command "rm -rf /"` an, aber ein Aufruf, der um ihn herum gebaut ist, kommt durch.
 - Der erste Start fragt zwei Dinge mehr, und `update.mjs` braucht eine Freigabe mehr.

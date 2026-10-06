@@ -97,3 +97,10 @@ Unabhängig von allen Stufen sind einige Muster gesperrt und werden vom Riegel
 Löschen an der Wurzel oder das Beschreiben eines Systemdatenträgers. Wenn der Riegel
 zuschlägt, versuch nicht, ihn zu umgehen. Sag dem Menschen, was du vorhattest und warum es
 blockiert wurde.
+
+**Claude Code startet, ohne zu fragen** (`bypassPermissions` in `.claude/settings.json`), mit
+Absicht: wer noch nie Software gebaut hat, kann eine Rückfrage zu jedem Shell-Aufruf nicht
+beurteilen und klickt jede mit Ja weg. Die drei Stufen oben hältst darum du, über das
+Interviewwerkzeug, und die Sperrliste in derselben Datei und dieser Riegel sind der Zaun. Die
+Erlaubnisliste dort wirkt in diesem Modus nicht. Ein Haus, das will, dass Claude Code selbst fragt,
+setzt dort `acceptEdits`.

@@ -15,6 +15,18 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.74.0 (2026-10-06)
+
+Contract: up to 13
+
+- **„Bau eine App" führt in `/app`.** Ein Befehl lädt sich nie von selbst, ein Skill schon, und auf „bau eine App für Belege mit Freigabe" passte nur der Skill `extensions`, der am Interview, an den Mustern und am Gerüst vorbeiführte. Der neue Skill `build-app` nimmt so einen Wunsch auf und schickt ihn in die Quelle des Befehls in der Sprache des Profils; `extensions` schickt eine App ebenfalls dorthin. Der Selbsttest geht die Kette vom Satz bis `app.md` nach.
+- **Freigaben, wie das Gerät sie seit dem 4. Oktober hält.** Wer eingereicht hat, entscheidet nie, ohne Regel der App; der Schalter `VIER_AUGEN` im Gerüst ist weg, `regel` nennt nur noch die Entscheider. Der Administrator setzt je App und Stufe eine Standardperson, und entscheiden kann nur, bei dem eine Anfrage liegt. Die Seite „Freigaben" des Gerüsts zeigt darunter, was bei anderen liegt, und übernimmt es. `app.md` fragt nach der Standardperson je Stufe.
+- **Zeitplan und Ereignis wirken am Gerät.** Das Kit sagt nicht mehr, dass sie vielleicht noch nicht wirken, und rät nicht mehr zu einem Zeitplan auf einem zweiten Rechner: ein Zeitplan startet den Flow im Livestand, ein Ereignis meldet die App.
+- **Live schalten erklärt den Rückfall.** Kommt die neue Fassung nicht hoch, stellt das Gerät Fassung und Daten von vorher wieder her (`LIVE_ZURUECKGESCHALTET`); `--live` sagt das jetzt und nennt den nächsten Schritt, `deploy.de.md` sagt, warum eine gescheiterte Strukturänderung den Prozess beenden muss. Eine Ablehnung des Geräts zeigt seinen Hilfesatz und das **Ende** der Bau- oder Containerausgabe, wo der Grund steht, statt ihres Anfangs. `deploy.de.md` sagt, wie man den Container der App am Gerät liest.
+- **Last.** `--contract` gibt den Abschnitt `last` aus (Wartezeiten, volle Warteschlange), die Vereinbarung nimmt daraus die Zahl gleichzeitiger Anfragen, und das Backend des Gerüsts wartet bei voller Warteschlange (503) und versucht es noch zweimal, bevor ein Mensch „ausgelastet" liest.
+- **`AGENTS.md` kürzer und zweigbewusst.** Von 250 auf rund 175 Zeilen: die Werkzeugtabelle nennt die für den App-Bau, was nur ein Partner braucht, steht in einem Abschnitt „Partner only", den ein Unternehmen überspringt. Jeder Pfad `x.md` unter `.ara/` heißt bei `language: de` `x.de.md`; die Skills nennen das deutsche Blatt mit. Der Hinweis, unter Codex dem Ordner zu vertrauen, steht darin. Die Persona beschreibt jemanden, der Apps baut, nicht nur einen Installateur.
+- **Kleineres.** `/app` verweist für die Sicherheitsstufen nicht mehr auf `.claude/CLAUDE.md`, `platform-services.de.md` nennt den Abholweg eines Auslesens und sagt, dass nur der Kontrakt alle Wege nennt, `security.de.md` erklärt, warum Claude Code startet, ohne zu fragen. Der Selbsttest vergleicht die Code-Bezeichner jedes Sprachpaares, eine Korrektur in nur einer Sprache wird rot.
+
 ## 0.73.1 (2026-10-05)
 
 Contract: up to 13
