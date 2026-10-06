@@ -36,8 +36,8 @@ geht als `contract` in die Akte, damit `/init` sie ohne das Gerät wiederfindet.
 zu lesen war, bleibt ungemessen und wird als solches genannt: eine Plattform, die gerade
 hochkommt, sagt nichts über ihre Fassung.
 
-Es liest nur. Eingriffe sind `--install` und `--deploy-key`, beide weiter unten, beide
-nur auf Wunsch und nach Bestätigung.
+Es liest nur. Eingriffe sind `--install`, `--deploy-key` und `--admin-call` mit einem anderen
+Verb als GET, alle weiter unten, alle nur auf Wunsch und nach Bestätigung.
 
 ## Was geklärt sein muss
 
@@ -155,6 +155,10 @@ Reihe nach:
 Ist das Ziel dieser Rechner selbst (`localhost`) und SSH aus, prüft das Werkzeug lokal
 und schreibt `ssh: local` in die Akte. Das reicht für die Akte, nicht für Fernzugriff.
 
+**Apps bauen braucht kein SSH.** Läuft Arasul schon und hat jemand ein Konto als Administrator,
+kommt der Kit-Schlüssel über HTTPS, „Der Kit-Schlüssel" weiter unten. SSH braucht es zum
+Installieren, für die Prüfung der Hardware und für `/maintain`, nicht für `/app`.
+
 ## Docker und Ollama
 
 Das Werkzeug erkennt beide und sagt, ob sie da sind. Aufsetzen tut es nur auf Wunsch:
@@ -248,7 +252,7 @@ Gerät, dessen Kontrakt das Kit lesen kann, und einem Kit-Schlüssel in der Akte
 
 | Lage | Was zu tun ist |
 | --- | --- |
-| Das Gerät läuft schon (`arasul: running`) | Nur der Schlüssel fehlt: `--deploy-key` |
+| Das Gerät läuft schon (`arasul: running`) | Nur der Schlüssel fehlt: `--deploy-key`, über HTTPS mit einem Konto als Administrator, ohne SSH |
 | Das Gerät ist unterstützt, aber leer | `--install arasul`, der Schlüssel kommt danach von selbst |
 
 ### Das Token
@@ -436,12 +440,36 @@ Damit rollt das Kit später Apps auf das Gerät: **kein SSH, kein Passwort, kein
 nur ein Schlüssel mit dem Bereich `app:deploy`.** Er entsteht am Gerät, gehört dem
 Administrator dort und ist von ihm jederzeit widerrufbar.
 
+**Auf einem Gerät, das schon läuft, geht es über HTTPS mit einem Konto als Administrator.** Das
+braucht kein SSH, nur die Adresse in der Akte und das Passwort eines Administrators in der Ablage:
+
 ```
-node .ara/tools/device.mjs --name <gerät> --deploy-key
+node .ara/tools/device.mjs --name <gerät> --deploy-key --via https
+node .ara/tools/device.mjs --name <gerät> --deploy-key --via https --password-ref <NAME> --login-user <name>
 ```
 
-Auf einem Gerät, das schon läuft, ist das der einzige Schritt. Nach `--install arasul`
-passiert es von selbst.
+Die erste Zeile nimmt das Startpasswort aus der Installation; auf einem Gerät, das das Kit nicht
+installiert hat, legt der Mensch das Passwort des Administrators einmal in die Ablage
+(`printf '%s' "<passwort>" | node .ara/tools/secrets.mjs --set <NAME>`), und du nennst es mit
+`--password-ref`, zusammen mit dem Kontonamen. **Ohne `--via` nimmt das Werkzeug HTTPS von
+selbst**, wenn die Akte sagt, dass SSH nicht antwortet (`ssh: refused`), oder wenn
+`--password-ref` im Aufruf steht. Das Werkzeug meldet sich an, lässt das Gerät den Schlüssel
+anlegen, legt ihn aus der Antwort direkt in die Ablage, liest damit zum Beweis den Kontrakt und
+schreibt `api_key_ref`, `tls`, `arasul` und `contract` in die Akte. **Ein hinterlegter Schlüssel,
+der noch gilt, bleibt**, ein zweiter Lauf legt keinen zweiten an. Schlüssel anlegen darf am Gerät
+nur die Rolle admin; für jedes andere Konto sagt das Werkzeug es.
+
+**Leg den Schlüssel nie von Hand über einen Weg aus der API-Referenz an.** Die Antwort trägt ihn
+einmal im Klartext, und was ein Aufruf zeigt, steht im Protokoll der Arbeit. Am 06.10.2026 hat ein
+Fremder, der das Kit testete, genau das getan, zweimal daneben, und zwei unbenutzte Schlüssel
+liegen lassen.
+
+**Am Orin geprüft am 06.10.2026**, mit einem Probekonto als Administrator und einer Akte ohne SSH:
+angelegt, damit den Kontrakt gelesen, ein zweiter Lauf legte keinen an, `--keys` markierte ihn,
+`--revoke-key` widerrief ihn; kein Schlüssel und keine Sitzung stand in einer Ausgabe.
+
+**Über SSH** (`--via ssh`, oder wenn SSH geht und kein `--password-ref` dabeisteht) legt ihn ein
+Skript am Gerät an. Nach `--install arasul` passiert das von selbst.
 
 **Nach einer Installation gilt genau ein Kit-Schlüssel, der des Kits.** Der Installer legt
 einen eigenen an (er nennt ihn „Ara-Kit (Erstinstallation)"), druckt ihn in seine
@@ -468,7 +496,9 @@ demselben Namen. Was dort liegt und welcher davon deiner ist:
 node .ara/tools/device.mjs --name <gerät> --keys
 ```
 
-Die Liste kommt vom Gerät, Zeile für Zeile so, wie es sie schreibt. Das Kit setzt eine
+Über HTTPS (`--via https`) listet das Gerät nur die Schlüssel, die das angemeldete Konto angelegt
+hat; die anderer Konten und die über SSH angelegten stehen am Gerät unter Einstellungen,
+API-Schlüssel. Die Liste kommt vom Gerät, Zeile für Zeile so, wie es sie schreibt. Das Kit setzt eine
 Marke dazu: der Schlüssel, dessen Präfix zu dem Wert in deiner Ablage passt, ist deiner.
 Namen wiederholen sich, Präfixe nicht.
 
@@ -634,22 +664,33 @@ sich aber, und zwar aus dem Startpasswort, das bei der Installation entstanden i
 
 ```
 node .ara/tools/device.mjs --name <gerät> --admin-login
+node .ara/tools/device.mjs --name <gerät> --admin-login --password-ref <NAME> --login-user <name>
 ```
 
-Das meldet sich am Gerät an und gibt den Ausweis aus, mit dem die nächsten Aufrufe gehen.
-**Das Passwort wird dabei nicht angezeigt**, es geht aus der Geheimnis-Ablage direkt in
-die Anmeldung. Der Weg läuft über die Schnittstelle und nicht über SSH: es braucht dafür
-weder einen Anmeldenamen noch einen Schlüssel, nur `address` oder `api_base` in der Akte.
-Für ein Skript gibt `--token` nur den Ausweis:
+Das meldet sich am Gerät an und sagt, ob die Sitzung hält. **Weder Passwort noch Ausweis werden
+angezeigt**: das Passwort geht aus der Geheimnis-Ablage direkt in die Anmeldung, und der Ausweis
+bleibt in den Werkzeugen. Der Weg läuft über die Schnittstelle und nicht über SSH: es braucht dafür
+weder einen Anmeldenamen noch einen Schlüssel, nur `address` oder `api_base` in der Akte. Wer das
+Passwort eines Administrators schon unter eigenem Namen hält, nennt diesen Eintrag, statt eine
+zweite Kopie abzulegen, mit `--password-ref` und `--login-user`; **jeder Aufruf unten nimmt diese
+beiden Schalter**.
+
+**Ein Handgriff, für den das Kit keinen Befehl hat**, geht als ein Aufruf mit dieser Sitzung:
 
 ```
-SITZUNG=$(node .ara/tools/device.mjs --name <gerät> --admin-login --token)
+node .ara/tools/device.mjs --name <gerät> --admin-call "GET <weg>"
+node .ara/tools/device.mjs --name <gerät> --admin-call "POST <weg>" --body '{"...": "..."}'
 ```
 
-Wer das Passwort eines Administrators schon unter eigenem Namen hält, nennt diesen Eintrag, statt
-eine zweite Kopie abzulegen: `--admin-login --password-ref <NAME> --login-user <name>`. Eine App
-einem Konto freigeben geht über dieselbe Sitzung, `app.mjs --share`, siehe
-`.ara/knowledge/deploy.de.md`.
+Die Antwort kommt zurück, jeder Wert, der ein Geheimnis tragen kann, maskiert (`…`): ein Ausweis,
+ein Passwort, ein Schlüssel, den der Aufruf angelegt hat. Ein Aufruf mit einem anderen Verb als
+GET ändert am Gerät etwas und wird vorher bestätigt. **Leg nie einen Ausweis oder ein
+Sitzungscookie in einen eigenen Befehl oder einen Aufruf des Browsers**: was in einem Aufruf
+steht, steht im Protokoll der Arbeit. `--token` gibt es nur für die Werkzeuge des Kits; es reicht
+ihnen den Ausweis und druckt nichts.
+
+Eine App einem Konto freigeben geht über dieselbe Sitzung, `app.mjs --share`, siehe
+`.ara/knowledge/deploy.de.md`. Den Kit-Schlüssel über dieselbe Sitzung: „Der Kit-Schlüssel" oben.
 
 Der Weg dorthin ist `POST /api/auth/login`, und das ist eine Angabe über das Produkt wie
 jede andere: **sie gehört an einem Gerät geprüft.** Das tut der Doku-Selbsttest:
@@ -684,7 +725,7 @@ Wege, statt aufzuhören, und alle drei führen weiter:
 
 **Sag den dritten Weg laut**, statt nach einem Passwort zu fragen, das niemand hat. Das
 Ausrollen von Apps hängt nicht daran: dafür ist der Kit-Schlüssel da, und der kommt über SSH
-vom Gerät.
+vom Gerät, oder über HTTPS mit dem Passwort eines anderen Administrators.
 
 **Welche Namen die Ablage führt**, sagt `node .ara/tools/secrets.mjs --show`. Dort steht
 auch der Eintrag mit dem Startpasswort, mit dem Gerät daneben. Werte stehen dort nie.

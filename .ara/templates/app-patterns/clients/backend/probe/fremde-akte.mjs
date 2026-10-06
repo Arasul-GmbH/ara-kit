@@ -7,15 +7,34 @@
  * versuchen könnte: ansehen, ändern, einreichen, in ihr anlegen, sie in der Liste finden. Jedes
  * Mal muss 404 kommen, nie 403 und nie die Akte selbst. 403 sagte, dass es sie gibt.
  *
- *   node backend/probe/fremde-akte.mjs --basis <adresse> \
- *     --verwaltung '{"name":"…","kopf":{…}}' --a '{"name":"…","kopf":{…}}' --b '{"name":"…","kopf":{…}}'
+ * **Er braucht drei Sitzungen, nicht zwei.** Handtest 06.10.2026: mit den Cookies von zwei
+ * Mitarbeitern brach er ab, weil niemand die Probe-Akten anlegen durfte.
+ *
+ *   1. `verwaltung`: ein Konto mit der Rolle, die Mandanten pflegt (am Gerät meist admin), und
+ *      dem die App im Teststand freigegeben ist. Es legt die zwei Akten an und ordnet zu.
+ *   2. `a` und `b`: zwei Mitarbeiter OHNE diese Rolle, beiden die App im Teststand freigegeben.
+ *      Mit der Rolle sähe einer womöglich alle Akten (`alleSehen`), und der Test bewiese nichts.
+ *
+ * Die Sitzungen stehen in einer Datei, nicht im Aufruf: was in einem Aufruf steht, steht im
+ * Protokoll der Arbeit und in der Geschichte der Shell. Die Datei legt der Mensch an, der sich im
+ * Browser angemeldet hat, mit Rechten nur für sich (`chmod 600`), und löscht sie danach:
+ *
+ *   {
+ *     "verwaltung": { "name": "<konto mit der rolle>", "kopf": { "cookie": "<sitzung>" } },
+ *     "a": { "name": "<mitarbeiter a>", "kopf": { "cookie": "<sitzung>" } },
+ *     "b": { "name": "<mitarbeiter b>", "kopf": { "cookie": "<sitzung>" } }
+ *   }
+ *
+ *   node backend/probe/fremde-akte.mjs --basis https://<gerät>/apps/<id>/test/api --sitzungen <datei> --unsicher
  *
  * `name` ist der Name, wie das Gerät ihn in der Kopfzeile setzt, `kopf` das, was die Anfrage
  * dieses Menschen trägt: lokal die Kopfzeilen des Kontrakts, am Gerät die Sitzung (`cookie`).
- * Die Verwaltung braucht die Rolle, die verwalten darf; A und B brauchen sie nicht und dürfen sie
- * nicht haben. **Die Probe schreibt in die Datenbank der App**, darum nur in den Teststand: zwei
- * Akten "Probe-…" und eine Akte darin, in Arbeit, ohne Lauf. Die Zuordnungen löst sie am Ende
- * wieder, danach sieht niemand diese Akten mehr.
+ * Lokal, ohne Geheimnis, gehen auch `--verwaltung`, `--a` und `--b` mit demselben JSON im Aufruf.
+ * Der Test zeigt nie eine Sitzung, auch nicht in einer Fehlermeldung.
+ *
+ * **Die Probe schreibt in die Datenbank der App**, darum nur in den Teststand: zwei Akten
+ * "Probe-…" und eine Akte darin, in Arbeit, ohne Lauf. Die Zuordnungen löst sie am Ende wieder,
+ * danach sieht niemand diese Akten mehr.
  *
  * Ein Gerät mit selbst ausgestelltem Zertifikat (`tls: selfsigned` in der Geräteakte) braucht
  * `--unsicher`: dann nimmt der Test dieses Zertifikat an, für seine eigenen Anfragen und sonst
@@ -25,6 +44,7 @@
  * Ausgang 0, wenn alles hält, sonst 1 mit dem Satz, was nicht hielt.
  */
 
+import { readFileSync } from "node:fs";
 import http from "node:http";
 import https from "node:https";
 
@@ -33,11 +53,33 @@ function argument(name) {
   return stelle > 0 ? process.argv[stelle + 1] : null;
 }
 
+const WER = {
+  verwaltung: "ein Konto mit der Rolle, die Mandanten pflegt, dem die App freigegeben ist",
+  a: "Mitarbeiter A, ohne diese Rolle",
+  b: "Mitarbeiter B, ohne diese Rolle",
+};
+
+const datei = argument("sitzungen");
+let sitzungen = null;
+if (datei) {
+  try {
+    sitzungen = JSON.parse(readFileSync(datei, "utf8"));
+  } catch (fehler) {
+    console.error(`Die Datei der Sitzungen ist nicht lesbar: ${fehler.code || "kein JSON"}.`);
+    process.exit(2);
+  }
+}
+
 function mensch(name) {
-  const roh = argument(name);
-  if (!roh) throw new Error(`--${name} fehlt.`);
-  const m = JSON.parse(roh);
-  if (!m.name || typeof m.kopf !== "object") throw new Error(`--${name} braucht name und kopf.`);
+  let m = sitzungen?.[name] ?? null;
+  if (!m && argument(name)) m = JSON.parse(argument(name));
+  if (!m || !m.name || typeof m.kopf !== "object") {
+    console.error(
+      `Es fehlt die Sitzung "${name}" (${WER[name]}). Der Test braucht drei: verwaltung, a und b, ` +
+        "in einer Datei mit --sitzungen <datei>. Wie sie aussieht, steht im Kopf dieser Datei."
+    );
+    process.exit(2);
+  }
   return m;
 }
 
@@ -100,7 +142,10 @@ const marke = Date.now().toString(36);
 const x = (await ruf(verwaltung, "POST", "/mandanten", { name: `Probe-X-${marke}` })).daten?.mandant?.id;
 const y = (await ruf(verwaltung, "POST", "/mandanten", { name: `Probe-Y-${marke}` })).daten?.mandant?.id;
 if (!x || !y) {
-  console.error("Die Verwaltung konnte keine Probe-Akten anlegen. Hat sie die Rolle, die verwalten darf?");
+  console.error(
+    `Die Verwaltung (${verwaltung.name}) konnte keine Probe-Akten anlegen. Sie braucht die Rolle, die Mandanten pflegt, ` +
+      "und die App muss ihr im Teststand freigegeben sein. Zwei Mitarbeiter allein reichen nicht: der Test braucht drei Sitzungen."
+  );
   process.exit(1);
 }
 const zuA = await ruf(verwaltung, "POST", "/zuordnungen", { benutzer: a.name, mandant: x });

@@ -119,7 +119,9 @@ Standardperson in der Verwaltung des Geräts. Eine neue Freigabe liegt bei ihr, 
 allen im Kreis, und entscheiden kann nur, bei dem sie liegt. Die Seite „Freigaben" zeigt
 darunter, was bei anderen liegt; mit „Übernehmen" liegt eine Freigabe danach bei einem selbst.
 Weitergeben an einen anderen geht in Arasul. Was genau gilt, sagt `--contract` unter
-`freigaben`.
+`freigaben`. **Am Orin gesehen am 06.10.2026** mit einer App aus dieser Vorlage (Kit 0.75.0) und
+zwei Probekonten: Standardperson der Stufe A, B sah den Vorgang unter „Bei anderen", übernahm
+ihn, A sah ihn danach bei B, B gab frei, der Vorgang stand auf „genehmigt", entschieden von B.
 
 **Auf der Karte der Freigabe steht die Nummer des Vorgangs, nicht sein Inhalt.** Was ein
 Lauf bekommt, liegt am Gerät bei jedem Lauf und auf der Karte; was im Vorgang steht, liegt
@@ -180,7 +182,7 @@ Das Backend, von außen nach innen:
 | `kern/csv.mjs` | Ein Export als CSV |
 | `ablage/vorgaenge.mjs` | Die eine Naht zur Datenbank. Hier steht das SQL der Vorgänge, im Dialekt von PostgreSQL. Eine Ablage je Entität, keine zweite |
 | `ablage/db.mjs` | Die Datenbank und ihre Migrationen: am Gerät PostgreSQL, ohne Gerät SQLite, dasselbe SQL. Der Stand steht in der Datenbank selbst |
-| `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst |
+| `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst. Die Vorlage hält 001 bis 009, die Muster je einen Zehner ab 010, eigene Migrationen beginnen bei 100 |
 | `package.json` | Die eine Abhängigkeit, `pg`. Das Gerät holt sie beim Bau |
 | `arasul.mjs` | Die Naht zum Gerät. Kein Wert darin, den das Gerät vergibt |
 | `arasul.json` | Die Vereinbarung mit dem Gerät. Im Quelltext leer, gefüllt wird sie beim Einspielen |

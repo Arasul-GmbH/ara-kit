@@ -35,7 +35,7 @@ asks to full depth"; the four levels below are what it means for an app.
 | **The steps** | From the point of view of the human in front of it, one step per line |
 | **Where a flow is needed** | Where a language model really does the work. Shifting data is a program, not a flow |
 | **Where a human decides** | Every approval, when an item is complete enough for it, who decides and who explicitly not |
-| **Who may see what** | Everything for everybody inside, or only their clients, departments, files. The app decides that |
+| **Who may see what** | Everything for everybody inside, or only their clients, departments, files. The app decides that. With clients (pattern 7) also: does the management see every client, or only those handed to it (`alleSehen`)? In a tax office the partners usually see all. Who is handed which client may be set before that person ever opened the app |
 | **Roles, what leaves the device, which model per flow** | **Always asked**, because nobody without programming experience raises them. Defaults: an administrator and employees who see only their files, nothing leaves, a model suggestion per flow. See "Three questions every app gets" |
 | **Picture, approval stages, what is read** | See "More questions" |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
@@ -146,6 +146,13 @@ says what each does on this device.
    documents the route that delivers them, **ending in .png, .jpg, .svg or .pdf** (the approval tells
    image from PDF by the end of the path). With several stages the first belongs to the reading: the
    device puts its request there when unsure; a sure reading asks nobody. Say that aloud.
+   **Two approvals, one item.** With `--felder` the flow has the reading (an approval with the
+   fields, only when unsure) and the step `entscheiden` (an approval without fields, always).
+   Unsure, the person decides twice; delete `entscheiden` and a sure reading is approved by nobody.
+   Under contract 13 there is no way to exactly one approval with fields: keep both and say so in
+   the plan. What the model reads is not the original on the left but what the step `lesen` hands
+   it as `auftrag` (measured on 06.10.2026, contract 13): put the details of the item there. Whether
+   a newer device reads the original itself, its contract says (`--contract`).
 
 "Enough" drops these four questions: what stays open the kit does not write. `--check` stops
 `faehigkeiten` at a tool step (they belong to model steps only) and holds the declaration against the
@@ -197,7 +204,9 @@ says under `daten`; its address arrives as `umgebung.datenbank` in `arasul.json`
 deploy and is backed up every night, restored as `daten.wiederherstellen` says. **Nothing else
 stays**: every deploy replaces the container, its file system, a `VOLUME`, a SQLite file. An upload
 belongs in a column (`BYTEA`). **The database starts empty**, the app's migrations create the
-schema. How the scaffold does both, and what it keeps without a device: its README.
+schema. Their numbers never collide: the scaffold holds 001 to 009, every pattern a ten of its own
+from 010, and the app's own begin at 100. How the scaffold does both, and what it keeps without a
+device: its README.
 
 ## What the scaffold already is
 

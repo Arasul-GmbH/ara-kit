@@ -4,9 +4,9 @@ Die Muster 2, 6 und 7 zusammen: ein Beleg hängt an einem Vorgang, gehört desse
 Gerät liest ihn aus, und niemand eines anderen Mandanten sieht ihn. Überblick:
 `.ara/knowledge/app-patterns.de.md`.
 
-**Die Dateien**: die fünfte Migration, eine Spalte `mandant` an Dokumenten und Auslesungen,
+**Die Dateien**: die Migration `040`, eine Spalte `mandant` an Dokumenten und Auslesungen,
 `vorgang` an Dokumenten; die Ablagen der Muster 2 und 6 ersetzt durch solche, die je Anfrage für
-einen Namen gebaut werden, mit `nurZugeordnete` in jeder Abfrage; die Wege in
+eine Sicht gebaut werden (ein Name, oder die Verwaltung, die alle Mandanten sieht), mit `nurZugeordnete` in jeder Abfrage; die Wege in
 `backend/wege/belege.mjs`; `mitBeleg` in `backend/kern/belege.mjs`; `BelegeAmVorgang` für die
 Einzelheiten eines Vorgangs. **Der Mandant kommt vom Vorgang**, nie aus der Anfrage. Eine Auslesung
 trägt ihren eigenen: ihr Protokoll bleibt, wenn das Dokument geht.
@@ -18,7 +18,9 @@ Anhängen, Entfernen und neues Auslesen bekommen 409, der Entscheider gibt frei,
 **Einhängen**: zuerst die Muster 2, 6 und 7, dann dieser Ordner darüber. Der Kopf von
 `backend/wege/belege.mjs` ersetzt die Zeilen der Muster 2 und 6 in `server.mjs` und nennt die Zeile
 für `bereit`, der Kopf von `frontend/src/seiten/belege.tsx` zeigt die Zeile in `seiten/liste.tsx`.
-Dann `--build`.
+`sicht: mandantenFall.sicht` in diesen Zeilen lässt den Schalter `alleSehen` aus Muster 7 auch für
+die Belege gelten. Dann `--build`. **Mit Muster 9** kommt das Konto in der Freigabe aus dessen Liste
+der Konten, mit Namen, und ein geändertes Konto wird einmal nachgefragt (`backend/kern/feldlisten.mjs`).
 
 **Geprüft vom Selbsttest** gegen ein gespieltes Gerät: ein fremdes Dokument, seine Bytes, seine
 Auslesung und sein Protokoll 404; ein Beleg ohne Vorgang 400; kein Einreichen ohne Beleg; nach dem

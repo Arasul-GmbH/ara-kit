@@ -104,8 +104,12 @@ sag es dem Menschen und lass dir das Darüberhinweg bestätigen. Dann
 `--install arasul --despite-traces`. Läuft die Plattform dagegen wirklich, ist das kein
 Aufsetzen mehr, sondern ein Update, und das ist ein anderer Weg.
 
-**Läuft Arasul schon**, fehlt nur der Kit-Schlüssel für den Deploy: `--deploy-key` legt
-ihn am Gerät an und hinterlegt ihn. In der Akte steht nur sein Name, nie sein Wert.
+**Läuft Arasul schon**, fehlt nur der Kit-Schlüssel für den Deploy, und **er braucht kein SSH**:
+`--deploy-key --via https` legt ihn mit einem Konto als Administrator über HTTPS an und hinterlegt
+ihn (`--password-ref <NAME> --login-user <name>` für ein Passwort, das der Mensch in die Ablage
+gelegt hat). Ohne `--via` nimmt das Werkzeug HTTPS von selbst, wenn SSH nicht antwortet. In der
+Akte steht nur sein Name, nie sein Wert. Leg nie einen Schlüssel von Hand über einen Weg der
+API-Referenz an: dessen Antwort trägt den Schlüssel im Klartext.
 Danach ist der erste Nachweis der Kontrakt:
 `node .ara/tools/app.mjs --device <gerät> --contract`.
 
@@ -121,8 +125,10 @@ Kit.**
 **Der erste Mitarbeiter und die erste Freigabe** gehören noch zur Abnahme. Ohne Browser
 geht das über die Verwaltungsschnittstelle der Plattform. Die Sitzung dafür holt
 `--admin-login`: das Startpasswort aus der Installation geht aus der Geheimnis-Ablage
-direkt in die Anmeldung, zurück kommt ein Ausweis, und angezeigt wird das Passwort nie.
-Was du damit aufrufst, sagt `node .ara/tools/mirror.mjs --docs`. Das Gerät zählt die
+direkt in die Anmeldung, und angezeigt werden weder Passwort noch Ausweis. Ein Aufruf mit
+dieser Sitzung ist `--admin-call "<VERB> <weg>"`, seine Antwort kommt mit jedem Geheimnis
+maskiert; welcher Weg, sagt `node .ara/tools/mirror.mjs --docs`. Ein Ausweis oder ein
+Sitzungscookie kommt nie in einen eigenen Befehl oder Aufruf des Browsers. Das Gerät zählt die
 Anmeldungen: ein 429 ist keine Fehlbedienung, sondern die Grenze, und dann wird gewartet.
 Verfahren in `.ara/knowledge/device.de.md`.
 

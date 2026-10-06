@@ -8,6 +8,7 @@
  *   `server.mjs`            Wege, Kopfzeilen, Statuscodes
  *   `kern/vorgaenge.mjs`    was mit einem Vorgang passiert
  *   `kern/abschluss.mjs`    was passiert, wenn das Gerät das Ergebnis eines Flows übergibt
+ *   `kern/feldlisten.mjs`   die Listen für Felder einer Freigabe, etwa die Konten (`GET /feldlisten`)
  *   `ablage/vorgaenge.mjs`  wo er liegt. Die eine Naht zur Datenbank
  *   `ablage/abschluesse.mjs` wo das übergebene Ergebnis eines Laufs liegt
  *   `ablage/db.mjs`         die Datenbank und ihre Migrationen
@@ -49,6 +50,7 @@ import { abschlussAblage } from "./ablage/abschluesse.mjs";
 import { vorgangsAblage } from "./ablage/vorgaenge.mjs";
 import { abschluss as abschlussKern } from "./kern/abschluss.mjs";
 import { blatt } from "./kern/blatt.mjs";
+import { FELDLISTEN } from "./kern/feldlisten.mjs";
 import { vorgaenge as kern } from "./kern/vorgaenge.mjs";
 import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";
 
@@ -161,6 +163,9 @@ const server = createServer(async (anfrage, antwort) => {
       ablage: { art: db.art, dauerhaft: db.dauerhaft },
     });
   }
+
+  // Die Listen, aus denen ein Feld einer Freigabe seine Werte nimmt, siehe `kern/feldlisten.mjs`.
+  if (pfad === "/feldlisten" && anfrage.method === "GET") return json(antwort, 200, { listen: FELDLISTEN });
 
   // Das Gerät übergibt das Ergebnis eines Laufs. Was geprüft wird und warum, steht in `kern/abschluss.mjs`.
   if (pfad === ABSCHLUSS && anfrage.method === "POST") {

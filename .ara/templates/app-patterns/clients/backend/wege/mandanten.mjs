@@ -8,12 +8,18 @@
  *   import { mandanten as mandantenKern, verwaltungsRolle } from "./kern/mandanten.mjs";
  *   import { mandantenWege } from "./wege/mandanten.mjs";
  *
- *   const mandantenFall = mandantenKern({ ablage: mandantAblage(db), verwaltung: verwaltungsRolle(vereinbarung) });
+ *   const mandantenFall = mandantenKern({
+ *     ablage: mandantAblage(db),
+ *     verwaltung: verwaltungsRolle(vereinbarung),
+ *     // true: die Verwaltung sieht alle Mandanten, ohne zugeordnet zu sein. Das Interview fragt danach.
+ *     alleSehen: false,
+ *   });
  *   const mandanten = mandantenWege({
  *     mandanten: mandantenFall,
- *     vorgaenge: (benutzer) =>
+ *     // `sicht` ist ein Name, oder `{ benutzer, alle }` für eine Verwaltung, die alle sieht.
+ *     vorgaenge: (sicht) =>
  *       kern({
- *         ablage: vorgangsAblage(db, benutzer),
+ *         ablage: vorgangsAblage(db, sicht),
  *         geraet,
  *         name: NAME,
  *         regel: mandantenFall.regel,
@@ -36,7 +42,8 @@
  *   GET    /mandanten         die Mandanten, die dieser Mensch sieht, und ob er verwaltet
  *   POST   /mandanten         einen anlegen. Nur die Verwaltung
  *   GET    /zuordnungen       alle Mandanten, gesehenen Konten, Zuordnungen. Nur die Verwaltung
- *   POST   /zuordnungen       `{ benutzer, mandant }` zuordnen. Nur die Verwaltung
+ *   POST   /zuordnungen       `{ benutzer, mandant, entscheidet }` zuordnen, auch ein Konto,
+ *                              das die App noch nie geöffnet hat (vorgemerkt). Nur die Verwaltung
  *   DELETE /zuordnungen       `?benutzer=…&mandant=…` lösen. Nur die Verwaltung
  *   GET    /vorgaenge                   die Vorgänge der eigenen Mandanten
  *   POST   /vorgaenge                   `{ titel, text, mandant }` anlegen, in Arbeit.
@@ -51,7 +58,8 @@
  * nichts mehr an ihm, und jeder Weg, der es versucht, bekommt 409.
  *
  * **Jeder Name, der hier vorbeikommt, wird vermerkt**, auch auf einem Weg, den
- * diese Datei nicht bedient. Daraus wählt die Verwaltung beim Zuordnen.
+ * diese Datei nicht bedient. Daraus wählt die Verwaltung beim Zuordnen, und
+ * eine Vormerkung für diesen Namen gilt ab da als gesehen.
  *
  * **Fremd heißt 404, nicht 403.** Ein 403 sagte, dass es den Vorgang oder den
  * Mandanten gibt. 403 bekommt nur, wer die Verwaltung aufruft, ohne sie zu
@@ -119,7 +127,7 @@ export function mandantenWege({ mandanten, vorgaenge, angemeldet }) {
     }
 
     if (teile[0] !== "vorgaenge") return false;
-    const kern = vorgaenge(wer.benutzer);
+    const kern = vorgaenge(mandanten.sicht(wer));
 
     if (teile.length === 1 && verb === "GET") {
       json(antwort, 200, { vorgaenge: await kern.auflisten() });

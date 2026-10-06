@@ -22,6 +22,11 @@
  * Freigabe dann unter „Bei anderen" und kann sie mit „Übernehmen" an sich
  * ziehen, etwa wenn die Standardperson im Urlaub ist.
  *
+ * **Kennt die App eine Liste für ein Feld** (`feldlisten.ts`), etwa die Konten,
+ * steht der Name des Vorschlags am Feld, ein Wert außerhalb der Liste wird
+ * nicht freigegeben, und eine Änderung auf einen anderen Wert der Liste fragt
+ * einmal nach. Handtest 06.10.2026: Porto auf Bürobedarf ging ohne Rückfrage.
+ *
  * **Das Muster wirft nicht, diese Seite sagt, was schiefging.** Es lässt das
  * Feld offen und den Text stehen, wenn ein Aufruf scheitert; den Satz dazu
  * zeigt diese Seite.
@@ -32,6 +37,7 @@ import { useSearchParams } from "react-router-dom";
 import { Freigabe, Knopf, Kopf, Liste, ListenEintrag, Meldung, Leerzustand, type FreigabeEintrag } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
 import { useAblehnen, useBeiAnderen, useBestaetigen, useFreigaben, useUebernehmen } from "../freigaben";
+import { mitNamen, pruefen, useFeldlisten } from "../feldlisten";
 
 export function Freigaben() {
   const [suche, setSuche] = useSearchParams();
@@ -40,7 +46,10 @@ export function Freigaben() {
   const ablehnen = useAblehnen();
   const beiAnderen = useBeiAnderen();
   const uebernehmen = useUebernehmen();
-  const [meldung, setzeMeldung] = useState<{ art: "erfolg" | "fehler"; text: string } | null>(null);
+  const listen = useFeldlisten().data ?? {};
+  // Die Rückfrage, die schon einmal dastand: wer danach mit denselben Werten bestätigt, meint es.
+  const [gesehen, setzeGesehen] = useState<string | null>(null);
+  const [meldung, setzeMeldung] = useState<{ art: "erfolg" | "fehler" | "warnung"; text: string } | null>(null);
   const gewaehlt = suche.get("freigabe");
 
   const waehlen = (id: FreigabeEintrag["id"] | null) => {
@@ -73,12 +82,20 @@ export function Freigaben() {
       >
         {(eintraege) => (
           <Freigabe
-            eintraege={eintraege}
+            eintraege={eintraege.map((eintrag) => mitNamen(eintrag, listen))}
             // Eine Adresse, die auf eine längst entschiedene Freigabe zeigt, führt zur Liste.
             gewaehlt={eintraege.some((eintrag) => String(eintrag.id) === gewaehlt) ? gewaehlt : null}
             beiWahl={waehlen}
             beiBestaetigen={async (eintrag, geaendert) => {
               setzeMeldung(null);
+              const geprueft = pruefen(eintrag, geaendert, listen, gesehen);
+              if (!geprueft.ok) {
+                // Werfen hält das Feld offen und den Text stehen; der Satz steht oben.
+                setzeMeldung({ art: geprueft.art === "fehlt" ? "fehler" : "warnung", text: geprueft.satz });
+                if (geprueft.art === "rueckfrage") setzeGesehen(geprueft.schluessel);
+                throw new Error(geprueft.satz);
+              }
+              setzeGesehen(null);
               try {
                 await bestaetigen.mutateAsync({ id: eintrag.id, felder: geaendert });
                 const anzahl = geaendert ? Object.keys(geaendert).length : 0;

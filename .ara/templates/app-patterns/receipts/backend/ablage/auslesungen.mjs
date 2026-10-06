@@ -13,7 +13,7 @@
  * bleiben.
  */
 
-import { nurZugeordnete } from "./mandanten.mjs";
+import { nurZugeordnete, sicht } from "./mandanten.mjs";
 
 const FELDER =
   "id, dokument_id, von, zeit, modell, dauer_ms, texterkennung, zeichen, auftrag, felder, maengel, fehler, roh, mandant";
@@ -43,7 +43,9 @@ function alsAuslesung(zeile) {
 }
 
 export function auslesungsAblage(db, benutzer = null) {
-  const wer = benutzer || null;
+  // Ein Name, oder `{ benutzer, alle }` für eine Verwaltung, die alle sieht.
+  const { benutzer: wer, alle } = sicht(benutzer);
+  const filter = (spalte, platzhalter) => nurZugeordnete(spalte, platzhalter, alle);
 
   return {
     /** Eine neue Auslesung ins Protokoll, unter dem Mandanten ihres Dokuments. */
@@ -77,7 +79,7 @@ export function auslesungsAblage(db, benutzer = null) {
     async zumDokument(dokumentId) {
       return (
         await db.abfrage(
-          `SELECT ${FELDER} FROM auslesungen WHERE dokument_id = $1 AND ${nurZugeordnete("mandant", "$2")} ORDER BY id DESC`,
+          `SELECT ${FELDER} FROM auslesungen WHERE dokument_id = $1 AND ${filter("mandant", "$2")} ORDER BY id DESC`,
           [dokumentId, wer]
         )
       ).map(alsAuslesung);

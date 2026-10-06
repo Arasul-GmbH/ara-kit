@@ -68,7 +68,11 @@ person sees this client. For a client that is not theirs it answers `null`, and 
 "handed over" after the download is your app's decision, and belongs behind an approval.
 
 **Replace the lists.** `KONTEN`, `GEGENKONTEN` and `KATEGORIEN` in `skr03.mjs` are a sample selection.
-Put in the accounts of the house and let the tax adviser read them through.
+Put in the accounts of the house and let the tax adviser read them through. **The approval takes
+the same list**: the folder brings `backend/kern/feldlisten.mjs`, which replaces the scaffold's, and
+the field `konto` of an approval then shows the name of the suggested account, refuses one that is
+not in the list and asks back once when somebody changes it to another. If the field is called
+differently in the flow, its name goes there.
 
 ## What the writer does on purpose
 

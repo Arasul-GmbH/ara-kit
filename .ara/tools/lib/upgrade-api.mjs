@@ -24,7 +24,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { t } from "./i18n.mjs";
-import { ROOT, customerPath, ensureDir, now, today } from "./kit.mjs";
+import { ROOT, adminSession, customerPath, ensureDir, now, today } from "./kit.mjs";
 import { baseUrl, call, reason } from "./arasul.mjs";
 import { CONTRACT_PATH, findEndpoint } from "./contract.mjs";
 import { getSecret } from "./secrets.mjs";
@@ -143,27 +143,8 @@ export async function runViaInterface({ device, arg, mode, place, call_ }) {
 
   // --- Die Sitzung als Administrator, nur wenn sie gebraucht wird -----------------
   let sessionMemo = null;
-  const login = () => {
-    const run = spawnSync(
-      "node",
-      [
-        join(ROOT, ".ara", "tools", "device.mjs"),
-        ...(device.customer ? ["--customer", device.customer] : []),
-        "--name",
-        device.device,
-        "--admin-login",
-        "--token",
-        ...(str(arg["login-user"]) ? ["--login-user", str(arg["login-user"])] : []),
-        ...(str(arg["password-ref"]) ? ["--password-ref", str(arg["password-ref"])] : []),
-        ...(arg.insecure ? ["--insecure"] : []),
-      ],
-      { encoding: "utf8" }
-    );
-    if (run.status !== 0 || !run.stdout.trim()) {
-      return { ok: false, reason: (run.stderr || run.stdout || "").trim().split("\n").slice(0, 3).join(" ") };
-    }
-    return { ok: true, bearer: run.stdout.trim() };
-  };
+  // Die Anmeldung steht in `device.mjs --admin-login`; der Ausweis kommt über `adminSession`.
+  const login = () => adminSession(device, arg);
   const session = () => (sessionMemo ||= login());
 
   const guarded = async (options) => {

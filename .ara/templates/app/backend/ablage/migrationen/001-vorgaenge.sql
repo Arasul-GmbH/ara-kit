@@ -3,7 +3,12 @@
 -- Eine Datei je Schritt, die Nummer vorn gibt die Reihenfolge. Eine Migration,
 -- die einmal gelaufen ist, wird nie wieder angefasst: wer sie ändert, ändert
 -- die Vergangenheit von Datenbanken, die es schon gibt. Was danach anders sein
--- soll, steht in 002.
+-- soll, steht in einer neuen Datei.
+--
+-- Die Nummern sind verteilt, damit nichts kollidiert: die Vorlage hält 001 bis
+-- 009, die Muster unter `.ara/templates/app-patterns/` je einen Zehner (010
+-- Dokumente, 020 Auslesen, 030 und 031 Mandanten, 040 Belege), und was die App
+-- selbst dazubringt, beginnt bei 100.
 --
 -- Geschrieben, wie PostgreSQL es spricht, denn das ist die Datenbank am Gerät.
 -- Ohne Gerät läuft dieselbe Datei in SQLite; was dafür übersetzt wird,

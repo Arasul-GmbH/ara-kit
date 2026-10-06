@@ -1,10 +1,14 @@
 -- Muster Mandanten: wer welchen Mandanten sieht.
 --
--- Vierte Migration einer App aus der Vorlage. Sie setzt nur die 001 voraus,
--- die Tabelle `vorgaenge`; die 002 und 003 der Muster Dokumente und Auslesen
--- braucht sie nicht. Trägt die App schon eine eigene 004, bekommt diese Datei
--- die nächste freie Nummer, bevor sie an einem Gerät gelaufen ist. Eine
--- Migration, die einmal gelaufen ist, wird nie wieder angefasst.
+-- Sie setzt nur die 001 der Vorlage voraus, die Tabelle `vorgaenge`; die 010
+-- und 020 der Muster Dokumente und Auslesen braucht sie nicht. Eine Migration,
+-- die einmal gelaufen ist, wird nie wieder angefasst. Eine App, die sie schon
+-- als 004-mandanten.sql trägt, behält die alte Datei.
+--
+-- **Die Nummern der Muster kollidieren nicht.** Die Vorlage hält 001 bis 009, jedes Muster
+-- einen eigenen Zehner: Dokumente 010, Auslesen 020, Mandanten 030 und 031, Belege 040.
+-- Eigene Migrationen der App beginnen bei 100. Bis Kit 0.74.0 trugen Vorlage und Muster
+-- Dokumente beide eine 002, und wer drei Muster zusammensetzte, sortierte von Hand.
 --
 -- Drei Tabellen und eine Spalte:
 --

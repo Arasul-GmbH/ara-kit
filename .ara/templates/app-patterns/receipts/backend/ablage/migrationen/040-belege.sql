@@ -1,9 +1,14 @@
 -- Muster Belege: Dokumente und Auslesungen tragen den Mandanten, ein Dokument
 -- hängt an einem Vorgang.
 --
--- Fünfte Migration einer App aus der Vorlage. Sie setzt die 002 (Dokumente),
--- die 003 (Auslesen) und die 004 (Mandanten) voraus. Eine Migration, die
--- einmal gelaufen ist, wird nie wieder angefasst.
+-- Sie setzt die 010 (Dokumente), die 020 (Auslesen) und die 030 (Mandanten)
+-- voraus. Eine Migration, die einmal gelaufen ist, wird nie wieder angefasst.
+-- Eine App, die sie schon als 005-belege.sql trägt, behält die alte Datei.
+--
+-- **Die Nummern der Muster kollidieren nicht.** Die Vorlage hält 001 bis 009, jedes Muster
+-- einen eigenen Zehner: Dokumente 010, Auslesen 020, Mandanten 030 und 031, Belege 040.
+-- Eigene Migrationen der App beginnen bei 100. Bis Kit 0.74.0 trugen Vorlage und Muster
+-- Dokumente beide eine 002, und wer drei Muster zusammensetzte, sortierte von Hand.
 --
 -- **Der Mandant steht an jeder Zeile, nicht nur am Vorgang.** Ein Filter über
 -- einen Umweg ist einer, den die nächste Abfrage vergisst. Und eine Auslesung

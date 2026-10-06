@@ -14,6 +14,10 @@
  *   node .ara/tools/update.mjs           fetch the version, show the change, deploy it
  *   node .ara/tools/update.mjs --check   only show what would change
  *   node .ara/tools/update.mjs --json    the same as JSON, for the evaluation
+ *   node .ara/tools/update.mjs --overwrite-local   deploy even over uncommitted changes to kit files
+ *
+ * If the kit lies in git and a file the update would replace is changed and not committed, it
+ * stops and lists those files instead of overwriting them.
  *
  * Needs no git and no upstream remote: the source is a tarball over HTTPS. That is
  * why it also runs in a fork that knows nothing about Arasul's repo. Whoever keeps
@@ -38,6 +42,10 @@
  *   node .ara/tools/update.mjs           Stand holen, Aenderung zeigen, einspielen
  *   node .ara/tools/update.mjs --check   nur zeigen, was sich aendern wuerde
  *   node .ara/tools/update.mjs --json    dasselbe als JSON, fuer die Auswertung
+ *   node .ara/tools/update.mjs --overwrite-local   auch ueber nicht festgehaltene Aenderungen an Kit-Dateien
+ *
+ * Liegt das Kit in git und ist eine Datei, die das Update ersetzen wuerde, geaendert und nicht
+ * festgehalten, haelt es an und nennt diese Dateien, statt sie zu ueberschreiben.
  *
  * Braucht kein git und kein Upstream-Remote: die Quelle ist ein Tarball ueber
  * HTTPS. Darum laeuft es auch in einem Fork, der von Arasuls Repo nichts weiss.
@@ -48,7 +56,7 @@
  * Befehle aus .ara/commands/ nach .claude/commands/ kommen. Das macht /init.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -326,6 +334,32 @@ function unwritable(diff) {
   return blocked;
 }
 
+/**
+ * Was am Kit selbst geändert und nicht festgehalten ist, und das Update überschriebe.
+ *
+ * Am 06.10.2026 setzte ein Aufruf ohne Argument im Repo des Kits alle verfolgten Dateien auf den
+ * Stand von main zurück, und die Arbeit des Tages war fort. Ein Partner, der in seinem Klon an
+ * `.ara/` etwas geändert hat, verlöre es genauso. Gefragt wird git, wenn das Kit in git liegt;
+ * sonst gibt es keine Auskunft, und es bleibt beim Bisherigen. Zurück kommen die Pfade, die das
+ * Update anfassen würde und die lokal geändert oder neu sind.
+ */
+export function localChanges(root, diff) {
+  const run = spawnSync("git", ["-C", root, "status", "--porcelain", "-z", "--untracked-files=all", "--", ...MANAGED], { encoding: "utf8" });
+  if (run.error || run.status !== 0) return [];
+  const touched = new Set([...diff.added, ...diff.changed, ...diff.removed].map((rel) => rel.split("\\").join("/")));
+  const changed = [];
+  const entries = run.stdout.split("\0").filter(Boolean);
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const code = entry.slice(0, 2);
+    const path = entry.slice(3);
+    // Eine Umbenennung trägt den alten Namen als nächsten Eintrag.
+    if (code.startsWith("R") || code.startsWith("C")) i++;
+    if (touched.has(path)) changed.push({ code: code.trim() || "M", path });
+  }
+  return changed;
+}
+
 const work = mkdtempSync(join(tmpdir(), "ara-kit-update-"));
 
 try {
@@ -343,6 +377,8 @@ try {
 
   const diff = compare(work, ROOT);
   const total = diff.added.length + diff.changed.length + diff.removed.length;
+  // Lokale Arbeit am Kit geht nicht still verloren, siehe `localChanges`.
+  const local = arg["overwrite-local"] ? [] : localChanges(ROOT, diff);
   const here = stand(ROOT);
   const fresh = stand(work);
   const zeilen = news(fresh, here);
@@ -357,7 +393,8 @@ try {
           // Laufs, `dort` aus der Aenderungsliste des geholten Ordners. null
           // heisst, der geholte Stand nennt seine Grenze nicht.
           contract: { hier: KIT_CONTRACT_VERSION, dort: contractOf(fresh.changelog, fresh.version) },
-          applied: !arg.check && total > 0,
+          applied: !arg.check && total > 0 && !local.length,
+          local_changes: local,
           ...diff,
         },
         null,
@@ -385,6 +422,27 @@ try {
         .join("\n")
     );
     process.exit(0);
+  }
+
+  // Lokale Arbeit am Kit geht nicht still verloren: anhalten und sagen, was liegt.
+  if (local.length) {
+    if (arg.json) process.exit(1);
+    console.log(
+      [
+        t(
+          `Nothing deployed: ${local.length} file(s) of the kit are changed here and not committed, and the update would overwrite them:`,
+          `Nichts eingespielt: ${local.length} Datei(en) des Kits sind hier geändert und nicht festgehalten, und das Update würde sie überschreiben:`
+        ),
+        ...local.slice(0, 30).map((entry) => `  ${entry.code.padEnd(2)} ${entry.path}`),
+        ...(local.length > 30 ? [t(`  and ${local.length - 30} more`, `  und ${local.length - 30} weitere`)] : []),
+        "",
+        t(
+          "Commit them first (git add, git commit), or look at them with git diff. Whoever wants to drop them on purpose calls the update with --overwrite-local.",
+          "Erst festhalten (git add, git commit), oder mit git diff ansehen. Wer sie mit Absicht verwerfen will, ruft das Update mit --overwrite-local auf."
+        ),
+      ].join("\n")
+    );
+    process.exit(1);
   }
 
   // Vor dem ersten Schreiben pruefen, ob alles beschreibbar ist, was sich aendert. Die

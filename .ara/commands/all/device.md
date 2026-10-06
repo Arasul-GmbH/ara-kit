@@ -102,8 +102,12 @@ there, tell the human, and have going ahead anyway confirmed. Then
 `--install arasul --despite-traces`. If the platform really runs, this is no longer a
 setup but an update, and that is a different path.
 
-**If Arasul already runs**, only the kit key for the deploy is missing: `--deploy-key`
-creates it on the device and stores it. The file only carries its name, never its value.
+**If Arasul already runs**, only the kit key for the deploy is missing, and **it needs no SSH**:
+`--deploy-key --via https` creates it with an administrator account over HTTPS and stores it
+(`--password-ref <NAME> --login-user <name>` for a password the human put into the store). Without
+`--via` the tool takes HTTPS by itself when SSH does not answer. The file only carries its name,
+never its value. Never create a key by hand over a route of the API reference: its answer carries
+the key in plain text.
 After that the first piece of evidence is the contract:
 `node .ara/tools/app.mjs --device <device> --contract`.
 
@@ -118,8 +122,10 @@ new one. **A foreign key you never revoke through the kit.**
 **The first employee and the first permission** still belong to the handover. Without a
 browser this goes through the platform's admin interface. The session for it is fetched by
 `--admin-login`: the start password from the installation goes from the secret store
-straight into the login, back comes a credential, and the password is never displayed. What
-you call with it, `node .ara/tools/mirror.mjs --docs` says. The device counts the logins: a
+straight into the login, and neither password nor credential is ever displayed. One call with
+that session is `--admin-call "<VERB> <route>"`, its answer comes back with every secret masked;
+which route, `node .ara/tools/mirror.mjs --docs` says. A credential or session cookie never goes
+into a command or browser call of yours. The device counts the logins: a
 429 is not a mishandling, it is the limit, and then you wait. Procedure in
 `.ara/knowledge/device.md`.
 

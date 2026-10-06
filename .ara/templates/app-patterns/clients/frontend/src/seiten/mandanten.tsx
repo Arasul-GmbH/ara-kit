@@ -36,8 +36,14 @@
  * Adresse auf, steht ein Satz da und keine Liste: das Backend hätte ohnehin
  * mit 403 geantwortet.
  *
- * **Zugeordnet wird aus den gesehenen Konten.** Die App kann die Konten des
- * Geräts nicht auflisten. Wer neu ist, öffnet sie einmal, danach steht er hier.
+ * **Zugeordnet wird aus den gesehenen Konten, oder vorgemerkt.** Die App kann
+ * die Konten des Geräts nicht auflisten. Wer sie schon geöffnet hat, steht zur
+ * Wahl; wer noch nie da war, wird mit seinem Kontonamen vorgemerkt und steht
+ * in der Liste als „noch nie geöffnet", bis er kommt. Ein Tippfehler fällt dort
+ * auf.
+ *
+ * **Gibt es genau einen Mandanten, ist er gewählt.** Niemand wählt aus einer
+ * Liste mit einem Eintrag (Handtest 06.10.2026).
  *
  * **Die Knöpfe bleiben aktiv, solange nichts läuft.** Fehlt ein Feld, sagt ein
  * Klick am Feld, was fehlt, und setzt den Fokus hin, wie in `seiten/neu.tsx`.
@@ -47,7 +53,7 @@
  * ohne Anrede.
  */
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CircleAlertIcon } from "lucide-react";
 import {
   Button,
@@ -101,6 +107,11 @@ function Fehlt({ id, children }: { id: string; children: ReactNode }) {
  */
 export function MandantWahl({ wert, aufWert }: { wert: string; aufWert: (wert: string) => void }) {
   const abfrage = useMandanten();
+  const liste = abfrage.data?.mandanten ?? [];
+  const einziger = liste.length === 1 && liste[0] ? String(liste[0].id) : null;
+  useEffect(() => {
+    if (einziger && !wert) aufWert(einziger);
+  }, [einziger, wert, aufWert]);
   return (
     <Feldgruppe titel="Mandant" beschreibung="Zu wem der Vorgang gehört. Sehen und entscheiden können ihn nur die Zugeordneten.">
       <AsyncBoundary abfrage={abfrage} laedt="Mandanten werden geholt">
@@ -149,15 +160,27 @@ export function VorgangEinreichen({ vorgang }: { vorgang: Vorgang }) {
   );
 }
 
-function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; konten: Konto[]; zuordnungen: Zuordnung[] }) {
+function Verwalten({
+  mandanten,
+  konten,
+  zuordnungen,
+  alleSehen,
+}: {
+  mandanten: Mandant[];
+  konten: Konto[];
+  zuordnungen: Zuordnung[];
+  alleSehen?: boolean;
+}) {
   const [name, setName] = useState("");
   const [konto, setKonto] = useState("");
+  const [neuesKonto, setNeuesKonto] = useState("");
   const [mandant, setMandant] = useState("");
   const [entscheidet, setEntscheidet] = useState(false);
   const [nameVersucht, setNameVersucht] = useState(false);
   const [zuordnenVersucht, setZuordnenVersucht] = useState(false);
   const nameFehlt = nameVersucht && !name.trim();
-  const kontoFehlt = zuordnenVersucht && !konto;
+  const gewaehlt = neuesKonto.trim() || konto;
+  const kontoFehlt = zuordnenVersucht && !gewaehlt;
   const mandantFehlt = zuordnenVersucht && !mandant;
   const anlegen = useMandantAnlegen();
   const zuordnen = useZuordnen();
@@ -165,7 +188,12 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
   const nameVon = new Map(mandanten.map((m) => [m.id, m.name]));
 
   const spaltenZuordnung: ReadonlyArray<Spalte<Zuordnung>> = [
-    { schluessel: "benutzer", titel: "Konto", zelle: (z) => z.benutzer, wert: (z) => z.benutzer },
+    {
+      schluessel: "benutzer",
+      titel: "Konto",
+      zelle: (z) => (z.vorgemerkt ? `${z.benutzer} (noch nie geöffnet)` : z.benutzer),
+      wert: (z) => z.benutzer,
+    },
     { schluessel: "mandant", titel: "Mandant", zelle: (z) => nameVon.get(z.mandant) ?? z.mandant, wert: (z) => nameVon.get(z.mandant) ?? "" },
     {
       schluessel: "entscheidet",
@@ -218,6 +246,13 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
         </Meldung>
       )}
 
+      {alleSehen && (
+        <Meldung art="hinweis" titel="Die Verwaltung sieht alle Mandanten">
+          Wer die Rolle der Verwaltung hat, sieht jeden Mandanten, ohne zugeordnet zu sein. Entscheiden darf trotzdem nur,
+          wer bei einem Mandanten als Entscheider markiert ist.
+        </Meldung>
+      )}
+
       <Karte titel="Neuer Mandant" kennzeichen="mandant-neu">
         <form
           className="flex flex-col gap-2"
@@ -260,7 +295,8 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
       <Karte titel="Zuordnen" kennzeichen="zuordnen">
         <div className="flex flex-col gap-2">
           <p className="text-ui-sm text-muted-foreground">
-            Zur Wahl steht, wer die App schon einmal geöffnet hat. Sehen heißt nicht entscheiden: freigeben darf nur,
+            Zur Wahl steht, wer die App schon einmal geöffnet hat. Wer noch nie da war, wird mit dem Namen seines Kontos
+            vorgemerkt und sieht seine Mandanten beim ersten Öffnen. Sehen heißt nicht entscheiden: freigeben darf nur,
             wer als Entscheider markiert ist.
           </p>
           <Label htmlFor="zuordnen-konto">Konto</Label>
@@ -271,7 +307,16 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
             aufWert={setKonto}
             platzhalter="Konto wählen"
           />
-          {kontoFehlt && <Fehlt id="zuordnen-konto-fehlt">Welches Konto? Eines wählen.</Fehlt>}
+          <Label htmlFor="zuordnen-neu">Oder ein Konto, das die App noch nicht geöffnet hat</Label>
+          <Input
+            id="zuordnen-neu"
+            value={neuesKonto}
+            onChange={(e) => setNeuesKonto(e.target.value)}
+            maxLength={100}
+            autoComplete="off"
+            placeholder="Name des Kontos, genau wie am Gerät"
+          />
+          {kontoFehlt && <Fehlt id="zuordnen-konto-fehlt">Welches Konto? Eines wählen oder den Namen eintragen.</Fehlt>}
           <Label htmlFor="zuordnen-mandant">Mandant</Label>
           <Suchauswahl
             id="zuordnen-mandant"
@@ -290,14 +335,19 @@ function Verwalten({ mandanten, konten, zuordnungen }: { mandanten: Mandant[]; k
               variant="solid"
               disabled={zuordnen.isPending}
               onClick={() => {
-                if (!konto || !mandant) {
+                if (!gewaehlt || !mandant) {
                   setZuordnenVersucht(true);
-                  document.getElementById(konto ? "zuordnen-mandant" : "zuordnen-konto")?.focus();
+                  document.getElementById(gewaehlt ? "zuordnen-mandant" : "zuordnen-konto")?.focus();
                   return;
                 }
                 zuordnen.mutate(
-                  { benutzer: konto, mandant: Number(mandant), entscheidet },
-                  { onSuccess: () => setZuordnenVersucht(false) }
+                  { benutzer: gewaehlt, mandant: Number(mandant), entscheidet },
+                  {
+                    onSuccess: () => {
+                      setZuordnenVersucht(false);
+                      setNeuesKonto("");
+                    },
+                  }
                 );
               }}
               data-kennzeichen="zuordnen"

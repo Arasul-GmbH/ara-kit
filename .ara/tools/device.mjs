@@ -10,13 +10,22 @@
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
  *   node .ara/tools/device.mjs --name orin --install arasul --keep-ssh   leave SSH and firewall as they are
- *   node .ara/tools/device.mjs --name orin --deploy-key           create the kit key on the device
+ *
+ *   As administrator, over HTTPS, without SSH. Every line takes the same login switches:
+ *   --password-ref <NAME> (the entry with the password, otherwise the start password),
+ *   --login-user <name> (otherwise the name from the artifact), --insecure.
+ *   node .ara/tools/device.mjs --name orin --admin-login          check the session as administrator
+ *   node .ara/tools/device.mjs --name orin --admin-login --password-ref ADMIN_PW --login-user anna
+ *   node .ara/tools/device.mjs --name orin --admin-call "GET /api/..."   one call with that session
+ *   node .ara/tools/device.mjs --name orin --admin-call "POST /api/..." --body '{"a":1}'
+ *   node .ara/tools/device.mjs --name orin --deploy-key           create the kit key (HTTPS when no SSH)
+ *   node .ara/tools/device.mjs --name orin --deploy-key --via https --password-ref ADMIN_PW --login-user anna
  *   node .ara/tools/device.mjs --name orin --keys                 which kit keys lie on the device
  *   node .ara/tools/device.mjs --name orin --revoke-key           revoke this kit's own key
- *   node .ara/tools/device.mjs --name orin --admin-login          get a session as administrator
- *   node .ara/tools/device.mjs --name orin --admin-login --token  only the credential, for a script
- *   node .ara/tools/device.mjs --name orin --admin-login --password-ref ADMIN_PW --login-user anna
- *                                                                 log in with an entry that is already stored
+ *   --via https|ssh chooses the way for the three key lines; without it HTTPS is taken when the
+ *   file says SSH does not answer, or when --password-ref is given. --token is for the kit's own
+ *   tools only: it hands the credential to them and never onto a screen.
+ *
  *   node .ara/tools/device.mjs --name thor --probe findings.txt   dry run, findings from a file
  *   node .ara/tools/device.mjs --name orin --license              unlock the device with the stored token
  *   printf '%s' "$CODE" | node .ara/tools/device.mjs --name orin --license --pipe   unlock with a pasted code
@@ -55,6 +64,11 @@
  * lists it, and marks the one this kit uses; --revoke-key revokes exactly that one and
  * forgets it. A foreign key it never touches, and the file names none afterwards.
  *
+ * Without SSH all three go over HTTPS with the session of an administrator (lib/kitkey-api.mjs):
+ * the device creates the key, its plain text goes from the answer straight into the secret store,
+ * and the file gets api_key_ref, tls, arasul and contract. A stored key that still works is kept,
+ * no second one is created.
+ *
  * A bought token is at the same time the licence code. After --install arasul the tool
  * unlocks the device by itself: fingerprint from the device (lizenz-geraet.sh), licence
  * from the portal (POST /api/license/issue), played in on the device, level and limits
@@ -63,8 +77,9 @@
  * without an error. Neither token nor licence ever appear in an output or a file.
  *
  * For everything an administrator does, --admin-login gives a session: the start password from the installation goes
- * from the secret store straight into the login, back comes a credential, and the
- * password is never displayed. Route and user name come from the artifact when it
+ * from the secret store straight into the login, back comes a credential, and neither the
+ * password nor the credential is ever displayed. --admin-call makes one call with it and shows
+ * the answer with every secret-looking value masked; a person never needs the credential itself. Route and user name come from the artifact when it
  * names them, otherwise from --login-path and --login-user. What the two fields of the
  * login are called there is --login-user-field and --login-password-field. Whoever keeps the
  * password of an administrator under a name of their own names it with --password-ref,
@@ -95,13 +110,22 @@
  *   node .ara/tools/device.mjs --name orin --install arasul --net-name werk2
  *   node .ara/tools/device.mjs --name orin --install arasul --despite-traces
  *   node .ara/tools/device.mjs --name orin --install arasul --keep-ssh   SSH und Firewall lassen, wie sie sind
- *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel am Gerät anlegen
+ *
+ *   Als Administrator, über HTTPS, ohne SSH. Jede Zeile nimmt dieselben Anmelde-Schalter:
+ *   --password-ref <NAME> (der Eintrag mit dem Passwort, sonst das Startpasswort),
+ *   --login-user <name> (sonst der Name aus dem Artefakt), --insecure.
+ *   node .ara/tools/device.mjs --name orin --admin-login          Sitzung als Administrator prüfen
+ *   node .ara/tools/device.mjs --name orin --admin-login --password-ref ADMIN_PW --login-user anna
+ *   node .ara/tools/device.mjs --name orin --admin-call "GET /api/..."   ein Aufruf mit dieser Sitzung
+ *   node .ara/tools/device.mjs --name orin --admin-call "POST /api/..." --body '{"a":1}'
+ *   node .ara/tools/device.mjs --name orin --deploy-key           Kit-Schlüssel anlegen (HTTPS, wenn SSH fehlt)
+ *   node .ara/tools/device.mjs --name orin --deploy-key --via https --password-ref ADMIN_PW --login-user anna
  *   node .ara/tools/device.mjs --name orin --keys                 welche Kit-Schlüssel am Gerät liegen
  *   node .ara/tools/device.mjs --name orin --revoke-key           den eigenen Kit-Schlüssel widerrufen
- *   node .ara/tools/device.mjs --name orin --admin-login          Sitzung als Administrator holen
- *   node .ara/tools/device.mjs --name orin --admin-login --token  nur den Ausweis, für ein Skript
- *   node .ara/tools/device.mjs --name orin --admin-login --password-ref ADMIN_PW --login-user anna
- *                                                                 anmelden mit einem Eintrag, der schon liegt
+ *   --via https|ssh wählt den Weg für die drei Schlüsselzeilen; ohne ihn gilt HTTPS, wenn die Akte
+ *   sagt, dass SSH nicht antwortet, oder wenn --password-ref dabeisteht. --token ist nur für die
+ *   Werkzeuge des Kits: es reicht ihnen den Ausweis und bringt ihn nie auf einen Bildschirm.
+ *
  *   node .ara/tools/device.mjs --name thor --probe befunde.txt    Trockenlauf, Befunde aus einer Datei
  *   node .ara/tools/device.mjs                                    welche Akten es gibt
  *   node .ara/tools/device.mjs --name mac --json                  dasselbe als JSON
@@ -138,6 +162,12 @@
  * widerruft genau diesen und vergisst ihn. Einen fremden fasst es nie an, und die Akte
  * nennt danach keinen mehr.
  *
+ * Ohne SSH gehen alle drei über HTTPS mit der Sitzung eines Administrators
+ * (lib/kitkey-api.mjs): das Gerät legt den Schlüssel an, sein Klartext geht aus der
+ * Antwort direkt in die Geheimnis-Ablage, und die Akte bekommt api_key_ref, tls, arasul
+ * und contract. Ein hinterlegter Schlüssel, der noch gilt, bleibt; ein zweiter entsteht
+ * dann nicht.
+ *
  * Ein gekaufter Token ist zugleich der Lizenzcode. Nach --install arasul schaltet das
  * Werkzeug das Gerät von selbst frei: Fingerabdruck vom Gerät (lizenz-geraet.sh), Lizenz
  * vom Portal (POST /api/license/issue), am Gerät eingespielt, Stufe und Grenzen
@@ -148,7 +178,9 @@
  *
  * Für alles, was ein Administrator tut, gibt --admin-login eine Sitzung: das Startpasswort aus der
  * Installation geht dabei aus der Geheimnis-Ablage direkt in die Anmeldung,
- * zurück kommt ein Ausweis, und angezeigt wird das Passwort nie. Weg und
+ * zurück kommt ein Ausweis, und angezeigt werden weder Passwort noch Ausweis.
+ * --admin-call macht damit einen Aufruf und zeigt die Antwort, jeden Wert, der wie
+ * ein Geheimnis aussieht, maskiert; den Ausweis selbst braucht ein Mensch nie. Weg und
  * Benutzername kommen aus dem Artefakt, wenn es sie nennt, sonst aus --login-path
  * und --login-user. Wie die beiden Felder der Anmeldung dort heißen, sagen
  * --login-user-field und --login-password-field. Wer das Passwort eines Administrators unter
@@ -166,7 +198,7 @@
 
 import { spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, fstatSync, readFileSync, writeFileSync, writeSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { join, relative } from "node:path";
 import {
@@ -202,6 +234,7 @@ import {
 import { localized, t } from "./lib/i18n.mjs";
 import { forgetSecret, getSecret, hasSecret, otherStore, setSecret } from "./lib/secrets.mjs";
 import { baseUrl, call, certificateKind, reason } from "./lib/arasul.mjs";
+import { KIT_SCOPE, createKeyApi, listKeysApi, maskSecrets, revokeKeyApi } from "./lib/kitkey-api.mjs";
 import { CONTRACT_PATH, catchUpLines, checkVersion } from "./lib/contract.mjs";
 import { TOKEN_FIELDS, loginBody, loginSpec, pickToken } from "./lib/session.mjs";
 import {
@@ -503,7 +536,20 @@ const existing = fresh ? {} : readFrontmatter(file).fields;
  * `--admin-login` geht nicht über SSH, sondern an die Schnittstelle des Geräts.
  * Es braucht darum nur eine Adresse, keinen Anmeldenamen und keinen Schlüssel.
  */
-const loginOnly = Boolean(arg["admin-login"]);
+/**
+ * Die drei Schlüsselzeilen gehen über HTTPS, wenn der Aufruf es sagt, oder wenn die Akte sagt, dass
+ * SSH nicht antwortet, oder wenn ein Eintrag mit dem Passwort eines Administrators genannt ist. Eine
+ * Installation geht immer über SSH, ihr Schlüssel ebenso.
+ */
+const via = str(arg.via);
+if (via && !["https", "ssh"].includes(via)) fail(t(`--via is https or ssh, not ${via}.`, `--via ist https oder ssh, nicht ${via}.`));
+const keyWork = Boolean(arg["deploy-key"] || arg.keys || arg["revoke-key"]);
+const keysOverHttps =
+  keyWork &&
+  !str(arg.install) &&
+  !dryRun &&
+  (via === "https" || (!via && !fresh && (existing.ssh === "refused" || !existing.ssh_user || Boolean(str(arg["password-ref"])))));
+const loginOnly = Boolean(arg["admin-login"]) || arg["admin-call"] !== undefined || keysOverHttps;
 const host = str(arg.host) || existing.address || existing.hostname || (loginOnly ? existing.api_base || "" : "");
 if (!host && !dryRun) {
   fail(
@@ -541,7 +587,7 @@ const startRef = startRefName(customer, name);
  * über SSH und kein Urteil über die Hardware, nur die Adresse aus der Akte und
  * den Eintrag aus der Ablage, und es läuft deshalb vor der Geräteprüfung.
  */
-async function adminLogin() {
+async function openSession() {
   if (fresh) {
     fail(
       t(
@@ -738,20 +784,52 @@ async function adminLogin() {
     );
   }
 
-  // Für ein Skript: nur der Ausweis, ohne einen Satz drumherum. Beendet wird
-  // erst, wenn er wirklich draußen ist: auf einer Leitung schreibt Node
-  // verzögert, und ein sofortiges Ende schnitte ihn ab.
+  return { token, base, spec, ref, named, insecure };
+}
+
+/**
+ * Der Kanal, über den die Werkzeuge des Kits den Ausweis bekommen: Dateideskriptor 3, eine Leitung,
+ * die nur ein aufrufender Prozess öffnet (`lib/kit.mjs`, `adminSession`). Auf die Standardausgabe
+ * geht er nie.
+ *
+ * Bis 0.74.0 druckte `--admin-login` den Ausweis auf den Bildschirm, `--json` ebenso, und `--token`
+ * gab ihn auf die Standardausgabe. Was auf dem Bildschirm eines Agenten steht, steht im Protokoll
+ * seiner Arbeit: am 06.10.2026 stand dort eine Sitzung des Fremdtests im Klartext. Wer mit der
+ * Sitzung etwas tun will, nimmt `--admin-call`.
+ */
+function tokenChannel() {
+  // Nur, wenn der Aufrufer den Kanal ausdrücklich geöffnet hat. Ein Deskriptor 3, den ein Prozess
+  // zufällig erbt, ist kein Empfänger, dem der Ausweis zusteht.
+  if (process.env.ARA_TOKEN_CHANNEL !== "3") return null;
+  try {
+    const kind = fstatSync(3);
+    return kind.isFIFO() || kind.isSocket() ? 3 : null;
+  } catch {
+    return null;
+  }
+}
+
+async function adminLogin() {
+  const { token, base, spec, ref, named } = await openSession();
   if (arg.token) {
-    await new Promise((geschrieben) => process.stdout.write(token, geschrieben));
+    const channel = tokenChannel();
+    if (channel === null) {
+      fail(
+        t(
+          "--token hands the credential to the kit's own tools and to nothing else, so it is not printed here.\n" +
+            `For a call of your own with this session: node .ara/tools/device.mjs ${customer ? `--customer ${customer} ` : ""}--name ${name} --admin-call "GET /api/..."`,
+          "--token reicht den Ausweis an die Werkzeuge des Kits und an nichts sonst, darum steht er hier nicht.\n" +
+            `Für einen eigenen Aufruf mit dieser Sitzung: node .ara/tools/device.mjs ${customer ? `--customer ${customer} ` : ""}--name ${name} --admin-call "GET /api/..."`
+        )
+      );
+    }
+    writeSync(channel, token);
+    closeSync(channel);
     process.exit(0);
   }
   if (arg.json) {
     console.log(
-      JSON.stringify(
-        { device: place, base, path: spec.path, user: spec.user, sources: spec.sources, password_ref: ref, bearer: token },
-        null,
-        2
-      )
+      JSON.stringify({ device: place, base, path: spec.path, user: spec.user, sources: spec.sources, password_ref: ref, session: true }, null, 2)
     );
     process.exit(0);
   }
@@ -760,7 +838,7 @@ async function adminLogin() {
     { aufruf: "from the call", artefakt: "from the artifact", kit: "from the kit's fallback" },
     { aufruf: "aus dem Aufruf", artefakt: "aus dem Artefakt", kit: "aus dem Rückfall des Kits" }
   );
-  const wo = `${customer ? `--customer ${customer} ` : ""}--name ${name}`;
+  const wo = `${customer ? `--customer ${customer} ` : ""}--name ${name}${loginSwitches()}`;
   console.log(
     [
       t(`# Session for ${place}`, `# Sitzung für ${place}`),
@@ -777,24 +855,28 @@ async function adminLogin() {
         `- The password came from ${ref}${named ? ", named in the call" : ""}. It is not displayed.`,
         `- Das Passwort kam aus ${ref}${named ? ", genannt im Aufruf" : ""}. Angezeigt wird es nicht.`
       ),
-      "",
-      t("Credential for the header:", "Ausweis für die Kopfzeile:"),
-      "",
-      `  ${token}`,
+      t(
+        "- The session holds. Its credential is not displayed either: whatever stands on a screen stands in the log of the work.",
+        "- Die Sitzung hält. Ihr Ausweis wird ebenfalls nicht angezeigt: was auf einem Bildschirm steht, steht im Protokoll der Arbeit."
+      ),
       "",
       ...t(
         [
           "With it the manual steps work for which the kit has no command, first of all the first",
-          "employee and the first permission:",
+          "employee and the first permission. One call each, the answer with every secret masked:",
         ],
         [
           "Damit gehen die Handgriffe, für die das Kit keinen Befehl hat, allen voran der erste",
-          "Mitarbeiter und die erste Freigabe:",
+          "Mitarbeiter und die erste Freigabe. Ein Aufruf je Handgriff, die Antwort mit jedem Geheimnis maskiert:",
         ]
       ),
       "",
-      `  SITZUNG=$(node .ara/tools/device.mjs ${wo} --admin-login --token)`,
-      '  curl -sS -H "Authorization: Bearer $SITZUNG" ...',
+      `  node .ara/tools/device.mjs ${wo} --admin-call "GET /api/..."`,
+      `  node .ara/tools/device.mjs ${wo} --admin-call "POST /api/..." --body '{"...": "..."}'`,
+      t(
+        `  The kit key without SSH: node .ara/tools/device.mjs ${wo} --deploy-key --via https`,
+        `  Der Kit-Schlüssel ohne SSH: node .ara/tools/device.mjs ${wo} --deploy-key --via https`
+      ),
       "",
       ...t(
         [
@@ -811,7 +893,284 @@ async function adminLogin() {
   process.exit(0);
 }
 
+/** Die Anmelde-Schalter dieses Aufrufs, für einen Folgeaufruf, den das Werkzeug vorschlägt. */
+function loginSwitches() {
+  return ["password-ref", "login-user", "login-path", "login-user-field", "login-password-field"]
+    .filter((key) => str(arg[key]))
+    .map((key) => ` --${key} ${str(arg[key])}`)
+    .join("");
+}
+
+/** Ein Aufruf mit der Sitzung, als Funktion für die Wege unten. Fehler werden Antworten. */
+function sessionAsk(session) {
+  return async (method, path, options = {}) => {
+    try {
+      return await call({ base: session.base, insecure: session.insecure, key: `Bearer ${session.token}`, keyHeader: "Authorization", method, path, ...options });
+    } catch (error) {
+      return { ok: false, status: 0, error: { message: error.message }, data: null, body: null };
+    }
+  };
+}
+
+/**
+ * Ein Aufruf mit der Sitzung als Administrator, für die Handgriffe, für die das Kit keinen Befehl
+ * hat: den ersten Mitarbeiter, die erste Freigabe. Weg und Rumpf kommen aus der API-Referenz des
+ * Artefakts, nicht aus dem Kit. Gezeigt wird die Antwort, jeder Wert unter einem Namen, der ein
+ * Geheimnis tragen kann, maskiert (`maskSecrets`): auch ein Schlüssel, den der Aufruf anlegt, steht
+ * danach nirgends im Klartext. Einen Schlüssel für das Kit legt `--deploy-key` an, nicht dieser Weg.
+ *
+ * Ein anderes Verb als GET ändert am Gerät etwas und gehört vorher bestätigt.
+ */
+async function adminCall() {
+  const wanted = str(arg["admin-call"]) || "";
+  const match = wanted.trim().match(/^(GET|POST|PUT|PATCH|DELETE)\s+(\/\S*)$/i);
+  if (!match) {
+    fail(
+      t(
+        `--admin-call needs the verb and the route in one argument, e.g. --admin-call "GET /api/..." (got: ${wanted || "nothing"}).`,
+        `--admin-call braucht Verb und Weg in einem Argument, etwa --admin-call "GET /api/..." (bekommen: ${wanted || "nichts"}).`
+      )
+    );
+  }
+  let json = null;
+  const rawBody = str(arg.body) ?? (str(arg["body-file"]) ? readFileSync(str(arg["body-file"]), "utf8") : null);
+  if (rawBody !== null) {
+    try {
+      json = JSON.parse(rawBody);
+    } catch (error) {
+      fail(t(`--body is not readable JSON: ${error.message}`, `--body ist kein lesbares JSON: ${error.message}`));
+    }
+  }
+  const session = await openSession();
+  const answer = await sessionAsk(session)(match[1].toUpperCase(), match[2], json ? { json } : {});
+  const shown = answer.body !== null && answer.body !== undefined ? maskSecrets(answer.body) : scrub(String(answer.raw || answer.error?.message || ""));
+  if (arg.json) {
+    console.log(JSON.stringify({ device: place, call: `${match[1].toUpperCase()} ${match[2]}`, status: answer.status, answer: shown }, null, 2));
+  } else {
+    console.log(
+      [
+        t(`# ${match[1].toUpperCase()} ${match[2]} on ${place}, as "${session.spec.user}"`, `# ${match[1].toUpperCase()} ${match[2]} auf ${place}, als "${session.spec.user}"`),
+        "",
+        t(`Status ${answer.status}${answer.ok ? "" : `: ${scrub(reason(answer))}`}`, `Status ${answer.status}${answer.ok ? "" : `: ${scrub(reason(answer))}`}`),
+        "",
+        typeof shown === "string" ? shown : JSON.stringify(shown, null, 2),
+        "",
+        t("Values that can carry a secret are masked (…). Credential and password were not displayed.", "Werte, die ein Geheimnis tragen können, sind maskiert (…). Ausweis und Passwort wurden nicht angezeigt."),
+      ].join("\n")
+    );
+  }
+  process.exit(answer.ok ? 0 : 1);
+}
+
+// --- Der Kit-Schlüssel über HTTPS ---------------------------------------------
+
+/**
+ * Anlegen, zeigen und widerrufen des Kit-Schlüssels ohne SSH, mit der Sitzung eines
+ * Administrators. Was der Weg über SSH sagt, sagt dieser auch: welcher Schlüssel, unter welchem
+ * Eintrag, wie viele am Gerät gelten. Der Klartext geht aus der Antwort des Geräts direkt in die
+ * Ablage (`lib/kitkey-api.mjs`).
+ *
+ * Der Fremdtest am 06.10.2026 legte den Schlüssel von Hand über diesen Weg an, nach der
+ * API-Referenz, und ergänzte danach `tls`, `api_key_ref` und `arasul` in der Akte von Hand. Das tut
+ * jetzt dieser Lauf, und er legt keinen zweiten an, solange der hinterlegte noch gilt.
+ */
+async function keysHttps() {
+  const deviceCall = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
+  const address = existing.api_base || host;
+  let base;
+  try {
+    base = baseUrl(address);
+  } catch (error) {
+    fail(`${error.message}\n${t("Look into", "Nachsehen in")} ${relative(ROOT, file)}.`);
+  }
+  // Das Zertifikat gemessen, bevor die Sitzung es braucht. Geraten wird nichts.
+  const fileChanges = {};
+  if (!existing.tls) {
+    try {
+      if ((await certificateKind(base)) === "selfsigned") {
+        fileChanges.tls = "selfsigned";
+        existing.tls = "selfsigned";
+      }
+    } catch {
+      // Nicht zu messen ist keine Aussage über das Zertifikat.
+    }
+  }
+  const session = await openSession();
+  const ask = sessionAsk(session);
+  const stored = existing.api_key_ref ? getSecret(existing.api_key_ref) : null;
+  const list = await listKeysApi(ask, stored);
+  const mark = (entry) => (entry.mine ? t("   <- this kit", "   <- dieses Kit") : "");
+  const kitKeys = (keys) => keys.filter((entry) => entry.valid && entry.scopes.includes(KIT_SCOPE));
+
+  /** Liest den Kontrakt mit einem Schlüssel. Gelingt es, gilt der Schlüssel, und Arasul läuft. */
+  const contractWith = async (key) => {
+    try {
+      const answer = await call({ base, key, path: CONTRACT_PATH, insecure: session.insecure, timeout: 20_000 });
+      return answer.ok ? { ok: true, version: checkVersion(answer.data) } : { ok: false, message: reason(answer) };
+    } catch (error) {
+      return { ok: false, message: error.message };
+    }
+  };
+
+  const note = (text) => {
+    writeFrontmatter(file, { ...fileChanges, checked: now() });
+    appendFileSync(file, `\n### ${now()} · HTTPS ${base}, als ${session.spec.user}\n${text}\n`);
+  };
+
+  if (arg.keys) {
+    if (!list.ok) fail(scrub(list.message));
+    // Ein Gerät sammelt Schlüssel: am Orin führte probe-admin am 06.10.2026 174, davon 2 gültige.
+    // Gezeigt werden die gültigen und der eigene; die widerrufenen nur auf Wunsch.
+    const shown = arg.all ? list.keys : list.keys.filter((entry) => entry.valid || entry.mine);
+    if (arg.json) {
+      console.log(JSON.stringify({ device: place, via: "https", key_ref: existing.api_key_ref || null, mine: list.mine?.prefix || null, keys: list.keys.map(({ prefix, name: label, scopes, valid, mine, line }) => ({ prefix, name: label, scopes, valid, mine, line })) }, null, 2));
+      process.exit(0);
+    }
+    console.log(
+      [
+        t(`# Kit keys on ${place}, over HTTPS`, `# Kit-Schlüssel auf ${place}, über HTTPS`),
+        "",
+        list.keys.length
+          ? t(`${list.keys.length} created by "${session.spec.user}", as the device lists them${shown.length < list.keys.length ? `; the ${list.keys.length - shown.length} revoked ones only counted (all: --all)` : ""}:`, `${list.keys.length} von "${session.spec.user}" angelegt, so wie das Gerät sie auflistet${shown.length < list.keys.length ? `; die ${list.keys.length - shown.length} widerrufenen nur gezählt (alle: --all)` : ""}:`)
+          : t(`The device lists none created by "${session.spec.user}".`, `Das Gerät führt keinen, den "${session.spec.user}" angelegt hat.`),
+        "",
+        ...shown.map((entry) => `  ${entry.line}${mark(entry)}`),
+        "",
+        t(
+          "The device lists only the keys this account created. Those of other accounts, and those created over SSH, stand under Settings, API keys on the device.",
+          "Das Gerät listet nur die Schlüssel, die dieses Konto angelegt hat. Die anderer Konten und die über SSH angelegten stehen am Gerät unter Einstellungen, API-Schlüssel."
+        ),
+        list.mine
+          ? t(`This kit's key is ${list.mine.prefix}, stored under ${existing.api_key_ref}. Revoke it: ${deviceCall} --revoke-key --via https`, `Der Schlüssel dieses Kits ist ${list.mine.prefix}, hinterlegt unter ${existing.api_key_ref}. Widerrufen: ${deviceCall} --revoke-key --via https`)
+          : t(`None of them is this kit's. A key for this one: ${deviceCall} --deploy-key --via https`, `Keiner davon gehört diesem Kit. Ein Schlüssel für dieses: ${deviceCall} --deploy-key --via https`),
+      ].join("\n")
+    );
+    process.exit(0);
+  }
+
+  if (arg["revoke-key"]) {
+    if (!existing.api_key_ref || !stored) {
+      fail(
+        t(
+          `The file of ${place} names no stored kit key, so the kit cannot tell which one is its own. It revokes none.`,
+          `Die Akte von ${place} nennt keinen hinterlegten Kit-Schlüssel, also kann das Kit nicht sagen, welcher seiner ist. Es widerruft keinen.`
+        )
+      );
+    }
+    if (!list.ok) fail(scrub(list.message));
+    if (!list.mine) {
+      fail(
+        t(
+          `"${session.spec.user}" did not create the key under ${existing.api_key_ref}, or it is gone. Nothing revoked.\nIf it was created over SSH: ${deviceCall} --revoke-key --via ssh`,
+          `"${session.spec.user}" hat den Schlüssel unter ${existing.api_key_ref} nicht angelegt, oder er ist fort. Widerrufen wurde nichts.\nWurde er über SSH angelegt: ${deviceCall} --revoke-key --via ssh`
+        )
+      );
+    }
+    const gone = await revokeKeyApi(ask, list.mine.id);
+    if (!gone.ok) fail(scrub(gone.message));
+    const forgotten = forgetSecret(existing.api_key_ref);
+    fileChanges.api_key_ref = "";
+    note(`Kit-Schlüssel ${list.mine.prefix} über HTTPS widerrufen. Eintrag ${existing.api_key_ref} ${forgotten ? `aus der Ablage ${forgotten} genommen` : "lag in der gewählten Ablage nicht"}, api_key_ref geleert.`);
+    console.log(
+      [
+        t(`# Kit key revoked on ${place}`, `# Kit-Schlüssel auf ${place} widerrufen`),
+        "",
+        t(`- Revoked over HTTPS: ${list.mine.prefix}.`, `- Über HTTPS widerrufen: ${list.mine.prefix}.`),
+        t(`- The entry ${existing.api_key_ref} is out of the store, api_key_ref in the file is empty.`, `- Der Eintrag ${existing.api_key_ref} ist aus der Ablage heraus, api_key_ref in der Akte ist leer.`),
+        t("- Every other key on the device stayed as it was.", "- Jeder andere Schlüssel am Gerät ist geblieben, wie er war."),
+        "",
+        t(`A new key: ${deviceCall} --deploy-key --via https`, `Ein neuer Schlüssel: ${deviceCall} --deploy-key --via https`),
+      ].join("\n")
+    );
+    process.exit(0);
+  }
+
+  // --deploy-key. Ein hinterlegter Schlüssel, der noch gilt, bleibt.
+  if (stored) {
+    const still = await contractWith(stored);
+    if (still.ok) {
+      Object.assign(fileChanges, { arasul: "running", contract: still.version.device ?? "" });
+      note(`Kit-Schlüssel unter ${existing.api_key_ref} gilt (Kontrakt gelesen), kein zweiter angelegt.`);
+      console.log(
+        [
+          t(`# Kit key for ${place}`, `# Kit-Schlüssel für ${place}`),
+          "",
+          t(
+            `The key under ${existing.api_key_ref} still works: the device answered with its contract. No second one was created.`,
+            `Der Schlüssel unter ${existing.api_key_ref} gilt noch: das Gerät hat mit seinem Kontrakt geantwortet. Ein zweiter wurde nicht angelegt.`
+          ),
+          still.version.text,
+          t(`What lies on the device: ${deviceCall} --keys --via https`, `Was am Gerät liegt: ${deviceCall} --keys --via https`),
+        ].join("\n")
+      );
+      process.exit(0);
+    }
+  }
+
+  const label = deployKeyName(readFrontmatter(join(ROOT, "business", "company.md")).fields, readFrontmatter(join(ROOT, "business", "profile.md")).fields);
+  const made = await createKeyApi(ask, {
+    name: label,
+    description: t("Kit key of the Ara-Kit, app:deploy only. Created over HTTPS.", "Kit-Schlüssel des Ara-Kits, nur app:deploy. Über HTTPS angelegt."),
+  });
+  if (!made.ok) {
+    fail(
+      t(`No kit key: ${scrub(made.message)}`, `Kein Kit-Schlüssel: ${scrub(made.message)}`) +
+        (made.status === 403
+          ? t(`\nThe device lets only the role admin create keys; "${session.spec.user}" does not have it.`, `\nSchlüssel legt am Gerät nur die Rolle admin an; "${session.spec.user}" hat sie nicht.`)
+          : "")
+    );
+  }
+  const ref = `ARASUL_KEY_${secretSlug}`;
+  try {
+    setSecret(ref, made.key);
+  } catch (error) {
+    // Ein gültiger Schlüssel, den niemand kennt, bleibt nicht liegen.
+    const back = made.id !== null ? await revokeKeyApi(ask, made.id) : { ok: false };
+    fail(
+      t(
+        `The key could not be stored (${error.message}). ${back.ok ? `It was revoked again at once (${made.prefix}).` : `Revoke it by hand under Settings, API keys on the device: ${made.prefix}`}`,
+        `Der Schlüssel ließ sich nicht ablegen (${error.message}). ${back.ok ? `Er wurde sofort wieder widerrufen (${made.prefix}).` : `Von Hand widerrufen am Gerät unter Einstellungen, API-Schlüssel: ${made.prefix}`}`
+      )
+    );
+  }
+  const proof = await contractWith(made.key);
+  made.key = null;
+  const after = await listKeysApi(ask, getSecret(ref));
+  const valid = after.ok ? kitKeys(after.keys) : null;
+  Object.assign(fileChanges, { api_key_ref: ref, ...(proof.ok ? { arasul: "running", contract: proof.version.device ?? "" } : {}) });
+  note(
+    `Kit-Schlüssel über HTTPS angelegt (${label}, ${made.prefix}), Bereich ${KIT_SCOPE}, hinterlegt unter ${ref}. Klartext nur in der Ablage.` +
+      (proof.ok ? ` Kontrakt damit gelesen: Version ${proof.version.device ?? "keine"}.` : ` Kontrakt damit nicht lesbar: ${scrub(proof.message)}.`) +
+      (valid ? ` Gültige Kit-Schlüssel dieses Kontos: ${valid.length}.` : "") +
+      (fileChanges.tls ? " Zertifikat gemessen: selbst ausgestellt (tls: selfsigned)." : "")
+  );
+  console.log(
+    [
+      t(`# Kit key for ${place}, over HTTPS`, `# Kit-Schlüssel für ${place}, über HTTPS`),
+      "",
+      t(`- Created as "${label}" (${made.prefix}), scope ${KIT_SCOPE} only, with the session of "${session.spec.user}".`, `- Angelegt als "${label}" (${made.prefix}), nur Bereich ${KIT_SCOPE}, mit der Sitzung von "${session.spec.user}".`),
+      t(`- Stored under ${ref}. Its plain text is not displayed and stands in no file of the kit.`, `- Hinterlegt unter ${ref}. Sein Klartext wird nicht angezeigt und steht in keiner Datei des Kits.`),
+      proof.ok
+        ? t(`- Checked: the device answers the key with its contract. ${proof.version.text}`, `- Geprüft: das Gerät beantwortet den Schlüssel mit seinem Kontrakt. ${proof.version.text}`)
+        : t(`- Not yet checked: the contract did not answer with the key (${scrub(proof.message)}).`, `- Noch nicht geprüft: der Kontrakt hat mit dem Schlüssel nicht geantwortet (${scrub(proof.message)}).`),
+      ...(valid
+        ? [
+            valid.length === 1
+              ? t(`- Counted on the device: one valid kit key of "${session.spec.user}", this one.`, `- Am Gerät nachgezählt: ein gültiger Kit-Schlüssel von "${session.spec.user}", dieser.`)
+              : t(`- Counted on the device: ${valid.length} valid kit keys of "${session.spec.user}". Which one is whose: ${deviceCall} --keys --via https`, `- Am Gerät nachgezählt: ${valid.length} gültige Kit-Schlüssel von "${session.spec.user}". Welcher wem gehört: ${deviceCall} --keys --via https`),
+          ]
+        : []),
+      ...(fileChanges.tls ? [t("- Certificate measured: self-signed, tls: selfsigned is in the file.", "- Zertifikat gemessen: selbst ausgestellt, tls: selfsigned steht in der Akte.")] : []),
+      "",
+      t(`The file ${relative(ROOT, file)} names the entry, not the key.`, `Die Akte ${relative(ROOT, file)} nennt den Eintrag, nicht den Schlüssel.`),
+    ].join("\n")
+  );
+  process.exit(proof.ok ? 0 : 1);
+}
+
 if (arg["admin-login"]) await adminLogin();
+if (arg["admin-call"] !== undefined) await adminCall();
+if (keysOverHttps) await keysHttps();
 
 // --- Die Verbindung über SSH -------------------------------------------------
 // Ab hier geht es auf das Gerät selbst, und dafür braucht es einen Anmeldenamen.

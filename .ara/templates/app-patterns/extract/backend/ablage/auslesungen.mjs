@@ -3,7 +3,7 @@
  *
  * Liegt in einer App aus der Vorlage unter `backend/ablage/auslesungen.mjs`,
  * neben `dokumente.mjs` aus dem Muster Dokumente. Die Migration dazu ist
- * `003-auslesungen.sql`.
+ * `020-auslesungen.sql`.
  *
  * **Diese Ablage kann anlegen und lesen, sonst nichts.** Es gibt kein
  * `fortschreiben` und kein `loeschen`: eine Auslesung ist ein Eintrag im

@@ -17,7 +17,7 @@
  * und der Weg antwortet 404, nicht 403: ein 403 sagte, dass es ihn gibt.
  */
 
-import { nurZugeordnete } from "./mandanten.mjs";
+import { nurZugeordnete, sicht } from "./mandanten.mjs";
 
 const FELDER = "id, titel, text, von, gestellt, status, lauf, entschieden_von, begruendung, bemerkung, hinweis, mandant";
 
@@ -32,7 +32,9 @@ function alsLauf(lauf) {
 }
 
 export function vorgangsAblage(db, benutzer = null) {
-  const wer = benutzer || null;
+  // Ein Name, oder `{ benutzer, alle }` für eine Verwaltung, die alle sieht.
+  const { benutzer: wer, alle } = sicht(benutzer);
+  const filter = (spalte, platzhalter) => nurZugeordnete(spalte, platzhalter, alle);
 
   const ablage = {
     /**
@@ -43,7 +45,7 @@ export function vorgangsAblage(db, benutzer = null) {
     async anlegen(vorgang) {
       const mandant = Number(vorgang.mandant);
       if (!Number.isInteger(mandant)) return null;
-      const darf = await db.eine(`SELECT id FROM mandanten WHERE id = $1 AND ${nurZugeordnete("id", "$2")}`, [mandant, wer]);
+      const darf = await db.eine(`SELECT id FROM mandanten WHERE id = $1 AND ${filter("id", "$2")}`, [mandant, wer]);
       if (!darf) return null;
       return alsVorgang(
         await db.eine(
@@ -57,7 +59,7 @@ export function vorgangsAblage(db, benutzer = null) {
     /** Alle, die dieser Name sieht, das Neueste oben. */
     async alle() {
       return (
-        await db.abfrage(`SELECT ${FELDER} FROM vorgaenge WHERE ${nurZugeordnete("mandant", "$1")} ORDER BY id DESC`, [wer])
+        await db.abfrage(`SELECT ${FELDER} FROM vorgaenge WHERE ${filter("mandant", "$1")} ORDER BY id DESC`, [wer])
       ).map(alsVorgang);
     },
 
@@ -70,7 +72,7 @@ export function vorgangsAblage(db, benutzer = null) {
         await db.abfrage(
           `SELECT ${FELDER} FROM vorgaenge
             WHERE lauf IS NOT NULL AND (status = 'wartet' OR (status = 'genehmigt' AND bemerkung IS NULL))
-              AND ${nurZugeordnete("mandant", "$1")}
+              AND ${filter("mandant", "$1")}
             ORDER BY id DESC`,
           [wer]
         )
@@ -80,7 +82,7 @@ export function vorgangsAblage(db, benutzer = null) {
     /** Genau einer, oder `null`, auch wenn es ihn für einen anderen Mandanten gibt. */
     async eines(id) {
       return alsVorgang(
-        await db.eine(`SELECT ${FELDER} FROM vorgaenge WHERE id = $1 AND ${nurZugeordnete("mandant", "$2")}`, [id, wer])
+        await db.eine(`SELECT ${FELDER} FROM vorgaenge WHERE id = $1 AND ${filter("mandant", "$2")}`, [id, wer])
       );
     },
 
@@ -88,7 +90,7 @@ export function vorgangsAblage(db, benutzer = null) {
     async aendern(id, { titel, text }) {
       const geaendert = await db.ausfuehren(
         `UPDATE vorgaenge SET titel = $1, text = $2
-          WHERE id = $3 AND status = 'in arbeit' AND ${nurZugeordnete("mandant", "$4")}`,
+          WHERE id = $3 AND status = 'in arbeit' AND ${filter("mandant", "$4")}`,
         [titel, text, id, wer]
       );
       return geaendert > 0 ? ablage.eines(id) : null;
@@ -102,7 +104,7 @@ export function vorgangsAblage(db, benutzer = null) {
       await db.ausfuehren(
         `UPDATE vorgaenge
             SET status = $1, lauf = COALESCE(lauf, $2), entschieden_von = $3, begruendung = $4, bemerkung = $5, hinweis = $6
-          WHERE id = $7 AND ${nurZugeordnete("mandant", "$8")}`,
+          WHERE id = $7 AND ${filter("mandant", "$8")}`,
         [
           felder.status,
           alsLauf(felder.lauf),

@@ -15,6 +15,20 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.75.0 (2026-10-06)
+
+Contract: up to 13
+
+- **Der Kit-Schlüssel ohne SSH.** Ein Fremder, der das Kit am 06.10.2026 testete, hatte ein Konto als Administrator, aber kein SSH, und `--deploy-key` ging nur über SSH; er legte den Schlüssel von Hand über einen Weg der API-Referenz an, zweimal daneben. `--deploy-key`, `--keys` und `--revoke-key` gehen jetzt über HTTPS mit der Sitzung eines Administrators, wenn die Akte sagt, dass SSH nicht antwortet, wenn `--password-ref` dabeisteht, oder mit `--via https`. Der Klartext geht aus der Antwort des Geräts direkt in die Ablage, die Akte bekommt `api_key_ref`, `tls`, `arasul` und `contract`, ein hinterlegter Schlüssel, der noch gilt, bleibt, und einer, der sich nicht ablegen lässt, wird sofort widerrufen. `device.md` beschreibt diesen Weg zuerst.
+- **Kein Werkzeug zeigt eine Sitzung.** `--admin-login` druckt den Ausweis nicht mehr, `--json` trägt ihn nicht mehr, und `--token` reicht ihn nur an die Werkzeuge des Kits, über einen eigenen Kanal (Deskriptor 3), nie auf einen Bildschirm. Ein Handgriff geht als `--admin-call "<VERB> <weg>"`, dessen Antwort mit jedem Wert maskiert kommt, der ein Geheimnis tragen kann. Die Hilfe zeigt `--admin-login`, `--admin-call`, `--deploy-key`, `--password-ref` und `--login-user` beieinander. `browser.md` sagt: in der Seite anmelden, nie ein Cookie über einen Aufruf des Browsers setzen.
+- **Muster lassen sich ohne kollidierende Migrationen zusammensetzen.** Die Vorlage hält 001 bis 009, jedes Muster einen eigenen Zehner (Dokumente 010, Auslesen 020, Mandanten 030 und 031, Belege 040), eigene der App beginnen bei 100. Bis 0.74.0 trugen Vorlage und Dokumente beide eine 002. Der Selbsttest prüft jede Nummer und die Reihenfolge der Voraussetzungen. Eine App, die schon die alten Namen trägt, behält sie.
+- **Muster 7: die Verwaltung darf alle Mandanten sehen, und zuweisen geht vor dem ersten Öffnen.** Ein Schalter in den Zeilen des Blatts, `alleSehen`, lässt die Verwaltung jeden Mandanten sehen, ohne zugeordnet zu sein; die Ablagen der Muster 7 und 8 nehmen eine Sicht (`{ benutzer, alle }`). Ein Name, den die App nie gesehen hat, wird beim Zuordnen vorgemerkt; die Verwaltungsseite zeigt ihn als „noch nie geöffnet", bis die Person kommt. Gibt es genau einen Mandanten, ist er im Formular gewählt.
+- **Der Test „fremde Akte" nennt seine drei Sitzungen.** Er braucht eine Verwaltung und zwei Mitarbeiter ohne deren Rolle; Kopf und Blatt sagten zwei. Die Sitzungen kommen jetzt aus einer Datei (`--sitzungen`), nicht aus dem Aufruf, und der Test zeigt keine davon, auch nicht, wenn er abbricht.
+- **Das Konto kommt aus einer Liste mit Namen.** Die Vorlage hat `kern/feldlisten.mjs` und einen Weg im Backend, der seine Listen der Seite gibt; Muster 9 füllt `konto` aus seinem Kontenrahmen. Die Seite „Freigaben" zeigt den Namen des Vorschlags am Feld, nimmt kein Konto außerhalb der Liste und fragt einmal nach, wenn jemand es ändert („4930 Bürobedarf statt 4910 Porto?").
+- **`update.mjs` hält über lokaler Arbeit an.** Liegt das Kit in git und ist eine Datei, die das Update ersetzen würde, geändert und nicht festgehalten, nennt es diese Dateien und ändert nichts; `--overwrite-local` spielt trotzdem ein.
+- **Eine Nachstellung im Selbsttest.** „Ein Fremder baut den Belegeingang" setzt Vorlage und Muster 2, 6, 7, 8 und 9 nur nach den Blättern zusammen und prüft Migrationen, die Verwaltung, die alle sieht, Zuweisen vor dem ersten Öffnen, die Freigabe für die Sachbearbeiterin, die Liste der Konten und den Test „fremde Akte" mit drei Sitzungen.
+- **`app.md` sagt, was bei Kontrakt 13 für eine Erkennung gilt:** mit `--felder` hat der Flow zwei Freigaben, und das Modell liest, was `lesen` ihm als `auftrag` gibt, nicht das Original links. Das Interview fragt, ob die Verwaltung alle Mandanten sieht.
+
 ## 0.74.0 (2026-10-06)
 
 Contract: up to 13

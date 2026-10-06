@@ -3,7 +3,7 @@
  * und die Filterhilfe für jede andere Ablage.
  *
  * Liegt in einer App aus der Vorlage unter `backend/ablage/mandanten.mjs`. Die
- * Migrationen dazu sind `004-mandanten.sql` und `006-entscheider.sql`. Das SQL ist das von PostgreSQL, mit
+ * Migrationen dazu sind `030-mandanten.sql` und `031-entscheider.sql`. Das SQL ist das von PostgreSQL, mit
  * `$1` als Platzhalter; ohne Gerät übersetzt `db.mjs` für SQLite.
  *
  * **Die Trennung steht im WHERE, nicht in einer Prüfung danach.** Eine Liste,
@@ -15,7 +15,21 @@
  * **Wer keinen Namen hat, sieht nichts.** Ohne Anmeldung ist der Name `null`,
  * und `benutzer = NULL` trifft in SQL keine Zeile. Die Bedingung schließt dann
  * von selbst alles aus, ohne einen Sonderfall.
+ *
+ * **Wer fragt, ist eine Sicht**: ein Name, oder `{ benutzer, alle }`. `alle`
+ * setzt nur der Kern, und nur für die Verwaltung, wenn die App es so will
+ * (`alleSehen` in `kern/mandanten.mjs`): dann sieht sie jeden Mandanten, der
+ * angelegt ist, ohne zugeordnet zu sein. Ohne Namen gilt auch `alle` nicht.
  */
+
+/** Die Sicht aus dem, was eine Ablage bekommt: ein Name oder `{ benutzer, alle }`. */
+export function sicht(wer) {
+  if (wer && typeof wer === "object") {
+    const benutzer = wer.benutzer || null;
+    return { benutzer, alle: wer.alle === true && Boolean(benutzer) };
+  }
+  return { benutzer: wer || null, alle: false };
+}
 
 /**
  * Die Filterhilfe: die Bedingung "gehört zu einem Mandanten, den dieser Name
@@ -28,7 +42,10 @@
  *
  *   `SELECT ... FROM dokumente WHERE id = $1 AND ${nurZugeordnete("mandant", "$2")}`
  */
-export function nurZugeordnete(spalte, platzhalter) {
+export function nurZugeordnete(spalte, platzhalter, alle = false) {
+  // Auch "alle" bindet den Namen: ohne ihn sieht niemand etwas, und die Zahl
+  // der Platzhalter bleibt dieselbe, wie PostgreSQL es verlangt.
+  if (alle) return `${spalte} IN (SELECT id FROM mandanten WHERE CAST(${platzhalter} AS TEXT) IS NOT NULL)`;
   return `${spalte} IN (SELECT mandant FROM zuordnungen WHERE benutzer = ${platzhalter})`;
 }
 
@@ -47,11 +64,12 @@ export function mandantAblage(db) {
       return (await db.abfrage("SELECT id, name, angelegt_von, angelegt FROM mandanten ORDER BY name")).map(alsMandant);
     },
 
-    /** Die Mandanten, die dieser Name sieht. */
-    async sichtbare(benutzer) {
+    /** Die Mandanten, die diese Sicht sieht: ein Name, oder `{ benutzer, alle }`. */
+    async sichtbare(wer) {
+      const { benutzer, alle } = sicht(wer);
       return (
         await db.abfrage(
-          `SELECT id, name, angelegt_von, angelegt FROM mandanten WHERE ${nurZugeordnete("id", "$1")} ORDER BY name`,
+          `SELECT id, name, angelegt_von, angelegt FROM mandanten WHERE ${nurZugeordnete("id", "$1", alle)} ORDER BY name`,
           [benutzer]
         )
       ).map(alsMandant);

@@ -14,7 +14,7 @@
  * da.
  */
 
-import { nurZugeordnete } from "./mandanten.mjs";
+import { nurZugeordnete, sicht } from "./mandanten.mjs";
 
 const OHNE_INHALT = "id, name, art, groesse, von, abgelegt, mandant, vorgang";
 
@@ -30,14 +30,16 @@ function alsDokument(zeile) {
 }
 
 export function dokumentAblage(db, benutzer = null) {
-  const wer = benutzer || null;
+  // Ein Name, oder `{ benutzer, alle }` für eine Verwaltung, die alle sieht.
+  const { benutzer: wer, alle } = sicht(benutzer);
+  const filter = (spalte, platzhalter) => nurZugeordnete(spalte, platzhalter, alle);
 
   return {
     /** Ein neuer Beleg an einem Vorgang, den dieser Name sieht. Sonst `null`. */
     async anlegen(dokument) {
       const vorgang = Number(dokument.vorgang);
       if (!Number.isInteger(vorgang)) return null;
-      const zu = await db.eine(`SELECT mandant FROM vorgaenge WHERE id = $1 AND ${nurZugeordnete("mandant", "$2")}`, [
+      const zu = await db.eine(`SELECT mandant FROM vorgaenge WHERE id = $1 AND ${filter("mandant", "$2")}`, [
         vorgang,
         wer,
       ]);
@@ -54,7 +56,7 @@ export function dokumentAblage(db, benutzer = null) {
     /** Alle, die dieser Name sieht, das Neueste oben, ohne Bytes. */
     async alle() {
       return (
-        await db.abfrage(`SELECT ${OHNE_INHALT} FROM dokumente WHERE ${nurZugeordnete("mandant", "$1")} ORDER BY id DESC`, [wer])
+        await db.abfrage(`SELECT ${OHNE_INHALT} FROM dokumente WHERE ${filter("mandant", "$1")} ORDER BY id DESC`, [wer])
       ).map(alsDokument);
     },
 
@@ -62,7 +64,7 @@ export function dokumentAblage(db, benutzer = null) {
     async amVorgang(vorgang) {
       return (
         await db.abfrage(
-          `SELECT ${OHNE_INHALT} FROM dokumente WHERE vorgang = $1 AND ${nurZugeordnete("mandant", "$2")} ORDER BY id DESC`,
+          `SELECT ${OHNE_INHALT} FROM dokumente WHERE vorgang = $1 AND ${filter("mandant", "$2")} ORDER BY id DESC`,
           [vorgang, wer]
         )
       ).map(alsDokument);
@@ -71,7 +73,7 @@ export function dokumentAblage(db, benutzer = null) {
     /** Genau eines, mit Bytes, oder `null`, auch wenn es das für einen anderen Mandanten gibt. */
     async eines(id) {
       const zeile = await db.eine(
-        `SELECT ${OHNE_INHALT}, inhalt FROM dokumente WHERE id = $1 AND ${nurZugeordnete("mandant", "$2")}`,
+        `SELECT ${OHNE_INHALT}, inhalt FROM dokumente WHERE id = $1 AND ${filter("mandant", "$2")}`,
         [id, wer]
       );
       return zeile ? { ...alsDokument(zeile), inhalt: Buffer.from(zeile.inhalt) } : null;
@@ -79,7 +81,7 @@ export function dokumentAblage(db, benutzer = null) {
 
     /** Weg damit, wenn dieser Name es sieht. Zurück kommt, ob es etwas zu löschen gab. */
     async loeschen(id) {
-      return (await db.ausfuehren(`DELETE FROM dokumente WHERE id = $1 AND ${nurZugeordnete("mandant", "$2")}`, [id, wer])) > 0;
+      return (await db.ausfuehren(`DELETE FROM dokumente WHERE id = $1 AND ${filter("mandant", "$2")}`, [id, wer])) > 0;
     },
   };
 }
