@@ -1,9 +1,15 @@
 -- Muster Dokumente: die Tabelle, in der hochgeladene Dateien liegen.
 --
--- Zweite Migration einer App aus der Vorlage. Die Nummer vorn gibt die
--- Reihenfolge, und wer die 001 schon hat, bekommt beim nächsten Start genau
--- diese hier dazu. Eine Migration, die einmal gelaufen ist, wird nie wieder
--- angefasst.
+-- Setzt nur die Vorlage voraus. Die Nummer vorn gibt die Reihenfolge, und
+-- wer die Vorlage schon hat, bekommt beim nächsten Start genau diese hier
+-- dazu. Eine Migration, die einmal gelaufen ist, wird nie wieder angefasst.
+-- Eine App, die diese Tabelle schon als 002-dokumente.sql trägt (Kit bis
+-- 0.74.0), behält die alte Datei und bekommt diese nicht dazu.
+--
+-- **Die Nummern der Muster kollidieren nicht.** Die Vorlage hält 001 bis 009, jedes Muster
+-- einen eigenen Zehner: Dokumente 010, Auslesen 020, Mandanten 030 und 031, Belege 040.
+-- Eigene Migrationen der App beginnen bei 100. Bis Kit 0.74.0 trugen Vorlage und Muster
+-- Dokumente beide eine 002, und wer drei Muster zusammensetzte, sortierte von Hand.
 --
 -- Die Bytes liegen IN der Datenbank und nicht daneben in einem Ordner: am Gerät
 -- ist die Datenbank der eine Ort, der das nächste Einspielen überlebt, und das

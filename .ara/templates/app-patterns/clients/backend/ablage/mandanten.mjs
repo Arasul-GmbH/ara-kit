@@ -3,7 +3,7 @@
  * und die Filterhilfe für jede andere Ablage.
  *
  * Liegt in einer App aus der Vorlage unter `backend/ablage/mandanten.mjs`. Die
- * Migrationen dazu sind `004-mandanten.sql` und `006-entscheider.sql`. Das SQL ist das von PostgreSQL, mit
+ * Migrationen dazu sind `030-mandanten.sql` und `031-entscheider.sql`. Das SQL ist das von PostgreSQL, mit
  * `$1` als Platzhalter; ohne Gerät übersetzt `db.mjs` für SQLite.
  *
  * **Die Trennung steht im WHERE, nicht in einer Prüfung danach.** Eine Liste,

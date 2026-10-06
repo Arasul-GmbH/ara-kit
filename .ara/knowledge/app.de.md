@@ -205,8 +205,9 @@ unter `daten` sagt; ihre Adresse kommt als `umgebung.datenbank` in `arasul.json`
 jedes Einspielen und wird jede Nacht gesichert, zurückgeholt, wie `daten.wiederherstellen` sagt.
 **Sonst bleibt nichts**: jedes Einspielen ersetzt den Container, sein Dateisystem, ein `VOLUME`,
 eine SQLite-Datei. Hochgeladenes gehört in eine Spalte (`BYTEA`). **Die Datenbank beginnt leer**, die
-Migrationen der App legen das Schema an. Wie die Vorlage beides tut, und was sie ohne Gerät behält:
-ihre README.
+Migrationen der App legen das Schema an. Ihre Nummern kollidieren nie: die Vorlage hält 001 bis 009,
+jedes Muster einen eigenen Zehner ab 010, und die eigenen der App beginnen bei 100. Wie die Vorlage
+beides tut, und was sie ohne Gerät behält: ihre README.
 
 ## Was die Vorlage schon ist
 

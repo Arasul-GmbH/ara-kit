@@ -1,10 +1,13 @@
 -- Muster Mandanten: wer einen Mandanten sieht, und wer über seine Vorgänge
 -- entscheidet, sind zwei Dinge.
 --
--- Setzt die 004 voraus. Die Nummer 006, weil die 005 dem Muster Belege gehört;
--- eine App ohne Belege hat dann eben keine 005, gezählt wird nach Namen. Trägt
--- die App schon eine eigene 006, bekommt diese Datei die nächste freie Nummer,
--- bevor sie an einem Gerät gelaufen ist.
+-- Setzt die 030 voraus. Eine App, die sie schon als 006-entscheider.sql trägt,
+-- behält die alte Datei.
+--
+-- **Die Nummern der Muster kollidieren nicht.** Die Vorlage hält 001 bis 009, jedes Muster
+-- einen eigenen Zehner: Dokumente 010, Auslesen 020, Mandanten 030 und 031, Belege 040.
+-- Eigene Migrationen der App beginnen bei 100. Bis Kit 0.74.0 trugen Vorlage und Muster
+-- Dokumente beide eine 002, und wer drei Muster zusammensetzte, sortierte von Hand.
 --
 -- **Sehen heißt nicht entscheiden.** In einer Kanzlei sehen zehn Kollegen einen
 -- Mandanten, und freigeben darf nur der Partner, der ihn betreut. Bis Kit 0.41.0

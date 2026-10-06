@@ -4,7 +4,7 @@
  *
  * Liegt in einer App aus der Vorlage unter `backend/ablage/dokumente.mjs`,
  * neben `vorgaenge.mjs`, nach derselben Regel: eine Ablage je Entität, und in
- * ihr das einzige SQL dafür. Die Migration dazu ist `002-dokumente.sql`. Das
+ * ihr das einzige SQL dafür. Die Migration dazu ist `010-dokumente.sql`. Das
  * SQL ist das von PostgreSQL, mit `$1` als Platzhalter; ohne Gerät übersetzt
  * `db.mjs` für SQLite.
  *

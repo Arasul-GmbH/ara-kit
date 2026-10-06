@@ -197,7 +197,9 @@ says under `daten`; its address arrives as `umgebung.datenbank` in `arasul.json`
 deploy and is backed up every night, restored as `daten.wiederherstellen` says. **Nothing else
 stays**: every deploy replaces the container, its file system, a `VOLUME`, a SQLite file. An upload
 belongs in a column (`BYTEA`). **The database starts empty**, the app's migrations create the
-schema. How the scaffold does both, and what it keeps without a device: its README.
+schema. Their numbers never collide: the scaffold holds 001 to 009, every pattern a ten of its own
+from 010, and the app's own begin at 100. How the scaffold does both, and what it keeps without a
+device: its README.
 
 ## What the scaffold already is
 

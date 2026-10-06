@@ -1,9 +1,14 @@
 -- Muster Dokument auslesen: jede Auslesung eines Dokuments, auch die, die
 -- nicht gelang.
 --
--- Dritte Migration einer App aus der Vorlage, nach 002 aus dem Muster
--- Dokumente, auf dessen Tabelle sie zeigt. Eine Migration, die einmal gelaufen
--- ist, wird nie wieder angefasst.
+-- Nach 010 aus dem Muster Dokumente, auf dessen Tabelle sie zeigt. Eine
+-- Migration, die einmal gelaufen ist, wird nie wieder angefasst. Eine App, die
+-- sie schon als 003-auslesungen.sql trägt, behält die alte Datei.
+--
+-- **Die Nummern der Muster kollidieren nicht.** Die Vorlage hält 001 bis 009, jedes Muster
+-- einen eigenen Zehner: Dokumente 010, Auslesen 020, Mandanten 030 und 031, Belege 040.
+-- Eigene Migrationen der App beginnen bei 100. Bis Kit 0.74.0 trugen Vorlage und Muster
+-- Dokumente beide eine 002, und wer drei Muster zusammensetzte, sortierte von Hand.
 --
 -- **Nur anhängen.** Jede Auslesung ist eine neue Zeile, keine wird geändert,
 -- keine gelöscht, auch nicht mit dem Dokument. Gilt ist die neueste, die

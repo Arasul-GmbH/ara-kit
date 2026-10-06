@@ -180,7 +180,7 @@ Das Backend, von außen nach innen:
 | `kern/csv.mjs` | Ein Export als CSV |
 | `ablage/vorgaenge.mjs` | Die eine Naht zur Datenbank. Hier steht das SQL der Vorgänge, im Dialekt von PostgreSQL. Eine Ablage je Entität, keine zweite |
 | `ablage/db.mjs` | Die Datenbank und ihre Migrationen: am Gerät PostgreSQL, ohne Gerät SQLite, dasselbe SQL. Der Stand steht in der Datenbank selbst |
-| `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst |
+| `ablage/migrationen/` | Eine Datei je Schritt. Was gelaufen ist, wird nie wieder angefasst. Die Vorlage hält 001 bis 009, die Muster je einen Zehner ab 010, eigene Migrationen beginnen bei 100 |
 | `package.json` | Die eine Abhängigkeit, `pg`. Das Gerät holt sie beim Bau |
 | `arasul.mjs` | Die Naht zum Gerät. Kein Wert darin, den das Gerät vergibt |
 | `arasul.json` | Die Vereinbarung mit dem Gerät. Im Quelltext leer, gefüllt wird sie beim Einspielen |

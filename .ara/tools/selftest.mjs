@@ -5372,7 +5372,7 @@ await checkAsync("Das Muster Dokumente läuft im Backend der Vorlage: hochladen,
       });
     });
     await new Promise((fertig) => setTimeout(fertig, 300));
-    assert(/002-dokumente\.sql/.test(ausgabe), `die zweite Migration lief nicht: ${ausgabe}`);
+    assert(/010-dokumente\.sql/.test(ausgabe), `die Migration der Dokumente lief nicht: ${ausgabe}`);
 
     const kopf = {
       [VORLAGE_KONTRAKT.koepfe.benutzer]: Buffer.from("Jürgen", "utf8").toString("latin1"),
@@ -5545,7 +5545,7 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
       });
     });
     await new Promise((fertig) => setTimeout(fertig, 300));
-    assert(/003-auslesungen\.sql/.test(ausgabe), `die dritte Migration lief nicht: ${ausgabe}`);
+    assert(/020-auslesungen\.sql/.test(ausgabe), `die Migration der Auslesungen lief nicht: ${ausgabe}`);
 
     const kopf = { [VORLAGE_KONTRAKT.koepfe.benutzer]: Buffer.from("Jürgen", "utf8").toString("latin1") };
     const ruf = async (pfad, optionen = {}) => {
@@ -5926,7 +5926,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       });
     });
     await new Promise((fertig) => setTimeout(fertig, 300));
-    assert(/004-mandanten\.sql/.test(ausgabe), `die Migration der Mandanten lief nicht: ${ausgabe} ${fehlerausgabe}`);
+    assert(/030-mandanten\.sql/.test(ausgabe), `die Migration der Mandanten lief nicht: ${ausgabe} ${fehlerausgabe}`);
 
     // Wer fragt, steht in den Kopfzeilen, als UTF-8 wie am Gerät.
     const ruf = async (wer, rolle, pfad, optionen = {}) => {
@@ -5971,7 +5971,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       r.daten.zuordnungen.filter((z) => z.entscheidet).map((z) => z.benutzer).sort().join(",") === "bernd,carla",
       `die Zuordnung sagt nicht, wer entscheidet: ${JSON.stringify(r.daten.zuordnungen)}`
     );
-    assert(/006-entscheider\.sql/.test(ausgabe), `die Migration der Entscheider lief nicht: ${ausgabe}`);
+    assert(/031-entscheider\.sql/.test(ausgabe), `die Migration der Entscheider lief nicht: ${ausgabe}`);
 
     r = await ruf("Änne", "team", "/mandanten");
     assert(r.daten.mandanten.length === 1 && r.daten.mandanten[0].id === a, `Änne sieht mehr als ihren Mandanten: ${JSON.stringify(r.daten)}`);
@@ -6125,6 +6125,43 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
   }
 });
 
+check("Die Migrationen von Vorlage und Mustern kollidieren nicht, jedes Muster hat seinen Zehner", () => {
+  // Fremdtest 06.10.2026: wer die Muster 2, 7 und 8 zusammensetzte, hatte zwei 002 (Vorlage und
+  // Dokumente) und sortierte von Hand. Jetzt: Vorlage 001 bis 009, Muster ab 010, je einen Zehner,
+  // die App selbst ab 100. Gezählt nach der Nummer vorn, nicht nach dem Namen.
+  const nummern = new Map();
+  const vermerken = (ordner, wer) => {
+    if (!existsSync(ordner)) return;
+    for (const datei of readdirSync(ordner).filter((n) => n.endsWith(".sql"))) {
+      const nummer = Number(datei.match(/^(\d{3})-/)?.[1]);
+      assert(Number.isInteger(nummer), `${wer}: ${datei} beginnt nicht mit einer dreistelligen Nummer`);
+      assert(!nummern.has(nummer), `${wer}: ${datei} trägt dieselbe Nummer wie ${nummern.get(nummer)}`);
+      nummern.set(nummer, `${wer}/${datei}`);
+      if (wer === "Vorlage") assert(nummer >= 1 && nummer <= 9, `die Vorlage verlässt 001 bis 009: ${datei}`);
+      else assert(nummer >= 10 && nummer < 100, `das Muster ${wer} liegt nicht zwischen 010 und 099: ${datei}`);
+    }
+  };
+  vermerken(join(ROOT, ".ara", "templates", "app", "backend", "ablage", "migrationen"), "Vorlage");
+  const zehner = new Map();
+  for (const muster of readdirSync(PATTERNS)) {
+    const ordner = join(PATTERNS, muster, "backend", "ablage", "migrationen");
+    vermerken(ordner, muster);
+    if (!existsSync(ordner)) continue;
+    const eigene = new Set(readdirSync(ordner).filter((n) => n.endsWith(".sql")).map((n) => Math.floor(Number(n.slice(0, 3)) / 10)));
+    for (const z of eigene) {
+      assert(!zehner.has(z) || zehner.get(z) === muster, `die Muster ${muster} und ${zehner.get(z)} teilen sich den Zehner ${z}0`);
+      zehner.set(z, muster);
+    }
+  }
+  // Belege setzen Dokumente, Auslesen und Mandanten voraus und laufen danach.
+  const nummerVon = (teil) => [...nummern.entries()].find(([, wo]) => wo.includes(teil))?.[0];
+  for (const vorher of ["dokumente", "auslesungen", "mandanten"]) {
+    assert(nummerVon(vorher) < nummerVon("belege"), `die Belege laufen vor ${vorher}`);
+  }
+  assert(nummerVon("mandanten") < nummerVon("entscheider"), "die Entscheider laufen vor den Mandanten");
+  return `${nummern.size} Migrationen, keine Nummer doppelt, Vorlage 001 bis 009, Muster je ein Zehner, Reihenfolge der Voraussetzungen gehalten`;
+});
+
 await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant, ein Beleg hängt am Vorgang, nach dem Einreichen ändert sich nichts", async () => {
   // Die Muster 2, 6 und 7 zusammen, so wie das Blatt es sagt: die Vorlage,
   // darüber die drei, darüber dieses, die Zeilen aus den Köpfen der Wege in
@@ -6233,7 +6270,7 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
       });
     });
     await new Promise((fertig) => setTimeout(fertig, 300));
-    assert(/005-belege\.sql/.test(ausgabe), `die Migration der Belege lief nicht: ${ausgabe} ${fehlerausgabe}`);
+    assert(/040-belege\.sql/.test(ausgabe), `die Migration der Belege lief nicht: ${ausgabe} ${fehlerausgabe}`);
 
     const alsKopf = (text) => Buffer.from(text, "utf8").toString("latin1");
     const ruf = async (wer, rolle, pfad, optionen = {}) => {

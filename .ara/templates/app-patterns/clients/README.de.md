@@ -21,8 +21,8 @@ für die Verwaltung, und die nur für eine Rolle in `freigaben.rollen` und `koep
 Zuordnung mit `entscheidet` entscheidet, die anderen sehen nur. Ändern und Einreichen eines
 eingereichten Vorgangs bekommen 409.
 
-**Die Dateien**: die Migrationen `004` (Mandanten, gesehene Konten, Zuordnungen, `mandant` an den
-Vorgängen) und `006` (`entscheidet` an der Zuordnung); `backend/ablage/mandanten.mjs` mit
+**Die Dateien**: die Migrationen `030` (Mandanten, gesehene Konten, Zuordnungen, `mandant` an den
+Vorgängen) und `031` (`entscheidet` an der Zuordnung); `backend/ablage/mandanten.mjs` mit
 `nurZugeordnete`, dem Filter als SQL für jede Ablage; `backend/ablage/vorgaenge.mjs`, das die der
 Vorlage ersetzt; der Kern mit `verwaltungsRolle`, `regel` und `zustaendig`; die Wege; die
 Verwaltungsseite mit `MandantWahl` und `VorgangEinreichen`.
