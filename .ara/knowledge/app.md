@@ -144,15 +144,28 @@ says what each does on this device.
    "Date"`, or `keine`). **Never all by habit**: a changeable field can be changed by mistake. The
    paper on the left is `--original`: by default a sheet drawn from the submitted text, with real
    documents the route that delivers them, **ending in .png, .jpg, .svg or .pdf** (the approval tells
-   image from PDF by the end of the path). With several stages the first belongs to the reading: the
-   device puts its request there when unsure; a sure reading asks nobody. Say that aloud.
-   **Two approvals, one item.** With `--felder` the flow has the reading (an approval with the
-   fields, only when unsure) and the step `entscheiden` (an approval without fields, always).
-   Unsure, the person decides twice; delete `entscheiden` and a sure reading is approved by nobody.
-   Under contract 13 there is no way to exactly one approval with fields: keep both and say so in
-   the plan. What the model reads is not the original on the left but what the step `lesen` hands
-   it as `auftrag` (measured on 06.10.2026, contract 13): put the details of the item there. Whether
-   a newer device reads the original itself, its contract says (`--contract`).
+   image from PDF by the end of the path).
+   **From contract 14 the model reads the original itself.** The device fetches the file through the
+   route of the app and hands it to the image model: a PNG or JPEG as it is, a PDF as its first pages.
+   It tells by the first bytes, not by the name, and an SVG sheet is only a display, the model
+   cannot read it. How many pages and how large a file may be, the contract says (`--contract`);
+   say none of it from memory. If the file is missing, too large or unreadable, the device calls
+   no model: the run stops with an approval that names the reason ("Original fehlt"), and a person
+   sees it. So for real documents the route must deliver a PNG, JPEG or PDF. Put nothing about the
+   details of the item into `auftrag` any more: the paper is the source, and the details of the
+   form would only be copied from it.
+   **One check, with the fields.** With `--felder` and the kind `ergebnis_bestaetigen` the approval
+   of the reading is the check: it always comes, with the fields, also when everything is read
+   surely, and no second one follows at the end. So `--new` writes no step `entscheiden` there; a
+   further stage still gets its own step. With `autonom` alone the reading asks only when unsure,
+   and the step stays. On a device before contract 14 this does not hold: the model reads
+   only the `auftrag`, and a sure reading asks nobody. There, add the step `entscheiden` by hand and
+   say in the plan that an unsure reading asks twice.
+   With several stages the first belongs to the reading. Say that aloud.
+   **A title for the run.** The scaffold hands a reference to the item with the start as `titel` ("Vorgang 7 von anna", never its text, at
+   most what the contract allows) when the device takes it; it stands in front of every approval of
+   the run, so two cards can be told apart. Without it the device forms one from the first
+   recognised values.
 
 "Enough" drops these four questions: what stays open the kit does not write. `--check` stops
 `faehigkeiten` at a tool step (they belong to model steps only) and holds the declaration against the

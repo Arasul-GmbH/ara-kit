@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.76.0 (2026-10-06)
+
+Contract: up to 14
+
+- **Das Kit versteht Kontrakt 14.** Das Modell des Geräts liest jetzt das Original eines erkennenden Schritts (PNG, JPEG, die ersten Seiten eines PDF; die Grenze steht im Kontrakt), ein Flow mit `ergebnis_bestaetigen` hat genau eine Prüfung, die Freigabe der Erkennung, immer mit den Feldern, und ein Lauf trägt einen kurzen `titel`. Ohne das hielt ein Kit nach dem nächsten Update des Geräts an.
+- **`--new --felder` schreibt keinen Schritt `entscheiden`, wenn die Erkennung die Prüfung ist** (Art `ergebnis_bestaetigen`): der Flow hatte zwei Freigaben, jetzt eine. Eine weitere Stufe behält ihren Schritt, `autonom` allein ebenfalls. Der Text des Flows spricht nicht mehr von einem Schritt der Entscheidung, den es nicht gibt.
+- **Das Gerüst gibt beim Start einen Titel mit.** `flowStarten` schickt `titel` (einen Verweis, „Vorgang 7 von anna“, nie Titel oder Text des Vorgangs, auf 120 Zeichen gekürzt), wenn der Kontrakt des Geräts ihn beim Start nennt; `arasul.json` trägt `freigaben.titel`.
+- **`app.md` und Muster 8 erklären das Original:** PNG, JPEG oder PDF, die Grenze aus dem Kontrakt, was ein fehlendes Original tut (der Lauf hält mit einem genannten Grund an), dass die Angaben des Vorgangs nicht mehr in den `auftrag` gehören, und der Titel des Laufs.
+
 ## 0.75.0 (2026-10-06)
 
 Contract: up to 13

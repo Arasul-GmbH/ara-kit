@@ -149,17 +149,28 @@ In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit 
    (`--aenderbar "Datum"`, oder `keine`). **Nie alle aus Gewohnheit**: ein änderbares Feld lässt sich
    auch aus Versehen ändern. Das Blatt links ist `--original`: vorgabemäßig ein Blatt aus dem
    eingereichten Text, bei echten Dokumenten der Weg, der sie liefert, **mit der Endung .png, .jpg,
-   .svg oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades). Bei mehreren Stufen
-   gehört die erste der Erkennung: das Gerät legt dort bei Unsicherheit seine Anfrage an, eine
-   sichere Erkennung fragt niemanden. Sag das laut.
-   **Zwei Freigaben, ein Vorgang.** Mit `--felder` hat der Flow die Erkennung (eine Freigabe mit den
-   Feldern, nur bei Unsicherheit) und den Schritt `entscheiden` (eine Freigabe ohne Felder, immer).
-   Bei Unsicherheit entscheidet der Mensch also zweimal; streichst du `entscheiden`, gibt eine
-   sichere Erkennung niemand frei. Unter Kontrakt 13 gibt es keinen Weg zu genau einer Freigabe mit
-   Feldern: lass beide stehen und schreib das in den Plan. Was das Modell liest, ist nicht das
-   Original links, sondern was der Schritt `lesen` ihm als `auftrag` gibt (gemessen am 06.10.2026,
-   Kontrakt 13): die Angaben des Vorgangs gehören dorthin. Ob ein neueres Gerät das Original selbst
-   liest, sagt sein Kontrakt (`--contract`).
+   .svg oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades).
+   **Ab Kontrakt 14 liest das Modell das Original selbst.** Das Gerät holt die Datei über den Weg
+   der App und gibt sie dem Bildmodell: ein PNG oder JPEG unverändert, ein PDF als seine ersten
+   Seiten. Es erkennt sie an den ersten Bytes, nicht am Namen, und ein Blatt als SVG ist nur eine
+   Anzeige, das Modell kann es nicht lesen. Wie viele Seiten und wie groß eine Datei sein darf,
+   sagt der Kontrakt (`--contract`); nenne nichts davon aus dem Kopf. Fehlt die Datei, ist sie zu
+   groß oder nicht lesbar, ruft das Gerät kein Modell auf: der Lauf hält mit einer Freigabe an, die
+   den Grund nennt („Original fehlt“), und ein Mensch sieht sie. Für echte Dokumente muss der Weg
+   also ein PNG, JPEG oder PDF liefern. Schreib die Angaben des Vorgangs nicht mehr in `auftrag`:
+   das Blatt ist die Quelle, und die Angaben des Formulars würden nur davon abgeschrieben.
+   **Eine Prüfung, mit den Feldern.** Mit `--felder` und der Art `ergebnis_bestaetigen` ist die
+   Freigabe der Erkennung die Prüfung: sie kommt immer, mit den Feldern, auch wenn alles sicher
+   erkannt ist, und am Ende folgt keine zweite. Darum schreibt `--new` dort keinen Schritt
+   `entscheiden`; eine weitere Stufe bekommt weiter ihren eigenen Schritt. Bei `autonom` allein fragt
+   die Erkennung nur bei Unsicherheit, und der Schritt bleibt. An einem Gerät vor Kontrakt 14 gilt das nicht: das
+   Modell liest nur den `auftrag`, und eine sichere Erkennung fragt niemanden. Dort hängst du den
+   Schritt `entscheiden` von Hand an und schreibst in den Plan, dass eine unsichere Erkennung zweimal fragt.
+   Bei mehreren Stufen gehört die erste der Erkennung. Sag das laut.
+   **Ein Titel für den Lauf.** Das Gerüst gibt beim Start einen Verweis auf den Vorgang als `titel` mit („Vorgang 7 von anna“, nie dessen Text,
+   höchstens so lang, wie der Kontrakt es erlaubt), wenn das Gerät ihn annimmt; er steht vorn an jeder
+   Freigabe des Laufs, damit zwei Karten zu unterscheiden sind. Ohne ihn bildet das Gerät einen aus
+   den ersten erkannten Werten.
 
 „Genug" lässt diese vier Fragen fallen: was offen bleibt, schreibt das Kit nicht. `--check` hält
 `faehigkeiten` an einem Werkzeug-Schritt an (sie gehören nur an Modell-Schritte) und hält die Deklaration

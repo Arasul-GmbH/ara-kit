@@ -3381,6 +3381,51 @@ check("Kein Schlüssel gerät in eine Ausgabe", () => {
   assert(!/aras_[A-Za-z0-9]/.test(text), `Schlüssel steht noch in der Ausgabe: ${text}`);
 });
 
+await checkAsync("Kontrakt 14: das Kit versteht Original, eine Prüfung und Titel, --new --felder baut ohne zweiten Schritt", async () => {
+  assert(KIT_CONTRACT_VERSION >= 14, "das Kit versteht Kontrakt 14 nicht");
+  const vierzehn = KIT_CONTRACT_VERSIONS.find((e) => e.version === 14);
+  assert(vierzehn && vierzehn.kann.length > 40, "Fassung 14 hat keinen kann-Satz");
+  assert(checkVersion({ ...KONTRAKT, kontrakt: 14 }).ok, "ein Gerät mit Kontrakt 14 hält das Kit an");
+  assert(!checkVersion({ ...KONTRAKT, kontrakt: 15 }).ok, "ein Gerät mit Kontrakt 15 hält das Kit nicht an");
+  const f = await import("./lib/felder.mjs");
+  const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
+  const bauen = (opt) => f.applyRecognition(f.applyFlowFields(vorlage, opt), { felder: opt.felder });
+  const schritte = (text) => [...text.slice(text.indexOf("\nschritte:")).matchAll(/^ {2}- name: (\S+)/gm)].map((m) => m[1]);
+
+  // Die Erkennung ist die Prüfung: kein Schritt `entscheiden`, kein Werkzeug dafür, kein Text von einer Entscheidung.
+  const eine = bauen({ arten: ["ergebnis_bestaetigen"], felder: ["betrag", "datum"] });
+  assert(schritte(eine).join() === "lesen", `bei ergebnis_bestaetigen mit Erkennung steht ein zweiter Schritt im Flow: ${schritte(eine)}`);
+  assert(/^werkzeuge: \[subagent\]$/m.test(eine) && !/freigabe_anfordern/.test(eine), "der Flow nennt das Werkzeug der zweiten Prüfung noch");
+  assert(!/„entscheiden/.test(eine) && f.flowFieldFindings("freigabe", eine).length === 0, "der Text spricht von einem Schritt, den es nicht gibt, oder der Flow bekommt Befunde");
+  // Eine weitere Stufe behält ihren Schritt, die erste gehört der Erkennung.
+  const zwei = bauen({ arten: ["ergebnis_bestaetigen"], felder: ["betrag"], stufen: f.parseStufen("Prüfung, Leitung").stufen });
+  assert(schritte(zwei).join() === "lesen,entscheiden_leitung", `mit zwei Stufen stimmen die Schritte nicht: ${schritte(zwei)}`);
+  // Ohne die Art, in der ein Mensch bestätigt, fragt die Erkennung nur bei Unsicherheit: der Schritt bleibt.
+  assert(schritte(bauen({ felder: ["betrag"] })).join() === "lesen,entscheiden", "ohne ergebnis_bestaetigen fehlt der Schritt der Prüfung");
+  assert(schritte(bauen({ arten: ["autonom"], felder: ["betrag"] })).join() === "lesen,entscheiden", "bei autonom fehlt der Schritt der Prüfung");
+  // Ohne Erkennung bleibt der Flow, wie er war.
+  assert(f.applyFlowFields(vorlage, { arten: ["ergebnis_bestaetigen"] }).includes("name: entscheiden\n"), "ohne Felder verschwindet der Schritt entscheiden");
+
+  // Das Gerüst: --new --felder schreibt den Flow so auf die Platte.
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const dir = join(ROOT, "apps", "selftest-kontrakt14");
+  try {
+    const lauf = tool("app.mjs", ["--app", "selftest-kontrakt14", "--new", "--titel", "Beleg", "--arten", "bestaetigen", "--felder", "Betrag,Datum"]);
+    assert(lauf.status === 0, `Anlegen mit Erkennung scheitert: ${lauf.stderr}${lauf.stdout}`);
+    const flow = readFileSync(join(dir, "flows", "freigabe.md"), "utf8");
+    assert(schritte(flow).join() === "lesen", `--new --felder schreibt einen zweiten Schritt: ${schritte(flow)}`);
+    assert(f.flowFieldFindings("freigabe", flow).length === 0, "der Flow der neuen App bekommt Befunde");
+    // Das Backend der Vorlage kennt den Titel: der Start gibt ihn mit, wenn das Gerät ihn nennt.
+    assert(/titel/.test(readFileSync(join(dir, "backend", "arasul.json"), "utf8")), "arasul.json kennt freigaben.titel nicht");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    if (savedState === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, savedState);
+  }
+  return "Fassung 14 bedient: eine Prüfung statt zwei, Stufen und autonom behalten ihren Schritt, Titel geht als Verweis mit";
+});
+
 await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück", async () => {
   const stateFile = join(ROOT, ".ara", "state.json");
   const savedState = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
@@ -4760,7 +4805,7 @@ const VORLAGE_KONTRAKT = {
   // Vorlage, die `x-arasul-user` fest im Quelltext trägt, findet hier niemanden.
   koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["admin", "mitarbeiter"] },
   umgebung: { basis: "ARASUL_BASIS_URL", schluessel: "ARASUL_APP_KEY" },
-  freigaben: { start: { properties: { args: {}, einreicher: { type: "string" }, freigabe: { type: "object" } } } },
+  freigaben: { start: { properties: { args: {}, einreicher: { type: "string" }, freigabe: { type: "object" }, titel: { type: "string" } } } },
   endpunkte: [
     { verb: "GET", pfad: "/api/v1/external/contract", was: "Dieser Kontrakt" },
     { verb: "POST", pfad: "/api/v1/external/flows/:name/run", was: "Einen Flow starten" },
@@ -4854,6 +4899,11 @@ await checkAsync("Ein Vorgang der Vorlage hält an, ein Mensch entscheidet, er i
       // Das Gerät nimmt den Einreicher an, also geht er mit, aus der Anmeldung.
       assert(gesehen.rumpf?.einreicher === "Jürgen", `der Einreicher geht nicht mit: ${JSON.stringify(gesehen.rumpf)}`);
       assert(gesehen.rumpf?.freigabe === undefined, "die Vorlage zieht den Kreis enger, ohne dass jemand es verlangt");
+      // Kontrakt 14: der Titel des Laufs geht mit, als Verweis und nicht als Inhalt, denn die Karte sieht jeder im Kreis.
+      assert(
+        gesehen.rumpf?.titel === `Vorgang ${gestellt.daten.vorgang.id} von Jürgen`,
+        `der Start gibt keinen Titel als Verweis mit: ${JSON.stringify(gesehen.rumpf)}`
+      );
 
       // Ohne Titel gibt es keinen Vorgang, und die App sagt es.
       const leer = await ruf("/vorgaenge", { method: "POST", body: JSON.stringify({ text: "nur Text" }) });

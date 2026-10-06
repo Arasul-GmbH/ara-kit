@@ -30,6 +30,7 @@
   "freigaben": {
     "einreicher": false,
     "regel": false,
+    "titel": false,
     "rollen": []
   },
   "daten": null,
