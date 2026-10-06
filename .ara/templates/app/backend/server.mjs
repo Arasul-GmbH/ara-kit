@@ -64,11 +64,6 @@ const ABSCHLUSS = "/abschluss/freigabe";
 // das ist im Container die schreibbare Schicht: sie überlebt einen Neustart
 // und nicht das nächste Einspielen.
 const DATEN = process.env.APP_DATEN || join(HIER, "daten");
-// Vier Augen: wer einen Vorgang einreicht, entscheidet ihn nicht. Das Gerät
-// setzt das durch, sobald es die Regel annimmt; die Vorlage lässt es aus, weil
-// ein Gerät mit einem einzigen Konto sonst keinen Vorgang starten könnte.
-// Eine Fach-App setzt es, und `regel` unten nennt dann auch die Entscheider.
-const VIER_AUGEN = false;
 
 const vereinbarung = vereinbarungLesen();
 const geraet = anschluss(vereinbarung, process.env, { name: NAME, flow: FLOW });
@@ -87,7 +82,10 @@ const vorgangsKern = kern({
   ablage: vorgangsAblage(db),
   geraet,
   name: NAME,
-  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),
+  // Wer einreicht, entscheidet nie selbst: das setzt das Gerät durch, ohne Regel der App (der
+  // Kontrakt sagt es unter `freigaben`). `regel` zieht den Kreis nur enger, mit `entscheider`;
+  // eine Fach-App nennt dort die Zuständigen eines Vorgangs (Muster 7).
+  regel: () => null,
 });
 // Das Geheimnis legt das Gerät beim Einspielen in den Container, je App und Stand, unter dem Namen aus
 // der Vereinbarung; dort steht auch die Form der Kennung. Fehlt eines davon, nimmt die Route nichts an,

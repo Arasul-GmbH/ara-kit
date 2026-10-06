@@ -1,6 +1,8 @@
 # Verfahren: Erweiterungen bauen
 
 > **Wann brauchst du das?** Wenn ein Kunde etwas will, das das Produkt nicht ab Werk kann.
+> **Eine App auf dem Gerät** (ein Formular, ein Eingang, eine Freigabe) **geht über `/app`**:
+> `.ara/knowledge/app.de.md`. Dieses Blatt ist der Hintergrund dahinter.
 
 ## Wo gebaut wird, und wo nicht
 

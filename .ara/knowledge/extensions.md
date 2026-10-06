@@ -1,7 +1,8 @@
 # Procedure: building extensions
 
 > **When do you need this?** When a customer wants something the product cannot do out of the
-> box.
+> box. **An app on the device** (a form, an intake, an approval) **goes along `/app`**:
+> `.ara/knowledge/app.md`. This sheet is the background behind it.
 
 ## Where things are built, and where not
 

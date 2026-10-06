@@ -106,11 +106,20 @@ entscheidet. Genau das ist der Vorlage bis zum 29.08.2026 passiert.
 Freigaben: beide zeigen dieselbe Anfrage mit demselben Baustein. Bestätigt und abgelehnt wird
 mit der Sitzung des Menschen über die Wege, die auch die Verwaltung des Geräts benutzt; die App
 erteilt keine Freigabe aus eigenem Recht und kann niemandem eine geben, der sie nicht bekommen
-hat. Entscheiden darf jeder, dem diese App freigegeben ist. Der Flow nennt dafür keine Person
-und keine Rolle. Den Kreis enger ziehen
-kann die App beim Start des Laufs: `VIER_AUGEN` in `backend/server.mjs` schließt den
-Einreicher aus, und eine Regel im Kern kann die Konten nennen, die für einen Vorgang
-zuständig sind. Das Gerät setzt beides durch, sobald sein Kontrakt `freigaben` führt.
+hat.
+
+**Wer entscheidet, sagt das Gerät.** Im Kreis ist, wem diese App freigegeben ist; wer den
+Vorgang eingereicht hat, entscheidet ihn nie selbst und sieht ihn nicht unter seinen
+Freigaben. Der Flow nennt keine Person und keine Rolle. Enger ziehen kann den Kreis nur die
+App beim Start des Laufs: `regel` in `backend/server.mjs` nennt die Konten, die für einen
+Vorgang zuständig sind (Muster 7).
+
+**Bei wem eine Freigabe liegt, setzt der Administrator**, nicht die App: je App und Stufe eine
+Standardperson in der Verwaltung des Geräts. Eine neue Freigabe liegt bei ihr, ohne sie bei
+allen im Kreis, und entscheiden kann nur, bei dem sie liegt. Die Seite „Freigaben" zeigt
+darunter, was bei anderen liegt; mit „Übernehmen" liegt eine Freigabe danach bei einem selbst.
+Weitergeben an einen anderen geht in Arasul. Was genau gilt, sagt `--contract` unter
+`freigaben`.
 
 **Auf der Karte der Freigabe steht die Nummer des Vorgangs, nicht sein Inhalt.** Was ein
 Lauf bekommt, liegt am Gerät bei jedem Lauf und auf der Karte; was im Vorgang steht, liegt

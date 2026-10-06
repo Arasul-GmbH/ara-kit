@@ -5115,8 +5115,8 @@ await checkAsync("Das Muster Dokumente läuft im Backend der Vorlage: hochladen,
           'import { dokumentWege } from "./wege/dokumente.mjs";\n',
       ],
       [
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" +
+        "  regel: () => null,\n});\n",
+        "  regel: () => null,\n});\n" +
           "const dokumente = dokumentWege({\n" +
           "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
           "  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n" +
@@ -5281,8 +5281,8 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
           'import { auslesenWege } from "./wege/auslesen.mjs";\n',
       ],
       [
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" +
+        "  regel: () => null,\n});\n",
+        "  regel: () => null,\n});\n" +
           "const dokumente = dokumentWege({\n" +
           "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
           "  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n" +
@@ -5634,7 +5634,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + importe,
       ],
-      ["  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n", "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" + aufbau],
+      ["  regel: () => null,\n});\n", "  regel: () => null,\n});\n" + aufbau],
       ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
     ]) {
       assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
@@ -5936,8 +5936,8 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe,
       ],
       [
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n",
-        "  regel: () => (VIER_AUGEN ? { ohne_einreicher: true } : null),\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau,
+        "  regel: () => null,\n});\n",
+        "  regel: () => null,\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau,
       ],
       [
         '  if (pfad === "/vorgaenge" && anfrage.method === "GET") {',

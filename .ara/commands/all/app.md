@@ -22,7 +22,7 @@ its moment comes.
 - `.ara/templates/app/README.md` when you change the scaffold of an app: its places, where an
   approval is decided, how it takes a flow's result.
 
-Security levels and product values: `.claude/CLAUDE.md`. Beforehand you read
+Security levels and product values: `AGENTS.md`, "How you work". Beforehand you read
 `business/profile.md`: language, branch, detail level, security level, what the house works with.
 
 **The argument.** `<app>` is the app under `apps/<app>/`. No argument: first the marker `.ara/state.json`,
