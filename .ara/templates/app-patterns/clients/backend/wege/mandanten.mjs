@@ -52,6 +52,7 @@
  *   PUT    /vorgaenge/<id>              `{ titel, text }` ändern. Nach dem Einreichen 409
  *   POST   /vorgaenge/<id>/einreichen   einreichen, wenn `bereit` ja sagt, sonst 409
  *                                       mit dem Satz. Schon eingereicht: 409
+ *   GET    /vorgaenge/<id>/original.png das Blatt der Vorlage für die Freigabe. Ein fremder: 404
  *
  * **Angelegt ist nicht eingereicht.** Ein Vorgang entsteht in Arbeit, Belege
  * kommen dazu, und erst `einreichen` startet die Freigabe. Danach ändert sich
@@ -65,6 +66,8 @@
  * Mandanten gibt. 403 bekommt nur, wer die Verwaltung aufruft, ohne sie zu
  * haben: dass es sie gibt, ist kein Geheimnis.
  */
+
+import { blatt } from "../kern/blatt.mjs";
 
 function json(antwort, status, daten) {
   antwort.writeHead(status, { "content-type": "application/json; charset=utf-8" });
@@ -182,7 +185,21 @@ export function mandantenWege({ mandanten, vorgaenge, angemeldet }) {
     }
 
     if (teile.length === 3 && teile[2] === "einreichen" && verb === "POST" && nummer) {
-      antworten(antwort, await kern.einreichen(id));
+      antworten(antwort, await kern.einreichen(id, { wer: wer.benutzer }));
+      return true;
+    }
+
+    // Das Blatt der Vorlage, das die Freigabe links zeigt (`original.png`), in derselben Sicht:
+    // das Gerät holt es im Namen dessen, der eingereicht hat. Bis 0.77.0 antwortete hier 404,
+    // und der Flow einer App mit Mandanten hielt mit „Original fehlt“.
+    if (teile.length === 3 && teile[2] === "original.png" && verb === "GET" && nummer) {
+      const vorgang = await kern.holen(id);
+      if (!vorgang) {
+        json(antwort, 404, { fehler: `Vorgang ${id} gibt es nicht.` });
+        return true;
+      }
+      antwort.writeHead(200, { "content-type": "image/png", "cache-control": "no-store" });
+      antwort.end(blatt(vorgang));
       return true;
     }
 

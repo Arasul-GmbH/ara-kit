@@ -1,0 +1,15 @@
+{
+  "$comment": "Wie dieses Muster eingehängt wird: node .ara/tools/app.mjs --app <app> --add-pattern datev. Was die Felder heißen, steht im Kopf von .ara/tools/lib/wiring.mjs.",
+  "number": 9,
+  "requires": [],
+  "replaces": [
+    "backend/kern/feldlisten.mjs"
+  ],
+  "edits": [],
+  "next": [
+    {
+      "en": "The accounts in backend/kern/skr03.mjs are a sample list; the tax adviser reads them through. The route /datev needs the app's bookings: head of backend/wege/datev.mjs.",
+      "de": "Die Konten in backend/kern/skr03.mjs sind eine Beispielliste; der Steuerberater sieht sie durch. Der Weg /datev braucht die Buchungen der App: Kopf von backend/wege/datev.mjs."
+    }
+  ]
+}

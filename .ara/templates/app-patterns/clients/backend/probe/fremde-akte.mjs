@@ -7,6 +7,11 @@
  * versuchen könnte: ansehen, ändern, einreichen, in ihr anlegen, sie in der Liste finden. Jedes
  * Mal muss 404 kommen, nie 403 und nie die Akte selbst. 403 sagte, dass es sie gibt.
  *
+ * **Auch die Wege, die eine Beleg-App mitbringt** (Muster Dokumente, Belege, Verlauf): A hängt
+ * ein kleines PNG an seinen Vorgang, und B versucht Beleg, Bytes, Original, Verlauf, Entfernen und
+ * Anhängen; nichts davon darf er finden. Ein Weg, den A an der eigenen Akte nicht erreicht, ist in
+ * dieser App nicht eingehängt, und der Test sagt das, statt ein 404 als bestanden zu zählen.
+ *
  * **Er braucht drei Sitzungen, nicht zwei.** Handtest 06.10.2026: mit den Cookies von zwei
  * Mitarbeitern brach er ab, weil niemand die Probe-Akten anlegen durfte.
  *
@@ -166,6 +171,27 @@ if (![200, 201].includes(zuA.code) || ![200, 201].includes(zuB.code)) {
   process.exit(1);
 }
 
+/** Ein Bild aus einem Punkt, das kleinste PNG: als Beleg an der Probe-Akte. */
+const PNG = Buffer.from(
+  "89504e470d0a1a0a0000000d4948445200000001000000010806000000" +
+    "1f15c4890000000d49444154789c6360000002000154a24f5f0000000049454e44ae426082",
+  "hex"
+);
+
+/** Eine Datei hochladen, roh im Rumpf, wie das Muster Dokumente es nimmt. */
+async function hochladen(wer, pfad) {
+  const kopf = { ...wer.kopf, "content-type": "image/png", "x-dateiname": encodeURIComponent(`probe-${marke}.png`) };
+  const antwort = await anfrage("POST", `${basis}${pfad}`, kopf, PNG);
+  let daten = null;
+  try {
+    daten = JSON.parse(antwort.text);
+  } catch {
+    // Keine JSON-Antwort: die Prüfung unten sagt es.
+  }
+  return { code: antwort.status, daten };
+}
+
+let dokument = null;
 try {
   const angelegt = await ruf(a, "POST", "/vorgaenge", { titel: `Probe ${marke}`, text: "Eine Akte von A.", mandant: x });
   const id = angelegt.daten?.vorgang?.id;
@@ -189,7 +215,40 @@ try {
   pruefen(verwalten.code === 403, `B ruft die Zuweisung auf: ${verwalten.code}, erwartet 403 (dass es die Verwaltung gibt, ist kein Geheimnis)`);
   const ohne = await ruf({ name: "", kopf: {} }, "GET", `/vorgaenge/${id}`);
   pruefen(ohne.code === 404 || ohne.code === 401, `Ohne Anmeldung: ${ohne.code}, erwartet 404 oder 401`);
+
+  // Die Wege der Beleg-App. Erst A an der eigenen Akte: was A nicht erreicht, ist nicht eingehängt.
+  const beleg = await hochladen(a, `/dokumente?vorgang=${id}`);
+  dokument = beleg.code === 201 ? beleg.daten?.dokument?.id ?? null : null;
+  const wege = [
+    ["den Beleg von A in seiner Liste", `/vorgaenge/${id}/belege`, "Muster Belege"],
+    ["das Original von A (beleg.png)", `/vorgaenge/${id}/beleg.png`, "Muster Belege"],
+    ["das Blatt von A (original.png)", `/vorgaenge/${id}/original.png`, "Vorlage"],
+    ["den Verlauf von A", `/vorgaenge/${id}/verlauf`, "Muster Verlauf"],
+    ...(dokument ? [["die Bytes des Belegs von A", `/dokumente/${dokument}/datei`, "Muster Dokumente"]] : []),
+  ];
+  const ohneWeg = [];
+  for (const [was, pfad, muster] of wege) {
+    const eigen = await ruf(a, "GET", pfad);
+    if (eigen.code !== 200) {
+      ohneWeg.push(`${muster} (${pfad.replace(String(id), "<nr>")}: ${eigen.code})`);
+      continue;
+    }
+    const fremd = await ruf(b, "GET", pfad);
+    pruefen(fremd.code === 404, `B holt ${was}: ${fremd.code}, erwartet 404`);
+  }
+  if (dokument) {
+    const liste = await ruf(b, "GET", "/dokumente");
+    pruefen(liste.code !== 200 || !(liste.daten?.dokumente || []).some((d) => d.id === dokument), "B findet den Beleg von A nicht unter den Dokumenten");
+    const anhaengen = await hochladen(b, `/dokumente?vorgang=${id}`);
+    pruefen(anhaengen.code === 404, `B hängt einen Beleg an die Akte von A: ${anhaengen.code}, erwartet 404`);
+    const weg = await ruf(b, "DELETE", `/dokumente/${dokument}`);
+    pruefen(weg.code === 404, `B entfernt den Beleg von A: ${weg.code}, erwartet 404`);
+  } else {
+    ohneWeg.push(`Muster Dokumente oder Belege (Anhängen: ${beleg.code})`);
+  }
+  if (ohneWeg.length) console.log(`nicht eingehängt, nicht geprüft: ${ohneWeg.join(", ")}`);
 } finally {
+  if (dokument) await ruf(a, "DELETE", `/dokumente/${dokument}`);
   await ruf(verwaltung, "DELETE", `/zuordnungen?benutzer=${encodeURIComponent(a.name)}&mandant=${x}`);
   await ruf(verwaltung, "DELETE", `/zuordnungen?benutzer=${encodeURIComponent(b.name)}&mandant=${y}`);
 }

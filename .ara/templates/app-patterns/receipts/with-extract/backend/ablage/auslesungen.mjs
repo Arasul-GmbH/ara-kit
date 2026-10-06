@@ -1,6 +1,7 @@
 /**
  * Muster Belege: die Ablage der Auslesungen, mit Mandant. Sie ersetzt
- * `backend/ablage/auslesungen.mjs` aus dem Muster Dokument auslesen.
+ * `backend/ablage/auslesungen.mjs` aus dem Muster Dokument auslesen und kommt
+ * nur mit, wenn das Muster 6 in der App ist (Ordner `with-extract/`).
  *
  * Wie dort kann sie anlegen und lesen, sonst nichts: ein Protokoll, das sich
  * ändern lässt, ist keines. Dazu **gilt sie für einen Namen**, wie die Ablage

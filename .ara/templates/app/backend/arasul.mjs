@@ -671,6 +671,8 @@ export function geraet(vereinbarung, umgebung, { name, flow, abholenAlleMs = ABH
         status: eintrag.status ?? null,
         entschieden_von: eintrag.entschieden_von ?? null,
         begruendung: eintrag.begruendung ?? null,
+        // Wann entschieden wurde, wenn die Liste des Geräts es nennt; sonst weiß die App nur, wann sie es erfuhr.
+        entschieden_am: eintrag.entschieden_am ?? null,
       }));
       return { eintraege, fehler: null };
     },

@@ -59,6 +59,16 @@
  * antwortet 409. Der Entscheider gibt frei, was er gesehen hat, und nicht, was
  * danach noch nachgeschoben wurde.
  *
+ * **Wer mitschreibt, erfährt es.** `melden` bekommt jedes Ereignis eines Vorgangs als
+ * `{ vorgang, was, wer, angaben }`: angelegt, eingereicht, genehmigt, abgelehnt,
+ * abgelaufen, nicht gezählt. Die Vorlage meldet niemandem; das Muster Verlauf schreibt es
+ * in eine Tabelle, an die nur angehängt wird. Ein Fehler beim Mitschreiben hält den
+ * Vorgang nicht an, er steht im Protokoll des Containers.
+ *
+ * `argumente` gibt dem Lauf außer Nummer und Einreicher weitere Argumente mit, aus dem
+ * Vorgang, auch asynchron: das Muster Belege nennt dort die Endung des Belegs, damit das
+ * Original des Flows auf `.pdf`, `.png` oder `.jpg` endet. Verweise, keine Inhalte.
+ *
  * **Kein stilles null.** Jeder Vorgang, der ohne Lauf bleibt, trägt den Satz,
  * warum. "Ohne Arasul" steht nur dann da, wenn das Gerät der App wirklich
  * nichts gegeben hat; alles andere wird benannt, mit Status und Antwort.
@@ -83,7 +93,25 @@ export function darfAendern(vorgang) {
   return Boolean(vorgang) && vorgang.status === IN_ARBEIT;
 }
 
-export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig = () => true, bereit = () => true }) {
+export function vorgaenge({
+  ablage,
+  geraet,
+  name,
+  regel = () => null,
+  zustaendig = () => true,
+  bereit = () => true,
+  argumente = () => ({}),
+  melden = () => {},
+}) {
+  /** Ein Ereignis an den, der mitschreibt. Was dabei scheitert, hält den Vorgang nicht an. */
+  async function melde(vorgang, was, wer, angaben = null) {
+    try {
+      await melden({ vorgang, was, wer: wer || null, angaben });
+    } catch (fehler) {
+      process.stderr.write(`Verlauf: "${was}" an Vorgang ${vorgang?.id} nicht mitgeschrieben: ${fehler.message}\n`);
+    }
+  }
+
   /**
    * Den Stand eines Vorgangs nachziehen.
    *
@@ -110,6 +138,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
     // ist. Das Gerät hat es angenommen, die App zählt es nicht.
     if (freigabe.entschieden_von && (stand === "genehmigt" || stand === "abgelehnt")) {
       if (!(await zustaendig(vorgang, freigabe.entschieden_von))) {
+        await melde(vorgang, "nicht gezählt", freigabe.entschieden_von, { grund: "nicht mehr zuständig" });
         return await ablage.fortschreiben(vorgang.id, {
           ...vorgang,
           status: "ohne entscheidung",
@@ -119,6 +148,13 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
       }
     }
 
+    if (stand !== vorgang.status && stand !== "wartet") {
+      const angaben = {
+        ...(freigabe.begruendung ? { begruendung: freigabe.begruendung } : {}),
+        ...(freigabe.entschieden_am ? { entschieden_am: freigabe.entschieden_am } : {}),
+      };
+      await melde(vorgang, stand, freigabe.entschieden_von, Object.keys(angaben).length ? angaben : null);
+    }
     return await ablage.fortschreiben(vorgang.id, {
       status: stand,
       entschieden_von: freigabe.entschieden_von || null,
@@ -200,7 +236,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
      * angenommen, im Muster Mandanten etwa für einen fremden Mandanten.
      */
     async anlegen({ titel, text, von, ...zusatz }) {
-      return await ablage.anlegen({
+      const vorgang = await ablage.anlegen({
         ...zusatz,
         titel,
         text: text || "ohne Angabe",
@@ -210,6 +246,8 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
         lauf: null,
         hinweis: null,
       });
+      if (vorgang) await melde(vorgang, "angelegt", vorgang.von);
+      return vorgang;
     },
 
     /**
@@ -240,7 +278,7 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
      * Die Anfrage verweist auf die Nummer des Vorgangs, und die gibt es, weil
      * er schon liegt.
      */
-    async einreichen(id) {
+    async einreichen(id, { wer = null } = {}) {
       const vorgang = await ablage.eines(id);
       if (!vorgang) return { status: 404, vorgang: null, fehler: `Vorgang ${id} gibt es nicht.` };
       if (!darfAendern(vorgang)) {
@@ -267,10 +305,11 @@ export function vorgaenge({ ablage, geraet, name, regel = () => null, zustaendig
       // Der Titel steht vorn an jeder Freigabe des Laufs, und die Karte sieht jeder, der entscheiden darf:
       // wie die Anfrage selbst nennt er einen Verweis (Nummer, Einreicher), nie Titel oder Text des Vorgangs.
       const { lauf, fehler } = await geraet.flowStarten(
-        { vorgang: String(vorgang.id), von: vorgang.von },
+        { ...(await argumente(vorgang)), vorgang: String(vorgang.id), von: vorgang.von },
         { einreicher: vorgang.von === "unbekannt" ? null : vorgang.von, freigabe, titel: `Vorgang ${vorgang.id} von ${vorgang.von}` }
       );
       if (lauf !== null) {
+        await melde(vorgang, "eingereicht", wer || vorgang.von, { lauf });
         return { status: 200, vorgang: await ablage.fortschreiben(id, { ...vorgang, status: "wartet", lauf, hinweis: null }), fehler: null };
       }
 

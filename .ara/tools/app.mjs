@@ -10,6 +10,7 @@
  *   node .ara/tools/app.mjs --app beispiel --plan "<title>"   new plan, open
  *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <file>
  *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <file>
+ *   node .ara/tools/app.mjs --app beispiel --add-pattern clients,receipts   wire patterns in
  *   node .ara/tools/app.mjs --app beispiel --build            package into build/
  *
  * With `--device` it addresses a device, and then that device's contract applies:
@@ -55,6 +56,7 @@
  *   node .ara/tools/app.mjs --app beispiel --plan "<titel>"   neuer Plan, offen
  *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <datei>
  *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <datei>
+ *   node .ara/tools/app.mjs --app beispiel --add-pattern clients,receipts   Muster einhängen
  *   node .ara/tools/app.mjs --app beispiel --build            Paket nach build/
  *
  * Mit `--device` spricht es ein Gerät an, und dann gilt dessen Kontrakt:
@@ -159,6 +161,7 @@ import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
 import { contractRows, fillPath, listOf, routeRows, shareWays } from "./lib/adminways.mjs";
+import { addPatterns, wirablePatterns, wiringLines } from "./lib/wiring.mjs";
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -196,6 +199,7 @@ if (process.argv.length <= 2) {
         "  --plan-erledigt <file>   plan from active to done",
         '  --connections "<text>"   which outside services and research a description names, in plain words',
         '  --patterns "<text>"      which ready-made pattern a description matches, with its sheet',
+        "  --add-pattern <a>,<b>    wire patterns into the app: files, migrations, server.mjs and pages (documents, extract, clients, receipts, history, datev)",
         "  --build                  build the package, result under build/. Needs an active plan",
         "  --no-plan                with --build: build without an active plan, on purpose",
         "",
@@ -241,6 +245,7 @@ if (process.argv.length <= 2) {
         "  --plan-erledigt <datei>  Plan von aktiv nach erledigt",
         '  --connections "<text>"   welche Dienste und Recherche von außen eine Beschreibung nennt, in einfachen Worten',
         '  --patterns "<text>"      zu welchem fertigen Muster eine Beschreibung passt, mit seinem Blatt',
+        "  --add-pattern <a>,<b>    Muster in die App einhängen: Dateien, Migrationen, server.mjs und Seiten (documents, extract, clients, receipts, history, datev)",
         "  --build                  Paket bauen, Ergebnis unter build/. Braucht einen aktiven Plan",
         "  --no-plan                mit --build: ohne aktiven Plan bauen, bewusst",
         "",
@@ -983,9 +988,25 @@ if (!wantsDevice) {
   }
   if (arg.new) {
     createApp(name);
-    process.exit(0);
+    if (arg["add-pattern"] === undefined) process.exit(0);
+    console.log("");
   }
   const app = readApp(name);
+  if (arg["add-pattern"] !== undefined) {
+    if (!app.exists) fail(t(`The app ${name} does not exist yet. First --new.`, `Die App ${name} gibt es noch nicht. Zuerst --new.`));
+    if (arg["add-pattern"] === true) {
+      fail(
+        t(
+          `--add-pattern needs the pattern: ${wirablePatterns().join(", ")}, several with commas.`,
+          `--add-pattern braucht das Muster: ${wirablePatterns().join(", ")}, mehrere mit Komma.`
+        )
+      );
+    }
+    const wanted = String(arg["add-pattern"]).split(",").map((id) => id.trim()).filter(Boolean);
+    const report = addPatterns(app.dir, wanted, { id: name, name: app.manifest?.name || name });
+    console.log(wiringLines(name, report, wanted).join("\n"));
+    process.exit(report.unknown.length || report.missing.length || report.hand.length ? 1 : 0);
+  }
   if (typeof arg.plan === "string") {
     createPlan(app, arg.plan);
     process.exit(0);

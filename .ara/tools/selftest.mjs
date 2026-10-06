@@ -154,6 +154,8 @@ import {
   unreachable,
 } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
+import { addPatterns, wirablePatterns } from "./lib/wiring.mjs";
+import { ABSCHLUSS_STANDARD, ORIGINAL_STANDARD, applyAbschluss, applyFlowFields, applyRecognition } from "./lib/felder.mjs";
 import { frontendLoadsLibrary, libraryAddress, libraryFindings, libraryHints, librarySection, majorOf, readServed, runtimeMajor } from "./lib/laufzeit.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
@@ -5170,6 +5172,31 @@ await checkAsync("Die CSV-Hilfe der Vorlage schreibt BOM, Semikolon und Dezimalk
 /** Der Ordner der Muster, und die Vorlage daneben. */
 const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
 
+/**
+ * Eine App aus der Vorlage in `ziel`, wie `--new` sie schreibt: Backend, Flows und Oberfläche
+ * ohne `node_modules`, die Platzhalter ersetzt. Mit `felder` liest der Flow ein Dokument (Art
+ * `ergebnis_bestaetigen`, das Original der Vorlage) und übergibt sein Ergebnis an die App.
+ */
+function appVorlage(ziel, id, name, { felder = null } = {}) {
+  for (const teil of ["backend", "flows", "frontend", "app.json"]) {
+    cpSync(join(ROOT, ".ara", "templates", "app", teil), join(ziel, teil), {
+      recursive: true,
+      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
+    });
+  }
+  for (const eintrag of readdirSync(ziel, { recursive: true })) {
+    const pfad = join(ziel, String(eintrag));
+    if (!/\.(json|md|mjs|ts|tsx|html|sql)$/.test(pfad) || !statSync(pfad).isFile()) continue;
+    const text = readFileSync(pfad, "utf8");
+    if (text.includes("{{id}}") || text.includes("{{name}}")) writeFileSync(pfad, text.replace(/\{\{id\}\}/g, id).replace(/\{\{name\}\}/g, name));
+  }
+  if (felder) {
+    const flow = join(ziel, "flows", "freigabe.md");
+    const angaben = { felder, aenderbar: felder.slice(-1), arten: ["ergebnis_bestaetigen"], original: ORIGINAL_STANDARD };
+    writeFileSync(flow, applyAbschluss(applyRecognition(applyFlowFields(readFileSync(flow, "utf8"), angaben), angaben), { route: ABSCHLUSS_STANDARD }));
+  }
+}
+
 check("Das Wissen kennt neun Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
   // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt neun Muster, und
@@ -6493,7 +6520,7 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
   }
 });
 
-await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei aus Vorlage und Mustern, nur nach den Blättern", async () => {
+await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei aus Vorlage und Mustern, eingehängt mit dem Werkzeug", async () => {
   // Der Fremdtest vom 06.10.2026, ohne Gerät nachgestellt: ein Steuerfachwirt baut aus der Vorlage
   // und den Mustern 2, 6, 7, 8 und 9 einen Belegeingang. Was ihn damals aufhielt, muss hier ohne
   // Handarbeit gehen: die Migrationen laufen ohne Umnummerieren, die Partner sehen alle Mandanten
@@ -6506,7 +6533,8 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
     koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["admin", "user"] },
     freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["admin"] },
   };
-  const paket = mkdtempSync(join(tmpdir(), "ara-fremder-"));
+  const wurzel = mkdtempSync(join(tmpdir(), "ara-fremder-"));
+  const paket = join(wurzel, "backend");
   let app = null;
   const starts = [];
   const geraet = createServer((anfrage, antwort) => {
@@ -6533,39 +6561,16 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
   });
   await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
   try {
-    // Zusammensetzen, wie die Blätter es sagen: die Vorlage, darüber die Ordner der Muster.
-    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
-    for (const muster of ["documents", "extract", "clients", "receipts", "datev"]) cpSync(join(PATTERNS, muster, "backend"), paket, { recursive: true });
-    const kopfzeilen = (datei, anfang, bis = anfang) => {
-      const zeilen = readFileSync(join(PATTERNS, datei), "utf8")
-        .split("\n")
-        .filter((zeile) => zeile.startsWith(" *   "))
-        .map((zeile) => zeile.slice(5));
-      const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
-      const beginn = zeilen.findIndex((zeile) => zeile.startsWith(anfang));
-      const letzter = zeilen.findIndex((zeile) => zeile.startsWith(bis));
-      const ende = zeilen.findIndex((zeile, i) => i > letzter && zeile === "});");
-      return { importe, aufbau: zeilen.slice(beginn, ende + 1).join("\n") + "\n" };
-    };
-    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall", "const mandanten = ");
-    const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
-    const bereitZeile = readFileSync(join(PATTERNS, "receipts", "backend", "wege", "belege.mjs"), "utf8")
-      .split("\n")
-      .find((zeile) => zeile.startsWith(" *   bereit: "));
+    // Zusammensetzen mit dem Werkzeug (app.mjs --add-pattern): die Vorlage, darüber die Muster.
+    // Bis 0.77.0 standen hier die Zeilen aus den Köpfen der Dateien, von Hand eingesetzt.
+    appVorlage(wurzel, "belegeingang", "Belegeingang");
+    const bericht = addPatterns(wurzel, ["documents", "extract", "clients", "receipts", "datev"], { id: "belegeingang", name: "Belegeingang" });
+    assert(!bericht.missing.length && !bericht.hand.length && !bericht.kept.length, `das Einhängen braucht Handarbeit: ${JSON.stringify(bericht)}`);
     // Die eine Entscheidung der Kanzlei: die Partner sehen alle Mandanten. Ein Wort in einer Zeile.
-    assert(mandantenKopf.aufbau.includes("alleSehen: false,"), "die Zeilen des Blatts nennen den Schalter alleSehen nicht");
-    mandantenKopf.aufbau = mandantenKopf.aufbau.replace("alleSehen: false,", "alleSehen: true,").replace("bereit: () => true,", bereitZeile.slice(5).trim());
     const server = join(paket, "server.mjs");
-    let quelle = readFileSync(server, "utf8");
-    for (const [alt, neu] of [
-      ['import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n', 'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe],
-      ["  regel: () => null,\n});\n", "  regel: () => null,\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau],
-      ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await belege(anfrage, antwort, pfad)) return;\n  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
-    ]) {
-      assert(quelle.includes(alt), `die Naht in server.mjs gibt es nicht mehr: ${alt.split("\n")[0]}`);
-      quelle = quelle.replace(alt, neu);
-    }
-    writeFileSync(server, quelle);
+    const quelle = readFileSync(server, "utf8");
+    assert(quelle.includes("alleSehen: false,"), "die eingehängten Zeilen nennen den Schalter alleSehen nicht");
+    writeFileSync(server, quelle.replace("alleSehen: false,", "alleSehen: true,"));
     writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
 
     app = spawn("node", [server], {
@@ -6588,7 +6593,7 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
     });
     await new Promise((fertig) => setTimeout(fertig, 300));
     // 1. Die Migrationen laufen ohne Umnummerieren, in der Reihenfolge ihrer Voraussetzungen.
-    const gelaufen = ["001-vorgaenge", "002-abschluesse", "010-dokumente", "020-auslesungen", "030-mandanten", "031-entscheider", "040-belege"];
+    const gelaufen = ["001-vorgaenge", "002-abschluesse", "010-dokumente", "020-auslesungen", "030-mandanten", "031-entscheider", "040-belege", "041-auslesungen-mandant"];
     const stellen = gelaufen.map((name) => ausgabe.indexOf(name));
     assert(stellen.every((stelle, i) => stelle >= 0 && (i === 0 || stelle > stellen[i - 1])), `die Migrationen liefen nicht alle oder nicht in Reihenfolge: ${ausgabe} ${fehlerausgabe}`);
 
@@ -6679,11 +6684,11 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
     writeFileSync(sitzungen, JSON.stringify({ verwaltung: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, a: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, b: { name: "sb-b", kopf: mitCookie("sb-b", "user") } }));
     lauf = await probe(["--sitzungen", sitzungen]);
     assert(lauf.status === 1 && /drei Sitzungen/.test(lauf.aus) && !/geheim-/.test(lauf.aus), `eine Verwaltung ohne Rolle wird nicht benannt: ${lauf.aus}`);
-    return "Migrationen 001 bis 040 ohne Umnummerieren, Partnerin sieht alle, Zuweisung vor dem ersten Öffnen, Freigabe nur an die Sachbearbeiterin, Konto aus der Liste mit Namen und Rückfrage, Probe mit drei Sitzungen grün, mit zwei ein Satz";
+    return "eingehängt mit --add-pattern, Migrationen 001 bis 041 ohne Umnummerieren, Partnerin sieht alle, Zuweisung vor dem ersten Öffnen, Freigabe nur an die Sachbearbeiterin, Konto aus der Liste mit Namen und Rückfrage, Probe mit drei Sitzungen grün, mit zwei ein Satz";
   } finally {
     app?.kill("SIGTERM");
     geraet.close();
-    rmSync(paket, { recursive: true, force: true });
+    rmSync(wurzel, { recursive: true, force: true });
   }
 });
 

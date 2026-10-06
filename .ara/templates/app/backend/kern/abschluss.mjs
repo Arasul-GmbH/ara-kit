@@ -34,7 +34,7 @@ function gleich(a, b) {
   return timingSafeEqual(hash(a), hash(b));
 }
 
-export function abschluss({ ablage, geheimnis, kennung }) {
+export function abschluss({ ablage, geheimnis, kennung, melden = () => {} }) {
   const erwartet = (lauf) => String(kennung).replace("<nummer>", lauf);
   return {
     /**
@@ -72,6 +72,15 @@ export function abschluss({ ablage, geheimnis, kennung }) {
         });
       } catch {
         return { status: 500, antwort: { fehler: "Das Ergebnis konnte nicht gespeichert werden. Das Gerät kann es mit „erneut“ noch einmal schicken." } };
+      }
+      // Wer mitschreibt (Muster Verlauf), erfährt es einmal, beim ersten Mal, mit dem, was ein Mensch
+      // am Vorschlag geändert hat. Ein Fehler dabei nimmt die Annahme nicht zurück.
+      if (gespeichert.neu && rumpf.argumente?.vorgang != null) {
+        try {
+          await melden({ vorgang: { id: Number(rumpf.argumente.vorgang) }, was: "abgeschlossen", wer: null, angaben: { korrekturen: rumpf.korrekturen ?? null } });
+        } catch (fehler) {
+          process.stderr.write(`Verlauf: Abschluss von Lauf ${lauf} nicht mitgeschrieben: ${fehler.message}\n`);
+        }
       }
       // 201 beim ersten Mal, 200 beim zweiten: beides sagt dem Gerät „angekommen".
       return { status: gespeichert.neu ? 201 : 200, antwort: { lauf, gespeichert: true, neu: gespeichert.neu } };

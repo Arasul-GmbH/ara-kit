@@ -1,6 +1,7 @@
 /**
  * Muster Belege: die Belege am Vorgang. Kein eigener Weg, sondern ein Teil der
- * Einzelheiten eines Vorgangs in `seiten/liste.tsx`, unter den Angaben:
+ * Einzelheiten eines Vorgangs in `seiten/liste.tsx`, unter den Angaben; `--add-pattern receipts`
+ * setzt ihn dort ein:
  *
  *   import { BelegeAmVorgang } from "./belege";
  *
@@ -14,8 +15,11 @@
  *
  * Wer einen Vorgang sieht, sieht seine Belege und legt einen dazu; wer ihn
  * nicht sieht, bekommt vom Backend 404 und sieht auch keinen Beleg. Angesehen
- * und ausgelesen wird ein Beleg auf den Seiten der Muster Dokumente und
- * Dokument auslesen, unter derselben Nummer: `?nr=` in der Adresse.
+ * wird ein Beleg auf der Seite des Musters Dokumente, unter derselben Nummer
+ * (`?nr=` in der Adresse); mit Muster 6 liest ihn dort auch die App aus.
+ *
+ * **Als Beleg gehen PDF, PNG und JPEG**, die Arten, die das Gerät als Original liest; ein
+ * anderes Format weist das Backend mit einem Satz ab.
  */
 
 import { useState } from "react";
@@ -42,7 +46,7 @@ export function BelegeAmVorgang({ vorgang, offen = true }: { vorgang: number; of
           variant="ghost"
           size="sm"
           className="h-auto justify-start px-1 text-left whitespace-normal [overflow-wrap:anywhere]"
-          onClick={() => weiter(`/auslesen?nr=${b.id}`)}
+          onClick={() => weiter(`/dokumente?nr=${b.id}`)}
         >
           {b.name}
         </Button>
@@ -86,7 +90,7 @@ export function BelegeAmVorgang({ vorgang, offen = true }: { vorgang: number; of
             dateien={dateien}
             aufDateien={setDateien}
             mehrere={false}
-            akzeptiert=".pdf,image/*"
+            akzeptiert=".pdf,.png,.jpg,.jpeg"
             vorschau={false}
             disabled={anhaengen.isPending}
           />

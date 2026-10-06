@@ -1,8 +1,8 @@
--- Muster Belege: Dokumente und Auslesungen tragen den Mandanten, ein Dokument
--- hängt an einem Vorgang.
+-- Muster Belege: ein Dokument trägt den Mandanten und hängt an einem Vorgang.
 --
--- Sie setzt die 010 (Dokumente), die 020 (Auslesen) und die 030 (Mandanten)
--- voraus. Eine Migration, die einmal gelaufen ist, wird nie wieder angefasst.
+-- Sie setzt die 010 (Dokumente) und die 030 (Mandanten) voraus, nicht das Auslesen:
+-- liest das Gerät den Beleg im Flow (Kontrakt 14), braucht es kein Muster 6. Mit Muster 6
+-- trägt auch die Auslesung den Mandanten, in der 041 (`with-extract/`). Eine Migration, die einmal gelaufen ist, wird nie wieder angefasst.
 -- Eine App, die sie schon als 005-belege.sql trägt, behält die alte Datei.
 --
 -- **Die Nummern der Muster kollidieren nicht.** Die Vorlage hält 001 bis 009, jedes Muster
@@ -11,9 +11,7 @@
 -- Dokumente beide eine 002, und wer drei Muster zusammensetzte, sortierte von Hand.
 --
 -- **Der Mandant steht an jeder Zeile, nicht nur am Vorgang.** Ein Filter über
--- einen Umweg ist einer, den die nächste Abfrage vergisst. Und eine Auslesung
--- bleibt im Protokoll, auch wenn ihr Dokument geht: dann gibt es keinen
--- Umweg mehr, über den sie ihren Mandanten fände.
+-- einen Umweg ist einer, den die nächste Abfrage vergisst.
 --
 -- **Der Mandant kommt vom Vorgang**, nie aus der Anfrage: die Ablage liest
 -- ihn beim Ablegen am Vorgang ab. Ein Dokument aus der Zeit vor dieser
@@ -22,8 +20,6 @@
 
 ALTER TABLE dokumente ADD COLUMN mandant INTEGER REFERENCES mandanten (id);
 ALTER TABLE dokumente ADD COLUMN vorgang INTEGER REFERENCES vorgaenge (id);
-ALTER TABLE auslesungen ADD COLUMN mandant INTEGER REFERENCES mandanten (id);
 
 CREATE INDEX dokumente_nach_mandant ON dokumente (mandant, id DESC);
 CREATE INDEX dokumente_nach_vorgang ON dokumente (vorgang);
-CREATE INDEX auslesungen_nach_mandant ON auslesungen (mandant, dokument_id);

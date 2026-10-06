@@ -1,0 +1,56 @@
+{
+  "$comment": "Wie dieses Muster eingehängt wird: node .ara/tools/app.mjs --app <app> --add-pattern extract. Was die Felder heißen, steht im Kopf von .ara/tools/lib/wiring.mjs.",
+  "number": 6,
+  "requires": [
+    "documents"
+  ],
+  "edits": [
+    {
+      "file": "backend/server.mjs",
+      "seam": "imports",
+      "text": "import { auslesungsAblage } from \"./ablage/auslesungen.mjs\";\nimport { auslesen as auslesenKern } from \"./kern/auslesen.mjs\";\nimport { auslesenWege } from \"./wege/auslesen.mjs\";\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "seam": "setup",
+      "when": "!receipts",
+      "text": "const auslesen = auslesenWege({\n  kern: auslesenKern({ dokumente: dokumentAblage(db), auslesungen: auslesungsAblage(db), geraet }),\n  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "before": [
+        "  if (await dokumente(anfrage, antwort, pfad)) return;\n"
+      ],
+      "when": "!receipts",
+      "text": "  if (await auslesen(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "after": [
+        "import { Neu } from \"./seiten/neu\";\n"
+      ],
+      "text": "import { Auslesen } from \"./seiten/auslesen\";\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "before": [
+        "      <Route path=\"*\""
+      ],
+      "text": "      <Route path=\"/auslesen\" element={<Auslesen />} />\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "after": [
+        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+      ],
+      "text": "import { FileSearchIcon } from \"lucide-react\";\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "before": [
+        "  ];\n\n  return (\n    <Leiste"
+      ],
+      "text": "    {\n      titel: \"Auslesen\",\n      eintraege: [\n        {\n          kennung: \"weg-auslesen\",\n          name: \"Dokument auslesen\",\n          symbol: <FileSearchIcon />,\n          aktiv: ort.pathname === \"/auslesen\",\n          aufKlick: () => gehe(\"/auslesen\"),\n        },\n      ],\n    },\n"
+    }
+  ]
+}

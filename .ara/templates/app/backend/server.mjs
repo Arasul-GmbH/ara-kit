@@ -67,6 +67,13 @@ const ABSCHLUSS = "/abschluss/freigabe";
 // und nicht das nächste Einspielen.
 const DATEN = process.env.APP_DATEN || join(HIER, "daten");
 
+// Wer mitschreibt, was mit einem Vorgang geschieht: niemand, bis das Muster Verlauf sich hier
+// einträgt (`mitschreiber.push`). Kern und Abschluss melden jedes Ereignis an `melden`.
+const mitschreiber = [];
+const melden = async (ereignis) => {
+  for (const schreiben of mitschreiber) await schreiben(ereignis);
+};
+
 const vereinbarung = vereinbarungLesen();
 const geraet = anschluss(vereinbarung, process.env, { name: NAME, flow: FLOW });
 
@@ -88,6 +95,7 @@ const vorgangsKern = kern({
   // Kontrakt sagt es unter `freigaben`). `regel` zieht den Kreis nur enger, mit `entscheider`;
   // eine Fach-App nennt dort die Zuständigen eines Vorgangs (Muster 7).
   regel: () => null,
+  melden,
 });
 // Das Geheimnis legt das Gerät beim Einspielen in den Container, je App und Stand, unter dem Namen aus
 // der Vereinbarung; dort steht auch die Form der Kennung. Fehlt eines davon, nimmt die Route nichts an,
@@ -97,6 +105,7 @@ const abschlussAnnahme = abschlussKern({
   ablage: abschlussAblage(db),
   geheimnis: (abschlussToken && process.env[abschlussToken]) || "",
   kennung: vereinbarung.abschluss?.kennung || null,
+  melden,
 });
 
 /**
@@ -189,7 +198,7 @@ const server = createServer(async (anfrage, antwort) => {
       text: String(rumpf.text || "").trim().slice(0, 2000),
       von: geraet.angemeldet(anfrage.headers).benutzer,
     });
-    const { vorgang } = await vorgangsKern.einreichen(angelegt.id);
+    const { vorgang } = await vorgangsKern.einreichen(angelegt.id, { wer: angelegt.von });
     return json(antwort, 201, { vorgang });
   }
 
