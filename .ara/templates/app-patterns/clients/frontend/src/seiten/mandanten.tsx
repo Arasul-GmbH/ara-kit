@@ -107,7 +107,8 @@ function Fehlt({ id, children }: { id: string; children: ReactNode }) {
  */
 export function MandantWahl({ wert, aufWert }: { wert: string; aufWert: (wert: string) => void }) {
   const abfrage = useMandanten();
-  const einziger = abfrage.data?.mandanten.length === 1 ? String(abfrage.data.mandanten[0].id) : null;
+  const liste = abfrage.data?.mandanten ?? [];
+  const einziger = liste.length === 1 && liste[0] ? String(liste[0].id) : null;
   useEffect(() => {
     if (einziger && !wert) aufWert(einziger);
   }, [einziger, wert, aufWert]);

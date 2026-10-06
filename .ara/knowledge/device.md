@@ -637,8 +637,8 @@ copy, with `--password-ref` and `--login-user`; **every call below takes these t
 **A manual step for which the kit has no command** goes as one call with that session:
 
 ```
-node .ara/tools/device.mjs --name <device> --admin-call "GET /api/..."
-node .ara/tools/device.mjs --name <device> --admin-call "POST /api/..." --body '{"...": "..."}'
+node .ara/tools/device.mjs --name <device> --admin-call "GET <route>"
+node .ara/tools/device.mjs --name <device> --admin-call "POST <route>" --body '{"...": "..."}'
 ```
 
 The answer comes back with every value that can carry a secret masked (`…`): a credential, a

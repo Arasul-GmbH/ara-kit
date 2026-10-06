@@ -674,8 +674,8 @@ beiden Schalter**.
 **Ein Handgriff, für den das Kit keinen Befehl hat**, geht als ein Aufruf mit dieser Sitzung:
 
 ```
-node .ara/tools/device.mjs --name <gerät> --admin-call "GET /api/..."
-node .ara/tools/device.mjs --name <gerät> --admin-call "POST /api/..." --body '{"...": "..."}'
+node .ara/tools/device.mjs --name <gerät> --admin-call "GET <weg>"
+node .ara/tools/device.mjs --name <gerät> --admin-call "POST <weg>" --body '{"...": "..."}'
 ```
 
 Die Antwort kommt zurück, jeder Wert, der ein Geheimnis tragen kann, maskiert (`…`): ein Ausweis,
