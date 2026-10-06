@@ -3,8 +3,8 @@
  * Einreichen.
  *
  * Liegt in einer App aus der Vorlage unter `frontend/src/seiten/mandanten.tsx`.
- * Eingehängt wird sie mit einem Weg in `app.tsx` und einem Eintrag in
- * `rahmen/seitenleiste.tsx`, der nur für die Verwaltung dasteht:
+ * Eingehängt wird sie mit `app.mjs --add-pattern clients`: ein Weg in `app.tsx` und ein
+ * Eintrag in `rahmen/seitenleiste.tsx`, der nur für die Verwaltung dasteht:
  *
  *   <Route path="/mandanten" element={<Mandanten />} />
  *

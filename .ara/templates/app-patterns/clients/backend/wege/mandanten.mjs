@@ -2,7 +2,8 @@
  * Muster Mandanten: die Wege. HTTP und sonst nichts.
  *
  * Liegt in einer App aus der Vorlage unter `backend/wege/mandanten.mjs`.
- * Eingehängt wird sie in `server.mjs` so:
+ * Eingehängt wird sie mit `node .ara/tools/app.mjs --app <app> --add-pattern clients`;
+ * das setzt diese Zeilen in `server.mjs` ein (dazu `melden` an den Kern):
  *
  *   import { mandantAblage } from "./ablage/mandanten.mjs";
  *   import { mandanten as mandantenKern, verwaltungsRolle } from "./kern/mandanten.mjs";

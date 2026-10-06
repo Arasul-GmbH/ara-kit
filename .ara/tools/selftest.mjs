@@ -5208,23 +5208,23 @@ function appVorlage(ziel, id, name, { felder = null } = {}) {
   }
 }
 
-check("Das Wissen kennt neun Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+check("Das Wissen kennt zehn Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
-  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt neun Muster, und
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt zehn Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
   // Seit 0.37.0 ist das Blatt der Überblick, und das Blatt jedes Musters liegt
   // neben seinem Code: gelesen wird nur das, das der Plan nimmt.
   for (const [blatt, endung] of [[".ara/knowledge/app-patterns.md", ".md"], [".ara/knowledge/app-patterns.de.md", ".de.md"]]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
-    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
       assert(new RegExp(`^\\| ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
     assert(pfade.length >= 7, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
     for (const pfad of pfade) assert(existsSync(join(ROOT, pfad)), `${blatt} nennt ${pfad}, die Datei fehlt`);
     const blaetter = pfade.filter((pfad) => pfad.endsWith(`/README${endung}`));
-    assert(blaetter.length === 8, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind acht`);
+    assert(blaetter.length === 9, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind neun`);
     // Was das Blatt der Dokumente über die Bibliothek sagt, steht so in der Bibliothek.
     const dokumente = readFileSync(join(PATTERNS, "documents", `README${endung}`), "utf8");
     for (const wort of ["quelle", "art", "hoehe", "pdf-dateien", "Dokumentanzeige", "Dateiablage"]) {
@@ -5242,7 +5242,7 @@ check("Das Wissen kennt neun Muster jenseits des Formulars, und jeder Verweis tr
   ]) {
     assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
   }
-  return "neun Muster, beide Fassungen, Befehl, Prüfliste und --new";
+  return "zehn Muster, beide Fassungen, Befehl, Prüfliste und --new";
 });
 
 await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfskript besteht, und jeder Fehler fällt durch", async () => {

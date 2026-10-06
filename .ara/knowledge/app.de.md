@@ -47,7 +47,7 @@ Sag zu Beginn in einem Satz, dass du ohne Fragen weitermachst und die Annahmen i
 | **Bild, Freigabestufen, was gelesen wird** | Siehe „Weitere Fragen" |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
-| **Welche Gestalt sie annimmt** | Die neun Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
+| **Welche Gestalt sie annimmt** | Die zehn Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |

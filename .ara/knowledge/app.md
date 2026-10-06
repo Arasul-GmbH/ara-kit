@@ -48,7 +48,7 @@ you are going on without questions and that the assumptions stand in the plan.
 | **Picture, approval stages, what is read** | See "More questions" |
 | **What has to stay** | What survives a new version, a switch and a year. See "Data that stays" |
 | **Which professional standards apply** | Export format, chart of accounts, retention: `.ara/knowledge/app-professional.md` |
-| **Which shape it takes** | The nine patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
+| **Which shape it takes** | The ten patterns in `.ara/knowledge/app-patterns.md`, and the plan names the one it uses |
 | **What does not belong to it** | The paragraph that saves the disappointment later |
 | **How you see that it is finished** | One sentence you can check |
 | **What happens when it is wrong once** | Something that gets checked is an afternoon. Something that may never be wrong is a project |

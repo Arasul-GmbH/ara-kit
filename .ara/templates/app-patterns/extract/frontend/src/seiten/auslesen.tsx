@@ -3,8 +3,8 @@
  * die Felder neben dem Dokument prüfen, und das Protokoll darunter.
  *
  * Setzt das Muster Dokumente voraus (`dokumente.ts`, die Wege und die Tabelle).
- * Liegt unter `frontend/src/seiten/auslesen.tsx` und wird eingehängt wie jede
- * Seite: ein Weg in `app.tsx`, ein Eintrag in `rahmen/seitenleiste.tsx`.
+ * Liegt unter `frontend/src/seiten/auslesen.tsx`; `app.mjs --add-pattern extract` hängt
+ * sie ein wie jede Seite: ein Weg in `app.tsx`, ein Eintrag in `rahmen/seitenleiste.tsx`.
  *
  *   <Route path="/auslesen" element={<Auslesen />} />
  *

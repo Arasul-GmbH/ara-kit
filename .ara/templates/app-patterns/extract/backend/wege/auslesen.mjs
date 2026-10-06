@@ -3,7 +3,8 @@
  *
  * Setzt das Muster Dokumente voraus: dessen Tabelle, Ablage und Wege liegen
  * schon in der App. Liegt unter `backend/wege/auslesen.mjs` und wird mit
- * diesen Zeilen in `server.mjs` eingehängt, unter denen des Musters Dokumente:
+ * `app.mjs --add-pattern documents,extract` eingehängt; das setzt diese Zeilen in
+ * `server.mjs`, unter die des Musters Dokumente:
  *
  *   import { auslesungsAblage } from "./ablage/auslesungen.mjs";
  *   import { auslesen as auslesenKern } from "./kern/auslesen.mjs";

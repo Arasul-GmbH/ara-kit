@@ -1,4 +1,4 @@
-# Verfahren: neun Muster einer App jenseits des Formulars
+# Verfahren: zehn Muster einer App jenseits des Formulars
 
 > **Wann brauchst du das?** Im Interview, solange die Idee noch entsteht, und immer dann, wenn
 > jemand Arasul für ein Formularwerkzeug hält. Das Gerät bringt Anmeldung, Freigaben, Flows und
@@ -9,9 +9,11 @@ fremden Dienst rufen, ein fremdes Werkzeug hinter der Anmeldung: das ist das eig
 und das Produkt stellt dafür keinen Dienst bereit, aus Entscheidung und nicht aus Lücke.
 
 Jedes Muster ist Code unter `.ara/templates/app-patterns/`, und **neben dem Code liegt sein Blatt**,
-`README.de.md`. Lies nur das Blatt des Musters, das der Plan nimmt. Jede Datei sagt in ihrem Kopf,
-wohin sie gehört, der Selbsttest lässt sie laufen, und **keine trägt einen Weg, eine Kopfzeile oder
-einen Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage.
+`README.de.md`. Lies nur das Blatt des Musters, das der Plan nimmt. **Eingehängt wird mit dem
+Werkzeug, nicht von Hand**: `node .ara/tools/app.mjs --app <app> --add-pattern <name>` kopiert Dateien
+und Migrationen und setzt die Zeilen in `server.mjs` und die Seiten; eine fehlende Voraussetzung nennt
+es. Der Selbsttest lässt sie laufen, und **keine trägt einen Weg, eine Kopfzeile oder einen
+Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage.
 
 | Muster | Was es zeigt | Blatt |
 | --- | --- | --- |
@@ -24,6 +26,7 @@ einen Umgebungsnamen des Geräts**: sie lesen `arasul.json`, wie die Vorlage.
 | 7. Mandanten | Wer welchen Mandanten sieht, wer entscheidet | `.ara/templates/app-patterns/clients/README.de.md` |
 | 8. Belege je Mandant | 2, 6 und 7 zusammen: Beleg am Vorgang, ausgelesen, je Mandant getrennt | `.ara/templates/app-patterns/receipts/README.de.md` |
 | 9. Buchungsstapel für den Steuerberater | Eine DATEV-Datei aus freigegebenen Buchungen, Konten des SKR03, ein Prüfskript, das vor jedem Herunterladen läuft | `.ara/templates/app-patterns/datev/README.de.md` |
+| 10. Verlauf eines Vorgangs | Wer was wann, nur angehängt | `.ara/templates/app-patterns/history/README.de.md` |
 
 **Muster 1 ist die Vorlage**: eine `Route` je Seite in `Wege()` von
 `.ara/templates/app/frontend/src/app.tsx`, die `Seitenleiste` der Bibliothek in
