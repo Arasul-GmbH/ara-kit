@@ -125,7 +125,8 @@ import {
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
-import { addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
+import { addressFindings, addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
+import { kurzbericht } from "./lib/kurzbericht.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
 import { leavesPackage, safeFolder, walkFiles } from "./lib/files.mjs";
@@ -223,6 +224,7 @@ if (process.argv.length <= 2) {
         "  --port <number>          port on the device for --compose, otherwise 8080",
         "  --base <url>             a different address from the file (api_base, otherwise address)",
         "  --insecure               accept a self-signed certificate",
+        "  --verbose                with --check and --deploy: the whole report, with the rules of the contract",
         "  --json                   output for the evaluation",
       ].join("\n"),
       [
@@ -269,6 +271,7 @@ if (process.argv.length <= 2) {
         "  --port <nummer>          Port am Gerät für --compose, sonst 8080",
         "  --base <url>             andere Adresse als die aus der Akte (api_base, sonst address)",
         "  --insecure               ein selbst ausgestelltes Zertifikat annehmen",
+        "  --verbose                mit --check und --deploy: der ganze Bericht, mit den Regeln des Kontrakts",
         "  --json                   Ausgabe für die Auswertung",
       ].join("\n")
     )
@@ -1807,6 +1810,33 @@ async function packageHints(dir, manifest) {
   ];
 }
 
+/**
+ * Was im kurzen Bericht steht und nichts anhält: Umlaute, Anrede, Bibliothek und Freigabe-Seite,
+ * was dieses Gerät der App nicht verspricht, Schemaangaben, die das Kit nicht kennt. Je eine Zeile.
+ */
+async function shortHints(dir, manifest, result) {
+  const vereinbart = arrangementPath(dir, manifest) ? appArrangement(contract, { device: place, date: today() }) : null;
+  return [
+    ...sichtbareErsatzfunde(dir, manifest).map((f) => t(`Umlauts: ${f.wo}: ${f.woerter.join(", ")}`, `Umlaute: ${f.wo}: ${f.woerter.join(", ")}`)),
+    ...addressFindings(dir).map((b) => t(`Address: ${b.datei}:${b.zeile} „${b.wort}": ${b.text}`, `Anrede: ${b.datei}:${b.zeile} „${b.wort}": ${b.text}`)),
+    ...(await packageHints(dir, manifest)),
+    ...(vereinbart?.missing ?? []).map((satz) => t(`Not promised by ${place}: ${satz}`, `Verspricht ${place} nicht: ${satz}`)),
+    ...(result.unchecked.length
+      ? [t(`Not checked, the kit does not know the schema keyword: ${result.unchecked.join(", ")}`, `Nicht geprüft, das Kit kennt die Schemaangabe nicht: ${result.unchecked.join(", ")}`)]
+      : []),
+  ];
+}
+
+/** Was anhält: das Schema des Geräts, das Paket, und ein Gerät, das weiter ist als dieses Kit. */
+function shortStops(result, delivery) {
+  return [...(result.ok ? [] : result.problems), ...delivery, ...(version.ok ? [] : [version.text])];
+}
+
+/** Der Aufruf dieses Werkzeugs für diese App an diesem Gerät, für die nächsten Schritte. */
+function callFor(manifest, rest) {
+  return `node .ara/tools/app.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device} --app ${manifest.id} ${rest}`;
+}
+
 if (arg.check !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.check));
   const result = { ...checkManifest(contract, manifest), manifest };
@@ -1816,6 +1846,24 @@ if (arg.check !== undefined) {
       ? appArrangement(contract, { device: place, date: today() })
       : null;
     console.log(JSON.stringify({ device: place, folder: dir, version, delivery, arrangement, ...result }, null, 2));
+  } else if (!arg.verbose) {
+    const halte = shortStops(result, delivery);
+    const hinweise = await shortHints(dir, manifest, result);
+    // Ein Ordner statt der App aus `apps/`: dann nennen auch die nächsten Schritte den Ordner.
+    const ordner = typeof arg.check === "string" ? arg.check : null;
+    const aufruf = (rest) =>
+      ordner ? `node .ara/tools/app.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device} ${rest.replace(/^(--\S+)/, `$1 ${ordner}`)}` : callFor(manifest, rest);
+    const pruefen = aufruf("--check");
+    const ergebnis = halte.length
+      ? t(`Result: ${manifest.id} ${manifest.version} does not pass ${place}, ${halte.length} finding${halte.length === 1 ? "" : "s"} stop.`, `Ergebnis: ${manifest.id} ${manifest.version} geht so nicht auf ${place}, ${halte.length === 1 ? "ein Befund hält" : `${halte.length} Befunde halten`} an.`)
+      : t(`Result: ${manifest.id} ${manifest.version} fits ${place} (contract ${version.device ?? "?"}), nothing stops${hinweise.length ? `, ${hinweise.length} hint${hinweise.length === 1 ? "" : "s"}` : ""}.`, `Ergebnis: ${manifest.id} ${manifest.version} passt zu ${place} (Kontrakt ${version.device ?? "?"}), nichts hält an${hinweise.length ? `, ${hinweise.length} ${hinweise.length === 1 ? "Hinweis" : "Hinweise"}` : ""}.`);
+    const weiter = !version.ok
+      ? [t(`Next: ${catchUpLines()[1]}`, `Weiter: ${catchUpLines()[1]}`)]
+      : halte.length
+        ? [t(`Next: fix the findings, then again: ${pruefen}`, `Weiter: die Befunde beheben, dann noch einmal: ${pruefen}`)]
+        : [t(`Next, into staging: ${aufruf(`--deploy${contractKnowsChangeText(contract) ? ` ${FLAG_AENDERUNG} "<what is new>"` : ""}`)}`, `Weiter, in den Teststand: ${aufruf(`--deploy${contractKnowsChangeText(contract) ? ` ${FLAG_AENDERUNG} "<was neu ist>"` : ""}`)}`)];
+    weiter.push(t(`Everything, with the rules of the contract: ${pruefen} --verbose`, `Alles, mit den Regeln des Kontrakts: ${pruefen} --verbose`));
+    console.log(kurzbericht({ ergebnis, halte, hinweise, weiter, ganz: `${pruefen} --verbose` }).join("\n"));
   } else {
     console.log(
       spaced([
@@ -1837,13 +1885,31 @@ if (arg.deploy !== undefined) {
   const { dir, manifest } = readManifest(folderFor(arg.deploy));
   const result = { ...checkManifest(contract, manifest), manifest };
   const delivery = await deliveryFindings(dir, manifest, result);
+  const kurz = !arg.verbose && !arg.json;
+  if ((!result.ok || delivery.length) && kurz) {
+    const halte = shortStops(result, delivery);
+    const ergebnis = t(`Result: nothing deployed, ${halte.length} finding${halte.length === 1 ? "" : "s"} stop. First the manifest, then the device.`, `Ergebnis: nichts eingespielt, ${halte.length === 1 ? "ein Befund hält" : `${halte.length} Befunde halten`} an. Erst das Manifest, dann das Gerät.`);
+    const pruefen = callFor(manifest, "--check");
+    console.log(
+      kurzbericht({
+        ergebnis,
+        halte,
+        weiter: [t(`Next: fix the findings, then: ${pruefen}`, `Weiter: die Befunde beheben, dann: ${pruefen}`), t(`Everything: ${pruefen} --verbose`, `Alles: ${pruefen} --verbose`)],
+        ganz: `${pruefen} --verbose`,
+      }).join("\n")
+    );
+    process.exit(1);
+  }
   if (!result.ok || delivery.length) {
     console.log(reportManifest(relative(ROOT, dir) || dir, result, delivery));
     fail(t("\nNothing deployed. First the manifest, then the device.", "\nNichts eingespielt. Erst das Manifest, dann das Gerät."));
   }
-  console.log(umlautSection(dir, manifest).join("\n"));
-  const hints = await packageHints(dir, manifest);
-  if (hints.length) console.log(hints.join("\n"));
+  const kurzHinweise = kurz ? await shortHints(dir, manifest, result) : [];
+  if (!kurz) {
+    console.log(umlautSection(dir, manifest).join("\n"));
+    const hints = await packageHints(dir, manifest);
+    if (hints.length) console.log(hints.join("\n"));
+  }
 
   // „Nichts eingespielt“ allein schickt den Menschen in seine App. Der Grund
   // liegt hier im Kit, und der Weg heraus steht in derselben Meldung.
@@ -1890,7 +1956,7 @@ if (arg.deploy !== undefined) {
   if (arrangementTarget) {
     const arrangement = appArrangement(contract, { device: place, date: today() });
     writeFileSync(arrangementTarget, arrangementFile(arrangement));
-    console.log(arrangementSection(dir, manifest).join("\n").replace(/^\n/, ""));
+    if (!kurz) console.log(arrangementSection(dir, manifest).join("\n").replace(/^\n/, ""));
   }
 
   // Gepackt wird, was der Kontrakt sagt: der Inhalt des Ordners, nicht der
@@ -1971,6 +2037,24 @@ if (arg.deploy !== undefined) {
 
     if (arg.json) {
       console.log(JSON.stringify({ device: place, eingespielt: sent.data }, null, 2));
+    } else if (kurz) {
+      const stand = sent.data || {};
+      const id = stand.app_id ?? manifest.id;
+      const ansehen = `${base}${(contract?.apps?.teststand || "/apps/<id>/test/").replace("<id>", id)}`;
+      const ergebnis = t(
+        `Result: deployed, ${id} ${stand.version ?? manifest.version} in slot "${stand.stand ?? "test"}" of ${place}.`,
+        `Ergebnis: eingespielt, ${id} ${stand.version ?? manifest.version} im Stand "${stand.stand ?? "test"}" von ${place}.`
+      );
+      const weiter = [
+        t(`Look at it: ${ansehen}`, `Ansehen: ${ansehen}`),
+        frueher
+          ? t(`Releases stay from version ${frueher}: whoever saw staging sees this one.`, `Freigaben bleiben von Fassung ${frueher}: wer den Teststand sah, sieht diese.`)
+          : hasSecret(startRef)
+            ? t(`Nobody sees it yet; shared with the start password under ${startRef}: ${callFor(manifest, "--share <account>")}`, `Gesehen hat es noch niemand; freigeben mit dem Startpasswort unter ${startRef}: ${callFor(manifest, "--share <konto>")}`)
+            : t(`Nobody sees it yet; shared with an administrator's password (no start password under ${startRef}): ${callFor(manifest, "--share <account> --password-ref <NAME> --login-user <name>")}`, `Gesehen hat es noch niemand; freigeben mit dem Passwort eines Administrators (unter ${startRef} liegt kein Startpasswort): ${callFor(manifest, "--share <konto> --password-ref <NAME> --login-user <name>")}`),
+        t(`A human switches live when staging convinces: ${callFor(manifest, "--live")}`, `Live schaltet ein Mensch, wenn der Teststand überzeugt: ${callFor(manifest, "--live")}`),
+      ];
+      console.log(["", ...kurzbericht({ ergebnis, hinweise: kurzHinweise, weiter })].join("\n"));
     } else {
       const stand = sent.data || {};
       console.log(

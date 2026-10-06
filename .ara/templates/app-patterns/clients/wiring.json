@@ -103,7 +103,7 @@
   ],
   "next": [
     {
-      "en": "Does the management see every client? The switch alleSehen in backend/server.mjs, false by default; a tax office sets true.",
+      "en": "Whether the management sees every client: the switch alleSehen in backend/server.mjs, false by default; a tax office sets true.",
       "de": "Sieht die Verwaltung alle Mandanten? Der Schalter alleSehen in backend/server.mjs, vorgegeben false; eine Kanzlei setzt true."
     }
   ]
