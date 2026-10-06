@@ -2806,6 +2806,7 @@ const KONTRAKT = {
     { verb: "POST", pfad: "/api/v1/external/apps", bereich: "app:deploy", was: "Ein Paket einspielen" },
     { verb: "GET", pfad: "/api/v1/external/apps/:id", bereich: "app:deploy", was: "Was das Gerät weiß" },
     { verb: "POST", pfad: "/api/v1/external/apps/:id/schalten", bereich: "app:deploy", was: "Live schalten" },
+    { verb: "GET", pfad: "/api/v1/external/apps/:id/protokoll?stand=<test|live>&zeilen=<1..1000>", bereich: "app:deploy", was: "Die letzten Zeilen des Containers" },
     { verb: "DELETE", pfad: "/api/v1/external/apps/:id?bestaetigung=<id>", bereich: "app:deploy", was: "App weg" },
     { verb: "POST", pfad: "/api/v1/external/flows/:name/run", bereich: "flow:run", was: "Einen Flow starten" },
     { verb: "GET", pfad: "/api/v1/external/flows/runs/:id", bereich: "flow:run", was: "Einen Lauf lesen" },
@@ -3526,6 +3527,22 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
         }
         return antwort(200, { data: { app_id: "probeapp", stand: "live", version: ziel === "live" ? "1.0.0" : "0.9.0" } });
       }
+      if (pfad === "/api/v1/external/apps/probeapp/protokoll") {
+        gesehen.protokoll = frage || "";
+        if (/stand=live/.test(frage || "") && gesehen.ohneLive) return antwort(404, { error: { code: "NOT_FOUND", message: "Kein Container für probeapp im Livestand" } });
+        return antwort(200, {
+          data: {
+            app_id: "probeapp",
+            stand: /stand=live/.test(frage || "") ? "live" : "test",
+            laeuft: false,
+            neustarts: 3,
+            exit_code: 1,
+            geschwaerzt: 2,
+            // Mit Docker-Vorspann und Farbe, wie es aus dem Container kommt.
+            zeilen: ["\u0001\u0000\u0000\u00002026-10-07T00:00:01Z \u001b[31mStart\u001b[0m", "2026-10-07T00:00:02Z Schluessel [geschwärzt]"],
+          },
+        });
+      }
       if (pfad === "/api/v1/external/apps/probeapp" && request.method === "DELETE") {
         gesehen.entfernt = frage;
         return antwort(200, { data: { app_id: "probeapp", entfernt: true } });
@@ -3656,6 +3673,29 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert(run.status === 0, `Zurückschalten fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.geschaltet.join(",") === "live,zurueck", `falsch geschaltet: ${gesehen.geschaltet}`);
 
+    // --logs: der Weg und die Namen der Angaben kommen aus dem Kontrakt, die Zeilen ohne Steuerzeichen.
+    // `--live` heißt hier der Livestand und schaltet nichts.
+    const geschaltetVorher = gesehen.geschaltet.join(",");
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--logs", "--zeilen", "50"], env);
+    assert(run.status === 0, `--logs fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(gesehen.protokoll === "stand=test&zeilen=50", `--logs ruft den Weg des Kontrakts falsch: ${gesehen.protokoll}`);
+    assert(/Start/.test(run.stdout) && !/[\u0000-\u0008\u001b]/.test(run.stdout), `die Zeilen tragen Steuerzeichen: ${JSON.stringify(run.stdout)}`);
+    assert(/läuft nicht/.test(run.stdout) && /3 Neustart/.test(run.stdout) && /1/.test(run.stdout), `Lauf, Neustarts oder Rückgabewert fehlen: ${run.stdout}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--logs", "--live"], env);
+    assert(run.status === 0 && /^stand=live/.test(gesehen.protokoll) && gesehen.geschaltet.join(",") === geschaltetVorher, `--logs --live liest nicht den Livestand oder schaltet: ${gesehen.protokoll} ${run.stderr}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--logs", "--zeilen", "5000"], env);
+    assert(run.status !== 0 && /1000/.test(run.stdout + run.stderr), `eine Zahl über der Grenze des Kontrakts wird nicht abgewiesen: ${run.stdout}${run.stderr}`);
+    gesehen.ohneLive = true;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--logs", "--live"], env);
+    gesehen.ohneLive = false;
+    assert(run.status !== 0 && /keinen Container/.test(run.stdout + run.stderr), `ein 404 beim Protokoll wird nicht erklärt: ${run.stdout}${run.stderr}`);
+    {
+      const wegDavor = KONTRAKT.endpunkte.splice(KONTRAKT.endpunkte.findIndex((e) => /protokoll/.test(e.pfad)), 1);
+      run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--logs"], env);
+      KONTRAKT.endpunkte.push(...wegDavor);
+      assert(run.status !== 0 && /keinen Weg/.test(run.stdout + run.stderr), `ein Kontrakt ohne den Weg wird nicht gesagt: ${run.stdout}${run.stderr}`);
+    }
+
     // Das Kit merkt sich, was es selbst an dieses Gerät geschickt hat. Ohne diese
     // Notiz schlug die Seite ohne --device danach wieder --check und --deploy vor.
     let merker = JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name];
@@ -3673,6 +3713,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert(/selbst zurückgeschaltet/.test(rueckfall) && /Teststand/.test(rueckfall), `der Rückfall wird nicht erklärt: ${rueckfall}`);
     assert(/Geben Sie die technischen Angaben/.test(rueckfall), "die Hilfe des Geräts fehlt");
     assert(/Migration gescheitert: Spalte betrag fehlt/.test(rueckfall), `das Ende der Zeilen fehlt: ${rueckfall.slice(-400)}`);
+    assert(/--app probeapp --logs --live/.test(rueckfall), `nach dem Rückfall nennt das Kit --logs nicht: ${rueckfall.slice(-400)}`);
     assert(JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name]?.live?.version === "0.9.0", "ein Rückfall ändert den Merker");
 
     // Entfernen ist unumkehrbar: ohne die abgetippte Kennung passiert nichts.

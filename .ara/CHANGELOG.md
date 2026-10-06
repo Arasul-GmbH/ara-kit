@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.79.0 (2026-10-07)
+
+Contract: up to 14
+
+- **`app.mjs --logs` shows the last lines of an app's container, without SSH.** With an empty page or a 502 in staging only the container's log says what is wrong. `--device <device> --app <id> --logs [--live] [--zeilen <n>]` reads the way and the names of its details from the device's contract (`endpunkte`), calls it with the kit key and prints the lines without control characters, with whether the container runs, its restarts and its last exit code. `--live` here means the live slot and switches nothing. The device blacks out every environment value, the tool prints what the device sends. A contract without the way is said so. After a failed `--deploy` or `--live` the tool names `--logs` as the next step; `deploy.md` and `diagnostics.md` name it as the first step for an app that does not answer.
+
 ## 0.78.0 (2026-10-07)
 
 Contract: up to 14

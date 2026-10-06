@@ -108,10 +108,11 @@ aus: lies sie, behebe es im Teststand, schalte erneut. Die genaue Regel: `--cont
 ## Wenn die App im Teststand nicht läuft
 
 Eine leere Seite, ein 502, ein Bau, der scheitert: der Grund steht am **Ende** der Ausgabe, und das
-Werkzeug gibt dieses Ende aus. Darüber hinaus liest du den Container der App am Gerät, nur lesend:
-`node .ara/tools/remote.mjs --device <gerät> --command "docker ps -a --filter name=<id>"` nennt
-ihn, `--command "docker logs --tail 60 <name>"` zeigt seine letzten Zeilen. Die Vorlage schreibt
-beim Start ihre Lage dorthin, und die Route `lage` der App sagt dasselbe.
+Werkzeug gibt dieses Ende aus. **Erster Schritt bei einer App, die nicht antwortet:** das Protokoll ihres Containers, ohne SSH:
+`node .ara/tools/app.mjs --device <gerät> --app <id> --logs` (`--live`, `--zeilen <n>`): ob er läuft,
+Neustarts, Rückgabewert. Fehlt der Weg im Kontrakt, nur SSH: `remote.mjs --command "docker logs
+--tail 60 <name>"`. Ein gescheiterter `--deploy` oder `--live` nennt `--logs` als Nächstes. Die Vorlage schreibt
+beim Start ihre Lage in dieses Protokoll, und die Route `lage` der App sagt dasselbe.
 
 ## Entfernen
 

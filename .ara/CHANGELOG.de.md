@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.79.0 (2026-10-07)
+
+Kontrakt: bis 14
+
+- **`app.mjs --logs` zeigt die letzten Zeilen des Containers einer App, ohne SSH.** Bei einer leeren Seite oder einem 502 im Teststand sagt nur das Protokoll des Containers, was los ist. `--device <gerät> --app <id> --logs [--live] [--zeilen <n>]` liest den Weg und die Namen seiner Angaben aus dem Kontrakt des Geräts (`endpunkte`), ruft ihn mit dem Kit-Schlüssel und gibt die Zeilen ohne Steuerzeichen aus, dazu ob der Container läuft, seine Neustarts und seinen letzten Rückgabewert. `--live` heißt hier der Livestand und schaltet nichts. Das Gerät schwärzt jeden Wert aus der Umgebung, das Werkzeug gibt aus, was das Gerät schickt. Ein Kontrakt ohne den Weg wird so gesagt. Nach einem gescheiterten `--deploy` oder `--live` nennt das Werkzeug `--logs` als nächsten Schritt; `deploy.md` und `diagnostics.md` nennen es als ersten Schritt bei einer App, die nicht antwortet.
+
 ## 0.78.0 (2026-10-07)
 
 Kontrakt: bis 14
