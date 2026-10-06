@@ -104,10 +104,11 @@ switch again. The exact rule: `--contract`, `daten`.
 ## When the app does not run in staging
 
 An empty page, a 502, a build that fails: the reason stands at the **end** of the output, and the
-tool prints that end. Beyond that, read the app's container on the device, reading only:
-`node .ara/tools/remote.mjs --device <device> --command "docker ps -a --filter name=<id>"` names
-it, `--command "docker logs --tail 60 <name>"` shows its last lines. The scaffold writes its
-state there at start, and the route `lage` of the app says the same.
+tool prints that end. **First step for an app that does not answer:** the container log, no SSH:
+`node .ara/tools/app.mjs --device <device> --app <id> --logs` (`--live`, `--zeilen <n>`): runs or not,
+restarts, exit code. Without that way in the contract: `remote.mjs --command
+"docker logs --tail 60 <name>"`. A failed `--deploy`/`--live` names it. The scaffold writes its
+state into that log at start, and the route `lage` of the app says the same.
 
 ## Removing
 

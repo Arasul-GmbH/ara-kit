@@ -18,6 +18,7 @@
  *   node .ara/tools/app.mjs --device orin --contract               what this device promises
  *   node .ara/tools/app.mjs --device orin --app beispiel --check
  *   node .ara/tools/app.mjs --device orin --app beispiel --deploy
+ *   node .ara/tools/app.mjs --device orin --app beispiel --logs [--live] [--zeilen 100]   the container's log
  *   node .ara/tools/app.mjs --device orin --app beispiel --live
  *   node .ara/tools/app.mjs --device orin --app beispiel --back
  *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
@@ -64,6 +65,7 @@
  *   node .ara/tools/app.mjs --device orin --contract               was dieses Gerät verspricht
  *   node .ara/tools/app.mjs --device orin --app beispiel --check
  *   node .ara/tools/app.mjs --device orin --app beispiel --deploy
+ *   node .ara/tools/app.mjs --device orin --app beispiel --logs [--live] [--zeilen 100]   the container's log
  *   node .ara/tools/app.mjs --device orin --app beispiel --live
  *   node .ara/tools/app.mjs --device orin --app beispiel --back
  *   node .ara/tools/app.mjs --device orin --app beispiel --remove --confirm beispiel
@@ -161,6 +163,7 @@ import {
 import { APPLEDOUBLE, mirrorState, packEnv, ship } from "./lib/install.mjs";
 import { startRefName } from "./lib/device.mjs";
 import { hasSecret } from "./lib/secrets.mjs";
+import { cleanLines, logsPath, logsWay } from "./lib/applogs.mjs";
 import { contractRows, fillPath, listOf, routeRows, shareWays } from "./lib/adminways.mjs";
 import { addPatterns, wirablePatterns, wiringLines } from "./lib/wiring.mjs";
 
@@ -212,6 +215,8 @@ if (process.argv.length <= 2) {
         "  --deploy [<folder>]      pack and deploy, always rolls into staging",
         `  ${FLAG_AENDERUNG} "<text>"  with --deploy: a few sentences on what is new in this version, 1 to 1000 characters`,
         "  --status                 which version stands in staging, which is live",
+        "  --logs [--live]          the last lines of the app's container, staging or with --live the live one",
+        "  --zeilen <n>             with --logs: how many lines, the contract says the limit",
         "  --live                   switch staging live",
         "  --back                   back to the previous live version",
         "  --remove --confirm <id>  remove the app, with containers and volumes",
@@ -259,6 +264,8 @@ if (process.argv.length <= 2) {
         "  --deploy [<ordner>]      packen und einspielen, rollt immer in den Teststand",
         `  ${FLAG_AENDERUNG} "<text>"  mit --deploy: ein paar Sätze, was in dieser Version neu ist, 1 bis 1000 Zeichen`,
         "  --status                 welche Version steht im Teststand, welche live",
+        "  --logs [--live]          die letzten Zeilen des Containers der App, im Teststand oder mit --live live",
+        "  --zeilen <n>             mit --logs: wie viele Zeilen, die Grenze nennt der Kontrakt",
         "  --live                   den Teststand live schalten",
         "  --back                   auf die vorige Live-Version zurück",
         "  --remove --confirm <id>  App entfernen, samt Containern und Volumen",
@@ -288,6 +295,7 @@ for (const [name, value] of [
   ["plan-aktiv", arg["plan-aktiv"]],
   ["plan-erledigt", arg["plan-erledigt"]],
   ["titel", arg.titel],
+  ["zeilen", arg.zeilen],
 ]) {
   if (value === true) {
     fail(
@@ -328,7 +336,7 @@ function whichApp() {
   return null;
 }
 
-const DEVICE_ACTIONS = ["contract", "check", "deploy", "status", "live", "back", "remove", "compose", "share", "unshare"];
+const DEVICE_ACTIONS = ["contract", "check", "deploy", "status", "logs", "live", "back", "remove", "compose", "share", "unshare"];
 const wantsDevice = DEVICE_ACTIONS.some((name) => arg[name] !== undefined);
 
 // --- Am Rechner: die Akte ----------------------------------------------------
@@ -2015,7 +2023,10 @@ if (arg.deploy !== undefined) {
         t(
           `${place} refused the package (status ${sent.status}).\n`,
           `${place} hat das Paket abgewiesen (Status ${sent.status}).\n`
-        ) + reason(sent)
+        ) + reason(sent) + "\n" + t(
+          `Next, the container's own log, if one runs there already: ${logsCall("test", manifest.id)}`,
+          `Als Nächstes das Protokoll des Containers, falls dort schon einer läuft: ${logsCall("test", manifest.id)}`
+        )
       );
     }
 
@@ -2101,8 +2112,8 @@ const app = whichApp();
 if (!app) {
   fail(
     t(
-      "For --status, --live, --back, --remove, --share and --unshare I need --app <id>.",
-      "Für --status, --live, --back, --remove, --share und --unshare brauche ich --app <id>."
+      "For --status, --logs, --live, --back, --remove, --share and --unshare I need --app <id>.",
+      "Für --status, --logs, --live, --back, --remove, --share und --unshare brauche ich --app <id>."
     )
   );
 }
@@ -2195,6 +2206,84 @@ function showStand(data) {
     ].join("\n")
   );
 }
+
+// --- --logs ------------------------------------------------------------------
+
+/** Der Aufruf, der das Protokoll zeigt: der nächste Schritt nach einem Scheitern. */
+function logsCall(slot, name) {
+  return `node .ara/tools/app.mjs${device.customer ? ` --customer ${device.customer}` : ""} --device ${device.device} --app ${name} --logs${slot === "live" ? " --live" : ""}`;
+}
+
+async function showLogs() {
+  const way = logsWay(contract);
+  if (!way) {
+    fail(
+      t(
+        `${place} names no way to read the log of an app in its contract. ${version.text}\nWithout it only SSH shows the container: ${device.customer ? "" : "node .ara/tools/remote.mjs, "}docker logs.`,
+        `${place} nennt in seinem Kontrakt keinen Weg, das Protokoll einer App zu lesen. ${version.text}\nOhne ihn zeigt nur SSH den Container: ${device.customer ? "" : "node .ara/tools/remote.mjs, "}docker logs.`
+      )
+    );
+  }
+  const slot = arg.live ? "live" : "test";
+  let lines;
+  if (arg.zeilen !== undefined) {
+    lines = Number(arg.zeilen);
+    const [low, high] = way.range || [1, Infinity];
+    if (!Number.isInteger(lines) || lines < low || lines > high) {
+      fail(
+        t(
+          `--zeilen is a whole number from ${low}${Number.isFinite(high) ? ` to ${high}` : ""}, not "${arg.zeilen}".`,
+          `--zeilen ist eine ganze Zahl von ${low}${Number.isFinite(high) ? ` bis ${high}` : ""}, nicht "${arg.zeilen}".`
+        )
+      );
+    }
+  }
+  const answer = await endpoint("GET", logsPath(way, app, { stand: slot, lines }));
+  if (!answer.ok) {
+    const weiter =
+      answer.status === 404
+        ? t(
+            `\nThere is no container in the ${slot === "live" ? "live" : "staging"} slot: the app has no backend, was not deployed there yet, or the build failed. --status says which. A failed build shows its last lines in the answer of --deploy.`,
+            `\nIm Stand ${slot === "live" ? "live" : "Teststand"} gibt es keinen Container: die App hat kein Backend, ist dort noch nicht eingespielt, oder der Bau scheiterte. --status sagt es. Ein gescheiterter Bau zeigt seine letzten Zeilen in der Antwort von --deploy.`
+          )
+        : "";
+    fail(t(`${place} gave no log of ${app} (status ${answer.status}).\n`, `${place} gibt kein Protokoll von ${app} (Status ${answer.status}).\n`) + reason(answer) + weiter);
+  }
+  const data = answer.data || {};
+  const zeilen = cleanLines(data.zeilen);
+  if (arg.json) {
+    console.log(JSON.stringify({ device: place, app, stand: data.stand ?? slot, laeuft: data.laeuft ?? null, neustarts: data.neustarts ?? null, exit_code: data.exit_code ?? null, geschwaerzt: data.geschwaerzt ?? 0, zeilen }, null, 2));
+    process.exit(0);
+  }
+  const standName = slot === "live" ? "live" : t("staging", "Teststand");
+  console.log(
+    [
+      t(`# Log of ${app} on ${place}, ${standName}`, `# Protokoll von ${app} auf ${place}, ${standName}`),
+      "",
+      data.laeuft === undefined
+        ? ""
+        : data.laeuft
+          ? t(`The container runs, ${data.neustarts ?? 0} restart(s).`, `Der Container läuft, ${data.neustarts ?? 0} Neustart(s).`)
+          : t(
+              `The container does not run, ${data.neustarts ?? 0} restart(s), last exit code ${data.exit_code ?? "unknown"}.`,
+              `Der Container läuft nicht, ${data.neustarts ?? 0} Neustart(s), zuletzt beendet mit ${data.exit_code ?? "unbekannt"}.`
+            ),
+      ...(data.geschwaerzt
+        ? [t(`${data.geschwaerzt} value(s) from the container's environment are blacked out by the device.`, `${data.geschwaerzt} Wert(e) aus der Umgebung des Containers hat das Gerät geschwärzt.`)]
+        : []),
+      "",
+      ...(zeilen.length ? zeilen : [t("(no lines)", "(keine Zeilen)")]),
+      "",
+      t(
+        `${zeilen.length} line(s). More or the other slot: --zeilen <n>, ${slot === "live" ? "without" : "with"} --live.`,
+        `${zeilen.length} Zeile(n). Mehr oder der andere Stand: --zeilen <n>, ${slot === "live" ? "ohne" : "mit"} --live.`
+      ),
+    ].join("\n")
+  );
+  process.exit(0);
+}
+
+if (arg.logs) await showLogs();
 
 // --- --share und --unshare ---------------------------------------------------
 
@@ -2397,7 +2486,10 @@ if (arg.live || arg.back) {
       t(
         `${place} did not switch (status ${switched.status}).\n`,
         `${place} hat nicht geschaltet (Status ${switched.status}).\n`
-      ) + reason(switched) + (weiter ? `\n${weiter}` : "")
+      ) + reason(switched) + (weiter ? `\n${weiter}` : "") + "\n" + t(
+        `Next, the log of the container: ${logsCall("live", app)} (staging: ${logsCall("test", app)})`,
+        `Als Nächstes das Protokoll des Containers: ${logsCall("live", app)} (Teststand: ${logsCall("test", app)})`
+      )
     );
   }
   // Auch --back ändert, was live ist. Beides ist dieselbe Notiz.

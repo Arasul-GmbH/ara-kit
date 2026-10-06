@@ -51,6 +51,7 @@ commands from memory.
 | Answers very slowly | Is the computation running on the graphics unit or on the main processor? |
 | Does not find documents | Was the document ingested? Is the format readable at all? |
 | Web interface unreachable | Network path, certificate, or the service behind it |
+| An app shows an empty page or a 502 | **First** the app's container log, no SSH: `node .ara/tools/app.mjs --device <device> --app <id> --logs` (`--live` for the live slot). Procedure: `deploy.md`, "When the app does not run in staging" |
 | Worked yesterday | Update, restart, change in the customer network |
 
 The table does not replace the chain. It only says where to look first.

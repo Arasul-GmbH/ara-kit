@@ -53,6 +53,7 @@ dem Gedächtnis zu verwenden.
 | Antwortet sehr langsam | Läuft die Berechnung auf der Grafikeinheit oder auf dem Hauptprozessor? |
 | Findet Dokumente nicht | Wurde das Dokument aufgenommen? Ist das Format überhaupt lesbar? |
 | Weboberfläche nicht erreichbar | Netzweg, Zertifikat, oder Dienst dahinter |
+| Eine App zeigt eine leere Seite oder ein 502 | **Zuerst** das Protokoll des Containers der App, ohne SSH: `node .ara/tools/app.mjs --device <gerät> --app <id> --logs` (`--live` für den Livestand). Verfahren: `deploy.de.md`, „Wenn die App im Teststand nicht läuft“ |
 | Ging gestern noch | Update, Neustart, Änderung im Kundennetz |
 
 Die Tabelle ersetzt die Kette nicht. Sie sagt nur, wo man zuerst hinschaut.
