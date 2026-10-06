@@ -3,7 +3,7 @@ name: diagnostics
 description: Establish and fix faults on a customer device. Use when a device is not reachable, the chat does not answer or answers nonsense, documents are not found, the web interface does not load, something has become slow, or when a customer reports that something does not work.
 ---
 
-Procedure: `.ara/knowledge/diagnostics.md`
+Procedure: `.ara/knowledge/diagnostics.md` (`diagnostics.de.md` with `language: de`)
 
 Short:
 

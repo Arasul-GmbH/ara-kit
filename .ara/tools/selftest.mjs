@@ -2497,6 +2497,14 @@ check("Was neu ist, richtet sich nach dem Stand, von dem jemand kommt", () => {
 const KONTRAKT = {
   kontrakt: KIT_CONTRACT_VERSION,
   arasul: "0.0.0-selbsttest",
+  // Wie viel Last ein Gerät trägt: Zahlen und Sätze erfunden, nur die Form ist die des Geräts.
+  last: {
+    geraet: "probegeraet",
+    modell: "probemodell",
+    gleichzeitig_rechnend: 1,
+    warteschlange_max: 3,
+    regeln: ["Ab der fünften gleichzeitigen Anfrage antwortet das Probegerät mit 503."],
+  },
   app_json: {
     schema: {
       type: "object",
@@ -3245,6 +3253,19 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       if (pfad === "/api/v1/external/apps/probeapp/schalten") {
         const ziel = JSON.parse(rumpf.toString("utf8")).ziel;
         gesehen.geschaltet.push(ziel);
+        if (gesehen.rueckfall) {
+          // So antwortet das Gerät, wenn die neue Fassung nicht hochkam und es selbst zurückschaltete.
+          return antwort(409, {
+            error: {
+              code: "LIVE_ZURUECKGESCHALTET",
+              message: "Die neue Fassung 1.0.0 ließ sich nicht starten, deshalb läuft probeapp wieder mit Fassung 0.9.0 und den Daten von vorher.",
+              details: {
+                hilfe: "Geben Sie die technischen Angaben an den Entwickler weiter.",
+                schaltung: { ergebnis: "zurueckgeschaltet", technik: { grund: "beendet", exit_code: 1, letzte_zeilen: `${"Start\n".repeat(400)}Migration gescheitert: Spalte betrag fehlt` } },
+              },
+            },
+          });
+        }
         return antwort(200, { data: { app_id: "probeapp", stand: "live", version: ziel === "live" ? "1.0.0" : "0.9.0" } });
       }
       if (pfad === "/api/v1/external/apps/probeapp" && request.method === "DELETE") {
@@ -3285,6 +3306,10 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       "die Kontraktversion fehlt in der Ausgabe"
     );
     assert(/Regeln für einen Flow/.test(run.stdout), "die Flow-Regeln des Kontrakts fehlen in der Ausgabe");
+    assert(
+      /## Wie viel Last das Gerät trägt/.test(run.stdout) && /probegeraet mit probemodell/.test(run.stdout) && /antwortet das Probegerät mit 503/.test(run.stdout),
+      "der Abschnitt last fehlt in der Ausgabe von --contract"
+    );
     // Die Antwort des Auslesens und der Weg für Bilder, wörtlich aus dem Kontrakt.
     assert(
       /document\/extract-structured` antwortet/.test(run.stdout) &&
@@ -3367,6 +3392,19 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     let merker = JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name];
     assert(merker?.deployed?.version === "1.0.0", `der Teststand steht nicht im Merker: ${JSON.stringify(merker)}`);
     assert(merker?.live?.version === "0.9.0", `das Zurückschalten steht nicht im Merker: ${JSON.stringify(merker)}`);
+
+    // Kam die neue Fassung nicht hoch, schaltet das Gerät selbst zurück. Das Kit sagt, dass Fassung
+    // und Daten von vorher laufen, was der nächste Schritt ist, und zeigt das Ende der Zeilen, wo
+    // der Grund steht, nicht ihren Anfang.
+    gesehen.rueckfall = true;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--live"], env);
+    gesehen.rueckfall = false;
+    const rueckfall = `${run.stdout}${run.stderr}`;
+    assert(run.status !== 0, "ein Rückfall beim Live schalten gilt als gelungen");
+    assert(/selbst zurückgeschaltet/.test(rueckfall) && /Teststand/.test(rueckfall), `der Rückfall wird nicht erklärt: ${rueckfall}`);
+    assert(/Geben Sie die technischen Angaben/.test(rueckfall), "die Hilfe des Geräts fehlt");
+    assert(/Migration gescheitert: Spalte betrag fehlt/.test(rueckfall), `das Ende der Zeilen fehlt: ${rueckfall.slice(-400)}`);
+    assert(JSON.parse(readFileSync(stateFile, "utf8")).apps?.probeapp?.[name]?.live?.version === "0.9.0", "ein Rückfall ändert den Merker");
 
     // Entfernen ist unumkehrbar: ohne die abgetippte Kennung passiert nichts.
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--remove"], env);
@@ -5563,6 +5601,9 @@ await checkAsync("Ein Auslesen, das länger rechnet, als das Gerät wartet, holt
     );
     await Promise.all(Array.from({ length: 6 }, () => drei.auslesen(datei)));
     assert(hoechstens === 3, `mit gleichzeitig 3 gingen ${hoechstens} Auslesungen zugleich an das Gerät`);
+    // Das Gerät nennt die Zahl unter `last`, wie viele Anfragen es zugleich rechnet.
+    const ausLast = JSON.parse(arrangementFile(appArrangement({ ...kontrakt, last: { gleichzeitig_rechnend: 2 } }, {})));
+    assert(ausLast.warten?.gleichzeitig === 2, `last.gleichzeitig_rechnend wird nicht gelesen: ${JSON.stringify(ausLast.warten)}`);
 
     // Ein Gerät ohne `warten` nennt keinen Abholweg: das 202 wird ein Satz, keine leere Antwort.
     const { warten, ...ohneWarten } = kontrakt;
@@ -5574,6 +5615,44 @@ await checkAsync("Ein Auslesen, das länger rechnet, als das Gerät wartet, holt
     const quelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
     assert(!/extract-structured|abholung/.test(quelle), "die Vorlage trägt einen Weg des Geräts im Code");
     return "202 abgeholt mit einer Sendung, sechs ohne Verlust und einzeln, drei zugleich mit Angabe, ohne Abholweg ein Satz";
+  } finally {
+    geraet.close();
+  }
+});
+
+await checkAsync("Die Vorlage fängt eine volle Warteschlange des Geräts ab und versucht es noch einmal", async () => {
+  // Der Kontrakt sagt unter `last`: ab einer vollen Warteschlange antwortet das Gerät mit 503, und
+  // eine App versucht es nach einigen Sekunden noch einmal, statt es dem Menschen zu zeigen.
+  const { geraet: anschluss, NOCHMAL_NACH_MS } = await import(join(ROOT, ".ara", "templates", "app", "backend", "arasul.mjs"));
+  assert(NOCHMAL_NACH_MS.length >= 2 && NOCHMAL_NACH_MS.every((ms) => ms >= 1000), `die Pausen sind zu kurz: ${NOCHMAL_NACH_MS}`);
+  let voll = 0;
+  let anfragen = 0;
+  const geraet = createServer((anfrage, antwort) => {
+    anfrage.resume();
+    anfrage.on("end", () => {
+      anfragen += 1;
+      if (voll > 0) {
+        voll -= 1;
+        antwort.writeHead(503, { "content-type": "application/json" });
+        return antwort.end(JSON.stringify({ error: { message: "Die Warteschlange ist voll." } }));
+      }
+      antwort.writeHead(200, { "content-type": "application/json" });
+      antwort.end(JSON.stringify({ data: { freigaben: [] } }));
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    const umgebung = { ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest" };
+    const vereinbarung = JSON.parse(arrangementFile(appArrangement(VORLAGE_KONTRAKT, {})));
+    const g = anschluss(vereinbarung, umgebung, { name: "Probe", flow: "freigabe", nochmalNachMs: [5, 5] });
+    voll = 2;
+    const geduldig = await g.freigaben();
+    assert(geduldig.fehler === null && anfragen === 3, `zweimal 503, dann 200: ${JSON.stringify(geduldig)}, ${anfragen} Anfragen`);
+    voll = 9;
+    anfragen = 0;
+    const ausgelastet = await g.freigaben();
+    assert(anfragen === 3 && ausgelastet.fehler && !/503|Status/.test(ausgelastet.fehler), `immer 503: ${JSON.stringify(ausgelastet)}, ${anfragen} Anfragen`);
+    return "zweimal voll und dann angenommen, dreimal voll ein Satz ohne Status";
   } finally {
     geraet.close();
   }

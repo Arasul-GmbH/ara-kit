@@ -17,7 +17,7 @@ the way out of `arasul.json`, the file as a form with the schema, back come fiel
 and whether the text recognition ran, and the human goes along for the device's log. **A long
 reading is fetched, not lost**: if the model still computes after the device's wait, the scaffold
 fetches the result on `wege.dokument_abholen`, and it sends at most as many readings at a time as
-`warten.gleichzeitig` allows, one without a number. **No route and no model name stands in the
+`warten.gleichzeitig` in `arasul.json` allows (written from the contract's `last`), one without a number. **No route and no model name stands in the
 pattern**, the self-test holds it to that. A photo can also go to an
 image model itself: `geraet.fragen` with `bilder`, how stands in `--contract` under `bilder`.
 

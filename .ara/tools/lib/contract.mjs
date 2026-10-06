@@ -111,6 +111,7 @@ const READ_FIELDS = new Set([
   "warten",
   "bilder",
   "marken",
+  "last",
 ]);
 
 /** Was dieses Gerät im Kontrakt nennt und dieses Kit nicht liest. */

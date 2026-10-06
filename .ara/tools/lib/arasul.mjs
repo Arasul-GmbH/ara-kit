@@ -226,12 +226,39 @@ export async function certificateKind(base, { timeout = 8_000 } = {}) {
   return (await versuch(true)).ok ? "selfsigned" : null;
 }
 
+/** Höchstens so viele Zeichen vom Ende eines Textes: der Grund eines Fehlers steht hinten. */
+function ende(text, zeichen = 1200) {
+  return text.length > zeichen ? `…${text.slice(-zeichen)}` : text;
+}
+
+/**
+ * Der Grund, den das Gerät zu einer Ablehnung nennt, für einen Menschen.
+ *
+ * Zuerst der Satz, dann `details.hilfe` als eigene Zeile, dann die Ausgabe, die das Gerät
+ * mitschickt: `details.ausgabe` (die letzten Zeilen eines Baus) oder die letzten Zeilen des
+ * Containers aus einem Rückfall beim Live schalten. Von jeder Ausgabe bleibt das Ende, denn dort
+ * steht der Fehler; bis 0.73.1 blieb der Anfang, und ein gescheiterter Bau sagte nichts.
+ */
 export function reason(answer) {
   const message =
     answer?.error?.message ||
     t(`The device answers with status ${answer?.status}.`, `Das Gerät antwortet mit Status ${answer?.status}.`);
   const details = answer?.error?.details;
   if (!details) return message;
-  const text = typeof details === "string" ? details : JSON.stringify(details);
-  return `${message}\n${text.slice(0, 1200)}`;
+  if (typeof details !== "object") return `${message}\n${ende(String(details))}`;
+  const { hilfe, ausgabe, ...rest } = details;
+  const zeilen = [message];
+  if (typeof hilfe === "string" && hilfe.trim()) zeilen.push(hilfe.trim());
+  const letzte = rest.schaltung?.technik?.letzte_zeilen;
+  const strom = ausgabe ?? letzte;
+  if (strom) {
+    zeilen.push(
+      t("What the device saw last:", "Was das Gerät zuletzt sah:"),
+      ende(Array.isArray(strom) ? strom.map(String).join("\n") : String(strom))
+    );
+  }
+  // Die Zeilen stehen schon oben; JSON.stringify lässt ein undefined weg.
+  if (rest.schaltung?.technik) rest.schaltung = { ...rest.schaltung, technik: { ...rest.schaltung.technik, letzte_zeilen: undefined } };
+  if (Object.keys(rest).length) zeilen.push(ende(JSON.stringify(rest), 600));
+  return zeilen.join("\n");
 }

@@ -18,7 +18,7 @@ Eintrag in der Seitenleiste, dann `--build`. Der Ruf an das Gerät steht schon i
 Schema, zurück kommen Felder, Modell, Dauer und ob die Texterkennung lief, und der Mensch geht für
 das Protokoll des Geräts mit. **Ein langes Auslesen wird abgeholt, nicht verloren**: rechnet das
 Modell nach der Wartezeit des Geräts noch, holt die Vorlage das Ergebnis auf `wege.dokument_abholen`
-ab, und sie schickt höchstens so viele Auslesungen zugleich, wie `warten.gleichzeitig` erlaubt,
+ab, und sie schickt höchstens so viele Auslesungen zugleich, wie `warten.gleichzeitig` in `arasul.json` erlaubt (aus `last` des Kontrakts geschrieben),
 ohne Zahl eine. **Kein Weg und kein Modellname steht im Muster**, der Selbsttest hält es daran. Ein Foto kann auch selbst an ein Bildmodell gehen: `geraet.fragen` mit `bilder`, wie,
 steht in `--contract` unter `bilder`.
 

@@ -1250,6 +1250,22 @@ function contractRuleSections() {
       ...netz.regeln.map((r) => `- ${r}`)
     );
   }
+  // Wie viel Last das Gerät trägt: die Sätze nennen Wartezeiten und was eine App bei voller
+  // Warteschlange tut. Sie gelten für das Gerät und das Modell, an dem sie gemessen wurden.
+  const last = contract?.last;
+  if (last?.regeln?.length) {
+    sections.push(
+      "",
+      t("## How much load the device carries", "## Wie viel Last das Gerät trägt"),
+      "",
+      t(
+        `They stand word for word in the contract, under \`last\`, measured on ${last.geraet ?? "?"} with ${last.modell ?? "?"}:`,
+        `Sie stehen wörtlich im Kontrakt, unter \`last\`, gemessen an ${last.geraet ?? "?"} mit ${last.modell ?? "?"}:`
+      ),
+      "",
+      ...last.regeln.map((r) => `- ${r}`)
+    );
+  }
   return sections.concat(librarySection(contract), readingSections());
 }
 
@@ -2199,11 +2215,30 @@ if (arg.live || arg.back) {
     json: { ziel },
   });
   if (!switched.ok) {
+    // Zwei Ablehnungen beim Live schalten haben einen eigenen nächsten Schritt: das Gerät hat
+    // selbst zurückgeschaltet, oder es hat gar nicht erst geschaltet, weil die Sicherung scheiterte.
+    const code = switched.error?.code;
+    const weiter =
+      code === "LIVE_ZURUECKGESCHALTET"
+        ? t(
+            "The device took live back by itself: the version and the data from before run again, staging is untouched. " +
+              "The new version did not come up, mostly a change of the database structure that failed at its start. " +
+              `Look at the lines above, try the start in staging (--deploy, --status), fix it, then --live again.\n`,
+            "Das Gerät hat live selbst zurückgeschaltet: Fassung und Daten von vorher laufen wieder, der Teststand ist unberührt. " +
+              "Die neue Fassung kam nicht hoch, meist eine Änderung der Datenbankstruktur, die beim Start scheiterte. " +
+              `Sieh dir die Zeilen oben an, prüf den Start im Teststand (--deploy, --status), beheb es, dann erneut --live.\n`
+          )
+        : code === "LIVE_NICHT_GESICHERT"
+          ? t(
+              "Nothing was switched: the device could not back up the live data first, so live is unchanged.\n",
+              "Nichts wurde geschaltet: das Gerät konnte die Livedaten vorher nicht sichern, live ist unverändert.\n"
+            )
+          : "";
     fail(
       t(
         `${place} did not switch (status ${switched.status}).\n`,
         `${place} hat nicht geschaltet (Status ${switched.status}).\n`
-      ) + reason(switched)
+      ) + reason(switched) + (weiter ? `\n${weiter}` : "")
     );
   }
   // Auch --back ändert, was live ist. Beides ist dieselbe Notiz.

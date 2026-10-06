@@ -97,6 +97,21 @@ live von Anfang an da sein muss, Mandanten etwa. `--back` ist ein **Tausch**: ei
 steht wieder am Anfang. Nach jedem Schalten ein Satz in den Verlauf des Kunden oder den Laufzettel
 des Geräts: App, Fassung, wer es wollte, was danach geprüft wurde.
 
+**Das Gerät sichert live vorher und fällt selbst zurück.** Kommt die neue Fassung nicht hoch, meist
+eine Änderung der Datenbankstruktur, die beim Start scheitert, stellt es Fassung **und** Daten von
+vorher wieder her und antwortet `LIVE_ZURUECKGESCHALTET`; der Teststand bleibt unberührt. Eine
+gescheiterte Strukturänderung muss den Prozess darum mit einem Exit-Code ungleich 0 beenden, nie
+halb weiterlaufen. Das Werkzeug gibt den Hilfesatz des Geräts und die letzten Zeilen des Containers
+aus: lies sie, behebe es im Teststand, schalte erneut. Die genaue Regel: `--contract`, `daten`.
+
+## Wenn die App im Teststand nicht läuft
+
+Eine leere Seite, ein 502, ein Bau, der scheitert: der Grund steht am **Ende** der Ausgabe, und das
+Werkzeug gibt dieses Ende aus. Darüber hinaus liest du den Container der App am Gerät, nur lesend:
+`node .ara/tools/remote.mjs --device <gerät> --command "docker ps -a --filter name=<id>"` nennt
+ihn, `--command "docker logs --tail 60 <name>"` zeigt seine letzten Zeilen. Die Vorlage schreibt
+beim Start ihre Lage dorthin, und `GET /lage` der App sagt dasselbe.
+
 ## Entfernen
 
 ```
