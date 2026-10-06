@@ -2222,7 +2222,10 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
     // 2. Aus dem Passwort wird eine Sitzung, und zwar ohne das Passwort zu zeigen.
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], env);
     assert(run.status === 0, `Anmeldung fehlgeschlagen: ${run.stdout}${run.stderr}`);
-    assert(/ey\.selbsttest\.sitzung/.test(run.stdout), `der Ausweis fehlt in der Ausgabe: ${run.stdout}`);
+    // Seit 0.75.0 auch der Ausweis nicht: was auf dem Bildschirm steht, steht im Protokoll der
+    // Arbeit (Fremdtest 06.10.2026). Die Ausgabe nennt stattdessen --admin-call.
+    assert(!/ey\.selbsttest\.sitzung/.test(`${run.stdout}${run.stderr}`), `der Ausweis steht in der Ausgabe: ${run.stdout}`);
+    assert(/--admin-call/.test(run.stdout), `der Weg zu einem eigenen Aufruf fehlt: ${run.stdout}`);
     assert(!new RegExp(passwort).test(`${run.stdout}${run.stderr}`), "das Startpasswort steht in der Ausgabe");
     const angemeldet = gesehen.find((eintrag) => eintrag.pfad === "/api/auth/login");
     assert(angemeldet, `es wurde nicht angemeldet: ${JSON.stringify(gesehen)}`);
@@ -2232,9 +2235,26 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
       `der Benutzername kam unter dem falschen Feld an: ${JSON.stringify(Object.keys(angemeldet.rumpf || {}))}`
     );
 
-    // 3. Für ein Skript: nur der Ausweis, ohne Satz drumherum.
+    // 3. --token reicht den Ausweis nur über Dateideskriptor 3 an ein Werkzeug des Kits, nie auf
+    //    die Standardausgabe. Ohne den Kanal weist es ab und nennt --admin-call.
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login", "--token"], env);
-    assert(run.stdout === "ey.selbsttest.sitzung", `--token gibt nicht nur den Ausweis: ${run.stdout}`);
+    assert(run.status !== 0 && !/ey\.selbsttest\.sitzung/.test(`${run.stdout}${run.stderr}`), `--token zeigt den Ausweis: ${run.stdout}${run.stderr}`);
+    assert(/--admin-call/.test(run.stderr), `--token nennt den Weg nicht: ${run.stderr}`);
+    // Asynchron: das gespielte Gerät läuft in diesem Prozess und muss antworten können.
+    const kanal = await new Promise((fertig) => {
+      const kind = spawn("node", [join(ROOT, ".ara", "tools", "device.mjs"), "--name", name, "--admin-login", "--token"], {
+        env: { ...process.env, ARA_LANGUAGE: TOOL_LANGUAGE, ARA_CUSTOMERS: CUSTOMERS_TMP, ...env, ARA_TOKEN_CHANNEL: "3" },
+        stdio: ["ignore", "pipe", "pipe", "pipe"],
+      });
+      const aus = { stdout: "", stderr: "", drei: "" };
+      kind.stdout.on("data", (d) => (aus.stdout += d));
+      kind.stderr.on("data", (d) => (aus.stderr += d));
+      kind.stdio[3].on("data", (d) => (aus.drei += d));
+      kind.on("close", (status) => fertig({ ...aus, status }));
+    });
+    assert(kanal.status === 0 && kanal.drei === "ey.selbsttest.sitzung" && !kanal.stdout, `über den Kanal kam der Ausweis nicht, oder er stand auch auf der Ausgabe: ${kanal.stdout} ${kanal.stderr}`);
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-login", "--json"], env);
+    assert(run.status === 0 && JSON.parse(run.stdout).session === true && !/ey\.selbsttest/.test(run.stdout), `--json trägt den Ausweis: ${run.stdout}`);
 
     // 3b. Heißen die Felder am Gerät anders, gibt der Mensch sie im Aufruf mit.
     //     Ohne diesen Weg blieb ihm am 28.08.2026 nur, den Fehler zu lesen: die
@@ -2281,7 +2301,123 @@ await checkAsync("Das Startpasswort kommt aus dem Kit heraus, ohne sichtbar zu w
     run = await toolAsync("device.mjs", ["--name", name, "--admin-login"], { ARA_MIRROR: mirror });
     assert(run.status !== 0, "ohne Startpasswort wurde angemeldet");
     assert(new RegExp(`secrets\\.mjs --set ${ref}`).test(run.stderr), `der Weg zum Hinterlegen fehlt: ${run.stderr}`);
-    return "Name genannt, Sitzung geholt, Passwort nie gezeigt";
+    return "Name genannt, Sitzung geholt, Passwort und Ausweis nie gezeigt, Ausweis nur über den Kanal an Werkzeuge";
+  } finally {
+    server.close();
+    rmSync(akte, { recursive: true, force: true });
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Der Kit-Schlüssel entsteht ohne SSH über die Sitzung, und weder Schlüssel noch Ausweis erscheinen", async () => {
+  // Fund des Fremdtests vom 06.10.2026: ein Gerät mit SSH nur über einen Tunnel, ein Konto als
+  // Administrator, und --deploy-key ging nur über SSH. Der Fremde legte den Schlüssel von Hand über
+  // die API-Referenz an, zweimal daneben, und ergänzte die Akte selbst.
+  const name = "selftest-https";
+  const akte = join(ROOT, "devices", name);
+  const work = mkdtempSync(join(tmpdir(), "ara-https-"));
+  const envDatei = join(work, ".env");
+  const ref = "ARASUL_START_SELFTEST_HTTPS";
+  const passwort = "start-geheim-0815";
+  const sitzung = "ey.https.sitzung";
+  const schluessel = [];
+  const gesehen = [];
+  const server = createServer((request, response) => {
+    const teile = [];
+    request.on("data", (chunk) => teile.push(chunk));
+    request.on("end", () => {
+      const antwort = (status, body) => {
+        response.writeHead(status, { "Content-Type": "application/json" });
+        response.end(JSON.stringify(body));
+      };
+      const rumpf = (() => {
+        try {
+          return JSON.parse(Buffer.concat(teile).toString("utf8") || "null");
+        } catch {
+          return null;
+        }
+      })();
+      const pfad = new URL(request.url, "http://x").pathname;
+      gesehen.push({ method: request.method, pfad, rumpf });
+      if (request.method === "POST" && pfad === "/api/auth/login") {
+        return rumpf?.password === passwort ? antwort(200, { success: true, token: sitzung }) : antwort(401, { error: { message: "nein" } });
+      }
+      if (pfad === "/api/v1/external/contract") {
+        const gilt = schluessel.find((k) => k.aktiv && k.key === request.headers["x-api-key"]);
+        return gilt ? antwort(200, { data: { kontrakt: 13 } }) : antwort(401, { error: { message: "kein Schlüssel" } });
+      }
+      if (request.headers.authorization !== `Bearer ${sitzung}`) return antwort(401, { error: { message: "keine Sitzung" } });
+      if (pfad === "/api/v1/external/api-keys" && request.method === "POST") {
+        const nummer = schluessel.length + 1;
+        const key = `aras_probe${nummer}_${"x".repeat(24)}`;
+        schluessel.push({ id: nummer, key, prefix: key.slice(0, 12), name: rumpf.name, scopes: rumpf.allowed_endpoints, aktiv: true });
+        return antwort(200, { success: true, api_key: key, key_prefix: key.slice(0, 12), key_id: nummer });
+      }
+      if (pfad === "/api/v1/external/api-keys" && request.method === "GET") {
+        return antwort(200, { success: true, api_keys: schluessel.map((k) => ({ id: k.id, key_prefix: k.prefix, name: k.name, is_active: k.aktiv, allowed_endpoints: k.scopes })) });
+      }
+      const widerruf = pfad.match(/^\/api\/v1\/external\/api-keys\/(\d+)$/);
+      if (widerruf && request.method === "DELETE") {
+        const k = schluessel.find((e) => e.id === Number(widerruf[1]));
+        if (!k) return antwort(404, { error: { message: "unbekannt" } });
+        k.aktiv = false;
+        return antwort(200, { success: true });
+      }
+      if (pfad === "/api/probe/konto") {
+        return antwort(200, { benutzer: "anna", token: "ey.fremder.ausweis", api_key: "aras_imtext_123456", key_prefix: "aras_imtext", hinweis: "Schlüssel aras_imtext_123456 angelegt" });
+      }
+      antwort(404, { error: { message: "Diesen Weg gibt es hier nicht" } });
+    });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  mkdirSync(akte, { recursive: true });
+  cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+  // So wie /device eine Akte hinterlässt, wenn SSH nicht antwortet.
+  writeFrontmatter(join(akte, "device.md"), { name, address: "127.0.0.1", api_base: base, ssh: "refused", start_password_ref: ref });
+  // Mit ARA_ENV_FILE zählt nur diese Datei: die echte Ablage des Partners bleibt unberührt.
+  writeFileSync(envDatei, `${ref}=${passwort}\n`);
+  const env = { ARA_ENV_FILE: envDatei, ARA_MIRROR: join(work, "spiegel") };
+  const nichtsGezeigt = (lauf, wo) => {
+    const alles = `${lauf.stdout}${lauf.stderr}`;
+    assert(!alles.includes(sitzung), `${wo}: der Ausweis steht in der Ausgabe`);
+    assert(!/aras_probe\d_x{6}/.test(alles), `${wo}: der Kit-Schlüssel steht im Klartext in der Ausgabe`);
+    assert(!alles.includes(passwort), `${wo}: das Passwort steht in der Ausgabe`);
+  };
+  try {
+    let run = await toolAsync("device.mjs", ["--name", name, "--deploy-key"], env);
+    nichtsGezeigt(run, "--deploy-key");
+    assert(run.status === 0, `--deploy-key über HTTPS fehlgeschlagen: ${run.stdout}${run.stderr}`);
+    assert(/HTTPS/.test(run.stdout) && /ARASUL_KEY_SELFTEST_HTTPS/.test(run.stdout), `der Weg oder der Eintrag wird nicht genannt: ${run.stdout}`);
+    const angelegt = gesehen.filter((e) => e.method === "POST" && e.pfad === "/api/v1/external/api-keys");
+    assert(angelegt.length === 1 && JSON.stringify(angelegt[0].rumpf.allowed_endpoints) === '["app:deploy"]', `angelegt wurde nicht genau einer mit app:deploy: ${JSON.stringify(angelegt)}`);
+    assert(readFileSync(envDatei, "utf8").includes(`ARASUL_KEY_SELFTEST_HTTPS=${schluessel[0].key}`), "der Schlüssel liegt nicht in der Ablage");
+    let felder = readFrontmatter(join(akte, "device.md")).fields;
+    assert(felder.api_key_ref === "ARASUL_KEY_SELFTEST_HTTPS" && felder.arasul === "running" && String(felder.contract) === "13", `die Akte wurde nicht ergänzt: ${JSON.stringify(felder)}`);
+    assert(!readFileSync(join(akte, "device.md"), "utf8").includes(schluessel[0].key), "der Schlüssel steht in der Akte");
+
+    // Ein zweiter Lauf legt keinen zweiten an, solange der erste gilt.
+    run = await toolAsync("device.mjs", ["--name", name, "--deploy-key"], env);
+    nichtsGezeigt(run, "zweites --deploy-key");
+    assert(run.status === 0 && schluessel.length === 1, `ein zweiter Schlüssel entstand: ${schluessel.length} ${run.stdout}`);
+
+    run = await toolAsync("device.mjs", ["--name", name, "--keys"], env);
+    nichtsGezeigt(run, "--keys");
+    assert(run.status === 0 && /dieses Kit|this kit/.test(run.stdout), `--keys markiert den eigenen nicht: ${run.stdout}${run.stderr}`);
+
+    // Ein eigener Aufruf mit der Sitzung: die Antwort ja, jedes Geheimnis darin nein.
+    run = await toolAsync("device.mjs", ["--name", name, "--admin-call", "GET /api/probe/konto"], env);
+    assert(run.status === 0 && /anna/.test(run.stdout) && /aras_imtext"/.test(run.stdout), `--admin-call zeigt die Antwort nicht: ${run.stdout}${run.stderr}`);
+    assert(!/ey\.fremder\.ausweis|aras_imtext_123456/.test(run.stdout), `--admin-call zeigt ein Geheimnis: ${run.stdout}`);
+    nichtsGezeigt(run, "--admin-call");
+
+    run = await toolAsync("device.mjs", ["--name", name, "--revoke-key"], env);
+    nichtsGezeigt(run, "--revoke-key");
+    assert(run.status === 0 && schluessel[0].aktiv === false, `der eigene Schlüssel wurde nicht widerrufen: ${run.stdout}${run.stderr}`);
+    assert(!readFileSync(envDatei, "utf8").includes(schluessel[0].key), "der widerrufene Schlüssel liegt noch in der Ablage");
+    felder = readFrontmatter(join(akte, "device.md")).fields;
+    assert(!felder.api_key_ref, `api_key_ref steht nach dem Widerruf noch in der Akte: ${felder.api_key_ref}`);
+    return "über HTTPS angelegt, nur app:deploy, Klartext nur in der Ablage, Akte ergänzt, kein zweiter, Liste markiert, eigener Aufruf maskiert, widerrufen";
   } finally {
     server.close();
     rmSync(akte, { recursive: true, force: true });

@@ -431,7 +431,7 @@ export function mirrorDir() {
  *
  * Nicht nachgebaut: die Anmeldung, ihre Quelle für Weg und Felder und die Sätze bei einer
  * Abweisung stehen dort. Alle fünf Anmelde-Schalter und `--insecure` gehen durch, das Passwort
- * bleibt im anderen Prozess, und zurück kommt nur der Ausweis. `arg` sind die Schalter des
+ * bleibt im anderen Prozess, und zurück kommt nur der Ausweis, über Dateideskriptor 3. `arg` sind die Schalter des
  * Aufrufers, `device` seine Akte (`device`, `customer`).
  */
 export function adminSession(device, arg) {
@@ -441,9 +441,16 @@ export function adminSession(device, arg) {
     if (text(arg[name])) args.push(`--${name}`, text(arg[name]));
   }
   if (arg.insecure) args.push("--insecure");
-  const run = spawnSync(process.execPath, args, { encoding: "utf8" });
-  if (run.status !== 0 || !run.stdout.trim()) {
+  // Der Ausweis kommt über einen eigenen Kanal (Dateideskriptor 3), nie über die Standardausgabe:
+  // `device.mjs --token` schreibt ihn nur dorthin und bringt ihn so auf keinen Bildschirm.
+  const run = spawnSync(process.execPath, args, {
+    encoding: "utf8",
+    env: { ...process.env, ARA_TOKEN_CHANNEL: "3" },
+    stdio: ["ignore", "pipe", "pipe", "pipe"],
+  });
+  const bearer = String(run.output?.[3] ?? "").trim();
+  if (run.status !== 0 || !bearer) {
     return { ok: false, reason: (run.stderr || run.stdout || "").trim() };
   }
-  return { ok: true, bearer: run.stdout.trim() };
+  return { ok: true, bearer };
 }
