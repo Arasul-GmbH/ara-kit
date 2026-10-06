@@ -20,16 +20,17 @@
  *
  *   const belege = belegWege({
  *     angemeldet: (anfrage) => geraet.angemeldet(anfrage.headers),
- *     vorgaenge: (benutzer) => vorgangsAblage(db, benutzer),
- *     dokumente: (benutzer) => dokumentAblage(db, benutzer),
- *     dokumentWege: (benutzer) =>
+ *     sicht: mandantenFall.sicht,
+ *     vorgaenge: (sicht) => vorgangsAblage(db, sicht),
+ *     dokumente: (sicht) => dokumentAblage(db, sicht),
+ *     dokumentWege: (sicht, benutzer) =>
  *       dokumentWege({
- *         kern: dokumentKern({ ablage: dokumentAblage(db, benutzer), vorgaenge: vorgangsAblage(db, benutzer) }),
+ *         kern: dokumentKern({ ablage: dokumentAblage(db, sicht), vorgaenge: vorgangsAblage(db, sicht) }),
  *         von: () => benutzer,
  *       }),
- *     auslesenWege: (benutzer) =>
+ *     auslesenWege: (sicht, benutzer) =>
  *       auslesenWege({
- *         kern: auslesenKern({ dokumente: dokumentAblage(db, benutzer), auslesungen: auslesungsAblage(db, benutzer), geraet }),
+ *         kern: auslesenKern({ dokumente: dokumentAblage(db, sicht), auslesungen: auslesungsAblage(db, sicht), geraet }),
  *         von: () => benutzer,
  *       }),
  *   });
@@ -39,7 +40,7 @@
  *
  * Und in den Zeilen des Musters Mandanten wird aus `bereit: () => true`:
  *
- *   bereit: mitBeleg(dokumentAblage(db, benutzer)),
+ *   bereit: mitBeleg(dokumentAblage(db, sicht)),
  *
  * Ein Vorgang ohne Beleg bleibt dann in Arbeit. Was eine Fach-App sonst noch
  * verlangt, die Liste der erwarteten Unterlagen etwa, prüft sie an derselben
@@ -47,6 +48,10 @@
  *
  * Vor den Mandanten, weil beide unter `vorgaenge/` antworten und das Muster
  * Mandanten einen Weg, den es nicht kennt, mit 404 beantwortet.
+ *
+ * **`sicht` kommt aus dem Muster Mandanten**: der Name, und ob er alle
+ * Mandanten sieht (die Verwaltung mit `alleSehen`). Jede Ablage wird mit ihr
+ * gebaut, der Name allein geht an `von`, an das, was ein Mensch getan hat.
  *
  * Die Wege, hinter `/apps/<id>/api/`, dazu die der beiden Muster:
  *
@@ -72,11 +77,12 @@ function json(antwort, status, daten) {
   antwort.end(JSON.stringify(daten));
 }
 
-export function belegWege({ angemeldet, vorgaenge, dokumente, dokumentWege, auslesenWege }) {
+export function belegWege({ angemeldet, sicht = (wer) => wer.benutzer, vorgaenge, dokumente, dokumentWege, auslesenWege }) {
   return async function bedienen(anfrage, antwort, pfad) {
     const teile = pfad.split("/").filter(Boolean);
     if (!["vorgaenge", "dokumente", "auslesen"].includes(teile[0])) return false;
-    const { benutzer } = angemeldet(anfrage);
+    const wer = angemeldet(anfrage);
+    const benutzer = sicht(wer);
 
     if (teile[0] === "vorgaenge") {
       if (teile.length !== 3 || teile[2] !== "belege" || anfrage.method !== "GET") return false;
@@ -116,7 +122,7 @@ export function belegWege({ angemeldet, vorgaenge, dokumente, dokumentWege, ausl
       }
     }
 
-    if (await auslesenWege(benutzer)(anfrage, antwort, pfad)) return true;
-    return await dokumentWege(benutzer)(anfrage, antwort, pfad);
+    if (await auslesenWege(benutzer, wer.benutzer)(anfrage, antwort, pfad)) return true;
+    return await dokumentWege(benutzer, wer.benutzer)(anfrage, antwort, pfad);
   };
 }

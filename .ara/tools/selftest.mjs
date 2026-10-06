@@ -5881,7 +5881,9 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       .map((zeile) => zeile.slice(5));
     const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
     const beginn = zeilen.findIndex((zeile) => zeile.startsWith("const mandantenFall"));
-    const ende = zeilen.findIndex((zeile, i) => i > beginn && zeile === "});");
+    // Bis zum Ende der Wege: der Aufbau des Kerns schließt selbst schon mit "});".
+    const wege = zeilen.findIndex((zeile) => zeile.startsWith("const mandanten = "));
+    const ende = zeilen.findIndex((zeile, i) => i > wege && zeile === "});");
     const aufbau = zeilen.slice(beginn, ende + 1).join("\n") + "\n";
     assert(importe.includes("mandantenWege") && aufbau.includes("regel: mandantenFall.regel"), `der Kopf von wege/mandanten.mjs nennt die Zeilen nicht mehr: ${aufbau}`);
     const server = join(paket, "server.mjs");
@@ -5957,8 +5959,20 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     const b = r.daten.mandant.id;
     r = await post("chefin", "leitung", "/mandanten", { name: "Schmidt KG" });
     assert(r.code === 409, "ein Mandant ließ sich zweimal anlegen");
+    // Wer die App noch nie geöffnet hat, wird vorgemerkt (Fremdtest 06.10.2026: bis 0.74.0 musste
+    // jede neue Person die App erst leer öffnen). Ein Name mit Leerraum ist keiner.
     r = await post("chefin", "leitung", "/zuordnungen", { benutzer: "dora", mandant: a });
-    assert(r.code === 400 && /noch nie/.test(r.daten.fehler), `ein nie gesehener Name wurde zugeordnet: ${JSON.stringify(r.daten)}`);
+    assert(r.code === 201 && r.daten.zuordnung.vorgemerkt === true && /noch nie/.test(r.daten.hinweis), `ein nie gesehener Name wurde nicht vorgemerkt: ${JSON.stringify(r.daten)}`);
+    r = await post("chefin", "leitung", "/zuordnungen", { benutzer: "Dora Muster", mandant: a });
+    assert(r.code === 400, `ein Name mit Leerzeichen wurde zugeordnet: ${r.code}`);
+    r = await ruf("chefin", "leitung", "/zuordnungen");
+    assert(r.daten.zuordnungen.find((z) => z.benutzer === "dora")?.vorgemerkt === true, `die Verwaltung sieht die Vormerkung nicht: ${JSON.stringify(r.daten.zuordnungen)}`);
+    r = await ruf("dora", "team", "/mandanten");
+    assert(r.daten.mandanten.length === 1 && r.daten.mandanten[0].id === a, `die vorgemerkte dora sieht ihren Mandanten beim ersten Öffnen nicht: ${JSON.stringify(r.daten)}`);
+    r = await ruf("chefin", "leitung", "/zuordnungen");
+    assert(r.daten.zuordnungen.find((z) => z.benutzer === "dora")?.vorgemerkt === false, "nach dem ersten Öffnen gilt dora noch als vorgemerkt");
+    r = await ruf("chefin", "leitung", `/zuordnungen?benutzer=dora&mandant=${a}`, { method: "DELETE" });
+    assert(r.code === 200, "die Vormerkung ließ sich nicht lösen");
     // Sehen heißt nicht entscheiden: carla ist Partnerin bei A, Änne und emil
     // sehen A nur, bernd entscheidet bei B und ist dort allein.
     for (const [wer, mandant, entscheidet] of [["Änne", a, false], ["carla", a, true], ["emil", a, false], ["bernd", b, true]]) {
@@ -6102,7 +6116,9 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     const ablage = readFileSync(join(PATTERNS, "clients", "backend", "ablage", "vorgaenge.mjs"), "utf8");
     const abfragen = [...ablage.matchAll(/`((?:SELECT|UPDATE)[^`]*vorgaenge[^`]*)`/g)].map((m) => m[1]);
     assert(abfragen.length >= 5, `die Ablage der Vorgänge fragt nur ${abfragen.length} Mal`);
-    for (const sql of abfragen) assert(/nurZugeordnete/.test(sql), `eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+    for (const sql of abfragen) assert(/\$\{(nurZugeordnete|filter)\(/.test(sql), `eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+    // Und `filter` ist nurZugeordnete mit der Sicht, nichts sonst.
+    assert(/const filter = \(spalte, platzhalter\) => nurZugeordnete\(spalte, platzhalter, alle\);/.test(ablage), "filter in der Ablage der Vorgänge ist nicht mehr nurZugeordnete");
     // Und sie hält die Felder der Vorlage: sie ersetzt deren Ablage.
     const vorlageFelder = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "ablage", "vorgaenge.mjs"), "utf8").match(/const FELDER = "([^"]+)"/)[1];
     for (const feld of vorlageFelder.split(", ")) assert(ablage.includes(feld), `die Ablage des Musters kennt ${feld} der Vorlage nicht`);
@@ -6203,18 +6219,19 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
     for (const muster of ["documents", "extract", "clients", "receipts"]) cpSync(join(PATTERNS, muster, "backend"), paket, { recursive: true });
     // Die Zeilen aus den Köpfen der Wege, genau so eingesetzt.
-    const kopfzeilen = (datei, anfang) => {
+    const kopfzeilen = (datei, anfang, bis = anfang) => {
       const zeilen = readFileSync(join(PATTERNS, datei), "utf8")
         .split("\n")
         .filter((zeile) => zeile.startsWith(" *   "))
         .map((zeile) => zeile.slice(5));
       const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
       const beginn = zeilen.findIndex((zeile) => zeile.startsWith(anfang));
-      const ende = zeilen.findIndex((zeile, i) => i > beginn && zeile === "});");
+      const letzter = zeilen.findIndex((zeile) => zeile.startsWith(bis));
+      const ende = zeilen.findIndex((zeile, i) => i > letzter && zeile === "});");
       assert(beginn >= 0 && ende > beginn, `der Kopf von ${datei} nennt die Zeilen nicht mehr`);
       return { importe, aufbau: zeilen.slice(beginn, ende + 1).join("\n") + "\n" };
     };
-    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall");
+    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall", "const mandanten = ");
     const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
     // Der Kopf der Belege sagt, was in den Zeilen der Mandanten aus `bereit` wird.
     const bereitZeile = readFileSync(join(PATTERNS, "receipts", "backend", "wege", "belege.mjs"), "utf8")
@@ -6365,7 +6382,8 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
       const text = readFileSync(join(PATTERNS, "receipts", "backend", "ablage", datei), "utf8");
       const abfragen = [...text.matchAll(/`((?:SELECT|DELETE)[^`]*)`/g)].map((m) => m[1]);
       assert(abfragen.length >= mindestens, `${datei} fragt nur ${abfragen.length} Mal`);
-      for (const sql of abfragen) assert(/nurZugeordnete/.test(sql), `${datei}: eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+      for (const sql of abfragen) assert(/\$\{(nurZugeordnete|filter)\(/.test(sql), `${datei}: eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
+      assert(/const filter = \(spalte, platzhalter\) => nurZugeordnete\(spalte, platzhalter, alle\);/.test(text), `${datei}: filter ist nicht mehr nurZugeordnete`);
     }
 
     // In eine App aus der Vorlage gelegt, hält die Oberfläche aller vier den Standard.

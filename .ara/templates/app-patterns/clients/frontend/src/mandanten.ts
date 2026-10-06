@@ -34,14 +34,20 @@ export interface Zuordnung {
   seit: string;
   /** Ob dieses Konto über die Vorgänge des Mandanten entscheidet oder ihn nur sieht. */
   entscheidet: boolean;
+  /** Zugeordnet, aber die App hat den Namen noch nie gesehen: gilt, sobald er kommt. */
+  vorgemerkt?: boolean;
 }
 
 export interface Uebersicht {
   mandanten: Mandant[];
   verwaltung: boolean;
+  /** Ob dieser Mensch alle Mandanten sieht: die Verwaltung, wenn die App es so will. */
+  alle?: boolean;
 }
 
 export interface Verwaltung {
+  /** Ob die Verwaltung alle Mandanten sieht, ohne zugeordnet zu sein. */
+  alleSehen?: boolean;
   mandanten: Mandant[];
   konten: Konto[];
   zuordnungen: Zuordnung[];
