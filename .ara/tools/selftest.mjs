@@ -15368,6 +15368,20 @@ await checkAsync("Update und Befehle laufen in einem Fork ohne Upstream", async 
     // 3. Einspielen. Was commands.mjs in Schritt 1 als Skill erzeugt hat, gehoert nicht dem Update.
     assert(has(".agents/skills/device/SKILL.md") && has(".agents/skills/.sources.json"), "Schritt 1 hat keinen Skill erzeugt");
     const erzeugt = read(".agents/skills/device/SKILL.md");
+    // Liegt das Kit in git und ist eine Datei geändert, die das Update ersetzen würde, hält es an
+    // (Ernte 06.10.2026: ein Aufruf ohne Argument verwarf im Repo des Kits die Arbeit des Tages).
+    const git = (...a) => spawnSync("git", ["-C", fork, "-c", "user.email=selbsttest@ara.invalid", "-c", "user.name=Selbsttest", ...a], { encoding: "utf8" });
+    if (git("init", "-q").status === 0) {
+      git("add", "-A");
+      git("commit", "-qm", "Stand vor dem Update");
+      const persona = read(".ara/persona/ara.md");
+      write(".ara/persona/ara.md", persona + "\nMeine Arbeit.\n");
+      run = await forkTool("update.mjs", [], env);
+      assert(run.status === 1 && /\.ara\/persona\/ara\.md/.test(run.stdout) && /--overwrite-local/.test(run.stdout), `das Update hält bei lokaler Arbeit nicht an: ${run.status} ${run.stdout}`);
+      assert(/Meine Arbeit\./.test(read(".ara/persona/ara.md")) && !has(".ara/knowledge/probe.md"), "das Update hat über lokale Arbeit geschrieben");
+      write(".ara/persona/ara.md", persona);
+      rmSync(join(fork, ".git"), { recursive: true, force: true });
+    }
     run = await forkTool("update.mjs", [], env);
     assert(run.status === 0, `Update fehlgeschlagen: ${run.stderr}${run.stdout}`);
     assert(has(".ara/knowledge/probe.md"), "neue Datei fehlt");
