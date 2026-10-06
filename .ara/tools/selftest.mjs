@@ -2993,7 +2993,7 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
   const mit = f.applyRecognition(f.applyFlowFields(vorlage, { stufen, felder: ["betrag", "datum"] }), { felder: ["betrag", "datum"], aenderbar: ["datum"] });
   assert(/^werkzeuge: \[subagent, freigabe_anfordern\]$/m.test(mit), "der Flow nennt das Werkzeug subagent nicht");
   assert(/^ {4}ergebnis: \{ felder: \[betrag, datum\], aenderbar: \[datum\] \}$/m.test(mit), "die Rolle trägt die Deklaration nicht");
-  assert(/^ {4}original: "api\/vorgaenge\/\{\{vorgang\}\}\/original\.svg"$/m.test(mit), "der Schritt nennt das Original nicht");
+  assert(/^ {4}original: "api\/vorgaenge\/\{\{vorgang\}\}\/original\.png"$/m.test(mit), "der Schritt nennt das Original nicht");
   assert(/name: entscheiden_leitung/.test(mit) && !/name: entscheiden_pruefung/.test(mit), "die erste Stufe bekommt einen eigenen Schritt, obwohl die Erkennung sie hat");
   assert(f.flowFieldFindings("freigabe", mit).length === 0, `ein sauberer Flow bekommt Befunde: ${f.flowFieldFindings("freigabe", mit).join(" | ")}`);
   const einStufig = f.applyRecognition(f.applyFlowFields(vorlage, { stufen: f.parseStufen("Prüfung").stufen, felder: ["betrag"] }), { felder: ["betrag"] });
@@ -3005,7 +3005,9 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
   assert(wrong("aenderbar: [datum]", "aenderbar: [datum, summe]").some((b) => /summe/.test(b)), "ein änderbares Feld ohne Erkennung wird nicht benannt");
   assert(wrong("faehigkeiten: { text: true, bild: true }", "faehigkeiten: { text: true }").length >= 2, "original und Rolle ohne Bild werden nicht benannt");
   assert(wrong("rolle: leser", "rolle: fremd").some((b) => /fremd/.test(b)), "eine Rolle, die es nicht gibt, wird nicht benannt");
-  assert(wrong("original.svg", "original").some((b) => /Endung/.test(b)), "ein Pfad ohne Endung wird nicht benannt");
+  assert(f.originalProblem("api/x/original.svg") && /Original nicht lesbar/.test(f.originalProblem("api/x/original.svg")), "ein Pfad auf .svg wird nicht beanstandet");
+  assert(wrong("original.png", "original.svg").some((b) => /svg/i.test(b)), "--check meldet ein Original auf .svg nicht");
+  assert(wrong("original.png", "original").some((b) => /Endung/.test(b)), "ein Pfad ohne Endung wird nicht benannt");
   const ohneBlock = mit.replace(/^ {4}ergebnis:.*\n/m, "    ergebnis:\n      felder:\n        - betrag\n        - datum\n      aenderbar:\n        - summe\n");
   assert(f.flowFieldFindings("freigabe", ohneBlock).some((b) => /summe/.test(b)), "die Liste in Zeilenform wird nicht gelesen");
   assert(f.contractTenFindings("freigabe", mit, 9).length === 1 && f.contractTenFindings("freigabe", mit, 10).length === 0 && f.contractTenFindings("freigabe", vorlage, 8).length === 0, "Kontrakt 10 wird nicht an den Feldern festgemacht");
@@ -3046,8 +3048,11 @@ await checkAsync("Kontrakt 10: das Gerüst schreibt die Erkennung, die änderbar
   assert(/\/api\/freigabe-anfragen/.test(wege) && /bestaetigen/.test(wege) && /ablehnen/.test(wege) && /holeGeraet/.test(wege), "die Wege zum Gerät fehlen");
   assert(/arasul_csrf/.test(naht) && /x-csrf-token/.test(naht) && !/\bfetch\s*\(/.test(wege), "das Zeichen gegen gefälschte Aufrufe fehlt, oder die Wege holen an einer zweiten Stelle");
   const { blatt, umbrechen } = await import(pathToFileURL(join(ROOT, ".ara", "templates", "app", "backend", "kern", "blatt.mjs")).href);
-  const svg = blatt({ id: 3, titel: "Tank <b>&</b>", von: "anna", text: `${"x".repeat(100)}\nzweite Zeile` });
-  assert(!/<b>/.test(svg) && /&lt;b&gt;&amp;/.test(svg), "das Blatt entschärft den Text nicht");
+  const bild = blatt({ id: 3, titel: "Tank <b>&</b> Größe", von: "anna", text: `${"x".repeat(100)}\nzweite Zeile € ü` });
+  assert(Buffer.isBuffer(bild) && bild.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])), "das Blatt ist kein PNG: das Bildmodell liest kein SVG");
+  assert(bild.readUInt32BE(16) === 600 && bild.readUInt32BE(20) > 100 && bild.includes(Buffer.from("IEND")), "das PNG des Blatts ist unvollständig");
+  const serverQuelle = readFileSync(join(ROOT, ".ara", "templates", "app", "backend", "server.mjs"), "utf8");
+  assert(/original\\\.png/.test(serverQuelle) && !/image\/svg/.test(serverQuelle), "das Backend liefert das Blatt nicht als PNG");
   assert(umbrechen("x".repeat(100), 44).every((z) => z.length <= 44) && umbrechen("a b", 44).length === 1, "das Blatt bricht nicht um");
   return "Fassung 10 bedient, Erkennung, Deklaration und Original geschrieben und geprüft, Baustein statt Nachbildung";
 });

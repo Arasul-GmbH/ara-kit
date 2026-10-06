@@ -23,6 +23,7 @@ Contract: up to 14
 - **`--new --felder` schreibt keinen Schritt `entscheiden`, wenn die Erkennung die Prüfung ist** (Art `ergebnis_bestaetigen`): der Flow hatte zwei Freigaben, jetzt eine. Eine weitere Stufe behält ihren Schritt, `autonom` allein ebenfalls. Der Text des Flows spricht nicht mehr von einem Schritt der Entscheidung, den es nicht gibt.
 - **Das Gerüst gibt beim Start einen Titel mit.** `flowStarten` schickt `titel` (einen Verweis, „Vorgang 7 von anna“, nie Titel oder Text des Vorgangs, auf 120 Zeichen gekürzt), wenn der Kontrakt des Geräts ihn beim Start nennt; `arasul.json` trägt `freigaben.titel`.
 - **`app.md` und Muster 8 erklären das Original:** PNG, JPEG oder PDF, die Grenze aus dem Kontrakt, was ein fehlendes Original tut (der Lauf hält mit einem genannten Grund an), dass die Angaben des Vorgangs nicht mehr in den `auftrag` gehören, und der Titel des Laufs.
+- **Das Original, das das Gerüst vorgibt, ist ein PNG, und `--check` nennt ein `.svg`.** Das Blatt, das das Backend aus dem Text eines Vorgangs zeichnet (`kern/blatt.mjs`, Weg `original.png`), ist jetzt ein PNG aus einer eingebauten Punktschrift ohne Abhängigkeit, denn das Bildmodell liest PNG, JPEG und PDF, kein SVG; `ORIGINAL_STANDARD` zeigt darauf. Ein Pfad des Originals auf `.svg` weist `--new --original` ab und `--check` nennt er.
 
 ## 0.75.0 (2026-10-06)
 

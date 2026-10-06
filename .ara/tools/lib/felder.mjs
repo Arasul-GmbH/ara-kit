@@ -291,8 +291,14 @@ export function originalProblem(path) {
   // Endung im eingesetzten Wert stehen (`4711.pdf`), dann ist er nicht zu beurteilen.
   if (!value.endsWith("}}") && !ORIGINAL_ENDUNG.test(value)) {
     return t(
-      `The path of the original "${value}" has no ending the approval can read: it shows an image or a PDF by the end of the path (.png, .jpg, .svg, .pdf). Without one it says that it cannot show the format.`,
-      `Der Pfad des Originals „${value}“ hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .svg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
+      `The path of the original "${value}" has no ending the approval can read: it shows an image or a PDF by the end of the path (.png, .jpg, .pdf). Without one it says that it cannot show the format.`,
+      `Der Pfad des Originals „${value}“ hat keine Endung, die die Freigabe lesen kann: sie zeigt ein Bild oder ein PDF am Ende des Pfades (.png, .jpg, .pdf). Ohne sie steht dort, dass sie das Format nicht anzeigen kann.`
+    );
+  }
+  if (/\.svg$/i.test(value)) {
+    return t(
+      `The path of the original "${value}" ends in .svg: the display shows it, but from contract 14 the image model reads the original itself and cannot read an SVG, so the run stops with "Original nicht lesbar". Deliver a PNG, JPEG or PDF (.png, .jpg, .pdf).`,
+      `Der Pfad des Originals „${value}“ endet auf .svg: die Anzeige zeigt es, aber ab Kontrakt 14 liest das Bildmodell das Original selbst und kann kein SVG lesen, der Lauf hielte mit „Original nicht lesbar“. Liefere ein PNG, JPEG oder PDF (.png, .jpg, .pdf).`
     );
   }
   return null;
@@ -301,8 +307,8 @@ export function originalProblem(path) {
 /** Die Endungen, an denen die Anzeige der Freigabe ein Bild oder ein PDF erkennt. */
 const ORIGINAL_ENDUNG = /\.(png|jpe?g|gif|webp|avif|bmp|svg|pdf)$/i;
 
-/** Der Pfad des Originals, den das Gerüst vorgibt: das Blatt, das das Backend zu einem Vorgang zeichnet. */
-export const ORIGINAL_STANDARD = "api/vorgaenge/{{vorgang}}/original.svg";
+/** Der Pfad des Originals, den das Gerüst vorgibt: das Blatt, das das Backend zu einem Vorgang zeichnet (ein PNG: das Bildmodell liest kein SVG). */
+export const ORIGINAL_STANDARD = "api/vorgaenge/{{vorgang}}/original.png";
 
 /**
  * Die Erkennung in den Flow `freigabe` schreiben: eine Rolle `leser` mit den Feldern und ihrer
