@@ -157,7 +157,7 @@ In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit 
    (`--aenderbar "Datum"`, oder `keine`). **Nie alle aus Gewohnheit**: ein änderbares Feld lässt sich
    auch aus Versehen ändern. Das Blatt links ist `--original`: vorgabemäßig ein Blatt aus dem
    eingereichten Text, bei echten Dokumenten der Weg, der sie liefert, **mit der Endung .png, .jpg
-   oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades).
+   oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades; Muster 8 nimmt die Endung vom Beleg).
    **Ab Kontrakt 14 liest das Modell das Original selbst.** Das Gerät holt die Datei über den Weg
    der App und gibt sie dem Bildmodell: ein PNG oder JPEG unverändert, ein PDF als seine ersten
    Seiten. Es erkennt sie an den ersten Bytes, nicht am Namen, und ein Blatt als SVG ist nur eine

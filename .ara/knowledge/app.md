@@ -152,7 +152,7 @@ says what each does on this device.
    "Date"`, or `keine`). **Never all by habit**: a changeable field can be changed by mistake. The
    paper on the left is `--original`: by default a sheet drawn from the submitted text, with real
    documents the route that delivers them, **ending in .png, .jpg or .pdf** (the approval tells
-   image from PDF by the end of the path).
+   image from PDF by the end of the path; pattern 8 takes the ending from the receipt).
    **From contract 14 the model reads the original itself.** The device fetches the file through the
    route of the app and hands it to the image model: a PNG or JPEG as it is, a PDF as its first pages.
    It tells by the first bytes, not by the name, and an SVG sheet is only a display, the model

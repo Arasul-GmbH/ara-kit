@@ -13,6 +13,20 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.78.0 (2026-10-07)
+
+Contract: up to 14
+
+- **`app.mjs --add-pattern` wires a pattern into an app.** Up to now that was work by hand after the heads of the files, around 150 lines in `server.mjs`, the biggest loss of time in the stranger test of 06.10.2026. The tool copies files and migrations (each pattern keeps its ten; a taken number moves to the next free ten, an old name stays), sets the lines in `server.mjs`, the pages, the sidebar and the details of an item, names a missing prerequisite with the full call, and a second run changes nothing. What it does stands in a `wiring.json` beside each pattern; an anchor changed by hand becomes a step by hand, named.
+- **Pattern 8 without pattern 6.** From contract 14 the device reads the receipt in the flow; migration `040` now only touches documents, the reading with its client comes as `041` only together with pattern 6. The sheet says which of the two ways when. **One flow shows PDF and photo**: the original is `vorgaenge/<id>/beleg.<ending>`, and the flow argument `endung` comes from the receipt. A receipt is PDF, PNG or JPEG, another format gets 415. A list of receipts shows client (wrapped, never cut) and amount.
+- **Pattern 10, the log of an item.** Who did what when, only appended: created, submitted, approved or refused, completed with what a person changed. The scaffold's core and completion report every event to `melden` in `server.mjs`; the log listens. With pattern 7 it follows the client's view.
+- **`fremde-akte.mjs` checks documents, originals and the log too**, and says which ways are not wired instead of counting a 404 as passed.
+- **`--check` and `--deploy` report short**: result, findings, next step, at most 30 lines, the result first and last. The whole report with the rules of the contract: `--verbose`.
+- **`device.mjs` creates a file without an SSH name.** Without `--user` it goes over HTTPS: address and certificate measured, the contract read with a kit key, `ssh: none`; the kit key then goes over HTTPS by itself.
+- **The check of address leaves prompts to the model alone**: in a flow only the lines a person reads, in the backend no string after `prompt`, `system` or `auftrag`.
+- **Pattern 7 delivers the scaffold's sheet `original.png` in its view**; up to now the route answered 404 and a flow with clients stopped with "original missing".
+- **Checked on the Orin on 07.10.2026** with test accounts: a file over HTTPS only, the kit key, the receipt app from scaffold and `--add-pattern documents,clients,receipts,history`, `--check` in 8 lines (190 with `--verbose`); a PDF read in 36 s and a photo in 10 s, both right, the amount corrected and in the log, the submitter's own approval 403, HEIC 415, the test "foreign file" 18 of 18; removed afterwards.
+
 ## 0.77.0 (2026-10-06)
 
 Contract: up to 14

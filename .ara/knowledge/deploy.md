@@ -44,8 +44,8 @@ node .ara/tools/app.mjs --device <device> --app <name> --check
 delivery**: a promised flow folder exists and brings one file per flow. The tool holds the manifest
 against **this** device's schema, names every deviation and what it could not check, checks that
 the frontend is a **build** (`package.json`, `src/` or `tsconfig.json` there would be an empty page),
-and prints `arasul.json`. Yourself you read, word for word, **the rules
-no schema carries**, "at least one of frontend and backend", "with a backend a port": the device
+and says the result first and last, in at most 30 lines. `--verbose` adds `arasul.json` and, word
+for word, **the rules no schema carries**, which you read yourself: "at least one of frontend and backend", "with a backend a port": the device
 rejects a manifest that breaks one even when the schema holds. And **what the contract says about
 the package**: packing, what stays out, size, flows.
 
