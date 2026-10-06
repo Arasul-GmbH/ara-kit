@@ -556,7 +556,7 @@ check("Der Skill init in Codex ist derselbe Text wie der Befehl init in Claude C
   assert(/allow_implicit_invocation:\s*false/.test(yaml), "init darf in Codex von selbst gewaehlt werden");
 });
 
-check("Der Freitext „bau eine App für Belege mit Freigabe" führt zu /app und app.md, nicht an ihm vorbei", () => {
+check("Der Freitext „bau eine App für Belege mit Freigabe“ führt zu /app und app.md, nicht an ihm vorbei", () => {
   // Ein Befehl lädt sich nie von selbst, ein Skill schon: nach seiner Beschreibung. Bis 0.73.1
   // passte auf diesen Satz nur der Skill extensions, und der führte in ein Verfahren ohne
   // Interview, ohne Muster und ohne Gerüst. Geprüft wird die Kette, die ein Agent geht.

@@ -110,7 +110,7 @@ Eine leere Seite, ein 502, ein Bau, der scheitert: der Grund steht am **Ende** d
 Werkzeug gibt dieses Ende aus. Darüber hinaus liest du den Container der App am Gerät, nur lesend:
 `node .ara/tools/remote.mjs --device <gerät> --command "docker ps -a --filter name=<id>"` nennt
 ihn, `--command "docker logs --tail 60 <name>"` zeigt seine letzten Zeilen. Die Vorlage schreibt
-beim Start ihre Lage dorthin, und `GET /lage` der App sagt dasselbe.
+beim Start ihre Lage dorthin, und die Route `lage` der App sagt dasselbe.
 
 ## Entfernen
 
