@@ -2054,6 +2054,17 @@ check("Ein Geheimnis lässt sich auch ohne Terminal hinterlegen", () => {
     assert(run.status === 0, `Anzeige fehlgeschlagen: ${run.stderr}`);
     assert(!new RegExp(wert).test(run.stdout), "die Übersicht zeigt den Wert");
 
+    // K17: ein Passwort kommt nur auf ausdrückliches Wort in die .env (Fremdtest 06.10.2026).
+    for (const args of [["--set", "ARA_SELFTEST_ADMIN_PW"], ["--set", "ARA_SELFTEST_X", "--password-ref"]]) {
+      run = forkTool(args, "passwort-wert\n");
+      assert(run.status !== 0 && /Schlüsselbund|keychain/.test(run.stderr), `ein Passwort ging ohne Bestätigung in die .env: ${run.stdout}${run.stderr}`);
+      assert(!/passwort-wert/.test(readFileSync(join(fork, ".env"), "utf8")), "das Passwort steht in der .env");
+    }
+    run = forkTool(["--set", "ARA_SELFTEST_ADMIN_PW", "--confirm-env"], "passwort-wert\n");
+    assert(run.status === 0, `mit ausdrücklicher Bestätigung ging es nicht: ${run.stderr}`);
+    run = forkTool(["--set", "ARA_SELFTEST_PWA_KEY"], "kein-passwort\n");
+    assert(run.status === 0, `PWA_KEY gilt zu Unrecht als Passwort: ${run.stderr}`);
+
     // Eine leere Leitung ist kein Wert, und das Werkzeug tut nicht so.
     run = forkTool(["--set", "ARA_SELFTEST_LEER"], "\n");
     assert(run.status !== 0, "ein leerer Wert wurde hinterlegt");
@@ -4346,6 +4357,12 @@ check("Eine App entsteht aus der Vorlage und kennt ihren nächsten Schritt", () 
       !/\{\{[a-z]+\}\}/.test(readFileSync(join(dir, "README.md"), "utf8")),
       "in der README steht noch ein Platzhalter"
     );
+    // K17: die README beschreibt die App (Name, Zweck, Rollen, Ausprobieren), die Vorlage liegt in aufbau.md.
+    const readme = readFileSync(join(dir, "README.md"), "utf8");
+    for (const wort of ["# Probe", "## Wozu sie da ist", "## Wer was darf", "## So probieren Sie sie aus"]) {
+      assert(readme.includes(wort), `die README nennt "${wort}" nicht`);
+    }
+    assert(existsSync(join(dir, "aufbau.md")), "die Beschreibung der Vorlage fehlt (aufbau.md)");
 
     // Zweimal dieselbe App gibt es nicht, und der Ordner bleibt, wie er ist.
     run = tool("app.mjs", ["--app", name, "--new"]);

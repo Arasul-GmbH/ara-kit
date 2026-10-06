@@ -26,6 +26,14 @@ Haus arbeitet (`business/profile.md`), gehört in den ersten Entwurf. **Mindeste
 bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht in `AGENTS.md`,
 „Every command asks to full depth"; die vier Ebenen unten sind, was sie für eine App heißt.
 
+**Will der Mensch ausdrücklich keine Fragen** („frag nicht", „keine Fragen", oder die Aufgabe sagt
+es schriftlich, wie im Codex-Test vom 06.10.2026), gelten die drei Runden nicht: der Wunsch geht
+dem Mindestmaß vor. Arbeite mit dem, was aufgeschrieben ist, frag nichts, und schreib jeden noch
+offenen Punkt als Annahme in den Plan, jede Zeile als Stelle, an der später jemand widersprechen
+darf. Auch dann nicht angenommen werden ein Preis, ein Produktwert und eine Rechtstatsache (sie
+bleiben offen und werden als offen genannt) und alles, was personenbezogene Daten vom Gerät schickte.
+Sag zu Beginn in einem Satz, dass du ohne Fragen weitermachst und die Annahmen im Plan stehen.
+
 | Was | Warum es entscheidet |
 | --- | --- |
 | **Der Arbeitsschritt dahinter** | Nicht die gewünschte Lösung. „Ein Bot für Urlaub" heißt: jemand liest Mails und trägt sie in eine Tabelle |
