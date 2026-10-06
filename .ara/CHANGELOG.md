@@ -13,6 +13,20 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.75.0 (2026-10-06)
+
+Contract: up to 13
+
+- **The kit key without SSH.** A stranger testing the kit on 06.10.2026 had an administrator account but no SSH, and `--deploy-key` only went over SSH; he created the key by hand over a route of the API reference, twice wrongly. `--deploy-key`, `--keys` and `--revoke-key` now go over HTTPS with the session of an administrator when the file says SSH does not answer, when `--password-ref` is given, or with `--via https`. The plain text goes from the device's answer straight into the store, the file gets `api_key_ref`, `tls`, `arasul` and `contract`, a stored key that still works stays, and a key that cannot be stored is revoked at once. `device.md` describes this way first.
+- **No tool shows a session.** `--admin-login` no longer prints the credential, `--json` no longer carries it, and `--token` hands it to the kit's own tools only, over a channel of their own (descriptor 3), never onto a screen. A manual step goes as `--admin-call "<VERB> <route>"`, whose answer comes back with every value that can carry a secret masked. The help shows `--admin-login`, `--admin-call`, `--deploy-key`, `--password-ref` and `--login-user` together. `browser.md` says: log in in the page, never set a cookie through a browser call.
+- **Patterns compose without colliding migrations.** The scaffold holds 001 to 009, every pattern a ten of its own (documents 010, extract 020, clients 030 and 031, receipts 040), the app's own begin at 100. Up to 0.74.0 scaffold and documents both carried a 002. The self-test checks every number and the order of the prerequisites. An app that already carries the old names keeps them.
+- **Pattern 7: the management may see every client, and a person can be assigned before the first visit.** One switch in the lines of the sheet, `alleSehen`, lets the management see every client without being assigned; the stores of patterns 7 and 8 take a view (`{ benutzer, alle }`). Assigning a name the app has never seen notes it in advance; the management page shows it as "never opened" until the person comes. With exactly one client it is chosen in the form.
+- **The test "foreign file" names its three sessions.** It needs a management account and two employees without that role; head and sheet said two. The sessions now come from a file (`--sitzungen`), not from the call, and the test shows none of them, also not when it stops.
+- **The account comes from a list with names.** The scaffold has `kern/feldlisten.mjs` and `GET /feldlisten`; pattern 9 fills `konto` from its chart of accounts. The page "Freigaben" shows the name of the suggestion at the field, refuses an account outside the list and asks back once when somebody changes it ("4930 Bürobedarf statt 4910 Porto?").
+- **`update.mjs` stops over local work.** If the kit lies in git and a file the update would replace is changed and not committed, it lists those files and changes nothing; `--overwrite-local` deploys anyway.
+- **A reconstruction in the self-test.** "A stranger builds the receipt intake" composes scaffold and patterns 2, 6, 7, 8 and 9 only along the sheets and runs migrations, the management that sees all, assignment before the first visit, the approval for the clerk, the list of accounts and the test "foreign file" with three sessions.
+- **`app.md` says what holds at contract 13 for a reading:** with `--felder` the flow has two approvals, and the model reads what `lesen` hands it as `auftrag`, not the original on the left. The interview asks whether the management sees every client.
+
 ## 0.74.0 (2026-10-06)
 
 Contract: up to 13

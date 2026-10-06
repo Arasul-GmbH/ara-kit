@@ -98,7 +98,7 @@ when building an app:
 | Tool | For what |
 |---|---|
 | `app.mjs` | An app: scaffold, plan, build, and with `--device` contract, check, staging, live, back |
-| `device.mjs` | Device file, SSH, hardware, verdict, installation, kit key, licence |
+| `device.mjs` | Device file, SSH, hardware, verdict, installation, licence; the kit key also without SSH, over an administrator account (`--deploy-key --via https`) |
 | `remote.mjs` | Run a command on a device. **Always address devices through it**, never with your own `ssh`: it takes the connection from the device file. `device.mjs` is the one exception |
 | `secrets.mjs` | Store secrets and look up what is set, never showing a value |
 | `mirror.mjs`, `marken.mjs` | The installation artifact and its manuals; the guard of the design system's copies |
