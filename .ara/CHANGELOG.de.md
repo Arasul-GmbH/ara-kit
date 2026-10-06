@@ -15,6 +15,20 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.78.0 (2026-10-07)
+
+Kontrakt: bis 14
+
+- **`app.mjs --add-pattern` hängt ein Muster in eine App ein.** Bis hier war das Handarbeit nach den Köpfen der Dateien, rund 150 Zeilen in `server.mjs`, der größte Zeitfresser im Fremdtest vom 06.10.2026. Das Werkzeug kopiert Dateien und Migrationen (jedes Muster behält seinen Zehner; eine belegte Nummer rückt auf den nächsten freien Zehner, ein alter Name bleibt), setzt die Zeilen in `server.mjs`, die Seiten, die Seitenleiste und die Einzelheiten eines Vorgangs, nennt eine fehlende Voraussetzung mit dem ganzen Aufruf, und ein zweiter Lauf ändert nichts. Was es tut, steht in einer `wiring.json` neben jedem Muster; ein von Hand geänderter Anker wird ein benannter Schritt von Hand.
+- **Muster 8 ohne Muster 6.** Ab Kontrakt 14 liest das Gerät den Beleg im Flow; die Migration `040` fasst nur noch die Dokumente an, die Auslesung mit Mandant kommt als `041` nur zusammen mit Muster 6. Das Blatt sagt, welcher der zwei Wege wann. **Ein Flow zeigt PDF und Foto**: das Original ist `vorgaenge/<nr>/beleg.<endung>`, und das Flow-Argument `endung` kommt vom Beleg. Ein Beleg ist PDF, PNG oder JPEG, ein anderes Format bekommt 415. Eine Belegliste zeigt Mandant (umbrochen, nie gekürzt) und Betrag.
+- **Muster 10, der Verlauf eines Vorgangs.** Wer was wann, nur angehängt: angelegt, eingereicht, genehmigt oder abgelehnt, abgeschlossen mit dem, was ein Mensch geändert hat. Kern und Abschluss der Vorlage melden jedes Ereignis an `melden` in `server.mjs`; der Verlauf hört zu. Mit Muster 7 folgt er der Sicht des Mandanten.
+- **`fremde-akte.mjs` prüft auch Dokumente, Originale und Verlauf**, und sagt, welche Wege nicht eingehängt sind, statt ein 404 als bestanden zu zählen.
+- **`--check` und `--deploy` berichten kurz**: Ergebnis, Befunde, nächster Schritt, höchstens 30 Zeilen, das Ergebnis zuerst und zuletzt. Den ganzen Bericht mit den Regeln des Kontrakts gibt `--verbose`.
+- **`device.mjs` legt eine Akte ohne SSH-Namen an.** Ohne `--user` geht es über HTTPS: Adresse und Zertifikat gemessen, mit einem Kit-Schlüssel der Kontrakt gelesen, `ssh: none`; der Kit-Schlüssel geht danach von selbst über HTTPS.
+- **Die Prüfung der Anrede lässt Prompts an das Modell in Ruhe**: im Flow nur die Zeilen, die ein Mensch liest, im Backend keine Zeichenkette hinter `prompt`, `system` oder `auftrag`.
+- **Muster 7 liefert das Blatt der Vorlage, `original.png`, in seiner Sicht**; bis hier antwortete der Weg 404, und ein Flow mit Mandanten hielt mit „Original fehlt“.
+- **Am Orin geprüft am 07.10.2026** mit Probekonten: eine Akte nur über HTTPS, der Kit-Schlüssel, die Beleg-App aus Vorlage und `--add-pattern documents,clients,receipts,history`, `--check` in 8 Zeilen (190 mit `--verbose`); ein PDF in 36 s und ein Foto in 10 s gelesen, beide richtig, der Betrag korrigiert und im Verlauf, die eigene Freigabe des Einreichers 403, HEIC 415, der Test „fremde Akte“ 18 von 18; danach entfernt.
+
 ## 0.77.0 (2026-10-06)
 
 Kontrakt: bis 14

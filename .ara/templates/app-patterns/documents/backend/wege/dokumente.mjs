@@ -4,7 +4,8 @@
  * Die Vorlage hält ihre Wege in `server.mjs`. Eine zweite Entität bringt ihre
  * Wege als eigene Datei mit, damit `server.mjs` der Einstieg bleibt und nicht
  * zur Liste wird. Liegt in einer App aus der Vorlage unter
- * `backend/wege/dokumente.mjs`. Eingehängt wird sie mit drei Zeilen dort:
+ * `backend/wege/dokumente.mjs`. Eingehängt wird sie mit `node .ara/tools/app.mjs --app <app>
+ * --add-pattern documents`; das setzt in `server.mjs` diese Zeilen ein:
  *
  *   import { dokumentAblage } from "./ablage/dokumente.mjs";
  *   import { dokumente as dokumentKern } from "./kern/dokumente.mjs";

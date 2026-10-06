@@ -3,8 +3,8 @@
  * das man gerade ansieht.
  *
  * Liegt in einer App aus der Vorlage unter `frontend/src/seiten/dokumente.tsx`.
- * Eingehängt wird sie mit einem Weg in `app.tsx` und einem Eintrag in
- * `rahmen/seitenleiste.tsx`:
+ * Eingehängt wird sie mit `app.mjs --add-pattern documents`: ein Weg in `app.tsx` und ein
+ * Eintrag in `rahmen/seitenleiste.tsx`:
  *
  *   <Route path="/dokumente" element={<Dokumente />} />
  *

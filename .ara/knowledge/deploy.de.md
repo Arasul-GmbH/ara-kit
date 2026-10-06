@@ -46,8 +46,9 @@ node .ara/tools/app.mjs --device <gerät> --app <name> --check
 eine Lieferung**: ein versprochener Flow-Ordner ist da und bringt eine Datei je Flow. Das Werkzeug
 hält das Manifest gegen das Schema **dieses** Geräts, nennt jede Abweichung und was es nicht prüfen
 konnte, prüft, dass die Oberfläche ein **Bau** ist (`package.json`, `src/` oder `tsconfig.json` darin
-wären eine leere Seite), und gibt `arasul.json` aus. Selbst liest du,
-Wort für Wort, **die Regeln, die kein Schema trägt**, „mindestens eines von frontend und backend",
+wären eine leere Seite), und sagt das Ergebnis zuerst und zuletzt, in höchstens 30 Zeilen.
+`--verbose` gibt dazu `arasul.json` und Wort für Wort **die Regeln, die kein Schema trägt**, die du
+selbst liest: „mindestens eines von frontend und backend",
 „mit einem Backend ein Port": ein Manifest, das eine davon bricht, lehnt das Gerät ab, auch wenn das
 Schema hält. Und **was der Kontrakt über das Paket sagt**: Packen, was draußen bleibt, Größe, Flows.
 

@@ -1,4 +1,4 @@
-# Procedure: nine shapes of an app beyond the form
+# Procedure: ten shapes of an app beyond the form
 
 > **When do you need this?** In the interview, while the idea is still forming, and whenever
 > somebody takes Arasul for a form tool. The device brings login, permissions, flows and models, the
@@ -9,9 +9,11 @@ foreign service, a foreign tool behind the login: that is the app's own doing, a
 provides no service for it, by decision and not by gap.
 
 Every pattern is code under `.ara/templates/app-patterns/`, and **next to the code lies its sheet**,
-`README.md`. Read only the sheet of the pattern the plan takes. Each file says in its head where it
-goes, the self-test runs them, and **none carries a route, header or environment name of the
-device**: they read `arasul.json`, like the scaffold.
+`README.md`. Read only the sheet of the pattern the plan takes. **Wire it in with the tool, not by
+hand**: `node .ara/tools/app.mjs --app <app> --add-pattern <name>` copies files and migrations and
+sets the lines in `server.mjs` and the pages; a missing prerequisite it names. The self-test runs
+them, and **none carries a route, header or environment name of the device**: they read
+`arasul.json`, like the scaffold.
 
 | Pattern | What it shows | Sheet |
 | --- | --- | --- |
@@ -24,6 +26,7 @@ device**: they read `arasul.json`, like the scaffold.
 | 7. Clients | Who sees which client, who decides | `.ara/templates/app-patterns/clients/README.md` |
 | 8. Receipts per client | 2, 6 and 7 together: receipt at an item, read, separated per client | `.ara/templates/app-patterns/receipts/README.md` |
 | 9. Booking batch for the tax adviser | A DATEV file out of approved bookings, SKR03 accounts, a check script that runs before every download | `.ara/templates/app-patterns/datev/README.md` |
+| 10. Log of an item | Who did what when, only appended | `.ara/templates/app-patterns/history/README.md` |
 
 **Pattern 1 is the scaffold**: one `Route` per page in `Wege()` of
 `.ara/templates/app/frontend/src/app.tsx`, the library's `Seitenleiste` in `rahmen/seitenleiste.tsx`,

@@ -1,0 +1,131 @@
+{
+  "$comment": "Wie dieses Muster eingehängt wird: node .ara/tools/app.mjs --app <app> --add-pattern receipts. Was die Felder heißen, steht im Kopf von .ara/tools/lib/wiring.mjs.",
+  "number": 8,
+  "requires": [
+    "documents",
+    "clients"
+  ],
+  "with": {
+    "extract": "with-extract"
+  },
+  "replaces": [
+    "backend/ablage/dokumente.mjs",
+    "backend/ablage/auslesungen.mjs"
+  ],
+  "edits": [
+    {
+      "file": "backend/server.mjs",
+      "seam": "imports",
+      "text": "import { belegWege } from \"./wege/belege.mjs\";\nimport { belegArgumente, mitBeleg } from \"./kern/belege.mjs\";\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "remove": "const dokumente = dokumentWege({\n  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "remove": "  if (await dokumente(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "remove": "const auslesen = auslesenWege({\n  kern: auslesenKern({ dokumente: dokumentAblage(db), auslesungen: auslesungsAblage(db), geraet }),\n  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "remove": "  if (await auslesen(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "seam": "setup",
+      "text": "const belege = belegWege({\n  angemeldet: (anfrage) => geraet.angemeldet(anfrage.headers),\n  sicht: mandantenFall.sicht,\n  vorgaenge: (sicht) => vorgangsAblage(db, sicht),\n  dokumente: (sicht) => dokumentAblage(db, sicht),\n  dokumentWege: (sicht, benutzer) =>\n    dokumentWege({\n      kern: dokumentKern({ ablage: dokumentAblage(db, sicht), vorgaenge: vorgangsAblage(db, sicht) }),\n      von: () => benutzer,\n    }),\n  // auslesenWege: kommt mit dem Muster Dokument auslesen (6) dazu.\n  // Der Betrag in der Belegliste: das Feld des Flows (--felder), aus dem Abschluss des Laufs.\n  abschluss: (lauf) => abschlussAblage(db).eines(lauf),\n  betragFeld: \"betrag\",\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "when": "extract",
+      "replace": "  // auslesenWege: kommt mit dem Muster Dokument auslesen (6) dazu.\n",
+      "with": "  auslesenWege: (sicht, benutzer) =>\n    auslesenWege({\n      kern: auslesenKern({ dokumente: dokumentAblage(db, sicht), auslesungen: auslesungsAblage(db, sicht), geraet }),\n      von: () => benutzer,\n    }),\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "before": [
+        "  if (await mandanten(anfrage, antwort, pfad)) return;\n"
+      ],
+      "text": "  if (await belege(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "replace": "      bereit: () => true,\n",
+      "with": "      bereit: mitBeleg(dokumentAblage(db, sicht)),\n      // Die Endung des Belegs geht als Argument `endung` an den Flow, für sein Original.\n      argumente: belegArgumente(dokumentAblage(db, sicht)),\n",
+      "hand": "in den Zeilen des Musters Mandanten bereit: mitBeleg(dokumentAblage(db, sicht)) und argumente: belegArgumente(dokumentAblage(db, sicht)) setzen."
+    },
+    {
+      "file": "flows/freigabe.md",
+      "optional": true,
+      "replace": "    original: \"api/vorgaenge/{{vorgang}}/original.png\"",
+      "with": "    original: \"api/vorgaenge/{{vorgang}}/beleg.{{endung}}\"",
+      "hand": "der Flow liest kein Dokument (ohne --felder angelegt). Damit das Gerät den Beleg liest: im Schritt lesen original: \"api/vorgaenge/{{vorgang}}/beleg.{{endung}}\", siehe das Blatt, „Zwei Wege“."
+    },
+    {
+      "file": "flows/freigabe.md",
+      "optional": true,
+      "after": [
+        "    beschreibung: Das Konto, das den Vorgang eingereicht hat\n"
+      ],
+      "unless": "  - name: endung\n",
+      "text": "  - name: endung\n    typ: freitext\n    pflicht: true\n    beschreibung: Die Endung des Belegs (pdf, png oder jpg), damit die Freigabe ihn richtig zeigt\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "after": [
+        "import { Neu } from \"./seiten/neu\";\n"
+      ],
+      "text": "import { Belegliste } from \"./seiten/belegliste\";\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "before": [
+        "      <Route path=\"*\""
+      ],
+      "text": "      <Route path=\"/belege\" element={<Belegliste />} />\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "after": [
+        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+      ],
+      "text": "import { ReceiptIcon } from \"lucide-react\";\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "before": [
+        "  ];\n\n  return (\n    <Leiste"
+      ],
+      "text": "    {\n      titel: \"Belege\",\n      eintraege: [\n        {\n          kennung: \"weg-belege\",\n          name: \"Alle Belege\",\n          symbol: <ReceiptIcon />,\n          aktiv: ort.pathname === \"/belege\",\n          aufKlick: () => gehe(\"/belege\"),\n        },\n      ],\n    },\n"
+    },
+    {
+      "file": "frontend/src/seiten/liste.tsx",
+      "after": [
+        "@last-import"
+      ],
+      "text": "import { BelegeAmVorgang } from \"./belege\";\n"
+    },
+    {
+      "file": "frontend/src/seiten/liste.tsx",
+      "within": "function Angaben(",
+      "before": [
+        "    </dl>"
+      ],
+      "text": "      <Angabe name=\"Belege\">\n        <BelegeAmVorgang vorgang={vorgang.id} offen={vorgang.status === \"in arbeit\"} />\n      </Angabe>\n"
+    }
+  ],
+  "next": [
+    {
+      "en": "Which way reads the receipt: the flow (contract 14, no pattern 6) or the app (pattern 6)? The sheet, \"Two ways\".",
+      "de": "Welcher Weg liest den Beleg: der Flow (Kontrakt 14, ohne Muster 6) oder die App (Muster 6)? Das Blatt, „Zwei Wege“."
+    },
+    {
+      "en": "Which field of the flow is the amount in the list of receipts: betragFeld in backend/server.mjs, betrag by default.",
+      "de": "Welches Feld des Flows ist der Betrag in der Belegliste: betragFeld in backend/server.mjs, vorgegeben betrag."
+    }
+  ]
+}

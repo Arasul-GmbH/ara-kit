@@ -35,11 +35,11 @@ Verwaltungsseite mit `MandantWahl` (gibt es genau einen Mandanten, ist er gewäh
 `VorgangEinreichen`. **Die Migrationen kollidieren nicht** mit der Vorlage (001 bis 009) und den
 anderen Mustern (je ein Zehner); eigene der App beginnen bei 100.
 
-**Einhängen**: die Ordner kopieren, die Zeilen aus dem Kopf von `backend/wege/mandanten.mjs` in
-`server.mjs`, **vor** die Wege der Vorgänge, eine `Route`, ein Eintrag in der Seitenleiste, den nur
-die Verwaltung sieht, `MandantWahl` in `seiten/neu.tsx`, `VorgangEinreichen` in die Einzelheiten,
-wie der Kopf von `frontend/src/seiten/mandanten.tsx` zeigt. `bereit` in diesen Zeilen sagt, wann
-ein Vorgang vollständig ist. Der Ordner `backend/probe/` kommt mit der Kopie mit. Dann `--build`.
+**Einhängen**: `node .ara/tools/app.mjs --app <app> --add-pattern clients`, dann `--build`: die
+Wege vor die der Vorgänge, die Seite mit einem Eintrag in der Seitenleiste, den nur die Verwaltung
+sieht, `MandantWahl` in `seiten/neu.tsx`, `VorgangEinreichen` in die Einzelheiten, `backend/probe/`.
+In `server.mjs` stehen danach der Schalter `alleSehen` und `bereit`, das sagt, wann ein Vorgang
+vollständig ist.
 
 **Der Test, der mitkommt**: `backend/probe/fremde-akte.mjs` legt zwei Probe-Akten an, weist je eine
 zwei Mitarbeitern zu und versucht von der einen Seite aus alles, was die Akte der anderen erreichen

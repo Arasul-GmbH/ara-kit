@@ -1,95 +1,103 @@
 /**
- * Muster Belege: die Muster Dokumente, Dokument auslesen und Mandanten in
- * einer App. Die Wege.
+ * Muster Belege: ein Beleg hängt an einem Vorgang, gehört zu seinem Mandanten, und das Gerät
+ * liest ihn. Die Wege.
  *
- * Setzt alle drei voraus: ihre Ordner liegen in der App, und dieses Muster
- * ersetzt die beiden Ablagen `ablage/dokumente.mjs` und
- * `ablage/auslesungen.mjs` durch seine, die den Mandanten kennen. Kern und
- * Wege der Muster bleiben, wie sie sind; neu ist nur, dass sie je Anfrage mit
- * dem Namen aus der Anmeldung gebaut werden. Eingehängt in `server.mjs`, statt
- * der Zeilen aus den Köpfen von `wege/dokumente.mjs` und `wege/auslesen.mjs`:
+ * Setzt die Muster Dokumente (2) und Mandanten (7) voraus. **Das Muster Dokument auslesen (6)
+ * braucht es nicht**: ab Kontrakt 14 liest das Gerät den Beleg im Flow selbst, als `original`
+ * des Schritts `lesen`, und die Freigabe zeigt ihn neben den Feldern. Mit Muster 6 kommt das
+ * Auslesen in der App dazu (`auslesenWege`), siehe das Blatt, „Zwei Wege".
  *
- *   import { dokumentAblage } from "./ablage/dokumente.mjs";
- *   import { auslesungsAblage } from "./ablage/auslesungen.mjs";
- *   import { dokumente as dokumentKern } from "./kern/dokumente.mjs";
- *   import { auslesen as auslesenKern } from "./kern/auslesen.mjs";
- *   import { dokumentWege } from "./wege/dokumente.mjs";
- *   import { auslesenWege } from "./wege/auslesen.mjs";
- *   import { belegWege } from "./wege/belege.mjs";
- *   import { mitBeleg } from "./kern/belege.mjs";
+ * Eingehängt wird es mit `node .ara/tools/app.mjs --app <app> --add-pattern receipts`; was dabei
+ * in `server.mjs` entsteht, steht in `wiring.json` neben dem Blatt. Die Ablagen der Dokumente
+ * (und der Auslesungen) ersetzt es durch seine, die je Anfrage für eine Sicht gebaut werden.
  *
- *   const belege = belegWege({
- *     angemeldet: (anfrage) => geraet.angemeldet(anfrage.headers),
- *     sicht: mandantenFall.sicht,
- *     vorgaenge: (sicht) => vorgangsAblage(db, sicht),
- *     dokumente: (sicht) => dokumentAblage(db, sicht),
- *     dokumentWege: (sicht, benutzer) =>
- *       dokumentWege({
- *         kern: dokumentKern({ ablage: dokumentAblage(db, sicht), vorgaenge: vorgangsAblage(db, sicht) }),
- *         von: () => benutzer,
- *       }),
- *     auslesenWege: (sicht, benutzer) =>
- *       auslesenWege({
- *         kern: auslesenKern({ dokumente: dokumentAblage(db, sicht), auslesungen: auslesungsAblage(db, sicht), geraet }),
- *         von: () => benutzer,
- *       }),
- *   });
- *
- *   // im Server, VOR den Wegen der Mandanten und vor dem 404:
- *   if (await belege(anfrage, antwort, pfad)) return;
- *
- * Und in den Zeilen des Musters Mandanten wird aus `bereit: () => true`:
- *
- *   bereit: mitBeleg(dokumentAblage(db, sicht)),
- *
- * Ein Vorgang ohne Beleg bleibt dann in Arbeit. Was eine Fach-App sonst noch
- * verlangt, die Liste der erwarteten Unterlagen etwa, prüft sie an derselben
- * Stelle und gibt den Satz, was fehlt.
- *
- * Vor den Mandanten, weil beide unter `vorgaenge/` antworten und das Muster
+ * **`sicht` kommt aus dem Muster Mandanten**: der Name, und ob er alle Mandanten sieht (die
+ * Verwaltung mit `alleSehen`). Jede Ablage wird mit ihr gebaut, der Name allein geht an `von`.
+ * Vor den Mandanten eingehängt, weil beide unter `vorgaenge/` antworten und das Muster
  * Mandanten einen Weg, den es nicht kennt, mit 404 beantwortet.
  *
- * **`sicht` kommt aus dem Muster Mandanten**: der Name, und ob er alle
- * Mandanten sieht (die Verwaltung mit `alleSehen`). Jede Ablage wird mit ihr
- * gebaut, der Name allein geht an `von`, an das, was ein Mensch getan hat.
+ * Die Wege, hinter `/apps/<id>/api/`, dazu die der Muster:
  *
- * Die Wege, hinter `/apps/<id>/api/`, dazu die der beiden Muster:
- *
+ *   GET  /belege/betraege              je sichtbarem Vorgang der Betrag aus seinem Abschluss
+ *                                      (das Feld `betragFeld`, sonst null), für die Belegliste
  *   GET  /vorgaenge/<id>/belege        die Belege eines Vorgangs. Ein fremder: 404
- *   POST /dokumente?vorgang=<id>       ein Beleg an einen Vorgang. Ohne Vorgang
- *                                      400, ein fremder 404, ein eingereichter 409
+ *   GET  /vorgaenge/<id>/beleg.<endung> das Original für den Flow: die Bytes des zuerst
+ *                                      angehängten Belegs, mit seiner Art. Ein fremder: 404
+ *   POST /dokumente?vorgang=<id>       ein Beleg an einen Vorgang. Ohne Vorgang 400, ein
+ *                                      fremder 404, ein eingereichter 409, eine Art, die das
+ *                                      Gerät nicht liest (nur PDF, PNG, JPEG), 415
+ *
+ * **Das Gerät holt das Original im Namen dessen, der eingereicht hat**, mit denselben Kopfzeilen
+ * wie aus dem Browser. Darum gilt für `beleg.<endung>` dieselbe Sicht wie für jeden anderen Weg,
+ * und ein fremder Beleg ist auch für den Flow 404. Die Endung kommt als Flow-Argument `endung`
+ * mit (`belegArgumente` in `kern/belege.mjs`); die Bytes sind immer die des Belegs.
  *
  * **Nach dem Einreichen ändert sich nichts mehr.** Anhängen, Entfernen und
  * ein neues Auslesen an einem Beleg eines eingereichten Vorgangs bekommen 409:
  * der Entscheider gibt frei, was er gesehen hat. Anhängen und Auslesen prüft
  * dieser Weg, bevor eine Datei gelesen oder das Gerät gefragt ist, das
  * Entfernen der Kern des Musters Dokumente.
- *
- * **Wer ausliest, geht mit.** Der Name aus der Anmeldung steht an der
- * Auslesung, und `geraet.auslesen` reicht ihn an das Gerät weiter: im
- * Protokoll der Modellaufrufe steht dann, für wen gelesen wurde.
  */
 
 import { darfAendern } from "../kern/vorgaenge.mjs";
+import { LESBAR, ersterBeleg } from "../kern/belege.mjs";
 
 function json(antwort, status, daten) {
   antwort.writeHead(status, { "content-type": "application/json; charset=utf-8" });
   antwort.end(JSON.stringify(daten));
 }
 
-export function belegWege({ angemeldet, sicht = (wer) => wer.benutzer, vorgaenge, dokumente, dokumentWege, auslesenWege }) {
+export function belegWege({
+  angemeldet,
+  sicht = (wer) => wer.benutzer,
+  vorgaenge,
+  dokumente,
+  dokumentWege,
+  auslesenWege = null,
+  abschluss = null,
+  betragFeld = "betrag",
+}) {
   return async function bedienen(anfrage, antwort, pfad) {
     const teile = pfad.split("/").filter(Boolean);
-    if (!["vorgaenge", "dokumente", "auslesen"].includes(teile[0])) return false;
+    if (!["vorgaenge", "dokumente", "auslesen", "belege"].includes(teile[0])) return false;
     const wer = angemeldet(anfrage);
     const benutzer = sicht(wer);
 
+    // Der Betrag steht erst nach der Prüfung fest: im Abschluss, den das Gerät übergibt, mit der
+    // Korrektur eines Menschen. Vorher ist er null, und die Liste zeigt einen Strich.
+    if (teile[0] === "belege") {
+      if (teile.length !== 2 || teile[1] !== "betraege" || anfrage.method !== "GET") return false;
+      const betraege = {};
+      for (const vorgang of await vorgaenge(benutzer).alle()) {
+        const felder = abschluss && vorgang.lauf ? (await abschluss(vorgang.lauf))?.felder : null;
+        betraege[vorgang.id] = felder && typeof felder === "object" ? (felder[betragFeld] ?? null) : null;
+      }
+      json(antwort, 200, { betraege, feld: betragFeld });
+      return true;
+    }
+
     if (teile[0] === "vorgaenge") {
-      if (teile.length !== 3 || teile[2] !== "belege" || anfrage.method !== "GET") return false;
+      const original = /^beleg\.(pdf|png|jpe?g)$/.test(teile[2] || "");
+      if (teile.length !== 3 || (teile[2] !== "belege" && !original) || anfrage.method !== "GET") return false;
       const id = Number(teile[1]);
       const vorgang = Number.isInteger(id) && id > 0 ? await vorgaenge(benutzer).eines(id) : null;
-      if (!vorgang) json(antwort, 404, { fehler: `Vorgang ${teile[1]} gibt es nicht.` });
-      else json(antwort, 200, { belege: await dokumente(benutzer).amVorgang(id) });
+      if (!vorgang) {
+        json(antwort, 404, { fehler: `Vorgang ${teile[1]} gibt es nicht.` });
+        return true;
+      }
+      const belege = await dokumente(benutzer).amVorgang(id);
+      if (!original) {
+        json(antwort, 200, { belege });
+        return true;
+      }
+      const beleg = ersterBeleg(belege);
+      const datei = beleg ? await dokumente(benutzer).eines(beleg.id) : null;
+      if (!datei) {
+        json(antwort, 404, { fehler: `Vorgang ${id} hat keinen Beleg.` });
+        return true;
+      }
+      antwort.writeHead(200, { "content-type": datei.art, "content-length": datei.inhalt.length, "cache-control": "no-store" });
+      antwort.end(datei.inhalt);
       return true;
     }
 
@@ -110,6 +118,13 @@ export function belegWege({ angemeldet, sicht = (wer) => wer.benutzer, vorgaenge
         json(antwort, 409, { fehler: `Vorgang ${nummer} ist eingereicht und nimmt keinen Beleg mehr an.` });
         return true;
       }
+      // Das Gerät liest als Original nur PDF, PNG und JPEG. Ein anderes Format (ein Handyfoto als
+      // HEIC etwa) hielte den Lauf erst beim Lesen an; hier erfährt es der Mensch beim Hochladen.
+      const art = String(anfrage.headers["content-type"] || "").split(";")[0].trim().toLowerCase();
+      if (!LESBAR[art]) {
+        json(antwort, 415, { fehler: "Als Beleg gehen PDF, PNG und JPEG. Ein Foto in einem anderen Format bitte als JPEG speichern." });
+        return true;
+      }
     }
 
     // Ein neues Auslesen änderte die Felder, über die schon entschieden wird.
@@ -122,7 +137,7 @@ export function belegWege({ angemeldet, sicht = (wer) => wer.benutzer, vorgaenge
       }
     }
 
-    if (await auslesenWege(benutzer, wer.benutzer)(anfrage, antwort, pfad)) return true;
+    if (auslesenWege && (await auslesenWege(benutzer, wer.benutzer)(anfrage, antwort, pfad))) return true;
     return await dokumentWege(benutzer, wer.benutzer)(anfrage, antwort, pfad);
   };
 }

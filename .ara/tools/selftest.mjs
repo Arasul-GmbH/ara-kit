@@ -154,6 +154,8 @@ import {
   unreachable,
 } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
+import { addPatterns, wirablePatterns } from "./lib/wiring.mjs";
+import { ABSCHLUSS_STANDARD, ORIGINAL_STANDARD, applyAbschluss, applyFlowFields, applyRecognition, flowFieldFindings } from "./lib/felder.mjs";
 import { frontendLoadsLibrary, libraryAddress, libraryFindings, libraryHints, librarySection, majorOf, readServed, runtimeMajor } from "./lib/laufzeit.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
 import {
@@ -2326,6 +2328,8 @@ await checkAsync("Der Kit-Schlüssel entsteht ohne SSH über die Sitzung, und we
   // die API-Referenz an, zweimal daneben, und ergänzte die Akte selbst.
   const name = "selftest-https";
   const akte = join(ROOT, "devices", name);
+  const ohneSsh = "selftest-https-ohne";
+  const akteOhne = join(ROOT, "devices", ohneSsh);
   const work = mkdtempSync(join(tmpdir(), "ara-https-"));
   const envDatei = join(work, ".env");
   const ref = "ARASUL_START_SELFTEST_HTTPS";
@@ -2428,10 +2432,25 @@ await checkAsync("Der Kit-Schlüssel entsteht ohne SSH über die Sitzung, und we
     assert(!readFileSync(envDatei, "utf8").includes(schluessel[0].key), "der widerrufene Schlüssel liegt noch in der Ablage");
     felder = readFrontmatter(join(akte, "device.md")).fields;
     assert(!felder.api_key_ref, `api_key_ref steht nach dem Widerruf noch in der Akte: ${felder.api_key_ref}`);
-    return "über HTTPS angelegt, nur app:deploy, Klartext nur in der Ablage, Akte ergänzt, kein zweiter, Liste markiert, eigener Aufruf maskiert, widerrufen";
+
+    // Eine Akte ohne SSH-Namen (Fremdtest 06.10.2026: das Kit verlangte --user, der Tester erfand einen).
+    // Ohne --user entsteht sie über HTTPS, sagt ssh: none, und der Kit-Schlüssel geht danach von selbst
+    // über HTTPS.
+    run = await toolAsync("device.mjs", ["--host", base, "--name", ohneSsh], env);
+    assert(run.status === 0 && /ohne SSH|without SSH/.test(run.stdout) && /--deploy-key --via https/.test(run.stdout), `die Akte ohne SSH entsteht nicht: ${run.status} ${run.stdout}${run.stderr}`);
+    felder = readFrontmatter(join(akteOhne, "device.md")).fields;
+    assert(felder.ssh === "none" && !felder.ssh_user && felder.address === base, `die Akte ohne SSH sagt es nicht: ${JSON.stringify(felder)}`);
+    writeFrontmatter(join(akteOhne, "device.md"), { start_password_ref: ref });
+    run = await toolAsync("device.mjs", ["--name", ohneSsh, "--deploy-key"], env);
+    nichtsGezeigt(run, "--deploy-key an der Akte ohne SSH");
+    assert(run.status === 0 && /HTTPS/.test(run.stdout), `der Schlüssel an der Akte ohne SSH geht nicht über HTTPS: ${run.stdout}${run.stderr}`);
+    run = await toolAsync("device.mjs", ["--name", ohneSsh], env);
+    assert(run.status === 0 && /Kontrakt|contract/i.test(run.stdout) && !/--user <name>\.$/m.test(run.stdout), `die Akte ohne SSH lässt sich nicht nachprüfen: ${run.stdout}${run.stderr}`);
+    return "über HTTPS angelegt, nur app:deploy, Klartext nur in der Ablage, Akte ergänzt, kein zweiter, Liste markiert, eigener Aufruf maskiert, widerrufen; eine Akte ohne SSH-Namen entsteht über HTTPS";
   } finally {
     server.close();
     rmSync(akte, { recursive: true, force: true });
+    rmSync(akteOhne, { recursive: true, force: true });
     rmSync(work, { recursive: true, force: true });
   }
 });
@@ -3561,9 +3580,17 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       "der Weg für Bilder fehlt in der Ausgabe"
     );
 
-    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle, "--verbose"], env);
     assert(run.status === 0, `Prüfung des Manifests fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(/Regeln, die kein Schema trägt/.test(run.stdout), "die Regeln des Kontrakts fehlen in der Ausgabe");
+
+    // Ohne --verbose nur Ergebnis, Befunde und nächster Schritt: höchstens 30 Zeilen, das Ergebnis
+    // zuerst und zuletzt (Fremdtest 06.10.2026: mehrere hundert Zeilen, das Ergebnis oben).
+    const kurz = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    const zeilen = kurz.stdout.trimEnd().split("\n");
+    assert(kurz.status === 0 && zeilen.length <= 30, `--check ist ohne --verbose länger als 30 Zeilen: ${zeilen.length}`);
+    assert(/^Ergebnis: .*passt zu/.test(zeilen[0]) && zeilen.at(-1) === zeilen[0], `das Ergebnis steht nicht zuerst und zuletzt:\n${kurz.stdout}`);
+    assert(/--deploy/.test(kurz.stdout) && /--verbose/.test(kurz.stdout) && !/Regeln, die kein Schema trägt/.test(kurz.stdout), `der nächste Schritt oder der Weg zum ganzen Bericht fehlt:\n${kurz.stdout}`);
     assert(!/Anrede:/.test(run.stdout), `eine App ohne du bekommt einen Befund zur Anrede: ${run.stdout}`);
 
     // Ein Flow, der duzt: --check meldet es mit Datei und Zeile, und es hält
@@ -3575,7 +3602,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     if (flowsNeu) rmSync(join(quelle, "flows"), { recursive: true, force: true });
     else rmSync(join(quelle, "flows", "anrede-probe.md"), { force: true });
     assert(
-      run.status === 0 && /Anrede: .*duzt an 1 Stelle/.test(run.stdout) && /flows\/anrede-probe\.md:2 „du"/.test(run.stdout),
+      run.status === 0 && /Anrede: flows\/anrede-probe\.md:2 „du"/.test(run.stdout),
       `--check meldet das Duzen nicht, oder es hält an: ${run.status} ${run.stdout}`
     );
 
@@ -3585,7 +3612,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "x".repeat(1001)], env);
     assert(run.status !== 0 && !gesehen.paket, "ein Änderungstext über 1000 Zeichen wird eingespielt");
 
-    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf.", "--verbose"], env);
     assert(run.status === 0, `Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(gesehen.paket, "am Gerät kam kein gepacktes Paket im Feld paket an");
     assert(gesehen.aenderungstext === "Probelauf.", `der Änderungstext kam nicht neben dem Paket an: ${gesehen.aenderungstext}`);
@@ -3601,7 +3628,10 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     // gesehen. Der Fremdtest am 25.09.2026 las genau das, mit freigegebenen Testern.
     run = await toolAsync("app.mjs", ["--device", name, "--deploy", quelle, "--aenderungstext", "Probelauf."], env);
     assert(run.status === 0, `zweites Einspielen fehlgeschlagen: ${run.stdout}${run.stderr}`);
-    assert(/Davor lag hier Fassung/.test(run.stdout) && /Freigaben bleiben stehen/.test(run.stdout), `das zweite Einspielen sagt nicht, dass Freigaben bleiben: ${run.stdout}`);
+    // Ohne --verbose kurz: das Ergebnis zuerst und zuletzt, höchstens 30 Zeilen nach der Zeile vom Packen.
+    const bericht = run.stdout.trimEnd().split("\n").slice(run.stdout.trimEnd().split("\n").findIndex((z) => z.startsWith("Ergebnis:")));
+    assert(bericht.length <= 30 && /^Ergebnis: eingespielt/.test(bericht[0]) && bericht.at(-1) === bericht[0], `--deploy berichtet nicht kurz, Ergebnis zuerst und zuletzt:\n${run.stdout}`);
+    assert(/Freigaben bleiben/.test(run.stdout), `das zweite Einspielen sagt nicht, dass Freigaben bleiben: ${run.stdout}`);
     assert(!/Gesehen hat es noch niemand/.test(run.stdout), "nach dem zweiten Einspielen heißt es wieder, niemand habe die App gesehen");
 
     // Und mit Startpasswort in der Ablage nennt ein erstes Einspielen die
@@ -3761,7 +3791,7 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
     assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build", "--no-plan"], env)).status === 0, "Bau mit Backend fehlgeschlagen");
 
     // --check sagt es vorher, ohne irgendetwas zu schreiben.
-    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--check", "--base", base], env);
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--check", "--base", base, "--verbose"], env);
     assert(run.status === 0, `Pruefung mit Backend fehlgeschlagen: ${run.stdout}${run.stderr}`);
     assert(/ARASUL_BASIS_URL/.test(run.stdout), `--check nennt die Umgebungsnamen des Geraets nicht: ${run.stdout}`);
     // Vor jeder Überschrift eine Leerzeile, auch wenn der Kontrakt Regelabschnitte
@@ -5153,23 +5183,48 @@ await checkAsync("Die CSV-Hilfe der Vorlage schreibt BOM, Semikolon und Dezimalk
 /** Der Ordner der Muster, und die Vorlage daneben. */
 const PATTERNS = join(ROOT, ".ara", "templates", "app-patterns");
 
-check("Das Wissen kennt neun Muster jenseits des Formulars, und jeder Verweis trifft", () => {
+/**
+ * Eine App aus der Vorlage in `ziel`, wie `--new` sie schreibt: Backend, Flows und Oberfläche
+ * ohne `node_modules`, die Platzhalter ersetzt. Mit `felder` liest der Flow ein Dokument (Art
+ * `ergebnis_bestaetigen`, das Original der Vorlage) und übergibt sein Ergebnis an die App.
+ */
+function appVorlage(ziel, id, name, { felder = null } = {}) {
+  for (const teil of ["backend", "flows", "frontend", "app.json"]) {
+    cpSync(join(ROOT, ".ara", "templates", "app", teil), join(ziel, teil), {
+      recursive: true,
+      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
+    });
+  }
+  for (const eintrag of readdirSync(ziel, { recursive: true })) {
+    const pfad = join(ziel, String(eintrag));
+    if (!/\.(json|md|mjs|ts|tsx|html|sql)$/.test(pfad) || !statSync(pfad).isFile()) continue;
+    const text = readFileSync(pfad, "utf8");
+    if (text.includes("{{id}}") || text.includes("{{name}}")) writeFileSync(pfad, text.replace(/\{\{id\}\}/g, id).replace(/\{\{name\}\}/g, name));
+  }
+  if (felder) {
+    const flow = join(ziel, "flows", "freigabe.md");
+    const angaben = { felder, aenderbar: felder.slice(-1), arten: ["ergebnis_bestaetigen"], original: ORIGINAL_STANDARD };
+    writeFileSync(flow, applyAbschluss(applyRecognition(applyFlowFields(readFileSync(flow, "utf8"), angaben), angaben), { route: ABSCHLUSS_STANDARD }));
+  }
+}
+
+check("Das Wissen kennt zehn Muster jenseits des Formulars, und jeder Verweis trifft", () => {
   // Ein Partner, der im Wissen nur den Urlaubsantrag findet, baut nur Formulare
-  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt neun Muster, und
+  // und hält Arasul für ein Formularwerkzeug. Das Blatt nennt zehn Muster, und
   // jedes zeigt auf Code, der im Kit liegt. Ein Verweis, der ins Leere zeigt,
   // ist ein Muster ohne Beleg.
   // Seit 0.37.0 ist das Blatt der Überblick, und das Blatt jedes Musters liegt
   // neben seinem Code: gelesen wird nur das, das der Plan nimmt.
   for (const [blatt, endung] of [[".ara/knowledge/app-patterns.md", ".md"], [".ara/knowledge/app-patterns.de.md", ".de.md"]]) {
     const text = readFileSync(join(ROOT, blatt), "utf8");
-    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    for (const nummer of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
       assert(new RegExp(`^\\| ${nummer}\\. `, "m").test(text), `${blatt} trägt kein Muster ${nummer}`);
     }
     const pfade = [...text.matchAll(/`(\.ara\/templates\/[^`\s]+)`/g)].map((m) => m[1]);
     assert(pfade.length >= 7, `${blatt} nennt nur ${pfade.length} Dateien im Kit`);
     for (const pfad of pfade) assert(existsSync(join(ROOT, pfad)), `${blatt} nennt ${pfad}, die Datei fehlt`);
     const blaetter = pfade.filter((pfad) => pfad.endsWith(`/README${endung}`));
-    assert(blaetter.length === 8, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind acht`);
+    assert(blaetter.length === 9, `${blatt} nennt ${blaetter.length} Blätter der Muster, erwartet sind neun`);
     // Was das Blatt der Dokumente über die Bibliothek sagt, steht so in der Bibliothek.
     const dokumente = readFileSync(join(PATTERNS, "documents", `README${endung}`), "utf8");
     for (const wort of ["quelle", "art", "hoehe", "pdf-dateien", "Dokumentanzeige", "Dateiablage"]) {
@@ -5187,7 +5242,7 @@ check("Das Wissen kennt neun Muster jenseits des Formulars, und jeder Verweis tr
   ]) {
     assert(muster.test(readFileSync(join(ROOT, datei), "utf8")), `${datei} nennt das Blatt der Muster nicht`);
   }
-  return "neun Muster, beide Fassungen, Befehl, Prüfliste und --new";
+  return "zehn Muster, beide Fassungen, Befehl, Prüfliste und --new";
 });
 
 await checkAsync("Das Muster Buchungsstapel schreibt eine Datei, die das Prüfskript besteht, und jeder Fehler fällt durch", async () => {
@@ -5403,8 +5458,8 @@ await checkAsync("Das Muster Dokumente läuft im Backend der Vorlage: hochladen,
           'import { dokumentWege } from "./wege/dokumente.mjs";\n',
       ],
       [
-        "  regel: () => null,\n});\n",
-        "  regel: () => null,\n});\n" +
+        "  regel: () => null,\n  melden,\n});\n",
+        "  regel: () => null,\n  melden,\n});\n" +
           "const dokumente = dokumentWege({\n" +
           "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
           "  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n" +
@@ -5569,8 +5624,8 @@ await checkAsync("Das Muster Dokument auslesen spricht mit einem gespielten Ger�
           'import { auslesenWege } from "./wege/auslesen.mjs";\n',
       ],
       [
-        "  regel: () => null,\n});\n",
-        "  regel: () => null,\n});\n" +
+        "  regel: () => null,\n  melden,\n});\n",
+        "  regel: () => null,\n  melden,\n});\n" +
           "const dokumente = dokumentWege({\n" +
           "  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n" +
           "  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n" +
@@ -5965,7 +6020,7 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
         'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + importe,
       ],
-      ["  regel: () => null,\n});\n", "  regel: () => null,\n});\n" + aufbau],
+      ["  regel: () => null,\n  melden,\n});\n", "  regel: () => null,\n  melden,\n});\n" + aufbau],
       ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
     ]) {
       assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
@@ -6259,7 +6314,8 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["leitung", "team"] },
     freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["leitung"] },
   };
-  const paket = mkdtempSync(join(tmpdir(), "ara-belege-"));
+  const wurzel = mkdtempSync(join(tmpdir(), "ara-belege-"));
+  const paket = join(wurzel, "backend");
   let app = null;
   const gelesen = [];
   const starts = [];
@@ -6288,49 +6344,11 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
   });
   await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
   try {
-    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
-    for (const muster of ["documents", "extract", "clients", "receipts"]) cpSync(join(PATTERNS, muster, "backend"), paket, { recursive: true });
-    // Die Zeilen aus den Köpfen der Wege, genau so eingesetzt.
-    const kopfzeilen = (datei, anfang, bis = anfang) => {
-      const zeilen = readFileSync(join(PATTERNS, datei), "utf8")
-        .split("\n")
-        .filter((zeile) => zeile.startsWith(" *   "))
-        .map((zeile) => zeile.slice(5));
-      const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
-      const beginn = zeilen.findIndex((zeile) => zeile.startsWith(anfang));
-      const letzter = zeilen.findIndex((zeile) => zeile.startsWith(bis));
-      const ende = zeilen.findIndex((zeile, i) => i > letzter && zeile === "});");
-      assert(beginn >= 0 && ende > beginn, `der Kopf von ${datei} nennt die Zeilen nicht mehr`);
-      return { importe, aufbau: zeilen.slice(beginn, ende + 1).join("\n") + "\n" };
-    };
-    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall", "const mandanten = ");
-    const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
-    // Der Kopf der Belege sagt, was in den Zeilen der Mandanten aus `bereit` wird.
-    const bereitZeile = readFileSync(join(PATTERNS, "receipts", "backend", "wege", "belege.mjs"), "utf8")
-      .split("\n")
-      .find((zeile) => zeile.startsWith(" *   bereit: "));
-    assert(bereitZeile && mandantenKopf.aufbau.includes("bereit: () => true,"), "die Köpfe nennen nicht mehr, wie ein Vorgang mit Beleg bereit wird");
-    mandantenKopf.aufbau = mandantenKopf.aufbau.replace("bereit: () => true,", bereitZeile.slice(5).trim());
+    // Eingehängt mit dem Werkzeug, mit Muster 6: die Auslesung trägt dann auch den Mandanten (041).
+    appVorlage(wurzel, "probe", "Probe");
+    const bericht = addPatterns(wurzel, ["documents", "extract", "clients", "receipts"], { id: "probe", name: "Probe" });
+    assert(!bericht.missing.length && !bericht.hand.length, `das Einhängen braucht Handarbeit: ${JSON.stringify(bericht)}`);
     const server = join(paket, "server.mjs");
-    let quelle = readFileSync(server, "utf8");
-    for (const [alt, neu] of [
-      [
-        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n',
-        'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe,
-      ],
-      [
-        "  regel: () => null,\n});\n",
-        "  regel: () => null,\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau,
-      ],
-      [
-        '  if (pfad === "/vorgaenge" && anfrage.method === "GET") {',
-        '  if (await belege(anfrage, antwort, pfad)) return;\n  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {',
-      ],
-    ]) {
-      assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
-      quelle = quelle.replace(alt, neu);
-    }
-    writeFileSync(server, quelle);
     writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
 
     app = spawn("node", [server], {
@@ -6450,8 +6468,8 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
     assert(r.daten.belege.length === 1 && r.daten.belege[0].id === zweiter, `die Belege am eingereichten Vorgang haben sich geändert: ${JSON.stringify(r.daten)}`);
 
     // Jede lesende Abfrage der beiden Ablagen trägt den Filter.
-    for (const [datei, mindestens] of [["dokumente.mjs", 5], ["auslesungen.mjs", 1]]) {
-      const text = readFileSync(join(PATTERNS, "receipts", "backend", "ablage", datei), "utf8");
+    for (const [datei, mindestens] of [[join("backend", "ablage", "dokumente.mjs"), 5], [join("with-extract", "backend", "ablage", "auslesungen.mjs"), 1]]) {
+      const text = readFileSync(join(PATTERNS, "receipts", datei), "utf8");
       const abfragen = [...text.matchAll(/`((?:SELECT|DELETE)[^`]*)`/g)].map((m) => m[1]);
       assert(abfragen.length >= mindestens, `${datei} fragt nur ${abfragen.length} Mal`);
       for (const sql of abfragen) assert(/\$\{(nurZugeordnete|filter)\(/.test(sql), `${datei}: eine Abfrage ohne Filter: ${sql.replace(/\s+/g, " ").slice(0, 80)}`);
@@ -6472,11 +6490,11 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
   } finally {
     app?.kill("SIGTERM");
     geraet.close();
-    rmSync(paket, { recursive: true, force: true });
+    rmSync(wurzel, { recursive: true, force: true });
   }
 });
 
-await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei aus Vorlage und Mustern, nur nach den Blättern", async () => {
+await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei aus Vorlage und Mustern, eingehängt mit dem Werkzeug", async () => {
   // Der Fremdtest vom 06.10.2026, ohne Gerät nachgestellt: ein Steuerfachwirt baut aus der Vorlage
   // und den Mustern 2, 6, 7, 8 und 9 einen Belegeingang. Was ihn damals aufhielt, muss hier ohne
   // Handarbeit gehen: die Migrationen laufen ohne Umnummerieren, die Partner sehen alle Mandanten
@@ -6489,7 +6507,8 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
     koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["admin", "user"] },
     freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["admin"] },
   };
-  const paket = mkdtempSync(join(tmpdir(), "ara-fremder-"));
+  const wurzel = mkdtempSync(join(tmpdir(), "ara-fremder-"));
+  const paket = join(wurzel, "backend");
   let app = null;
   const starts = [];
   const geraet = createServer((anfrage, antwort) => {
@@ -6516,39 +6535,16 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
   });
   await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
   try {
-    // Zusammensetzen, wie die Blätter es sagen: die Vorlage, darüber die Ordner der Muster.
-    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
-    for (const muster of ["documents", "extract", "clients", "receipts", "datev"]) cpSync(join(PATTERNS, muster, "backend"), paket, { recursive: true });
-    const kopfzeilen = (datei, anfang, bis = anfang) => {
-      const zeilen = readFileSync(join(PATTERNS, datei), "utf8")
-        .split("\n")
-        .filter((zeile) => zeile.startsWith(" *   "))
-        .map((zeile) => zeile.slice(5));
-      const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
-      const beginn = zeilen.findIndex((zeile) => zeile.startsWith(anfang));
-      const letzter = zeilen.findIndex((zeile) => zeile.startsWith(bis));
-      const ende = zeilen.findIndex((zeile, i) => i > letzter && zeile === "});");
-      return { importe, aufbau: zeilen.slice(beginn, ende + 1).join("\n") + "\n" };
-    };
-    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall", "const mandanten = ");
-    const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
-    const bereitZeile = readFileSync(join(PATTERNS, "receipts", "backend", "wege", "belege.mjs"), "utf8")
-      .split("\n")
-      .find((zeile) => zeile.startsWith(" *   bereit: "));
+    // Zusammensetzen mit dem Werkzeug (app.mjs --add-pattern): die Vorlage, darüber die Muster.
+    // Bis 0.77.0 standen hier die Zeilen aus den Köpfen der Dateien, von Hand eingesetzt.
+    appVorlage(wurzel, "belegeingang", "Belegeingang");
+    const bericht = addPatterns(wurzel, ["documents", "extract", "clients", "receipts", "datev"], { id: "belegeingang", name: "Belegeingang" });
+    assert(!bericht.missing.length && !bericht.hand.length && !bericht.kept.length, `das Einhängen braucht Handarbeit: ${JSON.stringify(bericht)}`);
     // Die eine Entscheidung der Kanzlei: die Partner sehen alle Mandanten. Ein Wort in einer Zeile.
-    assert(mandantenKopf.aufbau.includes("alleSehen: false,"), "die Zeilen des Blatts nennen den Schalter alleSehen nicht");
-    mandantenKopf.aufbau = mandantenKopf.aufbau.replace("alleSehen: false,", "alleSehen: true,").replace("bereit: () => true,", bereitZeile.slice(5).trim());
     const server = join(paket, "server.mjs");
-    let quelle = readFileSync(server, "utf8");
-    for (const [alt, neu] of [
-      ['import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n', 'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe],
-      ["  regel: () => null,\n});\n", "  regel: () => null,\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau],
-      ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await belege(anfrage, antwort, pfad)) return;\n  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
-    ]) {
-      assert(quelle.includes(alt), `die Naht in server.mjs gibt es nicht mehr: ${alt.split("\n")[0]}`);
-      quelle = quelle.replace(alt, neu);
-    }
-    writeFileSync(server, quelle);
+    const quelle = readFileSync(server, "utf8");
+    assert(quelle.includes("alleSehen: false,"), "die eingehängten Zeilen nennen den Schalter alleSehen nicht");
+    writeFileSync(server, quelle.replace("alleSehen: false,", "alleSehen: true,"));
     writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
 
     app = spawn("node", [server], {
@@ -6571,7 +6567,7 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
     });
     await new Promise((fertig) => setTimeout(fertig, 300));
     // 1. Die Migrationen laufen ohne Umnummerieren, in der Reihenfolge ihrer Voraussetzungen.
-    const gelaufen = ["001-vorgaenge", "002-abschluesse", "010-dokumente", "020-auslesungen", "030-mandanten", "031-entscheider", "040-belege"];
+    const gelaufen = ["001-vorgaenge", "002-abschluesse", "010-dokumente", "020-auslesungen", "030-mandanten", "031-entscheider", "040-belege", "041-auslesungen-mandant"];
     const stellen = gelaufen.map((name) => ausgabe.indexOf(name));
     assert(stellen.every((stelle, i) => stelle >= 0 && (i === 0 || stelle > stellen[i - 1])), `die Migrationen liefen nicht alle oder nicht in Reihenfolge: ${ausgabe} ${fehlerausgabe}`);
 
@@ -6662,11 +6658,199 @@ await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei 
     writeFileSync(sitzungen, JSON.stringify({ verwaltung: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, a: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, b: { name: "sb-b", kopf: mitCookie("sb-b", "user") } }));
     lauf = await probe(["--sitzungen", sitzungen]);
     assert(lauf.status === 1 && /drei Sitzungen/.test(lauf.aus) && !/geheim-/.test(lauf.aus), `eine Verwaltung ohne Rolle wird nicht benannt: ${lauf.aus}`);
-    return "Migrationen 001 bis 040 ohne Umnummerieren, Partnerin sieht alle, Zuweisung vor dem ersten Öffnen, Freigabe nur an die Sachbearbeiterin, Konto aus der Liste mit Namen und Rückfrage, Probe mit drei Sitzungen grün, mit zwei ein Satz";
+    return "eingehängt mit --add-pattern, Migrationen 001 bis 041 ohne Umnummerieren, Partnerin sieht alle, Zuweisung vor dem ersten Öffnen, Freigabe nur an die Sachbearbeiterin, Konto aus der Liste mit Namen und Rückfrage, Probe mit drei Sitzungen grün, mit zwei ein Satz";
   } finally {
     app?.kill("SIGTERM");
     geraet.close();
-    rmSync(paket, { recursive: true, force: true });
+    rmSync(wurzel, { recursive: true, force: true });
+  }
+});
+
+await checkAsync("Eine Beleg-App aus Vorlage und den Mustern Mandanten, Belege und Verlauf entsteht ohne Handarbeit, liest PDF und Foto im Flow und schreibt jeden Schritt mit", async () => {
+  // Der Fremdtest vom 06.10.2026 (Bericht, Abschnitte 7 und 8): Muster 8 setzte Muster 6 voraus,
+  // das Einhängen war Handarbeit nach Kommentaren, `original` endete fest auf .png, und wer was wann
+  // getan hat, sah kein Muster vor. Hier entsteht dieselbe App mit `--add-pattern`, ohne Muster 6,
+  // ohne eine Zeile von Hand, und läuft gegen ein gespieltes Gerät.
+  const kontrakt = {
+    ...VORLAGE_KONTRAKT,
+    koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["admin", "user"] },
+    freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["admin"] },
+  };
+  const wurzel = mkdtempSync(join(tmpdir(), "ara-beleg-app-"));
+  const paket = join(wurzel, "backend");
+  let app = null;
+  const starts = [];
+  const entschieden = new Map();
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (anfrage.headers["x-arasul-app-key"] !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/flows/freigabe/run") {
+        starts.push(JSON.parse(Buffer.concat(teile).toString("utf8")));
+        return json(202, { data: { run_id: starts.length } });
+      }
+      if (url.pathname === "/api/v1/external/freigaben") {
+        return json(200, { data: { freigaben: [...entschieden].map(([run_id, wer]) => ({ run_id, status: "bestaetigt", entschieden_von: wer })) } });
+      }
+      if (url.pathname.startsWith("/api/v1/external/flows/runs/")) return json(200, { data: { status: "fertig", result: "Bestätigt." } });
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    appVorlage(wurzel, "belege", "Belegeingang", { felder: ["lieferant", "datum", "betrag"] });
+
+    // 1. Eine fehlende Voraussetzung hängt nichts ein und nennt den Aufruf mit allen.
+    let bericht = addPatterns(wurzel, ["clients", "receipts", "history"], { id: "belege", name: "Belegeingang" });
+    assert(bericht.missing.some((m) => m.pattern === "receipts" && m.needs === "documents") && !existsSync(join(wurzel, "patterns.json")), `eine fehlende Voraussetzung wird nicht genannt: ${JSON.stringify(bericht.missing)}`);
+    assert(!bericht.added.length && !bericht.copied.length && !bericht.changed.length, "trotz fehlender Voraussetzung wurde eingehängt");
+    assert(wirablePatterns().includes("history"), "das Muster Verlauf lässt sich nicht einhängen");
+
+    // 2. Mit allen: keine Handarbeit, das Original folgt der Endung, ein zweiter Lauf ändert nichts.
+    bericht = addPatterns(wurzel, ["documents", "clients", "receipts", "history"], { id: "belege", name: "Belegeingang" });
+    assert(!bericht.missing.length && !bericht.hand.length && !bericht.kept.length, `das Einhängen braucht Handarbeit: ${JSON.stringify(bericht)}`);
+    const migrationen = readdirSync(join(paket, "ablage", "migrationen")).sort();
+    assert(JSON.stringify(migrationen) === JSON.stringify(["001-vorgaenge.sql", "002-abschluesse.sql", "010-dokumente.sql", "030-mandanten.sql", "031-entscheider.sql", "040-belege.sql", "050-verlauf.sql"]), `die Migrationen stimmen nicht: ${migrationen.join(", ")}`);
+    const flow = readFileSync(join(wurzel, "flows", "freigabe.md"), "utf8");
+    assert(/original: "api\/vorgaenge\/\{\{vorgang\}\}\/beleg\.\{\{endung\}\}"/.test(flow) && /- name: endung/.test(flow), `das Original folgt nicht der Endung des Belegs:\n${flow}`);
+    const befundeFlow = flowFieldFindings("freigabe", flow);
+    assert(befundeFlow.length === 0, `--check beanstandet das Original mit Endung im Argument: ${befundeFlow.join(" | ")}`);
+    const vorher = new Map(readdirSync(wurzel, { recursive: true }).filter((n) => statSync(join(wurzel, String(n))).isFile()).map((n) => [String(n), readFileSync(join(wurzel, String(n)), "utf8")]));
+    bericht = addPatterns(wurzel, ["history"], { id: "belege", name: "Belegeingang" });
+    const geaendert = [...vorher].filter(([n, text]) => readFileSync(join(wurzel, n), "utf8") !== text).map(([n]) => n);
+    assert(!geaendert.length && !bericht.added.length, `ein zweiter Lauf ändert die App: ${geaendert.join(", ")}`);
+
+    // 3. Das Backend läuft gegen ein gespieltes Gerät, mit Abschluss.
+    const vereinbart = appArrangement(kontrakt, { device: "selbsttest", date: today() });
+    vereinbart.umgebung.abschluss_token = "PROBE_ABSCHLUSS";
+    vereinbart.abschluss = { kennung: "arasul-lauf-<nummer>" };
+    writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(vereinbart));
+    app = spawn("node", [join(paket, "server.mjs")], {
+      env: { ...process.env, PORT: "0", ARASUL_APP_NAME: "Belegeingang", APP_DATEN: join(paket, "daten"), ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest", PROBE_ABSCHLUSS: "abschluss-geheim" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let ausgabe = "";
+    let fehlerausgabe = "";
+    app.stderr.on("data", (stueck) => (fehlerausgabe += String(stueck)));
+    const basis = await new Promise((fertig, gescheitert) => {
+      const zeit = setTimeout(() => gescheitert(new Error(`die App hat nicht gestartet: ${fehlerausgabe}`)), 10_000);
+      app.stdout.on("data", (stueck) => {
+        ausgabe += String(stueck);
+        const treffer = ausgabe.match(/auf (\d+)/);
+        if (treffer) {
+          clearTimeout(zeit);
+          fertig(`http://127.0.0.1:${treffer[1]}`);
+        }
+      });
+    });
+    await new Promise((fertig) => setTimeout(fertig, 300));
+    assert(/050-verlauf/.test(ausgabe) && !/020-auslesungen/.test(ausgabe), `die Migrationen liefen nicht wie erwartet: ${ausgabe}`);
+
+    const kopfVon = (wer, rolle) => ({ [kontrakt.koepfe.benutzer]: wer, [kontrakt.koepfe.rolle]: rolle });
+    const ruf = async (wer, rolle, pfad, optionen = {}) => {
+      const antwort = await fetch(`${basis}${pfad}`, { ...optionen, headers: { ...(optionen.headers || {}), ...kopfVon(wer, rolle) } });
+      const art = antwort.headers.get("content-type") || "";
+      return { code: antwort.status, art, daten: art.includes("json") ? await antwort.json() : Buffer.from(await antwort.arrayBuffer()) };
+    };
+    const post = (wer, rolle, pfad, rumpf) => ruf(wer, rolle, pfad, { method: "POST", body: JSON.stringify(rumpf), headers: { "content-type": "application/json" } });
+    const hochladen = (wer, vorgang, art, bytes, name) => ruf(wer, "user", `/dokumente?vorgang=${vorgang}`, { method: "POST", body: bytes, headers: { "content-type": art, "x-dateiname": name } });
+
+    const mueller = (await post("partnerin", "admin", "/mandanten", { name: "Probe Müller GmbH" })).daten.mandant.id;
+    const schmidt = (await post("partnerin", "admin", "/mandanten", { name: "Probe Schmidt KG" })).daten.mandant.id;
+    await post("partnerin", "admin", "/zuordnungen", { benutzer: "sb-a", mandant: mueller, entscheidet: true });
+    await post("partnerin", "admin", "/zuordnungen", { benutzer: "sb-b", mandant: mueller, entscheidet: false });
+    await post("partnerin", "admin", "/zuordnungen", { benutzer: "sb-c", mandant: schmidt, entscheidet: true });
+
+    // 4. Ein PDF und ein Foto: jedes geht mit seiner Endung an den Flow, und das Original ist es selbst.
+    const pdf = Buffer.from("%PDF-1.4 Rechnung Bürobedarf Nord");
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const rechnung = (await post("sb-b", "user", "/vorgaenge", { titel: "Bürobedarf Nord", mandant: mueller })).daten.vorgang.id;
+    let r = await hochladen("sb-b", rechnung, "image/heic", Buffer.from("heic"), "foto.heic");
+    assert(r.code === 415 && /JPEG/.test(r.daten.fehler), `ein Format, das das Gerät nicht liest, wird angenommen: ${r.code}`);
+    r = await hochladen("sb-b", rechnung, "application/pdf", pdf, "rechnung.pdf");
+    assert(r.code === 201, `das PDF ließ sich nicht anhängen: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await post("sb-b", "user", `/vorgaenge/${rechnung}/einreichen`, {});
+    assert(r.code === 200 && starts[0]?.args?.endung === "pdf" && starts[0]?.args?.vorgang === String(rechnung), `das PDF geht nicht mit seiner Endung an den Flow: ${JSON.stringify(starts[0])}`);
+    const tank = (await post("sb-b", "user", "/vorgaenge", { titel: "Tankquittung", mandant: mueller })).daten.vorgang.id;
+    await hochladen("sb-b", tank, "image/jpeg", jpeg, "tank.jpg");
+    await post("sb-b", "user", `/vorgaenge/${tank}/einreichen`, {});
+    assert(starts[1]?.args?.endung === "jpg", `das Foto geht nicht als jpg an den Flow: ${JSON.stringify(starts[1])}`);
+    r = await ruf("sb-b", "user", `/vorgaenge/${rechnung}/beleg.pdf`);
+    assert(r.code === 200 && r.art === "application/pdf" && Buffer.compare(r.daten, pdf) === 0, `das Original des PDF stimmt nicht: ${r.code} ${r.art}`);
+    r = await ruf("sb-b", "user", `/vorgaenge/${tank}/beleg.jpg`);
+    assert(r.code === 200 && r.art === "image/jpeg" && Buffer.compare(r.daten, jpeg) === 0, `das Original des Fotos stimmt nicht: ${r.code} ${r.art}`);
+    for (const pfad of [`/vorgaenge/${rechnung}/beleg.pdf`, `/vorgaenge/${rechnung}/original.png`, `/vorgaenge/${rechnung}/verlauf`, `/vorgaenge/${rechnung}/belege`]) {
+      r = await ruf("sb-c", "user", pfad);
+      assert(r.code === 404, `sb-c aus einem anderen Mandanten holt ${pfad}: ${r.code}`);
+    }
+    r = await ruf("sb-b", "user", `/vorgaenge/${rechnung}/original.png`);
+    assert(r.code === 200 && r.art === "image/png", `das Blatt der Vorlage antwortet mit Mandanten nicht: ${r.code}`);
+
+    // 5. Entschieden, abgeschlossen: der Verlauf hält wer was wann fest, nur angehängt.
+    entschieden.set(1, "sb-a");
+    await ruf("sb-b", "user", "/vorgaenge");
+    const lauf = 1;
+    r = await fetch(`${basis}/abschluss/freigabe`, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer abschluss-geheim", "idempotency-key": `arasul-lauf-${lauf}` },
+      body: JSON.stringify({ lauf, flow: "freigabe", argumente: { vorgang: String(rechnung) }, ergebnis: "Bestätigt.", felder: { betrag: "23,90" }, korrekturen: [{ feld: "betrag", vorschlag: "23,80", wert: "23,90", von: "sb-a" }] }),
+    });
+    assert(r.status === 201, `der Abschluss wurde nicht angenommen: ${r.status}`);
+    r = await ruf("sb-b", "user", `/vorgaenge/${rechnung}/verlauf`);
+    const was = (r.daten.verlauf || []).map((e) => `${e.was}:${e.wer ?? "gerät"}`);
+    assert(JSON.stringify(was) === JSON.stringify(["angelegt:sb-b", "eingereicht:sb-b", "genehmigt:sb-a", "abgeschlossen:gerät"]), `der Verlauf stimmt nicht: ${was.join(", ")}`);
+    assert(r.daten.verlauf[3].angaben?.korrekturen?.[0]?.wert === "23,90" && r.daten.verlauf.every((e) => e.zeit), `der Abschluss trägt die Änderung nicht: ${JSON.stringify(r.daten.verlauf[3])}`);
+    r = await ruf("sb-b", "user", `/vorgaenge/${rechnung}/verlauf`, { method: "DELETE" });
+    assert(r.code === 405, `ein Verlauf lässt sich löschen: ${r.code}`);
+    // Die Belegliste zeigt den Betrag nach der Prüfung, mit der Korrektur; ein fremder Mandant sieht ihn nicht.
+    r = await ruf("sb-b", "user", "/belege/betraege");
+    assert(r.daten.betraege?.[rechnung] === "23,90" && r.daten.betraege?.[tank] === null, `die Beträge der Belegliste stimmen nicht: ${JSON.stringify(r.daten)}`);
+    r = await ruf("sb-c", "user", "/belege/betraege");
+    assert(!(String(rechnung) in (r.daten.betraege ?? {})), `sb-c sieht den Betrag eines fremden Belegs: ${JSON.stringify(r.daten)}`);
+
+    // 6. Die Probe "fremde Akte" prüft jetzt auch Belege, Bytes, Original und Verlauf.
+    const sitzungen = join(wurzel, "sitzungen.json");
+    writeFileSync(sitzungen, JSON.stringify({ verwaltung: { name: "partnerin", kopf: kopfVon("partnerin", "admin") }, a: { name: "sb-x", kopf: kopfVon("sb-x", "user") }, b: { name: "sb-y", kopf: kopfVon("sb-y", "user") } }));
+    const probe = await new Promise((fertig) => {
+      const kind = spawn("node", [join(paket, "probe", "fremde-akte.mjs"), "--basis", basis, "--sitzungen", sitzungen], { stdio: ["ignore", "pipe", "pipe"] });
+      let aus = "";
+      kind.stdout.on("data", (d) => (aus += d));
+      kind.stderr.on("data", (d) => (aus += d));
+      kind.on("close", (status) => fertig({ status, aus }));
+    });
+    for (const satz of ["das Original von A (beleg.png): 404", "den Verlauf von A: 404", "die Bytes des Belegs von A: 404", "B entfernt den Beleg von A: 404", "das Blatt von A (original.png): 404"]) {
+      assert(probe.aus.includes(satz), `die Probe prüft nicht: ${satz}\n${probe.aus}`);
+    }
+    assert(probe.status === 0 && !/nicht eingehängt/.test(probe.aus), `die Probe "fremde Akte" besteht nicht: ${probe.aus}`);
+
+    // 7. Die Oberfläche baut: Typen und Bündel, mit allen Seiten der Muster.
+    if (process.env.ARA_SELFTEST_KLON || spawnSync("npm", ["--version"], { encoding: "utf8" }).status !== 0) {
+      return "eingehängt ohne Handarbeit und idempotent, PDF und Foto mit Endung, fremd 404, Verlauf vollständig, Probe grün; Oberfläche nicht gebaut (kein npm oder Klon)";
+    }
+    const laufen = (befehl, args, cwd) =>
+      new Promise((fertig) => {
+        const kind = spawn(befehl, args, { cwd });
+        let aus = "";
+        kind.stdout.on("data", (d) => (aus += d));
+        kind.stderr.on("data", (d) => (aus += d));
+        kind.on("close", (status) => fertig({ status, aus }));
+      });
+    const front = join(wurzel, "frontend");
+    const geholt = await laufen("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], front);
+    if (geholt.status !== 0) return `eingehängt und geprüft; Oberfläche übersprungen, npm install ging nicht: ${geholt.aus.trim().split("\n").pop()}`;
+    const gebaut = await laufen("npm", ["run", "build"], front);
+    assert(gebaut.status === 0, `die Oberfläche der Beleg-App baut nicht:\n${gebaut.aus.split("\n").slice(-15).join("\n")}`);
+    return "eingehängt ohne Handarbeit und idempotent, PDF und Foto mit Endung, fremd 404, Verlauf angelegt bis abgeschlossen, Probe mit Belegen, Original und Verlauf grün, Oberfläche baut";
+  } finally {
+    app?.kill("SIGTERM");
+    geraet.close();
+    rmSync(wurzel, { recursive: true, force: true });
   }
 });
 
@@ -7207,7 +7391,7 @@ check("Die Vorlage steht auf Marken 5.1.0, ein Diagramm kommt nur über @marken/
   return `Spiegel ${bibliothek.fassung}, Datenliste misst ihren Kasten, diagramm.ts eigener Einstieg, @marken/* in der tsconfig`;
 });
 
-check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --check meldet du und dir", () => {
+check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --check meldet du und dir, nicht im Prompt an das Modell", () => {
   // Am 26.09.2026 stand auf der Freigabekarte eines Partners „Eine Freigabe
   // wartet auf Ihre Entscheidung" und darunter „liest du in Abschluss": das
   // Gerät siezt, die Flow-Vorlage duzte, Muster 7 auch. Ein Bauender übernimmt
@@ -7230,8 +7414,15 @@ check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --
       join(dir, "frontend", "src", "seite.tsx"),
       'import { x } from "./dir/x";\nconst dir = 1;\n// Hier steht du im Kommentar.\nexport const S = () => <p titel="Welche Mandanten Sie sehen">Dir ist nichts zugeordnet.</p>;\n'
     );
-    writeFileSync(join(dir, "backend", "kern", "satz.mjs"), 'const dir = "/tmp";\nexport const satz = `Das kannst du nicht.`;\n');
-    writeFileSync(join(dir, "flows", "freigabe.md"), "---\ntitel: x\nzusammenhang: Bitte lies du das.\n---\n");
+    // Was an das Modell geht, darf duzen (Fremdtest 06.10.2026: „Du" im Prompt schlug an).
+    writeFileSync(
+      join(dir, "backend", "kern", "satz.mjs"),
+      'const dir = "/tmp";\nexport const satz = `Das kannst du nicht.`;\nconst PROMPT = "Du liest einen Beleg.";\nconst frage = { prompt: "Lies du den Beleg.", system: `Du bist genau.` };\n'
+    );
+    writeFileSync(
+      join(dir, "flows", "freigabe.md"),
+      "---\ntitel: x\nzusammenhang: Bitte lies du das.\nrollen:\n  - name: leser\n    prompt: >-\n      Du liest einen Beleg\n      und gibst dein JSON aus.\n    beschreibung: Liest den Beleg.\nschritte:\n  - name: lesen\n    auftrag: \"Lies du das Dokument.\"\n---\n\nDu schreibst genau einen Satz.\n"
+    );
     // Gebaute Dateien zählen nicht, Durchlauf 3: ein „dir" aus pdf.js im Paket.
     mkdirSync(join(dir, "frontend", "assets"), { recursive: true });
     writeFileSync(join(dir, "frontend", "assets", "pdf-DozoEV77.js"), 'const a = "Sieh dir das an";\n');
@@ -7248,7 +7439,7 @@ check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  return "Vorlage und alle Muster ohne du und dir, die Prüfung trifft Oberfläche, Backend und Flow und lässt Code und Pfade";
+  return "Vorlage und alle Muster ohne du und dir, die Prüfung trifft Oberfläche, Backend und Flow und lässt Code, Pfade und Prompts an das Modell";
 });
 
 check("Kleinkram nach Durchlauf 3: Abbruch über vorhandene Daten, JSON aus fragen, Sprache von adopt und Brücke", () => {
@@ -7622,7 +7813,7 @@ await checkAsync("Kontrakt 9: was das Kit zur Bibliothek zur Laufzeit hält, sag
   return "zwei Formen, Halte, Hinweise, Paket am Bündel, Verzeichnis des Geräts gelesen, noteVersion behält die Form";
 });
 
-await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Breite, keine Seite ist breiter als das Fenster", async () => {
+await checkAsync("Die Muster 2, 6, 7, 8 und 10 halten bei 390 px: jeder Titel hat Breite, keine Seite ist breiter als das Fenster, der Mandant der Belegliste steht ganz da", async () => {
   // Am 26.09.2026 von Hand gemessen, an einer Probe aus Gerüst und Mustern: die
   // Seite Mandanten war bei 390 px 834 px breit, der Titel „Zuordnen" 0 px, weil
   // ein Satz im `hinweis` der Karte ihm den Platz nahm. Das fiel erst im Browser
@@ -7645,43 +7836,12 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
       kind.stderr.on("data", (d) => (ausgabe += d));
       kind.on("close", (status) => fertig({ status, ausgabe }));
     });
-  const ersetzen = (datei, alt, neu) => {
-    const pfad = join(front, datei);
-    const text = readFileSync(pfad, "utf8");
-    assert(text.includes(alt), `in ${datei} steht die Stelle zum Einhängen nicht mehr: ${alt}`);
-    writeFileSync(pfad, text.replace(alt, neu));
-  };
   let server;
   try {
-    cpSync(join(ROOT, ".ara", "templates", "app", "frontend"), front, {
-      recursive: true,
-      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
-    });
-    for (const muster of ["documents", "extract", "clients", "receipts"]) {
-      cpSync(join(PATTERNS, muster, "frontend"), front, { recursive: true });
-    }
-    for (const datei of ["package.json", "index.html", join("src", "app.tsx")]) {
-      const pfad = join(front, datei);
-      writeFileSync(pfad, readFileSync(pfad, "utf8").replace(/\{\{id\}\}/g, "muster").replace(/\{\{name\}\}/g, "Muster"));
-    }
-    // Eingehängt, wie die Köpfe der Seiten es zeigen: drei Wege, die Belege und
-    // das Einreichen in den Einzelheiten eines Vorgangs.
-    ersetzen(
-      join("src", "app.tsx"),
-      'import { Neu } from "./seiten/neu";',
-      'import { Neu } from "./seiten/neu";\nimport { Dokumente } from "./seiten/dokumente";\nimport { Auslesen } from "./seiten/auslesen";\nimport { Mandanten } from "./seiten/mandanten";'
-    );
-    ersetzen(
-      join("src", "app.tsx"),
-      '<Route path="*"',
-      '<Route path="/dokumente" element={<Dokumente />} />\n      <Route path="/auslesen" element={<Auslesen />} />\n      <Route path="/mandanten" element={<Mandanten />} />\n      <Route path="*"'
-    );
-    ersetzen(join("src", "seiten", "liste.tsx"), "\nfunction Angaben(", '\nimport { BelegeAmVorgang } from "./belege";\nimport { VorgangEinreichen } from "./mandanten";\n\nfunction Angaben(');
-    ersetzen(
-      join("src", "seiten", "liste.tsx"),
-      "    </dl>",
-      '      <VorgangEinreichen vorgang={vorgang} />\n      <Angabe name="Belege">\n        <BelegeAmVorgang vorgang={vorgang.id} offen={vorgang.status === "in arbeit"} />\n      </Angabe>\n    </dl>'
-    );
+    // Zusammengesetzt mit dem Werkzeug, wie eine App es bekommt: Vorlage und Muster 2, 6, 7, 8, 10.
+    appVorlage(work, "muster", "Muster");
+    const bericht = addPatterns(work, ["documents", "extract", "clients", "receipts", "history"], { id: "muster", name: "Muster" });
+    assert(!bericht.missing.length && !bericht.hand.length, `das Einhängen braucht Handarbeit: ${JSON.stringify(bericht)}`);
     const geholt = await laufen("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], front);
     if (geholt.status !== 0) return `übersprungen, npm install ging nicht: ${geholt.ausgabe.trim().split("\n").pop()}`;
     const gebaut = await laufen("npm", ["run", "build"], front);
@@ -7726,6 +7886,13 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
         zuordnungen: [{ benutzer: "Dora Langername-Doppelname", mandant: 1, zugeordnet_von: "Anna Beispiel", seit: jetzt, entscheidet: true }],
       },
       "/api/vorgaenge/1/belege": { belege: [{ ...dokument, mandant: 1, vorgang: 1 }] },
+      "/api/vorgaenge/1/verlauf": {
+        verlauf: [
+          { id: 1, vorgang: 1, was: "angelegt", wer: "Dora Langername-Doppelname", angaben: null, zeit: jetzt },
+          { id: 2, vorgang: 1, was: "abgeschlossen", wer: null, angaben: { korrekturen: [{ feld: "betrag", vorschlag: "35,50", wert: "35,90" }] }, zeit: jetzt },
+        ],
+      },
+      "/api/belege/betraege": { betraege: { 1: "35,90", 2: null }, feld: "betrag" },
     };
     // Ein Bild aus einem Punkt, damit die Anzeige etwas zu zeigen hat.
     const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
@@ -7735,10 +7902,11 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
     // Titel (h1, h2, der Titel eines Blatts) und die Breite des Dokuments.
     const messung = `<script>
       const FERTIG = {
-        "/": () => document.querySelector('[data-kennzeichen="belege"]') && document.body.textContent.includes(${JSON.stringify(NAME)}),
+        "/": () => document.querySelector('[data-kennzeichen="belege"]') && document.body.textContent.includes(${JSON.stringify(NAME)}) && document.querySelector('[data-kennzeichen="verlauf"]'),
         "/dokumente": () => document.querySelector('[data-testid="hochladen"]') && document.body.textContent.includes(${JSON.stringify(NAME)}),
         "/auslesen": () => document.body.textContent.includes("Betrag brutto") && document.body.textContent.includes("3.550,00"),
         "/mandanten": () => document.querySelector('[data-testid="zuordnen"]') && document.body.textContent.includes("Dora Langername"),
+        "/belege": () => document.body.textContent.includes("35,90") && document.body.textContent.includes("Bäckerei Nord"),
       };
       const beginn = Date.now();
       const warten = setInterval(() => {
@@ -7756,6 +7924,11 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
             const r = el.getBoundingClientRect();
             if (!(r.width > 0)) befunde.push('der Titel „' + el.textContent.trim() + '" ist ' + Math.round(r.width) + ' px breit');
             else if (r.right > d.clientWidth + 1) befunde.push('der Titel „' + el.textContent.trim() + '" ragt bis ' + Math.round(r.right) + ' px');
+          }
+          // Der Name des Mandanten steht ganz da: kein Element mit ihm ist abgeschnitten (Fremdtest 06.10.2026).
+          for (const el of document.querySelectorAll('td, td *')) {
+            if (el.textContent.trim() !== ${JSON.stringify(mandant.name)}) continue;
+            if (el.scrollWidth > el.clientWidth + 1 || getComputedStyle(el).textOverflow === 'ellipsis') befunde.push('der Mandant ist abgeschnitten: ' + el.clientWidth + ' von ' + el.scrollWidth + ' px');
           }
           const pre = document.createElement('pre'); pre.id = 'messung';
           pre.textContent = JSON.stringify({ breite: innerWidth, titel: titel.map((el) => el.textContent.trim()), befunde });
@@ -7795,7 +7968,7 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
     await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
     const basis = `http://127.0.0.1:${server.address().port}`;
 
-    const messen = async (pfad, nr) => {
+    const messen = async (pfad, nr, fenster = "390,844") => {
       const lauf = await laufen(
         chromium,
         [
@@ -7804,7 +7977,7 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
           "--no-sandbox",
           "--no-first-run",
           `--user-data-dir=${join(work, `profil-${nr}`)}`,
-          "--window-size=390,844",
+          `--window-size=${fenster}`,
           "--virtual-time-budget=25000",
           "--dump-dom",
           basis + pfad,
@@ -7819,10 +7992,17 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
       ["Muster 2", "/dokumente"],
       ["Muster 6", "/auslesen?nr=1"],
       ["Muster 7", "/mandanten"],
-      ["Muster 8", "/?nr=1"],
+      ["Muster 8 und 10", "/?nr=1"],
+      ["Muster 8", "/belege"],
     ];
-    const [gegen, ...ergebnisse] = await Promise.all([messen("/mandanten?gegenprobe=1", 0), ...SEITEN.map(([, pfad], i) => messen(pfad, i + 1))]);
-    const befunde = [];
+    const befunde0 = [];
+    const [gegen, breit, ...ergebnisse] = await Promise.all([
+      messen("/mandanten?gegenprobe=1", 0),
+      messen("/belege", 9, "1280,800"),
+      ...SEITEN.map(([, pfad], i) => messen(pfad, i + 1)),
+    ]);
+    for (const b of breit.befunde) befunde0.push(`Muster 8 /belege bei 1280 px: ${b}`);
+    const befunde = befunde0;
     SEITEN.forEach(([muster, pfad], i) => {
       const e = ergebnisse[i];
       if (e.breite !== 390) befunde.push(`${muster} ${pfad}: gemessen bei ${e.breite} px statt 390`);
@@ -7836,7 +8016,7 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
       `die Gegenprobe bleibt grün, die Messung sieht den Fehler vom 26.09.2026 nicht: ${gegen.befunde.join(" | ") || "keine Befunde"}`
     );
     const titel = ergebnisse.reduce((n, e) => n + e.titel.length, 0);
-    return `4 Seiten bei 390 px gebaut und gemessen, ${titel} Titel mit Breite, keine breiter als das Fenster; Gegenprobe rot mit ${gegen.befunde.length} Befunden`;
+    return `${SEITEN.length} Seiten bei 390 px und die Belegliste bei 1280 px gebaut und gemessen, ${titel} Titel mit Breite, keine breiter als das Fenster; Gegenprobe rot mit ${gegen.befunde.length} Befunden`;
   } finally {
     server?.close();
     rmSync(work, { recursive: true, force: true });
@@ -9070,6 +9250,9 @@ await checkAsync("Ein Geraet, das weiter ist als das Kit, faellt beim ersten Kon
     // 3. --check nimmt das Manifest an und endet trotzdem mit 1. Dann muss die
     // Ursache dastehen, und zwar dort, wo jemand aufhoert zu lesen: am Schluss.
     run = await toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+    const kurzZeilen = run.stdout.trimEnd().split("\n");
+    assert(run.status === 1 && /^Ergebnis: .*hält an/.test(kurzZeilen[0]) && kurzZeilen.at(-1) === kurzZeilen[0] && /update\.mjs/.test(run.stdout), `die kurze Fassung nennt Ergebnis oder Weg nicht: ${run.stdout}`);
+    run = await toolAsync("app.mjs", ["--device", name, "--check", quelle, "--verbose"], env);
     assert(run.status === 1, `--check endet nicht mit 1: ${run.status}`);
     assert(/nimmt das Manifest an/.test(run.stdout), "das Manifest wurde gar nicht angenommen, der Fall ist ein anderer");
     assert(/Rückgabecode 1/.test(run.stdout), `--check nennt die Ursache des Rueckgabecodes nicht: ${run.stdout}`);
@@ -13821,7 +14004,7 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
   mkdirSync(akte, { recursive: true });
   cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
   writeFrontmatter(join(akte, "device.md"), { name, address: "127.0.0.1:1", api_base: base, verdict: "supported", arasul: "found", api_key_ref: "ARASUL_KEY_SELFTEST_AGENT" });
-  const pruefen = () => toolAsync("app.mjs", ["--device", name, "--check", quelle], env);
+  const pruefen = () => toolAsync("app.mjs", ["--device", name, "--check", quelle, "--verbose"], env);
 
   try {
     // Ein App-Ordner, dessen Backend jede genannte Route trägt, und ein Gerät, das das Feld kennt.
@@ -14922,6 +15105,8 @@ check("Jeder genannte Befehl hat seine Datei", () => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const path = join(dir, entry.name);
       if (skipEntry(path, entry.name)) continue;
+      // Wie ein Muster eingehängt wird, ist Quelltext wie die Vorlage: /vorgaenge darin ist ein Weg.
+      if (entry.name === "wiring.json") continue;
       if (entry.isDirectory()) collect(path);
       else if (/\.(md|json)$/.test(entry.name)) files.push(path);
     }

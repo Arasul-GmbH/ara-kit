@@ -4,6 +4,7 @@
  *
  *   node .ara/tools/device.mjs --host localhost --name mac        first time: file and check
  *   node .ara/tools/device.mjs --host 10.0.0.5 --user arasul --name zentrale
+ *   node .ara/tools/device.mjs --host 10.0.0.5 --name zentrale    without --user: the file over HTTPS, no SSH
  *   node .ara/tools/device.mjs --name mac                         file there: state and next steps
  *   node .ara/tools/device.mjs --name mac --install docker,ollama set up Docker and Ollama (Linux)
  *   node .ara/tools/device.mjs --name orin --install arasul       install Arasul (token needed)
@@ -100,6 +101,7 @@
  *
  *   node .ara/tools/device.mjs --host localhost --name mac        erstes Mal: Akte und Prüfung
  *   node .ara/tools/device.mjs --host 10.0.0.5 --user arasul --name zentrale
+ *   node .ara/tools/device.mjs --host 10.0.0.5 --name zentrale    ohne --user: die Akte über HTTPS, ohne SSH
  *   node .ara/tools/device.mjs --name mac                         Akte da: Zustand und nächste Schritte
  *   node .ara/tools/device.mjs --name mac --install docker,ollama Docker und Ollama aufsetzen (Linux)
  *   node .ara/tools/device.mjs --name orin --install arasul       Arasul installieren (Token nötig)
@@ -1172,6 +1174,108 @@ if (arg["admin-login"]) await adminLogin();
 if (arg["admin-call"] !== undefined) await adminCall();
 if (keysOverHttps) await keysHttps();
 
+// --- Eine Akte nur über HTTPS ------------------------------------------------
+
+/**
+ * Wer Apps baut, braucht kein SSH: die Apps gehen mit dem Kit-Schlüssel über HTTPS aufs Gerät, und
+ * der Schlüssel entsteht mit einem Konto als Administrator ebenso (`--deploy-key --via https`). Bis
+ * 0.77.0 verlangte das Anlegen der Akte trotzdem `--user`; im Fremdtest vom 06.10.2026 nahm der
+ * Tester einen erfundenen Namen. Ohne `--user` legt das Werkzeug die Akte darum über HTTPS an: es
+ * misst, ob die Adresse antwortet und welches Zertifikat sie trägt, liest mit einem hinterlegten
+ * Kit-Schlüssel den Kontrakt und schreibt `ssh: none`. Hardware und Urteil bleiben offen, denn die
+ * liest nur das Skript über SSH; `--user <name>` holt das jederzeit nach.
+ *
+ * Was nur über SSH geht (Installation, Lizenz, Härtung), bleibt beim alten Weg und fragt nach dem
+ * Namen.
+ */
+const NUR_UEBER_SSH = ["install", "licence", "license", "lizenz", "keep-ssh", "net-name", "despite-traces", "port", "key"];
+const ohneSsh =
+  !dryRun &&
+  !str(arg.user) &&
+  !existing.ssh_user &&
+  !LOCAL_HOSTS.has(host) &&
+  via !== "ssh" &&
+  !NUR_UEBER_SSH.some((flag) => arg[flag] !== undefined);
+if (ohneSsh) await fileOverHttps();
+
+async function fileOverHttps() {
+  const deviceCall = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
+  const address = existing.api_base || host;
+  let base;
+  try {
+    base = baseUrl(address);
+  } catch (error) {
+    fail(error.message);
+  }
+  let art = null;
+  try {
+    // Über HTTPS das Zertifikat; eine Adresse mit http:// (ein Tunnel, eine Probe) antwortet oder nicht.
+    art = base.startsWith("http://")
+      ? await fetch(base, { method: "HEAD", signal: AbortSignal.timeout(8_000) }).then(() => "http", () => null)
+      : await certificateKind(base);
+  } catch {
+    // Nicht zu messen ist keine Aussage über das Zertifikat.
+  }
+  const zertifikat = (de) =>
+    art === "selfsigned"
+      ? de ? "selbst ausgestellt (tls: selfsigned in der Akte)" : "self-signed (tls: selfsigned in the file)"
+      : art === "http" ? (de ? "keines, http" : "none, http") : de ? "prüfbar" : "verifiable";
+  const tls = existing.tls || (art === "selfsigned" ? "selfsigned" : "");
+  let vertrag = null;
+  const ref = existing.api_key_ref || "";
+  if (art && ref) {
+    const secret = getSecret(ref);
+    if (!secret) vertrag = { ok: false, message: t(`${ref} is not in the store.`, `${ref} steht nicht in der Ablage.`) };
+    else {
+      try {
+        const answer = await call({ base, key: secret, path: CONTRACT_PATH, insecure: tls === "selfsigned", timeout: 20_000 });
+        vertrag = answer.ok ? { ok: true, version: checkVersion(answer.data) } : { ok: false, message: reason(answer) };
+      } catch (error) {
+        vertrag = { ok: false, message: error.message };
+      }
+    }
+  }
+  ensureDir(dir);
+  if (fresh) writeFileSync(file, readFileSync(TEMPLATE, "utf8"));
+  writeFrontmatter(file, {
+    name,
+    customer: customer || "",
+    address: host,
+    ssh: "none",
+    checked: now(),
+    ...(tls ? { tls } : {}),
+    ...(vertrag?.ok ? { arasul: "running", contract: vertrag.version.device ?? "" } : {}),
+  });
+  const erreicht = art ? `${base} antwortet, Zertifikat ${zertifikat(true)}.` : `${base} antwortet nicht.`;
+  appendFileSync(
+    file,
+    `\n### ${now()} · HTTPS ${base}, ohne SSH\n${erreicht} Ohne SSH angelegt: Hardware und Urteil bleiben offen.` +
+      (vertrag ? (vertrag.ok ? ` Kontrakt gelesen: Fassung ${vertrag.version.device ?? "keine"}.` : ` Kontrakt nicht gelesen: ${scrub(vertrag.message)}.`) : "") +
+      "\n"
+  );
+  writeState({ device: name, customer: customer || null });
+  const lines = [
+    t(`# ${place}, over HTTPS without SSH`, `# ${place}, über HTTPS ohne SSH`),
+    "",
+    art
+      ? t(`- Reachable: ${base}, certificate ${zertifikat(false)}.`, `- Erreichbar: ${base}, Zertifikat ${zertifikat(true)}.`)
+      : t(`- Not reachable: ${base} does not answer over HTTPS. Is the address right, is the device on?`, `- Nicht erreichbar: ${base} antwortet nicht über HTTPS. Stimmt die Adresse, ist das Gerät an?`),
+    t("- Hardware and verdict: open, only the script over SSH reads them. Building apps does not need them.", "- Hardware und Urteil: offen, die liest nur das Skript über SSH. Zum Bauen von Apps braucht es sie nicht."),
+    ...(vertrag
+      ? [vertrag.ok ? `- ${vertrag.version.text}` : t(`- Contract not read: ${scrub(vertrag.message)}`, `- Kontrakt nicht gelesen: ${scrub(vertrag.message)}`)]
+      : []),
+    "",
+    t(`The file ${relative(ROOT, file)} says ssh: none.`, `Die Akte ${relative(ROOT, file)} sagt ssh: none.`),
+    t("Next:", "Weiter:"),
+    ...(ref && vertrag?.ok
+      ? [t(`  the device is ready for apps: node .ara/tools/app.mjs --device ${place} --contract`, `  das Gerät ist bereit für Apps: node .ara/tools/app.mjs --device ${place} --contract`)]
+      : [t(`  the kit key with an administrator account: ${deviceCall} --deploy-key --via https`, `  der Kit-Schlüssel mit einem Konto als Administrator: ${deviceCall} --deploy-key --via https`)]),
+    t(`  with SSH later, for hardware and installation: ${deviceCall} --host ${host} --user <name>`, `  mit SSH später, für Hardware und Installation: ${deviceCall} --host ${host} --user <name>`),
+  ];
+  console.log(lines.join("\n"));
+  process.exit(art ? 0 : 1);
+}
+
 // --- Die Verbindung über SSH -------------------------------------------------
 // Ab hier geht es auf das Gerät selbst, und dafür braucht es einen Anmeldenamen.
 // Die Anmeldung an der Schnittstelle ist zu diesem Zeitpunkt schon durch, sie
@@ -1179,7 +1283,14 @@ if (keysOverHttps) await keysHttps();
 
 const isLocal = LOCAL_HOSTS.has(host);
 const user = str(arg.user) || existing.ssh_user || (isLocal ? userInfo().username : null) || (dryRun ? "" : null);
-if (user === null) fail(t("I need the login name on the device: --user <name>.", "Ich brauche den Anmeldenamen auf dem Gerät: --user <name>."));
+if (user === null) {
+  fail(
+    t(
+      `This needs SSH, and SSH needs the login name on the device: --user <name>. Building apps needs no SSH: without --install and --licence the file is created over HTTPS.`,
+      `Das geht nur über SSH, und SSH braucht den Anmeldenamen auf dem Gerät: --user <name>. Apps bauen braucht kein SSH: ohne --install und --lizenz entsteht die Akte über HTTPS.`
+    )
+  );
+}
 let port = str(arg.port) || existing.ssh_port || "22";
 const key = str(arg.key) || existing.ssh_key || "";
 

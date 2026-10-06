@@ -47,7 +47,7 @@ Sag zu Beginn in einem Satz, dass du ohne Fragen weitermachst und die Annahmen i
 | **Bild, Freigabestufen, was gelesen wird** | Siehe „Weitere Fragen" |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
 | **Welche Fachstandards gelten** | Exportformat, Kontenrahmen, Aufbewahrung: `.ara/knowledge/app-professional.de.md` |
-| **Welche Gestalt sie annimmt** | Die neun Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
+| **Welche Gestalt sie annimmt** | Die zehn Muster in `.ara/knowledge/app-patterns.de.md`, und der Plan nennt das, das er benutzt |
 | **Was nicht dazugehört** | Der Absatz, der später die Enttäuschung erspart |
 | **Woran man sieht, dass es fertig ist** | Ein Satz, den man prüfen kann |
 | **Was passiert, wenn es einmal falsch ist** | Etwas, das geprüft wird, ist ein Nachmittag. Etwas, das nie falsch sein darf, ist ein Projekt |
@@ -157,7 +157,7 @@ In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit 
    (`--aenderbar "Datum"`, oder `keine`). **Nie alle aus Gewohnheit**: ein änderbares Feld lässt sich
    auch aus Versehen ändern. Das Blatt links ist `--original`: vorgabemäßig ein Blatt aus dem
    eingereichten Text, bei echten Dokumenten der Weg, der sie liefert, **mit der Endung .png, .jpg
-   oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades).
+   oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades; Muster 8 nimmt die Endung vom Beleg).
    **Ab Kontrakt 14 liest das Modell das Original selbst.** Das Gerät holt die Datei über den Weg
    der App und gibt sie dem Bildmodell: ein PNG oder JPEG unverändert, ein PDF als seine ersten
    Seiten. Es erkennt sie an den ersten Bytes, nicht am Namen, und ein Blatt als SVG ist nur eine

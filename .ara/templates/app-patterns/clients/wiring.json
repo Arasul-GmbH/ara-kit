@@ -1,0 +1,110 @@
+{
+  "$comment": "Wie dieses Muster eingehängt wird: node .ara/tools/app.mjs --app <app> --add-pattern clients. Was die Felder heißen, steht im Kopf von .ara/tools/lib/wiring.mjs.",
+  "number": 7,
+  "requires": [],
+  "replaces": [
+    "backend/ablage/vorgaenge.mjs"
+  ],
+  "edits": [
+    {
+      "file": "backend/server.mjs",
+      "seam": "imports",
+      "text": "import { mandantAblage } from \"./ablage/mandanten.mjs\";\nimport { mandanten as mandantenKern, verwaltungsRolle } from \"./kern/mandanten.mjs\";\nimport { mandantenWege } from \"./wege/mandanten.mjs\";\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "seam": "setup",
+      "text": "const mandantenFall = mandantenKern({\n  ablage: mandantAblage(db),\n  verwaltung: verwaltungsRolle(vereinbarung),\n  // true: die Verwaltung sieht alle Mandanten, ohne zugeordnet zu sein. Das Interview fragt danach.\n  alleSehen: false,\n});\nconst mandanten = mandantenWege({\n  mandanten: mandantenFall,\n  // `sicht` ist ein Name, oder `{ benutzer, alle }` für eine Verwaltung, die alle sieht.\n  vorgaenge: (sicht) =>\n    kern({\n      ablage: vorgangsAblage(db, sicht),\n      geraet,\n      name: NAME,\n      regel: mandantenFall.regel,\n      zustaendig: mandantenFall.zustaendig,\n      // Was fehlt, bevor eingereicht wird: true oder der Satz dazu.\n      bereit: () => true,\n      melden,\n    }),\n  angemeldet: (anfrage) => geraet.angemeldet(anfrage.headers),\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "before": [
+        "  if (pfad === \"/vorgaenge\" && anfrage.method === \"GET\") {"
+      ],
+      "text": "  if (await mandanten(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "after": [
+        "import { Neu } from \"./seiten/neu\";\n"
+      ],
+      "text": "import { Mandanten } from \"./seiten/mandanten\";\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "before": [
+        "      <Route path=\"*\""
+      ],
+      "text": "      <Route path=\"/mandanten\" element={<Mandanten />} />\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "after": [
+        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+      ],
+      "text": "import { UsersIcon } from \"lucide-react\";\nimport { useMandanten } from \"../mandanten\";\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "after": [
+        "  const aufListe = ort.pathname === \"/\";\n"
+      ],
+      "text": "  // Die Seite Mandanten steht nur für die Verwaltung da; ob jemand verwaltet, sagt das Backend.\n  const verwaltet = useMandanten().data?.verwaltung === true;\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "before": [
+        "  ];\n\n  return (\n    <Leiste"
+      ],
+      "text": "    ...(verwaltet\n      ? [\n          {\n            titel: \"Verwaltung\",\n            eintraege: [\n              {\n                kennung: \"weg-mandanten\",\n                name: \"Mandanten\",\n                symbol: <UsersIcon />,\n                aktiv: ort.pathname === \"/mandanten\",\n                aufKlick: () => gehe(\"/mandanten\"),\n              },\n            ],\n          },\n        ]\n      : []),\n"
+    },
+    {
+      "file": "frontend/src/seiten/neu.tsx",
+      "replace": "import { useEinreichen } from \"../vorgaenge\";\n",
+      "with": "import { useAnlegenBeiMandant } from \"../mandanten\";\nimport { MandantWahl } from \"./mandanten\";\n"
+    },
+    {
+      "file": "frontend/src/seiten/neu.tsx",
+      "replace": "  const einreichen = useEinreichen();\n",
+      "with": "  const [mandant, setMandant] = useState(\"\");\n  const einreichen = useAnlegenBeiMandant();\n"
+    },
+    {
+      "file": "frontend/src/seiten/neu.tsx",
+      "replace": "einreichen.mutate({ titel, text }, {",
+      "with": "einreichen.mutate({ titel, text, mandant: Number(mandant) }, {"
+    },
+    {
+      "file": "frontend/src/seiten/neu.tsx",
+      "replace": "{einreichen.isPending ? \"Wird eingereicht …\" : \"Einreichen\"}",
+      "with": "{einreichen.isPending ? \"Wird angelegt …\" : \"Anlegen\"}"
+    },
+    {
+      "file": "frontend/src/seiten/neu.tsx",
+      "before": [
+        "          <Feldgruppe titel=\"Worum es geht\""
+      ],
+      "text": "          <MandantWahl wert={mandant} aufWert={setMandant} />\n"
+    },
+    {
+      "file": "frontend/src/seiten/liste.tsx",
+      "after": [
+        "@last-import"
+      ],
+      "text": "import { VorgangEinreichen } from \"./mandanten\";\n"
+    },
+    {
+      "file": "frontend/src/seiten/liste.tsx",
+      "within": "function Angaben(",
+      "before": [
+        "    </dl>"
+      ],
+      "text": "      <VorgangEinreichen vorgang={vorgang} />\n"
+    }
+  ],
+  "next": [
+    {
+      "en": "Whether the management sees every client: the switch alleSehen in backend/server.mjs, false by default; a tax office sets true.",
+      "de": "Sieht die Verwaltung alle Mandanten? Der Schalter alleSehen in backend/server.mjs, vorgegeben false; eine Kanzlei setzt true."
+    }
+  ]
+}

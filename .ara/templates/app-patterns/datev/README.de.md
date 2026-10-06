@@ -60,7 +60,8 @@ es. Offen ist auch, dass die Schlüssel 8 und 9 auf jedem Konto der Liste stimme
 | `backend/pruefen/stapel.mjs` | Das Prüfskript, auch aufrufbar als `node backend/pruefen/stapel.mjs <Datei>` |
 | `backend/wege/datev.mjs` | Zwei Wege: `GET /datev/vorschau?mandant=` und `GET /datev/stapel?mandant=` |
 
-**Einhängen**: den Ordner `backend` in die App kopieren, die Zeilen aus dem Kopf von
+**Einhängen**: `node .ara/tools/app.mjs --app <app> --add-pattern datev` kopiert den Ordner und die
+Liste der Konten. Der Weg braucht die Buchungen der App: die Zeilen aus dem Kopf von
 `backend/wege/datev.mjs` in `server.mjs` setzen und auf der Seite des Mandanten einen Knopf „Für den
 Steuerberater herunterladen" anlegen, der `datev/stapel?mandant=<Nummer>` öffnet. Zeig vorher die
 Vorschau: sie nennt die Buchungen, die draußen bleiben, und warum. Dann `--build`.

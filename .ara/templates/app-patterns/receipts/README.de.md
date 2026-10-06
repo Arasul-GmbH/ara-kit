@@ -1,36 +1,39 @@
 # Muster 8: Belege je Mandant am Vorgang
 
-Die Muster 2, 6 und 7 zusammen: ein Beleg hängt an einem Vorgang, gehört dessen Mandanten, das
-Gerät liest ihn aus, und niemand eines anderen Mandanten sieht ihn. Überblick:
-`.ara/knowledge/app-patterns.de.md`.
+Ein Beleg hängt an einem Vorgang, gehört dessen Mandanten, das Gerät liest ihn, und niemand eines
+anderen Mandanten sieht ihn. Braucht die Muster 2 und 7; Muster 6 nur für den zweiten Weg unten.
+Überblick: `.ara/knowledge/app-patterns.de.md`.
 
-**Die Dateien**: die Migration `040`, eine Spalte `mandant` an Dokumenten und Auslesungen,
-`vorgang` an Dokumenten; die Ablagen der Muster 2 und 6 ersetzt durch solche, die je Anfrage für
-eine Sicht gebaut werden (ein Name, oder die Verwaltung, die alle Mandanten sieht), mit `nurZugeordnete` in jeder Abfrage; die Wege in
-`backend/wege/belege.mjs`; `mitBeleg` in `backend/kern/belege.mjs`; `BelegeAmVorgang` für die
-Einzelheiten eines Vorgangs. **Der Mandant kommt vom Vorgang**, nie aus der Anfrage. Eine Auslesung
-trägt ihren eigenen: ihr Protokoll bleibt, wenn das Dokument geht.
+**Einhängen**: `node .ara/tools/app.mjs --app <app> --add-pattern documents,clients,receipts`, dann
+`--build`. Das Werkzeug kopiert die Dateien, legt die Migration `040` dazu (mit Muster 6 auch die
+`041`), setzt die Wege vor die der Mandanten, `bereit` und `argumente` in deren Zeilen, die Belege in
+die Einzelheiten eines Vorgangs und eine Seite „Alle Belege“, und lässt das Original des Flows auf den
+Beleg zeigen.
 
-**Ein Vorgang ohne Beleg ist nicht vollständig**: `mitBeleg` ist das `bereit` von Muster 7, ersetze
-es durch deine Liste der erwarteten Unterlagen. **Nach dem Einreichen sind die Belege eingefroren**:
-Anhängen, Entfernen und neues Auslesen bekommen 409, der Entscheider gibt frei, was er gesehen hat.
+**Zwei Wege, einen Beleg zu lesen.**
 
-**Einhängen**: zuerst die Muster 2, 6 und 7, dann dieser Ordner darüber. Der Kopf von
-`backend/wege/belege.mjs` ersetzt die Zeilen der Muster 2 und 6 in `server.mjs` und nennt die Zeile
-für `bereit`, der Kopf von `frontend/src/seiten/belege.tsx` zeigt die Zeile in `seiten/liste.tsx`.
-`sicht: mandantenFall.sicht` in diesen Zeilen lässt den Schalter `alleSehen` aus Muster 7 auch für
-die Belege gelten. Dann `--build`. **Mit Muster 9** kommt das Konto in der Freigabe aus dessen Liste
-der Konten, mit Namen, und ein geändertes Konto wird einmal nachgefragt (`backend/kern/feldlisten.mjs`).
+- **Im Flow** (Kontrakt 14, ohne Muster 6): das Gerät liest den Beleg als `original` des Schritts
+  `lesen`, und die Freigabe zeigt ihn neben den Feldern. Der Weg `vorgaenge/<nr>/beleg.<endung>`
+  liefert den ersten Beleg, und das Flow-Argument `endung` (pdf, png oder jpg) setzt die Endung, so
+  zeigt die Freigabe ein PDF und ein Handyfoto richtig. Dieser Weg, wenn ohnehin ein Mensch jeden
+  Beleg prüft.
+- **In der App** (Muster 6, `--add-pattern extract`): die App liest vor dem Einreichen, zeigt
+  Mängel und hält jedes Auslesen im Protokoll. Dieser Weg, wenn die Felder vor der Freigabe gebraucht
+  werden, oder an einem Gerät vor Kontrakt 14.
 
-**Das Gerät liest den Beleg selbst** (ab Kontrakt 14): der Weg, der die Datei liefert (das `original`
-des Flows), muss ein **PNG, JPEG oder PDF** herausgeben, das das Gerät an den ersten Bytes erkennt.
-Von einem PDF sieht es die ersten Seiten; wie groß eine Datei und wie lang es sein darf, sagt der
-Kontrakt (`--contract`). Das Blatt ist die Quelle der Felder: schreib keine Beträge oder Daten des
-Vorgangs in den `auftrag` des Schritts. Fehlt die Datei, ist sie zu groß oder nicht lesbar, wird kein
-Modell gerufen, und der Lauf hält mit einer Freigabe an, die den Grund nennt. Mit `--felder` und
-`ergebnis_bestaetigen` ist die Freigabe der Erkennung die eine Prüfung, immer mit den Feldern, und der
-Start gibt einen Verweis auf den Vorgang als Titel mit, damit zwei Belege eines Mandanten zu unterscheiden sind.
+**Was gilt**: der Mandant kommt vom Vorgang, nie aus der Anfrage. Ein Vorgang ohne Beleg ist nicht
+vollständig (`mitBeleg`, ersetze es durch deine Liste der erwarteten Unterlagen). Nach dem Einreichen
+sind die Belege eingefroren: Anhängen, Entfernen und neues Auslesen bekommen 409. Ein Beleg ist PDF,
+PNG oder JPEG, ein anderes Format bekommt 415 mit einem Satz. Fehlt die Datei, ist sie zu groß oder
+nicht lesbar, ruft das Gerät kein Modell, und der Lauf hält mit einer Freigabe an, die den Grund
+nennt; die Grenzen stehen im Kontrakt. Schreib keine Beträge oder Daten des Vorgangs in den
+`auftrag`: das Papier ist die Quelle.
 
-**Geprüft vom Selbsttest** gegen ein gespieltes Gerät: ein fremdes Dokument, seine Bytes, seine
-Auslesung und sein Protokoll 404; ein Beleg ohne Vorgang 400; kein Einreichen ohne Beleg; nach dem
-Einreichen 409; die Auslesung kommt am Gerät mit ihrem Menschen an.
+**Die Belegliste** (die Seite „Alle Belege“) zeigt Mandant und Betrag; der Mandant bricht um, statt mit „…“ zu
+enden. Der Betrag kommt aus dem Ergebnis, das das Gerät nach der Prüfung übergibt (`betragFeld` in
+`server.mjs`, vorgegeben das Feld `betrag`), vorher steht ein Strich. **Mit Muster 9** kommt das Konto
+in der Freigabe aus dessen Liste, mit Namen, und ein geändertes Konto wird einmal nachgefragt.
+
+**Vom Selbsttest geprüft** gegen ein gespieltes Gerät: ein fremder Beleg, seine Bytes, sein Original
+und sein Verlauf 404; ein Beleg ohne Vorgang 400; ein anderes Format 415; PDF und Foto gehen mit ihrer
+Endung an den Flow; kein Einreichen ohne Beleg; nach dem Einreichen 409.

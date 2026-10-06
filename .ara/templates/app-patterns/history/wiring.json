@@ -1,0 +1,53 @@
+{
+  "$comment": "Wie dieses Muster eingehängt wird: node .ara/tools/app.mjs --app <app> --add-pattern history. Was die Felder heißen, steht im Kopf von .ara/tools/lib/wiring.mjs.",
+  "number": 10,
+  "requires": [],
+  "edits": [
+    {
+      "file": "backend/server.mjs",
+      "seam": "imports",
+      "text": "import { verlaufAblage } from \"./ablage/verlauf.mjs\";\nimport { verlauf as verlaufKern } from \"./kern/verlauf.mjs\";\nimport { verlaufWege } from \"./wege/verlauf.mjs\";\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "seam": "setup",
+      "text": "const verlauf = verlaufKern({ ablage: verlaufAblage(db) });\nmitschreiber.push((ereignis) => verlauf.melden(ereignis));\nconst verlaufLesen = verlaufWege({\n  verlauf,\n  // Der Vorgang, wie dieser Mensch ihn sieht, oder null: wer ihn nicht sieht, sieht seinen Verlauf nicht.\n  vorgang: (anfrage, id) => vorgangsKern.holen(id),\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "when": "clients",
+      "replace": "  vorgang: (anfrage, id) => vorgangsKern.holen(id),\n",
+      "with": "  vorgang: (anfrage, id) => vorgangsAblage(db, mandantenFall.sicht(geraet.angemeldet(anfrage.headers))).eines(id),\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "before": [
+        "  if (await belege(anfrage, antwort, pfad)) return;\n",
+        "  if (await mandanten(anfrage, antwort, pfad)) return;\n",
+        "  if (pfad === \"/vorgaenge\" && anfrage.method === \"GET\") {"
+      ],
+      "text": "  if (await verlaufLesen(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "frontend/src/seiten/liste.tsx",
+      "after": [
+        "@last-import"
+      ],
+      "text": "import { VerlaufAmVorgang } from \"./verlauf\";\n"
+    },
+    {
+      "file": "frontend/src/seiten/liste.tsx",
+      "within": "function Angaben(",
+      "before": [
+        "    </dl>"
+      ],
+      "text": "      <Angabe name=\"Verlauf\">\n        <VerlaufAmVorgang vorgang={vorgang.id} />\n      </Angabe>\n"
+    }
+  ],
+  "next": [
+    {
+      "en": "Own events of the app (a receipt attached, a field changed) go to the same place: await melden({ vorgang, was, wer, angaben }).",
+      "de": "Eigene Ereignisse der App (Beleg angehängt, Feld geändert) gehen an dieselbe Stelle: await melden({ vorgang, was, wer, angaben })."
+    }
+  ]
+}

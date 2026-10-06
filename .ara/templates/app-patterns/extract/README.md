@@ -10,9 +10,7 @@ change or delete; the core `backend/kern/auslesen.mjs` with `SCHEMA` and `ANWEIS
 against the schema, `fachlich` for your own rules; the routes; the page with the document in the
 viewer, the fields beside it, the defects above, the log below.
 
-**Wiring** like pattern 2: copy the folders, the lines from the head of `backend/wege/auslesen.mjs`
-into `server.mjs` **before** the routes of the documents, a `Route` and a sidebar entry, then
-`--build`. The call to the device stands in the scaffold, `geraet.auslesen` in `backend/arasul.mjs`:
+**Wiring**: `node .ara/tools/app.mjs --app <app> --add-pattern documents,extract`, then `--build`. The call to the device stands in the scaffold, `geraet.auslesen` in `backend/arasul.mjs`:
 the way out of `arasul.json`, the file as a form with the schema, back come fields, model, duration
 and whether the text recognition ran, and the human goes along for the device's log. **A long
 reading is fetched, not lost**: if the model still computes after the device's wait, the scaffold

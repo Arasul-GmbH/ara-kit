@@ -1,0 +1,54 @@
+{
+  "$comment": "Wie dieses Muster eingehängt wird: node .ara/tools/app.mjs --app <app> --add-pattern documents. Was die Felder heißen, steht im Kopf von .ara/tools/lib/wiring.mjs.",
+  "number": 2,
+  "requires": [],
+  "edits": [
+    {
+      "file": "backend/server.mjs",
+      "seam": "imports",
+      "text": "import { dokumentAblage } from \"./ablage/dokumente.mjs\";\nimport { dokumente as dokumentKern } from \"./kern/dokumente.mjs\";\nimport { dokumentWege } from \"./wege/dokumente.mjs\";\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "seam": "setup",
+      "when": "!receipts",
+      "text": "const dokumente = dokumentWege({\n  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "before": [
+        "  if (pfad === \"/vorgaenge\" && anfrage.method === \"GET\") {"
+      ],
+      "when": "!receipts",
+      "text": "  if (await dokumente(anfrage, antwort, pfad)) return;\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "after": [
+        "import { Neu } from \"./seiten/neu\";\n"
+      ],
+      "text": "import { Dokumente } from \"./seiten/dokumente\";\n"
+    },
+    {
+      "file": "frontend/src/app.tsx",
+      "before": [
+        "      <Route path=\"*\""
+      ],
+      "text": "      <Route path=\"/dokumente\" element={<Dokumente />} />\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "after": [
+        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+      ],
+      "text": "import { FileTextIcon } from \"lucide-react\";\n"
+    },
+    {
+      "file": "frontend/src/rahmen/seitenleiste.tsx",
+      "before": [
+        "  ];\n\n  return (\n    <Leiste"
+      ],
+      "text": "    {\n      titel: \"Dokumente\",\n      eintraege: [\n        {\n          kennung: \"weg-dokumente\",\n          name: \"Dokumente\",\n          symbol: <FileTextIcon />,\n          aktiv: ort.pathname === \"/dokumente\",\n          aufKlick: () => gehe(\"/dokumente\"),\n        },\n      ],\n    },\n"
+    }
+  ]
+}
