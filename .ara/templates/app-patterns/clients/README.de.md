@@ -46,7 +46,11 @@ zwei Mitarbeitern zu und versucht von der einen Seite aus alles, was die Akte de
 könnte: ansehen, ändern, einreichen, darin anlegen, sie in der Liste finden. Jede Antwort muss 404
 sein. **Er braucht drei Sitzungen, nicht zwei**: eine Verwaltung (die Rolle, die Mandanten pflegt,
 am Gerät meist admin, der App im Teststand freigegeben), die die Probe-Akten anlegt, und zwei
-Mitarbeiter ohne diese Rolle. Die drei Sitzungen stehen in einer Datei (`--sitzungen <datei>`),
+Mitarbeiter ohne diese Rolle. **Der Weg ohne Browser kommt zuerst**: das Kit holt die Ausweise, mit
+`node .ara/tools/device.mjs --name <gerät> --admin-login --login-user <konto> --password-ref <name> --token`
+(oder `adminSession` in einem Kit-Skript) und den Passwörtern aus der Ablage des Kits, und schreibt jeden als
+`"authorization": "Bearer <ausweis>"` in die Datei, nur für sich lesbar. Cookies aus dem Browser sind der
+Rückfall. Die drei Sitzungen stehen in einer Datei (`--sitzungen <datei>`),
 nicht im Aufruf, und die Datei geht danach weg; wie sie aussieht, steht im Kopf des Tests. Lauf
 ihn im Teststand, bevor die App live geht; die Zuordnungen löst er danach wieder. Ein Gerät mit selbst ausgestelltem Zertifikat braucht `--unsicher`,
 das dieses Zertifikat für die eigenen Anfragen des Tests annimmt und sonst nirgends.

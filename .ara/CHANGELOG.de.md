@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.77.0 (2026-10-06)
+
+Kontrakt: bis 14
+
+- **Eine neue App bekommt eine README, die die App beschreibt.** `--new` schreibt Name, Zweck, wer was darf und wie man sie ausprobiert; die lange Beschreibung der Vorlage liegt jetzt daneben in `aufbau.md`. Wird ein Plan aktiv (`--plan-aktiv`), steht sein Abschnitt „Wozu“ als Zweck in der README, wenn er ausgefüllt ist.
+- **Der Test „eine fremde Akte gibt 404“ erklärt zuerst den Weg ohne Browser:** `device.mjs --admin-login --token` (oder `adminSession`) mit den Passwörtern aus der Ablage des Kits, der Ausweis als `authorization: Bearer` in einer geschützten Datei; Cookies aus dem Browser sind der Rückfall. Muster 7 sagt dasselbe.
+- **`secrets.mjs --set` hält ein Passwort aus der .env heraus**, wenn niemand es ausdrücklich will: ist die Ablage die .env, wird ein Name, der wie ein Passwort heißt oder mit `--password-ref` genannt ist, mit dem Rat zum Schlüsselbund abgewiesen und nimmt `--confirm-env` erst, nachdem der Mensch ja gesagt hat.
+- **`app.md` sagt, was gilt, wenn der Mensch keine Fragen will:** die drei Runden weichen, jeder offene Punkt wird Annahme im Plan, ein Preis, ein Produktwert und eine Rechtstatsache bleiben offen.
+
 ## 0.76.0 (2026-10-06)
 
 Contract: up to 14

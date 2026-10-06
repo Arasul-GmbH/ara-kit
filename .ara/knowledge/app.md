@@ -27,6 +27,14 @@ the house works with (`business/profile.md`) belongs in the first draft. **At le
 before the first plan is written. The rule on how deep to ask is in `AGENTS.md`, "Every command
 asks to full depth"; the four levels below are what it means for an app.
 
+**If the human expressly wants no questions** ("don't ask", "no questions", or the briefing says
+so in writing, as in the Codex test of 06.10.2026), the three rounds do not apply: that wish
+beats the minimum. Work with what is written down, ask nothing, and write every point still open as
+an assumption in the plan, each line as a place where somebody may object later. What is not
+assumed even then: a price, a product value, a legal fact (they stay open and are named as open),
+and anything that would send personal data off the device. Say in one sentence at the start that
+you are going on without questions and that the assumptions stand in the plan.
+
 | What | Why it decides |
 | --- | --- |
 | **The work step behind it** | Not the wished-for solution. "A bot for holidays" means: somebody reads mails and enters them into a table |

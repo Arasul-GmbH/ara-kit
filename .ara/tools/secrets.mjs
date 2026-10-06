@@ -17,6 +17,12 @@
  *
  *   printf '%s' "$VALUE" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN
  *
+ * A password stays out of the .env unless somebody expressly says so. Where the store is the
+ * .env (a kit without a profile, or with `secrets_store: env`), --set refuses a name that reads
+ * like a password (PASSWORD, PASSWORT, PASSWD, PWD, PW, KENNWORT) and a name given with
+ * --password-ref (it will be used as the password of an account). The keychain is the better place:
+ * `--store keychain`. Whoever wants the .env anyway adds --confirm-env, after the human said yes.
+ *
  * === deutsch ===
  *
  * Geheimnisse verwalten.
@@ -35,6 +41,13 @@
  * verdeckt; hängt keines dran, wird er von der Standardeingabe gelesen:
  *
  *   printf '%s' "$WERT" | node .ara/tools/secrets.mjs --set ARASUL_TOKEN
+ *
+ * Ein Passwort kommt nur auf ausdrückliches Wort in die .env. Ist die Ablage die .env (ein Kit
+ * ohne Profil oder mit `secrets_store: env`), verweigert --set einen Namen, der wie ein Passwort
+ * heißt (PASSWORD, PASSWORT, PASSWD, PWD, PW, KENNWORT), und einen mit --password-ref genannten
+ * (er wird als Passwort eines Kontos benutzt). Besser aufgehoben ist es im Schlüsselbund:
+ * `--store keychain`. Wer die .env trotzdem will, setzt --confirm-env dazu, nachdem der Mensch ja
+ * gesagt hat.
  */
 
 import { existsSync } from "node:fs";
@@ -80,6 +93,11 @@ const KNOWN = [
     ),
   },
 ];
+
+/** Heißt ein Name wie ein Passwort? PW und PWD zählen nur als eigenes Wort: `PWA_KEY` ist keines. */
+function passwordLike(name) {
+  return /(PASSWORD|PASSWORT|PASSWD|KENNWORT)/.test(name) || /(^|_)(PW|PWD)(_|$)/.test(name);
+}
 
 /**
  * Die Geheimnisse der Geräte heißen je Gerät anders. Sie stehen nicht in der
@@ -203,6 +221,25 @@ if (typeof arg.set === "string") {
   const name = arg.set;
   if (!/^[A-Z_][A-Z0-9_]*$/.test(name)) {
     fail(t("The name may only contain capital letters and _.", "Der Name darf nur Großbuchstaben und _ enthalten."));
+  }
+
+  // Ein Passwort gehört in den Schlüsselbund. Die .env nimmt es nur auf ausdrückliche Bestätigung.
+  if (activeStore() === "env" && (arg["password-ref"] || passwordLike(name)) && !arg["confirm-env"]) {
+    const keychain = keychainAvailable();
+    fail(
+      t(
+        `${name} is a password, and the store is the .env: a file that lies readable on the disk. Nothing has been stored.\n` +
+          (keychain
+            ? "Better: node .ara/tools/secrets.mjs --store keychain, then --set again (needs business/profile.md).\n"
+            : `The keychain is not usable here (${keychainHint()}).\n`) +
+          "If the human expressly wants it in the .env anyway, ask once, name the consequence (readable by everybody who reads this folder), and on yes add --confirm-env to --set.",
+        `${name} ist ein Passwort, und die Ablage ist die .env: eine Datei, die lesbar auf der Platte liegt. Es ist nichts hinterlegt worden.\n` +
+          (keychain
+            ? "Besser: node .ara/tools/secrets.mjs --store keychain, danach --set noch einmal (braucht business/profile.md).\n"
+            : `Der Schlüsselbund ist hier nicht nutzbar (${keychainHint()}).\n`) +
+          "Will der Mensch es ausdrücklich trotzdem in der .env, frag einmal, nenn die Folge (lesbar für jeden, der diesen Ordner liest), und häng bei ja --confirm-env an --set."
+      )
+    );
   }
 
   /** Ein Wert ist die erste Zeile. Was danach kommt, war Beiwerk der Eingabe. */

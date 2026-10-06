@@ -43,8 +43,12 @@ to each of two employees, and tries from one side everything that could reach th
 view, change, send in, create inside it, find it in the list. Every answer must be 404. **It needs
 three sessions, not two**: a management account (the role that keeps the clients, on the device
 mostly admin, the app shared with it in staging) that creates the sample files, and two employees
-without that role. The three sessions stand in a file (`--sitzungen <file>`), not in the call, and
-the file goes afterwards; its shape stands in the head of the test. Run it in staging before the app
+without that role. **The way without a browser comes first**: the kit fetches the credentials, with
+`node .ara/tools/device.mjs --name <device> --admin-login --login-user <account> --password-ref <name> --token`
+(or `adminSession` in a kit script), using the passwords from the kit's store, and writes each as
+`"authorization": "Bearer <credential>"` into the file, readable only by oneself. Cookies out of a browser are the
+fallback. The three sessions stand in a file (`--sitzungen <file>`), not in the call, and the
+file goes afterwards; its shape stands in the head of the test. Run it in staging before the app
 goes live; it removes the assignments again afterwards. A device with a self-signed certificate needs `--unsicher` ("unsafe"),
 which accepts that certificate for the test's own requests and nowhere else.
 

@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.77.0 (2026-10-06)
+
+Contract: up to 14
+
+- **A new app gets a README that describes the app.** `--new` writes name, purpose, who may do what and how to try it out; the long description of the scaffold moved to `aufbau.md` beside it. When a plan becomes active (`--plan-aktiv`) its section "What for" stands as the purpose in the README, if it was filled in.
+- **The test "somebody else's file answers 404" explains the way without a browser first:** `device.mjs --admin-login --token` (or `adminSession`) with the passwords from the kit's store, the credential as `authorization: Bearer` in a protected file; cookies out of a browser are the fallback. Pattern 7 says the same.
+- **`secrets.mjs --set` keeps a password out of the .env** unless somebody expressly says so: where the store is the .env, a name like a password or one given with `--password-ref` is refused with the advice of the keychain, and takes `--confirm-env` only after the human said yes.
+- **`app.md` says what holds when the human wants no questions:** the three rounds give way, every open point becomes an assumption in the plan, a price, a product value and a legal fact stay open.
+
 ## 0.76.0 (2026-10-06)
 
 Contract: up to 14

@@ -128,6 +128,9 @@ yourself: `.ara/knowledge/browser.md`.
     line under Codex.
   - **Rounds.** `/app` and `/init` take at least three rounds with questions, the others as many as
     their list needs. Codex reaches the same list in more rounds, never with fewer points.
+  - **No questions wanted.** If the human expressly says they want none, that beats the minimum of
+    rounds: ask nothing and write every open point as an assumption into the plan (`/app`: "The
+    interview checklist"). A price, a product value or a legal fact stays open even then.
   - **"enough"** (German "genug") in the free text ends the interview at once. What is open
     becomes an assumption, written where the command keeps them. A price, a product value or a
     legal fact is not assumed: it stays open and is named as open.

@@ -15,20 +15,31 @@
  *   2. `a` und `b`: zwei Mitarbeiter OHNE diese Rolle, beiden die App im Teststand freigegeben.
  *      Mit der Rolle sähe einer womöglich alle Akten (`alleSehen`), und der Test bewiese nichts.
  *
+ * **Der Weg ohne Browser kommt zuerst.** Die Ausweise holt das Kit, nicht ein Mensch mit Cookies:
+ * `node .ara/tools/device.mjs --name <gerät> --admin-login --login-user <konto> --password-ref <name>
+ * --token` meldet das Konto am Gerät an, mit dem Passwort aus der Ablage des Kits
+ * (`.ara/tools/secrets.mjs`), und reicht den Ausweis nur einem aufrufenden Kit-Werkzeug über einen
+ * eigenen Kanal (`adminSession` in `.ara/tools/lib/kit.mjs`). Auf dem Bildschirm erscheint er nie.
+ * Ein kleines Skript des Kits ruft `adminSession` je Konto einmal und schreibt den Ausweis als
+ * `"authorization": "Bearer <ausweis>"` in die Datei unten, mit Rechten nur für sich (`0o600`).
+ * Die Passwörter der Konten liegen als Geheimnisse in der Ablage, nie im Aufruf.
+ * Nur wenn das nicht geht, holt ein Mensch die Cookies im Browser (`"cookie": "<sitzung>"`).
+ *
  * Die Sitzungen stehen in einer Datei, nicht im Aufruf: was in einem Aufruf steht, steht im
- * Protokoll der Arbeit und in der Geschichte der Shell. Die Datei legt der Mensch an, der sich im
- * Browser angemeldet hat, mit Rechten nur für sich (`chmod 600`), und löscht sie danach:
+ * Protokoll der Arbeit und in der Geschichte der Shell. Die Datei bleibt geschützt (`chmod 600`),
+ * der Ausweis geht nie in eine Ausgabe, und sie wird danach gelöscht:
  *
  *   {
- *     "verwaltung": { "name": "<konto mit der rolle>", "kopf": { "cookie": "<sitzung>" } },
- *     "a": { "name": "<mitarbeiter a>", "kopf": { "cookie": "<sitzung>" } },
- *     "b": { "name": "<mitarbeiter b>", "kopf": { "cookie": "<sitzung>" } }
+ *     "verwaltung": { "name": "<konto mit der rolle>", "kopf": { "authorization": "Bearer <ausweis>" } },
+ *     "a": { "name": "<mitarbeiter a>", "kopf": { "authorization": "Bearer <ausweis>" } },
+ *     "b": { "name": "<mitarbeiter b>", "kopf": { "authorization": "Bearer <ausweis>" } }
  *   }
  *
  *   node backend/probe/fremde-akte.mjs --basis https://<gerät>/apps/<id>/test/api --sitzungen <datei> --unsicher
  *
  * `name` ist der Name, wie das Gerät ihn in der Kopfzeile setzt, `kopf` das, was die Anfrage
- * dieses Menschen trägt: lokal die Kopfzeilen des Kontrakts, am Gerät die Sitzung (`cookie`).
+ * dieses Menschen trägt: lokal die Kopfzeilen des Kontrakts, am Gerät der Ausweis (`authorization`)
+ * oder die Sitzung des Browsers (`cookie`).
  * Lokal, ohne Geheimnis, gehen auch `--verwaltung`, `--a` und `--b` mit demselben JSON im Aufruf.
  * Der Test zeigt nie eine Sitzung, auch nicht in einer Fehlermeldung.
  *

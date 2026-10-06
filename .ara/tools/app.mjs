@@ -428,6 +428,8 @@ function createApp(name) {
     beschreibung,
     datum: today(),
     marken: scaffoldLibrary?.fassung || "",
+    rollen: readmeRollen(fields),
+    ausprobieren: readmeAusprobieren(name, fields),
   });
   for (const state of ["offen", "aktiv", "erledigt"]) ensureDir(join(dir, "plans", state));
 
@@ -593,6 +595,56 @@ function createPlan(app, titel) {
   );
 }
 
+// Die README einer neuen App beschreibt die App, nicht die Vorlage (K17, Fremdtest 06.10.2026):
+// Rollen und Ausprobieren stehen von der ersten Minute darin, der Zweck folgt dem Plan.
+function readmeRollen(fields) {
+  const zeilen = [
+    "- **Wer hineinkommt**, bestimmt der Administrator am Gerät: die App wird nur denen ausgeliefert, denen er sie freigibt.",
+    "- **Wer einreicht**: jede Person mit Zugang. Wer sie ist, kommt von der Anmeldung am Gerät und nicht aus dem Formular.",
+    "- **Wer entscheidet**: jede Person im Kreis der App, nur nicht die, die den Vorgang eingereicht hat. Bei wem eine Freigabe liegt, setzt der Administrator.",
+  ];
+  if (fields.felder) {
+    zeilen.push(
+      `- **Wer das Dokument liest**: der Schritt \`lesen\` läuft mit der Rolle \`leser\`. Ändern darf ein Mensch in der Freigabe: ${fields.aenderbar.join(", ") || "kein Feld"}.`
+    );
+  }
+  if (fields.stufen) {
+    zeilen.push(`- **Stufen der Freigabe**, in dieser Reihenfolge: ${fields.stufen.map((x) => x.bezeichnung).join(", ")}.`);
+  }
+  return zeilen.join("\n");
+}
+
+function readmeAusprobieren(name, fields) {
+  return [
+    "1. Als Administrator die App einem oder zwei Konten freigeben (Verwaltung des Geräts).",
+    `2. Den Teststand öffnen: \`node .ara/tools/app.mjs --device <gerät> --app ${name} --deploy\` spielt ihn ein und nennt die Adresse.`,
+    fields.felder
+      ? "3. Als erstes Konto einen Vorgang mit Dokument einreichen; die Freigabe zeigt links das Original, rechts die erkannten Felder."
+      : "3. Als erstes Konto unter „Neu“ einen Vorgang einreichen.",
+    "4. Als zweites Konto unter „Freigaben“ den Vorgang bestätigen oder mit Begründung ablehnen. Wer einreicht, sieht ihn dort nicht.",
+    "5. Den Vorgang in der Liste öffnen: Stand, Entscheider und Begründung stehen daran.",
+  ].join("\n");
+}
+
+// Ist ein Plan aktiv, steht sein Abschnitt „Wozu“ als Zweck in der README, wenn er ausgefüllt ist.
+function readmeZweck(app, file) {
+  const readmeFile = join(app.dir, "README.md");
+  const planFile = join(app.dir, "plans", "aktiv", file);
+  if (!existsSync(readmeFile) || !existsSync(planFile)) return false;
+  const plan = readFileSync(planFile, "utf8");
+  const abschnitt = plan.match(/^## (?:Wozu|What for)\s*\n([\s\S]*?)(?=^## )/m)?.[1]?.trim();
+  if (!abschnitt) return false;
+  const vorlage = [PLAN_TEMPLATE, PLAN_TEMPLATE.replace(/\.de\.md$/, ".md"), PLAN_TEMPLATE.replace(/\.md$/, ".de.md")]
+    .filter((x) => existsSync(x))
+    .map((x) => readFileSync(x, "utf8").match(/^## (?:Wozu|What for)\s*\n([\s\S]*?)(?=^## )/m)?.[1]?.trim());
+  if (vorlage.includes(abschnitt)) return false;
+  const readme = readFileSync(readmeFile, "utf8");
+  const neu = readme.replace(/<!-- zweck -->[\s\S]*?<!-- \/zweck -->/, () => `<!-- zweck -->\n${abschnitt}\n<!-- /zweck -->`);
+  if (neu === readme) return false;
+  writeFileSync(readmeFile, neu);
+  return true;
+}
+
 function shiftPlan(app, file, to) {
   if (!app.exists) fail(t(`The app ${app.name} does not exist yet.`, `Die App ${app.name} gibt es noch nicht.`));
   let moved;
@@ -602,9 +654,11 @@ function shiftPlan(app, file, to) {
     fail(error.message);
   }
   writeState({ app: app.name });
+  const zweck = to === "aktiv" && readmeZweck(app, file);
   console.log(
     [
       `${file}: ${moved.from} → ${moved.to}`,
+      ...(zweck ? [t("The purpose from the plan now stands in the README.", "Der Zweck aus dem Plan steht jetzt in der README.")] : []),
       to === "aktiv"
         ? t(
             `Now it gets built. When it stands: node .ara/tools/app.mjs --app ${app.name} --build`,
