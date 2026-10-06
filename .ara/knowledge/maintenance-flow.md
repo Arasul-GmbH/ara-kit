@@ -215,9 +215,10 @@ The most frequent small job after the handover, and the only one for which the k
 it has a key with `app:deploy` and no session as administrator.
 
 The usual way is the interface, in the browser on the device. **Without a browser it goes through
-the platform's admin interface**, with a credential in the header (`Authorization: Bearer`). Route,
-body and the way to the token stand in the artifact, not in the kit: admin handbook and API
-reference, both in the mirror and on the device itself.
+the platform's admin interface**, one call each with the session of an administrator:
+`node .ara/tools/device.mjs --name <device> --admin-call "<VERB> <route>"`. The credential is never
+shown and goes into no call of yours. Route and body stand in the artifact, not in the kit: admin
+handbook and API reference, both in the mirror and on the device itself.
 
 ```
 node .ara/tools/mirror.mjs --docs

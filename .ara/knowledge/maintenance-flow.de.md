@@ -219,9 +219,10 @@ Der häufigste kleine Auftrag nach der Abnahme, und der einzige, für den das Ki
 Befehl hat: es hat einen Schlüssel mit `app:deploy` und keine Sitzung als Administrator.
 
 Der übliche Weg ist die Oberfläche, im Browser am Gerät. **Ohne Browser geht es über die
-Verwaltungsschnittstelle der Plattform**, mit einem Ausweis in der Kopfzeile
-(`Authorization: Bearer`). Weg, Rumpf und der Weg zum Token stehen im Artefakt, nicht im
-Kit: Admin-Handbuch und API-Referenz, beide im Spiegel und am Gerät selbst.
+Verwaltungsschnittstelle der Plattform**, ein Aufruf je Handgriff mit der Sitzung eines
+Administrators: `node .ara/tools/device.mjs --name <gerät> --admin-call "<VERB> <weg>"`. Der
+Ausweis wird nie gezeigt und kommt in keinen eigenen Aufruf. Weg und Rumpf stehen im Artefakt,
+nicht im Kit: Admin-Handbuch und API-Referenz, beide im Spiegel und am Gerät selbst.
 
 ```
 node .ara/tools/mirror.mjs --docs

@@ -35,8 +35,8 @@ their app for three hours. The number goes into the file as `contract`, so that 
 again without the device. What could not be read stays unmeasured and gets named as such: a
 platform that is just coming up says nothing about its version.
 
-It only reads. The interventions are `--install` and `--deploy-key`, both further down, both only
-on request and after confirmation.
+It only reads. The interventions are `--install`, `--deploy-key` and `--admin-call` with a verb
+other than GET, all further down, all only on request and after confirmation.
 
 ## What must be clear
 
@@ -147,6 +147,10 @@ The tool creates the file anyway and enters `ssh: refused`. Then, in this order:
 If the target is this computer itself (`localhost`) and SSH is off, the tool checks locally and
 writes `ssh: local` into the file. That is enough for the file, not for remote access.
 
+**Building apps needs no SSH.** If Arasul already runs and somebody has an account as
+administrator, the kit key comes over HTTPS, "The kit key" below. SSH is needed for installing,
+for the hardware check and for `/maintain`, not for `/app`.
+
 ## Docker and Ollama
 
 The tool recognises both and says whether they are there. It sets them up only on request:
@@ -236,7 +240,7 @@ the kit can read, and a kit key in the file.
 
 | Situation | What to do |
 | --- | --- |
-| The device already runs (`arasul: running`) | Only the key is missing: `--deploy-key` |
+| The device already runs (`arasul: running`) | Only the key is missing: `--deploy-key`, over HTTPS with an administrator account, SSH not needed |
 | The device is supported but empty | `--install arasul`, the key comes afterwards by itself |
 
 ### The token
@@ -411,11 +415,30 @@ With it the kit later rolls apps onto the device: **no SSH, no password, no sess
 with the scope `app:deploy`.** It comes into being on the device, belongs to the administrator there
 and can be revoked by them at any time.
 
+**On a device that already runs, the way is HTTPS with an administrator account.** It needs no SSH,
+only the address in the file and the password of an administrator in the secret store:
+
 ```
-node .ara/tools/device.mjs --name <device> --deploy-key
+node .ara/tools/device.mjs --name <device> --deploy-key --via https
+node .ara/tools/device.mjs --name <device> --deploy-key --via https --password-ref <NAME> --login-user <name>
 ```
 
-On a device that already runs, that is the only step. After `--install arasul` it happens by itself.
+The first line takes the start password from the installation; on a device the kit did not
+install, the human puts the administrator's password into the store once
+(`printf '%s' "<password>" | node .ara/tools/secrets.mjs --set <NAME>`) and you name it with
+`--password-ref`, together with the account name. **Without `--via` the tool takes HTTPS by
+itself** when the file says SSH does not answer (`ssh: refused`) or when `--password-ref` stands
+in the call. The tool logs in, has the device create the key, puts it from the answer straight
+into the store, reads the contract with it as proof and writes `api_key_ref`, `tls`, `arasul` and
+`contract` into the file. **A stored key that still works stays**, a second run creates no second
+one. Only the role admin may create keys on the device; for any other account the tool says so.
+
+**Never create the key by hand over a route from the API reference.** The answer carries the key
+in plain text once, and whatever a call shows stands in the log of the work. On 06.10.2026 a
+stranger testing the kit did exactly that, twice wrongly, and left two unused keys behind.
+
+**Over SSH** (`--via ssh`, or when SSH works and no `--password-ref` is given) a script on the
+device creates it. After `--install arasul` that happens by itself.
 
 **After an installation exactly one kit key is valid, the kit's.** The installer creates one of
 its own (it calls it "Ara-Kit (Erstinstallation)"), prints it into its first output and writes it
@@ -439,7 +462,9 @@ same name. What lies there and which one is yours:
 node .ara/tools/device.mjs --name <device> --keys
 ```
 
-The list comes from the device, line for line as it writes it. The kit adds one mark: the
+Over HTTPS (`--via https`) the device lists only the keys the logged-in account created; those of
+other accounts and those created over SSH stand on the device under Settings, API keys. The list
+comes from the device, line for line as it writes it. The kit adds one mark: the
 key whose prefix fits the value in your store is yours. Names repeat, prefixes do not.
 
 **Revoking is for your own key and only for it:**
@@ -599,20 +624,31 @@ start password that came into being at the installation:
 
 ```
 node .ara/tools/device.mjs --name <device> --admin-login
+node .ara/tools/device.mjs --name <device> --admin-login --password-ref <NAME> --login-user <name>
 ```
 
-That logs in on the device and prints the credential the next calls go with. **The password is not
-displayed in doing so**, it goes from the secret store straight into the login. The route runs over
-the interface and not over SSH: it needs neither a login name nor a key for that, only `address` or
-`api_base` in the file. For a script `--token` gives only the credential:
+That logs in on the device and says whether the session holds. **Neither the password nor the
+credential is displayed**: the password goes from the secret store straight into the login, and
+the credential stays inside the tools. The route runs over the interface and not over SSH: it needs
+neither a login name nor a key for that, only `address` or `api_base` in the file. Whoever keeps the
+password of an administrator under a name of their own names that entry instead of storing a second
+copy, with `--password-ref` and `--login-user`; **every call below takes these two switches**.
+
+**A manual step for which the kit has no command** goes as one call with that session:
 
 ```
-SESSION=$(node .ara/tools/device.mjs --name <device> --admin-login --token)
+node .ara/tools/device.mjs --name <device> --admin-call "GET /api/..."
+node .ara/tools/device.mjs --name <device> --admin-call "POST /api/..." --body '{"...": "..."}'
 ```
 
-Whoever keeps the password of an administrator under a name of their own names that entry instead
-of storing a second copy: `--admin-login --password-ref <NAME> --login-user <name>`. Sharing an app
-with an account goes over the same session, `app.mjs --share`, see `.ara/knowledge/deploy.md`.
+The answer comes back with every value that can carry a secret masked (`…`): a credential, a
+password, a key the call created. A call with a verb other than GET changes the device and is
+confirmed beforehand. **Never put a credential or a session cookie into a command or a browser
+call of your own**: whatever stands in a call stands in the log of the work. `--token` is there for
+the kit's own tools only; it hands the credential to them and prints nothing.
+
+Sharing an app with an account goes over the same session, `app.mjs --share`, see
+`.ara/knowledge/deploy.md`. The kit key over the same session: "The kit key" above.
 
 The route there is `POST /api/auth/login`, and that is a statement about the product like any other:
 **it belongs checked on a device.** The documentation self-test does that:
@@ -645,7 +681,8 @@ and all three lead on:
    `node .ara/tools/mirror.mjs --docs`.
 
 **Say the third way out loud** instead of asking for a password nobody has. Rolling out apps does
-not hang on it: that is what the kit key is for, and it comes from the device over SSH.
+not hang on it: that is what the kit key is for, and it comes from the device over SSH, or over
+HTTPS with the password of another administrator.
 
 **Which names the store holds**, `node .ara/tools/secrets.mjs --show` says. There stands the entry
 with the start password too, with the device next to it. Values never stand there.

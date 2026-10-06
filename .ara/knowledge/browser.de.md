@@ -39,6 +39,14 @@ liegt nur auf diesem Rechner.
 denen du sicher bist. Auf einer fremden Adresse bleibt ein Zertifikat, das nicht aufgeht, eine
 Warnung, und der Browser zeigt sie dir nicht mehr.
 
+**Angemeldet wird in der Seite, nie über ein Cookie.** Öffne die Anmeldeseite des Geräts und lass
+den Menschen das Passwort in das Fenster tippen, oder fülle es aus einem Konto, dessen Passwort du
+kennen darfst. Setz nie ein Sitzungscookie oder einen Ausweis über einen Aufruf des Browsers
+(`browser_run_code_unsafe`, ein Cookie in einem Kontext): was in einem Aufruf steht, steht im
+Protokoll der Arbeit, und am 06.10.2026 stand dort die Sitzung eines Probekontos im Klartext.
+Dasselbe gilt für einen Befehl: die Werkzeuge des Kits reichen die Sitzung untereinander weiter und
+zeigen sie nie.
+
 ## Wofür du ihn benutzt
 
 **Die Oberfläche eines Kundengeräts prüfen und bedienen.** Nach der Installation

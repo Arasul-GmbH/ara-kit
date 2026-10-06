@@ -36,6 +36,13 @@ only.
 sure of. On a foreign address a certificate that does not check out stays a warning, and the
 browser no longer shows it to you.
 
+**Logging in happens in the page, never through a cookie.** Open the login page of the device and
+let the human type the password into the window, or fill it from an account whose password you
+may know. Never set a session cookie or a credential through a browser call
+(`browser_run_code_unsafe`, a cookie in a context): whatever stands in a call stands in the log of
+the work, and on 06.10.2026 a session of a test account stood there in plain text. The same holds
+for a command: the kit's tools hand the session on among themselves and never show it.
+
 ## What you use it for
 
 **Check and operate the interface of a customer device.** After the installation, look
