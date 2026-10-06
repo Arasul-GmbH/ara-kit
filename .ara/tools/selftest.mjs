@@ -6808,6 +6808,11 @@ await checkAsync("Eine Beleg-App aus Vorlage und den Mustern Mandanten, Belege u
     assert(r.daten.verlauf[3].angaben?.korrekturen?.[0]?.wert === "23,90" && r.daten.verlauf.every((e) => e.zeit), `der Abschluss trägt die Änderung nicht: ${JSON.stringify(r.daten.verlauf[3])}`);
     r = await ruf("sb-b", "user", `/vorgaenge/${rechnung}/verlauf`, { method: "DELETE" });
     assert(r.code === 405, `ein Verlauf lässt sich löschen: ${r.code}`);
+    // Die Belegliste zeigt den Betrag nach der Prüfung, mit der Korrektur; ein fremder Mandant sieht ihn nicht.
+    r = await ruf("sb-b", "user", "/belege/betraege");
+    assert(r.daten.betraege?.[rechnung] === "23,90" && r.daten.betraege?.[tank] === null, `die Beträge der Belegliste stimmen nicht: ${JSON.stringify(r.daten)}`);
+    r = await ruf("sb-c", "user", "/belege/betraege");
+    assert(!(String(rechnung) in (r.daten.betraege ?? {})), `sb-c sieht den Betrag eines fremden Belegs: ${JSON.stringify(r.daten)}`);
 
     // 6. Die Probe "fremde Akte" prüft jetzt auch Belege, Bytes, Original und Verlauf.
     const sitzungen = join(wurzel, "sitzungen.json");
@@ -7808,7 +7813,7 @@ await checkAsync("Kontrakt 9: was das Kit zur Bibliothek zur Laufzeit hält, sag
   return "zwei Formen, Halte, Hinweise, Paket am Bündel, Verzeichnis des Geräts gelesen, noteVersion behält die Form";
 });
 
-await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Breite, keine Seite ist breiter als das Fenster", async () => {
+await checkAsync("Die Muster 2, 6, 7, 8 und 10 halten bei 390 px: jeder Titel hat Breite, keine Seite ist breiter als das Fenster, der Mandant der Belegliste steht ganz da", async () => {
   // Am 26.09.2026 von Hand gemessen, an einer Probe aus Gerüst und Mustern: die
   // Seite Mandanten war bei 390 px 834 px breit, der Titel „Zuordnen" 0 px, weil
   // ein Satz im `hinweis` der Karte ihm den Platz nahm. Das fiel erst im Browser
@@ -7831,43 +7836,12 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
       kind.stderr.on("data", (d) => (ausgabe += d));
       kind.on("close", (status) => fertig({ status, ausgabe }));
     });
-  const ersetzen = (datei, alt, neu) => {
-    const pfad = join(front, datei);
-    const text = readFileSync(pfad, "utf8");
-    assert(text.includes(alt), `in ${datei} steht die Stelle zum Einhängen nicht mehr: ${alt}`);
-    writeFileSync(pfad, text.replace(alt, neu));
-  };
   let server;
   try {
-    cpSync(join(ROOT, ".ara", "templates", "app", "frontend"), front, {
-      recursive: true,
-      filter: (quelle) => !/node_modules|[\\/]dist$/.test(quelle),
-    });
-    for (const muster of ["documents", "extract", "clients", "receipts"]) {
-      cpSync(join(PATTERNS, muster, "frontend"), front, { recursive: true });
-    }
-    for (const datei of ["package.json", "index.html", join("src", "app.tsx")]) {
-      const pfad = join(front, datei);
-      writeFileSync(pfad, readFileSync(pfad, "utf8").replace(/\{\{id\}\}/g, "muster").replace(/\{\{name\}\}/g, "Muster"));
-    }
-    // Eingehängt, wie die Köpfe der Seiten es zeigen: drei Wege, die Belege und
-    // das Einreichen in den Einzelheiten eines Vorgangs.
-    ersetzen(
-      join("src", "app.tsx"),
-      'import { Neu } from "./seiten/neu";',
-      'import { Neu } from "./seiten/neu";\nimport { Dokumente } from "./seiten/dokumente";\nimport { Auslesen } from "./seiten/auslesen";\nimport { Mandanten } from "./seiten/mandanten";'
-    );
-    ersetzen(
-      join("src", "app.tsx"),
-      '<Route path="*"',
-      '<Route path="/dokumente" element={<Dokumente />} />\n      <Route path="/auslesen" element={<Auslesen />} />\n      <Route path="/mandanten" element={<Mandanten />} />\n      <Route path="*"'
-    );
-    ersetzen(join("src", "seiten", "liste.tsx"), "\nfunction Angaben(", '\nimport { BelegeAmVorgang } from "./belege";\nimport { VorgangEinreichen } from "./mandanten";\n\nfunction Angaben(');
-    ersetzen(
-      join("src", "seiten", "liste.tsx"),
-      "    </dl>",
-      '      <VorgangEinreichen vorgang={vorgang} />\n      <Angabe name="Belege">\n        <BelegeAmVorgang vorgang={vorgang.id} offen={vorgang.status === "in arbeit"} />\n      </Angabe>\n    </dl>'
-    );
+    // Zusammengesetzt mit dem Werkzeug, wie eine App es bekommt: Vorlage und Muster 2, 6, 7, 8, 10.
+    appVorlage(work, "muster", "Muster");
+    const bericht = addPatterns(work, ["documents", "extract", "clients", "receipts", "history"], { id: "muster", name: "Muster" });
+    assert(!bericht.missing.length && !bericht.hand.length, `das Einhängen braucht Handarbeit: ${JSON.stringify(bericht)}`);
     const geholt = await laufen("npm", ["install", "--no-audit", "--no-fund", "--prefer-offline"], front);
     if (geholt.status !== 0) return `übersprungen, npm install ging nicht: ${geholt.ausgabe.trim().split("\n").pop()}`;
     const gebaut = await laufen("npm", ["run", "build"], front);
@@ -7912,6 +7886,13 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
         zuordnungen: [{ benutzer: "Dora Langername-Doppelname", mandant: 1, zugeordnet_von: "Anna Beispiel", seit: jetzt, entscheidet: true }],
       },
       "/api/vorgaenge/1/belege": { belege: [{ ...dokument, mandant: 1, vorgang: 1 }] },
+      "/api/vorgaenge/1/verlauf": {
+        verlauf: [
+          { id: 1, vorgang: 1, was: "angelegt", wer: "Dora Langername-Doppelname", angaben: null, zeit: jetzt },
+          { id: 2, vorgang: 1, was: "abgeschlossen", wer: null, angaben: { korrekturen: [{ feld: "betrag", vorschlag: "35,50", wert: "35,90" }] }, zeit: jetzt },
+        ],
+      },
+      "/api/belege/betraege": { betraege: { 1: "35,90", 2: null }, feld: "betrag" },
     };
     // Ein Bild aus einem Punkt, damit die Anzeige etwas zu zeigen hat.
     const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
@@ -7921,10 +7902,11 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
     // Titel (h1, h2, der Titel eines Blatts) und die Breite des Dokuments.
     const messung = `<script>
       const FERTIG = {
-        "/": () => document.querySelector('[data-kennzeichen="belege"]') && document.body.textContent.includes(${JSON.stringify(NAME)}),
+        "/": () => document.querySelector('[data-kennzeichen="belege"]') && document.body.textContent.includes(${JSON.stringify(NAME)}) && document.querySelector('[data-kennzeichen="verlauf"]'),
         "/dokumente": () => document.querySelector('[data-testid="hochladen"]') && document.body.textContent.includes(${JSON.stringify(NAME)}),
         "/auslesen": () => document.body.textContent.includes("Betrag brutto") && document.body.textContent.includes("3.550,00"),
         "/mandanten": () => document.querySelector('[data-testid="zuordnen"]') && document.body.textContent.includes("Dora Langername"),
+        "/belege": () => document.body.textContent.includes("35,90") && document.body.textContent.includes("Bäckerei Nord"),
       };
       const beginn = Date.now();
       const warten = setInterval(() => {
@@ -7942,6 +7924,11 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
             const r = el.getBoundingClientRect();
             if (!(r.width > 0)) befunde.push('der Titel „' + el.textContent.trim() + '" ist ' + Math.round(r.width) + ' px breit');
             else if (r.right > d.clientWidth + 1) befunde.push('der Titel „' + el.textContent.trim() + '" ragt bis ' + Math.round(r.right) + ' px');
+          }
+          // Der Name des Mandanten steht ganz da: kein Element mit ihm ist abgeschnitten (Fremdtest 06.10.2026).
+          for (const el of document.querySelectorAll('td, td *')) {
+            if (el.textContent.trim() !== ${JSON.stringify(mandant.name)}) continue;
+            if (el.scrollWidth > el.clientWidth + 1 || getComputedStyle(el).textOverflow === 'ellipsis') befunde.push('der Mandant ist abgeschnitten: ' + el.clientWidth + ' von ' + el.scrollWidth + ' px');
           }
           const pre = document.createElement('pre'); pre.id = 'messung';
           pre.textContent = JSON.stringify({ breite: innerWidth, titel: titel.map((el) => el.textContent.trim()), befunde });
@@ -7981,7 +7968,7 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
     await new Promise((bereit) => server.listen(0, "127.0.0.1", bereit));
     const basis = `http://127.0.0.1:${server.address().port}`;
 
-    const messen = async (pfad, nr) => {
+    const messen = async (pfad, nr, fenster = "390,844") => {
       const lauf = await laufen(
         chromium,
         [
@@ -7990,7 +7977,7 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
           "--no-sandbox",
           "--no-first-run",
           `--user-data-dir=${join(work, `profil-${nr}`)}`,
-          "--window-size=390,844",
+          `--window-size=${fenster}`,
           "--virtual-time-budget=25000",
           "--dump-dom",
           basis + pfad,
@@ -8005,10 +7992,17 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
       ["Muster 2", "/dokumente"],
       ["Muster 6", "/auslesen?nr=1"],
       ["Muster 7", "/mandanten"],
-      ["Muster 8", "/?nr=1"],
+      ["Muster 8 und 10", "/?nr=1"],
+      ["Muster 8", "/belege"],
     ];
-    const [gegen, ...ergebnisse] = await Promise.all([messen("/mandanten?gegenprobe=1", 0), ...SEITEN.map(([, pfad], i) => messen(pfad, i + 1))]);
-    const befunde = [];
+    const befunde0 = [];
+    const [gegen, breit, ...ergebnisse] = await Promise.all([
+      messen("/mandanten?gegenprobe=1", 0),
+      messen("/belege", 9, "1280,800"),
+      ...SEITEN.map(([, pfad], i) => messen(pfad, i + 1)),
+    ]);
+    for (const b of breit.befunde) befunde0.push(`Muster 8 /belege bei 1280 px: ${b}`);
+    const befunde = befunde0;
     SEITEN.forEach(([muster, pfad], i) => {
       const e = ergebnisse[i];
       if (e.breite !== 390) befunde.push(`${muster} ${pfad}: gemessen bei ${e.breite} px statt 390`);
@@ -8022,7 +8016,7 @@ await checkAsync("Die Muster 2, 6, 7 und 8 halten bei 390 px: jeder Titel hat Br
       `die Gegenprobe bleibt grün, die Messung sieht den Fehler vom 26.09.2026 nicht: ${gegen.befunde.join(" | ") || "keine Befunde"}`
     );
     const titel = ergebnisse.reduce((n, e) => n + e.titel.length, 0);
-    return `4 Seiten bei 390 px gebaut und gemessen, ${titel} Titel mit Breite, keine breiter als das Fenster; Gegenprobe rot mit ${gegen.befunde.length} Befunden`;
+    return `${SEITEN.length} Seiten bei 390 px und die Belegliste bei 1280 px gebaut und gemessen, ${titel} Titel mit Breite, keine breiter als das Fenster; Gegenprobe rot mit ${gegen.befunde.length} Befunden`;
   } finally {
     server?.close();
     rmSync(work, { recursive: true, force: true });

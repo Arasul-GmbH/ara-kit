@@ -18,6 +18,8 @@
  *
  * Die Wege, hinter `/apps/<id>/api/`, dazu die der Muster:
  *
+ *   GET  /belege/betraege              je sichtbarem Vorgang der Betrag aus seinem Abschluss
+ *                                      (das Feld `betragFeld`, sonst null), für die Belegliste
  *   GET  /vorgaenge/<id>/belege        die Belege eines Vorgangs. Ein fremder: 404
  *   GET  /vorgaenge/<id>/beleg.<endung> das Original für den Flow: die Bytes des zuerst
  *                                      angehängten Belegs, mit seiner Art. Ein fremder: 404
@@ -45,12 +47,34 @@ function json(antwort, status, daten) {
   antwort.end(JSON.stringify(daten));
 }
 
-export function belegWege({ angemeldet, sicht = (wer) => wer.benutzer, vorgaenge, dokumente, dokumentWege, auslesenWege = null }) {
+export function belegWege({
+  angemeldet,
+  sicht = (wer) => wer.benutzer,
+  vorgaenge,
+  dokumente,
+  dokumentWege,
+  auslesenWege = null,
+  abschluss = null,
+  betragFeld = "betrag",
+}) {
   return async function bedienen(anfrage, antwort, pfad) {
     const teile = pfad.split("/").filter(Boolean);
-    if (!["vorgaenge", "dokumente", "auslesen"].includes(teile[0])) return false;
+    if (!["vorgaenge", "dokumente", "auslesen", "belege"].includes(teile[0])) return false;
     const wer = angemeldet(anfrage);
     const benutzer = sicht(wer);
+
+    // Der Betrag steht erst nach der Prüfung fest: im Abschluss, den das Gerät übergibt, mit der
+    // Korrektur eines Menschen. Vorher ist er null, und die Liste zeigt einen Strich.
+    if (teile[0] === "belege") {
+      if (teile.length !== 2 || teile[1] !== "betraege" || anfrage.method !== "GET") return false;
+      const betraege = {};
+      for (const vorgang of await vorgaenge(benutzer).alle()) {
+        const felder = abschluss && vorgang.lauf ? (await abschluss(vorgang.lauf))?.felder : null;
+        betraege[vorgang.id] = felder && typeof felder === "object" ? (felder[betragFeld] ?? null) : null;
+      }
+      json(antwort, 200, { betraege, feld: betragFeld });
+      return true;
+    }
 
     if (teile[0] === "vorgaenge") {
       const original = /^beleg\.(pdf|png|jpe?g)$/.test(teile[2] || "");

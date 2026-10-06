@@ -57,7 +57,8 @@ of the list.
 | `backend/pruefen/stapel.mjs` | The check script, also callable as `node backend/pruefen/stapel.mjs <file>` |
 | `backend/wege/datev.mjs` | Two routes: `GET /datev/vorschau?mandant=` and `GET /datev/stapel?mandant=` |
 
-**Wiring**: copy the `backend` folder into the app, put the lines from the head of
+**Wiring**: `node .ara/tools/app.mjs --app <app> --add-pattern datev` copies the folder and the
+list of accounts. The route needs the app's bookings: put the lines from the head of
 `backend/wege/datev.mjs` into `server.mjs`, and add a button "Download for the tax adviser" to the page
 of the client, which opens `datev/stapel?mandant=<number>`. Show the preview first: it lists the
 bookings that would stay out and why. Then `--build`.

@@ -7,9 +7,8 @@ Vorlage). Der Überblick über alle Muster: `.ara/knowledge/app-patterns.de.md`.
 **Die Dateien**: die Tabelle als zweite Migration, die Ablage (ihre Liste trägt keine Bytes), ein
 Kern, der PDF und Bilder bis zu einer Grenze annimmt, die Wege (die Datei roh als Rumpf, ihr Name
 in einer Kopfzeile), und die Seite: `Dateiablage` nimmt die Datei, `Datenliste` listet,
-`Dokumentanzeige` zeigt die gewählte. **Einhängen**: `backend/` und `frontend/` über die Ordner der
-App kopieren; die Köpfe von `backend/wege/dokumente.mjs` und `frontend/src/seiten/dokumente.tsx`
-zeigen die Zeilen für `server.mjs`, die `Route` und die Seitenleiste. Dann `--build`.
+`Dokumentanzeige` zeigt die gewählte. **Einhängen**:
+`node .ara/tools/app.mjs --app <app> --add-pattern documents`, dann `--build`.
 
 Die Anzeige, gelesen in der Bibliothek am 15.09.2026:
 

@@ -6,10 +6,8 @@ scaffold carries). Index: `.ara/knowledge/app-patterns.md`.
 
 **The files**: the table as second migration, the store (its list carries no bytes), a core taking
 PDF and images up to a limit, the routes (the file raw as the body, its name in a header), and the
-page: `Dateiablage` takes the file, `Datenliste` lists, `Dokumentanzeige` shows the chosen one. **Wiring**: copy `backend/`
-and `frontend/` over the app's folders; the heads of `backend/wege/dokumente.mjs` and
-`frontend/src/seiten/dokumente.tsx` show the lines for `server.mjs`, the `Route` and the sidebar.
-Then `--build`.
+page: `Dateiablage` takes the file, `Datenliste` lists, `Dokumentanzeige` shows the chosen one. **Wiring**:
+`node .ara/tools/app.mjs --app <app> --add-pattern documents`, then `--build`.
 
 The viewer, read in the library on 15.09.2026:
 

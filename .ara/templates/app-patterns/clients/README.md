@@ -32,11 +32,10 @@ with `verwaltungsRolle`, `sicht`, `regel` and `zustaendig`; the routes; the mana
 not collide** with the scaffold (001 to 009) and the other patterns (a ten each); the app's own
 begin at 100.
 
-**Wiring**: copy the folders, the lines from the head of `backend/wege/mandanten.mjs` into
-`server.mjs` **before** the routes of the items, a `Route`, a sidebar entry only the management sees,
-`MandantWahl` into `seiten/neu.tsx`, `VorgangEinreichen` into the details, as the head of
-`frontend/src/seiten/mandanten.tsx` shows. `bereit` in those lines says when an item is complete.
-The folder `backend/probe/` comes along with the copy. Then `--build`.
+**Wiring**: `node .ara/tools/app.mjs --app <app> --add-pattern clients`, then `--build`: the
+routes before those of the items, the page with a sidebar entry only the management sees,
+`MandantWahl` in `seiten/neu.tsx`, `VorgangEinreichen` in the details, `backend/probe/`. In
+`server.mjs` stay the switch `alleSehen` and `bereit`, which says when an item is complete.
 
 **The test that ships with it**: `backend/probe/fremde-akte.mjs` creates two sample files, hands one
 to each of two employees, and tries from one side everything that could reach the other's file:

@@ -11,9 +11,7 @@ anlegen und lesen, nie ändern oder löschen; der Kern `backend/kern/auslesen.mj
 `ANWEISUNG`, `pruefen` gegen das Schema, `fachlich` für deine eigenen Regeln; die Wege; die Seite
 mit dem Dokument in der Anzeige, den Feldern daneben, den Mängeln darüber, dem Protokoll darunter.
 
-**Einhängen** wie bei Muster 2: die Ordner kopieren, die Zeilen aus dem Kopf von
-`backend/wege/auslesen.mjs` in `server.mjs`, **vor** die Wege der Dokumente, eine `Route` und ein
-Eintrag in der Seitenleiste, dann `--build`. Der Ruf an das Gerät steht schon in der Vorlage,
+**Einhängen**: `node .ara/tools/app.mjs --app <app> --add-pattern documents,extract`, dann `--build`. Der Ruf an das Gerät steht schon in der Vorlage,
 `geraet.auslesen` in `backend/arasul.mjs`: der Weg aus `arasul.json`, die Datei als Formular mit dem
 Schema, zurück kommen Felder, Modell, Dauer und ob die Texterkennung lief, und der Mensch geht für
 das Protokoll des Geräts mit. **Ein langes Auslesen wird abgeholt, nicht verloren**: rechnet das
