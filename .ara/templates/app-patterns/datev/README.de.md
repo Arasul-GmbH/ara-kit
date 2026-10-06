@@ -71,7 +71,11 @@ diesen Mandanten sieht. Bei einem fremden Mandanten antwortet sie `null`, und de
 Herunterladen als „übergeben" gilt, entscheidet deine App, und dafür gehört eine Freigabe davor.
 
 **Die Listen ersetzen.** `KONTEN`, `GEGENKONTEN` und `KATEGORIEN` in `skr03.mjs` sind eine
-Beispielauswahl. Setz die Konten des Hauses ein und lass sie vom Steuerberater durchsehen.
+Beispielauswahl. Setz die Konten des Hauses ein und lass sie vom Steuerberater durchsehen. **Die
+Freigabe nimmt dieselbe Liste**: der Ordner bringt `backend/kern/feldlisten.mjs` mit, das die der
+Vorlage ersetzt, und das Feld `konto` einer Freigabe zeigt dann den Namen des vorgeschlagenen
+Kontos, nimmt keines, das nicht in der Liste steht, und fragt einmal nach, wenn jemand es auf ein
+anderes ändert. Heißt das Feld im Flow anders, steht dort dessen Name.
 
 ## Was der Schreiber mit Absicht tut
 

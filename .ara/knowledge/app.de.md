@@ -34,7 +34,7 @@ bevor der erste Plan geschrieben wird. Die Regel, wie tief gefragt wird, steht i
 | **Die Schritte** | Aus Sicht des Menschen davor, ein Schritt je Zeile |
 | **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Daten schieben ist ein Programm, kein Flow |
 | **Wo ein Mensch entscheidet** | Jede Freigabe, wann ein Vorgang vollständig genug dafür ist, wer entscheidet und wer ausdrücklich nicht |
-| **Wer was sehen darf** | Jeder darin alles, oder nur seine Mandanten, Abteilungen, Akten. Das entscheidet die App |
+| **Wer was sehen darf** | Jeder darin alles, oder nur seine Mandanten, Abteilungen, Akten. Das entscheidet die App. Mit Mandanten (Muster 7) außerdem: sieht die Verwaltung alle Mandanten oder nur die ihr zugeordneten (`alleSehen`)? In einer Kanzlei sehen die Partner meist alle. Wer welchen Mandanten bekommt, lässt sich festlegen, bevor die Person die App je geöffnet hat |
 | **Rollen, was ins Netz geht, welches Modell je Flow** | **Wird immer gefragt**, weil niemand ohne Programmiererfahrung es von selbst anspricht. Vorgaben: ein Admin und Mitarbeiter, die nur ihre Akten sehen, nichts verlässt das Gerät, ein Modellvorschlag je Flow. Siehe „Drei Fragen, die jede App bekommt" |
 | **Bild, Freigabestufen, was gelesen wird** | Siehe „Weitere Fragen" |
 | **Was bleiben muss** | Was eine neue Fassung, ein Schalten und ein Jahr überlebt. Siehe „Daten, die bleiben" |
@@ -152,6 +152,14 @@ In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit 
    .svg oder .pdf** (die Freigabe erkennt Bild und PDF am Ende des Pfades). Bei mehreren Stufen
    gehört die erste der Erkennung: das Gerät legt dort bei Unsicherheit seine Anfrage an, eine
    sichere Erkennung fragt niemanden. Sag das laut.
+   **Zwei Freigaben, ein Vorgang.** Mit `--felder` hat der Flow die Erkennung (eine Freigabe mit den
+   Feldern, nur bei Unsicherheit) und den Schritt `entscheiden` (eine Freigabe ohne Felder, immer).
+   Bei Unsicherheit entscheidet der Mensch also zweimal; streichst du `entscheiden`, gibt eine
+   sichere Erkennung niemand frei. Unter Kontrakt 13 gibt es keinen Weg zu genau einer Freigabe mit
+   Feldern: lass beide stehen und schreib das in den Plan. Was das Modell liest, ist nicht das
+   Original links, sondern was der Schritt `lesen` ihm als `auftrag` gibt (gemessen am 06.10.2026,
+   Kontrakt 13): die Angaben des Vorgangs gehören dorthin. Ob ein neueres Gerät das Original selbst
+   liest, sagt sein Kontrakt (`--contract`).
 
 „Genug" lässt diese vier Fragen fallen: was offen bleibt, schreibt das Kit nicht. `--check` hält
 `faehigkeiten` an einem Werkzeug-Schritt an (sie gehören nur an Modell-Schritte) und hält die Deklaration
