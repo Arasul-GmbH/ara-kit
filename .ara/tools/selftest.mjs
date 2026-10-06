@@ -7207,7 +7207,7 @@ check("Die Vorlage steht auf Marken 5.1.0, ein Diagramm kommt nur über @marken/
   return `Spiegel ${bibliothek.fassung}, Datenliste misst ihren Kasten, diagramm.ts eigener Einstieg, @marken/* in der tsconfig`;
 });
 
-check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --check meldet du und dir", () => {
+check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --check meldet du und dir, nicht im Prompt an das Modell", () => {
   // Am 26.09.2026 stand auf der Freigabekarte eines Partners „Eine Freigabe
   // wartet auf Ihre Entscheidung" und darunter „liest du in Abschluss": das
   // Gerät siezt, die Flow-Vorlage duzte, Muster 7 auch. Ein Bauender übernimmt
@@ -7230,8 +7230,15 @@ check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --
       join(dir, "frontend", "src", "seite.tsx"),
       'import { x } from "./dir/x";\nconst dir = 1;\n// Hier steht du im Kommentar.\nexport const S = () => <p titel="Welche Mandanten Sie sehen">Dir ist nichts zugeordnet.</p>;\n'
     );
-    writeFileSync(join(dir, "backend", "kern", "satz.mjs"), 'const dir = "/tmp";\nexport const satz = `Das kannst du nicht.`;\n');
-    writeFileSync(join(dir, "flows", "freigabe.md"), "---\ntitel: x\nzusammenhang: Bitte lies du das.\n---\n");
+    // Was an das Modell geht, darf duzen (Fremdtest 06.10.2026: „Du" im Prompt schlug an).
+    writeFileSync(
+      join(dir, "backend", "kern", "satz.mjs"),
+      'const dir = "/tmp";\nexport const satz = `Das kannst du nicht.`;\nconst PROMPT = "Du liest einen Beleg.";\nconst frage = { prompt: "Lies du den Beleg.", system: `Du bist genau.` };\n'
+    );
+    writeFileSync(
+      join(dir, "flows", "freigabe.md"),
+      "---\ntitel: x\nzusammenhang: Bitte lies du das.\nrollen:\n  - name: leser\n    prompt: >-\n      Du liest einen Beleg\n      und gibst dein JSON aus.\n    beschreibung: Liest den Beleg.\nschritte:\n  - name: lesen\n    auftrag: \"Lies du das Dokument.\"\n---\n\nDu schreibst genau einen Satz.\n"
+    );
     // Gebaute Dateien zählen nicht, Durchlauf 3: ein „dir" aus pdf.js im Paket.
     mkdirSync(join(dir, "frontend", "assets"), { recursive: true });
     writeFileSync(join(dir, "frontend", "assets", "pdf-DozoEV77.js"), 'const a = "Sieh dir das an";\n');
@@ -7248,7 +7255,7 @@ check("Vorlage und Muster reden wie das Gerät, mit Sie oder ohne Anrede, und --
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  return "Vorlage und alle Muster ohne du und dir, die Prüfung trifft Oberfläche, Backend und Flow und lässt Code und Pfade";
+  return "Vorlage und alle Muster ohne du und dir, die Prüfung trifft Oberfläche, Backend und Flow und lässt Code, Pfade und Prompts an das Modell";
 });
 
 check("Kleinkram nach Durchlauf 3: Abbruch über vorhandene Daten, JSON aus fragen, Sprache von adopt und Brücke", () => {

@@ -241,7 +241,7 @@ function surfaceTexts(text, jsx) {
   const zeile = (index) => text.slice(0, index).split("\n").length;
   for (const treffer of text.matchAll(/"((?:[^"\\\n]|\\.)*)"|'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)) {
     const inhalt = treffer[1] ?? treffer[2] ?? treffer[3] ?? "";
-    if (/\s/.test(inhalt.trim())) out.push({ zeile: zeile(treffer.index), inhalt });
+    if (/\s/.test(inhalt.trim())) out.push({ zeile: zeile(treffer.index), inhalt, index: treffer.index });
   }
   if (jsx) {
     for (const treffer of text.matchAll(/>([^<>{}]*[A-Za-zÄÖÜäöüß][^<>{}]*)</g)) {
@@ -264,10 +264,51 @@ function builtFile(pfad, text) {
 }
 
 /**
+ * Was an ein Modell geht und nicht an einen Menschen: die Anweisung einer Rolle, der Auftrag eines
+ * Schritts, ein Systemsatz. Im Fremdtest vom 06.10.2026 schlug die Prüfung auf „Du liest einen
+ * Beleg" im Prompt an; das Modell darf man duzen, die Karte des Geräts liest es nicht.
+ */
+const AN_DAS_MODELL = /^(prompt|system|system_prompt|auftrag|anweisung|instruktion|instructions?)$/i;
+
+/** Steht die Zeichenkette an `index` hinter einem Schlüssel oder Namen, der an das Modell geht? */
+function anDasModell(text, index) {
+  const davor = text.slice(Math.max(0, index - 80), index).split("\n").pop();
+  const name = /([A-Za-z_][A-Za-z0-9_]*)["']?\s*[:=]\s*$/.exec(davor)?.[1] ?? "";
+  return AN_DAS_MODELL.test(name) || /prompt/i.test(name);
+}
+
+/**
+ * Die Zeilen eines Flows, die ein Mensch liest: der Kopf ohne die Werte, die an das Modell gehen
+ * (`prompt`, `auftrag`, auch über mehrere Zeilen), und ohne den Rumpf unter dem Kopf, der die
+ * Anweisung für den letzten Satz ist. Titel, Zusammenhang, Beschreibung und Stufen bleiben.
+ */
+function flowLinesForHumans(zeilen) {
+  const out = [];
+  if (zeilen[0]?.trim() !== "---") return zeilen.map((inhalt, i) => ({ inhalt, zeile: i + 1 }));
+  // Die Spalte des Schlüssels, dessen Wert an das Modell geht; tiefer eingerückte Zeilen gehören zu ihm.
+  let modell = null;
+  for (let i = 1; i < zeilen.length; i++) {
+    const inhalt = zeilen[i];
+    if (inhalt.trim() === "---") break;
+    const spalte = /^[\s-]*/.exec(inhalt)[0].length;
+    if (modell !== null && (inhalt.trim() === "" || spalte > modell)) continue;
+    modell = null;
+    const schluessel = /^[\s-]*([A-Za-z_][A-Za-z0-9_]*):/.exec(inhalt);
+    if (schluessel && AN_DAS_MODELL.test(schluessel[1])) {
+      modell = spalte;
+      continue;
+    }
+    out.push({ inhalt, zeile: i + 1 });
+  }
+  return out;
+}
+
+/**
  * Wo eine App ihre Menschen duzt: in der Oberfläche, in den Sätzen des Backends,
  * die dort ankommen, und in ihren Flows, deren Titel und Kontext auf der
- * Freigabekarte des Geräts stehen. Eine Liste von Sätzen, leer heißt gut. Der
- * Spiegel der Bibliothek zählt nicht mit, er gehört dem Produkt.
+ * Freigabekarte des Geräts stehen. Was an das Modell geht, zählt nicht mit. Eine
+ * Liste von Sätzen, leer heißt gut. Der Spiegel der Bibliothek zählt nicht mit,
+ * er gehört dem Produkt.
  */
 export function addressFindings(dir) {
   const out = [];
@@ -285,7 +326,8 @@ export function addressFindings(dir) {
     const roh = readFileSync(pfad, "utf8");
     if (builtFile(pfad, roh)) continue;
     const text = stripComments(roh);
-    for (const { zeile, inhalt } of surfaceTexts(text, /\.(tsx|jsx|html)$/.test(name))) {
+    for (const { zeile, inhalt, index } of surfaceTexts(text, /\.(tsx|jsx|html)$/.test(name))) {
+      if (index !== undefined && anDasModell(text, index)) continue;
       const wort = inhalt.match(DUZEN);
       if (wort) out.push({ datei: name, zeile, wort: wort[0], text: inhalt.trim().replace(/\s+/g, " ").slice(0, 90) });
     }
@@ -294,10 +336,10 @@ export function addressFindings(dir) {
   if (existsSync(flows) && statSync(flows).isDirectory()) {
     for (const eintrag of readdirSync(flows).filter((n) => n.endsWith(".md")).sort()) {
       const zeilen = readFileSync(join(flows, eintrag), "utf8").split("\n");
-      zeilen.forEach((inhalt, i) => {
+      for (const { inhalt, zeile } of flowLinesForHumans(zeilen)) {
         const wort = inhalt.match(DUZEN);
-        if (wort) out.push({ datei: `flows/${eintrag}`, zeile: i + 1, wort: wort[0], text: inhalt.trim().slice(0, 90) });
-      });
+        if (wort) out.push({ datei: `flows/${eintrag}`, zeile, wort: wort[0], text: inhalt.trim().slice(0, 90) });
+      }
     }
   }
   return out;
