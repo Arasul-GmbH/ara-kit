@@ -6404,6 +6404,200 @@ await checkAsync("Das Muster Belege trennt Dokumente und Auslesungen je Mandant,
   }
 });
 
+await checkAsync("Nachstellung: ein Fremder baut den Belegeingang einer Kanzlei aus Vorlage und Mustern, nur nach den Blättern", async () => {
+  // Der Fremdtest vom 06.10.2026, ohne Gerät nachgestellt: ein Steuerfachwirt baut aus der Vorlage
+  // und den Mustern 2, 6, 7, 8 und 9 einen Belegeingang. Was ihn damals aufhielt, muss hier ohne
+  // Handarbeit gehen: die Migrationen laufen ohne Umnummerieren, die Partner sehen alle Mandanten
+  // (ein Schalter in den Zeilen des Blatts), eine Sachbearbeiterin wird zugewiesen, bevor sie die
+  // App je geöffnet hat, das Konto kommt aus einer Liste mit Namen, und die Probe "fremde Akte"
+  // läuft mit drei Sitzungen aus einer Datei. Der Kit-Schlüssel ohne SSH ist eine eigene Prüfung
+  // ("Der Kit-Schlüssel entsteht ohne SSH über die Sitzung").
+  const kontrakt = {
+    ...VORLAGE_KONTRAKT,
+    koepfe: { benutzer: "x-geraet-wer", rolle: "x-geraet-rolle", rollen: ["admin", "user"] },
+    freigaben: { ...VORLAGE_KONTRAKT.freigaben, rollen: ["admin"] },
+  };
+  const paket = mkdtempSync(join(tmpdir(), "ara-fremder-"));
+  let app = null;
+  const starts = [];
+  const geraet = createServer((anfrage, antwort) => {
+    const teile = [];
+    anfrage.on("data", (s) => teile.push(s));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://x");
+      const json = (code, daten) => {
+        antwort.writeHead(code, { "content-type": "application/json" });
+        antwort.end(JSON.stringify(daten));
+      };
+      if (anfrage.headers["x-arasul-app-key"] !== "aras_selbsttest") return json(401, { error: { message: "kein Schlüssel" } });
+      if (url.pathname === "/api/v1/external/document/extract-structured") {
+        return json(200, { success: true, data: { belegdatum: "2026-10-01", betrag_brutto: 4.2, aussteller: "Deutsche Post" }, model: "probe-modell:1b", job_id: "auftrag-1" });
+      }
+      if (anfrage.method === "POST" && url.pathname === "/api/v1/external/flows/freigabe/run") {
+        starts.push(JSON.parse(Buffer.concat(teile).toString("utf8")));
+        return json(202, { data: { run_id: starts.length } });
+      }
+      if (url.pathname === "/api/v1/external/freigaben") return json(200, { data: { freigaben: [] } });
+      if (url.pathname.startsWith("/api/v1/external/flows/runs/")) return json(200, { data: { status: "wartend" } });
+      json(404, { error: { message: url.pathname } });
+    });
+  });
+  await new Promise((fertig) => geraet.listen(0, "127.0.0.1", fertig));
+  try {
+    // Zusammensetzen, wie die Blätter es sagen: die Vorlage, darüber die Ordner der Muster.
+    cpSync(join(ROOT, ".ara", "templates", "app", "backend"), paket, { recursive: true });
+    for (const muster of ["documents", "extract", "clients", "receipts", "datev"]) cpSync(join(PATTERNS, muster, "backend"), paket, { recursive: true });
+    const kopfzeilen = (datei, anfang, bis = anfang) => {
+      const zeilen = readFileSync(join(PATTERNS, datei), "utf8")
+        .split("\n")
+        .filter((zeile) => zeile.startsWith(" *   "))
+        .map((zeile) => zeile.slice(5));
+      const importe = zeilen.filter((zeile) => zeile.startsWith("import ")).join("\n") + "\n";
+      const beginn = zeilen.findIndex((zeile) => zeile.startsWith(anfang));
+      const letzter = zeilen.findIndex((zeile) => zeile.startsWith(bis));
+      const ende = zeilen.findIndex((zeile, i) => i > letzter && zeile === "});");
+      return { importe, aufbau: zeilen.slice(beginn, ende + 1).join("\n") + "\n" };
+    };
+    const mandantenKopf = kopfzeilen("clients/backend/wege/mandanten.mjs", "const mandantenFall", "const mandanten = ");
+    const belegeKopf = kopfzeilen("receipts/backend/wege/belege.mjs", "const belege");
+    const bereitZeile = readFileSync(join(PATTERNS, "receipts", "backend", "wege", "belege.mjs"), "utf8")
+      .split("\n")
+      .find((zeile) => zeile.startsWith(" *   bereit: "));
+    // Die eine Entscheidung der Kanzlei: die Partner sehen alle Mandanten. Ein Wort in einer Zeile.
+    assert(mandantenKopf.aufbau.includes("alleSehen: false,"), "die Zeilen des Blatts nennen den Schalter alleSehen nicht");
+    mandantenKopf.aufbau = mandantenKopf.aufbau.replace("alleSehen: false,", "alleSehen: true,").replace("bereit: () => true,", bereitZeile.slice(5).trim());
+    const server = join(paket, "server.mjs");
+    let quelle = readFileSync(server, "utf8");
+    for (const [alt, neu] of [
+      ['import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n', 'import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";\n' + mandantenKopf.importe + belegeKopf.importe],
+      ["  regel: () => null,\n});\n", "  regel: () => null,\n});\n" + mandantenKopf.aufbau + belegeKopf.aufbau],
+      ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await belege(anfrage, antwort, pfad)) return;\n  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
+    ]) {
+      assert(quelle.includes(alt), `die Naht in server.mjs gibt es nicht mehr: ${alt.split("\n")[0]}`);
+      quelle = quelle.replace(alt, neu);
+    }
+    writeFileSync(server, quelle);
+    writeFileSync(join(paket, ARRANGEMENT_FILE), arrangementFile(appArrangement(kontrakt, { device: "selbsttest", date: today() })));
+
+    app = spawn("node", [server], {
+      env: { ...process.env, PORT: "0", ARASUL_APP_NAME: "Belegeingang", APP_DATEN: join(paket, "daten"), ARASUL_BASIS_URL: `http://127.0.0.1:${geraet.address().port}`, ARASUL_APP_KEY: "aras_selbsttest" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let ausgabe = "";
+    let fehlerausgabe = "";
+    app.stderr.on("data", (stueck) => (fehlerausgabe += String(stueck)));
+    const basis = await new Promise((fertig, gescheitert) => {
+      const zeit = setTimeout(() => gescheitert(new Error(`die App hat nicht gestartet: ${fehlerausgabe}`)), 10_000);
+      app.stdout.on("data", (stueck) => {
+        ausgabe += String(stueck);
+        const treffer = ausgabe.match(/auf (\d+)/);
+        if (treffer) {
+          clearTimeout(zeit);
+          fertig(`http://127.0.0.1:${treffer[1]}`);
+        }
+      });
+    });
+    await new Promise((fertig) => setTimeout(fertig, 300));
+    // 1. Die Migrationen laufen ohne Umnummerieren, in der Reihenfolge ihrer Voraussetzungen.
+    const gelaufen = ["001-vorgaenge", "002-abschluesse", "010-dokumente", "020-auslesungen", "030-mandanten", "031-entscheider", "040-belege"];
+    const stellen = gelaufen.map((name) => ausgabe.indexOf(name));
+    assert(stellen.every((stelle, i) => stelle >= 0 && (i === 0 || stelle > stellen[i - 1])), `die Migrationen liefen nicht alle oder nicht in Reihenfolge: ${ausgabe} ${fehlerausgabe}`);
+
+    const alsKopf = (text) => Buffer.from(text, "utf8").toString("latin1");
+    const kopfVon = (wer, rolle) => ({ [kontrakt.koepfe.benutzer]: alsKopf(wer), [kontrakt.koepfe.rolle]: rolle });
+    const ruf = async (wer, rolle, pfad, optionen = {}) => {
+      const antwort = await fetch(`${basis}${pfad}`, { ...optionen, headers: { ...(optionen.headers || {}), ...kopfVon(wer, rolle) } });
+      const art = antwort.headers.get("content-type") || "";
+      return { code: antwort.status, daten: art.includes("json") ? await antwort.json() : null };
+    };
+    const post = (wer, rolle, pfad, rumpf) => ruf(wer, rolle, pfad, { method: "POST", body: JSON.stringify(rumpf), headers: { "content-type": "application/json" } });
+
+    // 2. Die Partnerin legt Mandanten an und weist zu, bevor eine Sachbearbeiterin je da war.
+    const mueller = (await post("partnerin", "admin", "/mandanten", { name: "Probe Müller GmbH" })).daten.mandant.id;
+    const schmidt = (await post("partnerin", "admin", "/mandanten", { name: "Probe Schmidt KG" })).daten.mandant.id;
+    let r = await post("partnerin", "admin", "/zuordnungen", { benutzer: "sb-a", mandant: mueller, entscheidet: true });
+    assert(r.code === 201 && r.daten.zuordnung.vorgemerkt === true, `sb-a ließ sich vor dem ersten Öffnen nicht zuweisen: ${JSON.stringify(r.daten)}`);
+    r = await post("partnerin", "admin", "/zuordnungen", { benutzer: "sb-b", mandant: mueller, entscheidet: false });
+    assert(r.code === 201, `sb-b ließ sich nicht zuweisen: ${JSON.stringify(r.daten)}`);
+
+    // 3. Die Partnerin sieht alle Mandanten, ohne sich zuzuordnen; die Sachbearbeiterin nur ihren.
+    r = await ruf("partnerin", "admin", "/mandanten");
+    assert(r.daten.verwaltung === true && r.daten.alle === true && r.daten.mandanten.length === 2, `die Partnerin sieht nicht alle: ${JSON.stringify(r.daten)}`);
+    r = await ruf("sb-b", "user", "/mandanten");
+    assert(r.daten.mandanten.length === 1 && r.daten.mandanten[0].id === mueller && !r.daten.alle, `sb-b sieht beim ersten Öffnen nicht genau ihren Mandanten: ${JSON.stringify(r.daten)}`);
+
+    r = await ruf("partnerin", "admin", "/zuordnungen");
+    assert(r.daten.zuordnungen.find((z) => z.benutzer === "sb-a")?.vorgemerkt === true, "sb-a, die nie da war, steht nicht als vorgemerkt da");
+
+    // 4. sb-b trägt einen Beleg ein; er geht an sb-a, nicht an die Partnerin und nicht an sb-b.
+    r = await post("sb-b", "user", "/vorgaenge", { titel: "Deutsche Post, Porto", text: "4,20 EUR", mandant: mueller });
+    const beleg = r.daten.vorgang.id;
+    r = await ruf("sb-b", "user", `/dokumente?vorgang=${beleg}`, { method: "POST", body: Buffer.from("%PDF-1.4 Probe"), headers: { "content-type": "application/pdf", "x-dateiname": "post.pdf" } });
+    assert(r.code === 201, `der Beleg ließ sich nicht anhängen: ${r.code} ${JSON.stringify(r.daten)}`);
+    r = await post("sb-b", "user", `/vorgaenge/${beleg}/einreichen`, {});
+    assert(r.code === 200 && JSON.stringify(starts[0]?.freigabe?.entscheider) === JSON.stringify({ konten: ["sb-a"] }), `die Freigabe geht nicht an sb-a: ${r.code} ${JSON.stringify(starts[0])}`);
+    r = await post("sb-b", "user", "/vorgaenge", { titel: "Fremd", mandant: schmidt });
+    assert(r.code === 404, `sb-b legt bei einem fremden Mandanten an: ${r.code}`);
+
+    // 5. Die Partnerin sieht den Beleg und sein Dokument, ohne zugeordnet zu sein; ihr Vorgang bei
+    //    Schmidt bleibt für die Sachbearbeiterinnen unsichtbar.
+    r = await ruf("partnerin", "admin", "/vorgaenge");
+    assert(r.daten.vorgaenge.some((v) => v.id === beleg), `die Partnerin sieht den Beleg von sb-b nicht: ${JSON.stringify(r.daten)}`);
+    r = await ruf("partnerin", "admin", "/dokumente");
+    assert(r.daten.dokumente.length === 1, `die Partnerin sieht das Dokument nicht: ${JSON.stringify(r.daten)}`);
+    r = await post("partnerin", "admin", "/vorgaenge", { titel: "Akte Schmidt", mandant: schmidt });
+    assert(r.code === 201, `die Partnerin legt bei Schmidt nicht an: ${r.code} ${JSON.stringify(r.daten)}`);
+    const beiSchmidt = r.daten.vorgang.id;
+    for (const wer of ["sb-a", "sb-b"]) {
+      r = await ruf(wer, "user", `/vorgaenge/${beiSchmidt}`);
+      assert(r.code === 404, `${wer} sieht die Akte bei Schmidt: ${r.code}`);
+    }
+
+    // 6. Das Konto kommt aus der Liste des Musters Buchungsstapel, mit Namen, und die Seite prüft es.
+    r = await ruf("sb-a", "user", "/feldlisten");
+    const konten = r.daten?.listen?.konto ?? [];
+    assert(konten.some((k) => k.wert === "4910" && k.name === "Porto"), `die Liste der Konten fehlt: ${JSON.stringify(r.daten)}`);
+    const pruefung = await import(join(ROOT, ".ara", "templates", "app", "frontend", "src", "feldpruefung.ts"));
+    const eintrag = { id: 1, titel: "Beleg", felder: [{ name: "konto", vorschlag: "4910", aenderbar: true, unsicher: true }] };
+    assert(/4910 Porto/.test(pruefung.mitNamen(eintrag, { konto: konten }).felder[0].bezeichnung), "am Feld steht der Name des Vorschlags nicht");
+    let p = pruefung.pruefen(eintrag, { konto: "49300" }, { konto: konten }, null);
+    assert(!p.ok && p.art === "fehlt", `ein Konto außerhalb der Liste ginge durch: ${JSON.stringify(p)}`);
+    p = pruefung.pruefen(eintrag, { konto: "4930" }, { konto: konten }, null);
+    assert(!p.ok && p.art === "rueckfrage" && /4930 Bürobedarf statt 4910 Porto/.test(p.satz), `ein anderes Konto wird nicht nachgefragt: ${JSON.stringify(p)}`);
+    assert(pruefung.pruefen(eintrag, { konto: "4930" }, { konto: konten }, p.schluessel).ok, "nach der Rückfrage geht dieselbe Änderung nicht durch");
+
+    // 7. Die Probe "fremde Akte" mit drei Sitzungen aus einer Datei, wie ihr Kopf es sagt.
+    const sitzungen = join(paket, "sitzungen.json");
+    // Ein Cookie wie am Gerät kommt mit; die App überhört es, die Probe darf es nie zeigen.
+    const mitCookie = (wer, rolle) => ({ ...kopfVon(wer, rolle), cookie: `sitzung=geheim-${wer}` });
+    writeFileSync(sitzungen, JSON.stringify({ verwaltung: { name: "partnerin", kopf: mitCookie("partnerin", "admin") }, a: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, b: { name: "sb-b", kopf: mitCookie("sb-b", "user") } }));
+    const probe = (argumente) =>
+      new Promise((fertig) => {
+        const kind = spawn("node", [join(paket, "probe", "fremde-akte.mjs"), "--basis", basis, ...argumente], { stdio: ["ignore", "pipe", "pipe"] });
+        let aus = "";
+        kind.stdout.on("data", (d) => (aus += d));
+        kind.stderr.on("data", (d) => (aus += d));
+        kind.on("close", (status) => fertig({ status, aus }));
+      });
+    let lauf = await probe(["--sitzungen", sitzungen]);
+    assert(lauf.status === 0 && /eine fremde Akte gibt 404/.test(lauf.aus), `die Probe mit drei Sitzungen besteht nicht: ${lauf.aus}`);
+    assert(!/geheim-/.test(lauf.aus), "die Probe zeigt eine Sitzung");
+    writeFileSync(sitzungen, JSON.stringify({ a: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, b: { name: "sb-b", kopf: mitCookie("sb-b", "user") } }));
+    lauf = await probe(["--sitzungen", sitzungen]);
+    assert(lauf.status === 2 && /drei/.test(lauf.aus) && /verwaltung/.test(lauf.aus), `mit zwei Sitzungen sagt die Probe nicht, dass es drei braucht: ${lauf.status} ${lauf.aus}`);
+    assert(!/geheim-/.test(lauf.aus), "die Probe zeigt beim Abbruch eine Sitzung");
+    // Und eine Verwaltung ohne die Rolle sagt, was ihr fehlt, ohne Sitzung im Satz.
+    writeFileSync(sitzungen, JSON.stringify({ verwaltung: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, a: { name: "sb-a", kopf: mitCookie("sb-a", "user") }, b: { name: "sb-b", kopf: mitCookie("sb-b", "user") } }));
+    lauf = await probe(["--sitzungen", sitzungen]);
+    assert(lauf.status === 1 && /drei Sitzungen/.test(lauf.aus) && !/geheim-/.test(lauf.aus), `eine Verwaltung ohne Rolle wird nicht benannt: ${lauf.aus}`);
+    return "Migrationen 001 bis 040 ohne Umnummerieren, Partnerin sieht alle, Zuweisung vor dem ersten Öffnen, Freigabe nur an die Sachbearbeiterin, Konto aus der Liste mit Namen und Rückfrage, Probe mit drei Sitzungen grün, mit zwei ein Satz";
+  } finally {
+    app?.kill("SIGTERM");
+    geraet.close();
+    rmSync(paket, { recursive: true, force: true });
+  }
+});
+
 await checkAsync("Das Muster Post sendet über SMTP, und das Passwort bleibt im Prozess", async () => {
   // Ein lokales Relais spielt den Postausgang des Kunden. Geprüft wird das
   // Gespräch, wie es auf der Leitung steht, und dass eine Post, die nicht
