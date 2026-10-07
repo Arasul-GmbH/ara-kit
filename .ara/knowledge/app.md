@@ -131,13 +131,9 @@ administrator and employees, nothing goes out, the suggestion of the flow's head
 Asked in **every** `/app` interview, with drafts as options. The kit writes the fields, `--contract`
 says what each does on this device.
 
-1. **The picture of the app.** Every app has one; a bare "AB" in the sidebar is not enough. "Which
-   small picture for the sidebar? Suggestion: a receipt for Belege, a calculator for the annual
-   accounts." Offer two or three finished drafts from https://lucide.dev/icons. Goes to `--symbol`:
-   the name of an icon, small, with hyphens (`file-text`); capitals are not accepted. No answer:
-   `--new` picks one from the words of the app and says which, and `--check` stops an app whose
-   `app.json` has no `symbol` or one that is not in the icon set, with a suggestion. Existing apps
-   get the field in `app.json` by hand, nothing else changes.
+1. **The picture of the app.** Every app has one. "Which small picture for the sidebar? A receipt
+   for Belege?" Goes to `--symbol`: a Lucide icon name (`file-text`), no capitals. No answer: `--new`
+   picks one. `--check` stops a missing or unknown `symbol`.
 2. **Who approves, in which steps.** Only where the app has an approval. "One person, or two in a
    row, first the colleague who checks, then management?" Names go to `--stufen "Check,Management"`,
    at most five. **Who** decides in each step the administrator sets on the device, not the app: ask
