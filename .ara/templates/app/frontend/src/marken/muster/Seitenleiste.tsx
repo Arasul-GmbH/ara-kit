@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
   SidebarMenuSkeleton,
   SidebarRail,
+  useSidebar,
 } from '../primitive/sidebar';
 
 /**
@@ -29,6 +30,17 @@ import {
  * dritten Eintrag ist einer davon vergessen. Hier geht eine Liste hinein.
  * Genau die Grenze, an der eine Bibliothek aufhoert, Teile zu liefern, und
  * anfaengt, eine Form zu liefern.
+ *
+ * EINE LEISTE FUER ALLES (seit 5.5.0, 07.10.2026). Die Verwaltung des
+ * Geraets, seine Einstellungen und jede App zeichnen ihre Navigation mit
+ * diesem Muster, und deshalb sieht sie ueberall gleich aus: oben der Titel
+ * (`titel`: „Verwaltung", „Einstellungen", der Name der App), darunter Zeilen
+ * von 32 px mit Symbol 16 px und 2 px Abstand, die Auswahl als getoente
+ * Flaeche, Gruppen mit kleiner Ueberschrift. Wer eine eigene Leiste baut,
+ * sieht beim naechsten Stand des Geraets anders aus als alles um ihn herum.
+ *
+ * Unter 900 px ist die Leiste ein Blatt (`Sidebar`); ein Klick auf einen
+ * Eintrag schliesst es, sonst laege es nach der Wahl noch ueber der Seite.
  *
  * WELCHER EINTRAG AKTIV IST, SAGT DIE ANWENDUNG. Sie kennt ihren Router;
  * dieser Baustein kennt keinen. `aktiv` traegt am Knopf `aria-current="page"`;
@@ -45,6 +57,8 @@ export interface SeitenleistenEintrag {
   /** Ein Ziel. Ohne `href` ist der Eintrag ein Knopf. */
   href?: string;
   aufKlick?: () => void;
+  /** Fuer Tests und Abnahmen: steht als `data-testid` am Knopf. */
+  kennzeichen?: string;
 }
 
 export interface SeitenleistenGruppe {
@@ -54,8 +68,18 @@ export interface SeitenleistenGruppe {
 }
 
 export interface SeitenleisteProps {
+  /**
+   * Der Titel oben: „Verwaltung", „Einstellungen", der Name der App. Er ist
+   * die Form, die jede Leiste auf dem Geraet traegt; `marke` ist fuer ein
+   * Zeichen daneben oder statt seiner.
+   */
+  titel?: string;
   /** Was ganz oben steht: Name der Anwendung, Zeichen, was auch immer. */
   marke?: React.ReactNode;
+  /** Der Name der Navigation fuer Screenreader. Vorgabe ist der Titel. */
+  beschriftung?: string;
+  /** Fuer Tests und Abnahmen: steht als `data-testid` an der Navigation. */
+  kennzeichen?: string;
   gruppen: readonly SeitenleistenGruppe[];
   /** Was ganz unten steht: der angemeldete Mensch, eine Fassung. */
   fuss?: React.ReactNode;
@@ -66,21 +90,43 @@ export interface SeitenleisteProps {
 }
 
 export function Seitenleiste({
+  titel,
   marke,
+  beschriftung,
+  kennzeichen,
   gruppen,
   fuss,
   laedt = false,
   seite = 'links',
   className,
 }: SeitenleisteProps) {
+  const { schmal, setzeBlattOffen } = useSidebar();
+  const gewaehlt = (eintrag: SeitenleistenEintrag) => () => {
+    eintrag.aufKlick?.();
+    if (schmal) setzeBlattOffen(false);
+  };
   return (
     <Sidebar seite={seite} className={cn(className)}>
       {/* Zugeklappt bleiben nur die Symbole: Marke und Fuss sind Text und
           haetten in der schmalen Leiste keinen Platz. */}
-      {marke && (
-        <SidebarHeader className="group-data-[einklappen=symbole]:hidden">{marke}</SidebarHeader>
+      {(titel || marke) && (
+        <SidebarHeader className="group-data-[einklappen=symbole]:hidden">
+          {marke}
+          {titel && (
+            <span
+              className="flex h-8 items-center truncate px-2 text-ui-lg font-medium text-foreground"
+              data-slot="sidebar-titel"
+            >
+              {titel}
+            </span>
+          )}
+        </SidebarHeader>
       )}
-      <SidebarContent>
+      <SidebarContent
+        role="navigation"
+        aria-label={beschriftung ?? titel}
+        data-testid={kennzeichen}
+      >
         {laedt ? (
           <SidebarGroup>
             <SidebarGroupContent>
@@ -101,14 +147,15 @@ export function Seitenleiste({
                         asChild={Boolean(eintrag.href)}
                         aktiv={eintrag.aktiv}
                         disabled={eintrag.disabled}
-                        onClick={eintrag.href ? undefined : eintrag.aufKlick}
+                        onClick={eintrag.href ? undefined : gewaehlt(eintrag)}
+                        data-testid={eintrag.kennzeichen}
                         // Der Name steht als `title` auch dann noch da, wenn
                         // die Leiste auf Symbolbreite zugeklappt ist, sonst
                         // ist sie eine Reihe unbeschrifteter Bildchen.
                         title={eintrag.name}
                       >
                         {eintrag.href ? (
-                          <a href={eintrag.href} onClick={eintrag.aufKlick}>
+                          <a href={eintrag.href} onClick={gewaehlt(eintrag)}>
                             {eintrag.symbol}
                             <span>{eintrag.name}</span>
                           </a>

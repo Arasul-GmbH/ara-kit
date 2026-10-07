@@ -100,9 +100,6 @@ export function AppSeitenleiste({ name }: { name: string }) {
   ];
 
   return (
-    <Leiste
-      marke={<span className="px-2 text-ui-sm font-semibold text-foreground">{name}</span>}
-      gruppen={gruppen}
-    />
+    <Leiste titel={name} gruppen={gruppen} />
   );
 }

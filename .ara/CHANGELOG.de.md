@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.81.0 (2026-10-07)
+
+Kontrakt: bis 14
+
+- **Die App-Vorlage trägt die gemeinsame Seitenleiste.** Die Kopie der Bibliothek in der Vorlage steht jetzt auf Fassung 5.5.1 (vorher 5.4.0), und `rahmen/seitenleiste.tsx` gibt den App-Namen als `titel` weiter statt als `marke`, damit eine neue App dieselbe Leiste zeigt wie das Gerät selbst: Titel oben, Gruppen, Zeilen zu 32 px. Apps mit eigenem Bau (etwa `belege` und `abschluss`) zeigen sie, sobald sie auf dieser Vorlage neu gebaut sind. Der Selbsttest hat einen Fall für `titel` und für die Fassung der Kopie.
+
 ## 0.80.0 (2026-10-07)
 
 Kontrakt: bis 14
