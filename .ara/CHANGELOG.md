@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.80.0 (2026-10-07)
+
+Contract: up to 14
+
+- **Every app has a symbol.** `app.mjs --new` writes `symbol` into `app.json`: the one from `--symbol`, otherwise one chosen from the words of the app, and it says which. Only names of the Lucide icon set count (`file-text`, `receipt`); a short mark such as `BE` is no longer accepted, because the sidebar then shows letters instead of a picture. `--check` and `--deploy` stop an app whose `symbol` is missing or not in the set and suggest a name. The list of names is `.ara/tools/lib/symbole.mjs`. `app.md` names the question.
+
 ## 0.79.0 (2026-10-07)
 
 Contract: up to 14

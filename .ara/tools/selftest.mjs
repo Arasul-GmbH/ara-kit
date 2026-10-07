@@ -14158,14 +14158,16 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
     // Symbol-Pflicht: fehlt es oder steht es nicht im Satz, hält --check an und schlägt eines vor.
     const manifestDatei = join(appDir, "app.json");
     const ganz = readFileSync(manifestDatei, "utf8");
-    for (const [wert, erwartet] of [[undefined, /„symbol“|"symbol"[^\n]*receipt|"symbol": "app-window"/], ["BE", /„BE“[^\n]*„be/i], ["kein-bild-so", /„kein-bild-so“/]]) {
+    for (const wert of [undefined, "BE", "kein-bild-so"]) {
       const mf = { ...JSON.parse(ganz), beschreibung: "Belege der Firma" };
       if (wert === undefined) delete mf.symbol; else mf.symbol = wert;
       writeFileSync(manifestDatei, JSON.stringify(mf, null, 2));
+      await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
       lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base, "--verbose"], env);
-      assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout) && /lucide\.dev/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}`);
+      assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout) && /lucide\.dev/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
     }
     writeFileSync(manifestDatei, ganz);
+    await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
     rmSync(kopie);
     lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base], env);
     assert(lauf.status !== 0 && /kopiert app\.json/.test(lauf.stdout), `ein Paket, dessen Dockerfile app.json kopiert und ohne sie: ${lauf.stdout}`);
