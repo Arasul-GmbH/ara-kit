@@ -112,6 +112,7 @@ import { ROOT, adminSession, ensureDir, fail, helpOnly, now, parseArgs, readDevi
 import { localized, t } from "./lib/i18n.mjs";
 import { call, reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
+import { suggestSymbol, symbolFindings } from "./lib/symbole.mjs";
 import { catchUpLines, checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
 import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, redeployLines, releaseLines } from "./lib/appways.mjs";
 import {
@@ -191,7 +192,7 @@ if (process.argv.length <= 2) {
         "  --new                    create the file from the scaffold",
         '  --titel "<title>"        display name of the app, otherwise the id',
         '  --beschreibung "<line>"  what the app is for',
-        "  --symbol <name|XY>       with --new: the picture of the app, an icon name (file-text) or one to three capitals",
+        "  --symbol <name>          with --new: the picture of the app, an icon name from lucide.dev (file-text); without it the kit picks one",
         '  --stufen "<a>,<b>"       with --new: named approval stages of the flow, at most five',
         "  --arten <a>,<b>          with --new: kinds of the flow, autonom and/or ergebnis_bestaetigen",
         `  ${FLAG_AUSLOESER} "<list>"     with --new: triggers, hand, zeitplan:<five fields>, ereignis:<name>`,
@@ -240,7 +241,7 @@ if (process.argv.length <= 2) {
         "  --new                    Akte aus der Vorlage anlegen",
         '  --titel "<titel>"        Anzeigename der App, sonst die Kennung',
         '  --beschreibung "<satz>"  wozu die App da ist',
-        "  --symbol <name|XY>       mit --new: das Bild der App, ein Bildname (file-text) oder ein bis drei Großbuchstaben",
+        "  --symbol <name>          mit --new: das Bild der App, ein Bildname von lucide.dev (file-text); ohne wählt das Kit eines",
         '  --stufen "<a>,<b>"       mit --new: benannte Freigabestufen des Flows, höchstens fünf',
         "  --arten <a>,<b>          mit --new: Arten des Flows, autonom und/oder `ergebnis_bestaetigen`",
         `  ${FLAG_AUSLOESER} "<liste>"    mit --new: Auslöser, hand, zeitplan:<fünf Felder>, ereignis:<name>`,
@@ -399,7 +400,6 @@ function createApp(name) {
   // nicht passt, soll keine halbe App hinterlassen.
   const fields = {};
   for (const [flag, parse, key] of [
-    ["symbol", parseSymbol, "symbol"],
     ["stufen", parseStufen, "stufen"],
     ["arten", parseArten, "arten"],
     ["ausloeser", parseAusloeser, "ausloeser"],
@@ -434,6 +434,11 @@ function createApp(name) {
   const titel = str(arg.titel) || name;
   const beschreibung =
     str(arg.beschreibung) || t(`${titel}, built with the Ara-Kit.`, `${titel}, gebaut mit dem Ara-Kit.`);
+  // Jede App hat ein Symbol: ohne `--symbol` wählt das Kit eines aus den Worten der App und sagt es.
+  if (arg.symbol === true) fail(t("--symbol needs a value.", "--symbol braucht eine Angabe."));
+  const wunsch = arg.symbol === undefined ? null : parseSymbol(arg.symbol, name, titel, beschreibung);
+  if (wunsch?.error) fail(wunsch.error);
+  fields.symbol = wunsch?.symbol ?? suggestSymbol(name, titel, beschreibung);
   // `marken` nennt die Fassung des Designsystems, auf der die App steht
   // (Kontrakt 4, freiwillig). Hier steht die der Vorlage; liegt ein Spiegel
   // vor, wird sie gleich darauf berichtigt.
@@ -507,7 +512,10 @@ function createApp(name) {
         "- frontend, backend and one flow with an approval lie in it as a scaffold",
         "- Oberfläche, Backend und ein Flow mit Freigabe liegen als Vorlage darin"
       ),
-      ...(fields.symbol ? [t(`- Symbol: ${fields.symbol}`, `- Symbol: ${fields.symbol}`)] : []),
+      t(
+        `- Symbol: ${fields.symbol}${wunsch ? "" : " (chosen by the kit, change it in app.json if another fits better)"}`,
+        `- Symbol: ${fields.symbol}${wunsch ? "" : " (vom Kit gewählt, in app.json änderbar, wenn ein anderes besser passt)"}`
+      ),
       ...(fields.stufen
         ? [
             t(
@@ -1252,6 +1260,7 @@ async function deliveryFindings(dir, manifest, result) {
   const served = await servedLibrary();
   return [
     ...checkDelivery(dir, manifest),
+    ...symbolFindings(manifest),
     ...checkBuild(dir, manifest),
     ...agentFindings(dir, manifest, result.problems),
     ...connectionFindings(contract, manifest),
