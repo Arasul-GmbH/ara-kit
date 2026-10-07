@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.80.0 (2026-10-07)
+
+Kontrakt: bis 14
+
+- **Jede App hat ein Symbol.** `app.mjs --new` schreibt `symbol` in `app.json`: das aus `--symbol`, sonst eines aus den Worten der App, und sagt welches. Es zählen nur Namen aus dem Lucide-Bildersatz (`file-text`, `receipt`); ein Kürzel wie `BE` wird nicht mehr angenommen, weil die Seitenleiste dann Buchstaben statt eines Bildes zeigt. `--check` und `--deploy` halten eine App an, deren `symbol` fehlt oder nicht im Satz steht, und schlagen einen Namen vor. Die Liste der Namen steht in `.ara/tools/lib/symbole.mjs`. `app.md` nennt die Frage.
+
 ## 0.79.0 (2026-10-07)
 
 Kontrakt: bis 14

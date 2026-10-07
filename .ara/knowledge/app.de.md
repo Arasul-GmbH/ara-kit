@@ -134,10 +134,11 @@ gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf de
 In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit schreibt die Felder,
 `--contract` sagt, was jedes an diesem Gerät tut.
 
-1. **Das Bild der App.** „Welches kleine Bild für die Seitenleiste? Vorschlag: die Buchstaben des
-   Namens, BE für Belege, oder ein Symbol." Geht an `--symbol`: ein Bildname
-   (`file-text`) oder ein bis drei Großbuchstaben oder Ziffern. Ohne Antwort nimmt das Gerät die
-   Buchstaben selbst.
+1. **Das Bild der App.** Jede App hat eines. „Welches kleine Bild für die Seitenleiste? Eine
+   Quittung für Belege, ein Taschenrechner für den Jahresabschluss?“ Entwürfe von
+   https://lucide.dev/icons. Geht an `--symbol`: ein Bildname, klein und mit Bindestrichen
+   (`file-text`), keine Großbuchstaben. Ohne Antwort wählt `--new` eines und sagt welches.
+   `--check` hält ein fehlendes oder unbekanntes `symbol` an, mit Vorschlag.
 2. **Wer freigibt, in welchen Schritten.** Nur, wo die App eine Freigabe hat. „Eine Person, oder zwei
    hintereinander, erst die Kollegin, die prüft, dann die Leitung?" Die Namen gehen an
    `--stufen "Prüfung,Leitung"`, höchstens fünf. **Wer** je Schritt entscheidet, legt der

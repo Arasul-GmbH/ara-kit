@@ -131,9 +131,9 @@ administrator and employees, nothing goes out, the suggestion of the flow's head
 Asked in **every** `/app` interview, with drafts as options. The kit writes the fields, `--contract`
 says what each does on this device.
 
-1. **The picture of the app.** "Which small picture for the sidebar? Suggestion: the letters of its
-   name, BE for Belege, or an icon." Goes to `--symbol`: an icon name
-   (`file-text`) or one to three capitals or digits. No answer: the device uses the letters itself.
+1. **The picture of the app.** Every app has one. "Which small picture for the sidebar? A receipt
+   for Belege?" Goes to `--symbol`: a Lucide icon name (`file-text`), no capitals. No answer: `--new`
+   picks one. `--check` stops a missing or unknown `symbol`.
 2. **Who approves, in which steps.** Only where the app has an approval. "One person, or two in a
    row, first the colleague who checks, then management?" Names go to `--stufen "Check,Management"`,
    at most five. **Who** decides in each step the administrator sets on the device, not the app: ask

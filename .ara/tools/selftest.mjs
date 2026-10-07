@@ -2720,6 +2720,7 @@ const KONTRAKT = {
         schema: { type: "number", const: 1 },
         id: { type: "string", pattern: "^[a-z0-9][a-z0-9-]*$" },
         name: { type: "string", minLength: 1 },
+        symbol: { type: "string", maxLength: 50 },
         version: { type: "string", pattern: "^\\d+\\.\\d+\\.\\d+$" },
         ports: {
           type: "object",
@@ -2814,7 +2815,7 @@ const KONTRAKT = {
   ],
 };
 
-const MANIFEST = { schema: 1, id: "probeapp", name: "Probe", version: "1.0.0", ports: { backend: 8080 } };
+const MANIFEST = { schema: 1, id: "probeapp", name: "Probe", version: "1.0.0", symbol: "file-text", ports: { backend: 8080 } };
 
 check("app.json wird gegen das Schema des Geräts geprüft", () => {
   const gut = checkManifest(KONTRAKT, MANIFEST);
@@ -2911,8 +2912,8 @@ await checkAsync("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderung
   assert(acht && acht.kann.length > 40, "Fassung 8 hat keinen kann-Satz");
   assert(checkVersion({ ...KONTRAKT, kontrakt: 8 }).ok, "ein Gerät mit Kontrakt 8 hält das Kit an");
   const f = await import("./lib/felder.mjs");
-  assert(f.parseSymbol("file-text").symbol === "file-text" && f.parseSymbol("BE").symbol === "BE", "ein gutes Symbol wird abgewiesen");
-  assert(["ABCD", "File_Text", "", "Datei", "b e"].every((x) => f.parseSymbol(x).error), "ein schlechtes Symbol geht durch");
+  assert(f.parseSymbol("file-text").symbol === "file-text", "ein gutes Symbol wird abgewiesen");
+  assert(["ABCD", "BE", "File_Text", "", "Datei", "b e", "gibt-es-nicht"].every((x) => f.parseSymbol(x).error), "ein schlechtes Symbol geht durch: ein Kürzel ist keines mehr");
   const stufen = f.parseStufen("Prüfung, Leitung").stufen;
   assert(stufen.map((x) => x.name).join() === "pruefung,leitung" && stufen[0].bezeichnung === "Prüfung", "Stufen werden nicht in Kennung und Anzeigename gelesen");
   assert(f.parseStufen("a,b,c,d,e,f").error && f.parseStufen("Prüfung,pruefung").error, "zu viele oder doppelte Stufen gehen durch");
@@ -2929,6 +2930,13 @@ await checkAsync("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderung
   assert(f.contractKnowsChangeText(nurImSatz), "der Änderungstext wird im Satz des Deploy-Endpunkts nicht erkannt");
   assert(f.contractKnowsChangeText({ paket: { felder: { aenderungstext: { pflicht: true } } } }), "der Schlüssel unter paket.felder wird nicht erkannt");
   assert(!f.contractKnowsChangeText({ endpunkte: [{ verb: "POST", pfad: "/api/v1/external/apps", was: "Ein Paket einspielen" }, { verb: "GET", pfad: "/api/v1/external/apps/:id", was: "nennt keinen aenderungstext" }] }) && !f.contractKnowsChangeText({}), "ein Kontrakt ohne das Feld am Deploy gilt als Treffer");
+  const sy = await import("./lib/symbole.mjs");
+  assert(sy.symbolFindings({ id: "x", symbol: "file-text" }).length === 0, "ein Lucide-Symbol wird beanstandet");
+  assert(/receipt/.test(sy.symbolFindings({ id: "belege" })[0]), "ein fehlendes Symbol bekommt keinen passenden Vorschlag");
+  assert(/app-window/.test(sy.symbolFindings({ id: "zzz" })[0]), "ohne Stichwort fehlt der allgemeine Vorschlag");
+  assert(sy.symbolFindings({ id: "x", symbol: "AB" }).length === 1 && sy.symbolFindings({ id: "x", symbol: 5 }).length === 1, "ein Kürzel oder ein Nicht-Text geht durch");
+  assert(sy.nearestSymbol("file_text") === "file-text" && sy.nearestSymbol("recei") === "receipt", "der ähnlichste Name wird nicht gefunden");
+  assert(sy.LUCIDE_NAMEN.size > 1500 && sy.LUCIDE_NAMEN.has(sy.SYMBOL_FALLBACK), "der Namenssatz ist unvollständig");
   assert(Object.keys(f.setSymbol({ id: "a", beschreibung: "b", version: "1" }, "BE")).join() === "id,beschreibung,symbol,version", "das Symbol steht nicht hinter der Beschreibung");
 
   const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
@@ -14147,6 +14155,19 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
     assert(existsSync(kopie) && readFileSync(kopie, "utf8") === readFileSync(join(appDir, "app.json"), "utf8"), "der Bau legt app.json nicht neben das Backend");
     lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base], env);
     assert(lauf.status === 0, `der Bau besteht die Prüfung nicht: ${lauf.stdout}${lauf.stderr}`);
+    // Symbol-Pflicht: fehlt es oder steht es nicht im Satz, hält --check an und schlägt eines vor.
+    const manifestDatei = join(appDir, "app.json");
+    const ganz = readFileSync(manifestDatei, "utf8");
+    for (const wert of [undefined, "BE", "kein-bild-so"]) {
+      const mf = { ...JSON.parse(ganz), beschreibung: "Belege der Firma" };
+      if (wert === undefined) delete mf.symbol; else mf.symbol = wert;
+      writeFileSync(manifestDatei, JSON.stringify(mf, null, 2));
+      await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
+      lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base, "--verbose"], env);
+      assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout) && /lucide\.dev/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
+    }
+    writeFileSync(manifestDatei, ganz);
+    await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
     rmSync(kopie);
     lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base], env);
     assert(lauf.status !== 0 && /kopiert app\.json/.test(lauf.stdout), `ein Paket, dessen Dockerfile app.json kopiert und ohne sie: ${lauf.stdout}`);

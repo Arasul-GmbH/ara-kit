@@ -37,10 +37,6 @@ export function geraetZuAlt(feld, deviceContract) {
   return Number.isFinite(deviceContract) && deviceContract < FELD_SEIT[feld];
 }
 
-/** Das Kuerzel einer App im Namen der App: ein Lucide-Name oder 1 bis 3 Grossbuchstaben oder Ziffern. */
-const SYMBOL_NAME = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
-const SYMBOL_SHORT = /^[A-Z0-9]{1,3}$/;
-
 /** Die Arten, die ein Flow nennen darf, wie der Kontrakt sie schreibt. */
 export const ARTEN = Object.freeze(["autonom", "ergebnis_bestaetigen"]);
 
@@ -76,17 +72,7 @@ function split(value) {
     .filter(Boolean);
 }
 
-/** `--symbol`: gut oder ein Satz, was nicht passt. */
-export function parseSymbol(value) {
-  const symbol = String(value ?? "").trim();
-  if (SYMBOL_NAME.test(symbol) || SYMBOL_SHORT.test(symbol)) return { symbol };
-  return {
-    error: t(
-      `The symbol "${symbol}" does not fit. Write the name of an icon in small letters with hyphens (file-text), or a short mark of one to three capital letters or digits (BE).`,
-      `Das Symbol „${symbol}“ passt nicht. Schreib den Namen eines Bildes klein und mit Bindestrichen (file-text) oder ein Kürzel aus einem bis drei Großbuchstaben oder Ziffern (BE).`
-    ),
-  };
-}
+export { parseSymbol } from "./symbole.mjs";
 
 /** `--stufen "Prüfung,Leitung"`: je Stufe Kennung und Anzeigename. Höchstens fünf, keine doppelt. */
 export function parseStufen(value) {
