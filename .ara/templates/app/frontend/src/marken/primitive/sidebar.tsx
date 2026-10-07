@@ -40,7 +40,7 @@ import { Skeleton } from './skeleton';
  * sagen wie vier vorhandene, sind acht Stellen, an denen es auseinanderlaufen
  * kann.
  */
-const SEITENLEISTE_BREIT = '16rem';
+const SEITENLEISTE_BREIT = '15rem';
 const SEITENLEISTE_BLATT = '18rem';
 const SEITENLEISTE_SYMBOLE = '3rem';
 const SEITENLEISTE_TASTE = 'b';
@@ -418,7 +418,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<'ul'>) {
     <ul
       data-slot="sidebar-menu"
       data-sidebar="menu"
-      className={cn('flex w-full min-w-0 flex-col gap-1', className)}
+      className={cn('flex w-full min-w-0 flex-col gap-0.5', className)}
       {...props}
     />
   );
@@ -436,7 +436,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-ui-sm outline-none transition-[width,height,padding] hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-accent data-[active=true]:font-medium data-[active=true]:text-foreground group-data-[einklappen=symbole]:size-8! group-data-[einklappen=symbole]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0',
+  'peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-ui-sm text-foreground outline-none transition-[width,height,padding,background-color] duration-120 ease-out motion-reduce:transition-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-primary/12 data-[active=true]:font-medium data-[active=true]:text-foreground data-[active=true]:hover:bg-primary/12 group-data-[einklappen=symbole]:size-8! group-data-[einklappen=symbole]:p-2! [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground data-[active=true]:[&>svg]:text-foreground',
   {
     variants: {
       variant: {

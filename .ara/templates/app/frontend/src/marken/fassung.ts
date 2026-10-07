@@ -141,4 +141,27 @@
  * je Eintrag. Keine neue Hauptzahl: jede neue Eigenschaft ist freiwillig, eine
  * App auf 5.3.1 laeuft unveraendert weiter.
  */
-export const FASSUNG = '5.4.0';
+/*
+ * 5.4.1: zwei Texte der `Freigabe`. Ein Feld ohne `bezeichnung` heisst aus
+ * seinem Namen abgeleitet („Datum" statt `datum`), auch in der Liste der
+ * Aenderungen, und Datum und Uhrzeit stehen auf die Minute, ohne Sekunden.
+ * Kein Name, keine Eigenschaft aendert sich.
+ */
+/*
+ * 5.5.0: eine Seitenleiste fuer alles. `Seitenleiste` nimmt `titel` (oben, in
+ * der Groesse eines Abschnittstitels), `beschriftung` und `kennzeichen`, ein
+ * Eintrag `kennzeichen`; ein Klick schliesst unter 900 px das Blatt. Die Zeilen
+ * stehen mit 2 px Abstand statt 4 px, die Auswahl ist eine getoente Flaeche
+ * (Akzent zu 12 %) statt des neutralen Wischs, das Ueberfahren blendet in
+ * 120 ms ein, und die Leiste ist 240 px breit statt 256 px. Verwaltung,
+ * Einstellungen und jede App zeichnen damit dieselbe Leiste. Keine neue
+ * Hauptzahl: jede neue Eigenschaft ist freiwillig, eine App auf 5.4.1 laeuft
+ * unveraendert weiter und sieht nur ihre Leiste wie die des Geraets.
+ */
+/*
+ * 5.5.1: das Stylesheet zur Laufzeit stuft die Wurzelschrift wie die Shell ab
+ * (zwischen 1280 und 1511 px 16,5 px statt 17 px). Eine App im Rahmen zeichnete
+ * ihre Leiste sonst 3 % größer als Verwaltung und Einstellungen daneben. Kein
+ * Name, keine Eigenschaft ändert sich.
+ */
+export const FASSUNG = '5.5.1';

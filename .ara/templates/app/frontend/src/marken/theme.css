@@ -171,6 +171,7 @@
    Zeile in den Block darunter.
    -------------------------------------------------------------------------- */
 :root {
+  color-scheme: light;
   --background: #f6f6f6;
   --foreground: #1a1a1a;
   --card: #ffffff;
@@ -224,6 +225,7 @@
    im hellen Thema fehlt.
    -------------------------------------------------------------------------- */
 [data-theme='dark'] {
+  color-scheme: dark;
   --background: #141414;
   --foreground: #e6e6e6;
   --card: #181818;
@@ -239,7 +241,7 @@
   --accent: rgba(228, 228, 228, 0.07);
   --accent-foreground: #e6e6e6;
   --border: rgba(228, 228, 228, 0.08);
-  --input: rgba(228, 228, 228, 0.1);
+  --input: rgba(228, 228, 228, 0.35);
   --ring: #81a1c1;
 
   /* Das Rot des hellen Themas (#c42020) ist auf dunklem Grund zu dunkel:
@@ -292,4 +294,115 @@
   .spinner-animation .spinner-ring {
     animation-duration: 2s !important;
   }
+}
+
+/* -----------------------------------------------------------------------------
+   Die Farbwerte der Shell (04.10.2026).
+
+   Sie standen in `index.css`, als zweite Quelle neben dieser Datei. Eine
+   Farbe hat aber eine Quelle: hier. `scripts/test/bausteine.py` meldet jeden
+   Hex-, `rgb()`- und `hsl()`-Wert in jedem anderen CSS und im TSX. Die Zeilen
+   sind unveraendert mitgezogen und stehen NACH den Bloecken oben, damit
+   dieselbe Reihenfolge gilt wie vorher, als `index.css` nach dieser Datei kam.
+
+   Die Alpha-Stufen des Primaerblaus (05.10.2026) sind keine Kopien mehr, sondern
+   `color-mix` aus `--primary`: ein Blau, eine Quelle, in beiden Themes.
+   ----------------------------------------------------------------------------- */
+:root {
+  --primary-hover: #2677b6;
+  --primary-active: #185a8c;
+  --primary-light: #2677b6;
+  --primary-muted: color-mix(in srgb, var(--primary) 12%, transparent);
+  --danger-hover: #a81b1b;
+  --danger-light: #fca5a5;
+  --status-neutral: #6b6b6b;
+  --status-neutral-bg: rgba(107, 107, 107, 0.12);
+  --status-neutral-border: rgba(107, 107, 107, 0.25);
+  --status-critical-bg: rgba(196, 32, 32, 0.12);
+  --status-critical-border: rgba(196, 32, 32, 0.25);
+  --status-performance-bg: color-mix(in srgb, var(--primary) 12%, transparent);
+  --status-performance-border: color-mix(in srgb, var(--primary) 25%, transparent);
+  --bg-elevated: #ffffff;
+  --bg-subtle: #fafafa;
+  --text-secondary: #3d3d3d;
+  --text-disabled: #a3a3a3;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
+  --gradient-primary: linear-gradient(135deg, #1e6aa4 0%, #185a8c 100%);
+  --gradient-card: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  --bg-table-row-hover: rgba(16, 16, 16, 0.03);
+  --bg-code: color-mix(in srgb, var(--primary) 5%, transparent);
+  --border-input: rgba(16, 16, 16, 0.14);
+  --scrollbar-thumb: rgba(16, 16, 16, 0.18);
+  --scrollbar-thumb-hover: rgba(16, 16, 16, 0.32);
+  --primary-alpha-5: color-mix(in srgb, var(--primary) 5%, transparent);
+  --primary-alpha-8: color-mix(in srgb, var(--primary) 8%, transparent);
+  --primary-alpha-10: color-mix(in srgb, var(--primary) 10%, transparent);
+  --primary-alpha-12: color-mix(in srgb, var(--primary) 12%, transparent);
+  --primary-alpha-15: color-mix(in srgb, var(--primary) 15%, transparent);
+  --primary-alpha-20: color-mix(in srgb, var(--primary) 20%, transparent);
+  --primary-alpha-25: color-mix(in srgb, var(--primary) 25%, transparent);
+  --primary-alpha-30: color-mix(in srgb, var(--primary) 30%, transparent);
+  --primary-alpha-40: color-mix(in srgb, var(--primary) 40%, transparent);
+  --primary-alpha-50: color-mix(in srgb, var(--primary) 50%, transparent);
+  --danger-alpha-8: rgba(196, 32, 32, 0.08);
+  --danger-alpha-10: rgba(196, 32, 32, 0.1);
+  --danger-alpha-15: rgba(196, 32, 32, 0.15);
+  --danger-alpha-20: rgba(196, 32, 32, 0.2);
+  --danger-alpha-30: rgba(196, 32, 32, 0.3);
+  --neutral-alpha-2: rgba(148, 163, 184, 0.02);
+  --neutral-alpha-10: rgba(148, 163, 184, 0.1);
+  --neutral-alpha-15: rgba(148, 163, 184, 0.15);
+  --neutral-alpha-20: rgba(148, 163, 184, 0.2);
+  --neutral-alpha-30: rgba(148, 163, 184, 0.3);
+  --neutral-alpha-40: rgba(148, 163, 184, 0.4);
+  --neutral-alpha-50: rgba(148, 163, 184, 0.5);
+}
+
+[data-theme='dark'] {
+  --primary-hover: #93b1cd;
+  --primary-active: #6e91b4;
+  --primary-light: #93b1cd;
+  --status-neutral: #94a3b8;
+  --status-neutral-bg: rgba(148, 163, 184, 0.15);
+  --status-neutral-border: rgba(148, 163, 184, 0.3);
+  --status-critical: #ef4444;
+  --status-critical-bg: rgba(239, 68, 68, 0.15);
+  --status-critical-border: rgba(239, 68, 68, 0.3);
+  --status-performance: #81a1c1;
+  --status-performance-bg: color-mix(in srgb, var(--primary) 15%, transparent);
+  --status-performance-border: color-mix(in srgb, var(--primary) 30%, transparent);
+  --bg-elevated: #242424;
+  --bg-subtle: #181818;
+  --bg-input: #1c1c1c;
+  --bg-table-row-hover: rgba(228, 228, 228, 0.04);
+  --bg-code: rgba(228, 228, 228, 0.05);
+  --text-secondary: #c2c2c2;
+  --text-disabled: #6b6b6b;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px var(--primary-alpha-10);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px var(--primary-alpha-20);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px var(--primary-alpha-30);
+  --gradient-primary: linear-gradient(135deg, #81a1c1 0%, #6e91b4 100%);
+  --gradient-card: linear-gradient(135deg, #181818 0%, #1c1c1c 100%);
+  --scrollbar-thumb: rgba(228, 228, 228, 0.14);
+  --scrollbar-thumb-hover: rgba(228, 228, 228, 0.28);
+  --primary-alpha-5: color-mix(in srgb, var(--primary) 5%, transparent);
+  --primary-alpha-8: color-mix(in srgb, var(--primary) 8%, transparent);
+  --primary-alpha-10: color-mix(in srgb, var(--primary) 10%, transparent);
+  --primary-alpha-12: color-mix(in srgb, var(--primary) 12%, transparent);
+  --primary-alpha-15: color-mix(in srgb, var(--primary) 15%, transparent);
+  --primary-alpha-20: color-mix(in srgb, var(--primary) 20%, transparent);
+  --primary-alpha-25: color-mix(in srgb, var(--primary) 25%, transparent);
+  --primary-alpha-30: color-mix(in srgb, var(--primary) 30%, transparent);
+  --primary-alpha-40: color-mix(in srgb, var(--primary) 40%, transparent);
+  --primary-alpha-50: color-mix(in srgb, var(--primary) 50%, transparent);
+  --danger-hover: #dc2626;
+  --danger-alpha-8: rgba(239, 68, 68, 0.08);
+  --danger-alpha-10: rgba(239, 68, 68, 0.1);
+  --danger-alpha-15: rgba(239, 68, 68, 0.15);
+  --danger-alpha-20: rgba(239, 68, 68, 0.2);
+  --danger-alpha-30: rgba(239, 68, 68, 0.3);
 }

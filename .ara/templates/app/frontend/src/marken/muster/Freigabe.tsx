@@ -163,7 +163,19 @@ export interface FreigabeProps {
   className?: string;
 }
 
-const DATUM = (iso: string) => new Date(iso).toLocaleString('de-DE');
+/** Datum und Uhrzeit auf die Minute; Sekunden sagen vor einem Knopf nichts. */
+const DATUM = (iso: string) =>
+  new Date(iso).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
+
+/**
+ * Die Beschriftung eines Felds, wenn die App keine `bezeichnung` mitgibt:
+ * aus dem Namen abgeleitet, damit dort „Datum" steht und nicht der Bezeichner
+ * `datum` (`beleg_nummer` wird „Beleg nummer").
+ */
+function beschriftung(name: string): string {
+  const text = name.replace(/[_-]+/g, ' ').trim();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
 
 function istZahl(iso?: string | null): iso is string {
   return !!iso && Number.isFinite(new Date(iso).getTime());
@@ -312,7 +324,7 @@ function Korrekturen({ liste }: { liste: FreigabeKorrektur[] }) {
     <ul className="mt-1 flex flex-col gap-0.5 text-ui-xs" data-testid="freigabe-korrekturen">
       {liste.map(k => (
         <li key={k.feld}>
-          <span className="font-medium text-foreground">{k.feld}</span>:{' '}
+          <span className="font-medium text-foreground">{beschriftung(k.feld)}</span>:{' '}
           <span className="text-muted-foreground line-through">{k.vorschlag || 'leer'}</span> →{' '}
           <span className="text-foreground">{k.wert || 'leer'}</span>
           {k.von ? <span className="text-muted-foreground"> ({k.von})</span> : null}
@@ -344,7 +356,7 @@ function Felder({
   return (
     <dl className="flex flex-col gap-ui-2" data-testid={`freigabe-${e.id}-felder`}>
       {felder.map(f => {
-        const name = f.bezeichnung || f.name;
+        const name = f.bezeichnung || beschriftung(f.name);
         const wert = werte[f.name] ?? f.vorschlag;
         const geaendert = wert !== f.vorschlag;
         const kennung = `freigabe-${e.id}-feld-${f.name}`;

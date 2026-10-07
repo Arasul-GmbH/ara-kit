@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.81.0 (2026-10-07)
+
+Contract: up to 14
+
+- **The app scaffold carries the shared sidebar.** The scaffold's copy of the library is now version 5.5.1 (it was 5.4.0), and `rahmen/seitenleiste.tsx` hands the app name over as `titel` instead of `marke`, so a new app shows the same sidebar as the device itself: title on top, groups, rows of 32 px. Apps with their own build (such as `belege` and `abschluss`) show it once they are built anew on this scaffold. The self-test has a case for `titel` and for the version of the copy.
+
 ## 0.80.0 (2026-10-07)
 
 Contract: up to 14

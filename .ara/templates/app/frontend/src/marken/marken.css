@@ -617,7 +617,7 @@ button.ara-karte:hover {
   flex-direction: column;
   border-right: 1px solid var(--ara-kante);
   background-color: var(--ara-flaeche-hoch);
-  box-shadow: 8px 0 24px rgb(0 0 0 / 0.35);
+  box-shadow: 8px 0 24px color-mix(in srgb, black 35%, transparent);
 }
 
 .ara-menue__kopf {
