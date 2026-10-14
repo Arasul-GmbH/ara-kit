@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.82.0 (2026-10-14)
+
+Kontrakt: bis 14
+
+- **Der Hauptknopf der App-Vorlage zeigt auch im dunklen Thema den Verlauf des Geräts.** Die Kopie der Bibliothek in der Vorlage steht jetzt auf Fassung 5.6.1 (vorher 5.5.1), in der der Hauptknopf `--gradient-primary` selbst trägt, und `stil.css` färbt ihn nicht mehr um. Eine neue App zeigt denselben Hauptknopf wie die Startseite des Geräts, hell und dunkel. Der Selbsttest prüft, dass `stil.css` den Knopf in Ruhe lässt.
+
 ## 0.81.0 (2026-10-07)
 
 Kontrakt: bis 14

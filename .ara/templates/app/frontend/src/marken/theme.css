@@ -330,8 +330,24 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  --gradient-primary: linear-gradient(135deg, #1e6aa4 0%, #185a8c 100%);
+  /* Der Verlauf der Hauptknöpfe (`Button` solid, `Knopf` haupt): von der
+     Marke zu einem um 15 % dunkleren Blau, leicht genug, dass der Knopf flach
+     bleibt. Aus `--primary` gerechnet, deshalb gilt er in beiden Themen;
+     `marken.css` rechnet `--ara-verlauf-haupt` mit derselben Formel. */
+  --gradient-primary: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    color-mix(in srgb, var(--primary) 85%, black) 100%
+  );
   --gradient-card: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  /* Das Band der Startseite: ein blau getönter Grund, der nach rechts in die
+     Karte ausläuft. Aus `--primary` gemischt, damit es beiden Themen folgt. */
+  --verlauf-band: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--primary) 16%, var(--card)) 0%,
+    color-mix(in srgb, var(--primary) 4%, var(--card)) 75%
+  );
+  --kante-band: color-mix(in srgb, var(--primary) 22%, transparent);
   --bg-table-row-hover: rgba(16, 16, 16, 0.03);
   --bg-code: color-mix(in srgb, var(--primary) 5%, transparent);
   --border-input: rgba(16, 16, 16, 0.14);
@@ -385,8 +401,13 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px var(--primary-alpha-10);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px var(--primary-alpha-20);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px var(--primary-alpha-30);
-  --gradient-primary: linear-gradient(135deg, #81a1c1 0%, #6e91b4 100%);
   --gradient-card: linear-gradient(135deg, #181818 0%, #1c1c1c 100%);
+  --verlauf-band: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--primary) 30%, var(--card)) 0%,
+    color-mix(in srgb, var(--primary) 8%, var(--card)) 75%
+  );
+  --kante-band: color-mix(in srgb, var(--primary) 34%, transparent);
   --scrollbar-thumb: rgba(228, 228, 228, 0.14);
   --scrollbar-thumb-hover: rgba(228, 228, 228, 0.28);
   --primary-alpha-5: color-mix(in srgb, var(--primary) 5%, transparent);

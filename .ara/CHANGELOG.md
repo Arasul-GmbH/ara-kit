@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.82.0 (2026-10-14)
+
+Contract: up to 14
+
+- **The main button in the scaffold shows the device's gradient in the dark theme too.** The scaffold's copy of the library is now version 5.6.1 (it was 5.5.1), where the main button carries `--gradient-primary` itself, and `stil.css` no longer recolors it. A new app shows the same main button as the device's start page, light and dark. The self-test checks that `stil.css` leaves the button alone.
+
 ## 0.81.0 (2026-10-07)
 
 Contract: up to 14
