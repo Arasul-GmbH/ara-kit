@@ -51,6 +51,7 @@ function columnsOf(content) {
 export const STATES = {
   entwurf: t("written, not yet printed", "geschrieben, noch nicht gedruckt"),
   gestellt: t("printed and with the customer", "gedruckt und beim Kunden"),
+  bezahlt: t("paid, the payment is received", "bezahlt, die Zahlung ist eingegangen"),
   storniert: t("withdrawn, the number stays taken", "zurückgenommen, die Nummer bleibt vergeben"),
 };
 

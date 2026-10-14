@@ -44,4 +44,5 @@ Noch keine Nummer vergeben.
 | --- | --- |
 | `entwurf` | geschrieben, noch nicht gedruckt |
 | `gestellt` | gedruckt und beim Kunden |
+| `bezahlt` | die Zahlung ist eingegangen, vermerkt mit `--paid` |
 | `storniert` | zurückgenommen, die Nummer bleibt vergeben |

@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.83.0 (2026-10-14)
+
+Contract: up to 14
+
+- **A payment can be noted as received.** `node .ara/tools/invoice.mjs --paid <number> --on <date>` sets a printed invoice to `bezahlt` in the number range. It works only on a number that stands as `gestellt`, and the kit looks at no bank account. Until now the range knew no state for money.
+- **The purchase path is written down as evidence.** `.ara/knowledge/purchase-path.md` lists every step from the customer file to the payment with its command, what the trial customer PROBE-KW14 showed, and what stays open. The self-test plays the path without a network: file, calculation, offer and invoice as PDF, payment, and a licence whose signature a stand-in device checks itself.
+
 ## 0.82.0 (2026-10-14)
 
 Contract: up to 14

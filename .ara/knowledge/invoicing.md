@@ -176,8 +176,9 @@ leaves the house in doing so.
 ## What does not belong in the kit
 
 - **Incoming invoices.** The kit writes outgoing invoices. What comes in belongs in the accounting.
-- **Incoming payments and reminders.** The number range carries `entwurf`, `gestellt` and
-  `storniert`, nothing more. Whether it was paid, the bank account knows.
+- **Bank accounts and reminders.** The number range carries `entwurf`, `gestellt`, `bezahlt` and
+  `storniert`. `--paid <number> --on <date>` notes a payment you saw on your statement. The kit
+  looks at no bank account and sends no reminder.
 - **The partner's purchase prices.** As in the offer: they appear in no customer document, not even
   in a subtotal.
 

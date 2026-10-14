@@ -44,4 +44,5 @@ No number assigned yet.
 | --- | --- |
 | `entwurf` | written, not printed yet |
 | `gestellt` | printed and with the customer |
+| `bezahlt` | the payment is received, noted with `--paid` |
 | `storniert` | withdrawn, the number stays assigned |

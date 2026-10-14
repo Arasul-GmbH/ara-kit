@@ -182,8 +182,9 @@ verlässt.
 
 - **Eingangsrechnungen.** Das Kit schreibt Ausgangsrechnungen. Was hereinkommt, gehört in
   die Buchhaltung.
-- **Zahlungseingänge und Mahnungen.** Der Nummernkreis führt `entwurf`, `gestellt` und
-  `storniert`, mehr nicht. Ob bezahlt wurde, weiß das Bankkonto.
+- **Bankkonten und Mahnungen.** Der Nummernkreis führt `entwurf`, `gestellt`, `bezahlt` und
+  `storniert`. `--paid <nummer> --on <datum>` vermerkt eine Zahlung, die du auf deinem Kontoauszug
+  gesehen hast. Das Kit sieht in kein Bankkonto und verschickt keine Mahnung.
 - **Die Einkaufspreise des Partners.** Wie im Angebot: sie tauchen in keinem
   Kundendokument auf, auch nicht in einer Zwischensumme.
 
