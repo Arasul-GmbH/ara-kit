@@ -4490,7 +4490,7 @@ check("Die Vorlage der App hält den Standard der Bibliothek", () => {
   return "keine eigene Farbe, keine Palettenklasse, kein eigenes Primitiv";
 });
 
-check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassung 5.5.1 oder neuer", () => {
+check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassung 5.6.1 oder neuer", () => {
   // Seit der gemeinsamen Seitenleiste (marken 5.5.1) steht der Name oben als
   // `titel`; `marke` ist nur für ein Zeichen daneben. Die Vorlage setzt keine
   // eigene Marke mehr, sonst zeigt jede neue App eine andere Leiste.
@@ -4501,8 +4501,13 @@ check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassu
   const fassung = /FASSUNG = '(\d+)\.(\d+)\.(\d+)'/.exec(readFileSync(join(template, "marken", "fassung.ts"), "utf8"));
   assert(fassung, "die Fassung der Kopie ist nicht lesbar");
   const [haupt, neben, flick] = fassung.slice(1).map(Number);
-  assert(haupt > 5 || (haupt === 5 && (neben > 5 || (neben === 5 && flick >= 1))), `die Kopie steht auf ${fassung.slice(1).join(".")}, nicht auf 5.5.1`);
+  assert(haupt > 5 || (haupt === 5 && (neben > 6 || (neben === 6 && flick >= 1))), `die Kopie steht auf ${fassung.slice(1).join(".")}, nicht auf 5.6.1`);
   assert(/\btitel\b/.test(readFileSync(join(template, "marken", "muster", "Seitenleiste.tsx"), "utf8")), "die Kopie der Seitenleiste kennt titel nicht");
+  // Seit marken 5.6.1 trägt der Hauptknopf den Verlauf des Geräts selbst; eine
+  // eigene Umfärbung in stil.css würde ihn im dunklen Thema wieder brechen.
+  const stil = readFileSync(join(template, "stil.css"), "utf8");
+  assert(!/data-variant="solid"/.test(stil), "stil.css färbt den Hauptknopf selbst um");
+  assert(/--gradient-primary/.test(readFileSync(join(template, "marken", "primitive", "button.tsx"), "utf8")), "der Hauptknopf der Kopie trägt den Verlauf nicht");
   return `titel statt marke, Kopie ${fassung.slice(1).join(".")}`;
 });
 

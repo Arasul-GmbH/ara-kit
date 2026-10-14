@@ -12,7 +12,11 @@ const buttonVariants = cva(
       variant: {
         default:
           'bg-secondary text-primary border border-border hover:bg-secondary/80 active:bg-secondary/70',
-        solid: 'bg-primary text-primary-foreground hover:bg-primary/85 active:bg-primary/75',
+        // Der Hauptknopf: ein leichter Blauverlauf aus `--gradient-primary`
+        // über der Marke, die einzige Fläche mit Verlauf. Überfahren hellt auf,
+        // statt den Knopf durchscheinen zu lassen.
+        solid:
+          'bg-primary bg-(image:--gradient-primary) text-primary-foreground duration-[120ms] hover:brightness-[1.08] active:brightness-95',
         // Entschärft: statt flächigem Rot (weiß auf Vollrot) ein
         // ruhiger roter Ton mit rotem Text und dezentem Rahmen. Klar destruktiv,
         // aber nicht mehr aggressiv; deckt sich mit dem weichen Löschen-Muster

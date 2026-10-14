@@ -164,4 +164,20 @@
  * ihre Leiste sonst 3 % größer als Verwaltung und Einstellungen daneben. Kein
  * Name, keine Eigenschaft ändert sich.
  */
-export const FASSUNG = '5.5.1';
+/*
+ * 5.6.0: das Gesicht. Der Hauptknopf (`Button` solid, `Knopf` haupt) traegt
+ * einen leichten Blauverlauf aus `--gradient-primary`, Ueberfahren hellt ihn
+ * auf. Eine `Karte` mit `symbol` steht als Zeile: das Symbol auf einem blau
+ * getoenten Quadrat, Titel und Inhalt daneben; eine Karte, die ein Knopf ist,
+ * hebt sich beim Ueberfahren zwei Pixel an und bekommt einen Schatten, bei
+ * „weniger Bewegung" nur den Schatten. Neu in `marken.css` sind
+ * `--ara-verlauf-haupt` und `--ara-schatten-hoch`. Kein Name faellt weg,
+ * keine Eigenschaft aendert ihre Bedeutung; eine App auf 5.5.1 sieht nur ihre
+ * Hauptknoepfe und Karten mit Symbol anders.
+ */
+/*
+ * 5.6.1: eine Karte hebt sich nur dort an, wo es einen Zeiger gibt
+ * (`@media (hover: hover)`); auf einem Touch-Geraet blieb sie nach dem Tippen
+ * angehoben stehen. Kein Name, keine Eigenschaft aendert sich.
+ */
+export const FASSUNG = '5.6.1';

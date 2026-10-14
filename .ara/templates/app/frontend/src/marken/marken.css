@@ -81,6 +81,22 @@
   --ara-akzent-text: var(--primary-foreground, #ffffff);
   --ara-fehler: var(--destructive, #c42020);
 
+  /* Der Verlauf des Hauptknopfs: von der Marke zu einem Blau, das 15 %
+     dunkler ist. Dieselbe Formel wie `--gradient-primary` in `theme.css`,
+     nur aus `--ara-akzent` gerechnet, damit er auch in einer App ohne Token
+     dem Thema folgt. Sonst ist alles flach. */
+  --ara-verlauf-haupt: linear-gradient(
+    135deg,
+    var(--ara-akzent) 0%,
+    color-mix(in srgb, var(--ara-akzent) 85%, black) 100%
+  );
+
+  /* Der Schatten der angehobenen Karte, beim Ueberfahren. Ausser an Menues
+     ist er der einzige Schatten der Bibliothek. */
+  --ara-schatten-hoch:
+    0 6px 16px -6px color-mix(in srgb, black 18%, transparent),
+    0 2px 4px -2px color-mix(in srgb, black 8%, transparent);
+
   /* Der Schleier unter dem Menue. Er war frueher fest `rgb(0 0 0 / 0.5)` und
      damit der einzige Wert der Bibliothek ohne Token: im hellen Thema eine
      Spur zu schwarz, im dunklen eine Spur zu hell. */
@@ -131,6 +147,9 @@
   --ara-akzent-text: var(--primary-foreground, #0a0a0a);
   --ara-fehler: var(--destructive, #ef4444);
   --ara-schleier: var(--backdrop-color, rgba(0, 0, 0, 0.7));
+  --ara-schatten-hoch:
+    0 6px 18px -6px color-mix(in srgb, black 55%, transparent),
+    0 2px 4px -2px color-mix(in srgb, black 35%, transparent);
 }
 
 /* JEDES KAESTCHEN RECHNET SEINEN RAND MIT. Ohne diese Regel ist `width: 100%`
@@ -390,17 +409,78 @@ a.ara-liste__eintrag:hover {
   font: inherit;
   text-align: left;
   transition:
-    border-color var(--ara-uebergang),
-    background-color var(--ara-uebergang);
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
 }
 
 button.ara-karte {
   cursor: pointer;
 }
 
-button.ara-karte:hover {
-  border-color: var(--ara-akzent);
-  background-color: var(--ara-wisch);
+/* Eine Karte, die ein Knopf ist, hebt sich beim Ueberfahren leicht an: zwei
+   Pixel und ein Schatten. Die Flaeche bleibt, wie sie ist; angehoben ist
+   deutlich genug. Wer weniger Bewegung eingestellt hat, bekommt nur Kante und
+   Schatten. */
+/* Nur wo es einen Zeiger gibt: auf einem Touch-Geraet bliebe die Karte nach
+   dem Tippen angehoben stehen, bis man woanders hintippt. */
+@media (hover: hover) {
+  button.ara-karte:hover {
+    border-color: color-mix(in srgb, var(--ara-akzent) 45%, var(--ara-kante));
+    box-shadow: var(--ara-schatten-hoch);
+    transform: translateY(-2px);
+  }
+}
+
+button.ara-karte:focus-visible {
+  outline: 2px solid var(--ara-akzent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ara-karte {
+    transition: none;
+  }
+
+  button.ara-karte:hover {
+    transform: none;
+  }
+}
+
+/* Mit Symbol steht die Karte als Zeile: links das Symbol auf einem blau
+   getoenten Quadrat, rechts Titel und Inhalt untereinander. So sieht eine
+   App auf der Startseite aus, und jede Karte mit Symbol sieht so aus. */
+.ara-karte[data-symbol] {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--ara-abstand-3);
+}
+
+.ara-karte__symbol {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--ara-rundung);
+  background-color: color-mix(in srgb, var(--ara-akzent) 12%, transparent);
+  color: var(--ara-akzent);
+  font-size: var(--ara-groesse-sm);
+  font-weight: 500;
+}
+
+.ara-karte__symbol svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.ara-karte__rumpf {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 /* Der Kopf bricht um, statt zu schieben: ein langer Hinweis stand bis 5.1.0
@@ -528,15 +608,27 @@ button.ara-karte:hover {
   opacity: 0.55;
 }
 
+/* Der Hauptknopf traegt einen leichten Blauverlauf, sonst ist alles flach.
+   Die Farbe darunter bleibt die Marke: wo kein Verlauf gezeichnet wird, steht
+   derselbe Knopf einfarbig da. Ueberfahren hellt ihn auf, statt ihn
+   durchscheinen zu lassen. */
 .ara-knopf[data-art='haupt'] {
   border-color: transparent;
   background-color: var(--ara-akzent);
+  background-image: var(--ara-verlauf-haupt);
   color: var(--ara-akzent-text);
+  transition:
+    filter 120ms ease,
+    opacity var(--ara-uebergang);
 }
 
 .ara-knopf[data-art='haupt']:hover:not(:disabled) {
-  opacity: 0.88;
   background-color: var(--ara-akzent);
+  filter: brightness(1.08);
+}
+
+.ara-knopf[data-art='haupt']:active:not(:disabled) {
+  filter: brightness(0.95);
 }
 
 .ara-knopf[data-art='gefahr'] {
