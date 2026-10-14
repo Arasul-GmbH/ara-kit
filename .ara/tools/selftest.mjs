@@ -27,7 +27,7 @@
  * gegen dieselben Werkzeuge.
  */
 
-import { X509Certificate, createHash } from "node:crypto";
+import { X509Certificate, constants as cryptoConstants, createHash, generateKeyPairSync, sign as cryptoSign, verify as cryptoVerify } from "node:crypto";
 import { createServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { spawn, spawnSync } from "node:child_process";
@@ -10884,6 +10884,192 @@ await checkAsync("Eine Rechnung entsteht aus einer Kundenakte, mit Nummer und An
     assert(/PDF\/A-3B gesetzt/.test(run.stdout), "die Kennzeichnung als PDF/A-3B fehlt");
     return "zwei Nummern, eine Stornierung, ein PDF mit Anhang";
   } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+});
+
+// --- Der Kaufweg ------------------------------------------------------------
+
+await checkAsync("Der Kaufweg ohne Netz: Probekunde von der Akte bis zur Zahlung, dann entfernt", async () => {
+  // M5, KW14. Was ein Partner tut, von der Anfrage bis zum Zahlungseingang, an einem
+  // Wegwerf-Kit und einem Probekunden PROBE-KW14. Kein Portal, kein Gerät, keine
+  // Mail, kein echtes Konto: das Portal ist ein gespielter Server, das Gerät eine
+  // Attrappe, die die Signatur selbst prüft, und die Schlüssel entstehen hier.
+  // Die Form der Lizenz (<Nutzlast>.<Signatur>, RSA-PSS über sha256) steht im Kontrakt
+  // von arasul-jet, scripts/util/lizenz-signieren.js. Den echten privaten Schlüssel
+  // gibt es nur im Schlüsselbund des Herstellers, den fasst hier nichts an.
+  if (!PARTNER_MATERIAL) return OHNE_PARTNERWARE;
+  const work = mkdtempSync(join(tmpdir(), "ara-kaufweg-"));
+  const fork = join(work, "kit");
+  cpSync(join(ROOT, ".ara"), join(fork, ".ara"), {
+    recursive: true,
+    filter: (src) => !/\/(mirror|node_modules)(\/|$)/.test(src),
+  });
+  const write = (rel, content) => {
+    mkdirSync(join(fork, rel, ".."), { recursive: true });
+    writeFileSync(join(fork, rel), content);
+  };
+  const read = (rel) => readFileSync(join(fork, rel), "utf8");
+  const forkTool = (file, args) =>
+    new Promise((done) => {
+      const child = spawn("node", [join(fork, ".ara", "tools", file), ...args], { cwd: fork });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (d) => (stdout += d));
+      child.stderr.on("data", (d) => (stderr += d));
+      child.on("close", (status) => done({ status, stdout, stderr }));
+    });
+  let server;
+  try {
+    // 1. Kundenakte. Der Name PROBE-KW14 ist der Rechtsname, der Ordner heißt klein.
+    write("business/profile.md", "---\nrole: partner\nlanguage: de\nname: Probe\ninvoice: yes\n---\n\nMeins.\n");
+    write(
+      "business/company.md",
+      "---\nlegal_name: Beispiel IT-Service e. K.\naddress: Musterweg 3, 48143 Münster\ncountry: DE\n" +
+        "phone: 0251 000000\nemail: post@beispiel-it.example\nwebsite:\ntax_number: 12/345/67890\nvat_id:\n" +
+        "iban: DE89370400440532013000\nhourly_rate: 95\nhardware_markup: 15\npayment_terms: 14\n" +
+        "setup_hours: 4\ncare_yearly: 300\ntravel: 60\nminimum_fee: 150\nrates_asof: 2026-10-14\nlogo:\n---\n\n" +
+        "## Einkaufspreise\n\n| Position | Einkauf netto | Stand |\n|---|---|---|\n" +
+        "| Lizenz, einmalig | 1400 | 2026-10-14 |\n| Wartung, jährlich | 200 | 2026-10-14 |\n" +
+        "| Hardware, Probegerät | 2500 | 2026-10-14 |\n"
+    );
+    let run = await forkTool("customer.mjs", ["--customer", "probe-kw14", "--new", "--legal-name", "PROBE-KW14 GmbH"]);
+    assert(run.status === 0 && existsSync(join(fork, "customers/probe-kw14/customer.md")), `Akte fehlt: ${run.stdout}${run.stderr}`);
+    write(
+      "customers/probe-kw14/customer.md",
+      read("customers/probe-kw14/customer.md")
+        .replace(/^street:.*$/m, "street: Probestraße 1")
+        .replace(/^postcode:.*$/m, "postcode: 48143")
+        .replace(/^city:.*$/m, "city: Münster")
+        .replace(/^contact_person:.*$/m, "contact_person: Probe Person")
+    );
+
+    // 2. Kalkulation: alle zehn Zahlen liegen, sonst gibt es kein Angebot.
+    run = await forkTool("calculation.mjs", []);
+    assert(run.status === 0 && /Alle zehn Zahlen liegen vor/.test(run.stdout), `Kalkulation unvollständig:\n${run.stdout}`);
+
+    // 3. Angebot als PDF. Es ist ein ausgefülltes Angebot ohne Platzhalter.
+    const angebot = "customers/probe-kw14/documents/angebot.md";
+    write(
+      angebot,
+      "# Angebot PROBE-KW14-A1\n\n## Leistungen\n\n| Pos | Leistung | Menge | Einzelpreis netto | Gesamt netto |\n" +
+        "| --- | --- | --- | --- | --- |\n" +
+        "| 1 | Hardware, Probegerät | 1 | 2875,00 Euro | 2875,00 Euro |\n" +
+        "| 2 | Arasul-Lizenz, einmalig, an das Gerät gebunden | 1 | 1610,00 Euro | 1610,00 Euro |\n" +
+        "| 3 | Installation und Datenanbindung, 1 Tag vor Ort | 1 | 440,00 Euro | 440,00 Euro |\n" +
+        "| 4 | Wartung und Sicherheits-Updates, erstes Jahr | 1 | 530,00 Euro | 530,00 Euro |\n" +
+        "| | **Summe netto** | | | **5455,00 Euro** |\n"
+    );
+    run = await forkTool("pdf.mjs", [angebot]);
+    const ohneChromium = /Kein Chromium gefunden/.test(run.stdout + run.stderr);
+    if (!ohneChromium) {
+      assert(run.status === 0, `Angebot ohne PDF: ${run.stdout}${run.stderr}`);
+      assert(readFileSync(join(fork, angebot.replace(/\.md$/, ".pdf"))).subarray(0, 5).toString() === "%PDF-", "das Angebot ist kein PDF");
+    }
+
+    // 4. Rechnung aus dem Angebot, geprüft, gedruckt, als gestellt geführt.
+    run = await forkTool("invoice.mjs", ["--customer", "probe-kw14", "--new", "--from-offer", angebot, "--date", "2026-10-14", "--service-date", "2026-10-14"]);
+    assert(run.status === 0 && /2026-0001/.test(run.stdout), `Rechnung fehlt: ${run.stdout}${run.stderr}`);
+    assert(/Alle Pflichtangaben stehen/.test(run.stdout), `Pflichtangaben offen:\n${run.stdout}`);
+    assert(/6\.491,45/.test(run.stdout), `Rechnungsbetrag stimmt nicht:\n${run.stdout}`);
+    const beleg = "customers/probe-kw14/documents/2026-10-14-rechnung-2026-0001.md";
+
+    // 5. Bezahlt sein kann nur, was gestellt ist.
+    run = await forkTool("invoice.mjs", ["--paid", "2026-0001", "--on", "2026-10-20"]);
+    assert(run.status !== 0 && /gedruckt und beim Kunden/.test(run.stderr), `ein Entwurf gilt als bezahlt wählbar:\n${run.stdout}${run.stderr}`);
+    if (!ohneChromium) {
+      run = await forkTool("invoice.mjs", ["--pdf", beleg]);
+      assert(run.status === 0, `Rechnung ohne PDF: ${run.stdout}${run.stderr}`);
+      assert(/\| 2026-0001 \|[^\n]*gestellt/.test(read("business/invoices.md")), "die Rechnung ist nicht gestellt");
+      run = await forkTool("invoice.mjs", ["--validate", beleg.replace(/\.md$/, ".pdf")]);
+      assert(run.status === 0, `die fertige Rechnung wird beanstandet:\n${run.stdout}`);
+    } else {
+      // Ohne Chromium gibt es kein PDF. Der Stand wird von Hand auf gestellt gesetzt,
+      // damit der Zahlungsvermerk trotzdem geprüft wird.
+      write("business/invoices.md", read("business/invoices.md").replace(/\| entwurf \|/, "| gestellt |"));
+    }
+    run = await forkTool("invoice.mjs", ["--paid", "2026-0001", "--on", "2026-10-20"]);
+    assert(run.status === 0 && /steht jetzt als bezahlt/.test(run.stdout), `Zahlung nicht vermerkt: ${run.stdout}${run.stderr}`);
+    assert(/\| 2026-0001 \|[^\n]*bezahlt[^\n]*Zahlung eingegangen am 2026-10-20/.test(read("business/invoices.md")), "der Zahlungseingang steht nicht im Nummernkreis");
+    run = await forkTool("invoice.mjs", ["--paid", "2026-0001"]);
+    assert(run.status !== 0, "eine bezahlte Rechnung lässt sich ein zweites Mal als bezahlt vermerken");
+    run = await forkTool("invoice.mjs", ["--paid", "2026-9999"]);
+    assert(run.status !== 0, "eine unbekannte Nummer lässt sich als bezahlt vermerken");
+    run = await forkTool("invoice.mjs", []);
+    assert(!/Am Nummernkreis stimmt etwas nicht/.test(run.stdout), `der Nummernkreis ist nach der Zahlung auffällig:\n${run.stdout}`);
+
+    // 6. Lizenzcode: Portal und Gerät sind Attrappen, die Signatur wird wirklich geprüft.
+    const { publicKey, privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const code = "ara_" + "e".repeat(32);
+    const fingerabdruck = "fedcba9876543210fedcba9876543210";
+    const nutzlast = Buffer.from(
+      JSON.stringify({ customer: "PROBE-KW14 GmbH", tier: "professional", hardware_id: fingerabdruck, expires_at: "9999-12-31T23:59:59.000Z" })
+    );
+    const signatur = cryptoSign("sha256", nutzlast, { key: privateKey, padding: cryptoConstants.RSA_PKCS1_PSS_PADDING });
+    const lizenz = `${nutzlast.toString("base64")}.${signatur.toString("base64")}`;
+    server = createServer((request, response) => {
+      let body = "";
+      request.on("data", (d) => (body += d));
+      request.on("end", () => {
+        const daten = JSON.parse(body || "{}");
+        const antworte = (status, objekt) => {
+          response.writeHead(status, { "Content-Type": "application/json" });
+          response.end(JSON.stringify(objekt));
+        };
+        if (daten.token === code && daten.fingerprint === fingerabdruck) {
+          return antworte(200, { license: lizenz, tier: "professional", customer: "PROBE-KW14 GmbH" });
+        }
+        return antworte(401, { ok: false, fehler: "token_unbekannt", meldung: "Unbekannt." });
+      });
+    });
+    await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    let stufe = "community";
+    const geprueft = [];
+    const geraet = (befehl, eingabe) => {
+      const zeile = (o, status = 0) => ({ status, stdout: `${JSON.stringify(o)}\n`, stderr: "" });
+      if (befehl === "fingerabdruck") return zeile({ fingerabdruck });
+      if (befehl === "einspielen") {
+        const [teil, sig] = String(eingabe).split(".");
+        const echt = cryptoVerify(
+          "sha256",
+          Buffer.from(teil, "base64"),
+          { key: publicKey, padding: cryptoConstants.RSA_PKCS1_PSS_PADDING },
+          Buffer.from(sig, "base64")
+        );
+        geprueft.push(echt);
+        if (!echt) return zeile({ ok: false, fehler: "Signatur ungueltig" }, 1);
+        const inhalt = JSON.parse(Buffer.from(teil, "base64").toString("utf8"));
+        if (inhalt.hardware_id !== fingerabdruck) return zeile({ ok: false, fehler: "anderes Gerät" }, 1);
+        stufe = inhalt.tier;
+        return zeile({ ok: true, stufe });
+      }
+      const grenze = stufe === "community" ? 3 : -1;
+      return zeile({ stufe, konten: { belegt: 0, grenze }, apps: { belegt: 0, grenze } });
+    };
+    const ergebnis = await unlock({ run: geraet, token: code, again: "node .ara/tools/device.mjs --name probe --license", base });
+    assert(ergebnis.ok && ergebnis.outcome === "professional", `Lizenz nicht freigeschaltet: ${JSON.stringify(ergebnis)}`);
+    assert(geprueft.length === 1 && geprueft[0] === true, "die Signatur der Lizenz hat offline nicht bestanden");
+    assert(stufe === "professional", "die Stufe der Lizenz kam nicht an");
+    assert(!JSON.stringify(ergebnis).includes(code) && !JSON.stringify(ergebnis).includes(lizenz), "Code oder Lizenz stehen im Ergebnis");
+    // Eine verfälschte Lizenz besteht die Prüfung nicht.
+    const gefaelscht = `${Buffer.from(nutzlast.toString().replace("professional", "enterprise")).toString("base64")}.${signatur.toString("base64")}`;
+    const [teil, sig] = gefaelscht.split(".");
+    assert(
+      !cryptoVerify("sha256", Buffer.from(teil, "base64"), { key: publicKey, padding: cryptoConstants.RSA_PKCS1_PSS_PADDING }, Buffer.from(sig, "base64")),
+      "eine verfälschte Lizenz besteht die Prüfung"
+    );
+
+    // 7. Der Probekunde ist danach weg: das Wegwerf-Kit trägt keinen Ordner im echten Kit.
+    server.close();
+    server = null;
+    rmSync(work, { recursive: true, force: true });
+    assert(!existsSync(work), "der Probekunde ist nicht entfernt");
+    return ohneChromium
+      ? "Akte, Kalkulation, Angebot, Rechnung, Zahlung, Lizenz geprüft, ohne Druck: kein Chromium auf diesem Rechner"
+      : "Akte, Kalkulation, Angebot als PDF, Rechnung als PDF, Zahlung, Lizenz geprüft, Probekunde entfernt";
+  } finally {
+    if (server) server.close();
     rmSync(work, { recursive: true, force: true });
   }
 });

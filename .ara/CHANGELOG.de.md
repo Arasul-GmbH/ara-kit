@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.83.0 (2026-10-14)
+
+Kontrakt: bis 14
+
+- **Eine Zahlung lässt sich als eingegangen vermerken.** `node .ara/tools/invoice.mjs --paid <nummer> --on <datum>` setzt eine gedruckte Rechnung im Nummernkreis auf `bezahlt`. Es geht nur an einer Nummer, die als `gestellt` steht, und das Kit sieht in kein Bankkonto. Bisher kannte der Kreis keinen Stand für Geld.
+- **Der Kaufweg steht als Nachweis da.** `.ara/knowledge/purchase-path.de.md` führt jeden Schritt von der Kundenakte bis zur Zahlung mit seinem Befehl auf, dazu was der Probekunde PROBE-KW14 gezeigt hat und was offen bleibt. Der Selbsttest spielt den Weg ohne Netz nach: Akte, Kalkulation, Angebot und Rechnung als PDF, Zahlung und eine Lizenz, deren Signatur ein Attrappen-Gerät selbst prüft.
+
 ## 0.82.0 (2026-10-14)
 
 Kontrakt: bis 14

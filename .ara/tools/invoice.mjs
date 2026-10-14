@@ -20,6 +20,7 @@
  *   node .ara/tools/invoice.mjs --pdf <document.md>            print, attach the XML, record it
  *   node .ara/tools/invoice.mjs --validate <file.pdf|.xml>     check a finished invoice
  *   node .ara/tools/invoice.mjs --void <number> --reason "…"   cancel a number
+ *   node .ara/tools/invoice.mjs --paid <number> [--on <date>]  note the payment as received
  *
  * **The number is assigned on creation, not on printing.** A discarded draft thereby
  * leaves a trace, and that is exactly why the range gets no gap. Whoever discards a
@@ -53,6 +54,7 @@
  *   node .ara/tools/invoice.mjs --pdf <beleg.md>             drucken, XML anhaengen, eintragen
  *   node .ara/tools/invoice.mjs --validate <datei.pdf|.xml>  eine fertige Rechnung pruefen
  *   node .ara/tools/invoice.mjs --void <nummer> --reason "…" eine Nummer stornieren
+ *   node .ara/tools/invoice.mjs --paid <nummer> [--on <datum>]  die Zahlung als eingegangen vermerken
  *
  * **Die Nummer wird beim Anlegen vergeben, nicht beim Drucken.** Ein verworfener
  * Entwurf hinterlaesst damit eine Spur, und genau deshalb bekommt der Kreis
@@ -123,6 +125,48 @@ const str = (value) => (typeof value === "string" ? value : null);
 const positionArgs = process.argv
   .slice(2)
   .filter((value, index, all) => index > 0 && all[index - 1] === "--position" && !value.startsWith("--"));
+
+// --- Eine Zahlung vermerken --------------------------------------------------
+
+if (arg.paid) {
+  const number = str(arg.paid);
+  if (!number || !splitNumber(number)) {
+    fail(
+      t(
+        `"${arg.paid}" is not an invoice number in the form YYYY-NNNN.`,
+        `"${arg.paid}" ist keine Rechnungsnummer in der Form JJJJ-NNNN.`
+      )
+    );
+  }
+  const entry = findEntry(number);
+  if (!entry) {
+    fail(t(`The number ${number} does not stand in the number range.`, `Die Nummer ${number} steht nicht im Nummernkreis.`));
+  }
+  if (entry.State !== "gestellt") {
+    fail(
+      t(
+        `${number} stands as ${entry.State}. Only an invoice that was printed and is with the customer can be paid.`,
+        `${number} steht als ${entry.State}. Bezahlt sein kann nur eine Rechnung, die gedruckt und beim Kunden ist.`
+      )
+    );
+  }
+  const on = str(arg.on) || today();
+  if (!isDate(on)) fail(t(`"${arg.on}" is not a date in the form YYYY-MM-DD.`, `"${arg.on}" ist kein Datum in der Form JJJJ-MM-TT.`));
+  updateEntry(number, { State: "bezahlt", Reason: t(`payment received on ${on}`, `Zahlung eingegangen am ${on}`) });
+  console.log(
+    t(
+      `${number} now stands as paid in the number range, payment received on ${on}.`,
+      `${number} steht jetzt als bezahlt im Nummernkreis, Zahlung eingegangen am ${on}.`
+    ) +
+      t(
+        "\nThe kit checks no bank account: you note what you saw on your statement. " +
+          "Put a line into the customer's history as well.",
+        "\nDas Kit prüft kein Bankkonto: du vermerkst, was du auf deinem Kontoauszug gesehen hast. " +
+          "Schreib dazu eine Zeile in den Verlauf des Kunden."
+      )
+  );
+  process.exit(0);
+}
 
 // --- Eine Nummer stornieren --------------------------------------------------
 
