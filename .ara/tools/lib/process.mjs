@@ -55,8 +55,11 @@ const TRIGGER_KEYS = Object.freeze({
 const lower = (s) => String(s).trim().toLowerCase();
 const is = (names, text) => names.some((n) => lower(n) === lower(text));
 
-/** Eine Zelle ohne Inhalt: leer, Strich oder ein Wort, das "nichts" sagt. */
-export const isNothing = (cell) => /^\s*(?:-+|\u2013|\u2014|none|no|keine?r?s?|nein|n\/a)?\s*$/i.test(String(cell ?? ""));
+/** Eine Zelle ohne Inhalt: leer oder ein Strich. "nein" ist hier eine Antwort, kein Nichts. */
+export const isNothing = (cell) => /^\s*(?:-+|\u2013|\u2014|n\/a)?\s*$/i.test(String(cell ?? ""));
+
+/** Eine Zelle, die "keine" sagt, wo eine Liste steht (zu lesende, aenderbare Felder). */
+export const isNone = (cell) => isNothing(cell) || /^\s*(?:none|no|keine?r?s?|nein)\s*$/i.test(String(cell));
 
 /** Ein Platzhalter der Vorlage, der stehen geblieben ist. */
 const PLACEHOLDER = /<[^<>\n]{2,}>/;
@@ -248,10 +251,10 @@ export function checkSheet(sheet) {
       if (isNothing(row.personal)) {
         err(`The paper "${row.paper}": say whether personal data stands on it, yes or no.`, `Das Papier „${row.paper}“: sag, ob personenbezogene Daten darauf stehen, ja oder nein.`);
       }
-      if (!isNothing(row.read)) {
+      if (!isNone(row.read)) {
         const felder = parseFelder(row.read);
         if (felder.error) out.push({ level: "error", message: `${row.paper}: ${felder.error}` });
-        else if (!isNothing(row.changeable)) {
+        else if (!isNone(row.changeable)) {
           const änderbar = parseAenderbar(row.changeable, felder.felder);
           if (änderbar.error) out.push({ level: "error", message: `${row.paper}: ${änderbar.error}` });
         }
@@ -335,11 +338,11 @@ export function deriveApp(sheet) {
   const felder = [];
   const aenderbar = [];
   for (const row of sheet.papers.rows) {
-    if (isNothing(row.read)) continue;
+    if (isNone(row.read)) continue;
     const parsed = parseFelder(row.read);
     if (parsed.error) continue;
     for (const f of parsed.felder) if (!felder.includes(f)) felder.push(f);
-    if (!isNothing(row.changeable)) {
+    if (!isNone(row.changeable)) {
       const c = parseAenderbar(row.changeable, parsed.felder);
       if (!c.error) for (const f of c.aenderbar) if (!aenderbar.includes(f)) aenderbar.push(f);
     }
@@ -403,6 +406,9 @@ function flowDraft(sheet) {
   const lines = [t("Draft of the flow `freigabe` out of the process sheet, to be confirmed in the interview:", "Entwurf des Flows `freigabe` aus dem Prozessblatt, im Interview zu bestätigen:")];
   lines.push(`- ${t("Starts by", "Startet durch")}: ${d.ausloeser ?? "hand"}`);
   lines.push(`- ${t("Stages, in this order", "Stufen, in dieser Reihenfolge")}: ${d.stufen ?? t("one, from the scaffold", "eine, aus der Vorlage")}`);
+  if (d.stufen?.includes(",")) {
+    lines.push(`- ${t("Every stage is asked in every run. A decision that comes only in some cases (an amount, a kind of case) is raised in the interview, not built in silently.", "Jede Stufe wird in jedem Lauf gefragt. Eine Entscheidung, die nur in manchen Fällen kommt (ab einem Betrag, bei einer Art von Fall), wird im Interview angesprochen und nicht stillschweigend eingebaut.")}`);
+  }
   if (d.felder) {
     lines.push(`- ${t("The device reads", "Das Gerät liest")}: ${d.felder}; ${t("a person may correct", "ein Mensch darf ändern")}: ${d.aenderbar}`);
     lines.push(`- ${t("A person confirms the reading before it goes on", "Ein Mensch bestätigt die Erkennung, bevor es weitergeht")}`);

@@ -25,7 +25,7 @@ what stands on the device, `--status` asks there.
 Look whether the work has a process sheet, the page `/process` writes about how it runs today
 (`.ara/knowledge/process.md`): `node .ara/tools/process.mjs --list [--customer <customer>]`.
 
-- **Complete:** create the app with `node .ara/tools/app.mjs --app <name> --new --prozess <id>
+- **Complete:** the file comes first, it holds no guess, and the rest of the interview then fills the plan. Create the app with `node .ara/tools/app.mjs --app <name> --new --prozess <id>
   [--customer <customer>]`. Title, stages, fields, trigger and a prefilled plan come from the sheet,
   and **what stands in it you do not ask again**: the work step, who uses it, the data, the steps,
   where a human decides, who may see what (as the draft for the roles), what does not belong to it,

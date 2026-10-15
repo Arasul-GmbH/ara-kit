@@ -24,7 +24,7 @@ Schritte; was am Gerät steht, fragt `--status` dort.
 Sieh nach, ob die Arbeit ein Prozessblatt hat, die Seite, die `/process` darüber schreibt, wie sie
 heute läuft (`.ara/knowledge/process.de.md`): `node .ara/tools/process.mjs --list [--customer <kunde>]`.
 
-- **Vollständig:** leg die App an mit `node .ara/tools/app.mjs --app <name> --new --prozess
+- **Vollständig:** die Akte kommt zuerst, sie enthält keine Vermutung, und der Rest des Interviews füllt danach den Plan. Leg die App an mit `node .ara/tools/app.mjs --app <name> --new --prozess
   <kennung> [--customer <kunde>]`. Titel, Stufen, Felder, Auslöser und ein vorbefüllter Plan kommen
   aus dem Blatt, und **was darin steht, fragst du nicht noch einmal**: den Arbeitsschritt, wer es
   benutzt, die Daten, die Schritte, wo ein Mensch entscheidet, wer was sehen darf (als Entwurf für

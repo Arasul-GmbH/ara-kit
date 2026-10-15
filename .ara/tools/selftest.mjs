@@ -16292,7 +16292,7 @@ Two nurses swap a shift and the ward is still staffed. Without an answer in time
 | Paper | What stands on it | Fields to read | May be corrected | Personal data | Lies today |
 | --- | --- | --- | --- | --- | --- |
 | Swap slip | name, day, partner | Name, Day, Partner | Day | yes | folder in the ward |
-| Duty roster | staffing per week | - | none | yes | notice board |
+| Duty roster | staffing per week | - | none | no | notice board |
 
 ## Decisions
 
@@ -16352,7 +16352,7 @@ Zwei Pflegekräfte tauschen einen Dienst, und die Station bleibt besetzt. Ohne A
 | Papier | Was darauf steht | Zu lesende Felder | Änderbar | Personenbezogen | Liegt heute |
 | --- | --- | --- | --- | --- | --- |
 | Tauschzettel | Name, Tag, Partner | Name, Tag, Partner | Tag | ja | Ordner auf der Station |
-| Dienstplan | Besetzung je Woche | - | keine | ja | Aushang |
+| Dienstplan | Besetzung je Woche | - | keine | nein | Aushang |
 
 ## Entscheidungen
 
@@ -16451,6 +16451,8 @@ for (const lang of ["en", "de"]) {
         : ["Tauschzettel", "Stationsleitung", "Wer vertritt die Stationsleitung", "Krankheit am getauschten Tag", "Besetzung im Plan"]) {
         assert(plan.includes(stueck), `im Plan fehlt, was im Blatt steht: ${stueck}`);
       }
+      // Jede Stufe wird in jedem Lauf gefragt: der Plan sagt, dass eine bedingte Entscheidung ins Interview gehört.
+      assert(/in every run|in jedem Lauf/.test(plan), "der Plan sagt nicht, dass jede Stufe in jedem Lauf gefragt wird");
       // Was das Blatt nicht sagen kann, bleibt dem Gespräch: die Tabelle der Bildschirme ist leer geblieben.
       const bildschirme = plan.split(/^## /m).find((teil) => /^(Screens|Bildschirme)/.test(teil)) ?? "";
       assert(bildschirme && bildschirme.split("\n").filter((z) => /^\|/.test(z)).length === 2, "der Plan hat Bildschirme erfunden, die das Blatt nicht kennt");
