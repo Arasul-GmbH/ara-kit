@@ -49,7 +49,7 @@ with questions unless the human wants none (see below). Each point lands in its 
 | **Which paper or file each step uses** | Steps, Papers | "What lay on the desk, or was open on the screen?" Every named paper gets a row in Papers |
 | **What stands on the paper, whether it holds personal data, where it lies today** | Papers | Name personal data explicitly. "Folder in the office, mailbox, Excel file?" |
 | **What the device should read off a paper itself, and what a person may still correct** | Papers | Only for a paper that is typed off or filed by hand today. Suggest the often misread details as changeable, **never all by habit** |
-| **Where somebody says yes or no, who, based on what, and what happens on no** | Decisions | "Who looks at it before it goes on? What do they look at? And if the answer is no?" A short name per stage, at most five. Nobody decides is an answer |
+| **Where somebody says yes or no, who, in which cases, based on what, and what happens on no** | Decisions | "Who looks at it before it goes on? Every time, or only in some cases (above an amount, for one kind of case)? What do they look at? And if the answer is no?" A short name per stage, at most five. Nobody decides is an answer |
 | **What goes wrong or deviates** | Exceptions | "The last time something did not fit the usual way: what happened?" "None known" is an answer |
 | **Who may see what** | Who sees what | Everybody everything, or only their own cases, clients, departments, and who hands them out |
 | **What it expressly does not cover** | Not part of it | The paragraph that saves the disappointment later |

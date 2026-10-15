@@ -45,9 +45,9 @@ off the paper by itself, "May be corrected" the ones a person may still change.
 
 Where somebody has to say yes or no before it goes on. One row per decision.
 
-| After step | Stage | Who decides | Based on what | If no |
-| --- | --- | --- | --- | --- |
-| 1 | <short name> | <role> | <what they look at> | <what happens> |
+| After step | Stage | Who decides | In which cases | Based on what | If no |
+| --- | --- | --- | --- | --- | --- |
+| 1 | <short name> | <role> | <always, or only when ...> | <what they look at> | <what happens> |
 
 ## Exceptions
 

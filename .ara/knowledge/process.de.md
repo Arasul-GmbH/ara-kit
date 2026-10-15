@@ -50,7 +50,7 @@ seinem Abschnitt des Blattes.
 | **Welches Papier oder welche Datei jeder Schritt nutzt** | Schritte, Papiere | „Was lag auf dem Tisch, oder war am Bildschirm offen?“ Jedes genannte Papier bekommt eine Zeile bei den Papieren |
 | **Was auf dem Papier steht, ob personenbezogene Daten darauf stehen, wo es heute liegt** | Papiere | Personenbezogenes ausdrücklich nennen. „Ordner im Büro, Postfach, Excel-Datei?“ |
 | **Was das Gerät selbst vom Papier lesen soll, und was ein Mensch noch ändern darf** | Papiere | Nur bei einem Papier, das heute abgetippt oder von Hand abgelegt wird. Die oft falsch gelesenen Angaben als änderbar vorschlagen, **nie alle aus Gewohnheit** |
-| **Wo jemand Ja oder Nein sagt, wer, worauf gestützt, und was bei Nein geschieht** | Entscheidungen | „Wer sieht es an, bevor es weitergeht? Was sieht er an? Und wenn die Antwort Nein ist?“ Ein Kurzname je Stufe, höchstens fünf. Niemand entscheidet ist eine Antwort |
+| **Wo jemand Ja oder Nein sagt, wer, in welchen Fällen, worauf gestützt, und was bei Nein geschieht** | Entscheidungen | „Wer sieht es an, bevor es weitergeht? Jedes Mal, oder nur in manchen Fällen (ab einem Betrag, bei einer Art von Fall)? Was sieht er an? Und wenn die Antwort Nein ist?“ Ein Kurzname je Stufe, höchstens fünf. Niemand entscheidet ist eine Antwort |
 | **Was schiefgeht oder abweicht** | Ausnahmen | „Das letzte Mal, als etwas nicht in den üblichen Weg passte: was geschah?“ „Keine bekannt“ ist eine Antwort |
 | **Wer was sehen darf** | Wer sieht was | Alle alles, oder nur die eigenen Fälle, Mandanten, Abteilungen, und wer sie zuteilt |
 | **Was es ausdrücklich nicht abdeckt** | Gehört nicht dazu | Der Absatz, der später die Enttäuschung erspart |

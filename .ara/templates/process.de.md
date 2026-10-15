@@ -45,9 +45,9 @@ die das Gerät selbst vom Papier lesen soll, „Änderbar“ die, die ein Mensch
 
 Wo jemand Ja oder Nein sagen muss, bevor es weitergeht. Eine Zeile je Entscheidung.
 
-| Nach Schritt | Stufe | Wer entscheidet | Worauf es sich stützt | Bei Nein |
-| --- | --- | --- | --- | --- |
-| 1 | <Kurzname> | <Rolle> | <was sie ansehen> | <was dann geschieht> |
+| Nach Schritt | Stufe | Wer entscheidet | In welchen Fällen | Worauf es sich stützt | Bei Nein |
+| --- | --- | --- | --- | --- | --- |
+| 1 | <Kurzname> | <Rolle> | <immer, oder nur wenn ...> | <was sie ansehen> | <was dann geschieht> |
 
 ## Ausnahmen
 

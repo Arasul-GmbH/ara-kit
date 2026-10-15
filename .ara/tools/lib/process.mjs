@@ -41,7 +41,14 @@ const COLUMNS = Object.freeze({
     personal: ["Personal data", "Personenbezogen"],
     lies: ["Lies today", "Liegt heute"],
   },
-  decisions: { after: ["After step", "Nach Schritt"], stage: ["Stage", "Stufe"], who: ["Who decides", "Wer entscheidet"], basis: ["Based on what", "Worauf es sich stützt"], no: ["If no", "Bei Nein"] },
+  decisions: {
+    after: ["After step", "Nach Schritt"],
+    stage: ["Stage", "Stufe"],
+    who: ["Who decides", "Wer entscheidet"],
+    cases: ["In which cases", "In welchen Fällen"],
+    basis: ["Based on what", "Worauf es sich stützt"],
+    no: ["If no", "Bei Nein"],
+  },
 });
 
 /** Die Schluessel der Zeilen im Abschnitt Ausloeser. */
@@ -60,6 +67,9 @@ export const isNothing = (cell) => /^\s*(?:-+|\u2013|\u2014|n\/a)?\s*$/i.test(St
 
 /** Eine Zelle, die "keine" sagt, wo eine Liste steht (zu lesende, aenderbare Felder). */
 export const isNone = (cell) => isNothing(cell) || /^\s*(?:none|no|keine?r?s?|nein)\s*$/i.test(String(cell));
+
+/** Eine Entscheidung, die in jedem Fall kommt, und nicht nur in manchen. */
+export const isAlways = (cell) => /^\s*(?:always|every(?: case| time| run)?|each (?:case|time)|immer|jedes mal|in jedem fall|stets)\s*$/i.test(String(cell ?? ""));
 
 /** Ein Platzhalter der Vorlage, der stehen geblieben ist. */
 const PLACEHOLDER = /<[^<>\n]{2,}>/;
@@ -286,10 +296,16 @@ export function checkSheet(sheet) {
       if (!Number.isInteger(after) || after < 1 || after > steps.rows.length) {
         err(`Decision ${i + 1} follows step "${row.after}", and there is no such step.`, `Entscheidung ${i + 1} folgt auf Schritt „${row.after}“, den es nicht gibt.`);
       }
-      for (const k of ["stage", "who"]) {
+      for (const k of ["stage", "who", "cases"]) {
         if (isNothing(row[k])) err(`Decision ${i + 1} has no "${COLUMNS.decisions[k][0]}".`, `Entscheidung ${i + 1} hat kein „${COLUMNS.decisions[k][1]}“.`);
       }
       stages.push(row.stage);
+      if (!isNothing(row.cases) && !isAlways(row.cases)) {
+        hint(
+          `Decision ${i + 1} (${row.stage}) comes only in some cases (${row.cases}). The flow asks every stage in every run, so how that is built is settled in the /app interview.`,
+          `Entscheidung ${i + 1} (${row.stage}) kommt nur in manchen Fällen (${row.cases}). Der Flow fragt jede Stufe in jedem Lauf, wie das gebaut wird, klärt das Interview von /app.`
+        );
+      }
     }
     if (stages.length) {
       const parsed = parseStufen(stages.filter((s) => !isNothing(s)).join(","));
@@ -371,7 +387,7 @@ export function planSections(sheet, sheetRef) {
   const steps = sheet.steps.rows.map((r) => `${r.no}. ${r.who}: ${r.does}${isNothing(r.paper) ? "" : ` (${r.paper})`}, ${r.when}`);
   const personal = sheet.papers.rows.filter((r) => !isNothing(r.paper));
   const people = [...new Set(sheet.steps.rows.map((r) => r.who).filter((w) => !isNothing(w)))];
-  const decisions = sheet.decisions.rows.map((r) => `- ${t("After step", "Nach Schritt")} ${r.after}, ${r.stage}: ${r.who}${isNothing(r.basis) ? "" : `, ${r.basis}`}${isNothing(r.no) ? "" : t(`. If no: ${r.no}`, `. Bei Nein: ${r.no}`)}`);
+  const decisions = sheet.decisions.rows.map((r) => `- ${t("After step", "Nach Schritt")} ${r.after}, ${r.stage}: ${r.who}${isAlways(r.cases) ? "" : t(`, only if: ${r.cases}`, `, nur wenn: ${r.cases}`)}${isNothing(r.basis) ? "" : `, ${r.basis}`}${isNothing(r.no) ? "" : t(`. If no: ${r.no}`, `. Bei Nein: ${r.no}`)}`);
   const lines = (list) => list.join("\n");
   const from = t(`From the process sheet ${sheetRef}.`, `Aus dem Prozessblatt ${sheetRef}.`);
   return [
@@ -407,7 +423,12 @@ function flowDraft(sheet) {
   lines.push(`- ${t("Starts by", "Startet durch")}: ${d.ausloeser ?? "hand"}`);
   lines.push(`- ${t("Stages, in this order", "Stufen, in dieser Reihenfolge")}: ${d.stufen ?? t("one, from the scaffold", "eine, aus der Vorlage")}`);
   if (d.stufen?.includes(",")) {
-    lines.push(`- ${t("Every stage is asked in every run. A decision that comes only in some cases (an amount, a kind of case) is raised in the interview, not built in silently.", "Jede Stufe wird in jedem Lauf gefragt. Eine Entscheidung, die nur in manchen Fällen kommt (ab einem Betrag, bei einer Art von Fall), wird im Interview angesprochen und nicht stillschweigend eingebaut.")}`);
+    lines.push(`- ${t("Every stage is asked in every run.", "Jede Stufe wird in jedem Lauf gefragt.")}`);
+  }
+  for (const r of sheet.decisions.rows.filter((x) => !isNothing(x.cases) && !isAlways(x.cases))) {
+    lines.push(
+      `- ${t(`The stage ${r.stage} comes only if: ${r.cases}. Settle in the interview how that is built, it is not built in silently.`, `Die Stufe ${r.stage} kommt nur, wenn: ${r.cases}. Wie das gebaut wird, klärt das Interview, es wird nicht stillschweigend eingebaut.`)}`
+    );
   }
   if (d.felder) {
     lines.push(`- ${t("The device reads", "Das Gerät liest")}: ${d.felder}; ${t("a person may correct", "ein Mensch darf ändern")}: ${d.aenderbar}`);

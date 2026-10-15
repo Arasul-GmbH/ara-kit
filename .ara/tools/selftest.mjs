@@ -16270,7 +16270,7 @@ created: 2026-10-15
 
 ## Aim
 
-Two nurses swap a shift and the ward is still staffed. Without an answer in time the swap does not happen.
+Two nurses swap a shift and the ward is still staffed ("swap"). Without an answer in time the swap does not happen.
 
 ## Trigger
 
@@ -16296,10 +16296,10 @@ Two nurses swap a shift and the ward is still staffed. Without an answer in time
 
 ## Decisions
 
-| After step | Stage | Who decides | Based on what | If no |
-| --- | --- | --- | --- | --- |
-| ${gap ? 9 : 1} | Ward | Ward lead | staffing in the roster | the nurse gets a reason |
-| 2 | Office | Office | contract hours | slip goes back to the ward lead |
+| After step | Stage | Who decides | In which cases | Based on what | If no |
+| --- | --- | --- | --- | --- | --- |
+| ${gap ? 9 : 1} | Ward | Ward lead | always | staffing in the roster | the nurse gets a reason |
+| 2 | Office | Office | only when the swap crosses a night shift | contract hours | slip goes back to the ward lead |
 
 ## Exceptions
 
@@ -16330,7 +16330,7 @@ created: 2026-10-15
 
 ## Ziel
 
-Zwei Pflegekräfte tauschen einen Dienst, und die Station bleibt besetzt. Ohne Antwort rechtzeitig findet der Tausch nicht statt.
+Zwei Pflegekräfte tauschen einen Dienst, und die Station bleibt besetzt ("Tausch"). Ohne Antwort rechtzeitig findet der Tausch nicht statt.
 
 ## Auslöser
 
@@ -16356,10 +16356,10 @@ Zwei Pflegekräfte tauschen einen Dienst, und die Station bleibt besetzt. Ohne A
 
 ## Entscheidungen
 
-| Nach Schritt | Stufe | Wer entscheidet | Worauf es sich stützt | Bei Nein |
-| --- | --- | --- | --- | --- |
-| ${gap ? 9 : 1} | Station | Stationsleitung | Besetzung im Plan | die Pflegekraft bekommt eine Begründung |
-| 2 | Büro | Büro | Vertragsstunden | der Zettel geht zurück an die Stationsleitung |
+| Nach Schritt | Stufe | Wer entscheidet | In welchen Fällen | Worauf es sich stützt | Bei Nein |
+| --- | --- | --- | --- | --- | --- |
+| ${gap ? 9 : 1} | Station | Stationsleitung | immer | Besetzung im Plan | die Pflegekraft bekommt eine Begründung |
+| 2 | Büro | Büro | nur wenn der Tausch eine Nachtschicht berührt | Vertragsstunden | der Zettel geht zurück an die Stationsleitung |
 
 ## Ausnahmen
 
@@ -16439,6 +16439,7 @@ for (const lang of ["en", "de"]) {
       run = tool("app.mjs", ["--app", appName, "--new", "--prozess", gut], "", env);
       assert(run.status === 0, `--new --prozess scheitert: ${run.stdout}${run.stderr}`);
       const manifest = JSON.parse(readFileSync(join(appDir, "app.json"), "utf8"));
+      assert(/"(swap|Tausch)"/.test(manifest.beschreibung), `ein Anführungszeichen in der Beschreibung kommt nicht heil in app.json an: ${manifest.beschreibung}`);
       assert(manifest.name === (lang === "en" ? "Shift swap" : "Diensttausch"), `der Name der App kommt nicht aus dem Blatt: ${manifest.name}`);
       const flow = readFileSync(join(appDir, "flows", "freigabe.md"), "utf8");
       assert(/stufen:/.test(flow) && /ergebnis_bestaetigen/.test(flow), "die Stufen und die Art stehen nicht im Flow");
@@ -16453,6 +16454,10 @@ for (const lang of ["en", "de"]) {
       }
       // Jede Stufe wird in jedem Lauf gefragt: der Plan sagt, dass eine bedingte Entscheidung ins Interview gehört.
       assert(/in every run|in jedem Lauf/.test(plan), "der Plan sagt nicht, dass jede Stufe in jedem Lauf gefragt wird");
+      assert(/only if: only when the swap crosses a night shift|nur wenn: nur wenn der Tausch eine Nachtschicht berührt/.test(plan), "eine Entscheidung nur in manchen Fällen steht nicht mit ihrer Bedingung im Plan");
+      assert(/comes only if|kommt nur, wenn/.test(plan), "der Flow-Entwurf sagt nicht, dass eine Stufe nur manchmal kommt");
+      run = tool("process.mjs", ["--check", gut], "", env);
+      assert(/only in some cases|nur in manchen Fällen/.test(run.stdout), "die bedingte Entscheidung bekommt keinen Hinweis");
       // Was das Blatt nicht sagen kann, bleibt dem Gespräch: die Tabelle der Bildschirme ist leer geblieben.
       const bildschirme = plan.split(/^## /m).find((teil) => /^(Screens|Bildschirme)/.test(teil)) ?? "";
       assert(bildschirme && bildschirme.split("\n").filter((z) => /^\|/.test(z)).length === 2, "der Plan hat Bildschirme erfunden, die das Blatt nicht kennt");

@@ -375,7 +375,12 @@ function copyTemplate(from, to, values) {
       continue;
     }
     if (TEXT_FILE.test(entry.name)) {
-      writeFileSync(target, fill(readFileSync(source, "utf8"), values));
+      // In einer JSON-Datei steht der Wert in Anführungszeichen: ein " oder \ darin bräche die Datei,
+      // und die App bliebe halb angelegt (Fremdtest 2, Beschreibung aus einem Prozessblatt).
+      const wert = entry.name.endsWith(".json")
+        ? Object.fromEntries(Object.entries(values).map(([k, v]) => [k, JSON.stringify(String(v)).slice(1, -1)]))
+        : values;
+      writeFileSync(target, fill(readFileSync(source, "utf8"), wert));
     } else {
       cpSync(source, target);
     }
