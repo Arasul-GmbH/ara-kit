@@ -20,6 +20,21 @@ An app runs in a circle, and `/app` stands at every station:
 **Where you stand, the tool says:** `node .ara/tools/app.mjs --app <name>` names the next steps;
 what stands on the device, `--status` asks there.
 
+## A process sheet comes first
+
+Look whether the work has a process sheet, the page `/process` writes about how it runs today
+(`.ara/knowledge/process.md`): `node .ara/tools/process.mjs --list [--customer <customer>]`.
+
+- **Complete:** the file comes first, it holds no guess, and the rest of the interview then fills the plan. Create the app with `node .ara/tools/app.mjs --app <name> --new --prozess <id>
+  [--customer <customer>]`. Title, stages, fields, trigger and a prefilled plan come from the sheet,
+  and **what stands in it you do not ask again**: the work step, who uses it, the data, the steps,
+  where a human decides, who may see what (as the draft for the roles), what does not belong to it,
+  the exceptions (assumptions in the plan). Ask what it cannot say: screens, forms, buttons, the three
+  questions below, the picture, what has to stay, when it is finished. An answer that contradicts the
+  sheet holds, and the sheet gets the correction.
+- **With gaps** (`process.mjs --check <id>`): back to `/process`, never build on it.
+- **None, and nobody said how the work runs:** offer `/process` first, in one sentence.
+
 ## The interview checklist
 
 Ask, bundled, until every point is answered or left open as an **assumption** in the plan. What

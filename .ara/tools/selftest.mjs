@@ -15499,12 +15499,14 @@ const FACH_APP_LADESATZ = {
  * kosten rund 1.900 Tokens, und ohne sie rät der Agent genau dort. Seit 0.60.0 18.000: die
  * drei Fragen, die jede App bekommt (Rollen, Internet, Modell), kosten rund 1.000 Tokens, und
  * ohne sie baut der Agent eine App, in der jeder alles sieht und niemand weiß, was hinausgeht.
- * Seit 0.69.0 18.500: die Frage nach dem Dokument, das das Gerät liest, kostet rund 350 Tokens, und
+ * Seit 0.69.0 19.000: die Frage nach dem Dokument, das das Gerät liest, kostet rund 350 Tokens, und
  * ohne sie rät der Agent, welche Felder ein Mensch in der Freigabe ändern darf.
+ * Seit 0.84.0 19.000: der Abschnitt zum Prozessblatt in app.md, sein Hinweis im Befehl und die Regel in
+ * AGENTS.md kosten rund 800 Tokens, und ohne sie fragt /app noch einmal, was das Blatt schon sagt.
  */
-const FACH_APP_GRENZE = 18500;
+const FACH_APP_GRENZE = 19000;
 
-check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 18.500 Tokens, in beiden Sprachen", () => {
+check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 19.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
   // Zehntel doppelt. Ein Agent mit einem schlanken Kern und gezielt
   // nachgeladenem Fachwissen baut besser und billiger. Gezaehlt wird wie mit
@@ -16245,6 +16247,230 @@ check("Der Selbsttest ist in einem blanken Klon gruen", () => {
     rmSync(work, { recursive: true, force: true });
   }
 });
+
+// --- Prozessblatt -------------------------------------------------------------
+
+/**
+ * Das Prozessblatt: die Datei, aus der /app baut, ohne noch einmal zu fragen, was darin steht.
+ *
+ * Gespielt wird mit einem erfundenen Haus, einem Pflegedienst, der Dienstplantausch regelt: kein
+ * Steuerbüro, damit nichts an dieser Prüfung an der Branche hängt, für die das Kit zuerst gebaut
+ * wurde. Das Blatt gibt es in beiden Sprachen, und beide müssen dieselbe App ergeben.
+ */
+const BLATT = {
+  en: {
+    head: ["Aim", "Trigger", "Steps", "Papers", "Decisions", "Exceptions", "Who sees what", "Not part of it", "Open"],
+    text: (gap) => `---
+process: shift-swap
+title: Shift swap
+created: 2026-10-15
+---
+
+# Shift swap
+
+## Aim
+
+Two nurses swap a shift and the ward is still staffed ("swap"). Without an answer in time the swap does not happen.
+
+## Trigger
+
+- What sets it off: a nurse cannot work her shift
+- How often: about 15 swaps a month
+- Who starts it: nurse
+- Starts by: hand
+
+## Steps
+
+| No | Who | Does what | With which paper | When |
+| --- | --- | --- | --- | --- |
+| 1 | Nurse | fills in the swap slip | Swap slip | at least 3 days ahead |
+| 2 | Ward lead | checks the staffing | Swap slip, Duty roster${gap ? ", Staff list" : ""} | within a day |
+| 3 | Office | updates the roster | Duty roster | same day |
+
+## Papers
+
+| Paper | What stands on it | Fields to read | May be corrected | Personal data | Lies today |
+| --- | --- | --- | --- | --- | --- |
+| Swap slip | name, day, partner | Name, Day, Partner | Day | yes | folder in the ward |
+| Duty roster | staffing per week | - | none | no | notice board |
+
+## Decisions
+
+| After step | Stage | Who decides | In which cases | Based on what | If no |
+| --- | --- | --- | --- | --- | --- |
+| ${gap ? 9 : 1} | Ward | Ward lead | always | staffing in the roster | the nurse gets a reason |
+| 2 | Office | Office | only when the swap crosses a night shift | contract hours | slip goes back to the ward lead |
+
+## Exceptions
+
+- Illness on the swapped day: the partner reports it to the office.
+
+## Who sees what
+
+The ward lead sees the slips of the ward, the office sees all.
+
+## Not part of it
+
+Payroll.
+
+## Open
+
+- Who stands in for the ward lead on holiday?
+`,
+  },
+  de: {
+    head: ["Ziel", "Auslöser", "Schritte", "Papiere", "Entscheidungen", "Ausnahmen", "Wer sieht was", "Gehört nicht dazu", "Offen"],
+    text: (gap) => `---
+process: diensttausch
+title: Diensttausch
+created: 2026-10-15
+---
+
+# Diensttausch
+
+## Ziel
+
+Zwei Pflegekräfte tauschen einen Dienst, und die Station bleibt besetzt ("Tausch"). Ohne Antwort rechtzeitig findet der Tausch nicht statt.
+
+## Auslöser
+
+- Was es anstößt: eine Pflegekraft kann ihren Dienst nicht antreten
+- Wie oft: etwa 15 Tausche im Monat
+- Wer es anstößt: Pflegekraft
+- Startet durch: hand
+
+## Schritte
+
+| Nr | Wer | Tut was | Mit welchem Papier | Wann |
+| --- | --- | --- | --- | --- |
+| 1 | Pflegekraft | füllt den Tauschzettel aus | Tauschzettel | mindestens 3 Tage vorher |
+| 2 | Stationsleitung | prüft die Besetzung | Tauschzettel, Dienstplan${gap ? ", Personalliste" : ""} | innerhalb eines Tages |
+| 3 | Büro | trägt den Tausch im Plan ein | Dienstplan | am selben Tag |
+
+## Papiere
+
+| Papier | Was darauf steht | Zu lesende Felder | Änderbar | Personenbezogen | Liegt heute |
+| --- | --- | --- | --- | --- | --- |
+| Tauschzettel | Name, Tag, Partner | Name, Tag, Partner | Tag | ja | Ordner auf der Station |
+| Dienstplan | Besetzung je Woche | - | keine | nein | Aushang |
+
+## Entscheidungen
+
+| Nach Schritt | Stufe | Wer entscheidet | In welchen Fällen | Worauf es sich stützt | Bei Nein |
+| --- | --- | --- | --- | --- | --- |
+| ${gap ? 9 : 1} | Station | Stationsleitung | immer | Besetzung im Plan | die Pflegekraft bekommt eine Begründung |
+| 2 | Büro | Büro | nur wenn der Tausch eine Nachtschicht berührt | Vertragsstunden | der Zettel geht zurück an die Stationsleitung |
+
+## Ausnahmen
+
+- Krankheit am getauschten Tag: der Partner meldet es dem Büro.
+
+## Wer sieht was
+
+Die Stationsleitung sieht die Zettel ihrer Station, das Büro alle.
+
+## Gehört nicht dazu
+
+Die Lohnabrechnung.
+
+## Offen
+
+- Wer vertritt die Stationsleitung im Urlaub?
+`,
+  },
+};
+
+for (const lang of ["en", "de"]) {
+  await checkAsync(`Ein Prozessblatt wird geprüft, abgeleitet und von /app ohne neue Fachfrage gebaut (${lang})`, async () => {
+    const work = mkdtempSync(join(tmpdir(), "ara-process-"));
+    const env = { ARA_LANGUAGE: lang };
+    const appName = `selftest-prozess-${lang}`;
+    const appDir = join(ROOT, "apps", appName);
+    const stateFile = join(ROOT, ".ara", "state.json");
+    const merker = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+    try {
+      // Die Vorlage und der Befehl gibt es als Paar, und die Vorlage ist ein Gerüst, kein Blatt.
+      for (const rel of [".ara/templates/process", ".ara/knowledge/process", ".ara/commands/all/process"]) {
+        for (const endung of [".md", ".de.md"]) assert(existsSync(join(ROOT, rel + endung)), `${rel}${endung} fehlt`);
+      }
+      const kunde = "probe-pflege";
+      mkdirSync(join(CUSTOMERS_TMP, kunde), { recursive: true });
+      let run = tool("process.mjs", ["--new", "dienst", "--customer", kunde, "--title", "Dienst"], "", env);
+      assert(run.status === 0, `--new scheitert: ${run.stderr}${run.stdout}`);
+      const gelegt = join(CUSTOMERS_TMP, kunde, "processes", "dienst.md");
+      assert(existsSync(gelegt), "das Blatt liegt nicht im Ordner des Kunden");
+      run = tool("process.mjs", ["--new", "dienst", "--customer", kunde], "", env);
+      assert(run.status !== 0, "ein vorhandenes Blatt wird überschrieben");
+      run = tool("process.mjs", ["--check", "dienst", "--customer", kunde], "", env);
+      assert(run.status !== 0 && /<[^>]+>/.test(run.stdout), `das Gerüst gilt als fertig: ${run.stdout}`);
+      assert(new RegExp(lang === "en" ? "MISSING" : "FEHLT").test(run.stdout), "der Befund steht nicht in der Sprache des Hauses");
+      assert(!new RegExp(lang === "en" ? "FEHLT" : "MISSING").test(run.stdout), "der Befund steht in der anderen Sprache");
+
+      // Ein vollständiges Blatt besteht, und die Ableitung nennt, was /app daraus nimmt.
+      const gut = join(work, "gut.md");
+      writeFileSync(gut, BLATT[lang].text(false));
+      run = tool("process.mjs", ["--check", gut], "", env);
+      assert(run.status === 0, `ein vollständiges Blatt besteht nicht: ${run.stdout}${run.stderr}`);
+      run = tool("process.mjs", ["--derive", gut, "--json"], "", env);
+      assert(run.status === 0, `--derive scheitert: ${run.stderr}`);
+      const abgeleitet = JSON.parse(run.stdout);
+      assert(abgeleitet.stufen === (lang === "en" ? "Ward,Office" : "Station,Büro"), `Stufen aus den Entscheidungen: ${abgeleitet.stufen}`);
+      assert(abgeleitet.felder === (lang === "en" ? "name,day,partner" : "name,tag,partner"), `Felder aus den Papieren: ${abgeleitet.felder}`);
+      assert(abgeleitet.aenderbar === (lang === "en" ? "day" : "tag"), `änderbar aus den Papieren: ${abgeleitet.aenderbar}`);
+      assert(abgeleitet.arten === "ergebnis_bestaetigen", "wird gelesen, bestätigt ein Mensch das Ergebnis");
+      assert(!("ausloeser" in abgeleitet), "Auslöser hand ist die Vorgabe und wird nicht geschrieben");
+      assert(abgeleitet.beschreibung.endsWith("."), "die Beschreibung ist nicht der erste Satz des Ziels");
+
+      // Ein Blatt mit Lücken: ein Papier, das fehlt, und eine Entscheidung nach einem Schritt, den es nicht gibt.
+      const luecke = join(work, "luecke.md");
+      writeFileSync(luecke, BLATT[lang].text(true));
+      run = tool("process.mjs", ["--check", luecke], "", env);
+      assert(run.status !== 0, "ein Blatt mit Lücken besteht");
+      assert(/Staff list|Personalliste/.test(run.stdout), `das fehlende Papier wird nicht genannt: ${run.stdout}`);
+      assert(/step "9"|Schritt „9“/.test(run.stdout), `die Entscheidung nach einem Schritt, den es nicht gibt, fällt nicht auf: ${run.stdout}`);
+      run = tool("process.mjs", ["--derive", luecke], "", env);
+      assert(run.status !== 0, "aus einem Blatt mit Lücken wird abgeleitet");
+
+      // /app: ohne vollständiges Blatt entsteht keine halbe App, mit ihm eine, die --check-fähig angelegt ist.
+      run = tool("app.mjs", ["--app", appName, "--new", "--prozess", luecke], "", env);
+      assert(run.status !== 0 && !existsSync(appDir), "eine App entsteht aus einem Blatt mit Lücken");
+      run = tool("app.mjs", ["--app", appName, "--prozess", gut], "", env);
+      assert(run.status !== 0, "--prozess ohne --new wird still hingenommen");
+      run = tool("app.mjs", ["--app", appName, "--new", "--prozess", gut], "", env);
+      assert(run.status === 0, `--new --prozess scheitert: ${run.stdout}${run.stderr}`);
+      const manifest = JSON.parse(readFileSync(join(appDir, "app.json"), "utf8"));
+      assert(/"(swap|Tausch)"/.test(manifest.beschreibung), `ein Anführungszeichen in der Beschreibung kommt nicht heil in app.json an: ${manifest.beschreibung}`);
+      assert(manifest.name === (lang === "en" ? "Shift swap" : "Diensttausch"), `der Name der App kommt nicht aus dem Blatt: ${manifest.name}`);
+      const flow = readFileSync(join(appDir, "flows", "freigabe.md"), "utf8");
+      assert(/stufen:/.test(flow) && /ergebnis_bestaetigen/.test(flow), "die Stufen und die Art stehen nicht im Flow");
+      assert(/aenderbar: \[(day|tag)\]/.test(flow), "die änderbaren Felder stehen nicht im Flow");
+      const plaene = readdirSync(join(appDir, "plans", "offen"));
+      assert(plaene.length === 1, `statt eines Plans liegen ${plaene.length} da`);
+      const plan = readFileSync(join(appDir, "plans", "offen", plaene[0]), "utf8");
+      for (const stueck of lang === "en"
+        ? ["swap slip", "Ward lead", "Who stands in for the ward lead", "Illness on the swapped day", "staffing in the roster"]
+        : ["Tauschzettel", "Stationsleitung", "Wer vertritt die Stationsleitung", "Krankheit am getauschten Tag", "Besetzung im Plan"]) {
+        assert(plan.includes(stueck), `im Plan fehlt, was im Blatt steht: ${stueck}`);
+      }
+      // Jede Stufe wird in jedem Lauf gefragt: der Plan sagt, dass eine bedingte Entscheidung ins Interview gehört.
+      assert(/in every run|in jedem Lauf/.test(plan), "der Plan sagt nicht, dass jede Stufe in jedem Lauf gefragt wird");
+      assert(/only if: only when the swap crosses a night shift|nur wenn: nur wenn der Tausch eine Nachtschicht berührt/.test(plan), "eine Entscheidung nur in manchen Fällen steht nicht mit ihrer Bedingung im Plan");
+      assert(/comes only if|kommt nur, wenn/.test(plan), "der Flow-Entwurf sagt nicht, dass eine Stufe nur manchmal kommt");
+      run = tool("process.mjs", ["--check", gut], "", env);
+      assert(/only in some cases|nur in manchen Fällen/.test(run.stdout), "die bedingte Entscheidung bekommt keinen Hinweis");
+      // Was das Blatt nicht sagen kann, bleibt dem Gespräch: die Tabelle der Bildschirme ist leer geblieben.
+      const bildschirme = plan.split(/^## /m).find((teil) => /^(Screens|Bildschirme)/.test(teil)) ?? "";
+      assert(bildschirme && bildschirme.split("\n").filter((z) => /^\|/.test(z)).length === 2, "der Plan hat Bildschirme erfunden, die das Blatt nicht kennt");
+      return `Blatt geprüft, Lücken benannt, App und Plan daraus gebaut (${lang})`;
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+      rmSync(appDir, { recursive: true, force: true });
+      rmSync(join(CUSTOMERS_TMP, "probe-pflege"), { recursive: true, force: true });
+      if (merker === null) rmSync(stateFile, { force: true });
+      else writeFileSync(stateFile, merker);
+    }
+  });
+}
 
 console.log(
   `\n${results.length - failures} von ${results.length} Prüfungen bestanden.` +

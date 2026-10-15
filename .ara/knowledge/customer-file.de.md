@@ -14,6 +14,8 @@ customers/mueller-metallbau/
 │       ├── handover.md            Abnahmedokument (am Ende von /device)
 │       └── reports/
 │           └── JJJJ-MM-TT-wartung.md   Wartungsberichte (bei /maintain)
+├── processes/
+│   └── <kennung>.md               Wie seine Arbeit läuft, ein Prozessblatt (bei /process)
 ├── documents/
 │   ├── JJJJ-MM-TT-angebot.md      Das Papier: Angebot, Anlagen, Protokolle
 │   └── JJJJ-MM-TT-rechnung-JJJJ-NNNN.md   Rechnungen, Markdown und PDF nebeneinander

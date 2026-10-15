@@ -33,6 +33,7 @@ AUFTRAG.md
 .agents/skills/invoice/
 .agents/skills/maintain/
 .agents/skills/offer/
+.agents/skills/process/
 .agents/skills/root/
 
 # Zwischenspeicher des Produktstands und der Merker fuer zuletzt genutzte Akten.

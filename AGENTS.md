@@ -81,12 +81,14 @@ in the kit, values are not. Details: `.ara/knowledge/live-knowledge.md`
 | `/app [<app>]` | Plan an app, build it, roll it into staging, switch it live. Also when somebody just says "build an app" | `.ara/knowledge/app.md` |
 | `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict. Install Arasul, unlock it with the licence code, fetch the kit key | `.ara/knowledge/device.md` |
 | `/maintain [<device>]` | Look after a running device: status line, what is due, self-healing first when something of Arasul does not run | `.ara/knowledge/maintenance-flow.md` |
+| `/process [<process>]` | Ask how the work runs today, who does what, when, with which paper, and write the process sheet that `/app` builds from | `.ara/knowledge/process.md` |
 | `/root [<path>]` | Lay out the root folder of a whole house outside of the kit, check it, put it onto the device | `.ara/knowledge/root.md` |
 
 **Every command says at the start which knowledge files it loads.** Read exactly those, not the
 whole folder. Everything else happens in ordinary language: "show me all devices" needs no
 command. **Somebody wants an app** (a form, an intake, an approval, an overview): that is `/app`,
-also without the slash; the skill `build-app` leads there. There is no command for buying Arasul:
+also without the slash; the skill `build-app` leads there. Where the work behind it is not yet written down, `/process`
+comes first: the interview about how it runs today, whose sheet `/app` builds from and does not ask again. There is no command for buying Arasul:
 `/device` asks a supported device without a token for one, `.ara/knowledge/device.md`, "The
 licence".
 
@@ -97,7 +99,8 @@ when building an app:
 
 | Tool | For what |
 |---|---|
-| `app.mjs` | An app: scaffold, plan, build, and with `--device` contract, check, staging, live, back |
+| `process.mjs` | A process sheet: create it, check it, read off what `/app` takes from it |
+| `app.mjs` | An app: scaffold, plan, build, and with `--device` contract, check, staging, live, back (with `--new --prozess <sheet>` out of a process sheet) |
 | `device.mjs` | Device file, SSH, hardware, verdict, installation, licence; the kit key also without SSH, over an administrator account (`--deploy-key --via https`) |
 | `remote.mjs` | Run a command on a device. **Always address devices through it**, never with your own `ssh`: it takes the connection from the device file. `device.mjs` is the one exception |
 | `secrets.mjs` | Store secrets and look up what is set, never showing a value |
@@ -117,10 +120,10 @@ yourself: `.ara/knowledge/browser.md`.
   write down the evidence.
 - **Every question runs through the interview tool**, a yes or no and a confirmation before a
   change too, with a free answer that holds even against your choice: the persona, "How you ask".
-- **Every command asks to full depth.** Each of the nine commands has a list "What must be clear"
+- **Every command asks to full depth.** Each of the ten commands has a list "What must be clear"
   in its knowledge file (in `app.md` it is called "The interview checklist"; the others are
   `init.md`, `customer-file.md`, `pricing.md`, `paperwork.md`, `invoicing.md`, `device.md`,
-  `maintenance-flow.md`, `root.md`). You ask until every point is answered, readable from a file
+  `maintenance-flow.md`, `root.md`, `process.md`). You ask until every point is answered, readable from a file
   or the device, or open. A round that is over does not end the interview, the list does.
   - **Probe a vague answer** with finished drafts as options ("Request with four fields: from, to,
     kind, substitute"), derived from the app pattern or from what the house has. Never a blank

@@ -9,6 +9,7 @@ Lies `.ara/knowledge/app.de.md` und arbeite danach. Wissen, das dieser Befehl l�
 wenn ihr Moment kommt.
 
 - `.ara/knowledge/app.de.md` immer, der Kern.
+- `.ara/knowledge/process.de.md`, sobald die Arbeit hinter der App noch nicht aufgeschrieben ist oder ein Prozessblatt existiert.
 - `.ara/knowledge/app-patterns.de.md`, sobald eine Idee entsteht, und das Blatt des Musters, das
   der Plan nimmt, der es nennt.
 - `.ara/knowledge/app-professional.de.md` vor dem Plan einer Fach-App: Mandanten oder Akten, Daten,
@@ -27,6 +28,8 @@ Sprache, Zweig, Detailtiefe, Sicherheitsstufe, womit das Haus arbeitet.
 
 **Das Argument.** `<app>` ist die App unter `apps/<app>/`. Kein Argument: erst der Merker `.ara/state.json`, dann
 die vorhandenen Ordner. Genau einer, nimm ihn, sonst frag über das Interview-Werkzeug.
+
+**Zuerst ein Prozessblatt:** `node .ara/tools/process.mjs --list`. Was es enthält, fragst du nicht noch einmal, `.ara/knowledge/app.de.md`, „Zuerst kommt ein Prozessblatt“.
 
 **Zuerst, immer:**
 
