@@ -14,6 +14,8 @@ customers/mueller-metallbau/
 │       ├── handover.md            Handover document (at the end of /device)
 │       └── reports/
 │           └── YYYY-MM-DD-wartung.md   Maintenance reports (at /maintain)
+├── processes/
+│   └── <id>.md                    How their work runs, a process sheet (at /process)
 ├── documents/
 │   ├── YYYY-MM-DD-angebot.md      The paperwork: offer, annexes, records
 │   └── YYYY-MM-DD-rechnung-YYYY-NNNN.md   Invoices, Markdown and PDF side by side

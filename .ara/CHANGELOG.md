@@ -13,6 +13,13 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.84.0 (2026-10-15)
+
+Contract: up to 14
+
+- **A new command, `/process`, asks how the work runs before an app comes of it.** It interviews along the last real case: who does what, when, with which paper, where somebody says yes or no, what goes wrong, who sees what. The result is a process sheet, `customers/<customer>/processes/<id>.md`, or `business/processes/<id>.md` in a company. `node .ara/tools/process.mjs` creates it from a scaffold (`--new`), says what is missing and where (`--check`), lists the sheets (`--list`) and shows what an app takes from it (`--derive`). The sheet exists in English and German.
+- **`/app` builds from the sheet and does not ask again what stands in it.** `node .ara/tools/app.mjs --app <name> --new --prozess <id>` takes title, description, approval stages, the fields the device reads, which of them may be corrected, the kind of the flow and the trigger from the sheet, and writes the plan prefilled, with a draft of the flow and every open point and exception as an assumption. A sheet with gaps stops it and names them. The self-test checks the sheet, the derivation and the prefilled plan in both languages.
+
 ## 0.83.0 (2026-10-14)
 
 Contract: up to 14

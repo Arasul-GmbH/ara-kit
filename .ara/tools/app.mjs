@@ -7,6 +7,7 @@
  *
  *   node .ara/tools/app.mjs --app beispiel                    situation and next step
  *   node .ara/tools/app.mjs --app beispiel --new              file from the scaffold
+ *   node .ara/tools/app.mjs --app beispiel --new --prozess <sheet>   the same, out of a process sheet (see process.mjs), with the plan prefilled
  *   node .ara/tools/app.mjs --app beispiel --plan "<title>"   new plan, open
  *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <file>
  *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <file>
@@ -54,6 +55,7 @@
  *
  *   node .ara/tools/app.mjs --app beispiel                    Lage und nächster Schritt
  *   node .ara/tools/app.mjs --app beispiel --new              Akte aus der Vorlage
+ *   node .ara/tools/app.mjs --app beispiel --new --prozess <blatt>   dasselbe aus einem Prozessblatt (siehe process.mjs), mit vorbefülltem Plan
  *   node .ara/tools/app.mjs --app beispiel --plan "<titel>"   neuer Plan, offen
  *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <datei>
  *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <datei>
@@ -167,6 +169,7 @@ import { hasSecret } from "./lib/secrets.mjs";
 import { cleanLines, logsPath, logsWay } from "./lib/applogs.mjs";
 import { contractRows, fillPath, listOf, routeRows, shareWays } from "./lib/adminways.mjs";
 import { addPatterns, wirablePatterns, wiringLines } from "./lib/wiring.mjs";
+import { checkSheet, deriveApp, findSheet, parseSheet, planSections, putSection } from "./lib/process.mjs";
 
 helpOnly(import.meta.url);
 const arg = parseArgs();
@@ -190,6 +193,7 @@ if (process.argv.length <= 2) {
         "On the computer:",
         "  --app <name>             which app. Alone: situation and next step",
         "  --new                    create the file from the scaffold",
+        "  --prozess <sheet>        with --new: take title, stages, fields and trigger from a process sheet (id or path, --customer <customer> for a customer's) and write the plan from it",
         '  --titel "<title>"        display name of the app, otherwise the id',
         '  --beschreibung "<line>"  what the app is for',
         "  --symbol <name>          with --new: the picture of the app, an icon name from lucide.dev (file-text); without it the kit picks one",
@@ -239,6 +243,7 @@ if (process.argv.length <= 2) {
         "Am Rechner:",
         "  --app <name>             welche App. Allein: Lage und nächster Schritt",
         "  --new                    Akte aus der Vorlage anlegen",
+        "  --prozess <blatt>        mit --new: Titel, Stufen, Felder und Auslöser aus einem Prozessblatt nehmen (Kennung oder Pfad, --customer <kunde> bei einem Kundenblatt) und den Plan daraus schreiben",
         '  --titel "<titel>"        Anzeigename der App, sonst die Kennung',
         '  --beschreibung "<satz>"  wozu die App da ist',
         "  --symbol <name>          mit --new: das Bild der App, ein Bildname von lucide.dev (file-text); ohne wählt das Kit eines",
@@ -296,6 +301,7 @@ for (const [name, value] of [
   ["plan-aktiv", arg["plan-aktiv"]],
   ["plan-erledigt", arg["plan-erledigt"]],
   ["titel", arg.titel],
+  ["prozess", arg.prozess],
   ["zeilen", arg.zeilen],
 ]) {
   if (value === true) {
@@ -306,6 +312,10 @@ for (const [name, value] of [
       )
     );
   }
+}
+
+if (arg.prozess !== undefined && !arg.new) {
+  fail(t("--prozess belongs to --new: --app <name> --new --prozess <sheet>.", "--prozess gehört zu --new: --app <name> --new --prozess <blatt>."));
 }
 
 if (arg.connections !== undefined) {
@@ -372,6 +382,31 @@ function copyTemplate(from, to, values) {
   }
 }
 
+/** Das Blatt zu `--prozess`: gefunden, vollständig, und was sich daraus ableitet. */
+function readSheet(ref) {
+  const customer = typeof arg.customer === "string" ? arg.customer : null;
+  const path = findSheet(String(ref), customer);
+  if (!path) {
+    fail(
+      t(
+        `No process sheet "${ref}"${customer ? ` for ${customer}` : ""}. Look: node .ara/tools/process.mjs --list${customer ? ` --customer ${customer}` : ""}`,
+        `Kein Prozessblatt „${ref}“${customer ? ` bei ${customer}` : ""}. Nachsehen: node .ara/tools/process.mjs --list${customer ? ` --customer ${customer}` : ""}`
+      )
+    );
+  }
+  const sheet = parseSheet(path);
+  const gaps = checkSheet(sheet).filter((f) => f.level === "error");
+  if (gaps.length) {
+    fail(
+      t(
+        `The process sheet ${relative(ROOT, path)} has ${gaps.length} gaps, so no app is derived from it yet:\n- ${gaps.map((g) => g.message).join("\n- ")}\nFinish it with /process, then --new --prozess again.`,
+        `Das Prozessblatt ${relative(ROOT, path)} hat ${gaps.length} Lücken, daraus wird noch keine App abgeleitet:\n- ${gaps.map((g) => g.message).join("\n- ")}\nSchließ sie mit /process, dann noch einmal --new --prozess.`
+      )
+    );
+  }
+  return { sheet, path, derived: deriveApp(sheet) };
+}
+
 function createApp(name) {
   if (!validName(name)) {
     fail(
@@ -384,6 +419,9 @@ function createApp(name) {
     );
   }
   const dir = appPath(name);
+  // Ein Prozessblatt gibt die Angaben, die der Mensch nicht selbst nennt: was er sagt, gilt.
+  const sheet = arg.prozess === undefined ? null : readSheet(arg.prozess);
+  if (sheet) for (const [key, value] of Object.entries(sheet.derived)) if (arg[key] === undefined) arg[key] = value;
   if (existsSync(dir)) {
     fail(
       t(
@@ -579,7 +617,7 @@ function createApp(name) {
   );
 }
 
-function createPlan(app, titel) {
+function createPlan(app, titel, sections = []) {
   if (!app.exists) {
     fail(t(`The app ${app.name} does not exist yet. First --new.`, `Die App ${app.name} gibt es noch nicht. Zuerst --new.`));
   }
@@ -595,10 +633,9 @@ function createPlan(app, titel) {
   const dir = ensureDir(join(app.dir, "plans", "offen"));
   const path = join(dir, file);
   if (existsSync(path)) fail(t(`${relative(ROOT, path)} already exists.`, `${relative(ROOT, path)} gibt es schon.`));
-  writeFileSync(
-    path,
-    fill(readFileSync(PLAN_TEMPLATE, "utf8"), { id: app.name, titel, datum: today() })
-  );
+  let text = fill(readFileSync(PLAN_TEMPLATE, "utf8"), { id: app.name, titel, datum: today() });
+  for (const section of sections) text = putSection(text, t(section.en, section.de), section.body);
+  writeFileSync(path, text);
   writeState({ app: app.name });
   console.log(
     [
@@ -1007,6 +1044,11 @@ if (!wantsDevice) {
   }
   if (arg.new) {
     createApp(name);
+    if (arg.prozess !== undefined) {
+      console.log("");
+      const { sheet, path } = readSheet(arg.prozess);
+      createPlan(readApp(name), sheet.title, planSections(sheet, relative(ROOT, path)));
+    }
     if (arg["add-pattern"] === undefined) process.exit(0);
     console.log("");
   }

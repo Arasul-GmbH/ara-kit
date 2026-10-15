@@ -9,6 +9,7 @@ Read `.ara/knowledge/app.md` and work along it. Knowledge this command loads: ea
 its moment comes.
 
 - `.ara/knowledge/app.md` always, the core.
+- `.ara/knowledge/process.md` as soon as the work behind the app is not yet written down, or a process sheet exists.
 - `.ara/knowledge/app-patterns.md` as soon as an idea is being formed, and the sheet of the pattern
   the plan takes, which it names.
 - `.ara/knowledge/app-professional.md` before the plan of a professional app: clients or files,
@@ -27,6 +28,8 @@ Security levels and product values: `AGENTS.md`, "How you work". Beforehand you 
 
 **The argument.** `<app>` is the app under `apps/<app>/`. No argument: first the marker `.ara/state.json`,
 then the existing folders. Exactly one, take it, otherwise ask through the interview tool.
+
+**A process sheet first:** `node .ara/tools/process.mjs --list`. What it holds you do not ask again, `.ara/knowledge/app.md`, "A process sheet comes first".
 
 **First, always:**
 

@@ -19,6 +19,21 @@ Eine App läuft im Kreis, und `/app` steht an jeder Station:
 **Wo ihr steht, sagt das Werkzeug:** `node .ara/tools/app.mjs --app <name>` nennt die nächsten
 Schritte; was am Gerät steht, fragt `--status` dort.
 
+## Zuerst kommt ein Prozessblatt
+
+Sieh nach, ob die Arbeit ein Prozessblatt hat, die Seite, die `/process` darüber schreibt, wie sie
+heute läuft (`.ara/knowledge/process.de.md`): `node .ara/tools/process.mjs --list [--customer <kunde>]`.
+
+- **Vollständig:** leg die App an mit `node .ara/tools/app.mjs --app <name> --new --prozess
+  <kennung> [--customer <kunde>]`. Titel, Stufen, Felder, Auslöser und ein vorbefüllter Plan kommen
+  aus dem Blatt, und **was darin steht, fragst du nicht noch einmal**: den Arbeitsschritt, wer es
+  benutzt, die Daten, die Schritte, wo ein Mensch entscheidet, wer was sehen darf (als Entwurf für
+  die Rollen), was nicht dazugehört, die Ausnahmen (Annahmen im Plan). Frag, was es nicht sagen
+  kann: Bildschirme, Formulare, Buttons, die drei Fragen unten, das Bild, was bleiben muss, wann es
+  fertig ist. Eine Antwort, die dem Blatt widerspricht, gilt, und das Blatt bekommt die Berichtigung.
+- **Mit Lücken** (`process.mjs --check <kennung>`): zurück zu `/process`, nie darauf bauen.
+- **Keines, und niemand hat gesagt, wie die Arbeit läuft:** biete zuerst `/process` an, in einem Satz.
+
 ## Die Prüfliste des Interviews
 
 Frag gebündelt, bis jeder Punkt beantwortet ist oder als **Annahme** offen im Plan steht. Womit das

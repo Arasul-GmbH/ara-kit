@@ -15,6 +15,13 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.84.0 (2026-10-15)
+
+Kontrakt: bis 14
+
+- **Ein neuer Befehl, `/process`, fragt, wie die Arbeit läuft, bevor daraus eine App wird.** Er interviewt am letzten wirklichen Fall entlang: wer tut was, wann, mit welchem Papier, wo jemand Ja oder Nein sagt, was schiefgeht, wer was sieht. Das Ergebnis ist ein Prozessblatt, `customers/<kunde>/processes/<kennung>.md`, im Unternehmen `business/processes/<kennung>.md`. `node .ara/tools/process.mjs` legt es aus einem Gerüst an (`--new`), sagt, was fehlt und wo (`--check`), listet die Blätter (`--list`) und zeigt, was eine App daraus nimmt (`--derive`). Das Blatt gibt es englisch und deutsch.
+- **`/app` baut aus dem Blatt und fragt nicht noch einmal, was darin steht.** `node .ara/tools/app.mjs --app <name> --new --prozess <kennung>` nimmt Titel, Beschreibung, Freigabestufen, die Felder, die das Gerät liest, welche davon änderbar sind, die Art des Flows und den Auslöser aus dem Blatt und schreibt den Plan vorbefüllt, mit einem Entwurf des Flows und jedem offenen Punkt und jeder Ausnahme als Annahme. Ein Blatt mit Lücken hält es an und nennt sie. Der Selbsttest prüft das Blatt, die Ableitung und den vorbefüllten Plan in beiden Sprachen.
+
 ## 0.83.0 (2026-10-14)
 
 Kontrakt: bis 14
