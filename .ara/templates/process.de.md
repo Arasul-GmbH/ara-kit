@@ -9,7 +9,7 @@ created: {{date}}
 
 > Ein Prozessblatt sagt, wie die Arbeit heute läuft, in den Worten derer, die sie tun: wer tut
 > was, wann, mit welchem Papier. Es ist nicht der Wunsch nach einer App. `/app` baut daraus und
-> fragt nicht noch einmal, was hier steht. Ersetze jedes `<...>` durch das, was das Haus wirklich
+> fragt nicht noch einmal, was hier steht. Der Titel ist ein Kurzname, er wird der Name der App. Ersetze jedes `<...>` durch das, was das Haus wirklich
 > tut. Was noch niemand weiß, steht unter Offen, nicht als Vermutung im Text.
 
 ## Ziel

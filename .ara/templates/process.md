@@ -9,7 +9,7 @@ created: {{date}}
 
 > A process sheet says how the work runs today, in the words of the people who do it: who does
 > what, when, with which paper. It is not the wish for an app. `/app` builds from it and does not
-> ask again what stands here. Replace every `<...>` with what the house really does. What nobody
+> ask again what stands here. The title is a short name, it becomes the name of the app. Replace every `<...>` with what the house really does. What nobody
 > knows yet goes under Open, not into a guess.
 
 ## Aim
