@@ -47,7 +47,7 @@ function keyCommand(device) {
  * statt bei jedem Aufruf mitgetippt zu werden. `base` sticht beides, für den
  * einen Versuch, der nicht in die Akte gehört.
  */
-export function connect(device, { base: override = null, insecure: force = false } = {}) {
+export function connect(device, { base: override = null, insecure: force = false, keyField = "api_key_ref", keyHint = null } = {}) {
   const fields = device.fields || {};
   const place = device.customer ? `${device.customer}/${device.device}` : device.device;
 
@@ -68,13 +68,17 @@ export function connect(device, { base: override = null, insecure: force = false
 
   const insecure = Boolean(force) || (fields.tls || "").toLowerCase() === "selfsigned";
 
-  const keyRef = fields.api_key_ref;
+  // Welcher Schlüssel: der zum Ausrollen (`api_key_ref`, app:deploy) oder ein eigener für einen
+  // anderen Bereich, etwa `feedback_key_ref` für die Rückmeldungen. `keyHint` ist dann der Aufruf,
+  // mit dem er entsteht.
+  const keyRef = fields[keyField];
+  const makeKey = keyHint || keyCommand(device);
   if (!keyRef) {
     throw new Error(
       t(
         `No kit key is stored for ${place}.\nCreate one on the device and put it into the store:\n  `,
         `Für ${place} ist kein Kit-Schlüssel hinterlegt.\nAm Gerät anlegen und in die Ablage legen:\n  `
-      ) + keyCommand(device)
+      ) + makeKey
     );
   }
   const key = getSecret(keyRef);
@@ -85,7 +89,7 @@ export function connect(device, { base: override = null, insecure: force = false
           "Either it was never set or the store was changed. Create a new one:\n  ",
         `Die Akte nennt den Eintrag ${keyRef}, in der Geheimnis-Ablage steht er nicht.\n` +
           "Entweder wurde er nie gesetzt oder die Ablage wurde gewechselt. Neu anlegen:\n  "
-      ) + keyCommand(device)
+      ) + makeKey
     );
   }
 
@@ -94,6 +98,7 @@ export function connect(device, { base: override = null, insecure: force = false
     base,
     insecure,
     keyRef,
+    makeKey,
     /** Ein Aufruf an dieses Gerät. Der Schlüssel steht nur in der Kopfzeile. */
     ask: (options) => call({ base, key, insecure, ...options }),
   };
@@ -117,7 +122,7 @@ export async function withContract(link, device) {
             `Look with: ${keysCommand(device)}\nOtherwise create a new one:\n  `,
           `${link.place} weist den Kit-Schlüssel ab (401). Wurde er am Gerät widerrufen?\n` +
             `Nachsehen mit: ${keysCommand(device)}\nSonst einen neuen anlegen:\n  `
-        ) + keyCommand(device)
+        ) + (link.makeKey || keyCommand(device))
       );
     }
     if (answer.status === 404) {

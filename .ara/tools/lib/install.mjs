@@ -760,9 +760,12 @@ export function findKeyScript(sshArgs, transport) {
     // `arasul-*` ist der Ordner, in den das Kit selbst das Artefakt legt.
     `for d in "$HOME/arasul" "$HOME"/arasul-* /opt/arasul /arasul; do ` +
       `[ -d "$d" ] && find "$d" -maxdepth 5 -name ${KEY_SCRIPT} -type f 2>/dev/null | head -1; ` +
-      `done | head -1`
+      `done`
   );
-  const script = (find.stdout || "").trim().split("\n")[0];
+  // Die höchste Fassung gewinnt, wie bei lizenz-geraet.sh. Bis 0.85.0 galt der erste Fund, und am
+  // 20.11.2026 war das am Orin der Ordner 0.8.16, dessen Skript den Bereich feedback:agent noch
+  // nicht kannte, während 0.8.17 lief.
+  const script = newestScript((find.stdout || "").trim().split("\n").filter(Boolean));
   if (script) return { ok: true, script };
   return {
     ok: false,
@@ -863,11 +866,17 @@ export function revokeKey(sshArgs, transport, prefix) {
  * Die Ausgabe wird nicht ausgegeben und nicht protokolliert, sie enthält den
  * Schlüssel im Klartext.
  */
-export function createKey(sshArgs, transport, name) {
+export function createKey(sshArgs, transport, name, scope = null) {
   const found = findKeyScript(sshArgs, transport);
   if (!found.ok) return found;
   const script = found.script;
-  const run = runRemote(sshArgs, transport, `bash ${JSON.stringify(script)} anlegen ${JSON.stringify(name)}`);
+  // Ohne Bereich legt das Skript einen Schlüssel für app:deploy an. Ein anderer Bereich (etwa
+  // feedback:agent für die Rückmeldungen) steht als drittes Argument, wie das Skript es nimmt.
+  const run = runRemote(
+    sshArgs,
+    transport,
+    `bash ${JSON.stringify(script)} anlegen ${JSON.stringify(name)}${scope ? ` ${JSON.stringify(scope)}` : ""}`
+  );
   if (run.status !== 0) {
     return {
       ok: false,
@@ -982,15 +991,11 @@ function newer(a, b) {
  * und 0.8.0 nebeneinander. Genommen wird die höchste Fassung, die das Skript
  * führt: eine ältere Kopie könnte einen Vertrag sprechen, den es nicht mehr gibt.
  */
-export function findLicenceScript(sshArgs, transport) {
-  const find = runRemote(
-    sshArgs,
-    transport,
-    `for d in "$HOME/arasul" "$HOME"/arasul-* /opt/arasul /arasul; do ` +
-      `[ -d "$d" ] && find "$d" -maxdepth 4 -name ${LICENCE_SCRIPT} -type f 2>/dev/null | head -1; ` +
-      `done`
-  );
-  const found = (find.stdout || "").trim().split("\n").filter(Boolean);
+/**
+ * Aus mehreren Funden eines Skripts der Plattform den aus der höchsten Fassung. Ein Pfad ohne
+ * Fassung im Ordnernamen zählt nur, wenn keiner eine trägt.
+ */
+export function newestScript(found) {
   let script = found[0] || "";
   let best = null;
   for (const path of found) {
@@ -1000,6 +1005,18 @@ export function findLicenceScript(sshArgs, transport) {
       script = path;
     }
   }
+  return script;
+}
+
+export function findLicenceScript(sshArgs, transport) {
+  const find = runRemote(
+    sshArgs,
+    transport,
+    `for d in "$HOME/arasul" "$HOME"/arasul-* /opt/arasul /arasul; do ` +
+      `[ -d "$d" ] && find "$d" -maxdepth 4 -name ${LICENCE_SCRIPT} -type f 2>/dev/null | head -1; ` +
+      `done`
+  );
+  const script = newestScript((find.stdout || "").trim().split("\n").filter(Boolean));
   if (script) return { ok: true, script };
   return {
     ok: false,
