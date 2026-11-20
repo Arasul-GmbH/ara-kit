@@ -111,6 +111,7 @@ function passwordLike(name) {
  */
 const REF_FIELDS = [
   { field: "api_key_ref", info: t("kit key for the deploy (app:deploy)", "Kit-Schlüssel für den Deploy (app:deploy)") },
+  { field: "feedback_key_ref", info: t("key for the feedback of the apps", "Schlüssel für die Rückmeldungen der Apps") },
   {
     field: "start_password_ref",
     info: t(

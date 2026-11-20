@@ -86,8 +86,10 @@ export async function listKeysApi(ask, stored = null) {
  * Einen Kit-Schlüssel anlegen. Zurück kommt der Klartext genau einmal, für die Ablage, und
  * Präfix und Nummer für alles andere.
  */
-export async function createKeyApi(ask, { name, description }) {
-  const answer = await ask(...KEY_WAYS.create, { json: { name, description, allowed_endpoints: [KIT_SCOPE] } });
+export async function createKeyApi(ask, { name, description, scope = KIT_SCOPE }) {
+  // Ein anderer Bereich als app:deploy nur, wenn der Aufrufer ihn nennt: `/feedback` legt so einen
+  // eigenen Schlüssel für die Rückmeldungen an, den Bereich aus dem Kontrakt des Geräts.
+  const answer = await ask(...KEY_WAYS.create, { json: { name, description, allowed_endpoints: [scope] } });
   const key = answer?.body?.api_key ?? answer?.data?.api_key ?? null;
   if (!answer.ok || typeof key !== "string" || !key) {
     return {

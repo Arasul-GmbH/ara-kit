@@ -84,6 +84,7 @@ in the kit, values are not. Details: `.ara/knowledge/live-knowledge.md`
 | `/app [<app>]` | Plan an app, build it, roll it into staging, switch it live. Also when somebody just says "build an app" | `.ara/knowledge/app.md` |
 | `/device [<device>]` | Create and check a device: file, SSH, hardware, verdict. Install Arasul, unlock it with the licence code, fetch the kit key | `.ara/knowledge/device.md` |
 | `/maintain [<device>]` | Look after a running device: status line, what is due, self-healing first when something of Arasul does not run | `.ara/knowledge/maintenance-flow.md` |
+| `/feedback [<app>]` | Fetch what staff reported on an app, order it, spot duplicates, propose an order, and once released implement it in the test version. Never switches live | `.ara/knowledge/feedback.md` |
 | `/process [<process>]` | Ask how the work runs today, who does what, when, with which paper, and write the process sheet that `/app` builds from | `.ara/knowledge/process.md` |
 | `/root [<path>]` | Lay out the root folder of a whole house outside of the kit, check it, put it onto the device | `.ara/knowledge/root.md` |
 
@@ -105,6 +106,7 @@ when building an app:
 | `process.mjs` | A process sheet: create it, check it, read off what `/app` takes from it |
 | `app.mjs` | An app: scaffold, plan, build, and with `--device` contract, check, staging, live, back (with `--new --prozess <sheet>` out of a process sheet) |
 | `device.mjs` | Device file, SSH, hardware, verdict, installation, licence; the kit key also without SSH, over an administrator account (`--deploy-key --via https`) |
+| `feedback.mjs` | The feedback on an app: its own key, fetch and order, a screenshot only where allowed, set the state on the device |
 | `remote.mjs` | Run a command on a device. **Always address devices through it**, never with your own `ssh`: it takes the connection from the device file. `device.mjs` is the one exception |
 | `secrets.mjs` | Store secrets and look up what is set, never showing a value |
 | `mirror.mjs`, `marken.mjs` | The installation artifact and its manuals; the guard of the design system's copies |
@@ -123,10 +125,10 @@ yourself: `.ara/knowledge/browser.md`.
   write down the evidence.
 - **Every question runs through the interview tool**, a yes or no and a confirmation before a
   change too, with a free answer that holds even against your choice: the persona, "How you ask".
-- **Every command asks to full depth.** Each of the ten commands has a list "What must be clear"
+- **Every command asks to full depth.** Each of the eleven commands has a list "What must be clear"
   in its knowledge file (in `app.md` it is called "The interview checklist"; the others are
   `init.md`, `customer-file.md`, `pricing.md`, `paperwork.md`, `invoicing.md`, `device.md`,
-  `maintenance-flow.md`, `root.md`, `process.md`). You ask until every point is answered, readable from a file
+  `maintenance-flow.md`, `root.md`, `process.md`, `feedback.md`). You ask until every point is answered, readable from a file
   or the device, or open. A round that is over does not end the interview, the list does.
   - **Probe a vague answer** with finished drafts as options ("Request with four fields: from, to,
     kind, substitute"), derived from the app pattern or from what the house has. Never a blank

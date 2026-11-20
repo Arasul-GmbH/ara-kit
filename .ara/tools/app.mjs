@@ -2234,6 +2234,9 @@ if (arg.deploy !== undefined) {
         version: sent.data?.version ?? manifest.version ?? null,
         stand: sent.data?.stand ?? "test",
         time: now(),
+        // Auf die Sekunde und mit Zone: `/feedback` vergleicht damit die Zeit, zu der eine
+        // Rückmeldung angenommen wurde, und die nennt das Gerät in UTC.
+        at: new Date().toISOString(),
       },
     });
 

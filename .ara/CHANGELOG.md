@@ -13,6 +13,16 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.86.0 (2026-11-20)
+
+Contract: up to 14
+
+- **A new command, `/feedback`, brings what staff reported on an app into the session.** Staff report through the icon above every app on the device; the command fetches the open items of one app (`node .ara/tools/feedback.mjs --device <device> --app <app>`), groups items that mean the same, sorts bugs before wishes and what several reported before single ones, and proposes an order. Per topic the human decides: implement, reject with a reason, or later. What is released goes only into the test version, through plan, build with tests and rollout, as with `/app`; the command never switches live. Procedure: `.ara/knowledge/feedback.md`. The same in Claude Code and Codex (`$feedback`).
+- **The state of an item is set on the device along the way.** `--set <numbers> --to angenommen|abgelehnt|umgesetzt`: rejected only with a reason, implemented only after this kit rolled the app into staging later than the item was accepted. Every state set stands with its time in the device file, without names or texts of staff.
+- **Feedback is read with a key of its own.** `feedback.mjs --key` creates it over SSH with the device's script, or with `--via https` over an administrator account; its scope comes from the device's contract (section `rueckmeldungen`), and it lands in the secret store under `feedback_key_ref`. The deploy key reads no feedback.
+- **Screenshots only where the administrator allowed them per app.** If the switch is off, the command works with text, page and app, says so once and asks the device for no image. If it is on, `--image <nr>` saves the image under `apps/<app>/.rueckmeldungen/`, which goes into no package.
+- **The device's key script comes from its newest version.** With two platform folders side by side the kit took the first one found; on the Orin that was 0.8.16, whose script does not know the feedback scope.
+
 ## 0.85.0 (2026-11-20)
 
 Contract: up to 14

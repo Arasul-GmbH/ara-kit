@@ -94,6 +94,9 @@ export async function call({
   // Leerlauf, nicht Gesamtdauer. Eine Minute reicht für jede Auskunft; ein
   // Einspielen wartet auf einen Bau am Gerät und setzt das selbst höher.
   timeout = 60_000,
+  // Eine Antwort, die keine Auskunft ist, sondern eine Datei (ein Bildschirmfoto): dann kommen
+  // die Bytes unverändert in `bytes`, und nur eine Absage wird als JSON gelesen.
+  binary = false,
 }) {
   const url = new URL(path, base.endsWith("/") ? base : `${base}/`);
   const secure = url.protocol === "https:";
@@ -141,7 +144,12 @@ export async function call({
       const parts = [];
       res.on("data", (chunk) => parts.push(chunk));
       res.on("end", () => {
-        const raw = Buffer.concat(parts).toString("utf8");
+        const bytes = Buffer.concat(parts);
+        if (binary && res.statusCode >= 200 && res.statusCode < 300) {
+          done({ status: res.statusCode, ok: true, data: null, body: null, error: null, raw: "", bytes, type: res.headers["content-type"] || "" });
+          return;
+        }
+        const raw = bytes.toString("utf8");
         let parsed = null;
         try {
           parsed = raw ? JSON.parse(raw) : null;

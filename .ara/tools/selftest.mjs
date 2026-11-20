@@ -14512,7 +14512,7 @@ check("Das Gerüst der Firmenwurzel liegt in beiden Sprachen vor", () => {
 
 // --- Tiefe des Interviews ----------------------------------------------------
 
-check("Jeder der neun Befehle führt eine Liste, was geklärt sein muss, und die Regel steht einmal", () => {
+check("Jeder der zehn Befehle führt eine Liste, was geklärt sein muss, und die Regel steht einmal", () => {
   // Die Regel steht in AGENTS.md. Die Listen stehen im Wissen des Befehls, in
   // beiden Sprachen, und der Befehl verweist darauf.
   const agents = readFileSync(join(ROOT, "AGENTS.md"), "utf8");
@@ -14522,6 +14522,7 @@ check("Jeder der neun Befehle führt eine Liste, was geklärt sein muss, und die
   const wissen = {
     app: "app", init: "init", customer: "customer-file", calculation: "pricing", offer: "paperwork",
     invoice: "invoicing", device: "device", maintain: "maintenance-flow", root: "root",
+    feedback: "feedback",
   };
   for (const [befehl, datei] of Object.entries(wissen)) {
     // Das Wissen der Partnerbefehle liegt in einem Unternehmen nicht mehr da.
@@ -14545,7 +14546,7 @@ check("Jeder der neun Befehle führt eine Liste, was geklärt sein muss, und die
       assert(/What must be clear|Was geklärt sein muss/.test(text), `${d} verweist nicht auf die Liste`);
     }
   }
-  return "neun Listen in beiden Sprachen, Regel einmal in AGENTS.md, jeder Befehl verweist darauf";
+  return "zehn Listen in beiden Sprachen, Regel einmal in AGENTS.md, jeder Befehl verweist darauf";
 });
 
 check("/app fragt bis zu Bildschirmen, Feldern, Buttons und Automatik, und die Planvorlage hat die Abschnitte", () => {
@@ -14847,7 +14848,8 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
   // Dateinamen, Befehle und Bezeichner, und die sind ASCII mit Absicht.
   const prosa = (blatt) =>
     blatt
-      .replace(/^```[\s\S]*?^```/gm, "")
+      // Auch eingerückt: ein Codeblock in einer Aufzählung ist ebenso Code.
+      .replace(/^[ \t]*```[\s\S]*?^[ \t]*```/gm, "")
       .replace(/`[^`\n]*`/g, "")
       .replace(/\bhttps?:\/\/\S+/g, "");
 
@@ -16605,6 +16607,210 @@ await checkAsync("Der Nachweis des Ablaufs: die Vorlage trägt ihn, Änderung, K
   } finally {
     rmSync(dir, { recursive: true, force: true });
     rmSync(dirB, { recursive: true, force: true });
+    if (merker === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, merker);
+  }
+});
+
+// --- Rückmeldungen (K29) ---------------------------------------------------------
+
+const RUECK = await import("./lib/feedback.mjs");
+const { newestScript } = await import("./lib/install.mjs");
+
+check("Rückmeldungen: Wege aus dem Kontrakt, Doppelte, Reihenfolge, Regeln für den Stand", () => {
+  // Der Abschnitt `rueckmeldungen` so, wie Jet ihn seit PR 945 (20.11.2026) liefert.
+  const kontrakt = {
+    rueckmeldungen: {
+      bereich: "feedback:agent",
+      wege: { lesen: "/api/v1/external/apps/:id/rueckmeldungen", bild: "/api/v1/external/apps/:id/rueckmeldungen/:nr/bild", stand: "/api/v1/external/apps/:id/rueckmeldungen/:nr" },
+      staende: ["neu", "angenommen", "umgesetzt", "abgelehnt"],
+      grenze: { vorgabe: 200, hoechstens: 500 },
+    },
+  };
+  const abschnitt = RUECK.feedbackSection(kontrakt);
+  assert(abschnitt.ok && abschnitt.scope === "feedback:agent", "der Bereich kommt nicht aus dem Kontrakt");
+  assert(RUECK.fillWay(abschnitt.ways.image, { app: "belege", nr: 7 }) === "/api/v1/external/apps/belege/rueckmeldungen/7/bild", "der Weg zum Bild wird falsch gefüllt");
+  assert(RUECK.readQuery({}) === "?stand_meldung=neu,angenommen", `offen heißt nicht neu und angenommen: ${RUECK.readQuery({})}`);
+  assert(!RUECK.feedbackSection({}).ok, "ein Gerät ohne Abschnitt gilt als eines mit Rückmeldungen");
+  assert(!RUECK.feedbackSection({ rueckmeldungen: { ...kontrakt.rueckmeldungen, staende: ["neu", "erledigt"] } }).ok, "fehlende Stände fallen nicht auf");
+  assert(unreadFields({ rueckmeldungen: {} }).length === 0, "das Kit nennt rueckmeldungen ein Feld, das es nicht liest");
+
+  // Die vier Meldungen der Abnahme J42 am Orin: dasselbe Anliegen in vier Browsern.
+  const j42 = ["chromium 1440", "chromium 390", "webkit 1440", "webkit 390"].map((wo, i) => ({
+    id: i + 1, stand: "live", seite: "/apps/belege/", stand_meldung: "neu", erstellt_am: `2026-11-20T10:1${5 + i}:00.000Z`,
+    text: `Abnahme J42 ${wo} px 11:15: Hier fehlt ein Filter nach Monat.`,
+  }));
+  const fehler = { id: 9, stand: "test", seite: "/apps/belege/test/?ansicht=offen", stand_meldung: "neu", erstellt_am: "2026-11-20T12:00:00.000Z", text: "Der Knopf Speichern reagiert nicht." };
+  const fremd = { id: 10, stand: "live", seite: "/apps/belege/einstellungen", stand_meldung: "neu", erstellt_am: "2026-11-20T12:30:00.000Z", text: "Bitte eine Spalte für die Kostenstelle." };
+  const geordnet = RUECK.orderFeedback([...j42, fehler, fremd]);
+  assert(geordnet.length === 3, `drei Anliegen erwartet, ${geordnet.length} gefunden`);
+  assert(geordnet[0].nr === 9 && geordnet[0].kind === "fehler", "der Fehler steht nicht vorn");
+  assert(geordnet[1].nr === 1 && geordnet[1].duplicates.join() === "2,3,4", `die vier J42-Meldungen sind nicht eine Gruppe: ${JSON.stringify(geordnet[1])}`);
+  assert(geordnet[1].kind === "wunsch" && geordnet[2].nr === 10, "Wünsche: die von vieren gemeldete steht nicht vor der einzelnen");
+  assert(RUECK.guessKind("Die Liste ist leer, obwohl Belege da sind") === "fehler", "„ist leer“ gilt nicht als Fehler");
+
+  // Die Regeln für den Stand.
+  const angenommen = { ...j42[0], stand_meldung: "angenommen", stand_geaendert_am: "2026-11-20T12:00:00.000Z" };
+  let urteil = RUECK.checkStateChange({ meldung: j42[0], to: "abgelehnt", reason: "  " });
+  assert(!urteil.ok && /Grund/.test(urteil.message), "abgelehnt ohne Grund geht durch");
+  assert(RUECK.checkStateChange({ meldung: j42[0], to: "abgelehnt", reason: "Gibt es schon." }).ok, "abgelehnt mit Grund wird abgewiesen");
+  urteil = RUECK.checkStateChange({ meldung: j42[0], to: "umgesetzt", testDeploy: "2026-11-20T13:00:00.000Z" });
+  assert(!urteil.ok && /angenommen/.test(urteil.message), "umgesetzt ohne vorherige Annahme geht durch");
+  urteil = RUECK.checkStateChange({ meldung: angenommen, to: "umgesetzt", testDeploy: null });
+  assert(!urteil.ok && /Teststand/.test(urteil.message), "umgesetzt ohne Ausrollen geht durch");
+  urteil = RUECK.checkStateChange({ meldung: angenommen, to: "umgesetzt", testDeploy: "2026-11-20T11:59:00.000Z" });
+  assert(!urteil.ok && /älter/.test(urteil.message), "umgesetzt mit einem Ausrollen vor der Annahme geht durch");
+  assert(RUECK.checkStateChange({ meldung: angenommen, to: "umgesetzt", testDeploy: "2026-11-20T12:01:00.000Z" }).ok, "umgesetzt nach dem Ausrollen wird abgewiesen");
+  assert(!RUECK.checkStateChange({ meldung: j42[0], to: "live" }).ok, "ein Stand, den das Gerät nicht kennt, geht durch");
+  // Ein Ausrollen in den Livestand zählt nicht als Testfassung.
+  assert(RUECK.lastTestDeploy({ apps: { belege: { orin: { deployed: { stand: "live", time: "2026-11-20 13:00" } } } } }, "belege", "orin") === null, "ein Ausrollen nach live zählt als Testfassung");
+
+  // Das Schlüsselskript aus der höchsten Fassung: am Orin lagen 0.8.16 und 0.8.17 nebeneinander.
+  const gefunden = newestScript(["/home/a/arasul-0.8.16/scripts/util/kit-schluessel.sh", "/home/a/arasul-0.8.17/scripts/util/kit-schluessel.sh", "/home/a/arasul-0.8.9/scripts/util/kit-schluessel.sh"]);
+  assert(gefunden.includes("0.8.17"), `das Skript kommt aus ${gefunden}`);
+  return "Kontrakt, vier J42-Meldungen als ein Anliegen, Fehler vorn, fünf Regeln für den Stand, Skript aus 0.8.17";
+});
+
+await checkAsync("/feedback gegen ein gespieltes Gerät: ohne Bild bei Schalter aus, mit Bild bei an, Stand nur nach Regeln", async () => {
+  const schluessel = { deploy: "aras_deploy0000001", rueck: "aras_rueck00000001" };
+  const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489", "hex");
+  const geraet = { erlaubt: false, meldungen: [] };
+  const zuruecksetzen = () => {
+    geraet.meldungen = [
+      { id: 1, app_id: "selftest-rueck", stand: "live", seite: "/apps/selftest-rueck/", text: "Hier fehlt ein Filter nach Monat.", person: { id: 2, anzeigeName: "Mia Muster" }, erstellt_am: "2026-11-20T10:00:00.000Z", stand_meldung: "neu", grund: null, stand_geaendert_am: null, _bild: true },
+      { id: 2, app_id: "selftest-rueck", stand: "test", seite: "/apps/selftest-rueck/test/", text: "Der Knopf Speichern reagiert nicht.", person: null, erstellt_am: "2026-11-20T10:30:00.000Z", stand_meldung: "neu", grund: null, stand_geaendert_am: null, _bild: false },
+    ];
+  };
+  zuruecksetzen();
+  const anfragen = [];
+  const kontrakt = {
+    kontrakt: 14,
+    schluessel: { kopf: "X-API-Key" },
+    rueckmeldungen: {
+      bereich: "feedback:agent",
+      wege: { lesen: "/api/v1/external/apps/:id/rueckmeldungen", bild: "/api/v1/external/apps/:id/rueckmeldungen/:nr/bild", stand: "/api/v1/external/apps/:id/rueckmeldungen/:nr" },
+      staende: ["neu", "angenommen", "umgesetzt", "abgelehnt"],
+      grenze: { vorgabe: 200, hoechstens: 500 },
+    },
+    endpunkte: [
+      { verb: "GET", pfad: "/api/v1/external/contract" },
+      { verb: "GET", pfad: "/api/v1/external/apps/:id/rueckmeldungen?stand_meldung=<neu,angenommen,…>", bereich: "feedback:agent" },
+      { verb: "GET", pfad: "/api/v1/external/apps/:id/rueckmeldungen/:nr/bild", bereich: "feedback:agent" },
+      { verb: "PATCH", pfad: "/api/v1/external/apps/:id/rueckmeldungen/:nr", bereich: "feedback:agent" },
+    ],
+  };
+  const sicht = (m) => {
+    const { _bild, ...rest } = m;
+    return geraet.erlaubt ? { ...rest, bild: _bild ? { weg: `/api/v1/external/apps/selftest-rueck/rueckmeldungen/${m.id}/bild`, format: "png", markierung: { x: 0.1, y: 0.2, breite: 0.3, hoehe: 0.1 } } : null } : rest;
+  };
+  const server = createServer((anfrage, antwort) => {
+    let rumpf = "";
+    anfrage.on("data", (d) => (rumpf += d));
+    anfrage.on("end", () => {
+      const url = new URL(anfrage.url, "http://127.0.0.1");
+      const key = anfrage.headers["x-api-key"];
+      anfragen.push({ verb: anfrage.method, pfad: url.pathname, suche: url.search, key, rumpf });
+      const json = (status, body) => {
+        antwort.writeHead(status, { "Content-Type": "application/json" });
+        antwort.end(JSON.stringify(body));
+      };
+      if (![schluessel.deploy, schluessel.rueck].includes(key)) return json(401, { error: { code: "UNAUTHORIZED", message: "Schlüssel unbekannt" } });
+      if (url.pathname === "/api/v1/external/contract") return json(200, { data: kontrakt });
+      const m = url.pathname.match(/^\/api\/v1\/external\/apps\/([^/]+)\/rueckmeldungen(?:\/(\d+)(\/bild)?)?$/);
+      if (!m) return json(404, { error: { code: "NOT_FOUND", message: "unbekannt" } });
+      if (key !== schluessel.rueck) return json(403, { error: { code: "FORBIDDEN", message: "Schlüssel ohne Bereich feedback:agent" } });
+      if (m[1] !== "selftest-rueck") return json(404, { error: { code: "NOT_FOUND", message: `Die App ${m[1]} gibt es nicht.` } });
+      if (!m[2]) {
+        const staende = url.searchParams.get("stand_meldung")?.split(",") || null;
+        const liste = geraet.meldungen.filter((x) => !staende || staende.includes(x.stand_meldung)).map(sicht);
+        return json(200, { data: { app_id: "selftest-rueck", app_name: "Selbsttest", bilder_an_agenten: geraet.erlaubt, anzahl: liste.length, meldungen: liste } });
+      }
+      const meldung = geraet.meldungen.find((x) => x.id === Number(m[2]));
+      if (!meldung) return json(404, { error: { code: "NOT_FOUND", message: "Meldung unbekannt" } });
+      if (m[3]) {
+        if (!geraet.erlaubt) return json(403, { error: { code: "FORBIDDEN", message: "Für die App gehen keine Bildschirmfotos an den Agenten." } });
+        antwort.writeHead(200, { "Content-Type": "image/png" });
+        return antwort.end(PNG);
+      }
+      if (anfrage.method === "PATCH") {
+        const body = JSON.parse(rumpf || "{}");
+        const vorher = meldung.stand_meldung;
+        Object.assign(meldung, { stand_meldung: body.stand_meldung, grund: body.grund ?? null, stand_geaendert_am: new Date().toISOString() });
+        return json(200, { data: { ...sicht(meldung), vorher } });
+      }
+      return json(405, { error: { message: "nein" } });
+    });
+  });
+  await new Promise((ready) => server.listen(0, "127.0.0.1", ready));
+  const work = mkdtempSync(join(tmpdir(), "ara-rueck-"));
+  const geraete = join(work, "devices");
+  mkdirSync(join(geraete, "probe"), { recursive: true });
+  const akte = join(geraete, "probe", "device.md");
+  writeFileSync(akte, `---\nname: probe\naddress: http://127.0.0.1:${server.address().port}\napi_key_ref: ARASUL_KEY_PROBE\nfeedback_key_ref: ARASUL_FEEDBACK_PROBE\n---\n`);
+  const envFile = join(work, "env");
+  writeFileSync(envFile, `ARASUL_KEY_PROBE=${schluessel.deploy}\nARASUL_FEEDBACK_PROBE=${schluessel.rueck}\n`);
+  const env = { ARA_ENV_FILE: envFile, ARA_DEVICES: geraete };
+  const appOrdner = join(ROOT, "apps", "selftest-rueck");
+  const appVorher = existsSync(appOrdner);
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const merker = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const fb = (...args) => toolAsync("feedback.mjs", ["--device", "probe", "--app", "selftest-rueck", ...args], env);
+  try {
+    // Schalter aus: kein Bild, und das Werkzeug sagt es.
+    let lauf = await fb();
+    assert(lauf.status === 0, `die Übersicht scheitert: ${lauf.stderr}`);
+    assert(/nicht erlaubt, also arbeitet das Kit ohne Bild/.test(lauf.stdout), `bei Schalter aus fehlt der Satz:\n${lauf.stdout}`);
+    assert(/\[Fehler\] Nr\. 2/.test(lauf.stdout.split("\n").find((z) => /^1\. /.test(z)) || ""), `der Fehler steht nicht vorn:\n${lauf.stdout}`);
+    assert(!/Bildschirmfoto ·|mit Bildschirmfoto/.test(lauf.stdout), "bei Schalter aus ist von einem Bild die Rede");
+    assert(anfragen.every((a) => !a.pfad.endsWith("/bild")), "bei Schalter aus wurde ein Bild geholt");
+    assert(anfragen.filter((a) => a.pfad.includes("rueckmeldungen")).every((a) => a.key === schluessel.rueck), "Meldungen wurden nicht mit dem eigenen Schlüssel gelesen");
+    lauf = await fb("--image", "1");
+    assert(lauf.status === 0 && /nicht erlaubt/.test(lauf.stdout), `--image bei Schalter aus: ${lauf.stdout}${lauf.stderr}`);
+    assert(anfragen.every((a) => !a.pfad.endsWith("/bild")), "--image bei Schalter aus fragt doch das Gerät nach dem Bild");
+    lauf = await fb("--json");
+    const daten = JSON.parse(lauf.stdout);
+    assert(daten.bilder_an_agenten === false && daten.meldungen.every((x) => !("bild" in x)), "JSON bei Schalter aus trägt ein Bild");
+
+    // Schalter an: das Bild kommt Byte für Byte in den Ordner der App, der in kein Paket geht.
+    geraet.erlaubt = true;
+    lauf = await fb("--image", "1");
+    assert(lauf.status === 0, `--image bei Schalter an: ${lauf.stderr}`);
+    const bild = join(appOrdner, ".rueckmeldungen", "1.png");
+    assert(existsSync(bild) && readFileSync(bild).equals(PNG), "das Bild liegt nicht unverändert im Ordner der App");
+    lauf = await fb("--image", "2");
+    assert(/ohne Bildschirmfoto/.test(lauf.stdout), "eine Meldung ohne Foto wird nicht als solche benannt");
+
+    // Stand setzen: abgelehnt nur mit Grund, umgesetzt nur nach einem Ausrollen in den Teststand.
+    const patches = () => anfragen.filter((a) => a.verb === "PATCH");
+    lauf = await fb("--set", "2", "--to", "abgelehnt");
+    assert(lauf.status !== 0 && patches().length === 0, "abgelehnt ohne Grund wurde gesendet");
+    lauf = await fb("--set", "1,2", "--to", "angenommen");
+    assert(lauf.status === 0 && patches().length === 2, `annehmen scheitert: ${lauf.stderr}`);
+    assert(JSON.parse(patches()[0].rumpf).stand_meldung === "angenommen", "der Rumpf trägt den Stand nicht");
+    if (existsSync(stateFile)) rmSync(stateFile);
+    lauf = await fb("--set", "1", "--to", "umgesetzt");
+    assert(lauf.status !== 0 && /Teststand/.test(lauf.stderr) && patches().length === 2, `umgesetzt ohne Ausrollen: ${lauf.stdout}${lauf.stderr}`);
+    writeFileSync(stateFile, JSON.stringify({ apps: { "selftest-rueck": { probe: { deployed: { version: "0.1.1", stand: "test", time: "2026-11-20 14:00", at: new Date(Date.now() + 60_000).toISOString() } } } } }));
+    lauf = await fb("--set", "1", "--to", "umgesetzt");
+    assert(lauf.status === 0 && patches().length === 3, `umgesetzt nach dem Ausrollen scheitert: ${lauf.stderr}`);
+    lauf = await fb("--set", "2", "--to", "abgelehnt", "--reason", "Gibt es schon: Knopf unten rechts.");
+    assert(lauf.status === 0 && JSON.parse(patches()[3].rumpf).grund === "Gibt es schon: Knopf unten rechts.", "der Grund geht nicht mit");
+    const notiz = readFileSync(akte, "utf8");
+    assert(/1: angenommen → umgesetzt/.test(notiz) && !notiz.includes("Mia Muster") && !notiz.includes(schluessel.rueck), `die Akte trägt den Stand nicht, oder einen Namen oder Schlüssel:\n${notiz}`);
+    lauf = await fb();
+    assert(/Nichts offen/.test(lauf.stdout), `nach allem ist noch etwas offen:\n${lauf.stdout}`);
+
+    // Ohne eigenen Schlüssel kein Lesen, und der Deploy-Schlüssel springt nicht ein.
+    writeFileSync(akte, readFileSync(akte, "utf8").replace("feedback_key_ref: ARASUL_FEEDBACK_PROBE", "feedback_key_ref:"));
+    const vorher = anfragen.length;
+    lauf = await fb();
+    assert(lauf.status !== 0 && /feedback\.mjs --device probe --key/.test(lauf.stderr), `ohne Schlüssel fehlt der Weg zu ihm:\n${lauf.stderr}`);
+    assert(anfragen.length === vorher, "ohne eigenen Schlüssel wurde das Gerät gefragt");
+    return "Schalter aus ohne Bild und ohne Anfrage danach, an mit Bild, abgelehnt nur mit Grund, umgesetzt nur nach dem Ausrollen, kein Name in der Akte";
+  } finally {
+    server.close();
+    rmSync(work, { recursive: true, force: true });
+    if (!appVorher) rmSync(appOrdner, { recursive: true, force: true });
     if (merker === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, merker);
   }
