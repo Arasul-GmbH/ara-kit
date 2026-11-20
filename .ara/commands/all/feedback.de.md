@@ -17,8 +17,8 @@ eine Reihenfolge vor. Der Mensch gibt frei, was umgesetzt wird; geändert wird n
 über den festen Ablauf mit Plan, Tests und Nachweis. **Live schaltet dieser Befehl nie.** Sag das zu
 Beginn in zwei Sätzen, in einfachen Worten.
 
-**Das Argument.** `$1` ist die Kennung der App wie in `app.json`. Ohne Argument: nachsehen (`ls
-apps/`, `.ara/state.json`) und einmal mit den Apps als Auswahl fragen. Das Gerät kommt aus der
+**Das Argument.** `$1` ist die Kennung der App wie in `app.json`. Ohne Argument: nachsehen
+(`ls apps/`, `.ara/state.json`) und einmal mit den Apps als Auswahl fragen. Das Gerät kommt aus der
 Akte; bei mehreren fragst du.
 
 **Holen.**

@@ -14848,7 +14848,8 @@ check("Deutscher Inhalt trägt echte Umlaute", () => {
   // Dateinamen, Befehle und Bezeichner, und die sind ASCII mit Absicht.
   const prosa = (blatt) =>
     blatt
-      .replace(/^```[\s\S]*?^```/gm, "")
+      // Auch eingerückt: ein Codeblock in einer Aufzählung ist ebenso Code.
+      .replace(/^[ \t]*```[\s\S]*?^[ \t]*```/gm, "")
       .replace(/`[^`\n]*`/g, "")
       .replace(/\bhttps?:\/\/\S+/g, "");
 

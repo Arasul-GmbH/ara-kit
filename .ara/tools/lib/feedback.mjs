@@ -225,40 +225,50 @@ export function orderFeedback(meldungen) {
  * dem Merker des Kits (`.ara/state.json`), oder `null`.
  */
 export function checkStateChange({ meldung, to, reason = "", testDeploy = null, states = Object.values(KIT_STATES) }) {
-  const fail = (en, de) => ({ ok: false, message: t(en, de) });
+  const fail = (message) => ({ ok: false, message });
   if (!states.includes(to)) {
     return fail(
-      `"${to}" is not a state the device knows. Possible: ${states.join(", ")}.`,
-      `„${to}“ ist kein Stand, den das Gerät kennt. Möglich: ${states.join(", ")}.`
+      t(
+        `"${to}" is not a state the device knows. Possible: ${states.join(", ")}.`,
+        `„${to}“ ist kein Stand, den das Gerät kennt. Möglich: ${states.join(", ")}.`
+      )
     );
   }
-  if (!meldung) return fail("This feedback does not exist for this app.", "Diese Rückmeldung gibt es zu dieser App nicht.");
+  if (!meldung) return fail(t("This feedback does not exist for this app.", "Diese Rückmeldung gibt es zu dieser App nicht."));
   const nr = meldung.id;
   if (to === KIT_STATES.rejected && !String(reason || "").trim()) {
     return fail(
-      `Feedback ${nr} gets rejected only with a reason, in one sentence the developer can read later: --reason "…".`,
-      `Meldung ${nr} wird nur mit einem Grund abgelehnt, in einem Satz, den der Entwickler später versteht: --reason "…".`
+      t(
+        `Feedback ${nr} gets rejected only with a reason, in one sentence the developer can read later: --reason "…".`,
+        `Meldung ${nr} wird nur mit einem Grund abgelehnt, in einem Satz, den der Entwickler später versteht: --reason "…".`
+      )
     );
   }
   if (to === KIT_STATES.done) {
     if (meldung.stand_meldung !== KIT_STATES.accepted) {
       return fail(
-        `Feedback ${nr} stands at "${meldung.stand_meldung}". Implemented follows accepted: first accept it, change the test version, roll it out, then set it.`,
-        `Meldung ${nr} steht auf „${meldung.stand_meldung}“. Umgesetzt folgt auf angenommen: erst annehmen, die Testfassung ändern, ausrollen, dann setzen.`
+        t(
+          `Feedback ${nr} stands at "${meldung.stand_meldung}". Implemented follows accepted: first accept it, change the test version, roll it out, then set it.`,
+          `Meldung ${nr} steht auf „${meldung.stand_meldung}“. Umgesetzt folgt auf angenommen: erst annehmen, die Testfassung ändern, ausrollen, dann setzen.`
+        )
       );
     }
     const accepted = meldung.stand_geaendert_am ? Date.parse(meldung.stand_geaendert_am) : NaN;
     const deployed = testDeploy ? Date.parse(testDeploy) : NaN;
     if (Number.isNaN(deployed)) {
       return fail(
-        `Feedback ${nr} is implemented only after the change went into the test version. This kit has not rolled the app into staging on this device yet: app.mjs --deploy.`,
-        `Meldung ${nr} ist erst umgesetzt, wenn die Änderung in der Testfassung steht. Dieses Kit hat die App an diesem Gerät noch nicht in den Teststand gerollt: app.mjs --deploy.`
+        t(
+          `Feedback ${nr} is implemented only after the change went into the test version. This kit has not rolled the app into staging on this device yet: app.mjs --deploy.`,
+          `Meldung ${nr} ist erst umgesetzt, wenn die Änderung in der Testfassung steht. Dieses Kit hat die App an diesem Gerät noch nicht in den Teststand gerollt: app.mjs --deploy.`
+        )
       );
     }
     if (!Number.isNaN(accepted) && deployed <= accepted) {
       return fail(
-        `Feedback ${nr} was accepted at ${meldung.stand_geaendert_am}, the last rollout into staging is older (${testDeploy}). First change and roll out, then set it.`,
-        `Meldung ${nr} wurde am ${meldung.stand_geaendert_am} angenommen, das letzte Ausrollen in den Teststand ist älter (${testDeploy}). Erst ändern und ausrollen, dann setzen.`
+        t(
+          `Feedback ${nr} was accepted at ${meldung.stand_geaendert_am}, the last rollout into staging is older (${testDeploy}). First change and roll out, then set it.`,
+          `Meldung ${nr} wurde am ${meldung.stand_geaendert_am} angenommen, das letzte Ausrollen in den Teststand ist älter (${testDeploy}). Erst ändern und ausrollen, dann setzen.`
+        )
       );
     }
   }

@@ -15,6 +15,16 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.86.0 (2026-11-20)
+
+Kontrakt: bis 14
+
+- **Ein neuer Befehl, `/feedback`, holt in die Sitzung, was Mitarbeiter zu einer App gemeldet haben.** Mitarbeiter melden über das Icon über jeder App am Gerät; der Befehl holt die offenen Meldungen einer App (`node .ara/tools/feedback.mjs --device <gerät> --app <app>`), fasst zusammen, was dasselbe meint, stellt Fehler vor Wünsche und was mehrere gemeldet haben vor Einzelnes, und schlägt eine Reihenfolge vor. Je Anliegen entscheidet der Mensch: umsetzen, mit Grund ablehnen oder später. Was freigegeben ist, geht nur in die Testfassung, über Plan, Bau mit Tests und Ausrollen wie bei `/app`; live schaltet der Befehl nie. Verfahren: `.ara/knowledge/feedback.de.md`. Gleich in Claude Code und Codex (`$feedback`).
+- **Der Stand einer Meldung wird dabei am Gerät nachgetragen.** `--set <nummern> --to angenommen|abgelehnt|umgesetzt`: abgelehnt nur mit Grund, umgesetzt erst, wenn dieses Kit die App später in den Teststand gerollt hat, als die Meldung angenommen wurde. Jeder gesetzte Stand steht mit Zeit in der Geräteakte, ohne Namen und ohne Texte der Mitarbeiter.
+- **Meldungen liest das Kit mit einem eigenen Schlüssel.** `feedback.mjs --key` legt ihn über SSH mit dem Skript des Geräts an, oder mit `--via https` über ein Konto als Admin; den Bereich nennt der Kontrakt des Geräts (Abschnitt `rueckmeldungen`), und er liegt in der Geheimnis-Ablage unter `feedback_key_ref`. Der Deploy-Schlüssel liest keine Meldungen.
+- **Bildschirmfotos nur, wo der Admin sie je App erlaubt hat.** Ist der Schalter aus, arbeitet der Befehl mit Text, Seite und App, sagt das einmal und fragt das Gerät nach keinem Bild. Ist er an, legt `--image <nr>` das Bild unter `apps/<app>/.rueckmeldungen/` ab, das in kein Paket geht.
+- **Das Schlüsselskript des Geräts kommt aus seiner neuesten Fassung.** Bei zwei Ordnern der Plattform nebeneinander nahm das Kit den ersten Fund; am Orin war das 0.8.16, dessen Skript den Bereich der Rückmeldungen nicht kennt.
+
 ## 0.85.0 (2026-11-20)
 
 Kontrakt: bis 14
