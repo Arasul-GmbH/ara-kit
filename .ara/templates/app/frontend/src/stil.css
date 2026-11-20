@@ -26,20 +26,22 @@
    (`SidebarProvider`, `SidebarInset`, `useSchmalesFenster`), und es gibt im
    Produkt genau EINE Schwelle. */
 
-/* Der Inhalt steht am linken Rand seiner eigenen Spalte und nicht in der
-   Mitte des ganzen Fensters: sonst rutscht er unter die Seitenleiste. Ein
-   eigenes `min-width: 0` braucht er seit Marken 5.1.0 nicht mehr, das trägt
-   `SidebarInset` selbst. */
-.ara-strom {
-  margin: 0;
-}
+/* Die Ränder der Seite sind die des Geräts: oben 10 px, seitlich 16 bis
+   24 px, höchstens 64rem breit, am linken Rand der eigenen Spalte. So stehen
+   Verwaltung, Einstellungen und das Entwickler-Cockpit seit Marken 5.9.0, und
+   der Seitenkopf steht mit 10 px oben auf derselben Linie wie die Kapsel des
+   Rahmens, deren Platz er rechts freihält. Unten bleibt am Handy der Platz
+   der schwebenden Leiste des Geräts frei (`--ara-leiste-platz`).
 
-/* Liste und Einzelheiten nebeneinander brauchen mehr als die Lesebreite von
-   56rem, die `marken.css` dem Strom gibt: darin blieben der Liste bei 1280 px
-   gut 500 px, und die Spalte Stand fiel hinaus. Nur die Seite, die teilt,
-   wird breiter; ein Formular bleibt in seiner Lesebreite. */
-.ara-strom:has([data-teilung]) {
-  max-width: 96rem;
+   Bis Kit 0.86 stand hier `margin: 0` auf der Lesebreite von 56rem aus
+   `marken.css`, und die Seite, die Liste und Einzelheiten teilt, durfte
+   96rem breit werden. Eine Regel für alle Seiten war der Befund der ersten
+   beiden Durchsichten des Geräts; mit 64rem bleibt die Liste neben den
+   Einzelheiten breiter als 640 px und damit eine Tabelle. */
+.ara-strom {
+  max-width: 64rem;
+  margin: 0;
+  padding: 10px clamp(16px, 4vw, 24px) calc(24px + var(--ara-leiste-platz, 0px));
 }
 
 /* Das Suchfeld der Liste lässt links Platz für die Lupe. Die Bibliothek setzt

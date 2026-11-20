@@ -33,8 +33,10 @@
  */
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
-import { Freigabe, Knopf, Kopf, Liste, ListenEintrag, Meldung, Leerzustand, type FreigabeEintrag } from "@marken";
+import { Freigabe, Icon, Knopf, Kopf, Liste, ListenEintrag, Meldung, Leerzustand, Werkzeug, type FreigabeEintrag } from "@marken";
+import { RefreshCw } from "@marken/symbole";
 import { AsyncBoundary } from "../rahmen/async-boundary";
 import { useAblehnen, useBeiAnderen, useBestaetigen, useFreigaben, useUebernehmen } from "../freigaben";
 import { mitNamen, pruefen, useFeldlisten } from "../feldlisten";
@@ -46,6 +48,7 @@ export function Freigaben() {
   const ablehnen = useAblehnen();
   const beiAnderen = useBeiAnderen();
   const uebernehmen = useUebernehmen();
+  const speicher = useQueryClient();
   const listen = useFeldlisten().data ?? {};
   // Die Rückfrage, die schon einmal dastand: wer danach mit denselben Werten bestätigt, meint es.
   const [gesehen, setzeGesehen] = useState<string | null>(null);
@@ -64,7 +67,18 @@ export function Freigaben() {
 
   return (
     <>
-      <Kopf titel="Freigaben" beschreibung="Was auf Ihre Entscheidung wartet." />
+      <Kopf
+        titel="Freigaben"
+        beschreibung="Was auf Ihre Entscheidung wartet."
+        werkzeuge={
+          <Werkzeug
+            symbol={<Icon symbol={RefreshCw} />}
+            beschriftung="Neu laden"
+            onClick={() => void speicher.invalidateQueries({ queryKey: ["freigaben"] })}
+            data-kennzeichen="neu-laden"
+          />
+        }
+      />
       {meldung && (
         <Meldung art={meldung.art} kennzeichen="freigabe-meldung">
           {meldung.text}
