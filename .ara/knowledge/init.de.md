@@ -115,11 +115,11 @@ Bis diese Frage beantwortet ist, gilt Englisch, denn ein frischer Klon hat kein 
 Hat der Mensch dich von sich aus auf Deutsch angesprochen, frag auf Deutsch: was er
 schreibt, gilt vor der Vorgabe.
 
-**2. Partner oder Unternehmen?** Ein Partner richtet Geräte für fremde Kunden ein,
-mehrere. Ein Unternehmen betreibt ein eigenes Gerät für die eigene Firma. Sag zu jeder
-Option in einem Satz, was sie bedeutet: Partner bekommen Kundenakten, Angebote und
-Kalkulation dazu. Unternehmen bekommen nur, was ein eigenes Gerät braucht, und werden nie
-nach Kunden gefragt.
+**2. Unternehmen oder Partner?** Das Unternehmen steht vorn: eine Person baut die Apps
+der eigenen Firma auf dem Gerät der Firma und wird nie nach Kunden gefragt. Ein Partner richtet
+Geräte für fremde Kunden ein, mehrere; dieser Weg ruht seit 20.11.2026, er bleibt und wird nicht
+weitergebaut. Sag zu jeder Option in einem Satz, was sie bedeutet: Partner bekommen Kundenakten,
+Angebote und Kalkulation dazu. Unternehmen bekommen nur, was ein eigenes Gerät braucht.
 
 Sobald beides beantwortet ist, legst du die Befehle an, damit alles Weitere in dieser
 Sitzung schon funktioniert:

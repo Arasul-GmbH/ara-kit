@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.85.0 (2026-11-20)
+
+Kontrakt: bis 14
+
+- **Jede App trägt einen Nachweis des Ablaufs, über den sie gebaut wurde.** `--build` lässt die Tests der App laufen und schreibt `nachweis.json` ins Paket: Fassung der Bibliothek, Fassung des Kits, die Schritte Interview, Bau und Test, ob die Tests grün liefen, und Prüfsummen von Quelltext und Paket. Ein neuer Plan (`--plan-aktiv`) beginnt einen neuen Durchlauf, `--deploy` in den Teststand fügt den vierten Schritt in der Akte der App hinzu. Das Format, wo er liegt, ein Beispiel und jeder Fall, in dem er fehlt oder nicht mehr stimmt, stehen in `.ara/knowledge/nachweis.de.md`, so geschrieben, dass die Prüfung im Gerät (Karte J45) dagegen gebaut werden kann.
+- **Eine von Hand veränderte App verliert ihren Nachweis, eine kopierte bekommt keinen.** `--nachweis` sagt, ob er trägt, `--nachweis <ordner>` beurteilt ein Paket, wie das Gerät es täte, `--json` gibt die Codes. Ein Paket aus `apps/` ohne gültigen Nachweis wird nicht eingespielt, und `--test` lässt die Tests allein laufen. Die Vorlage bringt sechs Tests mit (`backend/test/`, `npm test`). Der Selbsttest zeigt, dass eine Vorlagen-App den Nachweis trägt und ihn mit einer geänderten Datei, einem geänderten Paket, einer kopierten Datei und einem roten Test verliert.
+- **Das Kit spricht die Person an, die in ihrer eigenen Firma baut.** Die Einleitung in `AGENTS.md`, die Persona und die Frage im Interview wenden sich nicht mehr zuerst an einen Partner mit Kunden; der Partnerweg ruht, `/customer` und die Papiere unter `.ara/vorlagen` bleiben, wie sie sind.
+
 ## 0.84.0 (2026-10-15)
 
 Kontrakt: bis 14

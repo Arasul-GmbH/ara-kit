@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.85.0 (2026-11-20)
+
+Contract: up to 14
+
+- **Every app carries a proof of the flow that built it.** `--build` runs the app's tests and writes `nachweis.json` into the package: version of the library, version of the kit, the steps interview, build and test, whether the tests ran green, and checksums of the source and of the package. A new plan (`--plan-aktiv`) starts a new run, `--deploy` into staging adds the fourth step in the app's file. The format, where it lies, an example and every case in which it is missing or no longer holds stand in `.ara/knowledge/nachweis.md`, written so that the device's check (card J45) can be built against it.
+- **A hand-changed app loses its proof, a copied one does not get one.** `--nachweis` says whether it holds, `--nachweis <folder>` judges a package as the device would, `--json` gives the codes. A package from `apps/` without a valid proof is not deployed, and `--test` runs the tests alone. The scaffold brings six tests (`backend/test/`, `npm test`). The self-test shows that a scaffold app carries the proof and loses it with one changed file, a changed package, a copied file and a red test.
+- **The kit speaks to the person who builds in their own firm.** The introduction in `AGENTS.md`, the persona and the question of the interview no longer address a partner with customers first; the partner path rests, `/customer` and the papers under `.ara/vorlagen` stay as they are.
+
 ## 0.84.0 (2026-10-15)
 
 Contract: up to 14

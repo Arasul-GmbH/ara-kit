@@ -12,7 +12,9 @@
  *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <file>
  *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <file>
  *   node .ara/tools/app.mjs --app beispiel --add-pattern clients,receipts   wire patterns in
- *   node .ara/tools/app.mjs --app beispiel --build            package into build/
+ *   node .ara/tools/app.mjs --app beispiel --build            package into build/, runs the tests, writes the proof of the flow
+ *   node .ara/tools/app.mjs --app beispiel --test             run the tests, note the result
+ *   node .ara/tools/app.mjs --app beispiel --nachweis [<folder>]   does the proof of the flow hold (.ara/knowledge/nachweis.md)
  *
  * With `--device` it addresses a device, and then that device's contract applies:
  *
@@ -60,7 +62,9 @@
  *   node .ara/tools/app.mjs --app beispiel --plan-aktiv <datei>
  *   node .ara/tools/app.mjs --app beispiel --plan-erledigt <datei>
  *   node .ara/tools/app.mjs --app beispiel --add-pattern clients,receipts   Muster einhängen
- *   node .ara/tools/app.mjs --app beispiel --build            Paket nach build/
+ *   node .ara/tools/app.mjs --app beispiel --build            Paket nach build/, lässt die Tests laufen, schreibt den Nachweis des Ablaufs
+ *   node .ara/tools/app.mjs --app beispiel --test             Tests laufen lassen, Ergebnis vermerken
+ *   node .ara/tools/app.mjs --app beispiel --nachweis [<ordner>]   trägt der Nachweis des Ablaufs (.ara/knowledge/nachweis.de.md)
  *
  * Mit `--device` spricht es ein Gerät an, und dann gilt dessen Kontrakt:
  *
@@ -109,7 +113,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
-import { join, relative, resolve } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { ROOT, adminSession, ensureDir, fail, helpOnly, now, parseArgs, readDevice, readState, sshArgs, today, writeState } from "./lib/kit.mjs";
 import { localized, t } from "./lib/i18n.mjs";
 import { call, reason } from "./lib/arasul.mjs";
@@ -130,8 +134,9 @@ import {
 } from "./lib/appfile.mjs";
 import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mjs";
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
-import { addressFindings, addressSection, standardFindings, standardScope } from "./lib/standard.mjs";
+import { addressFindings, addressSection, standardExempt, standardFindings, standardScope } from "./lib/standard.mjs";
 import { kurzbericht } from "./lib/kurzbericht.mjs";
+import { SCHRITT_AUSROLLEN, fileDigest, lines as proofLines, recordStep, runTests, stampPackage, verify as verifyProof } from "./lib/nachweis.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
 import { leavesPackage, safeFolder, walkFiles } from "./lib/files.mjs";
@@ -209,7 +214,9 @@ if (process.argv.length <= 2) {
         '  --connections "<text>"   which outside services and research a description names, in plain words',
         '  --patterns "<text>"      which ready-made pattern a description matches, with its sheet',
         "  --add-pattern <a>,<b>    wire patterns into the app: files, migrations, server.mjs and pages (documents, extract, clients, receipts, history, datev)",
-        "  --build                  build the package, result under build/. Needs an active plan",
+        "  --build                  build the package, result under build/. Needs an active plan. Runs the tests and writes the proof of the flow (nachweis.json) into the package",
+        "  --test                   run the app's tests and note the result in the app's proof",
+        "  --nachweis [<folder>]    does the proof of the flow hold? Without a folder the app and its build, with one a package as the device would judge it (--json for the codes)",
         "  --no-plan                with --build: build without an active plan, on purpose",
         "",
         "On the device:",
@@ -259,7 +266,9 @@ if (process.argv.length <= 2) {
         '  --connections "<text>"   welche Dienste und Recherche von außen eine Beschreibung nennt, in einfachen Worten',
         '  --patterns "<text>"      zu welchem fertigen Muster eine Beschreibung passt, mit seinem Blatt',
         "  --add-pattern <a>,<b>    Muster in die App einhängen: Dateien, Migrationen, server.mjs und Seiten (documents, extract, clients, receipts, history, datev)",
-        "  --build                  Paket bauen, Ergebnis unter build/. Braucht einen aktiven Plan",
+        "  --build                  Paket bauen, Ergebnis unter build/. Braucht einen aktiven Plan. Lässt die Tests laufen und schreibt den Nachweis des Ablaufs (nachweis.json) ins Paket",
+        "  --test                   die Tests der App laufen lassen und das Ergebnis im Nachweis der App vermerken",
+        "  --nachweis [<ordner>]    trägt der Nachweis des Ablaufs? Ohne Ordner die App und ihr Bau, mit Ordner ein Paket, wie das Gerät es beurteilte (--json für die Codes)",
         "  --no-plan                mit --build: ohne aktiven Plan bauen, bewusst",
         "",
         "Am Gerät:",
@@ -720,6 +729,11 @@ function shiftPlan(app, file, to) {
     fail(error.message);
   }
   writeState({ app: app.name });
+  // Ein aktiver Plan ist das Ergebnis des Interviews und beginnt einen neuen Durchlauf des Ablaufs.
+  // Bau und Test aus einem früheren Durchlauf gelten für diese Änderung nicht mehr.
+  if (to === "aktiv" && app.manifest) {
+    recordStep(app.dir, app.manifest, "interview", { plan: file, plan_pruefsumme: fileDigest(join(app.dir, "plans", "aktiv", file)) });
+  }
   const zweck = to === "aktiv" && readmeZweck(app, file);
   console.log(
     [
@@ -917,6 +931,12 @@ function buildApp(app) {
     cpSync(join(app.dir, "app.json"), join(buildDir, backendFolder, "app.json"));
   }
 
+  // Der Nachweis des Ablaufs: Bau und Test tragen sich in die Akte ein, dann geht die Akte
+  // mit der Prüfsumme des fertigen Pakets in dieses Paket. `nachweis.json` wird zuletzt
+  // geschrieben, weil jede Datei, die danach noch dazukäme, die Prüfsumme brechen würde.
+  const proof = recordProof(app);
+  stampPackage(app.dir, buildDir, app.manifest);
+
   const size = (function messen(path) {
     const stat = statSync(path);
     if (stat.isFile()) return stat.size;
@@ -927,6 +947,7 @@ function buildApp(app) {
     [
       "",
       designCheck,
+      ...proofReport(proof),
       ...addressSection(app.dir).slice(1),
       t(
         `Built: ${relative(ROOT, buildDir)}, ${Math.max(1, Math.round(size / 1024))} KB.`,
@@ -943,6 +964,38 @@ function buildApp(app) {
       `  node .ara/tools/app.mjs --device <device> --app ${app.name} --check`,
     ].join("\n")
   );
+  // Rote Tests sind ein Fehlschlag des Baus. Keine Tests sind einer des Einspielens: eine Vorführung
+  // ohne sie darf bauen, nur nicht hinaus.
+  if (proof.vorhanden && !proof.gruen) process.exitCode = 1;
+}
+
+/**
+ * Bau und Test in die Akte der App eintragen. Gebaut ist, wenn das Paket liegt, getestet, wenn die
+ * Tests gegen genau diesen Stand liefen: darum läuft der Test hier und nicht davor.
+ */
+function recordProof(app) {
+  recordStep(app.dir, app.manifest, "bau");
+  return recordTests(app);
+}
+
+function recordTests(app) {
+  const run = runTests(app.dir);
+  recordStep(app.dir, app.manifest, "test", { vorhanden: run.vorhanden, dateien: run.dateien, faelle: run.faelle, gruen: run.gruen });
+  return run;
+}
+
+/** Was der Testlauf sagt, in Sätzen. Rot hält nichts auf, es steht im Nachweis und das Einspielen weist es ab. */
+function proofReport(run) {
+  if (!run.vorhanden) {
+    return [t("Tests: none found. The app brings no tests, and a package without them is not deployed.", "Tests: keine gefunden. Die App bringt keine Tests mit, und ein Paket ohne sie wird nicht eingespielt.")];
+  }
+  if (run.gruen) {
+    return [t(`Tests: ${run.faelle} cases in ${run.dateien} ${run.dateien === 1 ? "file" : "files"}, all green. Proof of the flow written into the package (nachweis.json).`, `Tests: ${run.faelle} Fälle in ${run.dateien} ${run.dateien === 1 ? "Datei" : "Dateien"}, alle grün. Nachweis des Ablaufs ins Paket geschrieben (nachweis.json).`)];
+  }
+  return [
+    t("Tests: not green. The package is built, but it will not be deployed until the tests pass. The run:", "Tests: nicht grün. Das Paket ist gebaut, wird aber erst eingespielt, wenn die Tests bestehen. Der Lauf:"),
+    ...run.ausgabe.split("\n").slice(0, 40).map((line) => `  ${line}`),
+  ];
 }
 
 // --- Am Rechner: die Lage ----------------------------------------------------
@@ -1087,10 +1140,87 @@ if (!wantsDevice) {
   }
   if (arg.build) {
     buildApp(app);
-    process.exit(0);
+    process.exit(process.exitCode || 0);
+  }
+  if (arg.test) {
+    if (!app.exists || app.manifestProblem) fail(app.manifestProblem || t(`The app ${name} does not exist yet. First --new.`, `Die App ${name} gibt es noch nicht. Zuerst --new.`));
+    const run = recordTests(app);
+    console.log(
+      [
+        ...proofReport(run),
+        run.gruen
+          ? t(`The package carries this result only after a new build: node .ara/tools/app.mjs --app ${name} --build`, `Das Paket trägt dieses Ergebnis erst nach einem neuen Bau: node .ara/tools/app.mjs --app ${name} --build`)
+          : "",
+      ].filter(Boolean).join("\n")
+    );
+    process.exit(run.gruen ? 0 : 1);
+  }
+  if (arg.nachweis !== undefined) {
+    const found = showProof(app, str(arg.nachweis));
+    process.exit(found ? 1 : 0);
   }
   if (app.exists) writeState({ app: name });
   process.exit(showApp(app));
+}
+
+/**
+ * Was vor dem Einspielen am Nachweis zu sagen ist. Hält mit `fail` an, wo er fehlt oder nicht stimmt
+ * und das Paket aus `apps/` kommt, oder wo er da ist und nicht stimmt. Gibt sonst eine Zeile zurück.
+ */
+function proofBeforeDeploy(dir, manifest) {
+  if (standardExempt(manifest)) return proofLines({ ok: true, ausgenommen: true }, manifest.id)[0];
+  const appsDir = resolve(ROOT, "apps");
+  const fromApp = dir.startsWith(appsDir + sep) && dir.endsWith(`${sep}build`);
+  const present = existsSync(join(dir, "nachweis.json"));
+  if (!present && !fromApp) {
+    return t(
+      "Proof: this folder carries no nachweis.json. A device that holds the app standard will refuse it, the kit's flow (--build) writes the proof.",
+      "Nachweis: dieser Ordner trägt keine nachweis.json. Ein Gerät, das den App-Standard prüft, weist ihn ab, der Ablauf des Kits (--build) schreibt den Nachweis."
+    );
+  }
+  const found = verifyProof(dir, { ort: "paket" });
+  // Stammt das Paket aus der Akte, muss auch die Akte noch zu ihm passen.
+  const akte = fromApp ? verifyProof(dirname(dir), { ort: "akte" }) : { ok: true, funde: [] };
+  if (!found.ok || !akte.ok) {
+    const funde = [...found.funde, ...akte.funde.filter((f) => !found.funde.some((g) => g.code === f.code))];
+    fail(
+      [
+        t("Nothing deployed. The proof of the flow does not hold:", "Nichts eingespielt. Der Nachweis des Ablaufs trägt nicht:"),
+        ...funde.map((find) => `- ${find.text}`),
+        "",
+        t(
+          'What the proof is and what each finding means: .ara/knowledge/nachweis.md. Usually: build again with --build, it runs the tests and writes the proof.',
+          'Was der Nachweis ist und was jeder Befund heißt: .ara/knowledge/nachweis.de.md. Meist hilft: noch einmal mit --build bauen, das lässt die Tests laufen und schreibt den Nachweis.'
+        ),
+      ].join("\n")
+    );
+  }
+  return t("Proof of the flow: interview, build and test on record, checksums match.", "Nachweis des Ablaufs: Interview, Bau und Test eingetragen, Prüfsummen stimmen.");
+}
+
+/**
+ * `--nachweis`: stimmt der Nachweis der App? Ohne Ordner wird die Akte gegen ihren Quelltext
+ * gehalten und, wenn gebaut ist, das Paket gegen seine Prüfsumme. Mit Ordner wird ein Paket so
+ * geprüft, wie das Gerät es entpackt hat. Gibt `true` zurück, wenn etwas nicht stimmt.
+ */
+function showProof(app, folder) {
+  const results = [];
+  if (folder) {
+    const dir = resolve(folder);
+    if (!existsSync(dir)) fail(t(`The folder ${folder} does not exist.`, `Den Ordner ${folder} gibt es nicht.`));
+    results.push({ ort: "paket", name: relative(ROOT, dir) || dir, result: verifyProof(dir, { ort: "paket" }) });
+  } else {
+    if (!app.exists || app.manifestProblem) fail(app.manifestProblem || t(`The app ${app.name} does not exist yet. First --new.`, `Die App ${app.name} gibt es noch nicht. Zuerst --new.`));
+    const ausgenommen = standardExempt(app.manifest);
+    results.push({ ort: "akte", name: `apps/${app.name}`, result: verifyProof(app.dir, { ort: "akte", manifest: app.manifest, ausgenommen }) });
+    if (app.build.exists) results.push({ ort: "paket", name: `apps/${app.name}/build`, result: verifyProof(join(app.dir, "build"), { ort: "paket", ausgenommen }) });
+  }
+  if (arg.json) {
+    console.log(JSON.stringify(results.map((r) => ({ ort: r.ort, ordner: r.name, ...r.result })), null, 2));
+  } else {
+    for (const r of results) console.log(proofLines(r.result, r.name).join("\n"));
+  }
+  return results.some((r) => !r.result.ok);
 }
 
 // --- Gerät, Adresse, Schlüssel ----------------------------------------------
@@ -1982,6 +2112,11 @@ if (arg.deploy !== undefined) {
   // nichts, und gesucht wurde danach in der App.
   if (!version.ok) fail(`${t("Nothing deployed.", "Nichts eingespielt.")} ${version.text}`);
 
+  // Der Nachweis des Ablaufs: das Gerät prüft den App-Standard künftig beim Ausrollen, und das Kit
+  // hält sich schon jetzt daran. Ein Paket aus `apps/` ohne gültigen Nachweis geht nicht hinaus.
+  // Ein fremder Ordner ohne Nachweis geht mit einem Hinweis, einer mit falschem nicht.
+  const proofLine = proofBeforeDeploy(dir, manifest);
+
   // Nennt der Kontrakt des Geraets das Feld `aenderungstext`, nimmt es neben dem Paket ein paar
   // Saetze, was neu ist. Das Kit verlangt sie: wer ausrollt, sagt, was er ausrollt. Ein Geraet,
   // dessen Kontrakt das Feld nicht nennt, kennt es nicht, dann wird nichts verlangt und nichts
@@ -2101,6 +2236,14 @@ if (arg.deploy !== undefined) {
         time: now(),
       },
     });
+
+    // Das Ausrollen in den Teststand ist der vierte Schritt des Ablaufs. Das Paket trägt ihn nicht,
+    // es kann sein eigenes Ausrollen nicht enthalten: er steht in der Akte der App am Rechner.
+    if (dir.startsWith(resolve(ROOT, "apps") + sep) && dir.endsWith(`${sep}build`) && (sent.data?.stand ?? "test") === "test") {
+      const appFolder = dirname(dir);
+      recordStep(appFolder, manifest, SCHRITT_AUSROLLEN, { geraet: place, fassung: sent.data?.version ?? manifest.version ?? null });
+    }
+    console.log(proofLine);
 
     if (arg.json) {
       console.log(JSON.stringify({ device: place, eingespielt: sent.data }, null, 2));

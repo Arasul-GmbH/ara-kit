@@ -3785,7 +3785,13 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       `ein Bau ohne aktiven Plan lief oder sagt nicht, wie weiter: ${ohnePlan.stdout}${ohnePlan.stderr}`
     );
     assert(!existsSync(join(appDir, "build")), "ohne Plan entstand trotzdem ein Bau");
-    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build", "--no-plan"], env)).status === 0, "Bau der App fehlgeschlagen");
+    // Was ans Gerät geht, trägt den Nachweis des Ablaufs (nachweis.md): dieser Test prüft das
+    // Einspielen, also bekommt die Probe-App das, was der Ablauf ihr gäbe, einen aktiven Plan und
+    // einen Test. Dass ein Paket ohne beides nicht hinausgeht, prüft „Der Nachweis des Ablaufs“.
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--plan-aktiv", "2026-01-01-probe.md"], env)).status === 0, "der Plan wurde nicht aktiv");
+    mkdirSync(join(appDir, "test"), { recursive: true });
+    writeFileSync(join(appDir, "test", "probe.test.mjs"), 'import assert from "node:assert/strict";\nimport { test } from "node:test";\ntest("probe", () => assert.equal(1, 1));\n');
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build"], env)).status === 0, "Bau der App fehlgeschlagen");
     gesehen.paket = false;
     gesehen.inhalt = [];
     run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base, "--aenderungstext", "Probelauf."], env);
@@ -3795,6 +3801,18 @@ await checkAsync("app.mjs spielt ein Paket ein, schaltet live und wieder zurück
       !gesehen.inhalt.some((eintrag) => /plans|README/.test(eintrag)),
       `die Arbeit an der App ging mit ins Paket: ${gesehen.inhalt.join(", ")}`
     );
+    // Der Nachweis geht mit hinaus, und das Einspielen trägt den vierten Schritt in die Akte.
+    assert(gesehen.inhalt.includes("./nachweis.json"), `der Nachweis fehlt im Paket: ${gesehen.inhalt.join(", ")}`);
+    assert(
+      JSON.parse(readFileSync(join(appDir, "nachweis.json"), "utf8")).schritte.some((schritt) => schritt.name === "ausrollen-test"),
+      "das Einspielen in den Teststand steht nicht im Nachweis der App"
+    );
+    // Ein Paket, das nach dem Bau von Hand geändert wurde, geht nicht hinaus, und das Kit sagt, warum.
+    writeFileSync(join(appDir, "build", "frontend", "index.html"), "<p>von Hand</p>\n");
+    gesehen.paket = false;
+    run = await toolAsync("app.mjs", ["--device", name, "--app", "probeapp", "--deploy", "--base", base, "--aenderungstext", "Probelauf."], env);
+    assert(run.status !== 0 && !gesehen.paket && /Nachweis.*trägt nicht/s.test(run.stdout + run.stderr), `ein geändertes Paket wurde eingespielt: ${run.stdout}${run.stderr}`);
+    assert((await toolAsync("app.mjs", ["--app", "probeapp", "--build"], env)).status === 0, "Bau nach der Änderung im Paket fehlgeschlagen");
 
     // Ins Paket geht der BAU der Oberfläche und nicht ihr Quelltext. Der
     // Kontrakt sagt es als Regel ("Das Frontend ist fertig gebaut, das Gerät
@@ -15501,10 +15519,12 @@ const FACH_APP_LADESATZ = {
  * ohne sie baut der Agent eine App, in der jeder alles sieht und niemand weiß, was hinausgeht.
  * Seit 0.69.0 19.000: die Frage nach dem Dokument, das das Gerät liest, kostet rund 350 Tokens, und
  * ohne sie rät der Agent, welche Felder ein Mensch in der Freigabe ändern darf.
+ * Seit 0.85.0 19.200: der Verweis auf den Nachweis des Ablaufs in app.md und im Befehl kostet rund 100
+ * Tokens, und ohne ihn weiß der Agent nicht, warum ein Paket nicht hinausgeht.
  * Seit 0.84.0 19.000: der Abschnitt zum Prozessblatt in app.md, sein Hinweis im Befehl und die Regel in
  * AGENTS.md kosten rund 800 Tokens, und ohne sie fragt /app noch einmal, was das Blatt schon sagt.
  */
-const FACH_APP_GRENZE = 19000;
+const FACH_APP_GRENZE = 19200;
 
 check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 19.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
@@ -16471,6 +16491,124 @@ for (const lang of ["en", "de"]) {
     }
   });
 }
+
+// Der Nachweis des Ablaufs: eine Vorlagen-App trägt ihn, und was von Hand geschieht, nimmt ihn ihr.
+await checkAsync("Der Nachweis des Ablaufs: die Vorlage trägt ihn, Änderung, Kopie, rote und fehlende Tests nehmen ihn", async () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const merker = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const eins = "selftest-nachweis";
+  const zwei = "selftest-nachweis-b";
+  const dir = join(ROOT, "apps", eins);
+  const dirB = join(ROOT, "apps", zwei);
+  const app = (name, ...args) => tool("app.mjs", ["--app", name, ...args], "", {});
+  const funde = (lauf) => JSON.parse(lauf.stdout).flatMap((teil) => teil.funde.map((f) => f.code));
+  const neu = (name) => {
+    assert(app(name, "--new", "--titel", "Nachweisprobe", "--beschreibung", "Probe des Nachweises").status === 0, `--new ${name} scheitert`);
+    // Ohne Bauskript der Oberfläche: der Selbsttest läuft ohne Netz und ohne npm install.
+    const pfad = join(ROOT, "apps", name, "frontend", "package.json");
+    const paket = JSON.parse(readFileSync(pfad, "utf8"));
+    delete paket.scripts.build;
+    writeFileSync(pfad, JSON.stringify(paket, null, 2));
+  };
+  const planAktiv = (name, titel) => {
+    assert(app(name, "--plan", titel).status === 0, "--plan scheitert");
+    const datei = readdirSync(join(ROOT, "apps", name, "plans", "offen"))[0];
+    const lauf = app(name, "--plan-aktiv", datei);
+    assert(lauf.status === 0, `--plan-aktiv scheitert: ${lauf.stderr}`);
+    return datei;
+  };
+  const stand = () => JSON.parse(readFileSync(join(dir, "build", "nachweis.json"), "utf8"));
+  try {
+    neu(eins);
+    // Vor dem Ablauf: kein Nachweis, und der Befund sagt es.
+    let lauf = app(eins, "--nachweis", "--json");
+    assert(lauf.status !== 0 && funde(lauf).includes("fehlt"), `eine App ohne Ablauf trägt einen Nachweis: ${lauf.stdout}`);
+
+    const plan = planAktiv(eins, "Erster Plan");
+    lauf = app(eins, "--build");
+    assert(lauf.status === 0, `der Bau scheitert: ${lauf.stdout}${lauf.stderr}`);
+    const nachweis = stand();
+    assert(nachweis.schema === 1 && nachweis.app === eins, "Schema oder Kennung fehlen");
+    assert(JSON.stringify(nachweis.schritte.map((s) => s.name)) === '["interview","bau","test"]', `die Schritte stimmen nicht: ${nachweis.schritte.map((s) => s.name)}`);
+    assert(nachweis.schritte[0].plan === plan, "der Schritt interview nennt den Plan nicht");
+    assert(nachweis.tests.vorhanden && nachweis.tests.faelle >= 6 && nachweis.tests.lauf.gruen, `die Tests der Vorlage zählen nicht: ${JSON.stringify(nachweis.tests)}`);
+    assert(nachweis.kit.version === readFileSync(join(ROOT, ".ara", "VERSION"), "utf8").trim(), "die Fassung des Kits fehlt");
+    assert(nachweis.bibliothek.marken === JSON.parse(readFileSync(join(dir, "app.json"), "utf8")).marken, "die Fassung der Bibliothek fehlt");
+    assert(/^sha256:[0-9a-f]{64}$/.test(nachweis.inhalt.paket) && /^sha256:[0-9a-f]{64}$/.test(nachweis.siegel), "Prüfsumme oder Siegel haben nicht die Form");
+    assert(app(eins, "--nachweis").status === 0, "die Vorlagen-App trägt ihren Nachweis nicht");
+    lauf = tool("app.mjs", ["--nachweis", join(dir, "build"), "--app", eins], "", {});
+    assert(lauf.status === 0, `das Paket besteht die Prüfung nicht, wie das Gerät sie machte: ${lauf.stdout}`);
+    // Das Paket allein, ohne die Akte und ohne das Kit-Wissen, trägt, was die Prüfung braucht.
+    assert(existsSync(join(dir, "build", "nachweis.json")) && existsSync(join(dir, "build", "app.json")), "nachweis.json liegt nicht neben app.json");
+
+    // Eine Datei von Hand geändert: die Akte verliert den Nachweis. Der Bau sagt es auch.
+    const datei = join(dir, "backend", "kern", "csv.mjs");
+    const original = readFileSync(datei, "utf8");
+    writeFileSync(datei, `${original}\n// von Hand\n`);
+    lauf = app(eins, "--nachweis", "--json");
+    assert(lauf.status !== 0 && funde(lauf).includes("quelle-geaendert"), `eine geänderte Datei fällt nicht auf: ${lauf.stdout}`);
+    lauf = app(eins, "--build");
+    assert(lauf.status === 0 && app(eins, "--nachweis").status === 0, "nach einem neuen Bau trägt die App den Nachweis nicht wieder");
+
+    // Das Paket nach dem Bau geändert.
+    const paketDatei = join(dir, "build", "backend", "kern", "csv.mjs");
+    writeFileSync(paketDatei, `${readFileSync(paketDatei, "utf8")}\n// im Paket\n`);
+    lauf = tool("app.mjs", ["--nachweis", join(dir, "build"), "--json"], "", {});
+    assert(lauf.status !== 0 && funde(lauf).includes("paket-geaendert"), `ein geändertes Paket fällt nicht auf: ${lauf.stdout}`);
+    assert(app(eins, "--build").status === 0, "der Bau nach der Änderung im Paket scheitert");
+
+    // Der Nachweis selbst von Hand geändert: das Siegel hält nicht.
+    const nachweisPfad = join(dir, "build", "nachweis.json");
+    const echt = readFileSync(nachweisPfad, "utf8");
+    writeFileSync(nachweisPfad, echt.replace('"faelle": 6', '"faelle": 60'));
+    lauf = tool("app.mjs", ["--nachweis", join(dir, "build"), "--json"], "", {});
+    assert(funde(lauf).includes("siegel"), `ein geänderter Nachweis fällt nicht auf: ${lauf.stdout}`);
+    writeFileSync(nachweisPfad, echt);
+
+    // Abgeschrieben: der Nachweis einer fertigen App in eine andere kopiert.
+    neu(zwei);
+    cpSync(nachweisPfad, join(dirB, "nachweis.json"));
+    lauf = app(zwei, "--nachweis", "--json");
+    assert(lauf.status !== 0 && funde(lauf).includes("kennung") && funde(lauf).includes("quelle-geaendert"), `ein kopierter Nachweis besteht: ${lauf.stdout}`);
+    lauf = tool("app.mjs", ["--nachweis", join(dir, "build")], "", {});
+    assert(lauf.status === 0, "der echte Nachweis trägt nicht mehr");
+
+    // Rote Tests: das Paket entsteht, trägt aber nicht, und der Bau meldet es.
+    const testDatei = join(dir, "backend", "test", "kern.test.mjs");
+    const testOriginal = readFileSync(testDatei, "utf8");
+    writeFileSync(testDatei, `${testOriginal}\ntest("rot", () => assert.equal(1, 2));\n`);
+    lauf = app(eins, "--build");
+    assert(lauf.status !== 0, "rote Tests lassen den Bau gelten");
+    assert(stand().tests.lauf.gruen === false, "der rote Lauf steht nicht im Nachweis");
+    lauf = tool("app.mjs", ["--nachweis", join(dir, "build"), "--json"], "", {});
+    assert(funde(lauf).includes("tests-rot"), `rote Tests fallen nicht auf: ${lauf.stdout}`);
+    writeFileSync(testDatei, testOriginal);
+
+    // Keine Tests: nichts, was gelaufen sein könnte.
+    rmSync(join(dir, "backend", "test"), { recursive: true });
+    lauf = app(eins, "--build");
+    assert(lauf.status === 0 && /keine gefunden/.test(lauf.stdout), `ein Bau ohne Tests meldet es nicht: ${lauf.stdout}`);
+    lauf = tool("app.mjs", ["--nachweis", join(dir, "build"), "--json"], "", {});
+    assert(funde(lauf).includes("tests-fehlen"), `fehlende Tests fallen nicht auf: ${lauf.stdout}`);
+    mkdirSync(join(dir, "backend", "test"));
+    writeFileSync(testDatei, testOriginal);
+
+    // Ein neuer Plan beginnt einen neuen Durchlauf: Bau und Test des alten gelten für ihn nicht.
+    assert(app(eins, "--build").status === 0, "der Bau vor dem zweiten Plan scheitert");
+    assert(app(eins, "--plan-erledigt", plan).status === 0, "--plan-erledigt scheitert");
+    planAktiv(eins, "Zweiter Plan");
+    const akte = JSON.parse(readFileSync(join(dir, "nachweis.json"), "utf8"));
+    assert(JSON.stringify(akte.schritte.map((s) => s.name)) === '["interview"]', `ein neuer Plan verwirft Bau und Test nicht: ${akte.schritte.map((s) => s.name)}`);
+    lauf = app(eins, "--nachweis", "--json");
+    assert(funde(lauf).includes("schritt-fehlt"), `der neue Durchlauf trägt schon: ${lauf.stdout}`);
+    return "Vorlage trägt ihn; Änderung, geändertes Paket, geändertes Siegel, Kopie, rote Tests, keine Tests und neuer Plan nehmen ihn";
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(dirB, { recursive: true, force: true });
+    if (merker === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, merker);
+  }
+});
 
 console.log(
   `\n${results.length - failures} von ${results.length} Prüfungen bestanden.` +

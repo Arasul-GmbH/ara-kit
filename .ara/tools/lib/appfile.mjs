@@ -136,7 +136,7 @@ export function readApp(name) {
       id: manifest?.id ?? null,
       // Ein Bau, der älter ist als die Quelle, ist kein Bau, sondern ein
       // Missverständnis: eingespielt würde der Stand von vorgestern.
-      stale: newest(dir, NOT_IN_PACKAGE) > newest(buildDir),
+      stale: newest(dir, [...NOT_IN_PACKAGE, "nachweis.json"]) > newest(buildDir),
       time: now(new Date(statSync(buildManifest).mtimeMs)),
     };
   }

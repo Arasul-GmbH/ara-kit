@@ -20,6 +20,7 @@ its moment comes.
   login, approval, flow, reading a document.
 - `.ara/knowledge/design-system.md` as soon as you touch an interface.
 - `.ara/knowledge/deploy.md` as soon as a package goes to a device.
+- `.ara/knowledge/nachweis.md` as soon as a package does not go out because of its proof of the flow.
 - `.ara/templates/app/README.md` when you change the scaffold of an app: its places, where an
   approval is decided, how it takes a flow's result.
 
