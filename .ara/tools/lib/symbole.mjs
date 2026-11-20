@@ -1965,34 +1965,55 @@ zoom-out`.split("\n");
 
 export const LUCIDE_NAMEN = new Set(NAMEN);
 
-/** Wörter aus Kennung, Titel und Beschreibung einer App und das Bild, das ein Mensch dazu erwartet. */
+/**
+ * Wörter aus Kennung, Titel und Beschreibung einer App und die Bilder, die ein Mensch dazu
+ * erwartet, das naheliegende zuerst. `/app` legt drei davon zur Wahl vor (`suggestSymbols`).
+ */
 const STICHWORTE = [
-  [/beleg|quittung|rechnung|kassenbon|ausgabe/, "receipt"],
-  [/abschluss|jahresabschluss|bilanz|buchhaltung|buchung/, "calculator"],
-  [/urlaub|abwesen|ferien/, "tree-palm"],
-  [/antrag|formular|anfrage/, "file-pen-line"],
-  [/freigabe|genehmig|abnahme/, "clipboard-check"],
-  [/vertrag|recht|compliance/, "scale"],
-  [/kunde|mandant|kontakt|adress/, "contact"],
-  [/angebot|preis|kosten/, "euro"],
-  [/termin|kalender|plan/, "calendar-days"],
-  [/aufgabe|todo|ticket|aufträge|auftrag/, "list-checks"],
-  [/dokument|akte|ablage|archiv|vorgang|vorgänge/, "folder-open"],
-  [/personal|mitarbeit|team|schicht/, "users"],
-  [/lager|bestand|inventar|material/, "package"],
-  [/fahr|auto|flotte|kfz/, "car"],
-  [/mail|post|brief/, "mail"],
-  [/bericht|auswertung|statistik|kennzahl/, "chart-column"],
-  [/messen|prüf|protokoll|kontrolle/, "clipboard-list"],
-  [/wissen|handbuch|anleitung/, "book-open"],
-  [/stunden|zeit/, "clock"],
+  [/beleg|quittung|rechnung|kassenbon|ausgabe/, ["receipt", "receipt-euro", "file-text"]],
+  [/abschluss|jahresabschluss|bilanz|buchhaltung|buchung/, ["calculator", "book-open-check", "landmark"]],
+  [/urlaub|abwesen|ferien/, ["tree-palm", "calendar-off", "plane"]],
+  [/antrag|formular|anfrage/, ["file-pen-line", "clipboard-pen", "file-input"]],
+  [/freigabe|genehmig|abnahme/, ["clipboard-check", "badge-check", "stamp"]],
+  [/vertrag|recht|compliance/, ["scale", "file-signature", "shield-check"]],
+  [/kunde|mandant|kontakt|adress/, ["contact", "users-round", "book-user"]],
+  [/angebot|preis|kosten/, ["euro", "hand-coins", "tag"]],
+  [/termin|kalender|plan/, ["calendar-days", "calendar-check", "calendar-clock"]],
+  [/aufgabe|todo|ticket|aufträge|auftrag/, ["list-checks", "list-todo", "square-check-big"]],
+  [/dokument|akte|ablage|archiv|vorgang|vorgänge/, ["folder-open", "files", "archive"]],
+  [/personal|mitarbeit|team|schicht/, ["users", "id-card", "user-round-check"]],
+  [/lager|bestand|inventar|material/, ["package", "warehouse", "boxes"]],
+  [/fahr|auto|flotte|kfz/, ["car", "truck", "fuel"]],
+  [/mail|post|brief/, ["mail", "inbox", "send"]],
+  [/bericht|auswertung|statistik|kennzahl/, ["chart-column", "chart-line", "file-chart-column"]],
+  [/messen|prüf|protokoll|kontrolle/, ["clipboard-list", "gauge", "ruler"]],
+  [/wissen|handbuch|anleitung/, ["book-open", "library", "graduation-cap"]],
+  [/stunden|zeit/, ["clock", "timer", "hourglass"]],
 ];
+
+/** Bilder, die auf jede App passen: sie füllen auf, wenn die Worte weniger als drei hergeben. */
+const ALLGEMEIN = [SYMBOL_FALLBACK, "layout-grid", "folder-open", "clipboard-list"];
+
+/**
+ * Drei Bilder aus den Worten der App, das naheliegende zuerst, keines doppelt. Jedes steht im Satz,
+ * den das Gerät zeichnen kann. Trifft ein Wort, kommen seine Bilder zuerst, ein zweites Wort
+ * mischt sich danach ein; was fehlt, füllen allgemeine Bilder auf.
+ */
+export function suggestSymbols(...texte) {
+  const text = texte.filter(Boolean).join(" ").toLowerCase();
+  const out = [];
+  const nimm = (name) => {
+    if (out.length < 3 && LUCIDE_NAMEN.has(name) && !out.includes(name)) out.push(name);
+  };
+  const treffer = STICHWORTE.filter(([muster]) => muster.test(text)).map(([, namen]) => namen);
+  for (let stelle = 0; stelle < 3; stelle++) for (const namen of treffer) nimm(namen[stelle]);
+  for (const name of ALLGEMEIN) nimm(name);
+  return out;
+}
 
 /** Ein Vorschlag aus den Worten der App. Trifft kein Stichwort, ein Bild, das auf jede App passt. */
 export function suggestSymbol(...texte) {
-  const text = texte.filter(Boolean).join(" ").toLowerCase();
-  for (const [muster, name] of STICHWORTE) if (muster.test(text) && LUCIDE_NAMEN.has(name)) return name;
-  return SYMBOL_FALLBACK;
+  return suggestSymbols(...texte)[0];
 }
 
 /** Der ähnlichste Name aus dem Satz zu einer Angabe, die nicht darin steht: Teilwort zuerst, sonst Stichwort. */
