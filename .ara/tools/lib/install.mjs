@@ -902,7 +902,13 @@ export function createKey(sshArgs, transport, name, scope = null) {
   const key = labelled
     ? labelled.match(/\baras_[A-Za-z0-9_-]{4,}/)[0]
     : tokens.sort((a, b) => b.length - a.length)[0];
-  return { ok: true, key, script };
+  // Der Präfix steht auf der Zeile „Praefix“ der Ausgabe. Über die Liste ist er nicht immer zu
+  // finden: am 20.11.2026 (Plattform 0.8.17) führte die Liste nur app:deploy und system:update.
+  const prefixLine = answer.split("\n").find((line) => /pr(ä|ae)fix/i.test(line));
+  const prefix = prefixLine && key.startsWith(prefixLine.match(/\baras_[A-Za-z0-9_-]{4,}/)?.[0] || "\0")
+    ? prefixLine.match(/\baras_[A-Za-z0-9_-]{4,}/)[0]
+    : null;
+  return { ok: true, key, script, prefix };
 }
 
 /** Gilt diese Zeile der Liste als gültiger Schlüssel? Gelesen wird das erste Wort, wie das Gerät es schreibt. */

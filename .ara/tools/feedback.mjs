@@ -172,7 +172,7 @@ async function makeKey() {
       fail(error.message);
     }
     made = createKey(ssh, "ssh", FEEDBACK_KEY_NAME, scope);
-    if (made.ok) made.prefix = (listKeys(ssh, "ssh", made.key).mine || {}).prefix || "?";
+    if (made.ok && !made.prefix) made.prefix = (listKeys(ssh, "ssh", made.key).mine || {}).prefix || "?";
     revokeAgain = async () => (made.prefix && made.prefix !== "?" ? revokeKey(ssh, "ssh", made.prefix).ok : false);
   }
   if (!made.ok) fail(t(`No feedback key: ${scrub(made.message)}`, `Kein Schlüssel für Rückmeldungen: ${scrub(made.message)}`));
@@ -256,7 +256,18 @@ async function dropKey() {
   } else {
     const ssh = sshArgs(device.fields, { batch: true }).args;
     const list = listKeys(ssh, "ssh", stored);
-    if (!list.ok || !list.mine) fail(scrub(list.message || t("The device does not list this key.", "Das Gerät führt diesen Schlüssel nicht.")));
+    if (!list.ok) fail(scrub(list.message));
+    if (!list.mine) {
+      // Am 20.11.2026 (Plattform 0.8.17) führte das Skript des Geräts Schlüssel mit dem Bereich der
+      // Rückmeldungen weder in seiner Liste noch beim Widerrufen. Dann bleibt der Weg über die
+      // Verwaltung, und das Kit sagt ihn, statt einen fremden Schlüssel zu treffen.
+      fail(
+        t(
+          `The device's key script does not list this key, so it cannot revoke it over SSH. Revoke it in the administration of ${place} under API keys (its prefix stands in the device file), or over HTTPS with the account that owns it: --revoke-key --via https --password-ref <NAME> --login-user <account>.`,
+          `Das Schlüsselskript des Geräts führt diesen Schlüssel nicht, also kann es ihn über SSH nicht widerrufen. Widerrufen in der Verwaltung von ${place} unter API-Schlüssel (sein Präfix steht in der Geräteakte), oder über HTTPS mit dem Konto, dem er gehört: --revoke-key --via https --password-ref <NAME> --login-user <konto>.`
+        )
+      );
+    }
     prefix = list.mine.prefix;
     done = revokeKey(ssh, "ssh", prefix);
   }
