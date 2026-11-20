@@ -298,10 +298,12 @@ function resolveImport(from, target, files) {
  * Die Einstiege der Bibliothek: der Sammelexport und, seit 5.0.0, das
  * Diagramm. `diagramm.ts` steht mit Absicht nicht im Sammelexport, weil
  * `recharts` Seiteneffekte beim Laden hat und sonst jede App mitbaute; eine
- * App holt es als `@marken/diagramm`. Ein Einstieg, den eine aeltere Fassung
- * nicht hat, faellt weg.
+ * App holt es als `@marken/diagramm`. Seit 5.9.0 dazu die Symbole: Lucide
+ * steht nur ueber `@marken/symbole` bereit, nicht im Sammelexport, damit ein
+ * Bau nur die Symbole nimmt, die er zeichnet. Ein Einstieg, den eine aeltere
+ * Fassung nicht hat, faellt weg.
  */
-const ENTRIES = ["index.ts", "diagramm.ts"];
+const ENTRIES = ["index.ts", "diagramm.ts", "symbole.ts"];
 
 /**
  * Jede Datei, zu der von keinem Einstieg aus ein Weg fuehrt.

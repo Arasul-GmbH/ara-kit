@@ -25,7 +25,7 @@ function Menubar({ className, ...props }: React.ComponentProps<typeof MenubarPri
     <MenubarPrimitive.Root
       data-slot="menubar"
       className={cn(
-        'flex h-9 items-center gap-1 rounded-md border border-border bg-background p-1 shadow-xs',
+        'flex h-8 items-center gap-1 rounded-md border border-border bg-background p-1 shadow-xs',
         className
       )}
       {...props}
@@ -72,7 +72,7 @@ function MenubarContent({
         alignOffset={alignOffset}
         sideOffset={sideOffset}
         className={cn(
-          'relative z-50 min-w-[12rem] origin-[var(--radix-menubar-content-transform-origin)] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+          'relative z-50 min-w-[12rem] origin-[var(--radix-menubar-content-transform-origin)] overflow-hidden rounded-lg glas border p-1 text-popover-foreground data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           className
         )}
         {...props}
@@ -237,7 +237,7 @@ function MenubarSubContent({
     <MenubarPrimitive.SubContent
       data-slot="menubar-sub-content"
       className={cn(
-        'z-50 min-w-[8rem] origin-[var(--radix-menubar-content-transform-origin)] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        'z-50 min-w-[8rem] origin-[var(--radix-menubar-content-transform-origin)] overflow-hidden rounded-lg glas border p-1 text-popover-foreground data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
         className
       )}
       {...props}

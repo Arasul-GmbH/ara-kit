@@ -36,6 +36,8 @@
 
 import { memo, useMemo } from 'react';
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -108,14 +110,22 @@ interface ChartProps<Datum extends object> {
   height?: number;
   /** Beschreibung des Diagramms für Vorlesewerkzeuge. */
   label: string;
+  /**
+   * Linien (Vorgabe) oder Balken (seit 5.9.0). Beide im selben Stil: nur
+   * waagrechte Hilfslinien, Achsen ohne Strich, Beschriftung 12 px in
+   * Grau, die Reihen in Blau, Schwarz, Grau; Balken oben mit 4 px Radius.
+   */
+  art?: 'linie' | 'balken';
   className?: string;
 }
 
 const ACHSE = {
   stroke: 'var(--muted-foreground)',
-  tick: { fill: 'var(--muted-foreground)', fontSize: '0.75rem' },
-  axisLine: { stroke: 'var(--muted-foreground)' },
-  tickLine: { stroke: 'var(--muted-foreground)' },
+  tick: { fill: 'var(--muted-foreground)', fontSize: 12 },
+  // Seit 5.9.0 ohne Achsenstrich und ohne Marken: die waagrechten
+  // Hilfslinien tragen die Ordnung, ein Rahmen um das Diagramm wiederholt sie.
+  axisLine: false,
+  tickLine: false,
 } as const;
 
 export function Chart<Datum extends object>({
@@ -130,20 +140,29 @@ export function Chart<Datum extends object>({
   yDomainRechts,
   height = 280,
   label,
+  art = 'linie',
   className,
 }: ChartProps<Datum>) {
   const einheiten = new Map(series.map(reihe => [reihe.name, reihe.unit ?? '']));
   const zweiteAchse = series.some(reihe => reihe.achse === 'rechts');
+  const Flaeche = art === 'balken' ? BarChart : LineChart;
 
   return (
     <div className={cn('min-w-0', className)}>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data as Datum[]} role="img" aria-label={label}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+        <Flaeche
+          data={data as Datum[]}
+          role="img"
+          aria-label={label}
+          margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+          {...(art === 'balken' ? { barCategoryGap: '24%' } : {})}
+        >
+          <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis
             dataKey={xKey}
-            type="number"
-            domain={['dataMin', 'dataMax']}
+            {...(art === 'balken'
+              ? {}
+              : { type: 'number' as const, domain: ['dataMin', 'dataMax'] })}
             {...(xTicks ? { ticks: xTicks } : {})}
             tickFormatter={formatX}
             {...ACHSE}
@@ -164,12 +183,15 @@ export function Chart<Datum extends object>({
             />
           )}
           <Tooltip
+            cursor={art === 'balken' ? { fill: 'var(--accent)' } : { stroke: 'var(--border)' }}
             contentStyle={{
-              background: 'var(--card)',
+              background: 'var(--popover)',
               border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: 'var(--glas-schatten-klein, none)',
+              fontSize: 12,
             }}
-            labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+            labelStyle={{ color: 'var(--foreground)', fontWeight: 500 }}
             labelFormatter={wert => formatX(Number(wert))}
             formatter={(wert, name) => {
               const zahl = typeof wert === 'number' ? wert : Number(wert);
@@ -180,21 +202,41 @@ export function Chart<Datum extends object>({
               ];
             }}
           />
-          <Legend />
-          {series.map((reihe, index) => (
-            <Line
-              key={reihe.key}
-              type="monotone"
-              dataKey={reihe.key}
-              name={reihe.name}
-              yAxisId={reihe.achse === 'rechts' ? 'rechts' : 'links'}
-              stroke={SERIENFARBEN[index % SERIENFARBEN.length]}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 5 }}
+          {series.length > 1 && (
+            <Legend
+              iconType="circle"
+              iconSize={8}
+              wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }}
             />
-          ))}
-        </LineChart>
+          )}
+          {series.map((reihe, index) =>
+            art === 'balken' ? (
+              <Bar
+                key={reihe.key}
+                dataKey={reihe.key}
+                name={reihe.name}
+                yAxisId={reihe.achse === 'rechts' ? 'rechts' : 'links'}
+                fill={SERIENFARBEN[index % SERIENFARBEN.length]}
+                radius={[4, 4, 0, 0]}
+                maxBarSize={32}
+                isAnimationActive={false}
+              />
+            ) : (
+              <Line
+                key={reihe.key}
+                type="monotone"
+                dataKey={reihe.key}
+                name={reihe.name}
+                yAxisId={reihe.achse === 'rechts' ? 'rechts' : 'links'}
+                stroke={SERIENFARBEN[index % SERIENFARBEN.length]}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 0 }}
+                isAnimationActive={false}
+              />
+            )
+          )}
+        </Flaeche>
       </ResponsiveContainer>
     </div>
   );

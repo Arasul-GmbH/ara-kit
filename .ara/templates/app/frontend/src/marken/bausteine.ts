@@ -22,8 +22,8 @@
  * einmal mit der eigenen Seitenleiste, und dort luegt jede Fensterschwelle.
  */
 
-export { Kopf } from './Kopf';
-export type { KopfProps } from './Kopf';
+export { Kopf, KopfVorne, Werkzeug } from './Kopf';
+export type { KopfProps, WerkzeugProps } from './Kopf';
 export { Liste, ListenEintrag } from './Liste';
 export type { ListeProps, ListenEintragProps } from './Liste';
 export { Karte } from './Karte';

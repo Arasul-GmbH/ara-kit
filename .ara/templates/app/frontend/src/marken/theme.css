@@ -54,6 +54,37 @@
    Grau aus denselben Tokens.
    ========================================================================== */
 
+/* -----------------------------------------------------------------------------
+   DIE SCHRIFT. Inter kommt mit der Bibliothek, damit Rahmen und jede App auf
+   jedem Rechner gleich aussehen: auch eine App im iframe bekommt sie, weil sie
+   diese Datei (oder `/marken/<haupt>/marken.css`) laedt. Eine Datei mit
+   veraenderlicher Staerke (100 bis 900), aufgeteilt nach Zeichensatz: der
+   Browser holt `latin-ext` nur, wenn ein Zeichen daraus vorkommt. Von der
+   eigenen Herkunft, wie es die Content-Security-Policy verlangt
+   (`font-src 'self'`). Lizenz: SIL Open Font License 1.1, `schrift/OFL.txt`.
+   -------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('./schrift/inter-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('./schrift/inter-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
 @theme {
   /* Border Radius */
   --radius-xs: 4px;
@@ -61,6 +92,8 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  /* Die Flaeche einer App im Rahmen und die Karte: zwischen lg und xl. */
+  --radius-2xl: 14px;
 
   /* Fonts */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -157,6 +190,13 @@
      Dialog, `rgb(0 0 0 / 0.5)` in der Bibliothek, und keiner der beiden folgte
      dem Thema. */
   --color-backdrop: var(--backdrop-color);
+
+  /* Glas: die Fuellung schwebender Bedienflaechen (`bg-glas`). Sie ist
+     halbdurchsichtig, nur wo der Browser Unschaerfe kann und der Mensch
+     nichts dagegen hat; sonst ist sie `--popover`, deckend. Siehe unten,
+     Abschnitt GLAS. */
+  --color-glas: var(--glas-flaeche);
+  --color-glas-kante: var(--glas-kante);
 }
 
 /* -----------------------------------------------------------------------------
@@ -172,25 +212,35 @@
    -------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
-  --background: #f6f6f6;
-  --foreground: #1a1a1a;
-  --card: #ffffff;
-  --card-foreground: #1a1a1a;
-  --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
-  --primary: #1e6aa4;
+  /* Die Farben der Marke. Creme ist der Grund, Panel hell die Karte, Panel
+     die Stufe darunter, Tinte der Text, Tinte weich der Nebentext, Linie die
+     Kante. Das Blau ist zwei Stufen dunkler als das Blau der Website
+     (`--primary-hover`): jenes haelt als Flaeche mit weisser Schrift 4,8:1,
+     als Text auf Creme aber nur 4,4:1. `--primary` ist beides, Flaeche und
+     Text, und steht in einer App oft als Abzeichen mit eigenem Wisch direkt
+     auf dem Verlauf des Grundes; es braucht deshalb die Stufe, die auf Creme,
+     Karte, Panel und jeder Stufe des Verlaufs, jeweils mit Wisch, 4,5:1 haelt
+     (gemessen von `scripts/test/marken.py`, Punkt 9; am Orin fiel die erste Stufe
+     am 20.11.2026 auf dem Ende des Verlaufs auf 4,2:1). */
+  --background: #f6f3ed;
+  --foreground: #1e1b16;
+  --card: #fbf8f2;
+  --card-foreground: #1e1b16;
+  --popover: #fbf8f2;
+  --popover-foreground: #1e1b16;
+  --primary: #2559b1;
   --primary-foreground: #ffffff;
-  --secondary: #ececec;
-  --secondary-foreground: #1a1a1a;
-  --muted: #ececec;
-  --muted-foreground: #666666;
-  --accent: rgba(16, 16, 16, 0.05); /* hover wash */
-  --accent-foreground: #1a1a1a;
+  --secondary: #efe9df;
+  --secondary-foreground: #1e1b16;
+  --muted: #efe9df;
+  --muted-foreground: #6b6250;
+  --accent: rgba(30, 27, 22, 0.05); /* hover wash, aus der Tinte */
+  --accent-foreground: #1e1b16;
   --destructive: #c42020;
   --destructive-foreground: #ffffff;
-  --border: rgba(16, 16, 16, 0.1);
-  --input: rgba(16, 16, 16, 0.12);
-  --ring: #1e6aa4;
+  --border: #dfd6c4;
+  --input: #c9bda3;
+  --ring: #2559b1;
 
   /* Schriftgroessen-Skala. Sie ist keine Tailwind-Skala (die steht als
      `--text-ui-*` im `@theme` darueber), sondern die Reihe fuer handgeschrie-
@@ -213,8 +263,25 @@
   --transition-base: 0.2s ease;
   --transition-slow: 0.3s ease;
 
-  /* Der Schleier unter einem Dialog oder Menue. */
-  --backdrop-color: rgba(0, 0, 0, 0.4);
+  /* Der Schleier unter einem Dialog oder Menue: Tinte, nicht Schwarz. */
+  --backdrop-color: rgba(30, 27, 22, 0.32);
+
+  /* DER GRUND. Hinter Leiste und App liegt ein ruhiger Verlauf von Creme
+     nach einem Hauch Blau (Creme zu 94 %, das Blau der Website zu 6 %). Kein
+     Bild, keine Koernung. `--background` bleibt die Farbe darunter: wer eine
+     Flaeche deckend braucht, nimmt sie. */
+  --verlauf-grund: linear-gradient(160deg, #f6f3ed 0%, #f4f3f0 45%, #f2f3f5 100%);
+
+  /* DER GRUND DES RAHMENS. Hinter der schwebenden Leiste und der Flaeche der
+     Ansicht liegt ein Verlauf, den man sieht: oben links Creme, unten rechts
+     ein Hauch Blau, dazu ein weicher Schein in der Ecke. Er ist kraeftiger
+     als `--verlauf-grund`, weil auf ihm kein Text steht, nur Glas
+     (`.glas-grund`); `marken.py` (Punkt 9) misst Text auf diesem Glas ueber
+     jeder Stufe. */
+  --rahmen-stufe-1: #ede8de;
+  --rahmen-stufe-2: #d9e1ee;
+  --rahmen-stufe-3: #b9cbea;
+  --rahmen-schein: #98b4e4;
 }
 
 /* -----------------------------------------------------------------------------
@@ -226,30 +293,183 @@
    -------------------------------------------------------------------------- */
 [data-theme='dark'] {
   color-scheme: dark;
-  --background: #141414;
-  --foreground: #e6e6e6;
-  --card: #181818;
-  --card-foreground: #e6e6e6;
-  --popover: #1c1c1c;
-  --popover-foreground: #e6e6e6;
-  --primary: #81a1c1;
-  --primary-foreground: #0a0a0a;
-  --secondary: #181818;
-  --secondary-foreground: #e6e6e6;
-  --muted: #181818;
-  --muted-foreground: rgba(228, 228, 228, 0.55);
-  --accent: rgba(228, 228, 228, 0.07);
-  --accent-foreground: #e6e6e6;
-  --border: rgba(228, 228, 228, 0.08);
-  --input: rgba(228, 228, 228, 0.35);
-  --ring: #81a1c1;
+  /* Die dunkle Fassung der Marke: Navy ist der Grund, Panel Navy die Karte,
+     Creme der Text. Das Blau ist hier eine helle Stufe desselben Blaus mit
+     Navy als Schrift darauf: ein Blau, das als Flaeche weisse Schrift traegt
+     (hoechstens Leuchtdichte 0,18), kann als Text auf Navy nicht 4,5:1
+     halten (mindestens 0,23). Gemessen von `marken.py`, Punkt 9, in beiden
+     Themen. */
+  --background: #0a1628;
+  --foreground: #f6f3ed;
+  --card: #0e1e38;
+  --card-foreground: #f6f3ed;
+  --popover: #11233f;
+  --popover-foreground: #f6f3ed;
+  --primary: #6a9ae6;
+  --primary-foreground: #0a1628;
+  --secondary: #152a4a;
+  --secondary-foreground: #f6f3ed;
+  --muted: #152a4a;
+  --muted-foreground: #a3abb8;
+  --accent: rgba(246, 243, 237, 0.07);
+  --accent-foreground: #f6f3ed;
+  --border: rgba(246, 243, 237, 0.1);
+  --input: rgba(246, 243, 237, 0.28);
+  --ring: #6a9ae6;
 
-  /* Das Rot des hellen Themas (#c42020) ist auf dunklem Grund zu dunkel:
-     3,3:1 auf `--background`. Hier bleibt das hellere Rot, 5,1:1. */
-  --destructive: #ef4444;
+  /* Das Rot des hellen Themas (#c42020) ist auf Navy zu dunkel. Hier steht
+     ein helleres Rot mit Navy als Schrift auf der vollen Flaeche. */
+  --destructive: #f26d6d;
+  --destructive-foreground: #0a1628;
 
   /* Der Schleier ist im Dunkeln dichter. */
-  --backdrop-color: rgba(0, 0, 0, 0.7);
+  --backdrop-color: rgba(4, 10, 20, 0.6);
+
+  /* Der Grund: von Navy nach Anthrazit. */
+  --verlauf-grund: linear-gradient(160deg, #0a1628 0%, #0f1a2b 50%, #17191d 100%);
+
+  /* Der Grund des Rahmens: Tiefblau mit einem Schein oben links, nach
+     Anthrazit unten rechts. */
+  --rahmen-stufe-1: #0d2349;
+  --rahmen-stufe-2: #121d33;
+  --rahmen-stufe-3: #22252c;
+  --rahmen-schein: #112a52;
+}
+
+/* -----------------------------------------------------------------------------
+   GLAS
+   -----------------------------------------------------------------------------
+   Nur auf schwebenden Bedienflaechen: Menues, Aufklappfelder, kurze
+   Meldungen, der Schleier unter einem Dialog. Tabellen, Formulare, Karten und
+   der Inhalt eines Dialogs bleiben deckend.
+
+   DECKEND IST DER NORMALFALL, GLAS KOMMT DAZU. `--glas-flaeche` ist zuerst
+   `--popover`. Halbdurchsichtig wird es erst, wenn der Browser Unschaerfe
+   kann, der Mensch in den Einstellungen nicht „Transparenz reduzieren“
+   gewaehlt hat (`data-transparenz='reduziert'` am `<html>`, auch im iframe
+   einer App) und das System weder weniger Transparenz noch mehr Kontrast
+   wuenscht.
+
+   DIE DICHTE IST GEMESSEN, NICHT GESCHAETZT. 88 % Fuellung: Tinte weich auf
+   Glas ueber der dunkelsten grossen Flaeche darunter (dem Hauptknopf) haelt
+   4,8:1, hell wie dunkel (`marken.py`, Punkt 9). Die Unschaerfe (16 px,
+   leicht gesaettigt) wird nie animiert. Die Kante traegt den Eindruck: 1 px
+   heller Rand und ein weicher Schatten.
+   -------------------------------------------------------------------------- */
+:root {
+  /* Der Verlauf des Rahmens aus den Stufen oben: hell der Schein unten
+     rechts, dunkel oben links. */
+  --verlauf-rahmen:
+    radial-gradient(120% 80% at 100% 100%, var(--rahmen-schein) 0%, transparent 62%),
+    linear-gradient(
+      135deg,
+      var(--rahmen-stufe-1) 0%,
+      var(--rahmen-stufe-2) 50%,
+      var(--rahmen-stufe-3) 100%
+    );
+  --glas-anteil: 88%;
+  --glas-flaeche: var(--popover);
+  /* Glas, das nur auf dem Grund des Rahmens liegt (die Leiste links, die
+     Leiste unten am Handy): darunter ist nie Text und nie ein Knopf, nur der
+     Verlauf. Es darf deshalb duenner sein, damit der Verlauf durchscheint. */
+  /* Dieses Glas ist neutral, nicht blau: hell Weiss, dunkel ein Hauch Creme
+     ueber dem Verlauf. `--popover` als Grund hielt die Leiste hell im Ton
+     der Flaeche und machte sie dunkel zu einer blauen Saeule. */
+  /* Glas ueber Inhalt (die Kapsel) mit kleiner Kante statt weitem Hof. */
+  --glas-schatten-klein: 0 0 0 1px rgba(30, 27, 22, 0.08), 0 1px 3px rgba(30, 27, 22, 0.1);
+  --glas-grund-basis: #ffffff;
+  --glas-anteil-grund: 62%;
+  --glas-flaeche-grund: var(--popover);
+  /* Die Flaeche der Ansicht schwebt mit einer Haarlinie und weichem Schatten. */
+  --schatten-flaeche: 0 1px 2px rgba(30, 27, 22, 0.06), 0 12px 32px -12px rgba(23, 42, 82, 0.2);
+  --glas-filter: none;
+  --glas-schleier-filter: none;
+  --glas-kante: rgba(255, 255, 255, 0.7);
+  /* Die Kante traegt den Eindruck: eine Haarlinie aussen (auf hellem Grund
+     waere der weisse Rand allein unsichtbar), ein weicher Schatten mit einer
+     Spur Blau und oben innen ein Lichtsaum. */
+  --glas-schatten:
+    0 0 0 1px rgba(30, 27, 22, 0.07), 0 12px 32px -12px rgba(23, 42, 82, 0.28),
+    0 2px 6px -2px rgba(30, 27, 22, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+[data-theme='dark'] {
+  --glas-schatten-klein: 0 0 0 1px rgba(246, 243, 237, 0.1), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --glas-grund-basis: #f6f3ed;
+  --glas-anteil-grund: 6%;
+  --schatten-flaeche: 0 0 0 1px rgba(246, 243, 237, 0.05), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
+  --verlauf-rahmen:
+    radial-gradient(90% 70% at 0% 0%, var(--rahmen-schein) 0%, transparent 65%),
+    linear-gradient(
+      135deg,
+      var(--rahmen-stufe-1) 0%,
+      var(--rahmen-stufe-2) 50%,
+      var(--rahmen-stufe-3) 100%
+    );
+  --glas-kante: rgba(246, 243, 237, 0.12);
+  --glas-schatten:
+    0 0 0 1px rgba(0, 0, 0, 0.35), 0 12px 32px -10px rgba(0, 0, 0, 0.6),
+    0 2px 6px -2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(246, 243, 237, 0.09);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root:not([data-transparenz='reduziert']) {
+    --glas-flaeche: color-mix(in srgb, var(--popover) var(--glas-anteil), transparent);
+    --glas-flaeche-grund: color-mix(
+      in srgb,
+      var(--glas-grund-basis) var(--glas-anteil-grund),
+      transparent
+    );
+    --glas-filter: blur(16px) saturate(1.4);
+    --glas-schleier-filter: blur(4px);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  /* `html:root`, nicht `:root`: dieselbe Wurzel, aber `marken.py` liest diesen
+     Block nicht als Grundwert der Tokens. */
+  html:root {
+    --glas-flaeche: var(--popover) !important;
+    --glas-flaeche-grund: var(--popover) !important;
+    --glas-filter: none !important;
+    --glas-schleier-filter: none !important;
+  }
+}
+
+/* Jede Glasflaeche der Bibliothek traegt diese Klasse: Fuellung, Filter,
+   Kante, Schatten. In der Schicht der Komponenten, damit eine Utility
+   (`bg-popover` an einer Stelle, die deckend bleiben muss) gewinnt. */
+@layer components {
+  .glas {
+    background-color: var(--glas-flaeche);
+    -webkit-backdrop-filter: var(--glas-filter);
+    backdrop-filter: var(--glas-filter);
+    border-color: var(--glas-kante);
+    box-shadow: var(--glas-schatten);
+  }
+  /* Glas auf dem Grund des Rahmens: dasselbe Glas, duenner gefuellt. */
+  .glas.glas-grund {
+    background-color: var(--glas-flaeche-grund);
+  }
+  .glas-schleier {
+    -webkit-backdrop-filter: var(--glas-schleier-filter);
+    backdrop-filter: var(--glas-schleier-filter);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   SYMBOLE
+   -----------------------------------------------------------------------------
+   Eine Strichstaerke fuer jedes Symbol aus Lucide, 1,75 px, unabhaengig von
+   seiner Groesse: das Symbol selbst traegt `stroke-width="2"` in Einheiten
+   seines Rasters (24), was bei 14 px duenner und bei 20 px dicker zeichnet.
+   `non-scaling-stroke` misst den Strich in Pixeln des Bildschirms.
+   -------------------------------------------------------------------------- */
+svg.lucide {
+  stroke-width: 1.75px;
+}
+svg.lucide * {
+  vector-effect: non-scaling-stroke;
 }
 
 /* -----------------------------------------------------------------------------
@@ -309,37 +529,33 @@
    `color-mix` aus `--primary`: ein Blau, eine Quelle, in beiden Themes.
    ----------------------------------------------------------------------------- */
 :root {
-  --primary-hover: #2677b6;
-  --primary-active: #185a8c;
-  --primary-light: #2677b6;
+  --primary-hover: #2e6fd6;
+  --primary-active: #1f4d98;
+  --primary-light: #2e6fd6;
   --primary-muted: color-mix(in srgb, var(--primary) 12%, transparent);
   --danger-hover: #a81b1b;
   --danger-light: #fca5a5;
-  --status-neutral: #6b6b6b;
-  --status-neutral-bg: rgba(107, 107, 107, 0.12);
-  --status-neutral-border: rgba(107, 107, 107, 0.25);
+  --status-neutral: #6b6250;
+  --status-neutral-bg: rgba(107, 98, 80, 0.12);
+  --status-neutral-border: rgba(107, 98, 80, 0.25);
   --status-critical-bg: rgba(196, 32, 32, 0.12);
   --status-critical-border: rgba(196, 32, 32, 0.25);
   --status-performance-bg: color-mix(in srgb, var(--primary) 12%, transparent);
   --status-performance-border: color-mix(in srgb, var(--primary) 25%, transparent);
-  --bg-elevated: #ffffff;
-  --bg-subtle: #fafafa;
-  --text-secondary: #3d3d3d;
-  --text-disabled: #a3a3a3;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.12);
-  /* Der Verlauf der Hauptknöpfe (`Button` solid, `Knopf` haupt): von der
-     Marke zu einem um 15 % dunkleren Blau, leicht genug, dass der Knopf flach
-     bleibt. Aus `--primary` gerechnet, deshalb gilt er in beiden Themen;
-     `marken.css` rechnet `--ara-verlauf-haupt` mit derselben Formel. */
-  --gradient-primary: linear-gradient(
-    135deg,
-    var(--primary) 0%,
-    color-mix(in srgb, var(--primary) 85%, black) 100%
-  );
-  --gradient-card: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+  --bg-elevated: #fbf8f2;
+  --bg-subtle: #f9f6f0;
+  --text-secondary: #3a342a;
+  --text-disabled: #a39a88;
+  /* Schatten aus der Tinte, nicht aus Schwarz: auf Creme wirkt Schwarz grau. */
+  --shadow-sm: 0 1px 2px rgba(30, 27, 22, 0.06);
+  --shadow-md: 0 4px 10px -2px rgba(30, 27, 22, 0.08);
+  --shadow-lg: 0 10px 20px -4px rgba(30, 27, 22, 0.1);
+  --shadow-xl: 0 20px 32px -8px rgba(30, 27, 22, 0.14);
+  /* Der Hauptknopf hat keinen Verlauf mehr (Fassung 5.7.0): blau gefuellt,
+     flach. Der einzige Verlauf der Oberflaeche ist der Grund. */
+  /* Der Name bleibt fuer Apps, die ihn benutzen: einfarbig die Marke. */
+  --gradient-primary: linear-gradient(var(--primary), var(--primary));
+  --gradient-card: linear-gradient(135deg, #fbf8f2 0%, #f9f6f0 100%);
   /* Das Band der Startseite: ein blau getönter Grund, der nach rechts in die
      Karte ausläuft. Aus `--primary` gemischt, damit es beiden Themen folgt. */
   --verlauf-band: linear-gradient(
@@ -348,11 +564,11 @@
     color-mix(in srgb, var(--primary) 4%, var(--card)) 75%
   );
   --kante-band: color-mix(in srgb, var(--primary) 22%, transparent);
-  --bg-table-row-hover: rgba(16, 16, 16, 0.03);
+  --bg-table-row-hover: rgba(30, 27, 22, 0.03);
   --bg-code: color-mix(in srgb, var(--primary) 5%, transparent);
-  --border-input: rgba(16, 16, 16, 0.14);
-  --scrollbar-thumb: rgba(16, 16, 16, 0.18);
-  --scrollbar-thumb-hover: rgba(16, 16, 16, 0.32);
+  --border-input: #c9bda3;
+  --scrollbar-thumb: rgba(30, 27, 22, 0.18);
+  --scrollbar-thumb-hover: rgba(30, 27, 22, 0.32);
   --primary-alpha-5: color-mix(in srgb, var(--primary) 5%, transparent);
   --primary-alpha-8: color-mix(in srgb, var(--primary) 8%, transparent);
   --primary-alpha-10: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -378,38 +594,38 @@
 }
 
 [data-theme='dark'] {
-  --primary-hover: #93b1cd;
-  --primary-active: #6e91b4;
-  --primary-light: #93b1cd;
-  --status-neutral: #94a3b8;
-  --status-neutral-bg: rgba(148, 163, 184, 0.15);
-  --status-neutral-border: rgba(148, 163, 184, 0.3);
-  --status-critical: #ef4444;
-  --status-critical-bg: rgba(239, 68, 68, 0.15);
-  --status-critical-border: rgba(239, 68, 68, 0.3);
-  --status-performance: #81a1c1;
+  --primary-hover: #82abeb;
+  --primary-active: #5a8ad8;
+  --primary-light: #82abeb;
+  --status-neutral: #a3abb8;
+  --status-neutral-bg: rgba(163, 171, 184, 0.15);
+  --status-neutral-border: rgba(163, 171, 184, 0.3);
+  --status-critical: #f26d6d;
+  --status-critical-bg: rgba(242, 109, 109, 0.15);
+  --status-critical-border: rgba(242, 109, 109, 0.3);
+  --status-performance: #6a9ae6;
   --status-performance-bg: color-mix(in srgb, var(--primary) 15%, transparent);
   --status-performance-border: color-mix(in srgb, var(--primary) 30%, transparent);
-  --bg-elevated: #242424;
-  --bg-subtle: #181818;
-  --bg-input: #1c1c1c;
-  --bg-table-row-hover: rgba(228, 228, 228, 0.04);
-  --bg-code: rgba(228, 228, 228, 0.05);
-  --text-secondary: #c2c2c2;
-  --text-disabled: #6b6b6b;
+  --bg-elevated: #11233f;
+  --bg-subtle: #0e1e38;
+  --bg-input: #0c1a31;
+  --bg-table-row-hover: rgba(246, 243, 237, 0.04);
+  --bg-code: rgba(246, 243, 237, 0.05);
+  --text-secondary: #d6d3cd;
+  --text-disabled: #6b7487;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px var(--primary-alpha-10);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -2px var(--primary-alpha-20);
   --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px var(--primary-alpha-30);
-  --gradient-card: linear-gradient(135deg, #181818 0%, #1c1c1c 100%);
+  --gradient-card: linear-gradient(135deg, #0e1e38 0%, #11233f 100%);
   --verlauf-band: linear-gradient(
     120deg,
     color-mix(in srgb, var(--primary) 30%, var(--card)) 0%,
     color-mix(in srgb, var(--primary) 8%, var(--card)) 75%
   );
   --kante-band: color-mix(in srgb, var(--primary) 34%, transparent);
-  --scrollbar-thumb: rgba(228, 228, 228, 0.14);
-  --scrollbar-thumb-hover: rgba(228, 228, 228, 0.28);
+  --scrollbar-thumb: rgba(246, 243, 237, 0.14);
+  --scrollbar-thumb-hover: rgba(246, 243, 237, 0.28);
   --primary-alpha-5: color-mix(in srgb, var(--primary) 5%, transparent);
   --primary-alpha-8: color-mix(in srgb, var(--primary) 8%, transparent);
   --primary-alpha-10: color-mix(in srgb, var(--primary) 10%, transparent);
@@ -420,10 +636,10 @@
   --primary-alpha-30: color-mix(in srgb, var(--primary) 30%, transparent);
   --primary-alpha-40: color-mix(in srgb, var(--primary) 40%, transparent);
   --primary-alpha-50: color-mix(in srgb, var(--primary) 50%, transparent);
-  --danger-hover: #dc2626;
-  --danger-alpha-8: rgba(239, 68, 68, 0.08);
-  --danger-alpha-10: rgba(239, 68, 68, 0.1);
-  --danger-alpha-15: rgba(239, 68, 68, 0.15);
-  --danger-alpha-20: rgba(239, 68, 68, 0.2);
-  --danger-alpha-30: rgba(239, 68, 68, 0.3);
+  --danger-hover: #f58a8a;
+  --danger-alpha-8: rgba(242, 109, 109, 0.08);
+  --danger-alpha-10: rgba(242, 109, 109, 0.1);
+  --danger-alpha-15: rgba(242, 109, 109, 0.15);
+  --danger-alpha-20: rgba(242, 109, 109, 0.2);
+  --danger-alpha-30: rgba(242, 109, 109, 0.3);
 }
