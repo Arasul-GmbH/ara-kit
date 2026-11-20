@@ -10,7 +10,7 @@ An app runs in a circle, and `/app` stands at every station:
 
 1. **Plan.** There is no file. Interview along the checklist below, then the file from the
    scaffold and a plan under `plans/offen/`.
-2. **Build.** A plan is active. First go through its assumptions, then build, then pack.
+2. **Build.** A plan is active. First go through its assumptions, then build, then pack. The build runs the tests and leaves the proof of the flow in the package: `.ara/knowledge/nachweis.md`.
 3. **Test.** The package lands in staging; the person from the business side tries it with a real
    login.
 4. **Live.** A human switches over. The plan moves into `erledigt/`, the app's README says what it
@@ -53,7 +53,7 @@ you are going on without questions and that the assumptions stand in the plan.
 | What | Why it decides |
 | --- | --- |
 | **The work step behind it** | Not the wished-for solution. "A bot for holidays" means: somebody reads mails and enters them into a table |
-| **Who uses it** | Who sees it the customer decides on the device. Whether one, ten or a hundred decides the build |
+| **Who uses it** | Who sees it the firm decides on the device. Whether one, ten or a hundred decides the build |
 | **Which data** | What goes in, stays, goes out. Name personal data explicitly |
 | **The steps** | From the point of view of the human in front of it, one step per line |
 | **Where a flow is needed** | Where a language model really does the work. Shifting data is a program, not a flow |

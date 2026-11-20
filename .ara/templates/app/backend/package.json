@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "description": "Das Backend einer App aus der Vorlage des Ara-Kits. Eine Abhängigkeit: pg, für die Datenbank, die das Gerät der App gibt.",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "pg": "8.23.0"
   }

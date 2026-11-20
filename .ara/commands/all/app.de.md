@@ -20,6 +20,7 @@ wenn ihr Moment kommt.
   Freigabe, Flow, Auslesen eines Dokuments.
 - `.ara/knowledge/design-system.de.md`, sobald du eine Oberfläche anfasst.
 - `.ara/knowledge/deploy.de.md`, sobald ein Paket an ein Gerät geht.
+- `.ara/knowledge/nachweis.de.md`, sobald ein Paket wegen seines Nachweises des Ablaufs nicht hinausgeht.
 - `.ara/templates/app/README.md`, wenn du die Vorlage einer App änderst: ihre Stellen, wo eine
   Freigabe entschieden wird, wie sie das Ergebnis eines Flows annimmt.
 

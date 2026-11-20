@@ -32,7 +32,9 @@ node .ara/tools/app.mjs --app <name> --build
 
 The package comes under `build/`, without plans, README and build; a folder with a build of its own
 gets built (types checked first), the rest moves as it is. A build older than the source does not get
-deployed.
+deployed. The build also runs the app's tests and writes the proof of the flow, `nachweis.json`, into
+the package; a package from `apps/` without a valid proof does not get deployed
+(`.ara/knowledge/nachweis.md`).
 
 ## Checking a package before it flies
 

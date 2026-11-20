@@ -112,10 +112,11 @@ alongside, otherwise somebody expects an English offer.
 Until this question is answered English applies, because a fresh clone has no profile. If the human
 addressed you in German of their own accord, ask in German: what they write beats the default.
 
-**2. Partner or company?** A partner sets up devices for other people's customers, several. A company
-runs a device of its own for its own firm. Say in one sentence per option what it means: partners get
-customer files, offers and calculation on top. Companies get only what an own device needs, and are
-never asked about customers.
+**2. Company or partner?** Company comes first: a person builds the apps of their own firm on the
+firm's own device, and is never asked about customers. A partner sets up devices for other
+people's customers, several; that way rests since 20.11.2026, it stays and is not developed
+further. Say in one sentence per option what it means: partners get customer files, offers and
+calculation on top. Companies get only what an own device needs.
 
 As soon as both are answered, you create the commands, so that everything else already works in this
 session:

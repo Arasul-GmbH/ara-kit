@@ -34,7 +34,9 @@ node .ara/tools/app.mjs --app <name> --build
 
 Das Paket entsteht unter `build/`, ohne Pläne, README und Bau; ein Ordner mit eigenem Bau wird
 gebaut (vorher die Typen geprüft), der Rest wandert, wie er ist. Ein Bau, der älter ist als der
-Quelltext, wird nicht eingespielt.
+Quelltext, wird nicht eingespielt. Der Bau lässt auch die Tests der App laufen und schreibt den
+Nachweis des Ablaufs, `nachweis.json`, ins Paket; ein Paket aus `apps/` ohne gültigen Nachweis wird
+nicht eingespielt (`.ara/knowledge/nachweis.de.md`).
 
 ## Ein Paket prüfen, bevor es fliegt
 

@@ -10,7 +10,7 @@ Eine App läuft im Kreis, und `/app` steht an jeder Station:
 
 1. **Planen.** Es gibt keine Akte. Interview nach der Prüfliste unten, dann die Akte aus der
    Vorlage und ein Plan unter `plans/offen/`.
-2. **Bauen.** Ein Plan ist aktiv. Erst seine Annahmen durchgehen, dann bauen, dann packen.
+2. **Bauen.** Ein Plan ist aktiv. Erst seine Annahmen durchgehen, dann bauen, dann packen. Der Bau lässt die Tests laufen und legt den Nachweis des Ablaufs ins Paket: `.ara/knowledge/nachweis.de.md`.
 3. **Test.** Das Paket landet im Teststand; der Fachmensch probiert es mit echter Anmeldung.
 4. **Live.** Ein Mensch schaltet um. Der Plan wandert nach `erledigt/`, die README der App sagt, was
    sie heute kann, in den Worten dessen, der sie benutzt.
@@ -52,7 +52,7 @@ Sag zu Beginn in einem Satz, dass du ohne Fragen weitermachst und die Annahmen i
 | Was | Warum es entscheidet |
 | --- | --- |
 | **Der Arbeitsschritt dahinter** | Nicht die gewünschte Lösung. „Ein Bot für Urlaub" heißt: jemand liest Mails und trägt sie in eine Tabelle |
-| **Wer es benutzt** | Wer sie sieht, entscheidet der Kunde am Gerät. Ob einer, zehn oder hundert, entscheidet den Bau |
+| **Wer es benutzt** | Wer sie sieht, entscheidet die Firma am Gerät. Ob einer, zehn oder hundert, entscheidet den Bau |
 | **Welche Daten** | Was hinein geht, liegen bleibt, hinaus geht. Personenbezogenes ausdrücklich benennen |
 | **Die Schritte** | Aus Sicht des Menschen davor, ein Schritt je Zeile |
 | **Wo ein Flow gebraucht wird** | Wo wirklich ein Sprachmodell arbeitet. Daten schieben ist ein Programm, kein Flow |
