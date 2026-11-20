@@ -933,10 +933,30 @@ export function validLine(line) {
  * das Kit den des Installers, statt ohne dazustehen. Gibt es keinen, bleibt es
  * beim Anlegen wie bisher.
  *
+ * `stored` ist der hinterlegte Schlüssel des Kits. Gilt er noch, wird nichts angelegt (`reused`).
+ *
  * `create` ist der Aufruf, der am Gerät einen Schlüssel ausstellt. Er kommt
  * herein, damit der Selbsttest dieselbe Entscheidung gegen eine Attrappe prüft.
  */
-export function settleDeployKey(sshArgs, transport, { name, found = [], create = createKey } = {}) {
+export function settleDeployKey(sshArgs, transport, { name, found = [], stored = null, create = createKey } = {}) {
+  // Gilt der hinterlegte Schlüssel am Gerät noch, bleibt er: ein zweiter wäre einer, den niemand widerruft.
+  if (stored) {
+    const own = listKeys(sshArgs, transport, stored);
+    if (own.ok && own.mine && validLine(own.mine.line)) {
+      return {
+        ok: true,
+        key: stored,
+        label: null,
+        reused: true,
+        adopted: false,
+        revoked: null,
+        revokeFailed: null,
+        valid: own.keys.filter((entry) => validLine(entry.line)),
+        mineValid: true,
+        line: own.mine.line,
+      };
+    }
+  }
   let installer = null;
   for (const key of [...found].sort((a, b) => b.length - a.length)) {
     const list = listKeys(sshArgs, transport, key);
