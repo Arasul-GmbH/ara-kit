@@ -116,6 +116,8 @@ const READ_FIELDS = new Set([
   "bilder",
   "marken",
   "last",
+  // Seit 0.86.0: `/feedback` liest Wege, Stände und Bereich der Rückmeldungen von dort.
+  "rueckmeldungen",
 ]);
 
 /** Was dieses Gerät im Kontrakt nennt und dieses Kit nicht liest. */

@@ -25,6 +25,7 @@ arasul:                   # running | traces | none, was am Gerät gefunden wurd
 contract:                 # Kontraktfassung, die dieses Gerät führt, von device.mjs am Gerät gelesen. Keine Aussage über das Kit
 net_name:                 # Name, unter dem das Gerät im Kundennetz auftritt, vom Installer gesetzt
 api_key_ref:              # Kit-Schlüssel (app:deploy) für den Deploy: Name des Eintrags, kein Wert
+feedback_key_ref:         # Schlüssel für Rückmeldungen (eigener Bereich, aus dem Kontrakt): Name des Eintrags, kein Wert
 start_password_ref:       # Startpasswort aus der Installation: Name des Eintrags, kein Wert
 checked:                  # Zeitpunkt der letzten Prüfung durch device.mjs
 remote_access:            # none | direct | vpn

@@ -25,6 +25,7 @@ arasul:                   # running | traces | none, what was found on the devic
 contract:                 # contract version this device carries, read by device.mjs from the device. Not a statement about the kit
 net_name:                 # name under which the device appears in the customer network, set by the installer
 api_key_ref:              # kit key (app:deploy) for the deploy: name of the entry, not a value
+feedback_key_ref:         # key for feedback (own scope, from the contract): name of the entry, not a value
 start_password_ref:       # start password from the installation: name of the entry, not a value
 checked:                  # time of the last check by device.mjs
 remote_access:            # none | direct | vpn
