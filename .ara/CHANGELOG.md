@@ -13,6 +13,12 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.86.1 (2026-11-20)
+
+Contract: up to 14
+
+- **`device.mjs --deploy-key` over SSH no longer creates a second kit key while the stored one still works.** Before it creates anything, the tool asks the device whether the key under `api_key_ref` is still valid; if so, it stays and nothing is created. Only a revoked or missing key is replaced. The self-test proves both cases.
+
 ## 0.86.0 (2026-11-20)
 
 Contract: up to 14

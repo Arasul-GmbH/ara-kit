@@ -2155,8 +2155,13 @@ function makeDeployKey() {
     readFrontmatter(join(ROOT, "business", "company.md")).fields,
     readFrontmatter(join(ROOT, "business", "profile.md")).fields
   );
-  const made = settleDeployKey(sshArgs, run.transport, { name: keyName, found: arasul?.keys || [] });
+  const made = settleDeployKey(sshArgs, run.transport, {
+    name: keyName,
+    found: arasul?.keys || [],
+    stored: existing.api_key_ref ? getSecret(existing.api_key_ref) : null,
+  });
   if (!made.ok) return made;
+  if (made.reused) return { ...made, key: undefined, ref: existing.api_key_ref };
   const ref = `ARASUL_KEY_${secretSlug}`;
   try {
     setSecret(ref, made.key);
@@ -2173,7 +2178,14 @@ function makeDeployKey() {
 function deployKeyLines(made) {
   const call = `node .ara/tools/device.mjs${customer ? ` --customer ${customer}` : ""} --name ${name}`;
   const lines = [];
-  if (made.adopted) {
+  if (made.reused) {
+    lines.push(
+      t(
+        `\nKit key: the key under ${made.ref} still works on the device. No second one was created.`,
+        `\nKit-Schlüssel: der Schlüssel unter ${made.ref} gilt am Gerät noch. Ein zweiter wurde nicht angelegt.`
+      )
+    );
+  } else if (made.adopted) {
     lines.push(
       t(
         `\nKit key: the kit could not create its own (${scrub(made.createFailed || "")}), so it took over the installer's ` +

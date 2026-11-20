@@ -15,6 +15,12 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.86.1 (2026-11-20)
+
+Kontrakt: bis 14
+
+- **`device.mjs --deploy-key` über SSH legt keinen zweiten Kit-Schlüssel an, solange der hinterlegte noch gilt.** Bevor etwas angelegt wird, fragt das Werkzeug das Gerät, ob der Schlüssel unter `api_key_ref` noch gültig ist; wenn ja, bleibt er und nichts entsteht. Nur ein widerrufener oder fehlender Schlüssel wird ersetzt. Der Selbsttest belegt beide Fälle.
+
 ## 0.86.0 (2026-11-20)
 
 Kontrakt: bis 14

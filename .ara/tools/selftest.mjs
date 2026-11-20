@@ -8414,7 +8414,32 @@ await checkAsync("Nach einer Installation gilt genau ein Kit-Schlüssel", async 
     ergebnis = settleDeployKey(null, "local", { name: "Ara-Kit Probe", found: [], create: anlegen });
     assert(ergebnis.ok && !ergebnis.revoked, "ohne Schlüssel des Installers wurde trotzdem widerrufen");
     assert(ergebnis.valid.length === 2, "ein fremder Schlüssel wurde angefasst");
-    return "widerrufen, übernommen, unberührt";
+    // Der hinterlegte Schlüssel gilt noch: es wird keiner angelegt, nichts widerrufen.
+    writeFileSync(liste, `gueltig      42  aras_kit567  Ara-Kit Probe                 angelegt 2026-09-25 20:05  nie benutzt\n`);
+    let angelegt = 0;
+    ergebnis = settleDeployKey(null, "local", {
+      name: "Ara-Kit Probe",
+      stored: eigen,
+      create: () => {
+        angelegt += 1;
+        return anlegen();
+      },
+    });
+    assert(ergebnis.ok && ergebnis.reused && ergebnis.key === eigen && angelegt === 0, "ein gültiger hinterlegter Schlüssel wurde nicht beibehalten");
+    assert(ergebnis.valid.length === 1, "beim Beibehalten gilt nicht genau einer");
+
+    // Der hinterlegte Schlüssel ist widerrufen: dann, und nur dann, entsteht ein neuer.
+    writeFileSync(liste, `widerrufen   42  aras_kit567  Ara-Kit Probe                 angelegt 2026-09-25 20:05  nie benutzt\n`);
+    ergebnis = settleDeployKey(null, "local", {
+      name: "Ara-Kit Probe",
+      stored: eigen,
+      create: () => {
+        angelegt += 1;
+        return anlegen();
+      },
+    });
+    assert(ergebnis.ok && !ergebnis.reused && angelegt === 1, "ein widerrufener hinterlegter Schlüssel wurde nicht ersetzt");
+    return "widerrufen, übernommen, unberührt, beibehalten, ersetzt";
   } finally {
     if (gemerkt === undefined) delete process.env.HOME;
     else process.env.HOME = gemerkt;
