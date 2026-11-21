@@ -39,16 +39,16 @@
     {
       "file": "frontend/src/rahmen/seitenleiste.tsx",
       "after": [
-        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+        "import { CircleCheck, ClipboardCheck, Clock, FilePlus, Inbox, type LucideIcon } from \"@marken/symbole\";\n"
       ],
-      "text": "import { FileTextIcon } from \"lucide-react\";\n"
+      "text": "import { FileText } from \"@marken/symbole\";\n"
     },
     {
       "file": "frontend/src/rahmen/seitenleiste.tsx",
       "before": [
         "  ];\n\n  return (\n    <Leiste"
       ],
-      "text": "    {\n      titel: \"Dokumente\",\n      eintraege: [\n        {\n          kennung: \"weg-dokumente\",\n          name: \"Dokumente\",\n          symbol: <FileTextIcon />,\n          aktiv: ort.pathname === \"/dokumente\",\n          aufKlick: () => gehe(\"/dokumente\"),\n        },\n      ],\n    },\n"
+      "text": "    {\n      titel: \"Dokumente\",\n      eintraege: [\n        {\n          kennung: \"weg-dokumente\",\n          name: \"Dokumente\",\n          symbol: <Icon symbol={FileText} />,\n          aktiv: ort.pathname === \"/dokumente\",\n          aufKlick: () => gehe(\"/dokumente\"),\n        },\n      ],\n    },\n"
     }
   ]
 }

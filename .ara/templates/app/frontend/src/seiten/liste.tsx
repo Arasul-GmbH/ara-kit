@@ -42,13 +42,10 @@
  * selbst mit, hier steht dafür nichts.
  */
 
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { RefreshCw } from "@marken/symbole";
 import {
   Button,
   Datenliste,
-  Icon,
   Karte,
   Kopf,
   Leerzustand,
@@ -59,10 +56,10 @@ import {
   SheetHeader,
   SheetTitle,
   useSchmalesFenster,
-  Werkzeug,
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import { zeilenPfeile } from "../rahmen/pfeile";
 import { ANSICHTEN, ansichtAus, type Ansicht } from "../rahmen/seitenleiste";
 import { STAND, seit, useLage, useVorgaenge, werEntscheidet, zeitpunkt, type Vorgang } from "../vorgaenge";
@@ -186,7 +183,6 @@ export function Vorgaenge() {
   const weiter = useNavigate();
   const lage = useLage();
   const vorgaenge = useVorgaenge();
-  const speicher = useQueryClient();
 
   const waehlen = (id: number | null) => {
     const naechste = new URLSearchParams(suche);
@@ -202,14 +198,7 @@ export function Vorgaenge() {
       <Kopf
         titel="Vorgänge"
         beschreibung="Eingereicht hier, entschieden in Arasul."
-        werkzeuge={
-          <Werkzeug
-            symbol={<Icon symbol={RefreshCw} />}
-            beschriftung="Neu laden"
-            onClick={() => void speicher.invalidateQueries({ queryKey: ["vorgaenge"] })}
-            data-kennzeichen="neu-laden"
-          />
-        }
+        werkzeuge={<NeuLaden schluessel={["vorgaenge"]} />}
       />
 
       {/* Warum kein Flow anhält, sagt die App selbst: "ohne Arasul" und "das

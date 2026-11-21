@@ -40,9 +40,9 @@
     {
       "file": "frontend/src/rahmen/seitenleiste.tsx",
       "after": [
-        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+        "import { CircleCheck, ClipboardCheck, Clock, FilePlus, Inbox, type LucideIcon } from \"@marken/symbole\";\n"
       ],
-      "text": "import { UsersIcon } from \"lucide-react\";\nimport { useMandanten } from \"../mandanten\";\n"
+      "text": "import { Users } from \"@marken/symbole\";\nimport { useMandanten } from \"../mandanten\";\n"
     },
     {
       "file": "frontend/src/rahmen/seitenleiste.tsx",
@@ -56,7 +56,7 @@
       "before": [
         "  ];\n\n  return (\n    <Leiste"
       ],
-      "text": "    ...(verwaltet\n      ? [\n          {\n            titel: \"Verwaltung\",\n            eintraege: [\n              {\n                kennung: \"weg-mandanten\",\n                name: \"Mandanten\",\n                symbol: <UsersIcon />,\n                aktiv: ort.pathname === \"/mandanten\",\n                aufKlick: () => gehe(\"/mandanten\"),\n              },\n            ],\n          },\n        ]\n      : []),\n"
+      "text": "    ...(verwaltet\n      ? [\n          {\n            titel: \"Verwaltung\",\n            eintraege: [\n              {\n                kennung: \"weg-mandanten\",\n                name: \"Mandanten\",\n                symbol: <Icon symbol={Users} />,\n                aktiv: ort.pathname === \"/mandanten\",\n                aufKlick: () => gehe(\"/mandanten\"),\n              },\n            ],\n          },\n        ]\n      : []),\n"
     },
     {
       "file": "frontend/src/seiten/neu.tsx",

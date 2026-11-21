@@ -155,6 +155,7 @@ import {
 } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings } from "./lib/standard.mjs";
 import { addPatterns, wirablePatterns } from "./lib/wiring.mjs";
+import { walkFiles } from "./lib/files.mjs";
 import { ABSCHLUSS_STANDARD, ORIGINAL_STANDARD, applyAbschluss, applyFlowFields, applyRecognition, flowFieldFindings } from "./lib/felder.mjs";
 import { frontendLoadsLibrary, libraryAddress, libraryFindings, libraryHints, librarySection, majorOf, readServed, runtimeMajor } from "./lib/laufzeit.mjs";
 import { CLOSED_FIELDS } from "./lib/profile.mjs";
@@ -2937,6 +2938,13 @@ await checkAsync("Kontrakt 8: Symbol, Arten, Auslöser, Stufen und der Änderung
   assert(sy.symbolFindings({ id: "x", symbol: "AB" }).length === 1 && sy.symbolFindings({ id: "x", symbol: 5 }).length === 1, "ein Kürzel oder ein Nicht-Text geht durch");
   assert(sy.nearestSymbol("file_text") === "file-text" && sy.nearestSymbol("recei") === "receipt", "der ähnlichste Name wird nicht gefunden");
   assert(sy.LUCIDE_NAMEN.size > 1500 && sy.LUCIDE_NAMEN.has(sy.SYMBOL_FALLBACK), "der Namenssatz ist unvollständig");
+  // /app legt drei vor (K31): drei verschiedene aus dem Satz, das naheliegende zuerst, auch ohne Stichwort.
+  for (const worte of ["Belege der Firma", "Urlaubsantrag", "zzz", "Vorgänge zur Freigabe", ""]) {
+    const drei = sy.suggestSymbols(worte);
+    assert(drei.length === 3 && new Set(drei).size === 3 && drei.every((n) => sy.LUCIDE_NAMEN.has(n)), `drei Vorschläge zu „${worte}“ stimmen nicht: ${drei}`);
+    assert(drei[0] === sy.suggestSymbol(worte), `der erste Vorschlag zu „${worte}“ ist nicht der eine`);
+  }
+  assert(sy.suggestSymbols("Belege")[0] === "receipt" && sy.suggestSymbols("Urlaub").includes("tree-palm"), "die Vorschläge passen nicht zu den Worten");
   assert(Object.keys(f.setSymbol({ id: "a", beschreibung: "b", version: "1" }, "BE")).join() === "id,beschreibung,symbol,version", "das Symbol steht nicht hinter der Beschreibung");
 
   const vorlage = readFileSync(join(ROOT, ".ara", "templates", "app", "flows", "freigabe.md"), "utf8");
@@ -4508,7 +4516,7 @@ check("Die Vorlage der App hält den Standard der Bibliothek", () => {
   return "keine eigene Farbe, keine Palettenklasse, kein eigenes Primitiv";
 });
 
-check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassung 5.6.1 oder neuer", () => {
+check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassung 5.9.3 oder neuer", () => {
   // Seit der gemeinsamen Seitenleiste (marken 5.5.1) steht der Name oben als
   // `titel`; `marke` ist nur für ein Zeichen daneben. Die Vorlage setzt keine
   // eigene Marke mehr, sonst zeigt jede neue App eine andere Leiste.
@@ -4519,14 +4527,69 @@ check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassu
   const fassung = /FASSUNG = '(\d+)\.(\d+)\.(\d+)'/.exec(readFileSync(join(template, "marken", "fassung.ts"), "utf8"));
   assert(fassung, "die Fassung der Kopie ist nicht lesbar");
   const [haupt, neben, flick] = fassung.slice(1).map(Number);
-  assert(haupt > 5 || (haupt === 5 && (neben > 6 || (neben === 6 && flick >= 1))), `die Kopie steht auf ${fassung.slice(1).join(".")}, nicht auf 5.6.1`);
+  assert(haupt > 5 || (haupt === 5 && (neben > 9 || (neben === 9 && flick >= 3))), `die Kopie steht auf ${fassung.slice(1).join(".")}, nicht auf 5.9.3, der Fassung des Geräts seit 20.11.2026`);
   assert(/\btitel\b/.test(readFileSync(join(template, "marken", "muster", "Seitenleiste.tsx"), "utf8")), "die Kopie der Seitenleiste kennt titel nicht");
-  // Seit marken 5.6.1 trägt der Hauptknopf den Verlauf des Geräts selbst; eine
-  // eigene Umfärbung in stil.css würde ihn im dunklen Thema wieder brechen.
+  // Den Hauptknopf zeichnet die Bibliothek (seit 5.7.0 blau gefüllt ohne
+  // Verlauf); eine eigene Umfärbung in stil.css bräche ihn im dunklen Thema.
   const stil = readFileSync(join(template, "stil.css"), "utf8");
   assert(!/data-variant="solid"/.test(stil), "stil.css färbt den Hauptknopf selbst um");
-  assert(/--gradient-primary/.test(readFileSync(join(template, "marken", "primitive", "button.tsx"), "utf8")), "der Hauptknopf der Kopie trägt den Verlauf nicht");
   return `titel statt marke, Kopie ${fassung.slice(1).join(".")}`;
+});
+
+check("Jede Seite der Vorlage und der Muster beginnt mit dem Seitenkopf samt Werkzeugleiste, Symbole kommen über die Bibliothek", () => {
+  // K31: die Vorlage folgt dem Aussehen des Geräts (Marken 5.9.x). Der Knopf
+  // der Seitenleiste steht über `KopfVorne` im Kopf, nicht in einer eigenen
+  // Zeile; jede Seite hat `Kopf` mit `werkzeuge`; Lucide nur über
+  // `@marken/symbole`, gezeichnet mit `Icon`, und vom Gerät als `symbole.js`.
+  const vorlage = join(ROOT, ".ara", "templates", "app", "frontend");
+  const app = readFileSync(join(vorlage, "src", "app.tsx"), "utf8");
+  assert(/<KopfVorne knopf=\{<SidebarTrigger/.test(app), "der Knopf der Seitenleiste steht nicht über KopfVorne im Seitenkopf");
+  assert(!/<header\b/.test(app), "über der Seite steht noch eine eigene Zeile");
+  const seiten = [join(vorlage, "src", "seiten")];
+  for (const muster of readdirSync(join(ROOT, ".ara", "templates", "app-patterns"))) {
+    const ordner = join(ROOT, ".ara", "templates", "app-patterns", muster, "frontend", "src", "seiten");
+    if (existsSync(ordner)) seiten.push(ordner);
+  }
+  let gezaehlt = 0;
+  for (const ordner of seiten) {
+    for (const datei of readdirSync(ordner).filter((n) => n.endsWith(".tsx"))) {
+      const text = readFileSync(join(ordner, datei), "utf8");
+      // Eine Seite ist, was eine Funktion mit `<Kopf` ausgibt; Teile einer Seite (Belege am Vorgang, der Verlauf) tragen keinen.
+      if (!/<Kopf\b/.test(text)) continue;
+      gezaehlt++;
+      for (const kopf of text.match(/<Kopf\b[\s\S]*?\/>/g) || []) {
+        assert(/\bwerkzeuge=/.test(kopf), `${relative(ROOT, join(ordner, datei))}: ein Kopf ohne Werkzeugleiste`);
+      }
+    }
+  }
+  assert(gezaehlt >= 7, `zu wenige Seiten mit Kopf gefunden: ${gezaehlt}`);
+  const quellen = [join(vorlage, "src"), ...readdirSync(join(ROOT, ".ara", "templates", "app-patterns")).map((m) => join(ROOT, ".ara", "templates", "app-patterns", m))];
+  for (const wurzel of quellen) {
+    for (const datei of walkFiles(wurzel, { match: /\.(ts|tsx)$/, skip: ["node_modules", "marken"] })) {
+      assert(!/from\s*["']lucide-react/.test(readFileSync(datei, "utf8")), `${relative(ROOT, datei)} holt Symbole an der Bibliothek vorbei`);
+    }
+  }
+  for (const muster of ["documents", "extract", "clients", "receipts"]) {
+    const verdrahtung = readFileSync(join(ROOT, ".ara", "templates", "app-patterns", muster, "wiring.json"), "utf8");
+    assert(/@marken\/symbole/.test(verdrahtung) && /<Icon symbol=\{/.test(verdrahtung) && !/lucide-react/.test(verdrahtung), `das Muster ${muster} hängt sein Symbol nicht über die Bibliothek ein`);
+  }
+  const bau = readFileSync(join(vorlage, "vite.config.ts"), "utf8");
+  assert(/\["@marken\/symbole", "symbole\.js"\]/.test(bau), "der Bau holt die Symbole nicht vom Gerät");
+  assert(bau.indexOf('"@marken/symbole"') < bau.indexOf('["@marken", "marken.js"]'), "@marken fängt @marken/symbole ab");
+  assert(existsSync(join(vorlage, "src", "marken", "symbole.ts")) && /\bIcon\b/.test(readFileSync(join(vorlage, "src", "marken", "primitive", "index.ts"), "utf8")), "die Kopie trägt Symbole oder Icon nicht");
+  // Der Standard hält es auch an jeder App: ein freier Import ist ein Befund, sobald die Kopie symbole.ts hat.
+  const probe = mkdtempSync(join(tmpdir(), "ara-symbole-"));
+  try {
+    cpSync(join(ROOT, ".ara", "templates", "app"), probe, { recursive: true });
+    writeFileSync(join(probe, "frontend", "src", "frei.tsx"), 'import { Inbox } from "lucide-react";\nexport const x = Inbox;\n');
+    const befunde = standardFindings(probe, { scaffold: true });
+    assert(befunde.length === 1 && /lucide-react/.test(befunde[0]) && /@marken\/symbole/.test(befunde[0]), `ein freier Import fällt nicht auf: ${befunde.join(" | ")}`);
+    rmSync(join(probe, "frontend", "src", "marken", "symbole.ts"));
+    assert(standardFindings(probe, { scaffold: true }).length === 0, "eine App auf einer Bibliothek ohne symbole.ts wird für den freien Import gerügt");
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+  return `${gezaehlt} Seiten mit Kopf und Werkzeugen, KopfVorne, keine freien Symbole, symbole.js vom Gerät`;
 });
 
 check("Eine App neben der Bibliothek wird rot, ein fremder Container nicht", () => {
@@ -4778,6 +4841,14 @@ check("Der Bau nimmt das Paket und lässt die Arbeit daran liegen", () => {
     writeFileSync(join(dir, "frontend", "index.html"), "<p>fertig</p>\n");
     writeFileSync(join(dir, "flows", "probe.md"), "---\nname: probe\n---\n\nTu etwas.\n");
     writeFileSync(join(dir, "plans", "offen", "2026-01-01-probe.md"), "---\nstand: offen\n---\n");
+
+    // Ohne Symbol baut das Kit nicht (K31): es hält an, legt drei passende vor und sagt, wie eines hineinkommt.
+    const ohne = tool("app.mjs", ["--app", name, "--build", "--no-plan"]);
+    assert(ohne.status !== 0 && !existsSync(join(dir, "build")), `ohne Symbol wird gebaut: ${ohne.stdout}`);
+    assert(/Drei, die passen: [a-z-]+, [a-z-]+, [a-z-]+/.test(ohne.stderr + ohne.stdout) && /--symbol <name>/.test(ohne.stderr + ohne.stdout), `ohne Symbol fehlen die drei Vorschläge: ${ohne.stderr}${ohne.stdout}`);
+    const gesetzt = tool("app.mjs", ["--app", name, "--symbol", "hammer"]);
+    assert(gesetzt.status === 0 && JSON.parse(readFileSync(join(dir, "app.json"), "utf8")).symbol === "hammer", `--symbol setzt das Symbol nicht: ${gesetzt.stdout}${gesetzt.stderr}`);
+    assert(tool("app.mjs", ["--app", name, "--symbol", "Hammer"]).status !== 0, "--symbol nimmt einen Namen außerhalb des Satzes");
 
     const run = tool("app.mjs", ["--app", name, "--build", "--no-plan"]);
     assert(run.status === 0, `Bau fehlgeschlagen: ${run.stderr}${run.stdout}`);
@@ -14408,11 +14479,13 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
     // Symbol-Pflicht: fehlt es oder steht es nicht im Satz, hält --check an und schlägt eines vor.
     const manifestDatei = join(appDir, "app.json");
     const ganz = readFileSync(manifestDatei, "utf8");
+    // Seit K31 hält schon der Bau an, und mit ihm --check, weil der Bau dann älter ist als die Quelle.
     for (const wert of [undefined, "BE", "kein-bild-so"]) {
       const mf = { ...JSON.parse(ganz), beschreibung: "Belege der Firma" };
       if (wert === undefined) delete mf.symbol; else mf.symbol = wert;
       writeFileSync(manifestDatei, JSON.stringify(mf, null, 2));
-      await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
+      lauf = await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
+      assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout + lauf.stderr) && /lucide\.dev/.test(lauf.stdout + lauf.stderr) && /receipt/.test(lauf.stdout + lauf.stderr), `ein Symbol "${wert}" hält den Bau nicht an: ${lauf.stdout}${lauf.stderr}`);
       lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base, "--verbose"], env);
       assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout) && /lucide\.dev/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
     }
@@ -16567,6 +16640,15 @@ await checkAsync("Der Nachweis des Ablaufs: die Vorlage trägt ihn, Änderung, K
     assert(lauf.status === 0, `das Paket besteht die Prüfung nicht, wie das Gerät sie machte: ${lauf.stdout}`);
     // Das Paket allein, ohne die Akte und ohne das Kit-Wissen, trägt, was die Prüfung braucht.
     assert(existsSync(join(dir, "build", "nachweis.json")) && existsSync(join(dir, "build", "app.json")), "nachweis.json liegt nicht neben app.json");
+    // Das Symbol gehört zum Standard (K31): der Nachweis nennt es, und ein Paket ohne oder mit anderem fällt mit `symbol`.
+    const manifestImPaket = JSON.parse(readFileSync(join(dir, "build", "app.json"), "utf8"));
+    assert(typeof manifestImPaket.symbol === "string" && nachweis.symbol === manifestImPaket.symbol, `der Nachweis nennt das Symbol nicht: ${nachweis.symbol}`);
+    const { verify: pruefe } = await import("./lib/nachweis.mjs");
+    const ohneSymbol = { ...manifestImPaket };
+    delete ohneSymbol.symbol;
+    assert(pruefe(join(dir, "build"), { manifest: ohneSymbol }).funde.some((f) => f.code === "symbol"), "ein Manifest ohne Symbol besteht die Prüfung des Pakets");
+    assert(pruefe(join(dir, "build"), { manifest: { ...manifestImPaket, symbol: "hammer" } }).funde.some((f) => f.code === "symbol"), "ein anderes Symbol als im Nachweis besteht die Prüfung");
+    assert(pruefe(join(dir, "build"), { manifest: manifestImPaket }).ok, "das Paket mit seinem Symbol besteht die Prüfung nicht");
 
     // Eine Datei von Hand geändert: die Akte verliert den Nachweis. Der Bau sagt es auch.
     const datei = join(dir, "backend", "kern", "csv.mjs");
@@ -16628,7 +16710,7 @@ await checkAsync("Der Nachweis des Ablaufs: die Vorlage trägt ihn, Änderung, K
     assert(JSON.stringify(akte.schritte.map((s) => s.name)) === '["interview"]', `ein neuer Plan verwirft Bau und Test nicht: ${akte.schritte.map((s) => s.name)}`);
     lauf = app(eins, "--nachweis", "--json");
     assert(funde(lauf).includes("schritt-fehlt"), `der neue Durchlauf trägt schon: ${lauf.stdout}`);
-    return "Vorlage trägt ihn; Änderung, geändertes Paket, geändertes Siegel, Kopie, rote Tests, keine Tests und neuer Plan nehmen ihn";
+    return "Vorlage trägt ihn samt Symbol; fehlendes oder anderes Symbol, Änderung, geändertes Paket, geändertes Siegel, Kopie, rote Tests, keine Tests und neuer Plan nehmen ihn";
   } finally {
     rmSync(dir, { recursive: true, force: true });
     rmSync(dirB, { recursive: true, force: true });

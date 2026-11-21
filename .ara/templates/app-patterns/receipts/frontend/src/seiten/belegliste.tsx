@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Datenliste, Kopf, type Spalte } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import { hole } from "../rahmen/schnittstelle";
 import { useMandanten } from "../mandanten";
 import { STAND, useVorgaenge, type Vorgang } from "../vorgaenge";
@@ -46,7 +47,11 @@ export function Belegliste() {
   const namen = new Map((mandanten.data?.mandanten ?? []).map((m) => [m.id, m.name]));
   return (
     <>
-      <Kopf titel="Belege" beschreibung="Hochgeladen, vom Gerät gelesen, geprüft. Der Betrag steht nach der Prüfung da." />
+      <Kopf
+        titel="Belege"
+        beschreibung="Hochgeladen, vom Gerät gelesen, geprüft. Der Betrag steht nach der Prüfung da."
+        werkzeuge={<NeuLaden />}
+      />
       <AsyncBoundary abfrage={vorgaenge} laedt={<Datenliste daten={[]} spalten={SPALTEN} kennung={() => ""} beschriftung="Belege" laedt />} fehlerTitel="Die Belege ließen sich nicht holen">
         {(liste) => {
           const zeilen: Zeile[] = liste.map((v) => {
