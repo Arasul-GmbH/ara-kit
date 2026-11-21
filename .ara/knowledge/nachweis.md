@@ -5,7 +5,8 @@
 > sheet. A person who only builds needs the first two sections.
 
 Since 20.11.2026 the app standard is mandatory: a device takes only an app that stands on the
-library's building blocks, brings tests and was built through the kit's fixed flow. The kit holds
+library's building blocks, carries its picture for the sidebar (`symbol`, since 21.11.2026), brings
+tests and was built through the kit's fixed flow. The kit holds
 to it already; the device will check it when an app is rolled out. For that every package carries
 a file, `nachweis.json`, at its root next to `app.json`.
 
@@ -30,7 +31,9 @@ app (`--nachweis <folder>`) is judged as the device would judge the unpacked pac
 
 ## Where it lies
 
-- **In the package:** `nachweis.json` at the root, the file `--build` writes last.
+- **In the package:** `nachweis.json` at the root, the file `--build` writes last. `--deploy`
+  then fills `backend/arasul.json` from the device's contract and renews `inhalt.paket` and
+  `siegel`, only when the proof held before: the device compares the package as it is sent.
 - **At the computer:** the same file in `apps/<name>/`, to which every step adds. It is not source:
   it counts neither in the checksum of the source nor in that of the package, and a change to it
   does not make a build "older than the source".
@@ -45,8 +48,9 @@ app (`--nachweis <folder>`) is judged as the device would judge the unpacked pac
   "schema": 1,
   "app": "urlaub",
   "version": "0.1.0",
-  "kit": { "version": "0.85.0" },
-  "bibliothek": { "marken": "5", "kopie": "5.6.1" },
+  "kit": { "version": "0.87.0" },
+  "bibliothek": { "marken": "5", "kopie": "5.9.3" },
+  "symbol": "tree-palm",
   "schritte": [
     { "name": "interview", "zeit": "2026-11-20T10:50:31.683Z", "quelle": "sha256:<hex>", "plan": "2026-11-20-erster-plan.md", "plan_pruefsumme": "sha256:<hex>" },
     { "name": "bau", "zeit": "2026-11-20T10:51:19.008Z", "quelle": "sha256:<hex>" },
@@ -65,6 +69,7 @@ app (`--nachweis <folder>`) is judged as the device would judge the unpacked pac
 | `kit.version` | Version of the kit that built it (`.ara/VERSION`). For information; a device may warn when it is older than the one it knows |
 | `bibliothek.marken` | The major version of the library, as `app.json` names it in `marken`. Must be the same as in the manifest |
 | `bibliothek.kopie` | Full version of the copy under `frontend/src/marken`, or `null` without one. For information |
+| `symbol` | The picture of the app in the sidebar, as `app.json` names it in `symbol`: a name from lucide.dev, small letters with hyphens. Must be the same as in the manifest. Since kit 0.87.0; an older proof lacks it and is built again |
 | `schritte` | The steps in the order `interview`, `bau`, `test`, each with `zeit` (ISO 8601, UTC) and `quelle`. The times do not fall from step to step |
 | `inhalt.quelle` | Checksum of the app's source, see below |
 | `inhalt.paket` | Checksum of the package, see below. Only in the package's own file |
@@ -109,6 +114,7 @@ In this order; the codes are the ones `--nachweis --json` returns, in `funde[].c
 | `tests-veraltet` | `tests.lauf.quelle` is not `inhalt.quelle`: the tests ran against another state |
 | `bau-veraltet` | The step `bau` stands on another source than the proof |
 | `bibliothek` | `bibliothek.marken` is not the manifest's `marken` |
+| `symbol` | The manifest names no `symbol` in the form `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, or the proof's `symbol` is another. Whether the name stands in the icon set the kit checks before the build; the device checks the form, as it does for the manifest |
 
 At the computer (`--nachweis` without a folder, and before every `--deploy` from `apps/`) two more
 cases come from the source: `quelle-geaendert` (`inhalt.quelle` is not the checksum of the folder
@@ -126,6 +132,7 @@ today) and `tests-veraltet` against the folder's checksum.
 | Tests red | `tests-rot`, the package is built and does not go out | Mend, `--build` |
 | A demonstration without a plan (`--no-plan`) | `schritt-fehlt` (`interview`) | Make a plan active, build again |
 | Only `--test` run after a change | `bau-veraltet` | `--build`, the package carries its result only then |
+| No `symbol` in `app.json`, or changed after the build | `symbol`; `--build` does not even start without one | `--app <app> --symbol <name>`, then `--build` |
 | A foreign container | Not asked | None |
 
 ## What the proof is not

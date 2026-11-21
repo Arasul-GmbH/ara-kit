@@ -11,7 +11,12 @@
  * Eingaben: die Eingabetaste im letzten Feld sendet ab, und der Browser bietet
  * seine Hilfen an. `Label` und `id` gehören zusammen, an jedem Feld; ohne
  * sie läse ein Screenreader ein Feld ohne Namen vor. Neben dem Namen steht,
- * ob das Feld sein muss, und nicht erst, wenn es fehlt.
+ * ob das Feld sein muss, und nicht erst, wenn es fehlt. Die Felder sind die
+ * kompakten der Bibliothek (32 px am Rechner, 44 px bei grobem Zeiger, seit
+ * Marken 5.9.0); eine eigene Höhe steht hier nicht.
+ *
+ * Der Weg zurück ist ein Werkzeug im Seitenkopf, wie jede Aktion einer Seite,
+ * und kein Knopf mit Text daneben.
  *
  * **Wer ihn einreicht, steht in keinem Feld.** Das sagt die Plattform, und die
  * App liest es aus `api/me`. Ein Namensfeld wäre eines, in das jeder einen
@@ -20,8 +25,8 @@
 
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CircleAlertIcon } from "lucide-react";
-import { Button, Feldgruppe, Formularseite, Input, Kopf, Label, Meldung, Textarea } from "@marken";
+import { ArrowLeft, CircleAlert } from "@marken/symbole";
+import { Button, Feldgruppe, Formularseite, Icon, Input, Kopf, Label, Meldung, Textarea, Werkzeug } from "@marken";
 import { useAnmeldung } from "../rahmen/anmeldung";
 import { useEinreichen } from "../vorgaenge";
 
@@ -62,10 +67,13 @@ export function Neu() {
             ? `Eingereicht als ${anmeldung.nutzer}.`
             : "Das Gerät nennt keinen Namen für diese Sitzung."
         }
-        aktionen={
-          <Button variant="ghost" onClick={() => weiter("/")} data-kennzeichen="zurueck">
-            Zurück
-          </Button>
+        werkzeuge={
+          <Werkzeug
+            symbol={<Icon symbol={ArrowLeft} />}
+            beschriftung="Zurück zu den Vorgängen"
+            onClick={() => weiter("/")}
+            data-kennzeichen="zurueck"
+          />
         }
       />
 
@@ -99,7 +107,7 @@ export function Neu() {
                 // Der Satz in Textfarbe, das Zeichen in Rot: Rot als Text
                 // hielte im hellen Thema keine 4,5:1.
                 <p id="titel-fehlt" className="flex items-center gap-1.5 text-ui-sm text-foreground">
-                  <CircleAlertIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+                  <Icon symbol={CircleAlert} className="text-destructive" />
                   Ohne Titel findet den Vorgang niemand wieder. Ein Satz genügt.
                 </p>
               )}

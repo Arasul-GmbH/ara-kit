@@ -149,11 +149,11 @@ gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf de
 In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit schreibt die Felder,
 `--contract` sagt, was jedes an diesem Gerät tut.
 
-1. **Das Bild der App.** Jede App hat eines. „Welches kleine Bild für die Seitenleiste? Eine
-   Quittung für Belege, ein Taschenrechner für den Jahresabschluss?“ Entwürfe von
-   https://lucide.dev/icons. Geht an `--symbol`: ein Bildname, klein und mit Bindestrichen
-   (`file-text`), keine Großbuchstaben. Ohne Antwort wählt `--new` eines und sagt welches.
-   `--check` hält ein fehlendes oder unbekanntes `symbol` an, mit Vorschlag.
+1. **Das Bild der App.** Jede App hat eines, für die Leiste des Geräts. `node .ara/tools/app.mjs
+   --symbole "<Titel und Beschreibung>"` nennt drei von lucide.dev: biete sie als Optionen mit freier
+   Antwort an („receipt, receipt-euro oder file-text?"). Die Wahl geht an `--new --symbol <name>`,
+   später an `--app <app> --symbol <name>`. Ohne Antwort nimmt `--new` den ersten. **Ohne gültiges
+   Symbol hält `--build` an**, und der Nachweis trägt es.
 2. **Wer freigibt, in welchen Schritten.** Nur, wo die App eine Freigabe hat. „Eine Person, oder zwei
    hintereinander, erst die Kollegin, die prüft, dann die Leitung?" Die Namen gehen an
    `--stufen "Prüfung,Leitung"`, höchstens fünf. **Wer** je Schritt entscheidet, legt der

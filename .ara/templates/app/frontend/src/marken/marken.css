@@ -70,37 +70,38 @@
   /* Farben: Thema HELL, die Vorgabe. Die Abweichungen des dunklen Themas
      stehen unten in `[data-theme='dark']`; was hier steht und dort fehlt,
      gilt in beiden. */
-  --ara-flaeche: var(--background, #f6f6f6);
-  --ara-flaeche-karte: var(--card, #ffffff);
-  --ara-flaeche-hoch: var(--popover, #ffffff);
-  --ara-wisch: var(--accent, rgba(16, 16, 16, 0.05));
-  --ara-text: var(--foreground, #1a1a1a);
-  --ara-text-leise: var(--muted-foreground, #666666);
-  --ara-kante: var(--border, rgba(16, 16, 16, 0.1));
-  --ara-akzent: var(--primary, #1e6aa4);
+  --ara-flaeche: var(--background, #f6f3ed);
+  --ara-flaeche-karte: var(--card, #fbf8f2);
+  --ara-flaeche-hoch: var(--popover, #fbf8f2);
+  --ara-wisch: var(--accent, rgba(30, 27, 22, 0.05));
+  --ara-text: var(--foreground, #1e1b16);
+  --ara-text-leise: var(--muted-foreground, #6b6250);
+  --ara-kante: var(--border, #dfd6c4);
+  --ara-akzent: var(--primary, #2559b1);
   --ara-akzent-text: var(--primary-foreground, #ffffff);
   --ara-fehler: var(--destructive, #c42020);
 
-  /* Der Verlauf des Hauptknopfs: von der Marke zu einem Blau, das 15 %
-     dunkler ist. Dieselbe Formel wie `--gradient-primary` in `theme.css`,
-     nur aus `--ara-akzent` gerechnet, damit er auch in einer App ohne Token
-     dem Thema folgt. Sonst ist alles flach. */
-  --ara-verlauf-haupt: linear-gradient(
-    135deg,
-    var(--ara-akzent) 0%,
-    color-mix(in srgb, var(--ara-akzent) 85%, black) 100%
-  );
+  /* Der Verlauf des Hauptknopfs bis 5.6.1. Seit 5.7.0 ist der Hauptknopf
+     flach; der Name bleibt fuer Apps, die ihn benutzen, und zeichnet die
+     Marke einfarbig. */
+  --ara-verlauf-haupt: linear-gradient(var(--ara-akzent), var(--ara-akzent));
+
+  /* Glas fuer schwebende Flaechen. Die Werte stehen in `theme.css`
+     (Abschnitt GLAS); ohne diese Datei ist die Flaeche deckend. */
+  --ara-glas: var(--glas-flaeche, var(--ara-flaeche-hoch));
+  --ara-glas-filter: var(--glas-filter, none);
+  --ara-glas-kante: var(--glas-kante, rgba(255, 255, 255, 0.7));
 
   /* Der Schatten der angehobenen Karte, beim Ueberfahren. Ausser an Menues
      ist er der einzige Schatten der Bibliothek. */
   --ara-schatten-hoch:
-    0 6px 16px -6px color-mix(in srgb, black 18%, transparent),
+    0 6px 16px -6px color-mix(in srgb, black 16%, transparent),
     0 2px 4px -2px color-mix(in srgb, black 8%, transparent);
 
   /* Der Schleier unter dem Menue. Er war frueher fest `rgb(0 0 0 / 0.5)` und
      damit der einzige Wert der Bibliothek ohne Token: im hellen Thema eine
      Spur zu schwarz, im dunklen eine Spur zu hell. */
-  --ara-schleier: var(--backdrop-color, rgba(0, 0, 0, 0.4));
+  --ara-schleier: var(--backdrop-color, rgba(30, 27, 22, 0.32));
 
   /* Abstaende und Rundungen */
   --ara-abstand-1: var(--spacing-ui-1, 0.3125rem);
@@ -136,17 +137,18 @@
    ========================================================================== */
 
 [data-theme='dark'] {
-  --ara-flaeche: var(--background, #141414);
-  --ara-flaeche-karte: var(--card, #181818);
-  --ara-flaeche-hoch: var(--popover, #1c1c1c);
-  --ara-wisch: var(--accent, rgba(228, 228, 228, 0.07));
-  --ara-text: var(--foreground, #e6e6e6);
-  --ara-text-leise: var(--muted-foreground, rgba(228, 228, 228, 0.55));
-  --ara-kante: var(--border, rgba(228, 228, 228, 0.08));
-  --ara-akzent: var(--primary, #81a1c1);
-  --ara-akzent-text: var(--primary-foreground, #0a0a0a);
-  --ara-fehler: var(--destructive, #ef4444);
-  --ara-schleier: var(--backdrop-color, rgba(0, 0, 0, 0.7));
+  --ara-flaeche: var(--background, #0a1628);
+  --ara-flaeche-karte: var(--card, #0e1e38);
+  --ara-flaeche-hoch: var(--popover, #11233f);
+  --ara-wisch: var(--accent, rgba(246, 243, 237, 0.07));
+  --ara-text: var(--foreground, #f6f3ed);
+  --ara-text-leise: var(--muted-foreground, #a3abb8);
+  --ara-kante: var(--border, rgba(246, 243, 237, 0.1));
+  --ara-akzent: var(--primary, #6a9ae6);
+  --ara-akzent-text: var(--primary-foreground, #0a1628);
+  --ara-fehler: var(--destructive, #f26d6d);
+  --ara-schleier: var(--backdrop-color, rgba(4, 10, 20, 0.6));
+  --ara-glas-kante: var(--glas-kante, rgba(246, 243, 237, 0.12));
   --ara-schatten-hoch:
     0 6px 18px -6px color-mix(in srgb, black 55%, transparent),
     0 2px 4px -2px color-mix(in srgb, black 35%, transparent);
@@ -162,6 +164,7 @@
 .ara-seite *::before,
 .ara-seite *::after,
 .ara-kopf,
+.ara-werkzeug,
 .ara-liste,
 .ara-karte,
 .ara-formular,
@@ -202,71 +205,171 @@
 }
 
 /* --- Kopf -----------------------------------------------------------------
-   Der Kopf einer Seite: Titel, ein Satz darunter, Aktionen rechts. Unter der
-   Schwelle rutschen die Aktionen unter den Titel, statt ihn zu quetschen. */
+   Jede Seite beginnt gleich (5.9.0): eine Zeile, links der Knopf der
+   Seitenleiste, Titel und ein Satz, rechts die Werkzeugleiste. Keine
+   Trennlinie darunter, kein Symbol vor dem Titel. Rechts haelt der Kopf den
+   Platz der Kapsel frei, den der Rahmen als `--ara-kapsel-platz` nennt.
+   Die Masse in Pixeln: die Shell rechnet mit 17 px Wurzelschrift. */
 .ara-kopf {
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ara-abstand-3);
-  margin-bottom: var(--ara-abstand-4);
-  padding-bottom: var(--ara-abstand-3);
-  border-bottom: 1px solid var(--ara-kante);
+  gap: 8px;
+  min-width: 0;
+  margin-bottom: 20px;
+  padding-right: var(--ara-kapsel-platz, 0px);
 }
 
-/* Die mittige Form: eine Seite, die aus nichts als sich selbst besteht,
-   etwa die Anmeldung, das erste Konto, ein Absturz. Ohne Trennlinie, denn darunter
-   kommt kein zweiter Abschnitt, von dem sie zu trennen waere. */
 .ara-kopf[data-mittig='true'] {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-bottom: 0;
-  border-bottom: 0;
+  margin-bottom: var(--ara-abstand-4);
+  padding-right: 0;
   text-align: center;
 }
 
-.ara-kopf[data-mittig='true'] .ara-kopf__titel {
-  justify-content: center;
+.ara-kopf__vorne {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 28px;
+}
+
+/* Ein feiner Strich zwischen den Werkzeugen der Seite und dem Knopf der
+   Seitenleiste. */
+.ara-kopf__trenner {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background-color: var(--ara-kante);
+}
+
+.ara-kopf__vorne--allein {
+  margin-bottom: 8px;
 }
 
 .ara-kopf__text {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
 .ara-kopf__titel {
-  display: flex;
-  align-items: center;
-  gap: var(--ara-abstand-2);
   margin: 0;
-  font-size: var(--ara-groesse-titel);
-  font-weight: 700;
-  line-height: 1.25;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--ara-text);
 }
 
-.ara-kopf__symbol {
-  display: inline-flex;
-  color: var(--ara-text-leise);
+.ara-kopf[data-mittig='true'] .ara-kopf__titel {
+  font-size: var(--ara-groesse-titel);
+  line-height: 1.25;
+  white-space: normal;
 }
 
-.ara-kopf__symbol > svg {
-  width: 1.5rem;
-  height: 1.5rem;
+/* Bis 5.8 das Symbol vor dem Titel; die Klasse bleibt fuer eine App, die
+   sie selbst setzt, und zeigt nichts mehr. */
+.ara-kopf__symbol {
+  display: none;
 }
 
 .ara-kopf__satz {
-  margin: var(--ara-abstand-1) 0 0;
+  margin: 0;
   font-size: var(--ara-groesse-sm);
+  line-height: 1.45;
   color: var(--ara-text-leise);
 }
 
+.ara-kopf__werkzeuge,
 .ara-kopf__aktionen {
   display: flex;
   flex-shrink: 0;
   align-items: center;
+  min-height: 28px;
+}
+
+.ara-kopf__werkzeuge {
+  gap: 2px;
+}
+
+.ara-kopf__aktionen {
   gap: var(--ara-abstand-2);
+}
+
+/* --- Werkzeug -------------------------------------------------------------
+   Ein Icon-Button der Werkzeugleiste: 28 px, ohne Rahmen, getoent beim
+   Ueberfahren, Symbol 16 px. Bei grobem Zeiger und am Handy legt ein leeres
+   `::before` 44 px Trefferflaeche darueber, sichtbar bleibt er klein. */
+.ara-werkzeug {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--ara-rundung);
+  background: transparent;
+  color: var(--ara-text-leise);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.ara-werkzeug:hover:not(:disabled),
+.ara-werkzeug[aria-expanded='true'] {
+  background-color: var(--ara-wisch);
+  color: var(--ara-text);
+}
+
+.ara-werkzeug[aria-pressed='true'] {
+  background-color: color-mix(in srgb, var(--ara-akzent) 12%, transparent);
+  color: var(--ara-akzent);
+}
+
+.ara-werkzeug:focus-visible {
+  outline: 2px solid var(--ara-akzent);
+  outline-offset: 1px;
+}
+
+.ara-werkzeug:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.ara-werkzeug__symbol {
+  display: inline-flex;
+}
+
+.ara-werkzeug__symbol > svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (pointer: coarse), (max-width: 899px) {
+  .ara-werkzeug::before {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    content: '';
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ara-werkzeug {
+    transition: none;
+  }
 }
 
 /* --- Liste ----------------------------------------------------------------
@@ -503,7 +606,7 @@ button.ara-karte:focus-visible {
   flex: 1 1 12rem;
   margin: 0;
   overflow: hidden;
-  font-size: var(--ara-groesse-lg);
+  font-size: var(--ara-groesse);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -553,8 +656,8 @@ button.ara-karte:focus-visible {
 .ara-feld textarea,
 .ara-feld select {
   width: 100%;
-  min-height: 2.75rem;
-  padding: var(--ara-abstand-2);
+  min-height: 32px;
+  padding: 0 10px;
   border: 1px solid var(--ara-kante);
   border-radius: var(--ara-rundung-sm);
   background-color: var(--ara-flaeche);
@@ -562,6 +665,10 @@ button.ara-karte:focus-visible {
   font-family: inherit;
   font-size: var(--ara-groesse);
   transition: border-color var(--ara-uebergang);
+}
+
+.ara-feld textarea {
+  padding: 6px 10px;
 }
 
 .ara-feld input:focus-visible,
@@ -583,11 +690,11 @@ button.ara-karte:focus-visible {
   align-items: center;
   justify-content: center;
   gap: var(--ara-abstand-1);
-  min-height: 2.75rem;
+  min-height: 2rem;
   padding: 0 var(--ara-abstand-3);
   border: 1px solid var(--ara-kante);
-  border-radius: var(--ara-rundung-sm);
-  background-color: transparent;
+  border-radius: var(--ara-rundung);
+  background-color: var(--ara-flaeche-karte);
   color: var(--ara-text);
   font-family: inherit;
   font-size: var(--ara-groesse);
@@ -600,7 +707,17 @@ button.ara-karte:focus-visible {
 }
 
 .ara-knopf:hover:not(:disabled) {
-  background-color: var(--ara-wisch);
+  background-color: color-mix(in srgb, var(--ara-text) 5%, var(--ara-flaeche-karte));
+}
+
+/* Kompakt am Rechner (32 px), am Handy und bei grobem Zeiger die
+   Trefferflaeche von 44 px, die ein Finger braucht. */
+@media (pointer: coarse), (max-width: 899px) {
+  .ara-knopf,
+  .ara-feld input,
+  .ara-feld select {
+    min-height: 2.75rem;
+  }
 }
 
 .ara-knopf:disabled {
@@ -608,14 +725,11 @@ button.ara-karte:focus-visible {
   opacity: 0.55;
 }
 
-/* Der Hauptknopf traegt einen leichten Blauverlauf, sonst ist alles flach.
-   Die Farbe darunter bleibt die Marke: wo kein Verlauf gezeichnet wird, steht
-   derselbe Knopf einfarbig da. Ueberfahren hellt ihn auf, statt ihn
-   durchscheinen zu lassen. */
+/* Der Hauptknopf: blau gefuellt, ohne Verlauf. Ueberfahren nimmt die
+   hellere Stufe der Marke, in 120 ms. */
 .ara-knopf[data-art='haupt'] {
   border-color: transparent;
   background-color: var(--ara-akzent);
-  background-image: var(--ara-verlauf-haupt);
   color: var(--ara-akzent-text);
   transition:
     filter 120ms ease,
@@ -707,9 +821,11 @@ button.ara-karte:focus-visible {
   display: flex;
   width: min(20rem, 85vw);
   flex-direction: column;
-  border-right: 1px solid var(--ara-kante);
-  background-color: var(--ara-flaeche-hoch);
-  box-shadow: 8px 0 24px color-mix(in srgb, black 35%, transparent);
+  border-right: 1px solid var(--ara-glas-kante);
+  background-color: var(--ara-glas);
+  -webkit-backdrop-filter: var(--ara-glas-filter);
+  backdrop-filter: var(--ara-glas-filter);
+  box-shadow: 8px 0 24px color-mix(in srgb, black 25%, transparent);
 }
 
 .ara-menue__kopf {

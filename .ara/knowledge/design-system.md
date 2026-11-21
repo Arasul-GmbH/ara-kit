@@ -38,6 +38,22 @@ the app names the active entry. The page layout belongs to the library. Rules of
 the end of `stil.css`, with token names only, no colour, font or radius. At the device the library's
 classes come only from its `marken.css`: what you style yourself, write there with tokens.
 
+## Every page begins the same
+
+As on the device (library 5.9): title and one sentence on the left, the **toolbar** on the right.
+
+```tsx
+<Kopf titel="Neuer Vorgang" beschreibung="Eingereicht als Anna Weber."
+  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück" onClick={zurueck} />} />
+```
+
+- **`Kopf` with `werkzeuge` on every page**; a `Werkzeug` needs its `beschriftung`, the screen
+  reader says it. "Reload" is `rahmen/neu-laden.tsx`. The sidebar button comes once through
+  `KopfVorne` in `app.tsx`, never as a line of its own.
+- **Icons only via `@marken/symbole`**, drawn with `<Icon symbol={Inbox} />` (`klein`, `mittel`,
+  `gross`); the device serves `symbole.js`.
+- **Tables, fields and page margins are the library's**: no heights or widths of your own.
+
 **An approval is the pattern `Freigabe`, never an imitation**: `seiten/freigaben.tsx`
 shows it, `freigaben.ts` brings the entries from the device. Which fields a person may change the flow
 declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the end of its path**.
@@ -65,7 +81,7 @@ declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the 
 
 Otherwise a partner's apps look different after three months. The device does not compare and the
 product's guard checks only the shell, so the kit stops `--build`, `--check`, `--deploy` and
-`--compose` at four findings:
+`--compose` at five findings:
 
 - **A colour value of your own.** Wrong: `color: #e11d48;`, `rgb(225 29 72)`. Right:
   `color: var(--ara-fehler);`, `bg-card`.
@@ -75,9 +91,13 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
   `Datenliste`, `<dialog>` for `Dialog`, `<fieldset>` for `Feldgruppe`, a tab bar with
   `role="tablist"` for `Tabs`. Just as forbidden: a `<div className="karte">` beside `Karte`, a list
   with a search field beside `Datenliste`.
+- **An icon past the library**: `from "lucide-react"` instead of `@marken/symbole`, once the copy
+  carries `symbole.ts`.
 - **The field `marken` in `app.json` missing or stale.** The major number alone needs no copy to
   match; three numbers must match the copy. `--new` writes it, `marken.mjs --sync` keeps it.
   `--check` against a device stops a major number it does not serve, and only hints at an aged copy.
+
+**Without `symbol` in `app.json` `--build` stops before all of this.**
 
 Measured is the app's own source, not the mirror. **A foreign container is exempt**: without
 `frontend`, with a finished `image`, it brings no interface. The self-test holds the scaffold to the

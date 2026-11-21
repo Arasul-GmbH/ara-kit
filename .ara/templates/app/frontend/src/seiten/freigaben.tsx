@@ -36,6 +36,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Freigabe, Knopf, Kopf, Liste, ListenEintrag, Meldung, Leerzustand, type FreigabeEintrag } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import { useAblehnen, useBeiAnderen, useBestaetigen, useFreigaben, useUebernehmen } from "../freigaben";
 import { mitNamen, pruefen, useFeldlisten } from "../feldlisten";
 
@@ -64,7 +65,11 @@ export function Freigaben() {
 
   return (
     <>
-      <Kopf titel="Freigaben" beschreibung="Was auf Ihre Entscheidung wartet." />
+      <Kopf
+        titel="Freigaben"
+        beschreibung="Was auf Ihre Entscheidung wartet."
+        werkzeuge={<NeuLaden schluessel={["freigaben"]} />}
+      />
       {meldung && (
         <Meldung art={meldung.art} kennzeichen="freigabe-meldung">
           {meldung.text}

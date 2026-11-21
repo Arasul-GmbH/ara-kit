@@ -48,13 +48,14 @@
  */
 
 import { useState } from "react";
-import { CircleAlertIcon } from "lucide-react";
+import { CircleAlert } from "@marken/symbole";
 import { useSearchParams } from "react-router-dom";
 import {
   Button,
   Dateiablage,
   Datenliste,
   Dokumentanzeige,
+  Icon,
   Karte,
   Kopf,
   Leerzustand,
@@ -68,6 +69,7 @@ import {
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import { zeilenPfeile } from "../rahmen/pfeile";
 import {
   anzeigeArt,
@@ -180,7 +182,11 @@ export function Dokumente() {
 
   return (
     <>
-      <Kopf titel="Dokumente" beschreibung="PDF und Bilder, abgelegt in dieser App und hier angesehen." />
+      <Kopf
+        titel="Dokumente"
+        beschreibung="PDF und Bilder, abgelegt in dieser App und hier angesehen."
+        werkzeuge={<NeuLaden schluessel={["dokumente"]} />}
+      />
 
       {hochladen.isError && (
         <Meldung art="fehler" titel="Das Dokument ist nicht angekommen">
@@ -224,7 +230,7 @@ export function Dokumente() {
                 {dateiFehlt && (
                   // Der Satz in Textfarbe, das Zeichen in Rot, wie am Feld in `seiten/neu.tsx`.
                   <p id="datei-fehlt" role="status" className="flex items-center gap-1.5 pt-ui-2 text-ui-sm text-foreground">
-                    <CircleAlertIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+                    <Icon symbol={CircleAlert} className="text-destructive" />
                     Erst eine Datei wählen oder hierher ziehen, dann hochladen.
                   </p>
                 )}

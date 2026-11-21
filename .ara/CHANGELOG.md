@@ -13,6 +13,17 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.87.0 (2026-11-21)
+
+Contract: up to 14
+
+- **`/app` asks for the symbol of the app and offers three that fit.** `node .ara/tools/app.mjs --symbole "<title and description>"` names three pictures from Lucide, the closest first, each with its page on lucide.dev; the interview question offers them as options with a free answer. The choice goes into the new app with `--new --symbol <name>` or into an existing one with `--app <app> --symbol <name>`, both write `app.json`.
+- **Without a symbol the kit does not build.** `--build` stops as long as `app.json` carries no symbol from the icon set, and offers the three suggestions. The proof in the package names the symbol (`symbol`), and the check refuses a missing or different one with the code `symbol`; the sheet `.ara/knowledge/nachweis.md` describes it for the check on the device.
+- **The scaffold follows the device's new look.** Its copy of the library stands at 5.9.3, the device's version. Every page begins with the page header and its toolbar (`Kopf` with `werkzeuge`, `Werkzeug`), the sidebar button stands in the header through `KopfVorne` instead of a line of its own, and the page margins are the device's. Tables and forms use the library's compact blocks. The patterns documents, extract, clients and receipts follow.
+- **Icons come through the icon block.** Scaffold and patterns take Lucide only from `@marken/symbole` and draw with `Icon`; at the device the build loads `/marken/5/symbole.js` for it. The standard reports an import from `lucide-react` as a finding as soon as the app's copy of the library carries `symbole.ts`, and `--build` stops then.
+- **A scaffold app passes the device's check again.** At a roll-out the kit fills the device's arrangement (`backend/arasul.json`), after the build and so after the proof was stamped; a device that checks the app standard therefore refused every scaffold app with `paket-geaendert` (on the Orin on 21.11.2026). Now the kit renews the package's checksum and seal afterwards, only when the proof held before.
+- **The self-test checks it**: header with tools on every page of scaffold and patterns, no free icons, `symbole.js` from the device, three suggestions, the stop without a symbol and the symbol in the proof.
+
 ## 0.86.1 (2026-11-20)
 
 Contract: up to 14

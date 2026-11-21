@@ -15,6 +15,17 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.87.0 (2026-11-21)
+
+Kontrakt: bis 14
+
+- **`/app` fragt das Symbol der App ab und legt drei passende vor.** `node .ara/tools/app.mjs --symbole "<Titel und Beschreibung>"` nennt drei Bilder aus Lucide, das naheliegende zuerst, je mit seiner Seite auf lucide.dev; die Frage im Interview bietet sie als Optionen mit freier Antwort an. Die Wahl geht mit `--new --symbol <name>` in die neue App oder mit `--app <app> --symbol <name>` in eine bestehende, beides schreibt `app.json`.
+- **Ohne Symbol baut das Kit nicht.** `--build` hält an, solange `app.json` kein Symbol aus dem Bildersatz trägt, und legt die drei Vorschläge vor. Der Nachweis im Paket nennt das Symbol (`symbol`), und die Prüfung weist ein fehlendes oder abweichendes mit dem Code `symbol` ab; das Blatt `.ara/knowledge/nachweis.md` beschreibt es für die Prüfung im Gerät.
+- **Die Vorlage folgt dem neuen Aussehen des Geräts.** Ihre Kopie der Bibliothek steht auf 5.9.3, dem Stand des Geräts. Jede Seite beginnt mit dem Seitenkopf samt Werkzeugleiste (`Kopf` mit `werkzeuge`, `Werkzeug`), der Knopf der Seitenleiste steht über `KopfVorne` im Kopf statt in einer eigenen Zeile, und die Ränder der Seite sind die des Geräts. Tabellen und Formulare nutzen die kompakten Bausteine der Bibliothek. Die Muster Dokumente, Auslesen, Mandanten und Belege ziehen mit.
+- **Symbole kommen über den Icon-Baustein.** Vorlage und Muster holen Lucide nur aus `@marken/symbole` und zeichnen mit `Icon`; am Gerät lädt der Bau dafür `/marken/5/symbole.js`. Der Standard meldet einen Import aus `lucide-react` als Befund, sobald die Kopie der Bibliothek in der App `symbole.ts` trägt, und `--build` hält dann an.
+- **Eine Vorlagen-App kommt wieder durch die Prüfung des Geräts.** Das Kit füllt beim Einspielen die Vereinbarung des Geräts (`backend/arasul.json`), nach dem Bau und damit nach dem Stempel des Nachweises; ein Gerät, das den App-Standard prüft, wies deshalb jede Vorlagen-App mit `paket-geaendert` ab (am Orin am 21.11.2026). Jetzt erneuert das Kit danach Prüfsumme und Siegel des Pakets, nur wenn der Nachweis davor trug.
+- **Der Selbsttest prüft es**: Kopf mit Werkzeugen auf jeder Seite von Vorlage und Mustern, keine freien Symbole, `symbole.js` vom Gerät, drei Vorschläge, der Halt ohne Symbol und das Symbol im Nachweis.
+
 ## 0.86.1 (2026-11-20)
 
 Kontrakt: bis 14

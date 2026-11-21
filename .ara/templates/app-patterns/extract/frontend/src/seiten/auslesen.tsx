@@ -53,6 +53,7 @@ import {
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import { zeilenPfeile } from "../rahmen/pfeile";
 import { anzeigeArt, dokumentAdresse, useDokumente, type Dokument } from "../dokumente";
 import {
@@ -246,7 +247,11 @@ export function Auslesen() {
 
   return (
     <>
-      <Kopf titel="Auslesen" beschreibung="Das Gerät liest ein Dokument in Felder, die App prüft sie, ein Mensch sieht sie am Dokument." />
+      <Kopf
+        titel="Auslesen"
+        beschreibung="Das Gerät liest ein Dokument in Felder, die App prüft sie, ein Mensch sieht sie am Dokument."
+        werkzeuge={<NeuLaden schluessel={["auslesen"]} />}
+      />
       {lage.data && !lage.data.kann && (
         <Meldung art="hinweis" titel="Auslesen geht hier nicht">
           {lage.data.grund}

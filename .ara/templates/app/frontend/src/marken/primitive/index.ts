@@ -146,6 +146,7 @@ export { Switch } from './switch';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { Textarea } from './textarea';
 export { Toast, ToastViewport, ToastIcon, ToastMessage, ToastClose, toastVariants } from './toast';
+export { Icon, ICON_GROESSEN, ICON_STRICH, type IconGroesse } from './icon';
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './tooltip';
 
 export { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from './accordion';

@@ -9,6 +9,7 @@
  *   `BrowserRouter`         die Wege, unter dem Pfad, an dem die App hängt
  *   `SidebarProvider`       auf und zu, und unter 900 px ein Blatt
  *   `AppSeitenleiste`       die Bereiche, aus dem Muster der Bibliothek
+ *   `KopfVorne`             der Knopf der Seitenleiste, im Seitenkopf jeder Seite
  *   `AnmeldungRahmen`       wer da ist, aus `api/me`, bevor etwas gezeichnet wird
  *
  * Die Reihenfolge ist eine Entscheidung: die Anmeldung steht INNEN, weil sie
@@ -23,11 +24,18 @@
  * den Inhalt, `SidebarTrigger` klappt auf und zu. Was hier ein `grid` wäre,
  * liefe beim nächsten Stand des Geräts von der Oberfläche weg, in der es
  * hängt.
+ *
+ * **Jede Seite beginnt mit dem Seitenkopf** (`Kopf`, seit Marken 5.9.0):
+ * links Titel und ein Satz, rechts die Werkzeugleiste, als letztes darin der
+ * Knopf der Seitenleiste. Den legt `KopfVorne` hier einmal hinein, jede Seite
+ * bekommt ihn an derselben Stelle, ohne ihn zu kennen. Die eigene Zeile mit
+ * dem einen Knopf über der Seite gibt es nicht mehr, so wenig wie in
+ * Verwaltung und Einstellungen des Geräts.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Meldung, SidebarInset, SidebarProvider, SidebarTrigger } from "@marken";
+import { Button, Kopf, KopfVorne, Meldung, SidebarInset, SidebarProvider, SidebarTrigger } from "@marken";
 import { basisPfad } from "./rahmen/basis";
 import { useThema } from "./rahmen/thema";
 import { AnmeldungRahmen } from "./rahmen/anmeldung";
@@ -66,12 +74,15 @@ const speicher = new QueryClient({
 function Unbekannt() {
   const gehe = useNavigate();
   return (
-    <Meldung art="hinweis" titel="Diese Seite gibt es nicht" kennzeichen="nicht-da">
-      <p>Die Vorgänge stehen in der Übersicht.</p>
-      <Button variant="outline" size="sm" className="mt-2 self-start" onClick={() => gehe("/")} data-kennzeichen="zur-uebersicht">
-        Zur Übersicht
-      </Button>
-    </Meldung>
+    <>
+      <Kopf titel="Nicht gefunden" beschreibung="Unter dieser Adresse steht in dieser App nichts." />
+      <Meldung art="hinweis" titel="Diese Seite gibt es nicht" kennzeichen="nicht-da">
+        <p>Die Vorgänge stehen in der Übersicht.</p>
+        <Button variant="outline" size="sm" className="mt-2 self-start" onClick={() => gehe("/")} data-kennzeichen="zur-uebersicht">
+          Zur Übersicht
+        </Button>
+      </Meldung>
+    </>
   );
 }
 
@@ -106,14 +117,13 @@ export function App() {
           <SidebarProvider>
             <AppSeitenleiste name={NAME} />
             <SidebarInset>
-              <header className="flex h-ui-header items-center gap-2 border-b border-border px-3">
-                <SidebarTrigger />
-              </header>
-              <div className="ara-strom">
-                <AnmeldungRahmen>
-                  <Wege />
-                </AnmeldungRahmen>
-              </div>
+              <KopfVorne knopf={<SidebarTrigger data-kennzeichen="leiste-umschalten" />}>
+                <div className="ara-strom">
+                  <AnmeldungRahmen>
+                    <Wege />
+                  </AnmeldungRahmen>
+                </div>
+              </KopfVorne>
             </SidebarInset>
           </SidebarProvider>
         </BrowserRouter>

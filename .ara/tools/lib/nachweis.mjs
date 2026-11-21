@@ -29,6 +29,7 @@ import { join, relative, sep } from "node:path";
 import { ROOT } from "./kit.mjs";
 import { t } from "./i18n.mjs";
 import { readLibrary } from "./marken.mjs";
+import { SYMBOL_NAME } from "./symbole.mjs";
 
 export const NACHWEIS_FILE = "nachweis.json";
 export const NACHWEIS_SCHEMA = 1;
@@ -199,6 +200,8 @@ function base(appDir, manifest, old) {
     version: manifest?.version ?? null,
     kit: { version: kitVersion() },
     bibliothek: libraryOf(appDir, manifest),
+    // Das Bild der App in der Leiste des Geräts, wie das Manifest es nennt. Teil des Standards seit 21.11.2026.
+    symbol: typeof manifest?.symbol === "string" ? manifest.symbol : null,
     schritte: old?.schritte ?? [],
   };
 }
@@ -247,6 +250,22 @@ export function stampPackage(appDir, packageDir, manifest) {
   // Das Paket trägt, was dem Ausrollen vorausgeht. Das Ausrollen selbst nicht.
   document.schritte = (old?.schritte ?? []).filter((step) => step.name !== SCHRITT_AUSROLLEN);
   return writeNachweis(packageDir, JSON.parse(JSON.stringify(document)));
+}
+
+/**
+ * Nach dem einen Schritt, den das Kit beim Einspielen selbst am Paket tut: die
+ * Vereinbarung des Geräts (`backend/arasul.json`) wird aus dessen Kontrakt
+ * gefüllt, und erst dann gepackt. Ohne diese Zeile wiese ein Gerät, das den
+ * Standard prüft, jedes Paket der Vorlage mit `paket-geaendert` ab (gefunden am
+ * Orin am 21.11.2026, K31). Erneuert werden nur `inhalt.paket` und das Siegel,
+ * und nur, wenn der Nachweis davor trug: aufgerufen wird es nach der Prüfung vor
+ * dem Einspielen, nie an deren Stelle.
+ */
+export function restampPackage(packageDir) {
+  const { document } = readNachweis(packageDir);
+  if (!document?.inhalt?.paket) return null;
+  const { siegel: _alt, ...rest } = document;
+  return writeNachweis(packageDir, { ...rest, inhalt: { ...rest.inhalt, paket: packageDigest(packageDir).pruefsumme } });
 }
 
 // --- Prüfen ------------------------------------------------------------------
@@ -333,6 +352,15 @@ export function verify(dir, { ort = "paket", manifest = null, ausgenommen = fals
   const lib = document.bibliothek;
   if (!lib || (app?.marken && lib.marken !== app.marken)) {
     add("bibliothek", `Die Fassung der Bibliothek im Nachweis (${lib?.marken ?? "keine"}) ist nicht die im Manifest (${app?.marken ?? "keine"}).`, `The library version in the proof (${lib?.marken ?? "none"}) is not the one in the manifest (${app?.marken ?? "none"}).`);
+  }
+
+  // Das Symbol: das Manifest nennt eines in der Form, die das Gerät zeichnet, und der Nachweis nennt
+  // dasselbe. Ob der Name im Bildersatz steht, prüft das Kit vor dem Bau; das Gerät prüft die Form.
+  const symbol = app?.symbol;
+  if (typeof symbol !== "string" || !SYMBOL_NAME.test(symbol)) {
+    add("symbol", "Das Manifest nennt kein Symbol für die Seitenleiste (`symbol`, ein Name von lucide.dev).", "The manifest names no symbol for the sidebar (`symbol`, a name from lucide.dev).");
+  } else if (document.symbol !== symbol) {
+    add("symbol", `Das Symbol im Nachweis (${document.symbol ?? "keines"}) ist nicht das im Manifest (${symbol}). Neu bauen.`, `The symbol in the proof (${document.symbol ?? "none"}) is not the one in the manifest (${symbol}). Build again.`);
   }
   return { ok: funde.length === 0, funde };
 }

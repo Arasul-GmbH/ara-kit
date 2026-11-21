@@ -22,6 +22,10 @@ import { cn } from '../cn';
  * und das `opacity-50` auf ohnehin gedaempftem Grau ist weg, es ergab knapp
  * lesbaren Kontrast.
  *
+ * SEIT 5.9.0 KOMPAKT (`gestaltung.md`, „ein Satz und eine Aktion"): das
+ * Symbol 20 px auf einem blau getoenten Kreis, der Titel in Textgroesse,
+ * darunter hoechstens ein Satz und die eine Aktion.
+ *
  * `role="status"`: das Ausbleiben von Ergebnissen ist eine Auskunft, und ein
  * Screenreader soll sie bekommen, ohne dass ihn etwas unterbricht.
  */
@@ -39,15 +43,19 @@ export function Leerzustand({ symbol, titel, beschreibung, aktion, className }: 
   return (
     <div
       className={cn(
-        'mx-auto flex max-w-96 flex-col items-center justify-center p-8 text-center',
+        'mx-auto flex max-w-96 flex-col items-center justify-center px-6 py-8 text-center',
         className
       )}
       role="status"
+      data-slot="leerzustand"
     >
-      <div className="mb-3 text-muted-foreground [&>svg]:size-6" aria-hidden="true">
+      <div
+        className="mb-3 flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary [&>svg]:size-5"
+        aria-hidden="true"
+      >
         {symbol || <Inbox />}
       </div>
-      <div className="text-ui-lg font-semibold text-foreground">{titel}</div>
+      <div className="text-ui font-medium text-foreground">{titel}</div>
       {beschreibung && <div className="mt-1 text-ui-sm text-muted-foreground">{beschreibung}</div>}
       {aktion && <div className="mt-4">{aktion}</div>}
     </div>

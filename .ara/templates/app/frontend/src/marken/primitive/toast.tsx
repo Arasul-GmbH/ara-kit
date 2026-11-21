@@ -24,7 +24,7 @@ import { cn } from '../cn';
  * oben rechts ist sonst eine unsichtbare Wand vor der Oberflaeche darunter.
  */
 const toastVariants = cva(
-  'pointer-events-auto flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3.5 shadow-lg motion-safe:animate-in motion-safe:slide-in-from-right',
+  'pointer-events-auto flex items-center gap-3 rounded-lg glas border px-4 py-3 motion-safe:animate-in motion-safe:slide-in-from-right',
   {
     variants: {
       art: {

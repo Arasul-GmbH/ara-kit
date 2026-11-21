@@ -118,7 +118,7 @@ import { ROOT, adminSession, ensureDir, fail, helpOnly, now, parseArgs, readDevi
 import { localized, t } from "./lib/i18n.mjs";
 import { call, reason } from "./lib/arasul.mjs";
 import { connect, withContract } from "./lib/link.mjs";
-import { suggestSymbol, symbolFindings } from "./lib/symbole.mjs";
+import { suggestSymbol, suggestSymbols, symbolFindings } from "./lib/symbole.mjs";
 import { catchUpLines, checkManifest, promisedFolders, summarize } from "./lib/contract.mjs";
 import { ARRANGEMENT_FILE, appArrangement, arrangementFile, arrangementLines, redeployLines, releaseLines } from "./lib/appways.mjs";
 import {
@@ -136,7 +136,7 @@ import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mj
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings, standardScope } from "./lib/standard.mjs";
 import { kurzbericht } from "./lib/kurzbericht.mjs";
-import { SCHRITT_AUSROLLEN, fileDigest, lines as proofLines, recordStep, runTests, stampPackage, verify as verifyProof } from "./lib/nachweis.mjs";
+import { SCHRITT_AUSROLLEN, fileDigest, lines as proofLines, recordStep, restampPackage, runTests, stampPackage, verify as verifyProof } from "./lib/nachweis.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
 import { leavesPackage, safeFolder, walkFiles } from "./lib/files.mjs";
@@ -201,7 +201,8 @@ if (process.argv.length <= 2) {
         "  --prozess <sheet>        with --new: take title, stages, fields and trigger from a process sheet (id or path, --customer <customer> for a customer's) and write the plan from it",
         '  --titel "<title>"        display name of the app, otherwise the id',
         '  --beschreibung "<line>"  what the app is for',
-        "  --symbol <name>          with --new: the picture of the app, an icon name from lucide.dev (file-text); without it the kit picks one",
+        "  --symbol <name>          the picture of the app, an icon name from lucide.dev (file-text). With --new it goes into the new app, without it into app.json of an existing one; --new without it picks the first suggestion",
+        '  --symbole "<text>"       three icons from lucide.dev that fit a title and description, for the question in /app',
         '  --stufen "<a>,<b>"       with --new: named approval stages of the flow, at most five',
         "  --arten <a>,<b>          with --new: kinds of the flow, autonom and/or ergebnis_bestaetigen",
         `  ${FLAG_AUSLOESER} "<list>"     with --new: triggers, hand, zeitplan:<five fields>, ereignis:<name>`,
@@ -253,7 +254,8 @@ if (process.argv.length <= 2) {
         "  --prozess <blatt>        mit --new: Titel, Stufen, Felder und Auslöser aus einem Prozessblatt nehmen (Kennung oder Pfad, --customer <kunde> bei einem Kundenblatt) und den Plan daraus schreiben",
         '  --titel "<titel>"        Anzeigename der App, sonst die Kennung',
         '  --beschreibung "<satz>"  wozu die App da ist',
-        "  --symbol <name>          mit --new: das Bild der App, ein Bildname von lucide.dev (file-text); ohne wählt das Kit eines",
+        "  --symbol <name>          das Bild der App, ein Bildname von lucide.dev (file-text). Mit --new in die neue App, ohne in die app.json einer bestehenden; --new ohne nimmt den ersten Vorschlag",
+        '  --symbole "<text>"       drei Bilder von lucide.dev, die zu Titel und Beschreibung passen, für die Frage in /app',
         '  --stufen "<a>,<b>"       mit --new: benannte Freigabestufen des Flows, höchstens fünf',
         "  --arten <a>,<b>          mit --new: Arten des Flows, autonom und/oder `ergebnis_bestaetigen`",
         `  ${FLAG_AUSLOESER} "<liste>"    mit --new: Auslöser, hand, zeitplan:<fünf Felder>, ereignis:<name>`,
@@ -330,6 +332,23 @@ if (arg.prozess !== undefined && !arg.new) {
 if (arg.connections !== undefined) {
   if (arg.connections === true) fail(t('--connections needs the description: --connections "<text>".', '--connections braucht die Beschreibung: --connections "<text>".'));
   console.log(describeConnections(arg.connections));
+  process.exit(0);
+}
+
+// Drei Bilder zur Wahl: die Frage nach dem Symbol in `/app` legt sie vor, mit freier Antwort daneben.
+if (arg.symbole !== undefined) {
+  if (arg.symbole === true) fail(t('--symbole needs the title and description: --symbole "<text>".', '--symbole braucht Titel und Beschreibung: --symbole "<text>".'));
+  const vorschlaege = suggestSymbols(String(arg.symbole));
+  console.log(
+    [
+      t("Three pictures for the sidebar, the closest first:", "Drei Bilder für die Seitenleiste, das naheliegende zuerst:"),
+      ...vorschlaege.map((name, i) => `  ${i + 1}. ${name}   https://lucide.dev/icons/${name}`),
+      t(
+        "Another one: any name from https://lucide.dev/icons, small letters with hyphens. It goes in with --symbol <name>.",
+        "Ein anderes: jeder Name von https://lucide.dev/icons, klein und mit Bindestrichen. Hinein mit --symbol <name>."
+      ),
+    ].join("\n")
+  );
   process.exit(0);
 }
 
@@ -564,10 +583,12 @@ function createApp(name) {
         "- frontend, backend and one flow with an approval lie in it as a scaffold",
         "- Oberfläche, Backend und ein Flow mit Freigabe liegen als Vorlage darin"
       ),
-      t(
-        `- Symbol: ${fields.symbol}${wunsch ? "" : " (chosen by the kit, change it in app.json if another fits better)"}`,
-        `- Symbol: ${fields.symbol}${wunsch ? "" : " (vom Kit gewählt, in app.json änderbar, wenn ein anderes besser passt)"}`
-      ),
+      wunsch
+        ? `- Symbol: ${fields.symbol}`
+        : t(
+            `- Symbol: ${fields.symbol} (chosen by the kit; the three that fit: ${suggestSymbols(name, titel, beschreibung).join(", ")}. Another one with --app ${name} --symbol <name>)`,
+            `- Symbol: ${fields.symbol} (vom Kit gewählt; die drei, die passen: ${suggestSymbols(name, titel, beschreibung).join(", ")}. Ein anderes mit --app ${name} --symbol <name>)`
+          ),
       ...(fields.stufen
         ? [
             t(
@@ -784,8 +805,8 @@ function failOnStandard(app) {
           "Designprüfung: entfällt, ein fremder Container bringt keine eigene Oberfläche mit."
         )
       : t(
-          `Design check: ${scope.files} ${scope.files === 1 ? "file" : "files"} of the interface held against the library (own colours, palette colours, own primitives, the field marken), no finding.`,
-          `Designprüfung: ${scope.files} ${scope.files === 1 ? "Datei" : "Dateien"} der Oberfläche gegen die Bibliothek gehalten (eigene Farben, Palettenfarben, eigene Primitive, Feld marken), kein Befund.`
+          `Design check: ${scope.files} ${scope.files === 1 ? "file" : "files"} of the interface held against the library (own colours, palette colours, own primitives, icons past the library, the field marken), no finding.`,
+          `Designprüfung: ${scope.files} ${scope.files === 1 ? "Datei" : "Dateien"} der Oberfläche gegen die Bibliothek gehalten (eigene Farben, Palettenfarben, eigene Primitive, Symbole an der Bibliothek vorbei, Feld marken), kein Befund.`
         );
   }
   fail(
@@ -841,6 +862,21 @@ function buildApp(app) {
             : `Schreib zuerst einen:\n  node .ara/tools/app.mjs --app ${app.name} --plan "<titel>"\n`) +
           "Ein Bau ohne Plan, bewusst, zum Vorführen: --no-plan"
       )
+    );
+  }
+  // Ohne Symbol baut das Kit nicht: es ist Teil des App-Standards (seit 21.11.2026), und das
+  // Gerät zeigte sonst nur das Kürzel aus dem Namen in seiner Leiste.
+  const symbolProblems = symbolFindings(app.manifest);
+  if (symbolProblems.length) {
+    fail(
+      [
+        t(`${app.name} has no picture for the sidebar. Nothing gets built like that:`, `${app.name} hat kein Bild für die Seitenleiste. So wird nichts gebaut:`),
+        ...symbolProblems.map((line) => `- ${line}`),
+        t(
+          `Three that fit: ${suggestSymbols(app.name, app.manifest?.name, app.manifest?.beschreibung).join(", ")}. Set one: node .ara/tools/app.mjs --app ${app.name} --symbol <name>`,
+          `Drei, die passen: ${suggestSymbols(app.name, app.manifest?.name, app.manifest?.beschreibung).join(", ")}. Eines setzen: node .ara/tools/app.mjs --app ${app.name} --symbol <name>`
+        ),
+      ].join("\n")
     );
   }
   const designCheck = failOnStandard(app);
@@ -1111,6 +1147,22 @@ if (!wantsDevice) {
     console.log("");
   }
   const app = readApp(name);
+  // Das Symbol einer bestehenden App setzen: die Antwort auf die Frage in `/app`, nach `--new`.
+  if (arg.symbol !== undefined && !arg.new) {
+    if (!app.exists || app.manifestProblem) fail(app.manifestProblem || t(`The app ${name} does not exist yet. First --new.`, `Die App ${name} gibt es noch nicht. Zuerst --new.`));
+    if (arg.symbol === true) fail(t("--symbol needs a value.", "--symbol braucht eine Angabe."));
+    const gewaehlt = parseSymbol(arg.symbol, name, app.manifest?.name, app.manifest?.beschreibung);
+    if (gewaehlt.error) fail(gewaehlt.error);
+    const manifestFile = join(app.dir, "app.json");
+    writeFileSync(manifestFile, `${JSON.stringify(setSymbol(JSON.parse(readFileSync(manifestFile, "utf8")), gewaehlt.symbol), null, 2)}\n`);
+    console.log(
+      t(
+        `Symbol of ${name}: ${gewaehlt.symbol}. It shows in the sidebar of the device after the next build and roll-out.`,
+        `Symbol von ${name}: ${gewaehlt.symbol}. Es steht nach dem nächsten Bau und Einspielen in der Seitenleiste des Geräts.`
+      )
+    );
+    process.exit(0);
+  }
   if (arg["add-pattern"] !== undefined) {
     if (!app.exists) fail(t(`The app ${name} does not exist yet. First --new.`, `Die App ${name} gibt es noch nicht. Zuerst --new.`));
     if (arg["add-pattern"] === true) {
@@ -2155,6 +2207,9 @@ if (arg.deploy !== undefined) {
   if (arrangementTarget) {
     const arrangement = appArrangement(contract, { device: place, date: today() });
     writeFileSync(arrangementTarget, arrangementFile(arrangement));
+    // Der Nachweis hat eben getragen (`proofBeforeDeploy`); die gefüllte Vereinbarung gehört zum
+    // Ablauf des Kits, also nennt er danach die Prüfsumme des Pakets, wie es hinausgeht.
+    restampPackage(dir);
     if (!kurz) console.log(arrangementSection(dir, manifest).join("\n").replace(/^\n/, ""));
   }
 

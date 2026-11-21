@@ -180,4 +180,90 @@
  * (`@media (hover: hover)`); auf einem Touch-Geraet blieb sie nach dem Tippen
  * angehoben stehen. Kein Name, keine Eigenschaft aendert sich.
  */
-export const FASSUNG = '5.6.1';
+/*
+ * 5.7.0: der Grundton der Marke. Die Farben sind die der Marke (Creme, Panel,
+ * Tinte, Linie, Blau; dunkel Navy), hinter dem Rahmen liegt ein ruhiger
+ * Verlauf (`--verlauf-grund`), die Schrift Inter kommt mit der Bibliothek
+ * (`schrift/`, auch fuer eine App zur Laufzeit). Menues, Aufklappfelder,
+ * kurze Meldungen und der Schleier unter einem Dialog sind Glas (`.glas`,
+ * `--glas-*`, `--ara-glas*`), deckend, wo der Browser keine Unschaerfe kann,
+ * der Mensch „Transparenz reduzieren“ gewaehlt hat
+ * (`data-transparenz="reduziert"`) oder das System weniger Transparenz
+ * oder mehr Kontrast wuenscht. Knoepfe sind kompakt (32 px mit Text, 28 px
+ * als Icon-Knopf, bei grobem Zeiger 44 px Trefferflaeche), der Hauptknopf
+ * ist flach blau. Neu: `Icon` mit drei Groessen und einer Strichstaerke,
+ * dazu der Ausgang `@marken/symbole` fuer den Bau. `--gradient-primary` und
+ * `--ara-verlauf-haupt` bleiben als Namen und sind jetzt flach. Kein Name
+ * faellt weg; eine App auf 5.6.1 sieht nur das neue Aussehen.
+ */
+/*
+ * 5.7.1: das Blau des hellen Themas (`--primary`) eine Stufe tiefer und
+ * das Ende des Verlaufs heller. Ein Abzeichen mit seinem
+ * Wisch stand in einer App direkt auf dem Verlauf und hielt dort nur 4,2:1.
+ * Die Karten der `Datenliste` am Handy sind deckend (`bg-card`), wie jede
+ * Karte. Kein Name, keine Eigenschaft aendert sich.
+ */
+/*
+ * 5.8.0: der Grund des Rahmens. Neu sind `--verlauf-rahmen` (aus
+ * `--rahmen-stufe-1` bis `-3` und `--rahmen-schein`), ein sichtbarer Verlauf,
+ * auf dem kein Text steht, nur Glas, und dazu `.glas-grund` mit
+ * `--glas-anteil-grund`: dasselbe Glas, duenner gefuellt, fuer schwebende
+ * Leisten, unter denen nur dieser Verlauf liegt. Kein Name faellt weg, nichts
+ * aendert seine Bedeutung.
+ */
+/*
+ * 5.8.1: die Kante des Glases traegt mehr: eine Haarlinie aussen und ein
+ * Lichtsaum oben innen in `--glas-schatten`, `--glas-anteil-grund` 66 %, der
+ * Verlauf des Rahmens hell kraeftiger und dunkel ruhiger. Kein Name, keine
+ * Eigenschaft aendert sich.
+ */
+/*
+ * 5.8.2: Glas auf dem Grund ist neutral (`--glas-grund-basis`: hell Weiss
+ * zu 62 %, dunkel Creme zu 6 %), dazu `--schatten-flaeche` fuer die Flaeche
+ * der Ansicht. Kein Name, keine Eigenschaft aendert sich.
+ */
+/*
+ * 5.8.3: der Verlauf des Rahmens laeuft diagonal (135 Grad), damit jeder
+ * Rand Farbe traegt; dazu `--glas-schatten-klein` fuer Glas ueber Inhalt.
+ * Kein Name, keine Eigenschaft aendert sich.
+ */
+/*
+ * 5.9.0: das Innere der Flaeche. Der `Kopf` beginnt jede Seite gleich: links
+ * Titel und ein Satz, rechts `werkzeuge` (neu `Werkzeug`, ein Icon-Button von
+ * 28 px), davor der Knopf der Seitenleiste (neu `KopfVorne`); keine
+ * Trennlinie, kein Symbol vor dem Titel (`symbol` bleibt als Name und zeichnet
+ * nichts), rechts frei fuer `--ara-kapsel-platz`; dazu `ebene`. Die Tabelle
+ * ist kompakt (Kopfzeile 32 px, Zeile 40 px), die `Datenliste` liegt deckend
+ * auf `--card` mit Radius 12 px, ihre Beschriftung ist nur fuer
+ * Vorlesewerkzeuge, neu `zeilenKennzeichen`; der `Leerzustand` ist kompakt,
+ * `Kennzahl` deckend und mit `verlauf`, `Chart` mit `art` Linie oder Balken
+ * in einem Stil; das Feld eines `Formular` ist am Rechner 32 px hoch, der
+ * `SidebarTrigger` 28 px. Neu zur Laufzeit `symbole.js`. Kein Name faellt
+ * weg; eine App auf 5.8.3 sieht ohne Neubau den neuen Kopf und die neue
+ * Tabelle, nur `Werkzeug`, `KopfVorne`, `verlauf`, `art` und `symbole.js`
+ * bekommt sie erst mit einem Neubau.
+ */
+/*
+ * 5.9.1: Befunde der ersten unbeteiligten Durchsicht. Der Knopf der
+ * Seitenleiste steht im `Kopf` als letztes Werkzeug (Titel und Inhalt haben
+ * eine linke Kante), der Titel 20 px; der Titel einer `Karte` in Textgroesse,
+ * damit er nicht groesser ist als der Seitentitel; die Karte der
+ * `Datenliste` am Handy zeigt die erste Spalte in bis zu zwei Zeilen und den
+ * Rest in einer Zeile; `Kennzahl` mit groesserer Zahl, `Kennzahlen` am Handy
+ * zwei Spalten. Kein Name, keine Eigenschaft aendert sich.
+ */
+/*
+ * 5.9.2: Befunde der zweiten unbeteiligten Durchsicht. Eine App zur Laufzeit
+ * steht deckend auf `--background` ohne eigenen Verlauf (der liegt draussen
+ * im Rahmen). Der `Kopf` haelt fuer die Kapsel nur so viel frei, wie er in
+ * sie hineinreicht. `Spalte` kennt `kartenText` und `inKarteOben` fuer die
+ * Karte am Handy; die Tabelle setzt Ziffern gleicher Breite. Kein Name
+ * faellt weg; eine App auf 5.9.1 laeuft unveraendert.
+ */
+/*
+ * 5.9.3: zwei Reparaturen aus der dritten Durchsicht. Die Tabelle setzt keine
+ * Ziffern gleicher Breite mehr fuer alles (Inter verbreiterte damit den
+ * Bindestrich), und die Karte der `Datenliste` am Handy zeigt lange Texte in
+ * einer eigenen Zeile, auf zwei Zeilen begrenzt. Kein Name aendert sich.
+ */
+export const FASSUNG = '5.9.3';

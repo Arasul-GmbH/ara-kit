@@ -15,11 +15,16 @@
  * Die Ansichten stehen in der Suchanfrage und nicht im Zustand dieser
  * Komponente: ein Verweis auf "die offenen" bleibt damit einer, und die Wege
  * der App bleiben eine Ebene tief (siehe `basis.ts`).
+ *
+ * **Symbole kommen aus der Bibliothek**, aus `@marken/symbole`, und werden mit
+ * `Icon` gezeichnet: drei Größen, eine Strichstärke, wie überall im Gerät.
+ * Ein eigener Import am Paket von Lucide vorbei zeichnete sie in seiner eigenen
+ * Stärke, und das Gerät verbietet ihn sich selbst (seit Marken 5.9.0).
  */
 
-import { CircleCheckIcon, ClipboardCheckIcon, ClockIcon, FilePlusIcon, InboxIcon, type LucideIcon } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from "@marken";
+import { Icon, Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from "@marken";
+import { CircleCheck, ClipboardCheck, Clock, FilePlus, Inbox, type LucideIcon } from "@marken/symbole";
 
 /** Die Ansichten der Vorgangsliste. `alle` steht ohne Suchanfrage da. */
 export const ANSICHTEN = [
@@ -30,9 +35,9 @@ export const ANSICHTEN = [
 
 /** Je Ansicht ein eigenes Zeichen: zugeklappt bleibt von der Leiste nur das Symbol, und dreimal dasselbe sagt nichts. */
 const SYMBOLE: Record<(typeof ANSICHTEN)[number]["id"], LucideIcon> = {
-  alle: InboxIcon,
-  offen: ClockIcon,
-  entschieden: CircleCheckIcon,
+  alle: Inbox,
+  offen: Clock,
+  entschieden: CircleCheck,
 };
 
 export type Ansicht = (typeof ANSICHTEN)[number]["id"];
@@ -63,11 +68,10 @@ export function AppSeitenleiste({ name }: { name: string }) {
     {
       titel: "Vorgänge",
       eintraege: ANSICHTEN.map((eintrag) => {
-        const Symbol = SYMBOLE[eintrag.id];
         return {
           kennung: `ansicht-${eintrag.id}`,
           name: eintrag.wort,
-          symbol: <Symbol />,
+          symbol: <Icon symbol={SYMBOLE[eintrag.id]} />,
           aktiv: aufListe && eintrag.id === ansicht,
           aufKlick: () => gehe(eintrag.id === "alle" ? "/" : `/?ansicht=${eintrag.id}`),
         };
@@ -79,7 +83,7 @@ export function AppSeitenleiste({ name }: { name: string }) {
         {
           kennung: "weg-freigaben",
           name: "Freigaben",
-          symbol: <ClipboardCheckIcon />,
+          symbol: <Icon symbol={ClipboardCheck} />,
           aktiv: ort.pathname === "/freigaben",
           aufKlick: () => gehe("/freigaben"),
         },
@@ -91,7 +95,7 @@ export function AppSeitenleiste({ name }: { name: string }) {
         {
           kennung: "weg-neu",
           name: "Neuer Vorgang",
-          symbol: <FilePlusIcon />,
+          symbol: <Icon symbol={FilePlus} />,
           aktiv: ort.pathname === "/neu",
           aufKlick: () => gehe("/neu"),
         },

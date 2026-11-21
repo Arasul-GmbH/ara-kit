@@ -91,16 +91,16 @@
     {
       "file": "frontend/src/rahmen/seitenleiste.tsx",
       "after": [
-        "import { Seitenleiste as Leiste, useSidebar, type SeitenleistenGruppe } from \"@marken\";\n"
+        "import { CircleCheck, ClipboardCheck, Clock, FilePlus, Inbox, type LucideIcon } from \"@marken/symbole\";\n"
       ],
-      "text": "import { ReceiptIcon } from \"lucide-react\";\n"
+      "text": "import { Receipt } from \"@marken/symbole\";\n"
     },
     {
       "file": "frontend/src/rahmen/seitenleiste.tsx",
       "before": [
         "  ];\n\n  return (\n    <Leiste"
       ],
-      "text": "    {\n      titel: \"Belege\",\n      eintraege: [\n        {\n          kennung: \"weg-belege\",\n          name: \"Alle Belege\",\n          symbol: <ReceiptIcon />,\n          aktiv: ort.pathname === \"/belege\",\n          aufKlick: () => gehe(\"/belege\"),\n        },\n      ],\n    },\n"
+      "text": "    {\n      titel: \"Belege\",\n      eintraege: [\n        {\n          kennung: \"weg-belege\",\n          name: \"Alle Belege\",\n          symbol: <Icon symbol={Receipt} />,\n          aktiv: ort.pathname === \"/belege\",\n          aufKlick: () => gehe(\"/belege\"),\n        },\n      ],\n    },\n"
     },
     {
       "file": "frontend/src/seiten/liste.tsx",

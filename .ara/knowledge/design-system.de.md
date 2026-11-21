@@ -40,6 +40,22 @@ Bibliothek. Eigene Regeln stehen am Ende von `stil.css`, nur mit Namen von Marke
 Schrift oder Radius. Am Gerät kommen die Klassen der Bibliothek nur aus deren `marken.css`: was du
 selbst gestaltest, schreib dort mit Marken.
 
+## Jede Seite beginnt gleich
+
+Wie im Gerät (Bibliothek 5.9): links Titel und ein Satz, rechts die **Werkzeugleiste**.
+
+```tsx
+<Kopf titel="Neuer Vorgang" beschreibung="Eingereicht als Anna Weber."
+  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück" onClick={zurueck} />} />
+```
+
+- **`Kopf` mit `werkzeuge` auf jeder Seite**; ein `Werkzeug` braucht seine `beschriftung`, sie sagt
+  das Vorleseprogramm. „Neu laden" ist `rahmen/neu-laden.tsx`. Der Knopf der Seitenleiste kommt
+  einmal über `KopfVorne` in `app.tsx`, nie als eigene Zeile.
+- **Symbole nur über `@marken/symbole`**, gezeichnet mit `<Icon symbol={Inbox} />` (`klein`,
+  `mittel`, `gross`); das Gerät liefert `symbole.js`.
+- **Tabellen, Felder und Ränder der Seite sind die der Bibliothek**: keine eigenen Höhen oder Breiten.
+
 **Eine Freigabe ist das Muster `Freigabe`, nie eine Nachbildung**: `seiten/freigaben.tsx`
 zeigt es, `freigaben.ts` holt die Einträge vom Gerät. Welche Felder ein Mensch ändern darf, erklärt der
 Flow (`ergebnis.aenderbar`). Das Original zeigt die Anzeige als Bild oder PDF **am Ende seines Pfades**.
@@ -68,7 +84,7 @@ Flow (`ergebnis.aenderbar`). Das Original zeigt die Anzeige als Bild oder PDF **
 
 Sonst sehen die Apps eines Partners nach drei Monaten alle anders aus. Das Gerät vergleicht nicht,
 und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build`, `--check`,
-`--deploy` und `--compose` bei vier Befunden an:
+`--deploy` und `--compose` bei fünf Befunden an:
 
 - **Ein eigener Farbwert.** Falsch: `color: #e11d48;`, `rgb(225 29 72)`. Richtig:
   `color: var(--ara-fehler);`, `bg-card`.
@@ -78,10 +94,14 @@ und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build
   oder `Datenliste`, `<dialog>` statt `Dialog`, `<fieldset>` statt `Feldgruppe`, eine Reiterleiste
   mit `role="tablist"` statt `Tabs`. Ebenso verboten: ein `<div className="karte">` neben `Karte`,
   eine Liste mit Suchfeld neben `Datenliste`.
+- **Ein Symbol an der Bibliothek vorbei**: `from "lucide-react"` statt `@marken/symbole`, sobald
+  die Kopie `symbole.ts` trägt.
 - **Das Feld `marken` in `app.json` fehlt oder ist veraltet.** Die Hauptzahl allein braucht keine
   passende Kopie, drei Zahlen müssen zur Kopie passen. `--new` schreibt es, `marken.mjs --sync`
   hält es. Gegen ein Gerät hält `--check` auch eine Hauptzahl an, die das Gerät nicht ausliefert,
   und weist bei einer gealterten Kopie nur hin.
+
+**Ohne `symbol` in `app.json` hält `--build` vor alledem an.**
 
 Gemessen wird der eigene Quelltext der App, nicht der Spiegel. **Ein fremder Container ist
 ausgenommen**: ohne `frontend`, mit fertigem `image`, bringt er keine Oberfläche mit. Der Selbsttest

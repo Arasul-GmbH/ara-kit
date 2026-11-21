@@ -14,6 +14,9 @@
  *   Palettenklassen      bg-red-500 statt der Tokens bg-primary, border-border
  *   eigene Primitive     <h1>, <table>, <dialog>, <fieldset>, role="tab..."
  *                        statt Kopf, Table/Datenliste, Dialog, Feldgruppe, Tabs
+ *   freie Symbole        ein Import aus `lucide-react` statt aus
+ *                        `@marken/symbole`, sobald die Bibliothek der App
+ *                        den Ausgang hat (seit 5.9.0)
  *   das Feld `marken`    trägt die App die Kopie der Bibliothek, muss das
  *                        Manifest das Feld führen, und es muss die Fassung
  *                        der Kopie nennen. Das Feld ohne Kopie ist ebenso rot
@@ -129,12 +132,18 @@ function readManifest(dir) {
  * `{{marken}}` der Platzhalter, den `--new` mit der Fassung der Kopie füllt,
  * und genau so gehört er dort hin.
  */
+/** Ein Import an der Bibliothek vorbei, direkt aus dem Paket der Symbole. */
+const FREE_ICONS = /\bfrom\s*["']lucide-react(?:\/[^"']*)?["']|\bimport\s*\(\s*["']lucide-react/;
+
 export function standardFindings(dir, { manifest = undefined, scaffold = false } = {}) {
   const found = manifest === undefined ? readManifest(dir) : manifest;
   if (standardExempt(found)) return [];
 
   const out = [];
   const front = join(dir, "frontend");
+  // Symbole nur über die Bibliothek: gilt, sobald ihre Kopie in der App den Ausgang
+  // `symbole.ts` trägt. Eine App auf einer älteren Fassung hat keinen anderen Weg.
+  const symbolsViaLibrary = existsSync(join(front, LIBRARY_MIRROR, "symbole.ts"));
 
   for (const path of sourceFiles(front)) {
     const name = relative(dir, path).split(sep).join(posix.sep);
@@ -156,6 +165,15 @@ export function standardFindings(dir, { manifest = undefined, scaffold = false }
         t(
           `\`${name}\` uses a Tailwind palette colour: ${klassen.join(", ")}. Only the tokens of the theme apply: bg-primary, text-muted-foreground, border-border. A palette value stands still at the next theme.`,
           `\`${name}\` benutzt eine Tailwind-Palettenfarbe: ${klassen.join(", ")}. Es gelten nur die Tokens des Themas: bg-primary, text-muted-foreground, border-border. Ein Palettenwert bleibt beim nächsten Thema stehen.`
+        )
+      );
+    }
+
+    if (symbolsViaLibrary && /\.(ts|tsx|js|jsx)$/.test(name) && FREE_ICONS.test(text)) {
+      out.push(
+        t(
+          `\`${name}\` imports icons from lucide-react directly. Icons come through the library: import { Inbox } from "@marken/symbole", drawn with <Icon symbol={Inbox} />.`,
+          `\`${name}\` holt Symbole direkt aus lucide-react. Symbole kommen über die Bibliothek: import { Inbox } from "@marken/symbole", gezeichnet mit <Icon symbol={Inbox} />.`
         )
       );
     }

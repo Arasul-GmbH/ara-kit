@@ -34,6 +34,12 @@
  * die Pfeile gehen eine Zeile weiter (`rahmen/pfeile.ts`). Bis Kit 0.40.0
  * baute diese Seite das selbst, mit einem Knopf im Titel und eigenen Regeln
  * in `stil.css`; seit Marken 5.0.0 kann die Bibliothek es.
+ *
+ * **Die Seite beginnt mit dem Seitenkopf samt Werkzeugleiste** (Marken
+ * 5.9.0): rechts ein Werkzeug, das die Liste neu holt, und als letztes der
+ * Knopf der Seitenleiste. Die Tabelle ist die kompakte der Bibliothek, Zeile
+ * 40 px, Kopfzeile 32 px, deckend auf der Karte; das bringt die `Datenliste`
+ * selbst mit, hier steht dafür nichts.
  */
 
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -53,6 +59,7 @@ import {
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import { zeilenPfeile } from "../rahmen/pfeile";
 import { ANSICHTEN, ansichtAus, type Ansicht } from "../rahmen/seitenleiste";
 import { STAND, seit, useLage, useVorgaenge, werEntscheidet, zeitpunkt, type Vorgang } from "../vorgaenge";
@@ -188,7 +195,11 @@ export function Vorgaenge() {
     <>
       {/* Der Weg zum Formular steht in der Seitenleiste und nicht auch noch
           hier: zwei Knöpfe für dieselbe Handlung sind einer zu viel. */}
-      <Kopf titel="Vorgänge" beschreibung="Eingereicht hier, entschieden in Arasul." />
+      <Kopf
+        titel="Vorgänge"
+        beschreibung="Eingereicht hier, entschieden in Arasul."
+        werkzeuge={<NeuLaden schluessel={["vorgaenge"]} />}
+      />
 
       {/* Warum kein Flow anhält, sagt die App selbst: "ohne Arasul" und "das
           Gerät hat den Wert nicht gesetzt" sehen gleich aus und sind es nicht. */}

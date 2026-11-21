@@ -122,6 +122,7 @@ function vomGeraet(hauptzahl: string): Array<{ find: RegExp; replacement: string
     ["react-dom/client", "react-dom-client.js"],
     ["react/jsx-runtime", "jsx-runtime.js"],
     ["@marken/diagramm", "diagramm.js"],
+    ["@marken/symbole", "symbole.js"],
     ["@marken", "marken.js"],
   ];
   return namen.map(([name, datei]) => ({
@@ -158,7 +159,10 @@ function stilVomGeraet(hauptzahl: string): Plugin {
  *
  * `@marken/diagramm` ist derselbe Alias mit einem Pfad dahinter: seit Marken
  * 5.0.0 stehen `Chart` und `Sparkline` nicht mehr im Sammelexport, und
- * Recharts kommt nur in eine App, die ein Diagramm zeigt.
+ * Recharts kommt nur in eine App, die ein Diagramm zeigt. `@marken/symbole`
+ * desgleichen seit Marken 5.9.0: Lucide nur über die Bibliothek, gezeichnet
+ * mit `Icon`. In der Kopie nimmt der Bau nur die Symbole, die die App
+ * benutzt; vom Gerät kommt `symbole.js`.
  *
  * `@stil` ist das Stylesheet der App, in zwei Fassungen: `kopie.css` übersetzt
  * die Bibliothek mit, `geraet.css` nur die eigenen Klassen der App.

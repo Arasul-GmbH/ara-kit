@@ -242,7 +242,7 @@ function Sidebar({
       >
         <div
           data-sidebar="sidebar"
-          className="flex h-full w-full flex-col overflow-hidden bg-background group-data-[form=schwebend]:rounded-lg group-data-[form=schwebend]:border group-data-[form=schwebend]:border-border"
+          className="flex h-full w-full flex-col overflow-hidden bg-transparent group-data-[form=schwebend]:bg-background group-data-[form=schwebend]:rounded-lg group-data-[form=schwebend]:border group-data-[form=schwebend]:border-border"
         >
           {children}
         </div>
@@ -259,8 +259,10 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
-      size="icon-sm"
-      className={cn(className)}
+      // 28 px wie jedes Werkzeug im Seitenkopf, in dem er seit 5.9.0 sitzt.
+      size="icon"
+      className={cn('text-muted-foreground hover:text-foreground', className)}
+      title="Seitenleiste umschalten"
       onClick={ereignis => {
         onClick?.(ereignis);
         umschalten();
@@ -314,7 +316,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<'main'>) {
   return (
     <main
       data-slot="sidebar-inset"
-      className={cn('relative flex w-full min-w-0 flex-1 flex-col bg-background', className)}
+      className={cn('relative flex w-full min-w-0 flex-1 flex-col', className)}
       {...props}
     />
   );

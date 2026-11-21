@@ -5,36 +5,42 @@ import { Loader2 } from 'lucide-react';
 
 import { cn } from '../cn';
 
+// Kompakt am Rechner: 32 px mit Text, 28 px als Icon-Knopf, Radius 8 px,
+// Schrift 14 px. Bei grobem Zeiger waechst die TREFFERFLAECHE auf 44 px, nicht
+// der sichtbare Knopf: ein leeres `::before` legt sich mittig darueber
+// (`TREFFER`). Die Hoehen stehen in Pixeln, nicht in rem: die Shell rechnet
+// mit 17 px Wurzelschrift (Komfort-Dichte), und 2rem waeren dort 34 px.
+const TREFFER =
+  "relative pointer-coarse:before:absolute pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-full pointer-coarse:before:min-h-11 pointer-coarse:before:min-w-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-['']";
+
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  `${TREFFER} inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,opacity] duration-[120ms] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`,
   {
     variants: {
       variant: {
+        // Der Nebenknopf: feiner Rand auf heller Flaeche.
         default:
-          'bg-secondary text-primary border border-border hover:bg-secondary/80 active:bg-secondary/70',
-        // Der Hauptknopf: ein leichter Blauverlauf aus `--gradient-primary`
-        // über der Marke, die einzige Fläche mit Verlauf. Überfahren hellt auf,
-        // statt den Knopf durchscheinen zu lassen.
+          'bg-card text-foreground border border-border shadow-xs hover:bg-[color-mix(in_srgb,var(--foreground)_5%,var(--card))] active:bg-[color-mix(in_srgb,var(--foreground)_8%,var(--card))]',
+        // Der Hauptknopf: blau gefuellt, ohne Verlauf. Ueberfahren nimmt die
+        // hellere Stufe der Marke, Druecken die tiefere.
         solid:
-          'bg-primary bg-(image:--gradient-primary) text-primary-foreground duration-[120ms] hover:brightness-[1.08] active:brightness-95',
-        // Entschärft: statt flächigem Rot (weiß auf Vollrot) ein
-        // ruhiger roter Ton mit rotem Text und dezentem Rahmen. Klar destruktiv,
-        // aber nicht mehr aggressiv; deckt sich mit dem weichen Löschen-Muster
-        // aus dem Flow-Editor und der „eine Flächenfarbe"-Regel.
+          'bg-primary text-primary-foreground shadow-xs hover:bg-primary-hover active:bg-primary-active',
+        // Rot nur fuer Loeschen: ein ruhiger roter Ton mit rotem Text und
+        // dezentem Rahmen, kein weisser Text auf Vollrot.
         destructive:
           'bg-destructive/10 text-destructive border border-destructive/25 hover:bg-destructive/15 active:bg-destructive/20 focus-visible:ring-destructive/20',
         outline:
-          'border border-input bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+          'border border-border bg-card shadow-xs hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
         link: 'text-primary underline-offset-4 hover:underline',
         // Erfolg ist Blau, eine Warnung ist Grau: die Palette
-        // kennt kein Gruen und kein Orange mehr, und ein Knopf, der warnt,
+        // kennt kein Gruen und kein Orange, und ein Knopf, der warnt,
         // sagt das in seiner Beschriftung.
         success:
-          'bg-secondary text-primary border border-primary/30 hover:bg-secondary/80 active:bg-secondary/70 focus-visible:ring-primary/20',
+          'bg-card text-primary border border-primary/30 hover:bg-primary/10 active:bg-primary/15 focus-visible:ring-primary/20',
         warning:
-          'bg-secondary text-muted-foreground border border-muted-foreground/30 hover:bg-secondary/80 active:bg-secondary/70 focus-visible:ring-muted-foreground/20',
+          'bg-card text-muted-foreground border border-muted-foreground/30 hover:bg-accent active:bg-accent focus-visible:ring-muted-foreground/20',
         'outline-danger':
           'border border-foreground/20 bg-foreground/5 text-foreground hover:bg-foreground/10 hover:border-foreground/30',
         'outline-success':
@@ -43,16 +49,26 @@ const buttonVariants = cva(
           'border border-muted-foreground/30 bg-muted-foreground/10 text-muted-foreground hover:bg-muted-foreground/20 hover:border-muted-foreground/50',
       },
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: 'h-8 gap-1.5 rounded-md px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
-        icon: 'size-9',
-        'icon-xs': "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        'icon-sm': 'size-8',
-        'icon-lg': 'size-10',
+        default: 'h-[32px] px-3 has-[>svg]:px-2.5',
+        xs: "h-[24px] gap-1 px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        sm: 'h-[28px] gap-1 px-2.5 has-[>svg]:px-2',
+        lg: 'h-[36px] px-4 has-[>svg]:px-3',
+        icon: 'size-[28px]',
+        'icon-xs': "size-[24px] [&_svg:not([class*='size-'])]:size-3.5",
+        'icon-sm': 'size-[24px]',
+        'icon-lg': "size-[32px] [&_svg:not([class*='size-'])]:size-5",
       },
     },
+    // Ein Icon-Knopf im Grundton hat keinen Rahmen und keine Flaeche: er ist
+    // getoent beim Ueberfahren, sonst nur sein Symbol.
+    compoundVariants: [
+      {
+        variant: 'default',
+        size: ['icon', 'icon-xs', 'icon-sm', 'icon-lg'],
+        class:
+          'border-transparent bg-transparent shadow-none text-muted-foreground hover:bg-accent hover:text-foreground active:bg-accent',
+      },
+    ],
     defaultVariants: {
       variant: 'default',
       size: 'default',

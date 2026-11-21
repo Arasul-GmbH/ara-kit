@@ -54,12 +54,13 @@
  */
 
 import { useEffect, useState, type ReactNode } from "react";
-import { CircleAlertIcon } from "lucide-react";
+import { CircleAlert } from "@marken/symbole";
 import {
   Button,
   Checkbox,
   Datenliste,
   Feldgruppe,
+  Icon,
   Input,
   Karte,
   Kopf,
@@ -69,6 +70,7 @@ import {
   type Spalte,
 } from "@marken";
 import { AsyncBoundary } from "../rahmen/async-boundary";
+import { NeuLaden } from "../rahmen/neu-laden";
 import {
   useLoesen,
   useMandantAnlegen,
@@ -94,7 +96,7 @@ function satz(fehler: unknown): string {
 function Fehlt({ id, children }: { id: string; children: ReactNode }) {
   return (
     <p id={id} className="flex items-center gap-1.5 text-ui-sm text-foreground">
-      <CircleAlertIcon className="size-4 shrink-0 text-destructive" aria-hidden="true" />
+      <Icon symbol={CircleAlert} className="text-destructive" />
       {children}
     </p>
   );
@@ -385,7 +387,11 @@ export function Mandanten() {
 
   return (
     <>
-      <Kopf titel="Mandanten" beschreibung="Wer welchen Mandanten sieht und über seine Vorgänge entscheidet." />
+      <Kopf
+        titel="Mandanten"
+        beschreibung="Wer welchen Mandanten sieht und über seine Vorgänge entscheidet."
+        werkzeuge={<NeuLaden schluessel={["mandanten"]} />}
+      />
       <AsyncBoundary abfrage={uebersicht} laedt="Mandanten werden geholt">
         {({ verwaltung: darf }) =>
           darf ? (

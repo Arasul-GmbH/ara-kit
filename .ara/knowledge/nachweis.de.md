@@ -5,7 +5,8 @@
 > Blatt baust. Wer nur baut, braucht die ersten beiden Abschnitte.
 
 Seit 20.11.2026 ist der App-Standard Pflicht: ein Gerät nimmt nur eine App an, die auf den
-Bausteinen der Bibliothek steht, Tests mitbringt und über den festen Ablauf des Kits gebaut ist.
+Bausteinen der Bibliothek steht, ihr Bild für die Seitenleiste trägt (`symbol`, seit 21.11.2026),
+Tests mitbringt und über den festen Ablauf des Kits gebaut ist.
 Das Kit hält sich schon jetzt daran, das Gerät prüft es künftig beim Ausrollen. Dafür trägt jedes
 Paket eine Datei, `nachweis.json`, in seiner Wurzel neben `app.json`.
 
@@ -32,6 +33,9 @@ einer App (`--nachweis <ordner>`) wird beurteilt, wie das Gerät das entpackte P
 ## Wo er liegt
 
 - **Im Paket:** `nachweis.json` in der Wurzel, die Datei, die `--build` zuletzt schreibt.
+  `--deploy` füllt danach `backend/arasul.json` aus dem Kontrakt des Geräts und erneuert
+  `inhalt.paket` und `siegel`, nur wenn der Nachweis davor trug: das Gerät vergleicht das Paket so,
+  wie es hinausgeht.
 - **Am Rechner:** dieselbe Datei in `apps/<name>/`, zu der jeder Schritt etwas fügt. Sie ist kein
   Quelltext: sie zählt weder in die Prüfsumme der Quelle noch in die des Pakets, und eine Änderung
   an ihr macht keinen Bau „älter als den Quelltext“.
@@ -46,8 +50,9 @@ einer App (`--nachweis <ordner>`) wird beurteilt, wie das Gerät das entpackte P
   "schema": 1,
   "app": "urlaub",
   "version": "0.1.0",
-  "kit": { "version": "0.85.0" },
-  "bibliothek": { "marken": "5", "kopie": "5.6.1" },
+  "kit": { "version": "0.87.0" },
+  "bibliothek": { "marken": "5", "kopie": "5.9.3" },
+  "symbol": "tree-palm",
   "schritte": [
     { "name": "interview", "zeit": "2026-11-20T10:50:31.683Z", "quelle": "sha256:<hex>", "plan": "2026-11-20-erster-plan.md", "plan_pruefsumme": "sha256:<hex>" },
     { "name": "bau", "zeit": "2026-11-20T10:51:19.008Z", "quelle": "sha256:<hex>" },
@@ -66,6 +71,7 @@ einer App (`--nachweis <ordner>`) wird beurteilt, wie das Gerät das entpackte P
 | `kit.version` | Fassung des Kits, das gebaut hat (`.ara/VERSION`). Zur Auskunft; ein Gerät darf warnen, wenn sie älter ist als die, die es kennt |
 | `bibliothek.marken` | Die Hauptzahl der Bibliothek, wie `app.json` sie in `marken` nennt. Muss dieselbe sein wie im Manifest |
 | `bibliothek.kopie` | Ganze Fassung der Kopie unter `frontend/src/marken`, oder `null` ohne Kopie. Zur Auskunft |
+| `symbol` | Das Bild der App in der Seitenleiste, wie `app.json` es in `symbol` nennt: ein Name von lucide.dev, klein und mit Bindestrichen. Muss dasselbe sein wie im Manifest. Seit Kit 0.87.0; ein älterer Nachweis hat es nicht und wird neu gebaut |
 | `schritte` | Die Schritte in der Reihenfolge `interview`, `bau`, `test`, je mit `zeit` (ISO 8601, UTC) und `quelle`. Die Zeiten fallen von Schritt zu Schritt nicht |
 | `inhalt.quelle` | Prüfsumme des Quelltexts der App, siehe unten |
 | `inhalt.paket` | Prüfsumme des Pakets, siehe unten. Nur in der Datei des Pakets selbst |
@@ -112,6 +118,7 @@ In dieser Reihenfolge; die Codes sind die, die `--nachweis --json` in `funde[].c
 | `tests-veraltet` | `tests.lauf.quelle` ist nicht `inhalt.quelle`: die Tests liefen gegen einen anderen Stand |
 | `bau-veraltet` | Der Schritt `bau` steht auf einem anderen Quelltext als der Nachweis |
 | `bibliothek` | `bibliothek.marken` ist nicht das `marken` des Manifests |
+| `symbol` | Das Manifest nennt kein `symbol` in der Form `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, oder das `symbol` des Nachweises ist ein anderes. Ob der Name im Bildersatz steht, prüft das Kit vor dem Bau; das Gerät prüft die Form, wie beim Manifest |
 
 Am Rechner (`--nachweis` ohne Ordner und vor jedem `--deploy` aus `apps/`) kommen zwei Fälle aus
 dem Quelltext dazu: `quelle-geaendert` (`inhalt.quelle` ist nicht die Prüfsumme des Ordners von
@@ -129,6 +136,7 @@ heute) und `tests-veraltet` gegen die Prüfsumme des Ordners.
 | Tests rot | `tests-rot`, das Paket ist gebaut und geht nicht hinaus | Beheben, `--build` |
 | Eine Vorführung ohne Plan (`--no-plan`) | `schritt-fehlt` (`interview`) | Einen Plan aktiv setzen, noch einmal bauen |
 | Nach einer Änderung nur `--test` gelaufen | `bau-veraltet` | `--build`, erst dann trägt das Paket das Ergebnis |
+| Kein `symbol` in `app.json`, oder nach dem Bau geändert | `symbol`; ohne eines beginnt `--build` gar nicht | `--app <app> --symbol <name>`, dann `--build` |
 | Ein fremder Container | Wird nicht verlangt | Keine |
 
 ## Was der Nachweis nicht ist
