@@ -38,6 +38,40 @@ the app names the active entry. The page layout belongs to the library. Rules of
 the end of `stil.css`, with token names only, no colour, font or radius. At the device the library's
 classes come only from its `marken.css`: what you style yourself, write there with tokens.
 
+## Every page begins the same
+
+Since library 5.9.0 every page of the device and of every app starts with one line: on the left
+the title and one sentence, on the right the **toolbar**, a group of small icon buttons for what
+the page does. The scaffold does it like this:
+
+```tsx
+import { Icon, Kopf, Werkzeug } from "@marken";
+import { ArrowLeft } from "@marken/symbole";
+
+<Kopf
+  titel="Neuer Vorgang"
+  beschreibung="Eingereicht als Anna Weber."
+  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück zu den Vorgängen" onClick={zurueck} />}
+/>
+```
+
+- **`Kopf` with `werkzeuge` on every page**, the only `h1`. A `Werkzeug` is 28 pixels, its
+  `beschriftung` is required: it is what a screen reader says and what the mouse shows. "Reload"
+  is the scaffold's `rahmen/neu-laden.tsx` (`<NeuLaden schluessel={["vorgaenge"]} />`).
+- **The sidebar button is not a line of its own.** `app.tsx` puts it once into `KopfVorne`, and
+  every `Kopf` shows it as the last tool. The `Kopf` leaves room on the right for the capsule
+  of the frame (Live and Test, feedback), the two never overlap.
+- **Icons only through the library**: `import { Inbox } from "@marken/symbole"`, drawn with
+  `<Icon symbol={Inbox} />` in three sizes (`klein`, `mittel`, `gross`: 14, 16, 20 pixels) and one
+  stroke. At the device they come as `symbole.js`, the build takes only those the app uses.
+- **Tables and forms are compact** without anything of your own: a `Datenliste` has rows of 40 and
+  a header of 32 pixels, a field is 32 pixels high at the desk and 44 with a finger. Pixel heights
+  of your own break that.
+- **Page margins are the device's**: 10 pixels on top, 16 to 24 at the sides, at most 64rem wide
+  (`.ara-strom` in `stil.css`).
+- **A number with its label is `Kennzahl`**, with `verlauf` a line without axes; a chart is `Chart`
+  from `@marken/diagramm` with `art` line or bars.
+
 **An approval is the pattern `Freigabe`, never an imitation**: `seiten/freigaben.tsx`
 shows it, `freigaben.ts` brings the entries from the device. Which fields a person may change the flow
 declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the end of its path**.
@@ -65,7 +99,7 @@ declares (`ergebnis.aenderbar`). The original is shown as image or PDF **by the 
 
 Otherwise a partner's apps look different after three months. The device does not compare and the
 product's guard checks only the shell, so the kit stops `--build`, `--check`, `--deploy` and
-`--compose` at four findings:
+`--compose` at five findings:
 
 - **A colour value of your own.** Wrong: `color: #e11d48;`, `rgb(225 29 72)`. Right:
   `color: var(--ara-fehler);`, `bg-card`.
@@ -75,9 +109,15 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
   `Datenliste`, `<dialog>` for `Dialog`, `<fieldset>` for `Feldgruppe`, a tab bar with
   `role="tablist"` for `Tabs`. Just as forbidden: a `<div className="karte">` beside `Karte`, a list
   with a search field beside `Datenliste`.
+- **An icon past the library.** Wrong: `import { Inbox } from "lucide-react"`. Right:
+  `import { Inbox } from "@marken/symbole"` and `<Icon symbol={Inbox} />`. It applies as soon as
+  the app's copy of the library carries `symbole.ts` (5.9.0 and newer).
 - **The field `marken` in `app.json` missing or stale.** The major number alone needs no copy to
   match; three numbers must match the copy. `--new` writes it, `marken.mjs --sync` keeps it.
   `--check` against a device stops a major number it does not serve, and only hints at an aged copy.
+
+**Without a symbol `--build` stops before all of this**: every app carries its picture for the
+sidebar in `app.json` (`symbol`, a name from lucide.dev), `.ara/knowledge/app.md`, "More questions".
 
 Measured is the app's own source, not the mirror. **A foreign container is exempt**: without
 `frontend`, with a finished `image`, it brings no interface. The self-test holds the scaffold to the

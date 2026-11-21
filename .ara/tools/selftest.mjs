@@ -14487,7 +14487,7 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
       lauf = await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
       assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout + lauf.stderr) && /lucide\.dev/.test(lauf.stdout + lauf.stderr) && /receipt/.test(lauf.stdout + lauf.stderr), `ein Symbol "${wert}" hält den Bau nicht an: ${lauf.stdout}${lauf.stderr}`);
       lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base, "--verbose"], env);
-      assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout) && /lucide\.dev/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
+      assert(lauf.status !== 0 && /älter als der Quelltext|older than the source/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
     }
     writeFileSync(manifestDatei, ganz);
     await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);

@@ -17,9 +17,12 @@ Plan erledigt ist:
   solange etwas offen ist. Ein Klick auf eine Zeile zeigt den Vorgang mit allem, was an ihm
   hängt: ab 900 Pixeln neben der Liste, darunter als Blatt von unten.
 - Links zeichnet die App ihre eigene Seitenleiste: die Ansichten der Liste (alle, offene,
-  entschiedene) und der Weg zum Formular. Ein Knopf oben klappt sie auf Symbolbreite zu und
-  wieder auf. Unter 900 Pixeln steht sie als Blatt über der Seite. Sie folgt dem hellen
-  und dem dunklen Erscheinungsbild des Geräts.
+  entschiedene) und der Weg zum Formular. Der Knopf rechts im Seitenkopf klappt sie auf
+  Symbolbreite zu und wieder auf. Unter 900 Pixeln steht sie als Blatt über der Seite. Sie
+  folgt dem hellen und dem dunklen Erscheinungsbild des Geräts.
+- Jede Seite beginnt wie im Gerät mit dem Seitenkopf: links Titel und ein Satz, rechts die
+  Werkzeugleiste mit kleinen Knöpfen, etwa „Neu laden" oder „Zurück zu den Vorgängen". Wer
+  mit der Maus darauf zeigt, liest, was der Knopf tut.
 - Nach der Entscheidung steht am Vorgang, wer entschieden hat, bei einer Ablehnung die
   Begründung, und der Satz, den der Flow danach geschrieben hat.
 - Unter „Freigaben" steht, was auf die Entscheidung der angemeldeten Person wartet, gezeichnet
@@ -156,13 +159,14 @@ Die Oberfläche, von außen nach innen:
 
 | Datei | Was sie tut |
 | --- | --- |
-| `src/app.tsx` | Der Rahmen: Fehlerwand, Zwischenspeicher, Thema, Seitenleiste, Wege, Anmeldung |
+| `src/app.tsx` | Der Rahmen: Fehlerwand, Zwischenspeicher, Thema, Seitenleiste, der Knopf der Seitenleiste im Seitenkopf (`KopfVorne`), Wege, Anmeldung |
 | `src/rahmen/basis.ts` | Unter welchem Pfad die App hängt. Sie rät ihn nicht, sie liest ihn |
 | `src/rahmen/thema.ts` | Das Thema des Geräts, am eigenen Dokument gelesen und mitgeführt |
 | `src/rahmen/anmeldung.tsx` | Wer da ist, aus `api/me`, als Kontext |
 | `src/rahmen/schnittstelle.ts` | Die eine Stelle, an der etwas geholt wird |
 | `src/rahmen/async-boundary.tsx` | Die drei Ausgänge einer Abfrage, an einer Stelle |
-| `src/rahmen/seitenleiste.tsx` | Die Bereiche, im Muster `Seitenleiste`: als Spalte, unter 900 px als Blatt über der Seite |
+| `src/rahmen/seitenleiste.tsx` | Die Bereiche, im Muster `Seitenleiste`: als Spalte, unter 900 px als Blatt über der Seite. Symbole aus `@marken/symbole`, gezeichnet mit `Icon` |
+| `src/rahmen/neu-laden.tsx` | Das Werkzeug „Neu laden" für die Werkzeugleiste im Seitenkopf |
 | `src/marken/` | Die Bibliothek des Geräts, gespiegelt: Primitive, Muster, Bausteine, beide Stylesheets. Import über `@marken`. Wird ersetzt, nicht bearbeitet |
 | `src/vorgaenge.ts` | Typen und Abfragen der einen Entität dieser App |
 | `src/seiten/liste.tsx` | Die Datenliste, mit dem einen ausgewählten Vorgang daneben, schmal als Blatt |

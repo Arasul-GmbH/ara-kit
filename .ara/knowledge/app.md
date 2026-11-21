@@ -146,9 +146,16 @@ administrator and employees, nothing goes out, the suggestion of the flow's head
 Asked in **every** `/app` interview, with drafts as options. The kit writes the fields, `--contract`
 says what each does on this device.
 
-1. **The picture of the app.** Every app has one. "Which small picture for the sidebar? A receipt
-   for Belege?" Goes to `--symbol`: a Lucide icon name (`file-text`), no capitals. No answer: `--new`
-   picks one. `--check` stops a missing or unknown `symbol`.
+1. **The picture of the app.** Every app has one, it stands in the device's sidebar and belongs to
+   the standard. Fetch three drafts: `node .ara/tools/app.mjs --symbole "<title and description>"`,
+   and ask with them as options, each with its name and its page on lucide.dev, plus the free
+   answer: "Which small picture for the sidebar? receipt (a receipt), receipt-euro, file-text?" A
+   name from the free answer must stand on https://lucide.dev/icons, small letters with hyphens; the
+   tool refuses another and names the nearest. The choice goes to `--new --symbol <name>`, after
+   `--new` to `--app <app> --symbol <name>`; both write it into `app.json`. No answer: `--new` takes
+   the first draft and names the three. **Without a valid symbol the kit does not build**: `--build`
+   stops and offers the three, and the proof in the package carries the symbol
+   (`.ara/knowledge/nachweis.md`).
 2. **Who approves, in which steps.** Only where the app has an approval. "One person, or two in a
    row, first the colleague who checks, then management?" Names go to `--stufen "Check,Management"`,
    at most five. **Who** decides in each step the administrator sets on the device, not the app: ask
