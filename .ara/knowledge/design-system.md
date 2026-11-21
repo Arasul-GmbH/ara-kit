@@ -40,37 +40,19 @@ classes come only from its `marken.css`: what you style yourself, write there wi
 
 ## Every page begins the same
 
-Since library 5.9.0 every page of the device and of every app starts with one line: on the left
-the title and one sentence, on the right the **toolbar**, a group of small icon buttons for what
-the page does. The scaffold does it like this:
+As on the device (library 5.9): title and one sentence on the left, the **toolbar** on the right.
 
 ```tsx
-import { Icon, Kopf, Werkzeug } from "@marken";
-import { ArrowLeft } from "@marken/symbole";
-
-<Kopf
-  titel="Neuer Vorgang"
-  beschreibung="Eingereicht als Anna Weber."
-  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück zu den Vorgängen" onClick={zurueck} />}
-/>
+<Kopf titel="Neuer Vorgang" beschreibung="Eingereicht als Anna Weber."
+  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück" onClick={zurueck} />} />
 ```
 
-- **`Kopf` with `werkzeuge` on every page**, the only `h1`. A `Werkzeug` is 28 pixels, its
-  `beschriftung` is required: it is what a screen reader says and what the mouse shows. "Reload"
-  is the scaffold's `rahmen/neu-laden.tsx` (`<NeuLaden schluessel={["vorgaenge"]} />`).
-- **The sidebar button is not a line of its own.** `app.tsx` puts it once into `KopfVorne`, and
-  every `Kopf` shows it as the last tool. The `Kopf` leaves room on the right for the capsule
-  of the frame (Live and Test, feedback), the two never overlap.
-- **Icons only through the library**: `import { Inbox } from "@marken/symbole"`, drawn with
-  `<Icon symbol={Inbox} />` in three sizes (`klein`, `mittel`, `gross`: 14, 16, 20 pixels) and one
-  stroke. At the device they come as `symbole.js`, the build takes only those the app uses.
-- **Tables and forms are compact** without anything of your own: a `Datenliste` has rows of 40 and
-  a header of 32 pixels, a field is 32 pixels high at the desk and 44 with a finger. Pixel heights
-  of your own break that.
-- **Page margins are the device's**: 10 pixels on top, 16 to 24 at the sides, at most 64rem wide
-  (`.ara-strom` in `stil.css`).
-- **A number with its label is `Kennzahl`**, with `verlauf` a line without axes; a chart is `Chart`
-  from `@marken/diagramm` with `art` line or bars.
+- **`Kopf` with `werkzeuge` on every page**; a `Werkzeug` needs its `beschriftung`, the screen
+  reader says it. "Reload" is `rahmen/neu-laden.tsx`. The sidebar button comes once through
+  `KopfVorne` in `app.tsx`, never as a line of its own.
+- **Icons only via `@marken/symbole`**, drawn with `<Icon symbol={Inbox} />` (`klein`, `mittel`,
+  `gross`); the device serves `symbole.js`.
+- **Tables, fields and page margins are the library's**: no heights or widths of your own.
 
 **An approval is the pattern `Freigabe`, never an imitation**: `seiten/freigaben.tsx`
 shows it, `freigaben.ts` brings the entries from the device. Which fields a person may change the flow
@@ -109,15 +91,13 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
   `Datenliste`, `<dialog>` for `Dialog`, `<fieldset>` for `Feldgruppe`, a tab bar with
   `role="tablist"` for `Tabs`. Just as forbidden: a `<div className="karte">` beside `Karte`, a list
   with a search field beside `Datenliste`.
-- **An icon past the library.** Wrong: `import { Inbox } from "lucide-react"`. Right:
-  `import { Inbox } from "@marken/symbole"` and `<Icon symbol={Inbox} />`. It applies as soon as
-  the app's copy of the library carries `symbole.ts` (5.9.0 and newer).
+- **An icon past the library**: `from "lucide-react"` instead of `@marken/symbole`, once the copy
+  carries `symbole.ts`.
 - **The field `marken` in `app.json` missing or stale.** The major number alone needs no copy to
   match; three numbers must match the copy. `--new` writes it, `marken.mjs --sync` keeps it.
   `--check` against a device stops a major number it does not serve, and only hints at an aged copy.
 
-**Without a symbol `--build` stops before all of this**: every app carries its picture for the
-sidebar in `app.json` (`symbol`, a name from lucide.dev), `.ara/knowledge/app.md`, "More questions".
+**Without `symbol` in `app.json` `--build` stops before all of this.**
 
 Measured is the app's own source, not the mirror. **A foreign container is exempt**: without
 `frontend`, with a finished `image`, it brings no interface. The self-test holds the scaffold to the

@@ -42,37 +42,19 @@ selbst gestaltest, schreib dort mit Marken.
 
 ## Jede Seite beginnt gleich
 
-Seit der Bibliothek 5.9.0 beginnt jede Seite des Geräts und jeder App mit einer Zeile: links Titel
-und ein Satz, rechts die **Werkzeugleiste**, eine Gruppe kleiner Icon-Knöpfe für das, was die Seite
-tut. Die Vorlage macht es so:
+Wie im Gerät (Bibliothek 5.9): links Titel und ein Satz, rechts die **Werkzeugleiste**.
 
 ```tsx
-import { Icon, Kopf, Werkzeug } from "@marken";
-import { ArrowLeft } from "@marken/symbole";
-
-<Kopf
-  titel="Neuer Vorgang"
-  beschreibung="Eingereicht als Anna Weber."
-  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück zu den Vorgängen" onClick={zurueck} />}
-/>
+<Kopf titel="Neuer Vorgang" beschreibung="Eingereicht als Anna Weber."
+  werkzeuge={<Werkzeug symbol={<Icon symbol={ArrowLeft} />} beschriftung="Zurück" onClick={zurueck} />} />
 ```
 
-- **`Kopf` mit `werkzeuge` auf jeder Seite**, das einzige `h1`. Ein `Werkzeug` ist 28 Pixel groß,
-  seine `beschriftung` ist Pflicht: sie sagt ein Vorleseprogramm, und sie zeigt die Maus. „Neu
-  laden" ist `rahmen/neu-laden.tsx` der Vorlage (`<NeuLaden schluessel={["vorgaenge"]} />`).
-- **Der Knopf der Seitenleiste ist keine eigene Zeile.** `app.tsx` legt ihn einmal in `KopfVorne`,
-  und jeder `Kopf` zeigt ihn als letztes Werkzeug. Der `Kopf` hält rechts Platz für die Kapsel des
-  Rahmens frei (Live und Test, Rückmeldung), die beiden überdecken sich nie.
-- **Symbole nur über die Bibliothek**: `import { Inbox } from "@marken/symbole"`, gezeichnet mit
-  `<Icon symbol={Inbox} />` in drei Größen (`klein`, `mittel`, `gross`: 14, 16, 20 Pixel) und einer
-  Strichstärke. Am Gerät kommen sie als `symbole.js`, der Bau nimmt nur die, die die App benutzt.
-- **Tabellen und Formulare sind kompakt**, ohne eigenes Zutun: eine `Datenliste` hat Zeilen von 40
-  und einen Kopf von 32 Pixeln, ein Feld ist am Rechner 32 Pixel hoch und mit dem Finger 44. Eigene
-  Höhen in Pixeln brechen das.
-- **Die Ränder der Seite sind die des Geräts**: oben 10 Pixel, seitlich 16 bis 24, höchstens 64rem
-  breit (`.ara-strom` in `stil.css`).
-- **Eine Zahl mit Beschriftung ist `Kennzahl`**, mit `verlauf` eine Linie ohne Achsen; ein Diagramm
-  ist `Chart` aus `@marken/diagramm` mit `art` Linie oder Balken.
+- **`Kopf` mit `werkzeuge` auf jeder Seite**; ein `Werkzeug` braucht seine `beschriftung`, sie sagt
+  das Vorleseprogramm. „Neu laden" ist `rahmen/neu-laden.tsx`. Der Knopf der Seitenleiste kommt
+  einmal über `KopfVorne` in `app.tsx`, nie als eigene Zeile.
+- **Symbole nur über `@marken/symbole`**, gezeichnet mit `<Icon symbol={Inbox} />` (`klein`,
+  `mittel`, `gross`); das Gerät liefert `symbole.js`.
+- **Tabellen, Felder und Ränder der Seite sind die der Bibliothek**: keine eigenen Höhen oder Breiten.
 
 **Eine Freigabe ist das Muster `Freigabe`, nie eine Nachbildung**: `seiten/freigaben.tsx`
 zeigt es, `freigaben.ts` holt die Einträge vom Gerät. Welche Felder ein Mensch ändern darf, erklärt der
@@ -112,16 +94,14 @@ und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build
   oder `Datenliste`, `<dialog>` statt `Dialog`, `<fieldset>` statt `Feldgruppe`, eine Reiterleiste
   mit `role="tablist"` statt `Tabs`. Ebenso verboten: ein `<div className="karte">` neben `Karte`,
   eine Liste mit Suchfeld neben `Datenliste`.
-- **Ein Symbol an der Bibliothek vorbei.** Falsch: `import { Inbox } from "lucide-react"`. Richtig:
-  `import { Inbox } from "@marken/symbole"` und `<Icon symbol={Inbox} />`. Das gilt, sobald die
-  Kopie der Bibliothek in der App `symbole.ts` trägt (5.9.0 und neuer).
+- **Ein Symbol an der Bibliothek vorbei**: `from "lucide-react"` statt `@marken/symbole`, sobald
+  die Kopie `symbole.ts` trägt.
 - **Das Feld `marken` in `app.json` fehlt oder ist veraltet.** Die Hauptzahl allein braucht keine
   passende Kopie, drei Zahlen müssen zur Kopie passen. `--new` schreibt es, `marken.mjs --sync`
   hält es. Gegen ein Gerät hält `--check` auch eine Hauptzahl an, die das Gerät nicht ausliefert,
   und weist bei einer gealterten Kopie nur hin.
 
-**Ohne Symbol hält `--build` vor alledem an**: jede App trägt ihr Bild für die Seitenleiste in
-`app.json` (`symbol`, ein Name von lucide.dev), `.ara/knowledge/app.de.md`, „Weitere Fragen".
+**Ohne `symbol` in `app.json` hält `--build` vor alledem an.**
 
 Gemessen wird der eigene Quelltext der App, nicht der Spiegel. **Ein fremder Container ist
 ausgenommen**: ohne `frontend`, mit fertigem `image`, bringt er keine Oberfläche mit. Der Selbsttest

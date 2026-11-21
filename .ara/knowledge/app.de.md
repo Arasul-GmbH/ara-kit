@@ -149,16 +149,11 @@ gesagt: Admin und Mitarbeiter, nichts geht hinaus, der Vorschlag aus dem Kopf de
 In **jedem** Interview von `/app` gestellt, mit Entwürfen als Auswahl. Das Kit schreibt die Felder,
 `--contract` sagt, was jedes an diesem Gerät tut.
 
-1. **Das Bild der App.** Jede App hat eines, es steht in der Leiste des Geräts und gehört zum
-   Standard. Hol drei Entwürfe: `node .ara/tools/app.mjs --symbole "<Titel und Beschreibung>"`, und
-   frag mit ihnen als Optionen, je mit dem Namen und seiner Seite auf lucide.dev, dazu die freie
-   Antwort: „Welches kleine Bild für die Seitenleiste? receipt (eine Quittung), receipt-euro,
-   file-text?" Ein Name aus der freien Antwort muss auf https://lucide.dev/icons stehen, klein und
-   mit Bindestrichen; das Werkzeug weist einen anderen ab und nennt den nächsten. Die Wahl geht an
-   `--new --symbol <name>`, nach `--new` an `--app <app> --symbol <name>`; beides schreibt sie in
-   `app.json`. Ohne Antwort nimmt `--new` den ersten Entwurf und sagt die drei. **Ohne gültiges
-   Symbol baut das Kit nicht**: `--build` hält an und legt die drei vor, und der Nachweis im Paket
-   trägt das Symbol (`.ara/knowledge/nachweis.de.md`).
+1. **Das Bild der App.** Jede App hat eines, für die Leiste des Geräts. `node .ara/tools/app.mjs
+   --symbole "<Titel und Beschreibung>"` nennt drei von lucide.dev: biete sie als Optionen mit freier
+   Antwort an („receipt, receipt-euro oder file-text?"). Die Wahl geht an `--new --symbol <name>`,
+   später an `--app <app> --symbol <name>`. Ohne Antwort nimmt `--new` den ersten. **Ohne gültiges
+   Symbol hält `--build` an**, und der Nachweis trägt es.
 2. **Wer freigibt, in welchen Schritten.** Nur, wo die App eine Freigabe hat. „Eine Person, oder zwei
    hintereinander, erst die Kollegin, die prüft, dann die Leitung?" Die Namen gehen an
    `--stufen "Prüfung,Leitung"`, höchstens fünf. **Wer** je Schritt entscheidet, legt der

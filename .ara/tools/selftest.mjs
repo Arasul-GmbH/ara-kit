@@ -14487,7 +14487,7 @@ await checkAsync("app.mjs --check hält das Feld agent gegen die App: Form, jede
       lauf = await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
       assert(lauf.status !== 0 && /symbol/i.test(lauf.stdout + lauf.stderr) && /lucide\.dev/.test(lauf.stdout + lauf.stderr) && /receipt/.test(lauf.stdout + lauf.stderr), `ein Symbol "${wert}" hält den Bau nicht an: ${lauf.stdout}${lauf.stderr}`);
       lauf = await toolAsync("app.mjs", ["--device", name, "--app", "selftest-agent-bau", "--check", "--base", base, "--verbose"], env);
-      assert(lauf.status !== 0 && /älter als der Quelltext|older than the source/.test(lauf.stdout), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
+      assert(lauf.status !== 0 && /älter als der Quelltext|older than the source/.test(lauf.stdout + lauf.stderr), `ein Symbol "${wert}" hält --check nicht an: ${lauf.stdout}${lauf.stderr}`);
     }
     writeFileSync(manifestDatei, ganz);
     await toolAsync("app.mjs", ["--app", "selftest-agent-bau", "--build", "--no-plan"], env);
@@ -15623,8 +15623,11 @@ const FACH_APP_LADESATZ = {
  * Tokens, und ohne ihn weiß der Agent nicht, warum ein Paket nicht hinausgeht.
  * Seit 0.84.0 19.000: der Abschnitt zum Prozessblatt in app.md, sein Hinweis im Befehl und die Regel in
  * AGENTS.md kosten rund 800 Tokens, und ohne sie fragt /app noch einmal, was das Blatt schon sagt.
+ * Seit 0.87.0 19.500: wie jede Seite beginnt (Kopf mit Werkzeugen, Symbole über die Bibliothek) und
+ * die Frage nach dem Symbol mit drei Vorschlägen kosten rund 220 Tokens, und ohne sie baut der Agent
+ * die Seite mit eigener Kopfzeile und freien Symbolen, und der Bau hält am fehlenden Symbol an.
  */
-const FACH_APP_GRENZE = 19200;
+const FACH_APP_GRENZE = 19500;
 
 check("Der Ladesatz von /app fuer eine Fach-App bleibt unter 19.000 Tokens, in beiden Sprachen", () => {
   // Bis 0.36.0 las /app fuer eine Fach-App rund 31.000 Tokens, davon ein
