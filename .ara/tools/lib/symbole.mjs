@@ -1974,7 +1974,7 @@ const STICHWORTE = [
   [/abschluss|jahresabschluss|bilanz|buchhaltung|buchung/, ["calculator", "book-open-check", "landmark"]],
   [/urlaub|abwesen|ferien/, ["tree-palm", "calendar-off", "plane"]],
   [/antrag|formular|anfrage/, ["file-pen-line", "clipboard-pen", "file-input"]],
-  [/freigabe|genehmig|abnahme/, ["clipboard-check", "badge-check", "stamp"]],
+  [/freigabe|freigeb|genehmig|abnahme/, ["clipboard-check", "badge-check", "stamp"]],
   [/vertrag|recht|compliance/, ["scale", "file-signature", "shield-check"]],
   [/kunde|mandant|kontakt|adress/, ["contact", "users-round", "book-user"]],
   [/angebot|preis|kosten/, ["euro", "hand-coins", "tag"]],
