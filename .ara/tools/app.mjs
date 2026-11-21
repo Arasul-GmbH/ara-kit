@@ -136,7 +136,7 @@ import { REMOTE_BASE, WAS_FEHLT, composeFile, nginxConf } from "./lib/compose.mj
 import { libraryInMirror, noteVersion, readLibrary, readSource, writeLibrary } from "./lib/marken.mjs";
 import { addressFindings, addressSection, standardExempt, standardFindings, standardScope } from "./lib/standard.mjs";
 import { kurzbericht } from "./lib/kurzbericht.mjs";
-import { SCHRITT_AUSROLLEN, fileDigest, lines as proofLines, recordStep, runTests, stampPackage, verify as verifyProof } from "./lib/nachweis.mjs";
+import { SCHRITT_AUSROLLEN, fileDigest, lines as proofLines, recordStep, restampPackage, runTests, stampPackage, verify as verifyProof } from "./lib/nachweis.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
 import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
 import { leavesPackage, safeFolder, walkFiles } from "./lib/files.mjs";
@@ -2207,6 +2207,9 @@ if (arg.deploy !== undefined) {
   if (arrangementTarget) {
     const arrangement = appArrangement(contract, { device: place, date: today() });
     writeFileSync(arrangementTarget, arrangementFile(arrangement));
+    // Der Nachweis hat eben getragen (`proofBeforeDeploy`); die gefüllte Vereinbarung gehört zum
+    // Ablauf des Kits, also nennt er danach die Prüfsumme des Pakets, wie es hinausgeht.
+    restampPackage(dir);
     if (!kurz) console.log(arrangementSection(dir, manifest).join("\n").replace(/^\n/, ""));
   }
 

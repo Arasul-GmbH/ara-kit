@@ -252,6 +252,22 @@ export function stampPackage(appDir, packageDir, manifest) {
   return writeNachweis(packageDir, JSON.parse(JSON.stringify(document)));
 }
 
+/**
+ * Nach dem einen Schritt, den das Kit beim Einspielen selbst am Paket tut: die
+ * Vereinbarung des Geräts (`backend/arasul.json`) wird aus dessen Kontrakt
+ * gefüllt, und erst dann gepackt. Ohne diese Zeile wiese ein Gerät, das den
+ * Standard prüft, jedes Paket der Vorlage mit `paket-geaendert` ab (gefunden am
+ * Orin am 21.11.2026, K31). Erneuert werden nur `inhalt.paket` und das Siegel,
+ * und nur, wenn der Nachweis davor trug: aufgerufen wird es nach der Prüfung vor
+ * dem Einspielen, nie an deren Stelle.
+ */
+export function restampPackage(packageDir) {
+  const { document } = readNachweis(packageDir);
+  if (!document?.inhalt?.paket) return null;
+  const { siegel: _alt, ...rest } = document;
+  return writeNachweis(packageDir, { ...rest, inhalt: { ...rest.inhalt, paket: packageDigest(packageDir).pruefsumme } });
+}
+
 // --- Prüfen ------------------------------------------------------------------
 
 /**
