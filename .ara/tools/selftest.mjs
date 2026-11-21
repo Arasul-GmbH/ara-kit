@@ -16652,6 +16652,18 @@ await checkAsync("Der Nachweis des Ablaufs: die Vorlage trägt ihn, Änderung, K
     assert(pruefe(join(dir, "build"), { manifest: ohneSymbol }).funde.some((f) => f.code === "symbol"), "ein Manifest ohne Symbol besteht die Prüfung des Pakets");
     assert(pruefe(join(dir, "build"), { manifest: { ...manifestImPaket, symbol: "hammer" } }).funde.some((f) => f.code === "symbol"), "ein anderes Symbol als im Nachweis besteht die Prüfung");
     assert(pruefe(join(dir, "build"), { manifest: manifestImPaket }).ok, "das Paket mit seinem Symbol besteht die Prüfung nicht");
+    // Das Einspielen füllt die Vereinbarung des Geräts ins Paket (backend/arasul.json) und erneuert danach
+    // Prüfsumme und Siegel; ohne das wies der Orin am 21.11.2026 jede Vorlagen-App mit paket-geaendert ab.
+    const { restampPackage } = await import("./lib/nachweis.mjs");
+    const vereinbarung = join(dir, "build", "backend", "arasul.json");
+    const leer = readFileSync(vereinbarung, "utf8");
+    assert(/"geraet": null/.test(leer), "die Vereinbarung der Vorlage ist nicht mehr leer");
+    writeFileSync(vereinbarung, leer.replace('"geraet": null', '"geraet": "probe"'));
+    assert(pruefe(join(dir, "build"), { manifest: manifestImPaket }).funde.some((f) => f.code === "paket-geaendert"), "die gefüllte Vereinbarung ändert das Paket nicht");
+    restampPackage(join(dir, "build"));
+    assert(pruefe(join(dir, "build"), { manifest: manifestImPaket }).ok, "nach dem Erneuern trägt der Nachweis das gefüllte Paket nicht");
+    writeFileSync(vereinbarung, leer);
+    restampPackage(join(dir, "build"));
 
     // Eine Datei von Hand geändert: die Akte verliert den Nachweis. Der Bau sagt es auch.
     const datei = join(dir, "backend", "kern", "csv.mjs");

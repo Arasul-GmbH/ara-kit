@@ -33,6 +33,9 @@ einer App (`--nachweis <ordner>`) wird beurteilt, wie das Gerät das entpackte P
 ## Wo er liegt
 
 - **Im Paket:** `nachweis.json` in der Wurzel, die Datei, die `--build` zuletzt schreibt.
+  `--deploy` füllt danach `backend/arasul.json` aus dem Kontrakt des Geräts und erneuert
+  `inhalt.paket` und `siegel`, nur wenn der Nachweis davor trug: das Gerät vergleicht das Paket so,
+  wie es hinausgeht.
 - **Am Rechner:** dieselbe Datei in `apps/<name>/`, zu der jeder Schritt etwas fügt. Sie ist kein
   Quelltext: sie zählt weder in die Prüfsumme der Quelle noch in die des Pakets, und eine Änderung
   an ihr macht keinen Bau „älter als den Quelltext“.

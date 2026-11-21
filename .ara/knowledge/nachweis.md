@@ -31,7 +31,9 @@ app (`--nachweis <folder>`) is judged as the device would judge the unpacked pac
 
 ## Where it lies
 
-- **In the package:** `nachweis.json` at the root, the file `--build` writes last.
+- **In the package:** `nachweis.json` at the root, the file `--build` writes last. `--deploy`
+  then fills `backend/arasul.json` from the device's contract and renews `inhalt.paket` and
+  `siegel`, only when the proof held before: the device compares the package as it is sent.
 - **At the computer:** the same file in `apps/<name>/`, to which every step adds. It is not source:
   it counts neither in the checksum of the source nor in that of the package, and a change to it
   does not make a build "older than the source".
