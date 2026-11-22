@@ -8,8 +8,9 @@
 Above every app on a device with Arasul sits a small icon at the top right. With it a member of
 staff says in free words what is missing or wrong, and marks the spot on a screenshot. That is a
 **feedback item** (in short: an item). The device itself adds app, page, person and time. Only the
-developer may read the items, the person who builds the apps in the firm. The member of staff does
-not see the item again and gets no answer.
+developer may read the items, the person who builds the apps in the firm. The member of staff sees
+their item with its state in the Werkstatt (the workshop of the device) under "My reports"; nothing
+is sent to them.
 
 `/feedback` fetches the open items of one app into this session, orders them, spots duplicates and
 proposes an order. **The human decides** what gets done. Changes go only into the **test
@@ -19,7 +20,7 @@ looked at the test version.
 
 Every item has a state on the device: `neu` (new), `angenommen` (accepted), `umgesetzt`
 (implemented) or `abgelehnt` (rejected). The device names them in German, and the tool takes them
-as they are. The command sets them along, so the developer sees on the device what became of each.
+as they are. The command sets them along, so the developer and the member of staff see in the Werkstatt what became of each.
 
 ## The rules that never fall
 
