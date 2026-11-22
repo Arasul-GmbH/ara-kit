@@ -28,7 +28,7 @@
 
 /* Die Ränder der Seite sind die des Geräts: oben 10 px, seitlich 16 bis
    24 px, höchstens 64rem breit, am linken Rand der eigenen Spalte. So stehen
-   Verwaltung, Einstellungen und das Entwickler-Cockpit seit Marken 5.9.0, und
+   Verwaltung, Einstellungen und die Werkstatt seit Marken 5.9.0, und
    der Seitenkopf steht mit 10 px oben auf derselben Linie wie die Kapsel des
    Rahmens, deren Platz er rechts freihält. Unten bleibt am Handy der Platz
    der schwebenden Leiste des Geräts frei (`--ara-leiste-platz`).

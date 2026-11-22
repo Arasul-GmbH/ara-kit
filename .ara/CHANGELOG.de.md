@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.87.1 (2026-11-23)
+
+Kontrakt: bis 14
+
+- **`/feedback` sagt nach dem Setzen eines Stands, was stimmt.** Der Mitarbeiter, der gemeldet hat, sieht den Stand in der Werkstatt unter seinen Meldungen; der Befehl behauptet nicht mehr, er erfahre nichts.
+- **Zeiten und Markierungen lesen sich schlicht.** Die Zeit einer Meldung steht mit Zeitzone (`2026-11-22 23:45 (GMT+1)`) statt als bloße UTC-Zeit; die markierte Stelle steht in ganzen Prozent statt mit sechzehn Nachkommastellen.
+- **Ohne `--titel` bekommt eine neue App einen lesbaren Namen** („probe-cockpit-1120“ wird „Probe Cockpit 1120“) in Flow, Oberfläche und Beschreibung, nicht die nackte Kennung. Der Kommentar im Stilblatt der Vorlage sagt Werkstatt, nicht „Entwickler-Cockpit“.
+
 ## 0.87.0 (2026-11-21)
 
 Kontrakt: bis 14

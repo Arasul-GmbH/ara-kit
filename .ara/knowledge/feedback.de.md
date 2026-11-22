@@ -9,7 +9,8 @@
 Mitarbeiter in freien Worten, was fehlt oder nicht stimmt, und markiert auf einem Bildschirmfoto die
 Stelle. Das ist eine **Rückmeldung** (kurz: Meldung). App, Seite, Person und Zeit hängt das Gerät
 selbst an. Lesen darf die Meldungen nur der Entwickler, also die Person, die in der Firma die Apps
-baut. Der Mitarbeiter sieht seine Meldung danach nicht wieder und bekommt keine Antwort.
+baut. Der Mitarbeiter sieht seine Meldung mit ihrem Stand in der Werkstatt unter „Meine Meldungen“,
+geschickt wird ihm nichts.
 
 `/feedback` holt die offenen Meldungen einer App in diese Sitzung, ordnet sie, erkennt Doppelte und
 schlägt eine Reihenfolge vor. **Der Mensch entscheidet**, was umgesetzt wird. Umgesetzt wird nur in
@@ -18,7 +19,7 @@ sehen, bevor sie für alle gilt. **Live schaltet dieser Befehl nie**, das tut de
 wenn er die Testfassung angesehen hat.
 
 Jede Meldung hat am Gerät einen Stand: `neu`, `angenommen`, `umgesetzt` oder `abgelehnt`. Der
-Befehl setzt ihn mit, damit der Entwickler am Gerät sieht, was aus jeder Meldung wurde.
+Befehl setzt ihn mit, damit der Entwickler und der Mitarbeiter in der Werkstatt sehen, was aus jeder Meldung wurde.
 
 ## Die Regeln, die nie fallen
 

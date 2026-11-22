@@ -297,6 +297,27 @@ export function localToIso(text) {
 
 // --- Für den Menschen ----------------------------------------------------------
 
+/**
+ * Die Zeit einer Meldung, wie das Gerät sie liefert (ISO, UTC), lesbar: `JJJJ-MM-TT HH:MM (GMT+1)`
+ * in der Zeitzone dieses Rechners, mit der Zone dabei. Ohne Zone im Text (kein `Z`, kein Versatz)
+ * bleibt der Text, wie er ist. `zone` nur für den Selbsttest.
+ */
+export function readableTime(iso, zone) {
+  const text = String(iso || "");
+  if (!/(Z|[+-]\d{2}:?\d{2})$/.test(text)) return text.slice(0, 16).replace("T", " ");
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return text.slice(0, 16).replace("T", " ");
+  const options = { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "shortOffset", ...(zone ? { timeZone: zone } : {}) };
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", options).formatToParts(date).map((part) => [part.type, part.value]));
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute} (${parts.timeZoneName})`;
+}
+
+/** Ein Anteil von Breite oder Höhe (0 bis 1) als ganze Prozent. */
+export function wholePercent(share) {
+  const number = Number(share);
+  return Number.isFinite(number) ? `${Math.round(number * 100)} %` : "?";
+}
+
 const KIND_LABEL = () => ({ fehler: t("bug", "Fehler"), wunsch: t("wish", "Wunsch"), unklar: t("unclear", "unklar") });
 
 /** Eine Zeile Text, gekürzt, ohne Zeilenumbrüche. */
@@ -354,7 +375,7 @@ export function renderOverview({ place, data, ordered, all = false }) {
             : t(" · without screenshot", " · ohne Bildschirmfoto")
           : "";
       lines.push(`   - ${meldung.id}: „${line(meldung.text)}“`);
-      lines.push(`     ${meldung.seite || "?"} · ${who} · ${String(meldung.erstellt_am || "").slice(0, 16).replace("T", " ")}${image}`);
+      lines.push(`     ${meldung.seite || "?"} · ${who} · ${readableTime(meldung.erstellt_am)}${image}`);
       if (meldung.grund) lines.push(`     ${t("Reason", "Grund")}: ${line(meldung.grund)}`);
     }
   }

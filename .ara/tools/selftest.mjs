@@ -14104,7 +14104,7 @@ await checkAsync("Die Brücke spricht mit dem Backend der Vorlage: agent kommt a
     let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
     assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
     lauf = await bruecke(w, ["apps"]);
-    assert(/^selftest-bruecke, 0\.1\.0/m.test(lauf.stdout) && /GET\s+vorgaenge/.test(lauf.stdout) && /POST\s+vorgaenge/.test(lauf.stdout), `apps zeigt die Routen der Vorlage nicht:\n${lauf.stdout}`);
+    assert(/^selftest-bruecke \(Selftest Bruecke\), 0\.1\.0/m.test(lauf.stdout) && /GET\s+vorgaenge/.test(lauf.stdout) && /POST\s+vorgaenge/.test(lauf.stdout), `apps zeigt die Routen der Vorlage nicht:\n${lauf.stdout}`);
     lauf = await bruecke(w, ["call", appName, "vorgaenge"]);
     assert(lauf.status === 0 && JSON.parse(lauf.stdout).vorgaenge.length === 0, `GET vorgaenge der Vorlage: ${lauf.stdout}${lauf.stderr}`);
     lauf = await bruecke(w, ["call", appName, "vorgaenge", "titel=Erster Vorgang", "--write"]);
@@ -16756,6 +16756,11 @@ check("Rückmeldungen: Wege aus dem Kontrakt, Doppelte, Reihenfolge, Regeln für
   assert(!RUECK.feedbackSection({}).ok, "ein Gerät ohne Abschnitt gilt als eines mit Rückmeldungen");
   assert(!RUECK.feedbackSection({ rueckmeldungen: { ...kontrakt.rueckmeldungen, staende: ["neu", "erledigt"] } }).ok, "fehlende Stände fallen nicht auf");
   assert(unreadFields({ rueckmeldungen: {} }).length === 0, "das Kit nennt rueckmeldungen ein Feld, das es nicht liest");
+
+  // Generalprobe 22.11.2026: Zeit mit Zone, Markierung in ganzen Prozent.
+  assert(RUECK.readableTime("2026-11-22T22:45:00.000Z", "Europe/Berlin") === "2026-11-22 23:45 (GMT+1)", `Zeit: ${RUECK.readableTime("2026-11-22T22:45:00.000Z", "Europe/Berlin")}`);
+  assert(RUECK.readableTime("2026-11-22T22:45:00") === "2026-11-22 22:45", "eine Zeit ohne Zone bleibt, wie sie ist");
+  assert(RUECK.wholePercent(0.123456789012345678) === "12 %" && RUECK.wholePercent(0.5) === "50 %" && RUECK.wholePercent(undefined) === "?", "die Markierung ist nicht auf ganze Prozent gerundet");
 
   // Die vier Meldungen der Abnahme J42 am Orin: dasselbe Anliegen in vier Browsern.
   const j42 = ["chromium 1440", "chromium 390", "webkit 1440", "webkit 390"].map((wo, i) => ({

@@ -380,6 +380,15 @@ const wantsDevice = DEVICE_ACTIONS.some((name) => arg[name] !== undefined);
 
 // --- Am Rechner: die Akte ----------------------------------------------------
 
+/**
+ * Ohne `--titel` steht im Flow, in der Oberfläche und in der Beschreibung der Name der App, nicht
+ * ihre Kennung: `probe-cockpit-1120` wird „Probe Cockpit 1120“. Besser ist ein eigener Titel.
+ */
+function readableTitle(id) {
+  const words = String(id).split(/[-_]+/).filter(Boolean);
+  return words.length ? words.map((w) => w[0].toUpperCase() + w.slice(1)).join(" ") : String(id);
+}
+
 /** Eine Textdatei aus der Vorlage, mit den Werten dieser App darin. */
 function fill(text, values) {
   return text.replace(/\{\{([a-z]+)\}\}/g, (whole, key) => (key in values ? values[key] : whole));
@@ -502,7 +511,7 @@ function createApp(name) {
     if (problem) fail(problem);
   }
 
-  const titel = str(arg.titel) || name;
+  const titel = str(arg.titel) || readableTitle(name);
   const beschreibung =
     str(arg.beschreibung) || t(`${titel}, built with the Ara-Kit.`, `${titel}, gebaut mit dem Ara-Kit.`);
   // Jede App hat ein Symbol: ohne `--symbol` wählt das Kit eines aus den Worten der App und sagt es.

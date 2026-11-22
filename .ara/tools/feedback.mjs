@@ -77,6 +77,7 @@ import {
   orderFeedback,
   readQuery,
   renderOverview,
+  wholePercent,
 } from "./lib/feedback.mjs";
 import { t } from "./lib/i18n.mjs";
 import { createKey, listKeys, revokeKey, scrub } from "./lib/install.mjs";
@@ -388,8 +389,8 @@ if (arg.image !== undefined) {
       t(`Screenshot of feedback ${nr}: ${relative(ROOT, file)}`, `Bildschirmfoto der Meldung ${nr}: ${relative(ROOT, file)}`),
       mark
         ? t(
-            `Marked spot (shares of width and height): x ${mark.x}, y ${mark.y}, width ${mark.breite}, height ${mark.hoehe}. It is also drawn into the image.`,
-            `Markierte Stelle (Anteile von Breite und Höhe): x ${mark.x}, y ${mark.y}, Breite ${mark.breite}, Höhe ${mark.hoehe}. Sie ist auch ins Bild gezeichnet.`
+            `Marked spot (shares of width and height): x ${wholePercent(mark.x)}, y ${wholePercent(mark.y)}, width ${wholePercent(mark.breite)}, height ${wholePercent(mark.hoehe)}. It is also drawn into the image.`,
+            `Markierte Stelle (Anteile von Breite und Höhe): x ${wholePercent(mark.x)}, y ${wholePercent(mark.y)}, Breite ${wholePercent(mark.breite)}, Höhe ${wholePercent(mark.hoehe)}. Sie ist auch ins Bild gezeichnet.`
           )
         : t("No spot marked.", "Keine Stelle markiert."),
       t(
@@ -435,8 +436,8 @@ if (arg.set !== undefined) {
       t(`State set on ${place}, app ${app}:`, `Stand gesetzt an ${place}, App ${app}:`),
       ...lines.map((entry) => `- ${entry}`),
       t(
-        "The staff member who reported learns nothing of it. The developer sees it in the device's list.",
-        "Der Mitarbeiter, der gemeldet hat, erfährt davon nichts. Der Entwickler sieht es in der Liste am Gerät."
+        "The staff member who reported sees the state under their own items in the Werkstatt (the workshop of the device). Nothing is sent to them.",
+        "Der Mitarbeiter, der gemeldet hat, sieht den Stand in der Werkstatt unter seinen Meldungen. Geschickt wird ihm nichts."
       ),
     ].join("\n")
   );

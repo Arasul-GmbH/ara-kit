@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.87.1 (2026-11-23)
+
+Contract: up to 14
+
+- **`/feedback` says what is true after a state is set.** The staff member who reported sees the state in the Werkstatt under their own reports; the command no longer claims they learn nothing.
+- **Times and marks read plainly.** The time of an item shows with its time zone (`2026-11-22 23:45 (GMT+1)`) instead of bare UTC; the marked spot is given in whole percent instead of sixteen decimals.
+- **Without `--titel` a new app gets a readable name** (`probe-cockpit-1120` becomes "Probe Cockpit 1120") in its flow, page and description, not the bare id. The comment in the scaffold's style sheet says Werkstatt, not "developer cockpit".
+
 ## 0.87.0 (2026-11-21)
 
 Contract: up to 14
