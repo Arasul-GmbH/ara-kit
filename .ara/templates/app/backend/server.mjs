@@ -9,6 +9,7 @@
  *   `kern/vorgaenge.mjs`    was mit einem Vorgang passiert
  *   `kern/abschluss.mjs`    was passiert, wenn das Gerät das Ergebnis eines Flows übergibt
  *   `kern/feldlisten.mjs`   die Listen für Felder einer Freigabe, etwa die Konten (`GET /feldlisten`)
+ *   `kern/suche.mjs`        was die Suche des Geräts findet (`GET /suche`)
  *   `ablage/vorgaenge.mjs`  wo er liegt. Die eine Naht zur Datenbank
  *   `ablage/abschluesse.mjs` wo das übergebene Ergebnis eines Laufs liegt
  *   `ablage/db.mjs`         die Datenbank und ihre Migrationen
@@ -34,6 +35,12 @@
  * `agent` samt Kennung, Name und Version, und sonst nichts. Das CLI in der Wurzel eines Hauses
  * ruft nur auf, was dort steht. Die Route liest, sie ist kein Weg, etwas zu ändern.
  *
+ * **`GET /suche` beantwortet die Suche in der Kopfleiste des Geräts.** `?q=<text>&limit=<n>`, die
+ * Antwort `{ data: [{ titel, unterzeile, art, pfad }] }`, höchstens zehn Treffer, unter zwei Zeichen
+ * keine. Gesucht wird in derselben Sicht wie in der Liste: wer einen Vorgang nicht sieht, findet ihn
+ * auch nicht. Die Route steht im Feld `agent` der `app.json`, daran erkennt das Gerät, dass diese
+ * App etwas zu finden hat. Wie sie aussieht und warum, steht in `kern/suche.mjs`.
+ *
  * **`api/me` beantwortet diese App nicht.** Wer angemeldet ist, sagt die
  * Plattform selbst, unter genau diesem Weg vor dem Container, damit auch eine
  * App ohne Backend ihren Benutzer anzeigen kann. Was hier ankommt, sind die
@@ -51,6 +58,7 @@ import { vorgangsAblage } from "./ablage/vorgaenge.mjs";
 import { abschluss as abschlussKern } from "./kern/abschluss.mjs";
 import { blatt } from "./kern/blatt.mjs";
 import { FELDLISTEN } from "./kern/feldlisten.mjs";
+import { suchen, vorgangsQuelle } from "./kern/suche.mjs";
 import { vorgaenge as kern } from "./kern/vorgaenge.mjs";
 import { geraet as anschluss, vereinbarungLesen } from "./arasul.mjs";
 
@@ -87,6 +95,10 @@ if (datenbankName && !adresse) {
   process.exit(1);
 }
 const { db, angewandt, stand } = await oeffnen({ adresse, datei: join(DATEN, "{{id}}.db") });
+// Wo die Suche sucht (`GET /suche`): je Quelle eine Ablage in der Sicht dessen, der sucht, so eng wie
+// seine Liste. Die Vorlage sieht alle Vorgänge, also findet jeder alle. Ein Muster mit eigener Liste
+// hängt seine Quelle an (`suchquellen.push`); eines, das die Liste enger zieht, ersetzt diese Zeile.
+const suchquellen = [vorgangsQuelle(() => vorgangsAblage(db))];
 const vorgangsKern = kern({
   ablage: vorgangsAblage(db),
   geraet,
@@ -180,6 +192,13 @@ const server = createServer(async (anfrage, antwort) => {
   if (pfad === ABSCHLUSS && anfrage.method === "POST") {
     const { status, antwort: inhalt } = await abschlussAnnahme.annehmen({ kopf: anfrage.headers, rumpf: await rumpfLesen(anfrage) });
     return json(antwort, status, inhalt);
+  }
+
+  // Die Suche der Kopfleiste des Geräts, siehe `kern/suche.mjs`. Vor den Wegen der Muster, und in
+  // jeder Quelle die Sicht dessen, der fragt.
+  if (pfad === "/suche" && anfrage.method === "GET") {
+    const frage = new URL(anfrage.url, "http://app").searchParams;
+    return json(antwort, 200, await suchen({ quellen: suchquellen, wer: geraet.angemeldet(anfrage.headers), q: frage.get("q"), limit: frage.get("limit") }));
   }
 
   if (pfad === "/vorgaenge" && anfrage.method === "GET") {

@@ -46,6 +46,16 @@
         { "name": "text", "type": "string", "required": false }
       ],
       "writes": true
+    },
+    {
+      "method": "GET",
+      "path": "suche",
+      "purpose": "Vorgänge finden, deren Titel oder Text den Suchtext enthält, höchstens zehn, nur die, die der Fragende sehen darf.",
+      "params": [
+        { "name": "q", "type": "string", "required": true },
+        { "name": "limit", "type": "integer", "required": false }
+      ],
+      "writes": false
     }
   ]
 }

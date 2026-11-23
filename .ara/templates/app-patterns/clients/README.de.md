@@ -55,6 +55,9 @@ nicht im Aufruf, und die Datei geht danach weg; wie sie aussieht, steht im Kopf 
 ihn im Teststand, bevor die App live geht; die Zuordnungen löst er danach wieder. Ein Gerät mit selbst ausgestelltem Zertifikat braucht `--unsicher`,
 das dieses Zertifikat für die eigenen Anfragen des Tests annimmt und sonst nirgends.
 
+**Der zweite Test**: `backend/probe/fremde-suche.mjs`, dieselben drei Sitzungen: B findet über die
+Suche nichts aus der Akte von A (`.ara/knowledge/search.de.md`).
+
 **Geprüft vom Selbsttest** gegen ein gespieltes Gerät mit anderen Rollennamen: fremde Vorgänge
 404, die Verwaltung 403 ohne die Rolle, nur Entscheider in der Regel, 409 nach dem Einreichen, der
 Filter in jeder Abfrage. **Am Orin am 26.09.2026** mit zwei Konten im Teststand: in Arbeit ohne

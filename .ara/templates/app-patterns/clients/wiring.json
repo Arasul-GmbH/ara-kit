@@ -18,6 +18,13 @@
     },
     {
       "file": "backend/server.mjs",
+      "optional": true,
+      "replace": "const suchquellen = [vorgangsQuelle(() => vorgangsAblage(db))];\n",
+      "with": "const suchquellen = [vorgangsQuelle((wer) => vorgangsAblage(db, mandantenFall.sicht(wer)))];\n",
+      "hand": "die App hat noch keine Suche (GET /suche). Wer sie nachzieht, sucht mit der Ablage in der Sicht dessen, der fragt: vorgangsAblage(db, mandantenFall.sicht(wer)), siehe .ara/knowledge/search.de.md."
+    },
+    {
+      "file": "backend/server.mjs",
       "before": [
         "  if (pfad === \"/vorgaenge\" && anfrage.method === \"GET\") {"
       ],

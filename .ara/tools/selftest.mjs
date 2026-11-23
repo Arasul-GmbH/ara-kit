@@ -85,6 +85,7 @@ import {
 } from "./lib/contract.mjs";
 import { PARTNER_ONLY, RETIRED, partnerOnly } from "./lib/commands.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
+import { searchHints } from "./lib/search.mjs";
 import { ersatzwoerter, prosaBereiche, sichtbareErsatzfunde } from "./lib/umlaute.mjs";
 import { EXAMPLE as ROOT_EXAMPLE, METHOD as ROOT_METHOD, METHOD_FOLDERS as ROOT_FOLDERS, METHOD_TARGETS, ROOT_TARGETS, TEMPLATE as ROOT_TEMPLATE, languageOf } from "./lib/root.mjs";
 import {
@@ -6181,6 +6182,12 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
       ],
       ["  regel: () => null,\n  melden,\n});\n", "  regel: () => null,\n  melden,\n});\n" + aufbau],
       ['  if (pfad === "/vorgaenge" && anfrage.method === "GET") {', '  if (await mandanten(anfrage, antwort, pfad)) return;\n\n  if (pfad === "/vorgaenge" && anfrage.method === "GET") {'],
+      // Die Suche in der Sicht dessen, der fragt: dieselbe Zeile, die --add-pattern clients setzt.
+      (() => {
+        const zeile = JSON.parse(readFileSync(join(PATTERNS, "clients", "wiring.json"), "utf8")).edits.find((e) => e.replace?.startsWith("const suchquellen"));
+        assert(zeile && /mandantenFall\.sicht\(wer\)/.test(zeile.with), "das Muster Mandanten zieht die Suche nicht in die Sicht");
+        return [zeile.replace, zeile.with];
+      })(),
     ]) {
       assert(quelle.includes(alt), `die Naht in server.mjs, an der das Muster hängt, gibt es nicht mehr: ${alt.split("\n")[0]}`);
       quelle = quelle.replace(alt, neu);
@@ -6389,6 +6396,30 @@ await checkAsync("Das Muster Mandanten trennt zwei Konten und zwei Mandanten, un
     // Und er schlägt an, wenn sie fehlt: B ist selbst dem Mandanten von A zugeordnet, gleicher Name wie A.
     const unrein = probe("emil");
     assert(unrein.status !== 0, `der Test besteht, obwohl A und B dieselbe Akte sehen: ${unrein.stdout}`);
+
+    // Und der Test der Suche (K32): B findet nichts aus der Akte von A, über dieselbe Route, die das Gerät fragt.
+    const suchprobe = (b = "bernd") =>
+      spawnSync(
+        "node",
+        [
+          join(paket, "probe", "fremde-suche.mjs"),
+          "--basis", basis,
+          "--verwaltung", JSON.stringify({ name: "chefin", kopf: kopfVon("chefin", "leitung") }),
+          "--a", JSON.stringify({ name: "emil", kopf: kopfVon("emil", "team") }),
+          "--b", JSON.stringify({ name: b, kopf: kopfVon(b, "team") }),
+        ],
+        { encoding: "utf8" }
+      );
+    const gesucht = suchprobe();
+    assert(gesucht.status === 0 && /die Suche findet nichts Fremdes/.test(gesucht.stdout) && /A findet den eigenen Vorgang/.test(gesucht.stdout), `der Test fremde Suche besteht nicht: ${gesucht.stdout} ${gesucht.stderr}`);
+    const ungesucht = suchprobe("emil");
+    assert(ungesucht.status !== 0 && /FEHLER B findet die Akte von A nicht/.test(ungesucht.stdout), `der Test der Suche besteht, obwohl A und B dieselbe Akte sehen: ${ungesucht.stdout}`);
+    r = await ruf("bernd", "team", `/suche?q=${encodeURIComponent("Müller")}`);
+    assert(r.code === 200 && r.daten.data.length === 0, `bernd findet Vorgänge von A über die Suche: ${JSON.stringify(r.daten)}`);
+    r = await ruf("Änne", "team", `/suche?q=${encodeURIComponent("Müller")}`);
+    assert(r.code === 200 && r.daten.data.some((t) => t.pfad === `/?nr=${va}`), `Änne findet ihren Vorgang nicht über die Suche: ${JSON.stringify(r.daten)}`);
+    r = await ruf(null, null, `/suche?q=${encodeURIComponent("Müller")}`);
+    assert(r.code === 200 && r.daten.data.length === 0, `ohne Anmeldung findet die Suche etwas: ${JSON.stringify(r.daten)}`);
 
     // Die Rolle kommt aus dem Kontrakt, nicht aus dem Quelltext.
     const { verwaltungsRolle } = await import(join(PATTERNS, "clients", "backend", "kern", "mandanten.mjs"));
@@ -14104,19 +14135,156 @@ await checkAsync("Die Brücke spricht mit dem Backend der Vorlage: agent kommt a
     let lauf = await bruecke(w, ["login", geraet.adresse, "--user", "anna", "--password-stdin"], { input: `${BRUECKE_PASSWORT}\n` });
     assert(lauf.status === 0, `Anmeldung: ${lauf.stderr}`);
     lauf = await bruecke(w, ["apps"]);
-    assert(/^selftest-bruecke \(Selftest Bruecke\), 0\.1\.0/m.test(lauf.stdout) && /GET\s+vorgaenge/.test(lauf.stdout) && /POST\s+vorgaenge/.test(lauf.stdout), `apps zeigt die Routen der Vorlage nicht:\n${lauf.stdout}`);
+    assert(/^selftest-bruecke \(Selftest Bruecke\), 0\.1\.0/m.test(lauf.stdout) && /GET\s+vorgaenge/.test(lauf.stdout) && /POST\s+vorgaenge/.test(lauf.stdout) && /GET\s+suche/.test(lauf.stdout), `apps zeigt die Routen der Vorlage nicht:\n${lauf.stdout}`);
     lauf = await bruecke(w, ["call", appName, "vorgaenge"]);
     assert(lauf.status === 0 && JSON.parse(lauf.stdout).vorgaenge.length === 0, `GET vorgaenge der Vorlage: ${lauf.stdout}${lauf.stderr}`);
     lauf = await bruecke(w, ["call", appName, "vorgaenge", "titel=Erster Vorgang", "--write"]);
     assert(lauf.status === 0 && JSON.parse(lauf.stdout).vorgang?.titel === "Erster Vorgang", `POST vorgaenge der Vorlage: ${lauf.stdout}${lauf.stderr}`);
     lauf = await bruecke(w, ["call", appName, "vorgaenge"]);
     assert(JSON.parse(lauf.stdout).vorgaenge.length === 1, `der eingereichte Vorgang steht nicht in der Liste: ${lauf.stdout}`);
+    // Die Suche der Kopfleiste (K32): dieselbe Route, die das Gerät fragt, über die Brücke gerufen.
+    lauf = await bruecke(w, ["call", appName, "suche", "q=erster", "limit=5"]);
+    const treffer = lauf.status === 0 ? JSON.parse(lauf.stdout).data : null;
+    assert(treffer?.length === 1 && treffer[0].titel === "Erster Vorgang" && treffer[0].art === "Vorgang" && treffer[0].pfad === "/?nr=1" && typeof treffer[0].unterzeile === "string", `call suche findet den Vorgang nicht nach Vertrag: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await bruecke(w, ["call", appName, "suche", "q=E"]);
+    assert(lauf.status === 0 && JSON.parse(lauf.stdout).data.length === 0, `ein Zeichen findet etwas: ${lauf.stdout}`);
+    lauf = await bruecke(w, ["call", appName, "suche"]);
+    assert(lauf.status !== 0 && /q/.test(lauf.stderr), `call suche ohne q läuft: ${lauf.stdout}${lauf.stderr}`);
     assert(existsSync(join(w.root, "apps", appName, "APP.md")), "für die Vorlage liegt keine APP.md da");
-    return "GET agent aus app.json, apps, lesen, einreichen mit --write, wieder lesen";
+    return "GET agent aus app.json, apps, lesen, einreichen mit --write, wieder lesen, suchen";
   } finally {
     backend?.kill();
     await geraet?.schliessen();
     rmSync(appDir, { recursive: true, force: true });
+    if (merker === null) rmSync(stateFile, { force: true });
+    else writeFileSync(stateFile, merker);
+  }
+});
+
+await checkAsync("Jede neue App bringt die Suche mit: Vertrag, höchstens zehn, unter zwei Zeichen nichts, --check ohne Hinweis, eine alte mit", async () => {
+  const stateFile = join(ROOT, ".ara", "state.json");
+  const merker = existsSync(stateFile) ? readFileSync(stateFile, "utf8") : null;
+  const appName = "selftest-suche";
+  const appDir = join(ROOT, "apps", appName);
+  const geraetName = "selftest-suche-geraet";
+  const akte = join(ROOT, "devices", geraetName);
+  const daten = wegwerfordner("ara-suche-");
+  let backend = null;
+  // Ein Gerät, das nur seinen Kontrakt sagt; sein Schema lässt die Felder der Vorlage zu.
+  const kontrakt = JSON.parse(JSON.stringify(KONTRAKT));
+  delete kontrakt.app_json.schema.additionalProperties;
+  kontrakt.marken = { adresse: "/marken/<haupt>/", verzeichnis: "/marken/marken.json", regeln: ["Eine App KANN die Bibliothek zur Laufzeit laden."] };
+  const geraet = createServer((anfrage, antwort) => {
+    const weg = anfrage.url.split("?")[0];
+    antwort.writeHead(["/api/v1/external/contract", "/marken/marken.json"].includes(weg) ? 200 : 404, { "Content-Type": "application/json" });
+    antwort.end(JSON.stringify(weg === "/marken/marken.json" ? { haupt: 5, fassung: "5.9.3" } : { data: kontrakt }));
+  });
+  await new Promise((bereit) => geraet.listen(0, "127.0.0.1", bereit));
+  const base = `http://127.0.0.1:${geraet.address().port}`;
+  const env = { ARASUL_KEY_SELFTEST_SUCHE: "aras_selbsttest" };
+  try {
+    const neu = tool("app.mjs", ["--app", appName, "--new", "--titel", "Suchprobe", "--beschreibung", "Probe der Suche"], "");
+    assert(neu.status === 0, `app.mjs --new endet mit ${neu.status}: ${neu.stderr}`);
+    // Ohne Netz und ohne npm install: der Bau der Oberfläche legt nur eine Seite nach dist/.
+    const paketDatei = join(appDir, "frontend", "package.json");
+    const paket = JSON.parse(readFileSync(paketDatei, "utf8"));
+    paket.scripts.build = `node -e "require('fs').mkdirSync('dist',{recursive:true});require('fs').writeFileSync('dist/index.html','<p>Suchprobe</p>');require('fs').writeFileSync('dist/app.js','import(\\"/marken/5/marken.js\\");')"`;
+    writeFileSync(paketDatei, JSON.stringify(paket, null, 2));
+    mkdirSync(join(appDir, "frontend", "node_modules"), { recursive: true });
+
+    // Die Route steht im Feld agent, lesend, mit q als Pflicht und limit frei.
+    const manifest = JSON.parse(readFileSync(join(appDir, "app.json"), "utf8"));
+    const eintrag = manifest.agent.find((route) => route.path === "suche");
+    assert(
+      eintrag?.method === "GET" && eintrag.writes === false &&
+        JSON.stringify(eintrag.params) === JSON.stringify([{ name: "q", type: "string", required: true }, { name: "limit", type: "integer", required: false }]),
+      `die Vorlage nennt die Suche nicht nach Vertrag: ${JSON.stringify(eintrag)}`
+    );
+    assert(agentFindings(appDir, manifest).length === 0 && searchHints(appDir, manifest).length === 0, `die neue App hat Befunde zur Suche: ${[...agentFindings(appDir, manifest), ...searchHints(appDir, manifest)].join("; ")}`);
+
+    // Das Backend der Vorlage, mit zwölf Vorgängen und zwei mit Zeichen, die LIKE sonst als Muster liest.
+    backend = spawn("node", [join(appDir, "backend", "server.mjs")], { env: { ...process.env, PORT: "0", APP_DATEN: daten } });
+    const port = await new Promise((fertig, fehler) => {
+      let gelesen = "";
+      backend.stdout.on("data", (stueck) => {
+        gelesen += stueck;
+        const treffer = gelesen.match(/hört auf (\d+)/);
+        if (treffer) fertig(Number(treffer[1]));
+      });
+      backend.on("exit", () => fehler(new Error(`das Backend der Vorlage startet nicht: ${gelesen}`)));
+      setTimeout(() => fehler(new Error("das Backend der Vorlage meldet keinen Port")), 15_000);
+    });
+    const basis = `http://127.0.0.1:${port}`;
+    for (let i = 1; i <= 12; i++) {
+      await fetch(`${basis}/vorgaenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ titel: `Rechnung ${i}`, text: "Büromaterial" }) });
+    }
+    await fetch(`${basis}/vorgaenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ titel: "Müller 50% Rabatt", text: "Angebot Podest" }) });
+    await fetch(`${basis}/vorgaenge`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ titel: "Konto_4 Miete" }) });
+    const suche = async (frage) => {
+      const antwort = await fetch(`${basis}/suche${frage}`);
+      return { code: antwort.status, daten: await antwort.json() };
+    };
+    const form = (r) =>
+      r.code === 200 && Array.isArray(r.daten.data) && r.daten.data.length <= 10 &&
+      r.daten.data.every((t) => ["titel", "unterzeile", "art", "pfad"].every((feld) => typeof t[feld] === "string") && t.pfad.startsWith("/"));
+    let r = await suche("?q=rechnung");
+    assert(form(r) && r.daten.data.length === 10 && r.daten.data[0].titel === "Rechnung 12", `zwölf Treffer werden nicht zehn, das Neueste oben: ${JSON.stringify(r.daten).slice(0, 300)}`);
+    r = await suche("?q=rechnung&limit=50");
+    assert(form(r) && r.daten.data.length === 10, `limit=50 gibt mehr als zehn: ${r.daten.data?.length}`);
+    r = await suche("?q=rechnung&limit=3");
+    assert(form(r) && r.daten.data.length === 3, `limit=3 gibt ${r.daten.data?.length}`);
+    for (const frage of ["", "?q=", "?q=R", "?q=%20R%20", "?q=%25", "?q=%C3%BC"]) {
+      r = await suche(frage);
+      assert(r.code === 200 && JSON.stringify(r.daten) === '{"data":[]}', `"${frage}" ist zu kurz und findet doch etwas oder ist ein Fehler: ${r.code} ${JSON.stringify(r.daten).slice(0, 200)}`);
+    }
+    r = await suche(`?q=${encodeURIComponent("50%")}`);
+    assert(form(r) && r.daten.data.length === 1 && r.daten.data[0].titel === "Müller 50% Rabatt", `ein Prozentzeichen wird als Muster gelesen: ${JSON.stringify(r.daten)}`);
+    r = await suche(`?q=${encodeURIComponent("o_4")}`);
+    assert(form(r) && r.daten.data.length === 1 && r.daten.data[0].titel === "Konto_4 Miete", `ein Unterstrich findet nicht genau: ${JSON.stringify(r.daten)}`);
+    r = await suche(`?q=${encodeURIComponent("t_4")}`);
+    assert(form(r) && r.daten.data.length === 0, `ein Unterstrich steht für jedes Zeichen: ${JSON.stringify(r.daten)}`);
+    r = await suche(`?q=${encodeURIComponent("müller")}`);
+    assert(form(r) && r.daten.data[0]?.pfad === "/?nr=13" && r.daten.data[0].art === "Vorgang" && /Vorgang 13/.test(r.daten.data[0].unterzeile), `Umlaut oder Pfad stimmen nicht: ${JSON.stringify(r.daten)}`);
+    r = await suche(`?q=${encodeURIComponent("podest")}`);
+    assert(form(r) && r.daten.data.length === 1, `der Text des Vorgangs wird nicht durchsucht: ${JSON.stringify(r.daten)}`);
+    backend.kill();
+    backend = null;
+
+    // --check gegen ein Gerät: die neue App besteht, ohne Hinweis zur Suche.
+    mkdirSync(akte, { recursive: true });
+    cpSync(join(ROOT, ".ara", "templates", "device.md"), join(akte, "device.md"));
+    writeFrontmatter(join(akte, "device.md"), { name: geraetName, address: "127.0.0.1:1", api_base: base, verdict: "supported", arasul: "found", api_key_ref: "ARASUL_KEY_SELFTEST_SUCHE" });
+    let lauf = await toolAsync("app.mjs", ["--app", appName, "--build", "--no-plan"], env);
+    assert(lauf.status === 0, `der Bau der neuen App scheitert: ${lauf.stdout}${lauf.stderr}`);
+    const pruefen = (...mehr) => toolAsync("app.mjs", ["--device", geraetName, "--app", appName, "--check", "--base", base, ...mehr], env);
+    lauf = await pruefen();
+    assert(lauf.status === 0 && !/Suche:|Search:/.test(lauf.stdout), `die neue App besteht --check nicht oder bekommt einen Hinweis zur Suche: ${lauf.stdout}${lauf.stderr}`);
+
+    // Eine App von vorher, ohne die Route: gültig, mit einem Hinweis, der sagt, wie sie nachzieht.
+    writeFileSync(join(appDir, "app.json"), JSON.stringify({ ...manifest, agent: manifest.agent.filter((route) => route.path !== "suche") }, null, 2));
+    lauf = await toolAsync("app.mjs", ["--app", appName, "--build", "--no-plan"], env);
+    assert(lauf.status === 0, `der Bau ohne Suche scheitert: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await pruefen();
+    assert(lauf.status === 0 && /(Suche|Search): .*(keine Suche für die Kopfleiste|no search for the device)/.test(lauf.stdout) && /knowledge\/search(\.de)?\.md/.test(lauf.stdout), `eine App ohne Suche bekommt keinen Hinweis oder fällt durch: ${lauf.stdout}${lauf.stderr}`);
+    lauf = await pruefen("--verbose");
+    assert(lauf.status === 0 && /keine Suche für die Kopfleiste|no search for the device/.test(lauf.stdout), `die lange Fassung nennt die fehlende Suche nicht: ${lauf.stdout}`);
+    lauf = await pruefen("--json");
+    assert(lauf.status === 0 && JSON.parse(lauf.stdout).search.length === 1, `--json nennt die fehlende Suche nicht: ${lauf.stdout.slice(0, 300)}`);
+
+    // Die Prüfung selbst: ohne q ein Hinweis, ohne agent und ohne Liste keiner, mit einer Liste in der Oberfläche einer.
+    const ohneQ = { ...manifest, agent: manifest.agent.map((route) => (route.path === "suche" ? { ...route, params: [] } : route)) };
+    assert(searchHints(appDir, ohneQ).length === 1 && /\bq\b/.test(searchHints(appDir, ohneQ)[0]), "eine Suche ohne q fällt nicht auf");
+    const leer = wegwerfordner("ara-suche-leer-");
+    assert(searchHints(leer, { id: "x", frontend: { verzeichnis: "frontend" } }).length === 0, "eine App ohne Listen bekommt einen Hinweis");
+    mkdirSync(join(leer, "frontend", "src"), { recursive: true });
+    writeFileSync(join(leer, "frontend", "src", "seite.tsx"), "export const S = () => <Datenliste daten={[]} />;\n");
+    assert(searchHints(leer, { id: "x", frontend: { verzeichnis: "frontend" } }).length === 1, "eine Oberfläche mit Datenliste ohne Suche bekommt keinen Hinweis");
+    return "Eintrag in agent, zehn von zwölf, limit, sechs zu kurze Fragen, % und _ maskiert, Umlaut, Text, --check neu ohne Hinweis, alt mit Hinweis in drei Fassungen";
+  } finally {
+    backend?.kill();
+    geraet.close();
+    rmSync(appDir, { recursive: true, force: true });
+    rmSync(akte, { recursive: true, force: true });
     if (merker === null) rmSync(stateFile, { force: true });
     else writeFileSync(stateFile, merker);
   }
@@ -16684,7 +16852,7 @@ await checkAsync("Der Nachweis des Ablaufs: die Vorlage trägt ihn, Änderung, K
     // Der Nachweis selbst von Hand geändert: das Siegel hält nicht.
     const nachweisPfad = join(dir, "build", "nachweis.json");
     const echt = readFileSync(nachweisPfad, "utf8");
-    writeFileSync(nachweisPfad, echt.replace('"faelle": 6', '"faelle": 60'));
+    writeFileSync(nachweisPfad, echt.replace(/"faelle": (\d+)/, (_, faelle) => `"faelle": ${Number(faelle) * 10}`));
     lauf = tool("app.mjs", ["--nachweis", join(dir, "build"), "--json"], "", {});
     assert(funde(lauf).includes("siegel"), `ein geänderter Nachweis fällt nicht auf: ${lauf.stdout}`);
     writeFileSync(nachweisPfad, echt);

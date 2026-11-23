@@ -21,6 +21,8 @@
  * schriebe, legte sich auf eine Form fest, die ihm niemand versprochen hat.
  */
 
+import { likeMuster } from "./db.mjs";
+
 const FELDER = "id, titel, text, von, gestellt, status, lauf, entschieden_von, begruendung, bemerkung, hinweis";
 
 /** Was die Zeile ist, wenn niemand mehr auf die Tabelle sieht. */
@@ -61,6 +63,22 @@ export function vorgangsAblage(db) {
           `SELECT ${FELDER} FROM vorgaenge
             WHERE lauf IS NOT NULL AND (status = 'wartet' OR (status = 'genehmigt' AND bemerkung IS NULL))
             ORDER BY id DESC`
+        )
+      ).map(alsVorgang);
+    },
+
+    /**
+     * Die, deren Titel oder Text den Suchtext enthält, das Neueste oben, höchstens `grenze`.
+     * Dieselben Vorgänge wie in `alle`, nur weniger: wer die Liste enger zieht, zieht auch das
+     * hier enger (Muster Mandanten).
+     */
+    async suchen(begriff, grenze) {
+      return (
+        await db.abfrage(
+          `SELECT ${FELDER} FROM vorgaenge
+            WHERE LOWER(titel) LIKE $1 ESCAPE '\\' OR LOWER(COALESCE(text, '')) LIKE $1 ESCAPE '\\'
+            ORDER BY id DESC LIMIT $2`,
+          [likeMuster(begriff), grenze]
         )
       ).map(alsVorgang);
     },

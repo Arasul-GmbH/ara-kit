@@ -10,9 +10,24 @@
     },
     {
       "file": "backend/server.mjs",
+      "seam": "imports",
+      "text": "import { dokumentQuelle } from \"./kern/dokumente.mjs\";\n"
+    },
+    {
+      "file": "backend/server.mjs",
       "seam": "setup",
       "when": "!receipts",
       "text": "const dokumente = dokumentWege({\n  kern: dokumentKern({ ablage: dokumentAblage(db) }),\n  von: (anfrage) => geraet.angemeldet(anfrage.headers).benutzer,\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "optional": true,
+      "after": [
+        "const suchquellen = [vorgangsQuelle(() => vorgangsAblage(db))];\n"
+      ],
+      "when": "!receipts",
+      "text": "suchquellen.push(dokumentQuelle(() => dokumentAblage(db)));\n",
+      "hand": "die App hat noch keine Suche (GET /suche), also findet die Kopfleiste die Dokumente nicht. Nachziehen: .ara/knowledge/search.de.md."
     },
     {
       "file": "backend/server.mjs",

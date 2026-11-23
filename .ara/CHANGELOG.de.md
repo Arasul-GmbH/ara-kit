@@ -15,6 +15,15 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.88.0 (2026-11-23)
+
+Kontrakt: bis 14
+
+- **Jede neue App ist aus der Kopfleiste des Geräts zu finden.** Die Vorlage beantwortet `GET suche?q=<text>&limit=<n>` mit `{ data: [{ titel, unterzeile, art, pfad }] }`: höchstens zehn Treffer, unter zwei Zeichen keiner, `pfad` unter der Adresse der App (`/?nr=17`). Die Route steht als Eintrag im Feld `agent` der `app.json`, mit `q` und `limit`; kein neues Feld im Manifest, keine neue Kontraktfassung. `node arasul.mjs call <app> suche q=<wort>` geht aus der Wurzel eines Hauses.
+- **Niemand findet, was er nicht sehen darf.** Jede Quelle der Suche baut ihre Ablage wie der Weg ihrer Liste, mit dem Menschen aus den Kopfzeilen des Geräts. Die Muster ziehen beim Einhängen mit: Mandanten sucht in der Sicht dessen, der fragt, Dokumente und Belege hängen die Dokumente an, Belege ebenfalls in der Sicht der Mandanten.
+- **Eine Probe belegt es**: `backend/probe/fremde-suche.mjs` im Muster Mandanten, mit denselben drei Sitzungen wie `fremde-akte.mjs`. A findet den eigenen Vorgang und Beleg, B findet sie unter keinem Wort, ohne Anmeldung findet niemand etwas; der Selbsttest lässt sie laufen und zeigt, dass sie rot wird, wenn A und B dieselbe Akte sehen.
+- **`--check` gibt einen Hinweis, nie einen Halt**, wenn eine App Listen hat und keine Suchroute, oder die Route ohne `q` nennt; im kurzen Bericht, mit `--verbose` und in `--json` (`search`). Bestehende Apps bleiben gültig. Wie eine bestehende App nachzieht, Schritt für Schritt: `.ara/knowledge/search.de.md`.
+
 ## 0.87.1 (2026-11-23)
 
 Kontrakt: bis 14

@@ -13,6 +13,15 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.88.0 (2026-11-23)
+
+Contract: up to 14
+
+- **Every new app can be found from the device's search bar.** The scaffold answers `GET suche?q=<text>&limit=<n>` with `{ data: [{ titel, unterzeile, art, pfad }] }`: at most ten hits, none under two characters, `pfad` below the app's address (`/?nr=17`). The route stands as an entry in the field `agent` of `app.json`, with `q` and `limit`; no new manifest field, no new contract version. `node arasul.mjs call <app> suche q=<word>` works from the root of a house.
+- **Nobody finds what they may not see.** Every source of the search builds its store like the route of its list, with the person from the device's headers. The patterns follow when wired in: clients searches in the view of the person asking, documents and receipts add the documents, receipts also in the view of the clients.
+- **A probe proves it**: `backend/probe/fremde-suche.mjs` in the clients pattern, with the same three sessions as `fremde-akte.mjs`. A finds their own case and receipt, B finds them under no word, nobody finds anything without a login; the self-test runs it and shows it turning red when A and B see the same file.
+- **`--check` gives a hint, never a stop**, when an app has lists but no search route, or names the route without `q`; in the short report, with `--verbose` and in `--json` (`search`). Existing apps stay valid. How an existing app catches up, step by step: `.ara/knowledge/search.md`.
+
 ## 0.87.1 (2026-11-23)
 
 Contract: up to 14

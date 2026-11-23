@@ -114,3 +114,31 @@ export function dokumente({ ablage, vorgaenge = null, grenzeBytes = GRENZE_BYTES
     },
   };
 }
+
+/**
+ * Ein Dokument als Treffer der Suche (`kern/suche.mjs`). Hängt es an einem Vorgang (Muster Belege),
+ * öffnet es sich an seinem Vorgang in der Liste, sonst auf der Seite Dokumente, beides mit der
+ * Nummer in der Adresse.
+ */
+export function dokumentAlsTreffer(dokument) {
+  const tag = new Date(dokument.abgelegt);
+  const teile = [
+    dokument.vorgang ? `Beleg an Vorgang ${dokument.vorgang}` : `Dokument ${dokument.id}`,
+    dokument.von ? `von ${dokument.von}` : "",
+    Number.isNaN(tag.getTime()) ? "" : tag.toLocaleDateString("de-DE", { timeZone: "Europe/Berlin" }),
+  ];
+  return {
+    titel: String(dokument.name ?? ""),
+    unterzeile: teile.filter(Boolean).join(" · "),
+    art: dokument.vorgang ? "Beleg" : "Dokument",
+    pfad: dokument.vorgang ? `/?nr=${dokument.vorgang}` : `/dokumente?nr=${dokument.id}`,
+  };
+}
+
+/**
+ * Die Quelle der Suche über die Dokumente: die Ablage kommt je Anfrage, in der Sicht dessen, der
+ * sucht, dieselbe wie für die Liste (`GET /dokumente`). Gesucht wird im Dateinamen.
+ */
+export function dokumentQuelle(ablageFuer) {
+  return async (wer, begriff, anzahl) => (await ablageFuer(wer).suchen(begriff, anzahl)).map(dokumentAlsTreffer);
+}

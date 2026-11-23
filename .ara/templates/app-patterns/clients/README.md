@@ -51,6 +51,9 @@ file goes afterwards; its shape stands in the head of the test. Run it in stagin
 goes live; it removes the assignments again afterwards. A device with a self-signed certificate needs `--unsicher` ("unsafe"),
 which accepts that certificate for the test's own requests and nowhere else.
 
+**The second test**: `backend/probe/fremde-suche.mjs`, the same three sessions: B finds nothing of
+A's file through the search (`.ara/knowledge/search.md`).
+
 **Checked by the self-test** against a played device with other role names: foreign items 404, the
 management 403 without the role, only deciders in the rule, 409 after submitting, the filter in
 every query. **On the Orin on 26.09.2026** with two accounts in staging: in work without a run, no
