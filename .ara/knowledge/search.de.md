@@ -37,7 +37,7 @@ Sie hat die Suche schon: `node .ara/tools/app.mjs --app <name> --new` legt sie a
   `backend/test/`.
 - `backend/ablage/vorgaenge.mjs`, `suchen(begriff, grenze)`: dieselbe Abfrage wie die Liste, nur mit
   dem Suchtext in Titel und Text.
-- `backend/server.mjs`: die Route `GET /suche` und die Liste `suchquellen`, eine Quelle je Liste.
+- `backend/server.mjs`: die Route `GET suche` und die Liste `suchquellen`, eine Quelle je Liste.
 - `app.json`: der Eintrag in `agent`.
 
 Die Muster ziehen mit, wenn sie mit `--add-pattern` eingehängt werden. **Mandanten** (`clients`)
@@ -63,10 +63,10 @@ Listen, aber keine Suche für die Kopfleiste des Geräts“. So zieht sie nach, 
 3. **Die Route.** In `backend/server.mjs`: `import { suchen, vorgangsQuelle } from
    "./kern/suche.mjs";`, nach dem Öffnen der Datenbank die Zeile
    `const suchquellen = [vorgangsQuelle(() => vorgangsAblage(db))];` und vor den anderen Wegen der
-   Block `if (pfad === "/suche" …)`, alles wie in der Vorlage. Mit Mandanten heißt die Zeile
+   Block für den Weg `suche` (`GET`), alles wie in der Vorlage. Mit Mandanten heißt die Zeile
    `const suchquellen = [vorgangsQuelle((wer) => vorgangsAblage(db, mandantenFall.sicht(wer)))];`,
    mit Dokumenten kommt `suchquellen.push(dokumentQuelle(…))` dazu, so wie `--add-pattern` es
-   einsetzt (`.ara/templates/app-patterns/*/wiring.json`).
+   einsetzt (die Datei `wiring.json` neben jedem Muster unter `.ara/templates/app-patterns/`).
 4. **Anmelden.** Den Eintrag in das Feld `agent` der `app.json`, wie in
    `.ara/templates/app/app.json`. Den Satz in `purpose` auf das anpassen, was die App findet.
 5. **Prüfen.** Lokal `curl "http://127.0.0.1:<port>/suche?q=<wort>"`; mit Mandanten die Probe

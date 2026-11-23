@@ -38,7 +38,7 @@ where:
   `backend/test/`.
 - `backend/ablage/vorgaenge.mjs`, `suchen(begriff, grenze)`: the same query as the list, only with
   the search text in title and text.
-- `backend/server.mjs`: the route `GET /suche` and the list `suchquellen`, one source per list.
+- `backend/server.mjs`: the route `GET suche` and the list `suchquellen`, one source per list.
 - `app.json`: the entry in `agent`.
 
 The patterns follow when wired in with `--add-pattern`. **Clients** replaces the source of the
@@ -63,10 +63,10 @@ device's search bar" at `--check`. This is how it catches up, in this order:
 3. **The route.** In `backend/server.mjs`: `import { suchen, vorgangsQuelle } from
    "./kern/suche.mjs";`, after the database is opened the line
    `const suchquellen = [vorgangsQuelle(() => vorgangsAblage(db))];`, and before the other routes
-   the block `if (pfad === "/suche" …)`, all as in the template. With clients the line reads
+   the block for the route `suche` (`GET`), all as in the template. With clients the line reads
    `const suchquellen = [vorgangsQuelle((wer) => vorgangsAblage(db, mandantenFall.sicht(wer)))];`,
    with documents `suchquellen.push(dokumentQuelle(…))` comes along, the way `--add-pattern` puts
-   it in (`.ara/templates/app-patterns/*/wiring.json`).
+   it in (the file `wiring.json` next to each pattern under `.ara/templates/app-patterns/`).
 4. **Announce it.** The entry in the field `agent` of `app.json`, as in
    `.ara/templates/app/app.json`. Fit the sentence in `purpose` to what the app finds.
 5. **Check.** Locally `curl "http://127.0.0.1:<port>/suche?q=<word>"`; with clients the probe

@@ -27,9 +27,6 @@ import { readAgent } from "../../templates/root/arasul.mjs";
 /** Der Pfad der Route, wie das Feld `agent` ihn nennt. */
 export const SEARCH_PATH = "suche";
 
-/** Wo steht, wie eine bestehende App die Suche nachzieht. */
-export const SEARCH_SHEET = { en: ".ara/knowledge/search.md", de: ".ara/knowledge/search.de.md" };
-
 /** Zeichnet die Oberfläche eine Liste der Bibliothek? */
 function frontendHasList(dir, manifest) {
   const folder = safeFolder(dir, manifest, "frontend.verzeichnis");
@@ -50,8 +47,8 @@ export function searchHints(dir, manifest) {
     if (search.params.some((param) => param.name === "q")) return [];
     return [
       t(
-        `Search: agent names GET ${SEARCH_PATH} without q (${SEARCH_SHEET.en}): q string required, limit integer optional.`,
-        `Suche: agent nennt GET ${SEARCH_PATH} ohne q (${SEARCH_SHEET.de}): q string Pflicht, limit integer frei.`
+        `Search: agent names GET ${SEARCH_PATH} without q (.ara/knowledge/search.md): q string required, limit integer optional.`,
+        `Suche: agent nennt GET ${SEARCH_PATH} ohne q (.ara/knowledge/search.de.md): q string Pflicht, limit integer frei.`
       ),
     ];
   }
@@ -59,8 +56,8 @@ export function searchHints(dir, manifest) {
   if (!reading.length && !frontendHasList(dir, manifest)) return [];
   return [
     t(
-      `Search: the app has lists but no search for the device's search bar (${SEARCH_SHEET.en}). It stays valid, but nobody finds its entries there.`,
-      `Suche: die App hat Listen, aber keine Suche für die Kopfleiste des Geräts (${SEARCH_SHEET.de}). Gültig bleibt sie, nur findet dort niemand ihre Einträge.`
+      `Search: the app has lists but no search for the device's search bar (.ara/knowledge/search.md). It stays valid, but nobody finds its entries there.`,
+      `Suche: die App hat Listen, aber keine Suche für die Kopfleiste des Geräts (.ara/knowledge/search.de.md). Gültig bleibt sie, nur findet dort niemand ihre Einträge.`
     ),
   ];
 }
