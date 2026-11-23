@@ -14,6 +14,7 @@
  * da.
  */
 
+import { likeMuster } from "./db.mjs";
 import { nurZugeordnete, sicht } from "./mandanten.mjs";
 
 const OHNE_INHALT = "id, name, art, groesse, von, abgelegt, mandant, vorgang";
@@ -57,6 +58,18 @@ export function dokumentAblage(db, benutzer = null) {
     async alle() {
       return (
         await db.abfrage(`SELECT ${OHNE_INHALT} FROM dokumente WHERE ${filter("mandant", "$1")} ORDER BY id DESC`, [wer])
+      ).map(alsDokument);
+    },
+
+    /** Die, deren Dateiname den Suchtext enthält und die dieser Name sieht, höchstens `grenze`, ohne Bytes. */
+    async suchen(begriff, grenze) {
+      return (
+        await db.abfrage(
+          `SELECT ${OHNE_INHALT} FROM dokumente
+            WHERE LOWER(name) LIKE $1 ESCAPE '\\' AND ${filter("mandant", "$2")}
+            ORDER BY id DESC LIMIT $3`,
+          [likeMuster(begriff), wer, grenze]
+        )
       ).map(alsDokument);
     },
 

@@ -36,8 +36,21 @@
     },
     {
       "file": "backend/server.mjs",
+      "remove": "suchquellen.push(dokumentQuelle(() => dokumentAblage(db)));\n"
+    },
+    {
+      "file": "backend/server.mjs",
       "seam": "setup",
       "text": "const belege = belegWege({\n  angemeldet: (anfrage) => geraet.angemeldet(anfrage.headers),\n  sicht: mandantenFall.sicht,\n  vorgaenge: (sicht) => vorgangsAblage(db, sicht),\n  dokumente: (sicht) => dokumentAblage(db, sicht),\n  dokumentWege: (sicht, benutzer) =>\n    dokumentWege({\n      kern: dokumentKern({ ablage: dokumentAblage(db, sicht), vorgaenge: vorgangsAblage(db, sicht) }),\n      von: () => benutzer,\n    }),\n  // auslesenWege: kommt mit dem Muster Dokument auslesen (6) dazu.\n  // Der Betrag in der Belegliste: das Feld des Flows (--felder), aus dem Abschluss des Laufs.\n  abschluss: (lauf) => abschlussAblage(db).eines(lauf),\n  betragFeld: \"betrag\",\n});\n"
+    },
+    {
+      "file": "backend/server.mjs",
+      "optional": true,
+      "after": [
+        "const suchquellen = [vorgangsQuelle((wer) => vorgangsAblage(db, mandantenFall.sicht(wer)))];\n"
+      ],
+      "text": "suchquellen.push(dokumentQuelle((wer) => dokumentAblage(db, mandantenFall.sicht(wer))));\n",
+      "hand": "die App hat noch keine Suche in der Sicht der Mandanten (GET /suche), also findet die Kopfleiste die Belege nicht. Nachziehen: .ara/knowledge/search.de.md."
     },
     {
       "file": "backend/server.mjs",

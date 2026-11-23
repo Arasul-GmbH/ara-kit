@@ -13,6 +13,8 @@
  * Leitung. Die Bytes holt `eines()`, und zwar für genau ein Dokument.
  */
 
+import { likeMuster } from "./db.mjs";
+
 const OHNE_INHALT = "id, name, art, groesse, von, abgelegt";
 
 /** Eine Zeile, wie der Rest der App sie sieht: die Nummer als Zahl. */
@@ -36,6 +38,16 @@ export function dokumentAblage(db) {
     /** Alle, das Neueste oben, ohne Bytes. */
     async alle() {
       return (await db.abfrage(`SELECT ${OHNE_INHALT} FROM dokumente ORDER BY id DESC`)).map(alsDokument);
+    },
+
+    /** Die, deren Dateiname den Suchtext enthält, das Neueste oben, höchstens `grenze`, ohne Bytes. */
+    async suchen(begriff, grenze) {
+      return (
+        await db.abfrage(
+          `SELECT ${OHNE_INHALT} FROM dokumente WHERE LOWER(name) LIKE $1 ESCAPE '\\' ORDER BY id DESC LIMIT $2`,
+          [likeMuster(begriff), grenze]
+        )
+      ).map(alsDokument);
     },
 
     /** Genau eines, mit seinen Bytes als Buffer, oder null. */

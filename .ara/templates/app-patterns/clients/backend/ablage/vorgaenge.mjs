@@ -17,6 +17,7 @@
  * und der Weg antwortet 404, nicht 403: ein 403 sagte, dass es ihn gibt.
  */
 
+import { likeMuster } from "./db.mjs";
 import { nurZugeordnete, sicht } from "./mandanten.mjs";
 
 const FELDER = "id, titel, text, von, gestellt, status, lauf, entschieden_von, begruendung, bemerkung, hinweis, mandant";
@@ -75,6 +76,23 @@ export function vorgangsAblage(db, benutzer = null) {
               AND ${filter("mandant", "$1")}
             ORDER BY id DESC`,
           [wer]
+        )
+      ).map(alsVorgang);
+    },
+
+    /**
+     * Die, deren Titel oder Text den Suchtext enthält und die dieser Name sieht, das Neueste oben,
+     * höchstens `grenze`. Dieselbe Bedingung wie in `alle`: die Suche findet nichts, was die Liste
+     * nicht zeigt.
+     */
+    async suchen(begriff, grenze) {
+      return (
+        await db.abfrage(
+          `SELECT ${FELDER} FROM vorgaenge
+            WHERE (LOWER(titel) LIKE $1 ESCAPE '\\' OR LOWER(COALESCE(text, '')) LIKE $1 ESCAPE '\\')
+              AND ${filter("mandant", "$2")}
+            ORDER BY id DESC LIMIT $3`,
+          [likeMuster(begriff), wer, grenze]
         )
       ).map(alsVorgang);
     },

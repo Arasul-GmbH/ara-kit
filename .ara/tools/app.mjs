@@ -138,6 +138,7 @@ import { addressFindings, addressSection, standardExempt, standardFindings, stan
 import { kurzbericht } from "./lib/kurzbericht.mjs";
 import { SCHRITT_AUSROLLEN, fileDigest, lines as proofLines, recordStep, restampPackage, runTests, stampPackage, verify as verifyProof } from "./lib/nachweis.mjs";
 import { agentFindings } from "./lib/agentfield.mjs";
+import { searchHints } from "./lib/search.mjs";
 import { libraryFindings, libraryHints, librarySection, readServed } from "./lib/laufzeit.mjs";
 import { leavesPackage, safeFolder, walkFiles } from "./lib/files.mjs";
 import { sichtbareErsatzfunde, umlautWarnung } from "./lib/umlaute.mjs";
@@ -2075,6 +2076,7 @@ async function shortHints(dir, manifest, result) {
     ...sichtbareErsatzfunde(dir, manifest).map((f) => t(`Umlauts: ${f.wo}: ${f.woerter.join(", ")}`, `Umlaute: ${f.wo}: ${f.woerter.join(", ")}`)),
     ...addressFindings(dir).map((b) => t(`Address: ${b.datei}:${b.zeile} „${b.wort}": ${b.text}`, `Anrede: ${b.datei}:${b.zeile} „${b.wort}": ${b.text}`)),
     ...(await packageHints(dir, manifest)),
+    ...searchHints(dir, manifest),
     ...(vereinbart?.missing ?? []).map((satz) => t(`Not promised by ${place}: ${satz}`, `Verspricht ${place} nicht: ${satz}`)),
     ...(result.unchecked.length
       ? [t(`Not checked, the kit does not know the schema keyword: ${result.unchecked.join(", ")}`, `Nicht geprüft, das Kit kennt die Schemaangabe nicht: ${result.unchecked.join(", ")}`)]
@@ -2100,7 +2102,7 @@ if (arg.check !== undefined) {
     const arrangement = arrangementPath(dir, manifest)
       ? appArrangement(contract, { device: place, date: today() })
       : null;
-    console.log(JSON.stringify({ device: place, folder: dir, version, delivery, arrangement, ...result }, null, 2));
+    console.log(JSON.stringify({ device: place, folder: dir, version, delivery, arrangement, search: searchHints(dir, manifest), ...result }, null, 2));
   } else if (!arg.verbose) {
     const halte = shortStops(result, delivery);
     const hinweise = await shortHints(dir, manifest, result);
@@ -2125,6 +2127,7 @@ if (arg.check !== undefined) {
         ...reportManifest(relative(ROOT, dir) || dir, result, delivery).split("\n"),
         ...umlautSection(dir, manifest),
         ...(await packageHints(dir, manifest)),
+        ...searchHints(dir, manifest).flatMap((satz) => ["", satz]),
         ...arrangementSection(dir, manifest),
         ...addressSection(dir),
         ...versionSection(),

@@ -53,7 +53,17 @@ export function migrationen(ordner = MIGRATIONEN) {
     .map((name) => ({ name, sql: readFileSync(join(ordner, name), "utf8") }));
 }
 
-const STAND_ANLEGEN = "CREATE TABLE IF NOT EXISTS migrationen (name TEXT PRIMARY KEY, angewandt TEXT NOT NULL)";
+/**
+ * Ein Suchtext als Muster für `LOWER(spalte) LIKE $n ESCAPE '\'`: klein geschrieben, mit `%`
+ * drumherum, und `%`, `_` und `\` im Text maskiert, damit ein Prozentzeichen im Suchtext nicht
+ * alles findet. Beide Datenbanken verstehen genau diese Schreibweise. SQLite schreibt dabei nur
+ * A bis Z klein, PostgreSQL auch Ä, Ö und Ü: ohne Gerät findet "müller" ein "MÜLLER" nicht.
+ */
+export function likeMuster(begriff) {
+  return `%${String(begriff).toLowerCase().replace(/[\\%_]/g, (zeichen) => `\\${zeichen}`)}%`;
+}
+
+const STAND_ANLEGEN ="CREATE TABLE IF NOT EXISTS migrationen (name TEXT PRIMARY KEY, angewandt TEXT NOT NULL)";
 
 /** Was SQLite anders schreibt, und nur das. */
 function fuerSqlite(sql) {
