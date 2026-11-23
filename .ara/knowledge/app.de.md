@@ -259,7 +259,8 @@ Minute: ein Vorgang in der Datenbank des Geräts, der Flow `freigabe` mit Nummer
 Mensch entscheidet auf der eigenen Seite `Freigaben` der App (oder in Arasul, das dieselbe Anfrage
 zeigt), der Vorgang steht als genehmigt oder abgelehnt da. Fragt jemand, wie eine App aussieht, leg
 eine an und zeig sie. Ihr Stapel, die fünf Stellen, die es je einmal gibt, die zwei Anschlüsse des
-Backends, wie sie sich für Agenten beschreibt und wie sie das Ergebnis eines Flows annimmt:
+Backends, wie sie sich für Agenten beschreibt, wie die Suche des Geräts ihre Einträge findet
+(`.ara/knowledge/search.de.md`) und wie sie das Ergebnis eines Flows annimmt:
 `.ara/templates/app/README.md`. **Die Routen bleiben eine Ebene tief**, der Rest geht in die Abfrage.
 
 ## Was du dabei nicht tust

@@ -9,6 +9,7 @@
 Die Vorlage läuft von der ersten Minute an, und das hier ist ihr Stand, bevor der erste
 Plan erledigt ist:
 
+- Gefunden werden: wer oben im Gerät in der Suche tippt, findet die Vorgänge dieser App.
 - Einen Vorgang einreichen: worum es geht, auf Wunsch ein Text dazu. Wer ihn einreicht,
   kommt von der Anmeldung des Geräts und nicht aus dem Formular.
 - Jeder Vorgang startet den Flow `freigabe`. Dessen erster Schritt fordert eine Freigabe
@@ -180,6 +181,7 @@ Das Backend, von außen nach innen:
 | `server.mjs` | Wege, Kopfzeilen, Statuscodes. Sonst nichts |
 | `kern/vorgaenge.mjs` | Was mit einem Vorgang passiert. Kennt zwei Anschlüsse, die hereingereicht werden, eine Ablage und ein Gerät, und die Welt sonst nicht: so lässt sich jeder Fall ohne beide prüfen |
 | `kern/abschluss.mjs` | Was die Abschluss-Route prüft, bevor sie ein Ergebnis annimmt |
+| `kern/suche.mjs` | Was die Suche des Geräts bekommt: höchstens zehn Treffer, unter zwei Zeichen keiner, jede Quelle in der Sicht dessen, der fragt |
 | `kern/csv.mjs` | Ein Export als CSV |
 | `ablage/vorgaenge.mjs` | Die eine Naht zur Datenbank. Hier steht das SQL der Vorgänge, im Dialekt von PostgreSQL. Eine Ablage je Entität, keine zweite |
 | `ablage/db.mjs` | Die Datenbank und ihre Migrationen: am Gerät PostgreSQL, ohne Gerät SQLite, dasselbe SQL. Der Stand steht in der Datenbank selbst |
@@ -197,6 +199,7 @@ Die Schnittstelle des Backends, hinter `/apps/{{id}}/api/`:
 | `POST /vorgaenge` | Vorgang einreichen und den Flow starten |
 | `GET /gesund` | Für den Gesundheitscheck des Containers |
 | `GET /agent` | Das Feld `agent` der `app.json`, mit Kennung, Name und Version |
+| `GET /suche?q=<text>&limit=<n>` | Höchstens zehn Vorgänge für die Suche in der Kopfleiste des Geräts, nur die, die der Fragende sehen darf |
 | `POST /abschluss/freigabe` | Das Ergebnis des Flows annehmen, nur vom Gerät |
 | `GET /vorgaenge/<nummer>/original.png` | Das Blatt, das die Freigabe links zeigt |
 
@@ -213,6 +216,11 @@ welcher Rolle, und durch `rahmen/async-boundary.tsx` geht jede Abfrage: lädt, g
 ein Agent rufen darf, und das Backend beantwortet `GET agent` aus einer Kopie der `app.json`, die
 der Bau daneben legt. `--check` und `--deploy` halten das Feld gegen die App. Seine Form und was
 das CLI einer Wurzel damit tut: `.ara/knowledge/root.de.md`, „Die Brücke zum Gerät“.
+
+**Die Suche des Geräts findet ihre Vorgänge.** `GET suche` steht im Feld `agent`, und wer oben im
+Gerät tippt, findet die Vorgänge, die er auch in der Liste sieht, mit einem Klick dorthin. Wie das
+aussieht und wie ein Muster oder eine eigene Liste mitzieht: `backend/kern/suche.mjs` und
+`.ara/knowledge/search.de.md` im Kit.
 
 ## Womit man arbeitet
 

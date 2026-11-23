@@ -51,6 +51,12 @@ file goes afterwards; its shape stands in the head of the test. Run it in stagin
 goes live; it removes the assignments again afterwards. A device with a self-signed certificate needs `--unsicher` ("unsafe"),
 which accepts that certificate for the test's own requests and nowhere else.
 
+**The second test, for the search**: `backend/probe/fremde-suche.mjs`, with the same three
+sessions. Employee A creates an item in their file with a word that stands nowhere else (and a
+receipt, if the app knows receipts), A finds it through `GET suche`, B finds it under no word,
+nobody finds anything without a login. With this pattern the app's search looks in the view of the
+person asking, like their list: `.ara/knowledge/search.md`.
+
 **Checked by the self-test** against a played device with other role names: foreign items 404, the
 management 403 without the role, only deciders in the rule, 409 after submitting, the filter in
 every query. **On the Orin on 26.09.2026** with two accounts in staging: in work without a run, no

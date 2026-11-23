@@ -252,9 +252,9 @@ The scaffold lies under `.ara/templates/app/`, and what `--new` makes of it runs
 minute: an item in the device's database, the flow `freigabe` with number and submitter, a human
 decides on the app's own page `Freigaben` (or in Arasul, which shows the same request), the item
 stands approved or rejected. Asked what an app looks like, create one and show it. Its stack, the
-five places that each exist once, the backend's two connections, how it describes itself for agents
-and how it takes a flow's result: `.ara/templates/app/README.md`. **Routes stay one level deep**, the
-rest goes into the query.
+five places that each exist once, the backend's two connections, how it describes itself for agents,
+how the device's search finds its entries (`.ara/knowledge/search.md`) and how it takes a flow's
+result: `.ara/templates/app/README.md`. **Routes stay one level deep**, the rest goes into the query.
 
 ## What you do not do while doing this
 
