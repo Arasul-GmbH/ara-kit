@@ -26,7 +26,7 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, CircleAlert } from "@marken/symbole";
-import { Button, Feldgruppe, Formularseite, Icon, Input, Kopf, Label, Meldung, Textarea, Werkzeug } from "@marken";
+import { Feldgruppe, Formularseite, Hauptkapsel, Icon, Input, Kopf, Label, Meldung, Textarea, Werkzeug } from "@marken";
 import { useAnmeldung } from "../rahmen/anmeldung";
 import { useEinreichen } from "../vorgaenge";
 
@@ -124,9 +124,9 @@ export function Neu() {
           </Feldgruppe>
 
           <div className="flex justify-end">
-            <Button type="submit" variant="solid" data-kennzeichen="einreichen" disabled={einreichen.isPending}>
+            <Hauptkapsel typ="absenden" kennzeichen="einreichen" gesperrt={einreichen.isPending}>
               {einreichen.isPending ? "Wird eingereicht …" : "Einreichen"}
-            </Button>
+            </Hauptkapsel>
           </div>
         </Formularseite>
       </form>

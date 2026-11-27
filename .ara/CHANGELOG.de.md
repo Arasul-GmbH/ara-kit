@@ -15,6 +15,14 @@ die Punkte als Aufzählung. Das Werkzeug liest genau diese Form, siehe
 `.ara/tools/lib/version.mjs`. Die englische Fassung dieser Datei ist
 `.ara/CHANGELOG.md` und trägt dieselben Nummern und dieselben Punkte.
 
+## 0.89.0 (2026-11-27)
+
+Kontrakt: bis 14
+
+- **Kit und Vorlage stehen auf Bibliothek 6.** Der Spiegel unter `frontend/src/marken/` ist Fassung 6.0.0 (warmer Grund, weiße Karten, das Blau der Marke, eine Kapsel als Hauptknopf, der Linien-Satz, Glasleiste, Dock, Popup, Blatt, Board und Wischzeile), und eine neue App lädt sie von `/marken/6/`. Die Vorlage nimmt die neuen Bausteine: die Hauptaktion einer Seite ist eine `Hauptkapsel`, die Einzelheiten eines Eintrags stehen in einer `Karte` mit Titel. Die Kontraktzahl bleibt 14: das Gerät liefert nur `/marken/6/` aus und weist eine App auf 5 beim Ausrollen ab.
+- **Eine App auf Bibliothek 5 wird mit dem Weg zum Nachziehen abgewiesen.** `--check`, `--build` und der Nachweis des Ablaufs (`bibliothek-alt`) nennen die alte Hauptzahl, sagen, dass das Gerät nur die 6 ausliefert, und zeigen auf `node .ara/tools/marken.mjs --sync` und die Schritte in `.ara/knowledge/design-system.de.md`, Abschnitt „Eine App auf eine neue Hauptfassung heben“. Nichts wird still umgeschrieben: was eine App selbst gebaut hat, bleibt stehen.
+- **Am Gerät belegt**: eine frische App aus der Vorlage wurde am Orin in Test angenommen und lädt ohne Konsolenfehler, hell und dunkel, bei 390 und 1440 Pixeln.
+
 ## 0.88.0 (2026-11-23)
 
 Kontrakt: bis 14

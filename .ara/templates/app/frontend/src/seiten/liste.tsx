@@ -46,6 +46,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Button,
   Datenliste,
+  Hauptkapsel,
   Karte,
   Kopf,
   Leerzustand,
@@ -168,8 +169,7 @@ function Angaben({ vorgang }: { vorgang: Vorgang }) {
 /** Die Einzelheiten neben der Liste. Der Titel steht ganz da, die Karte kürzte ihn auf eine Zeile. */
 function Einzelheiten({ vorgang }: { vorgang: Vorgang }) {
   return (
-    <Karte kennzeichen="vorgang">
-      <h2 className="mb-3 text-ui-lg font-semibold break-words text-foreground">{vorgang.titel}</h2>
+    <Karte titel={vorgang.titel} kennzeichen="vorgang">
       <Angaben vorgang={vorgang} />
     </Karte>
   );
@@ -244,9 +244,9 @@ export function Vorgaenge() {
                       titel: "Noch kein Vorgang eingereicht.",
                       beschreibung: "Was jemand entschieden haben will, wird hier eingereicht.",
                       aktion: (
-                        <Button variant="solid" onClick={() => weiter("/neu")} data-kennzeichen="erster">
+                        <Hauptkapsel onKlick={() => weiter("/neu")} kennzeichen="erster">
                           Ersten Vorgang einreichen
-                        </Button>
+                        </Hauptkapsel>
                       ),
                     }
               }
