@@ -89,8 +89,8 @@ export function Kennzahl({ beschriftung, wert, einheit, fussnote, verlauf }: Ken
       data-slot="kennzahl"
     >
       <div className="truncate text-ui-sm text-muted-foreground">{beschriftung}</div>
-      <div className="mt-1 flex items-end justify-between gap-3">
-        <div className="flex min-w-0 items-baseline gap-1 text-2xl leading-tight font-semibold text-foreground tabular-nums">
+      <div className="mt-1 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+        <div className="flex items-baseline gap-1 text-2xl leading-tight font-semibold text-foreground tabular-nums">
           {wert}
           {einheit && (
             <span className="text-ui-sm font-normal text-muted-foreground">{einheit}</span>
@@ -98,7 +98,7 @@ export function Kennzahl({ beschriftung, wert, einheit, fussnote, verlauf }: Ken
         </div>
         {pfad && (
           <svg
-            className="h-7 w-[120px] max-w-[45%] shrink text-primary"
+            className="h-7 w-[120px] max-w-full min-w-[64px] shrink text-primary"
             viewBox={`0 0 ${VERLAUF_BREITE} ${VERLAUF_HOEHE}`}
             preserveAspectRatio="none"
             aria-hidden="true"

@@ -174,6 +174,7 @@ export {
   CommandItem,
   CommandShortcut,
   CommandSeparator,
+  wortanfangFilter,
 } from './command';
 export { DatePicker } from './date-picker';
 export type { DatePickerProps } from './date-picker';

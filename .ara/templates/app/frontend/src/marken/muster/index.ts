@@ -44,6 +44,8 @@
  * mit, und geht als einziges Muster mit ins Buendel.
  */
 
+export { Blatt } from './Blatt';
+export type { BlattProps } from './Blatt';
 export { Datenliste, LISTE_SCHMAL_AB_PX } from './Datenliste';
 export type { DatenlisteProps, Spalte } from './Datenliste';
 export { Bestaetigung, Dialogform } from './Dialogform';

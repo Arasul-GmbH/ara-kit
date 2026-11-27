@@ -266,4 +266,76 @@
  * Bindestrich), und die Karte der `Datenliste` am Handy zeigt lange Texte in
  * einer eigenen Zeile, auf zwei Zeilen begrenzt. Kein Name aendert sich.
  */
-export const FASSUNG = '5.9.3';
+/*
+ * 5.10.0: die Befehlspalette. `CommandDialog` schwebt als Glas im oberen
+ * Drittel (Fuellung, Rand und Schatten aus `--glas-*`), mit schlichtem
+ * Schleier, und nimmt `inhaltKennzeichen`; `DialogContent` nimmt `schleier`
+ * (`glas` wie bisher oder `schlicht`). Kein Name faellt weg, nichts aendert
+ * seine Bedeutung; eine App auf 5.9.3 laeuft unveraendert. Die Kennzahl legt
+ * ihre Verlaufslinie in einer schmalen Kachel unter die Zahl statt ueber sie.
+ */
+/*
+ * 5.11.0: die Felder bekommen bei grobem Zeiger die Trefferflaeche von
+ * 44 px, die der Knopf schon hatte. `Input` und der Ausloeser von `Select`
+ * werden dort 44 px hoch (ein `<input>` hat kein `::before`), `Checkbox`,
+ * `RadioGroupItem` und `Switch` behalten ihre Groesse und bekommen die
+ * unsichtbare Flaeche darueber (`TREFFER`, jetzt in `primitive/treffer.ts`).
+ * Am Rechner mit Maus aendert sich nichts. Dazu sucht die Befehlspalette
+ * scharf: `CommandDialog` nimmt `filter`, Vorgabe ist das neue
+ * `wortanfangFilter` (jedes Wort der Eingabe beginnt ein Wort des Eintrags,
+ * ab drei Zeichen auch mitten im Wort); `Command` allein und damit die
+ * `Suchauswahl` suchen wie bisher. Kein Name faellt weg; eine App auf 5.10.0
+ * laeuft unveraendert.
+ */
+/*
+ * 5.11.1: der Seitenkopf bricht um, statt den Titel zu quetschen. Reicht
+ * die Zeile nicht für Titel, Werkzeuge und Aktionen (am Handy neben der
+ * Kapsel, auf der Startseite mit „N Freigaben warten auf Sie"), stehen
+ * Werkzeuge und Aktionen in der nächsten Zeile; der Titel behält mindestens
+ * 12rem. Am Rechner ändert sich nichts. Gefunden an der Demo am Handy.
+ */
+/*
+ * 5.12.0: die gemeinsame Linie. Neu ist das Muster `Blatt`: Einzelheiten und
+ * Formulare am Rechner als Flaeche daneben, rechts mit 8 px Abstand und
+ * 20 px Radius, unter 900 px von unten mit Griff, das sich wegwischen laesst;
+ * Escape, ein Tipp daneben und das Kreuz schliessen es, der Rumpf rollt in
+ * sich, die Aktionen stehen unten. Dazu die Tokens `--radius-blatt`,
+ * `--backdrop-leicht` (`bg-backdrop-leicht`) und `--schatten-blatt`. Der
+ * Verlauf des Rahmens ist kraeftiger (hell bis in ein deutliches Blau,
+ * dunkel ein tiefes Blau oben links), das Glas auf dem Grund duenner im
+ * Dunkeln, `--radius-2xl` 18 statt 14 px. Kein Name faellt weg, nichts
+ * aendert seine Bedeutung; eine App auf 5.11.1 laeuft unveraendert weiter
+ * und sieht nur den neuen Grund und die groesseren Radien.
+ */
+/*
+ * 5.12.1: der helle Verlauf des Rahmens beginnt nicht mehr in Creme, dem Ton
+ * der Flaeche, sondern in einem hellen Blau und geht in ein deutliches Blau;
+ * sonst war er nur in einer Ecke zu sehen. Die Flaeche der Ansicht wirft
+ * einen tieferen Schatten. Kein Name, keine Eigenschaft aendert sich.
+ */
+/*
+ * 5.12.2: der dunkle Verlauf des Rahmens spreizt weiter, ein tiefes Blau
+ * ueber den groesseren Teil und unten rechts ein klares Anthrazit; die
+ * unbeteiligte Durchsicht sah dunkel kaum einen Unterschied. Kein Name,
+ * keine Eigenschaft aendert sich.
+ */
+/*
+ * 6.0.0: die Hauptfassung des Klickentwurfs. Neue Hauptzahl, weil sich ihre
+ * Adresse aendert (`/marken/6/`) und der Grundton mit ihr: der Grund ist ein
+ * warmes Off-White, Karten sind weiss, das Blau der Marke steht als `--blau`
+ * in `theme.css`, dazu `--verlauf-blau` (tiefes bis helles Ende; als
+ * Schrift gilt `--primary`, eine Spur tiefer, damit Text auf Wisch 4,5:1
+ * haelt), Inter bleibt selbst gehostet. Der Hauptknopf ist eine Kapsel.
+ * Neu, alle auf reinem CSS und im Buendel: der Linien-Satz (`Linie`, Strich
+ * 1,5) und das `AppIcon` auf zartem Squircle; `Glas`, `IconKnopf` (Glaskreis
+ * oder flach, mit Hinweis), `Hauptkapsel`, `TextKnopf`; die `Glasleiste` mit
+ * Teststreifen und das `Dock` mit Plus und Zahl; die `Popup`-Kapsel mit
+ * Suchfeld und Gruppen; die `Ebene` als Blatt oder Vollbild; das `Fenster`;
+ * das `Board` mit Ziehen ueber Zeiger-Ereignisse; `Stufenleiste`, `Reiter`,
+ * `Segmente` und die `Wischzeile`. Die `Meldung` nimmt `beiRueckgaengig`
+ * (Frist 5 Sekunden). Die Karte hat Radius 12 und einen Hauch Schatten, die
+ * Listenzeile ist 48 Pixel hoch. Das Geraet liefert nur die aktuelle
+ * Hauptzahl aus: eine App nennt im Manifest die 6 und laedt von `/marken/6/`;
+ * kein Name der 5.x faellt weg.
+ */
+export const FASSUNG = '6.0.0';

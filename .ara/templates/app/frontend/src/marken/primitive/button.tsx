@@ -4,14 +4,13 @@ import { Slot } from 'radix-ui';
 import { Loader2 } from 'lucide-react';
 
 import { cn } from '../cn';
+import { TREFFER } from './treffer';
 
 // Kompakt am Rechner: 32 px mit Text, 28 px als Icon-Knopf, Radius 8 px,
 // Schrift 14 px. Bei grobem Zeiger waechst die TREFFERFLAECHE auf 44 px, nicht
 // der sichtbare Knopf: ein leeres `::before` legt sich mittig darueber
 // (`TREFFER`). Die Hoehen stehen in Pixeln, nicht in rem: die Shell rechnet
 // mit 17 px Wurzelschrift (Komfort-Dichte), und 2rem waeren dort 34 px.
-const TREFFER =
-  "relative pointer-coarse:before:absolute pointer-coarse:before:top-1/2 pointer-coarse:before:left-1/2 pointer-coarse:before:size-full pointer-coarse:before:min-h-11 pointer-coarse:before:min-w-11 pointer-coarse:before:-translate-x-1/2 pointer-coarse:before:-translate-y-1/2 pointer-coarse:before:content-['']";
 
 const buttonVariants = cva(
   `${TREFFER} inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,opacity] duration-[120ms] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`,
