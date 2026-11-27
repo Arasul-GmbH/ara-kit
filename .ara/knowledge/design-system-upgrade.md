@@ -7,7 +7,7 @@ rolled out. The kit says so before that, in `--check`, `--build` and the proof (
 **Nothing is rewritten silently**: what the app built itself stays as it is, and the steps are yours:
 
 1. `node .ara/tools/marken.mjs --sync` lays the new copy under `frontend/src/marken/` and writes the
-   new major number into `marken` of `app.json` (the form the app has, one number or three).
+   new major number into `marken` of `app.json` (the form the app has, one number or three). An app without that folder is not found by it: set `"marken": "6"` in `app.json` by hand.
 2. Build anew (`npm run build`) and run `node .ara/tools/app.mjs --app <app> --check`. Types that
    no longer fit name the page to fix. Nothing of the 5.x was removed, only the look and the
    addresses changed.

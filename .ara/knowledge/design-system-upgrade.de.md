@@ -8,7 +8,7 @@ Ausrollen abgewiesen. Das Kit sagt es vorher, in `--check`, `--build` und im Nac
 und die Schritte sind Ihre:
 
 1. `node .ara/tools/marken.mjs --sync` legt die neue Kopie unter `frontend/src/marken/` hin und schreibt
-   die neue Hauptzahl in `marken` der `app.json` (in der Form, die die App hat, eine Zahl oder drei).
+   die neue Hauptzahl in `marken` der `app.json` (in der Form, die die App hat, eine Zahl oder drei). Eine App ohne diesen Ordner findet es nicht: dann `"marken": "6"` von Hand in die `app.json` setzen.
 2. Neu bauen (`npm run build`) und `node .ara/tools/app.mjs --app <App> --check` laufen lassen. Typen,
    die nicht mehr passen, nennen die Seite, die zu ändern ist. Aus der 5.x ist kein Name
    weggefallen, es änderten sich Aussehen und Adressen.
