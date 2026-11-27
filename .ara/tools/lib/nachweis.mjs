@@ -28,7 +28,9 @@ import { spawnSync } from "node:child_process";
 import { join, relative, sep } from "node:path";
 import { ROOT } from "./kit.mjs";
 import { t } from "./i18n.mjs";
+import { majorOf } from "./laufzeit.mjs";
 import { readLibrary } from "./marken.mjs";
+import { kitLibraryMajor } from "./standard.mjs";
 import { SYMBOL_NAME } from "./symbole.mjs";
 
 export const NACHWEIS_FILE = "nachweis.json";
@@ -352,6 +354,18 @@ export function verify(dir, { ort = "paket", manifest = null, ausgenommen = fals
   const lib = document.bibliothek;
   if (!lib || (app?.marken && lib.marken !== app.marken)) {
     add("bibliothek", `Die Fassung der Bibliothek im Nachweis (${lib?.marken ?? "keine"}) ist nicht die im Manifest (${app?.marken ?? "keine"}).`, `The library version in the proof (${lib?.marken ?? "none"}) is not the one in the manifest (${app?.marken ?? "none"}).`);
+  }
+
+  // Eine ältere Hauptzahl als die des Kits: das Gerät liefert nur die aktuelle aus (seit 27.11.2026 die 6)
+  // und nimmt die App nicht an. Der Nachweis sagt es mit dem Weg, die Schritte stehen im Wissen.
+  const kitHaupt = kitLibraryMajor();
+  const nachweisHaupt = lib?.marken ? (/^\d+$/.test(lib.marken) ? lib.marken : majorOf(lib.marken)) : null;
+  if (kitHaupt && nachweisHaupt && Number(nachweisHaupt) < Number(kitHaupt)) {
+    add(
+      "bibliothek-alt",
+      `Der Nachweis nennt die Bibliothek ${lib.marken} (Hauptzahl ${nachweisHaupt}). Das Gerät liefert nur ${kitHaupt} aus und nimmt die App so nicht an. Nachziehen: node .ara/tools/marken.mjs --sync, neu bauen, jede Seite ansehen (.ara/knowledge/design-system.de.md, „Eine App auf eine neue Hauptfassung heben“).`,
+      `The proof names library ${lib.marken} (major number ${nachweisHaupt}). The device serves only ${kitHaupt} and does not accept the app like that. Pulling up: node .ara/tools/marken.mjs --sync, build again, look at every page (.ara/knowledge/design-system.md, "Moving an app to a new major version").`
+    );
   }
 
   // Das Symbol: das Manifest nennt eines in der Form, die das Gerät zeichnet, und der Nachweis nennt

@@ -49,7 +49,7 @@ app (`--nachweis <folder>`) is judged as the device would judge the unpacked pac
   "app": "urlaub",
   "version": "0.1.0",
   "kit": { "version": "0.87.0" },
-  "bibliothek": { "marken": "5", "kopie": "5.9.3" },
+  "bibliothek": { "marken": "6", "kopie": "6.0.0" },
   "symbol": "tree-palm",
   "schritte": [
     { "name": "interview", "zeit": "2026-11-20T10:50:31.683Z", "quelle": "sha256:<hex>", "plan": "2026-11-20-erster-plan.md", "plan_pruefsumme": "sha256:<hex>" },
@@ -114,6 +114,7 @@ In this order; the codes are the ones `--nachweis --json` returns, in `funde[].c
 | `tests-veraltet` | `tests.lauf.quelle` is not `inhalt.quelle`: the tests ran against another state |
 | `bau-veraltet` | The step `bau` stands on another source than the proof |
 | `bibliothek` | `bibliothek.marken` is not the manifest's `marken` |
+| `bibliothek-alt` | `bibliothek.marken` names an older major number than the kit builds on (library 5, the device serves only 6): the message says how to pull the app up |
 | `symbol` | The manifest names no `symbol` in the form `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, or the proof's `symbol` is another. Whether the name stands in the icon set the kit checks before the build; the device checks the form, as it does for the manifest |
 
 At the computer (`--nachweis` without a folder, and before every `--deploy` from `apps/`) two more

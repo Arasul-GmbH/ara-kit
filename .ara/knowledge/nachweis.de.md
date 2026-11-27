@@ -51,7 +51,7 @@ einer App (`--nachweis <ordner>`) wird beurteilt, wie das Gerät das entpackte P
   "app": "urlaub",
   "version": "0.1.0",
   "kit": { "version": "0.87.0" },
-  "bibliothek": { "marken": "5", "kopie": "5.9.3" },
+  "bibliothek": { "marken": "6", "kopie": "6.0.0" },
   "symbol": "tree-palm",
   "schritte": [
     { "name": "interview", "zeit": "2026-11-20T10:50:31.683Z", "quelle": "sha256:<hex>", "plan": "2026-11-20-erster-plan.md", "plan_pruefsumme": "sha256:<hex>" },
@@ -118,6 +118,7 @@ In dieser Reihenfolge; die Codes sind die, die `--nachweis --json` in `funde[].c
 | `tests-veraltet` | `tests.lauf.quelle` ist nicht `inhalt.quelle`: die Tests liefen gegen einen anderen Stand |
 | `bau-veraltet` | Der Schritt `bau` steht auf einem anderen Quelltext als der Nachweis |
 | `bibliothek` | `bibliothek.marken` ist nicht das `marken` des Manifests |
+| `bibliothek-alt` | `bibliothek.marken` nennt eine ältere Hauptzahl als die, auf der das Kit baut (Bibliothek 5, das Gerät liefert nur die 6 aus): die Meldung sagt, wie die App nachgezogen wird |
 | `symbol` | Das Manifest nennt kein `symbol` in der Form `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, oder das `symbol` des Nachweises ist ein anderes. Ob der Name im Bildersatz steht, prüft das Kit vor dem Bau; das Gerät prüft die Form, wie beim Manifest |
 
 Am Rechner (`--nachweis` ohne Ordner und vor jedem `--deploy` aus `apps/`) kommen zwei Fälle aus

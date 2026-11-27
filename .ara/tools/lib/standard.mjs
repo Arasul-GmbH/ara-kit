@@ -34,8 +34,20 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, posix, relative, sep } from "node:path";
 import { t } from "./i18n.mjs";
 import { walkFiles } from "./files.mjs";
-import { runtimeMajor } from "./laufzeit.mjs";
+import { fileURLToPath } from "node:url";
+import { majorOf, runtimeMajor } from "./laufzeit.mjs";
 import { readLibrary } from "./marken.mjs";
+
+/**
+ * Die Hauptzahl der Bibliothek, auf der dieses Kit baut: die der Kopie in seiner
+ * Vorlage. Eine App darunter wird abgewiesen, denn das Gerät liefert nur die
+ * aktuelle Hauptzahl aus (seit 27.11.2026 die 6) und weist die ältere beim
+ * Ausrollen ab. `null`, wo die Vorlage fehlt.
+ */
+export function kitLibraryMajor() {
+  const vorlage = fileURLToPath(new URL("../../templates/app/frontend/src/marken", import.meta.url));
+  return majorOf(readLibrary(vorlage)?.fassung);
+}
 
 /** Woran gemessen wird: die Quelldateien der Oberfläche. */
 const SOURCE = /\.(ts|tsx|js|jsx|css|html)$/;
@@ -206,6 +218,20 @@ export function standardFindings(dir, { manifest = undefined, scaffold = false }
     // vom Gerät (Kontrakt 9). Dann gibt es keine Fassung, die eine Kopie
     // tragen müsste, und die Kopie darf fehlen.
     const zurLaufzeit = runtimeMajor(found) !== null;
+    // Eine ältere Hauptzahl als die des Kits: das Gerät liefert nur die
+    // aktuelle aus und weist die App beim Ausrollen ab. Das Kit sagt es vorher,
+    // und was zu tun ist: das Nachziehen schreibt nichts um, was die App selbst
+    // gebaut hat, die Seiten prüft ein Mensch gegen die neue Fassung.
+    const kitHaupt = kitLibraryMajor();
+    const appHaupt = feld ? (/^\d+$/.test(feld) ? feld : majorOf(feld)) : null;
+    if (kitHaupt && appHaupt && Number(appHaupt) < Number(kitHaupt) && !(scaffold && feld === "{{marken}}")) {
+      out.push(
+        t(
+          `app.json names marken ${feld}: the library, major number ${appHaupt}. This kit builds on ${kitHaupt}, and the device serves only ${kitHaupt}, so it refuses this app when it is rolled out. Pulling up: node .ara/tools/marken.mjs --sync lays the new copy down and writes "${kitHaupt}" into app.json; then build anew (npm run build) and look at every page once, the steps are in .ara/knowledge/design-system.md, section "Moving an app to a new major version".`,
+          `app.json nennt marken ${feld}: die Bibliothek mit der Hauptzahl ${appHaupt}. Dieses Kit baut auf ${kitHaupt}, und das Gerät liefert nur ${kitHaupt} aus, es weist diese App also beim Ausrollen ab. Nachziehen: node .ara/tools/marken.mjs --sync legt die neue Kopie hin und schreibt "${kitHaupt}" in die app.json; danach neu bauen (npm run build) und jede Seite einmal ansehen, die Schritte stehen in .ara/knowledge/design-system.de.md, Abschnitt „Eine App auf eine neue Hauptfassung heben“.`
+        )
+      );
+    }
     if (zurLaufzeit) {
       // nichts zu halten: das Gerät liefert die Fassung, die es führt
     } else if (hasMirror && !feld) {
