@@ -363,8 +363,8 @@ export function verify(dir, { ort = "paket", manifest = null, ausgenommen = fals
   if (kitHaupt && nachweisHaupt && Number(nachweisHaupt) < Number(kitHaupt)) {
     add(
       "bibliothek-alt",
-      `Der Nachweis nennt die Bibliothek ${lib.marken} (Hauptzahl ${nachweisHaupt}). Das Gerät liefert nur ${kitHaupt} aus und nimmt die App so nicht an. Nachziehen: node .ara/tools/marken.mjs --sync, neu bauen, jede Seite ansehen (.ara/knowledge/design-system.de.md, „Eine App auf eine neue Hauptfassung heben“).`,
-      `The proof names library ${lib.marken} (major number ${nachweisHaupt}). The device serves only ${kitHaupt} and does not accept the app like that. Pulling up: node .ara/tools/marken.mjs --sync, build again, look at every page (.ara/knowledge/design-system.md, "Moving an app to a new major version").`
+      `Der Nachweis nennt die Bibliothek ${lib.marken} (Hauptzahl ${nachweisHaupt}). Das Gerät liefert nur ${kitHaupt} aus und nimmt die App so nicht an. Nachziehen: node .ara/tools/marken.mjs --sync, neu bauen, jede Seite ansehen (.ara/knowledge/design-system-upgrade.de.md).`,
+      `The proof names library ${lib.marken} (major number ${nachweisHaupt}). The device serves only ${kitHaupt} and does not accept the app like that. Pulling up: node .ara/tools/marken.mjs --sync, build again, look at every page (.ara/knowledge/design-system-upgrade.md).`
     );
   }
 

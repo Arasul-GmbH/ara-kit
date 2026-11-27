@@ -95,7 +95,7 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
   carries `symbole.ts`.
 - **The field `marken` in `app.json` missing or stale.** The major number alone needs no copy to
   match; three numbers must match the copy. `--new` writes it, `marken.mjs --sync` keeps it.
-  `--check` against a device stops a major number it does not serve, and only hints at an aged copy.
+  `--check` against a device stops a major number it does not serve, and only hints at an aged copy. An app below the kit's major number: `.ara/knowledge/design-system-upgrade.md`.
 
 **Without `symbol` in `app.json` `--build` stops before all of this.**
 
@@ -108,21 +108,3 @@ belongs in the product; and **no threshold of your own**: 900 pixels of the wind
 **Check an interface in both themes and three widths**, 390 for the phone, 1280 and 1440 for the
 desk. Below 900 the sidebar is a sheet and a data list a card list, and a page scrolling sideways is
 broken.
-
-## Moving an app to a new major version
-
-A new major number of the library (6 on 27.11.2026) changes the address the device serves it from
-(`/marken/6/`), and the device serves **only the current one**: an app on 5 is refused when it is
-rolled out. The kit says so before that, in `--check`, `--build` and the proof (`bibliothek-alt`).
-**Nothing is rewritten silently**: what the app built itself stays as it is, and the steps are yours:
-
-1. `node .ara/tools/marken.mjs --sync` lays the new copy under `frontend/src/marken/` and writes the
-   new major number into `marken` of `app.json` (the form the app has, one number or three).
-2. Build anew (`npm run build`) and run `node .ara/tools/app.mjs --app <app> --check`. Types that
-   no longer fit name the page to fix. Nothing of the 5.x was removed, only the look and the
-   addresses changed.
-3. Look at every page once, light and dark, at 390 and 1440 pixels. Own rules in `stil.css` that
-   imitate a block (a status mark, a card of your own) are the first to replace by the library's:
-   `Karte`, `Liste`/`ListenEintrag`, `IconKnopf` and `Werkzeug` for icon buttons, `Hauptkapsel` for the
-   one main action of a page.
-4. `--build` again (new proof), then roll out to test as usual.

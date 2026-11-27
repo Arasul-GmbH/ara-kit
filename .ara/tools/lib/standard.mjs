@@ -227,8 +227,8 @@ export function standardFindings(dir, { manifest = undefined, scaffold = false }
     if (kitHaupt && appHaupt && Number(appHaupt) < Number(kitHaupt) && !(scaffold && feld === "{{marken}}")) {
       out.push(
         t(
-          `app.json names marken ${feld}: the library, major number ${appHaupt}. This kit builds on ${kitHaupt}, and the device serves only ${kitHaupt}, so it refuses this app when it is rolled out. Pulling up: node .ara/tools/marken.mjs --sync lays the new copy down and writes "${kitHaupt}" into app.json; then build anew (npm run build) and look at every page once, the steps are in .ara/knowledge/design-system.md, section "Moving an app to a new major version".`,
-          `app.json nennt marken ${feld}: die Bibliothek mit der Hauptzahl ${appHaupt}. Dieses Kit baut auf ${kitHaupt}, und das Gerät liefert nur ${kitHaupt} aus, es weist diese App also beim Ausrollen ab. Nachziehen: node .ara/tools/marken.mjs --sync legt die neue Kopie hin und schreibt "${kitHaupt}" in die app.json; danach neu bauen (npm run build) und jede Seite einmal ansehen, die Schritte stehen in .ara/knowledge/design-system.de.md, Abschnitt „Eine App auf eine neue Hauptfassung heben“.`
+          `app.json names marken ${feld}: the library, major number ${appHaupt}. This kit builds on ${kitHaupt}, and the device serves only ${kitHaupt}, so it refuses this app when it is rolled out. Pulling up: node .ara/tools/marken.mjs --sync lays the new copy down and writes "${kitHaupt}" into app.json; then build anew (npm run build) and look at every page once, the steps are in .ara/knowledge/design-system-upgrade.md.`,
+          `app.json nennt marken ${feld}: die Bibliothek mit der Hauptzahl ${appHaupt}. Dieses Kit baut auf ${kitHaupt}, und das Gerät liefert nur ${kitHaupt} aus, es weist diese App also beim Ausrollen ab. Nachziehen: node .ara/tools/marken.mjs --sync legt die neue Kopie hin und schreibt "${kitHaupt}" in die app.json; danach neu bauen (npm run build) und jede Seite einmal ansehen, die Schritte stehen in .ara/knowledge/design-system-upgrade.de.md.`
         )
       );
     }

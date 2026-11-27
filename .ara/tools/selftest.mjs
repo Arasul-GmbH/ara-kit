@@ -3000,7 +3000,7 @@ check("Kontrakt 9: das Feld marken heißt mit der Hauptzahl zur Laufzeit, mit dr
     // Bibliothek 5 weist das Kit ab, mit dem Weg zum Nachziehen (das Gerät liefert nur die 6 aus).
     for (const alt of ["5", "5.9.3"]) {
       const befund = mit(alt).find((b) => /Hauptzahl 5|major number 5/.test(b));
-      assert(befund && /marken\.mjs --sync/.test(befund) && /design-system/.test(befund), `Bibliothek ${alt} wird nicht mit Anleitung abgewiesen: ${mit(alt).join(" | ")}`);
+      assert(befund && /marken\.mjs --sync/.test(befund) && /design-system-upgrade/.test(befund), `Bibliothek ${alt} wird nicht mit Anleitung abgewiesen: ${mit(alt).join(" | ")}`);
     }
   } finally {
     rmSync(dir, { recursive: true, force: true });

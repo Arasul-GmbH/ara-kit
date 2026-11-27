@@ -99,7 +99,7 @@ und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build
 - **Das Feld `marken` in `app.json` fehlt oder ist veraltet.** Die Hauptzahl allein braucht keine
   passende Kopie, drei Zahlen müssen zur Kopie passen. `--new` schreibt es, `marken.mjs --sync`
   hält es. Gegen ein Gerät hält `--check` auch eine Hauptzahl an, die das Gerät nicht ausliefert,
-  und weist bei einer gealterten Kopie nur hin.
+  und weist bei einer gealterten Kopie nur hin. Eine App unter der Hauptzahl des Kits: `.ara/knowledge/design-system-upgrade.de.md`.
 
 **Ohne `symbol` in `app.json` hält `--build` vor alledem an.**
 
@@ -112,22 +112,3 @@ für die Seite (`useSchmalesFenster`), den Kasten einer Datenliste misst die Bib
 **Prüf eine Oberfläche in beiden Themen und drei Breiten**, 390 für das Telefon, 1280 und 1440 für
 den Schreibtisch. Unter 900 ist die Seitenleiste ein Blatt und eine Datenliste eine Kartenliste, und eine
 Seite, die seitwärts rollt, ist kaputt.
-
-## Eine App auf eine neue Hauptfassung heben
-
-Eine neue Hauptzahl der Bibliothek (die 6 am 27.11.2026) ändert die Adresse, von der das Gerät sie
-ausliefert (`/marken/6/`), und das Gerät liefert **nur die aktuelle** aus: eine App auf 5 wird beim
-Ausrollen abgewiesen. Das Kit sagt es vorher, in `--check`, `--build` und im Nachweis
-(`bibliothek-alt`). **Nichts wird still umgeschrieben**: was die App selbst gebaut hat, bleibt stehen,
-und die Schritte sind Ihre:
-
-1. `node .ara/tools/marken.mjs --sync` legt die neue Kopie unter `frontend/src/marken/` hin und schreibt
-   die neue Hauptzahl in `marken` der `app.json` (in der Form, die die App hat, eine Zahl oder drei).
-2. Neu bauen (`npm run build`) und `node .ara/tools/app.mjs --app <App> --check` laufen lassen. Typen,
-   die nicht mehr passen, nennen die Seite, die zu ändern ist. Aus der 5.x ist kein Name
-   weggefallen, es änderten sich Aussehen und Adressen.
-3. Jede Seite einmal ansehen, hell und dunkel, bei 390 und 1440 Pixeln. Eigene Regeln in `stil.css`, die
-   einen Baustein nachbilden (eine Standmarke, eine eigene Karte), sind die ersten, die durch die der
-   Bibliothek ersetzt werden: `Karte`, `Liste`/`ListenEintrag`, `IconKnopf` und `Werkzeug` für
-   Icon-Knöpfe, `Hauptkapsel` für die eine Hauptaktion einer Seite.
-4. Noch einmal `--build` (neuer Nachweis), dann wie gewohnt in Test ausrollen.
