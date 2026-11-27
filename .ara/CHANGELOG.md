@@ -13,6 +13,14 @@ Structure of an entry: `## <number> (<date>)`, below it the contract line and th
 The tool reads exactly this shape, see `.ara/tools/lib/version.mjs`. The German version of this file
 is `.ara/CHANGELOG.de.md` and carries the same numbers and the same points.
 
+## 0.89.0 (2026-11-27)
+
+Contract: up to 14
+
+- **The kit and the scaffold stand on library 6.** The mirror under `frontend/src/marken/` is version 6.0.0 (warm ground, white cards, the blue of the brand, a capsule as the main button, the line icon set, glass bar, dock, popup, sheet, board and swipe row), and a new app loads it from `/marken/6/`. The scaffold uses the new blocks: the main action of a page is a `Hauptkapsel`, the details of an entry stand in a `Karte` with a title. The contract number stays 14: the device only serves `/marken/6/` and refuses an app on 5 when it is rolled out.
+- **An app on library 5 is turned away with the way to pull it up.** `--check`, `--build` and the proof of the flow (`bibliothek-alt`) name the old major number, say that the device serves only 6, and point at `node .ara/tools/marken.mjs --sync` and the steps in `.ara/knowledge/design-system-upgrade.md`. Nothing is rewritten silently: what an app built itself stays as it is.
+- **Proven at the device**: a fresh app from the scaffold was accepted into test on the Orin and loads without a console error, light and dark, at 390 and 1440 pixels.
+
 ## 0.88.0 (2026-11-23)
 
 Contract: up to 14

@@ -70,14 +70,18 @@
   /* Farben: Thema HELL, die Vorgabe. Die Abweichungen des dunklen Themas
      stehen unten in `[data-theme='dark']`; was hier steht und dort fehlt,
      gilt in beiden. */
-  --ara-flaeche: var(--background, #f6f3ed);
-  --ara-flaeche-karte: var(--card, #fbf8f2);
-  --ara-flaeche-hoch: var(--popover, #fbf8f2);
+  --ara-flaeche: var(--background, #f7f5f1);
+  --ara-flaeche-karte: var(--card, #ffffff);
+  --ara-flaeche-hoch: var(--popover, #ffffff);
   --ara-wisch: var(--accent, rgba(30, 27, 22, 0.05));
   --ara-text: var(--foreground, #1e1b16);
   --ara-text-leise: var(--muted-foreground, #6b6250);
   --ara-kante: var(--border, #dfd6c4);
-  --ara-akzent: var(--primary, #2559b1);
+  --ara-akzent: var(--primary, #2560b8);
+  --ara-blau: var(--blau, #2868c4);
+  --ara-blau-tief: var(--blau-tief, #2454a0);
+  --ara-blau-hell: var(--blau-hell, #3482de);
+  --ara-blau-zart: var(--blau-zart, #e6eefa);
   --ara-akzent-text: var(--primary-foreground, #ffffff);
   --ara-fehler: var(--destructive, #c42020);
 
@@ -145,6 +149,8 @@
   --ara-text-leise: var(--muted-foreground, #a3abb8);
   --ara-kante: var(--border, rgba(246, 243, 237, 0.1));
   --ara-akzent: var(--primary, #6a9ae6);
+  --ara-blau: var(--blau, #6a9ae6);
+  --ara-blau-zart: var(--blau-zart, #16305a);
   --ara-akzent-text: var(--primary-foreground, #0a1628);
   --ara-fehler: var(--destructive, #f26d6d);
   --ara-schleier: var(--backdrop-color, rgba(4, 10, 20, 0.6));
@@ -173,7 +179,37 @@
 .ara-knopf,
 .ara-strom,
 .ara-dokumentanzeige,
-.ara-dokumentanzeige * {
+.ara-dokumentanzeige *,
+.ara-linie,
+.ara-appicon,
+.ara-glas,
+.ara-iknopf,
+.ara-kapsel,
+.ara-textknopf,
+.ara-leiste,
+.ara-dock,
+.ara-popup,
+.ara-ebene,
+.ara-fenster,
+.ara-board,
+.ara-stufen,
+.ara-reiter,
+.ara-segmente,
+.ara-wisch,
+.ara-glas *,
+.ara-iknopf *,
+.ara-kapsel *,
+.ara-textknopf *,
+.ara-leiste *,
+.ara-dock *,
+.ara-popup *,
+.ara-ebene *,
+.ara-fenster *,
+.ara-board *,
+.ara-stufen *,
+.ara-reiter *,
+.ara-segmente *,
+.ara-wisch * {
   box-sizing: border-box;
 }
 
@@ -199,7 +235,21 @@
 .ara-meldung,
 .ara-menue,
 .ara-knopf,
-.ara-dokumentanzeige {
+.ara-dokumentanzeige,
+.ara-glas,
+.ara-iknopf,
+.ara-kapsel,
+.ara-textknopf,
+.ara-leiste,
+.ara-dock,
+.ara-popup,
+.ara-ebene,
+.ara-fenster,
+.ara-board,
+.ara-stufen,
+.ara-reiter,
+.ara-segmente,
+.ara-wisch {
   font-family: var(--ara-schrift);
   color: var(--ara-text);
 }
@@ -248,8 +298,15 @@
   margin-bottom: 8px;
 }
 
+/* Der Titel hat Vorrang (5.11.1): reicht die Zeile nicht für Titel,
+   Werkzeuge und Aktionen (am Handy, neben der Kapsel), brechen Werkzeuge und
+   Aktionen in die nächste Zeile um, statt den Titel auf einen Buchstaben zu
+   drücken. Am Rechner bleibt alles in einer Zeile. */
+.ara-kopf {
+  flex-wrap: wrap;
+}
 .ara-kopf__text {
-  flex: 1 1 auto;
+  flex: 1 1 12rem;
   min-width: 0;
 }
 
@@ -398,7 +455,7 @@
   align-items: center;
   gap: var(--ara-abstand-2);
   width: 100%;
-  min-height: 2.75rem; /* 44px, die Fingerkuppe aus der Apple-HIG */
+  min-height: 48px; /* eine Zeile: 48, die Fingerkuppe braucht 44 */
   padding: var(--ara-abstand-2);
   border: 0;
   border-radius: var(--ara-rundung-sm);
@@ -506,8 +563,9 @@ a.ara-liste__eintrag:hover {
   width: 100%;
   padding: var(--ara-abstand-3);
   border: 1px solid var(--ara-kante);
-  border-radius: var(--ara-rundung);
+  border-radius: var(--ara-rundung-lg);
   background-color: var(--ara-flaeche-karte);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ara-text) 5%, transparent);
   color: inherit;
   font: inherit;
   text-align: left;
@@ -729,7 +787,8 @@ button.ara-karte:focus-visible {
    hellere Stufe der Marke, in 120 ms. */
 .ara-knopf[data-art='haupt'] {
   border-color: transparent;
-  background-color: var(--ara-akzent);
+  border-radius: 999px;
+  background-color: var(--ara-blau);
   color: var(--ara-akzent-text);
   transition:
     filter 120ms ease,
@@ -737,7 +796,7 @@ button.ara-karte:focus-visible {
 }
 
 .ara-knopf[data-art='haupt']:hover:not(:disabled) {
-  background-color: var(--ara-akzent);
+  background-color: var(--ara-blau);
   filter: brightness(1.08);
 }
 
@@ -764,9 +823,12 @@ button.ara-karte:focus-visible {
    der Palette gestrichen. Eine Warnung erkennt man an ihrem Titel, nicht an
    einem Orange, das jede App als Einladung zu eigenen Farben liest. */
 .ara-meldung {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--ara-abstand-1);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ara-abstand-2);
+  overflow: hidden;
   padding: var(--ara-abstand-3);
   border: 1px solid var(--ara-kante);
   border-left-width: 3px;
@@ -1023,4 +1085,1002 @@ button.ara-karte:focus-visible {
   .ara-dokumentanzeige__kreisel {
     animation-duration: 2s;
   }
+}
+
+/* =============================================================================
+   DIE BAUSTEINE DER HAUPTFASSUNG 6
+   =============================================================================
+   Glas, Icon-Knoepfe, Leiste, Dock, Popup, Ebene, Fenster, Board, Stufen,
+   Reiter, Segmente, Wischzeile. Alles auf den `--ara-*` oben, alles in
+   Pixeln (die Shell rechnet mit 17 px Wurzelschrift). Jede Flaeche, auf die
+   man tippt, ist mindestens 44 x 44 px gross.
+
+   Bewegung ist kurz (120 bis 300 ms) und faellt bei „weniger Bewegung“ ganz
+   weg, am Ende dieses Abschnitts. Glas ist halbdurchsichtig nur, wo `theme.css`
+   es erlaubt; sonst ist `--ara-glas` deckend.
+   ========================================================================== */
+
+:root {
+  --ara-rundung-kachel: 20px;
+}
+
+.ara-linie {
+  flex: none;
+  display: block;
+}
+
+/* --- Glas ---------------------------------------------------------------- */
+.ara-glas {
+  background-color: var(--ara-glas);
+  -webkit-backdrop-filter: var(--ara-glas-filter);
+  backdrop-filter: var(--ara-glas-filter);
+  border: 1px solid var(--ara-glas-kante);
+  box-shadow: var(--glas-schatten, 0 0 0 1px var(--ara-kante));
+  color: var(--ara-text);
+}
+.ara-glas[data-form='kapsel'] {
+  border-radius: 999px;
+}
+.ara-glas[data-form='karte'] {
+  border-radius: var(--ara-rundung-kachel);
+}
+.ara-glas[data-form='kreis'] {
+  border-radius: 50%;
+}
+
+/* --- App-Icon: Linien-Icon in Blau auf zartem Squircle ---------------------- */
+.ara-appicon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--ara-appicon, 44px);
+  height: var(--ara-appicon, 44px);
+  border-radius: 30%;
+  background-color: var(--ara-blau-zart);
+  color: var(--ara-akzent);
+}
+
+/* --- Hinweise: die Sprechblase unter einem Knopf --------------------------- */
+[data-hinweis] {
+  position: relative;
+}
+[data-hinweis]:not(:disabled)::after {
+  content: attr(data-hinweis);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 70;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background-color: var(--ara-text);
+  color: var(--ara-flaeche);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -2px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+@media (hover: hover) {
+  [data-hinweis]:hover::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+[data-hinweis]:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+/* Im Dock steht der Hinweis darueber, unten ist kein Platz. */
+.ara-dock [data-hinweis]::after {
+  top: auto;
+  bottom: calc(100% + 10px);
+}
+
+/* --- Icon-Knopf ------------------------------------------------------------ */
+.ara-iknopf {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ara-text);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+.ara-iknopf[data-art='glas'] {
+  background-color: var(--ara-glas);
+  -webkit-backdrop-filter: var(--ara-glas-filter);
+  backdrop-filter: var(--ara-glas-filter);
+  border-color: var(--ara-glas-kante);
+  box-shadow: var(--glas-schatten, 0 0 0 1px var(--ara-kante));
+}
+.ara-iknopf:hover:not(:disabled) {
+  background-color: var(--ara-wisch);
+}
+.ara-iknopf[aria-pressed='true'] {
+  background-color: var(--ara-blau-zart);
+  color: var(--ara-akzent);
+}
+.ara-iknopf:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ara-iknopf:focus-visible,
+.ara-kapsel:focus-visible,
+.ara-textknopf:focus-visible,
+.ara-dock__eintrag:focus-visible,
+.ara-popup__eintrag:focus-visible,
+.ara-reiter__knopf:focus-visible,
+.ara-segmente__knopf:focus-visible,
+.ara-stufen__knopf:focus-visible,
+.ara-board__karte:focus-visible {
+  outline: 2px solid var(--ara-akzent);
+  outline-offset: 2px;
+}
+
+/* --- Hauptkapsel ------------------------------------------------------------ */
+.ara-kapsel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--ara-blau);
+  color: var(--ara-akzent-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    filter 120ms ease,
+    opacity 120ms ease;
+}
+.ara-kapsel:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.ara-kapsel:active:not(:disabled) {
+  filter: brightness(0.95);
+}
+.ara-kapsel:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --- Textknopf --------------------------------------------------------------- */
+.ara-textknopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ara-akzent);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.ara-textknopf:hover:not(:disabled) {
+  background-color: var(--ara-blau-zart);
+}
+.ara-textknopf:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* --- Glasleiste ---------------------------------------------------------------
+   Durchgehend, oben, 56 px. Im Test ein 2 px breiter blauer Streifen unten. */
+.ara-leiste {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 12px;
+  border-radius: 0;
+  border-width: 0 0 1px;
+  overflow: hidden;
+}
+.ara-leiste__links,
+.ara-leiste__rechts {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.ara-leiste__mitte {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ara-leiste[data-test='true']::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--ara-blau);
+}
+
+/* --- Dock --------------------------------------------------------------------
+   Eine Glaspille mittig unten; die Marke gleitet unter den aktiven Eintrag. */
+.ara-dock {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 999px;
+}
+.ara-dock__marke {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: var(--ara-dock-b, 0);
+  border-radius: 999px;
+  background-color: var(--ara-blau-zart);
+  transform: translateX(var(--ara-dock-x, 0));
+  transition:
+    transform 240ms ease,
+    width 240ms ease;
+}
+.ara-dock__eintrag {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  height: 52px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ara-text-leise);
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+.ara-dock__eintrag[aria-current='page'] {
+  color: var(--ara-akzent);
+}
+.ara-dock__eintrag[data-plus='true'] {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  background-color: var(--ara-blau);
+  color: var(--ara-akzent-text);
+}
+.ara-dock__eintrag:hover:not([data-plus='true']) {
+  color: var(--ara-text);
+}
+.ara-dock__wort {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 14px;
+}
+.ara-dock__zahl {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background-color: var(--ara-blau);
+  color: var(--ara-akzent-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* --- Popup -------------------------------------------------------------------
+   Glas im oberen Drittel, mit Suchfeld und Gruppen. */
+.ara-schleier,
+.ara-ebene__schleier {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: 0;
+  background-color: var(--ara-schleier);
+  cursor: default;
+}
+.ara-popup {
+  position: fixed;
+  top: 14vh;
+  left: 50%;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(520px, 72vh);
+  overflow: hidden;
+  transform: translateX(-50%);
+}
+.ara-popup__suche {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--ara-kante);
+  color: var(--ara-text-leise);
+}
+.ara-popup__suche input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ara-text);
+  font-family: inherit;
+  font-size: 16px;
+}
+.ara-popup .ara-popup__suche input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.ara-popup__suche input::placeholder {
+  color: var(--ara-text-leise);
+}
+.ara-popup__inhalt {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+}
+.ara-popup__gruppe {
+  padding-bottom: 4px;
+}
+.ara-popup__gruppentitel {
+  margin: 0;
+  padding: 10px 12px 4px;
+  color: var(--ara-text-leise);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ara-popup__eintrag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ara-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ara-popup__eintrag:hover,
+.ara-popup__eintrag:focus-visible {
+  background-color: var(--ara-wisch);
+}
+.ara-popup__eintrag .ara-linie {
+  color: var(--ara-text-leise);
+}
+.ara-popup__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.ara-popup__titel {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ara-popup__unterzeile {
+  overflow: hidden;
+  color: var(--ara-text-leise);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ara-popup__kuerzel {
+  color: var(--ara-text-leise);
+  font-family: inherit;
+  font-size: 12px;
+}
+.ara-popup__leer {
+  margin: 0;
+  padding: 24px 12px;
+  color: var(--ara-text-leise);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* --- Ebene: Blatt und Vollbild ------------------------------------------------ */
+.ara-ebene {
+  position: fixed;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--ara-flaeche-karte);
+  color: var(--ara-text);
+  transition: transform 240ms ease;
+}
+.ara-ebene[data-art='blatt'] {
+  top: 8px;
+  right: 8px;
+  bottom: 8px;
+  width: min(440px, calc(100vw - 16px));
+  border: 1px solid var(--ara-kante);
+  border-radius: 20px;
+  box-shadow: var(--schatten-blatt, 0 16px 48px -16px var(--ara-schleier));
+  animation: ara-ebene-rein 240ms ease both;
+}
+.ara-ebene[data-art='vollbild'] {
+  inset: 0;
+  background-color: var(--ara-flaeche);
+}
+.ara-ebene__griff {
+  display: none;
+  flex: none;
+  justify-content: center;
+  padding: 8px 0 0;
+  touch-action: none;
+  cursor: grab;
+}
+.ara-ebene__griff span {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  background-color: var(--ara-kante);
+}
+.ara-ebene__kopf {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 0 20px;
+}
+.ara-ebene__titel {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+.ara-ebene__rumpf {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 20px;
+  overflow-y: auto;
+}
+.ara-ebene__rumpf[data-vollbild='true'] {
+  padding: 0;
+}
+.ara-ebene__aktionen {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 20px;
+}
+.ara-ebene__x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+.ara-ebene__schleier {
+  background-color: var(--backdrop-leicht, var(--ara-schleier));
+}
+@media (max-width: 899px) {
+  .ara-ebene[data-art='blatt'] {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-height: 88vh;
+    border-radius: 20px 20px 0 0;
+    animation-name: ara-ebene-hoch;
+  }
+  .ara-ebene__griff {
+    display: flex;
+  }
+}
+@keyframes ara-ebene-rein {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes ara-ebene-hoch {
+  from {
+    transform: translateY(32px);
+    opacity: 0;
+  }
+}
+
+/* --- Fenster ------------------------------------------------------------------ */
+.ara-fenster {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ara-kante);
+  border-radius: 20px;
+  background-color: var(--ara-flaeche-karte);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ara-text) 6%, transparent);
+}
+.ara-fenster__leiste {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 8px 0 12px;
+  border-width: 0 0 1px;
+  border-bottom-color: var(--ara-kante);
+  border-radius: 0;
+  box-shadow: none;
+}
+.ara-fenster__titel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ara-fenster__werkzeuge {
+  display: flex;
+  align-items: center;
+}
+.ara-fenster__inhalt {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- Board --------------------------------------------------------------------- */
+.ara-board {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 4px;
+}
+.ara-board__stufe {
+  flex: 0 0 280px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 16px;
+  background-color: var(--ara-wisch);
+  transition:
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+.ara-board__stufe[data-blass='true'] {
+  opacity: 0.5;
+}
+.ara-board__stufe[data-ziel='true'] {
+  background-color: var(--ara-blau-zart);
+  outline: 2px solid var(--ara-akzent);
+  outline-offset: -2px;
+}
+.ara-board__kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.ara-board__zaehler {
+  color: var(--ara-text-leise);
+}
+.ara-board__karten {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 48px;
+}
+.ara-board__leer {
+  margin: 0;
+  padding: 12px 8px;
+  color: var(--ara-text-leise);
+  font-size: 13px;
+}
+.ara-board__karte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-height: 44px;
+  max-height: 96px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ara-kante);
+  border-radius: 12px;
+  background-color: var(--ara-flaeche-karte);
+  color: var(--ara-text);
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.ara-board__karte[data-zieht='true'] {
+  position: relative;
+  z-index: 5;
+  cursor: grabbing;
+  box-shadow: var(--ara-schatten-hoch);
+  transition: none;
+  touch-action: none;
+}
+.ara-board__nummer {
+  color: var(--ara-text-leise);
+  font-size: 12px;
+}
+.ara-board__titel {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.ara-board__etikett {
+  align-self: flex-start;
+  padding: 0 8px;
+  border-radius: 999px;
+  background-color: var(--ara-blau-zart);
+  color: var(--ara-akzent);
+  font-size: 12px;
+  line-height: 18px;
+}
+/* Unter 900 px eine Liste: die Stufen als Zwischenueberschrift, die Karten
+   als Zeilen. */
+@media (max-width: 899px) {
+  .ara-board {
+    flex-direction: column;
+    gap: 8px;
+    overflow: visible;
+  }
+  .ara-board__stufe {
+    flex: none;
+    width: 100%;
+    padding: 0;
+    background: transparent;
+  }
+  .ara-board__kopf {
+    min-height: 36px;
+    padding: 0 4px;
+    color: var(--ara-text-leise);
+  }
+  .ara-board__karte {
+    min-height: 48px;
+    max-height: none;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  .ara-board__titel {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* --- Stufenleiste ----------------------------------------------------------------
+   Kleine Balken in einer Reihe, der Name der aktuellen Stufe steht daneben in
+   Blau. Die Namen der anderen sind nur fuer Vorlesewerkzeuge da. */
+.ara-stufen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ara-stufen__reihe {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ara-stufen__stufe {
+  flex: none;
+}
+.ara-stufen__knopf {
+  display: flex;
+  align-items: center;
+  min-width: 32px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+button.ara-stufen__knopf {
+  cursor: pointer;
+}
+.ara-stufen__balken {
+  width: 28px;
+  height: 4px;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--ara-text) 16%, transparent);
+}
+.ara-stufen__stufe[data-zustand='erreicht'] .ara-stufen__balken,
+.ara-stufen__stufe[data-zustand='jetzt'] .ara-stufen__balken {
+  background-image: var(--verlauf-blau, none);
+  background-color: var(--ara-blau);
+}
+.ara-stufen__name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.ara-stufen__jetzt {
+  color: var(--ara-akzent);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* --- Reiter und Segmente: eine Marke gleitet ------------------------------------------- */
+.ara-reiter {
+  position: relative;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--ara-kante);
+}
+.ara-reiter__knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ara-text-leise);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ara-reiter__knopf[aria-selected='true'] {
+  color: var(--ara-text);
+}
+.ara-reiter__zahl {
+  color: var(--ara-text-leise);
+  font-size: 12px;
+}
+.ara-reiter__marke {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: var(--ara-marke-b, 0);
+  height: 2px;
+  border-radius: 999px;
+  background-color: var(--ara-akzent);
+  transform: translateX(var(--ara-marke-x, 0));
+  transition:
+    transform 240ms ease,
+    width 240ms ease;
+}
+.ara-segmente {
+  position: relative;
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background-color: var(--ara-wisch);
+}
+.ara-segmente__marke {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: var(--ara-marke-b, 0);
+  border-radius: 999px;
+  background-color: var(--ara-flaeche-karte);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ara-text) 14%, transparent);
+  transform: translateX(var(--ara-marke-x, 0));
+  transition:
+    transform 240ms ease,
+    width 240ms ease;
+}
+.ara-segmente__knopf {
+  position: relative;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ara-text-leise);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ara-segmente__knopf[aria-checked='true'] {
+  color: var(--ara-text);
+}
+
+/* --- Wischzeile --------------------------------------------------------------------- */
+.ara-wisch {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ara-kante);
+  border-radius: 12px;
+  background-color: var(--ara-flaeche-karte);
+}
+.ara-wisch__hinten {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.ara-wisch__hinten span {
+  opacity: 0;
+}
+.ara-wisch[data-richtung='frei'] .ara-wisch__hinten {
+  background-color: var(--ara-blau);
+  color: var(--ara-akzent-text);
+}
+.ara-wisch[data-richtung='ab'] .ara-wisch__hinten {
+  background-color: var(--ara-wisch);
+  color: var(--ara-fehler);
+}
+.ara-wisch[data-richtung='frei'] .ara-wisch__hinten span:first-child,
+.ara-wisch[data-richtung='ab'] .ara-wisch__hinten span:last-child {
+  opacity: 1;
+}
+.ara-wisch[data-erreicht='true'] .ara-wisch__hinten {
+  filter: brightness(1.08);
+}
+.ara-wisch__zeile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  padding: 4px 4px 4px 16px;
+  background-color: var(--ara-flaeche-karte);
+  touch-action: pan-y;
+  transition: transform 160ms ease;
+}
+.ara-wisch__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.ara-wisch__titel {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ara-wisch__unterzeile {
+  color: var(--ara-text-leise);
+  font-size: 13px;
+}
+
+/* --- Meldung mit Rueckgaengig ---------------------------------------------------------- */
+.ara-meldung__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ara-abstand-1);
+  min-width: 0;
+}
+.ara-meldung[data-rueckgaengig='true'] {
+  padding-bottom: calc(var(--ara-abstand-3) + 2px);
+}
+.ara-meldung__frist {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background-color: var(--ara-blau);
+  transform-origin: left;
+  animation: ara-frist linear forwards;
+}
+@keyframes ara-frist {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* --- Weniger Bewegung, weniger Transparenz ------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .ara-iknopf,
+  .ara-kapsel,
+  .ara-textknopf,
+  .ara-dock__marke,
+  .ara-dock__eintrag,
+  .ara-ebene,
+  .ara-reiter__marke,
+  .ara-segmente__marke,
+  .ara-wisch__zeile,
+  .ara-board__stufe,
+  [data-hinweis]::after {
+    transition: none;
+    animation: none;
+  }
+  .ara-ebene[data-art='blatt'] {
+    animation: none;
+  }
+  .ara-meldung__frist {
+    animation: none;
+  }
+}
+
+/* Ein Hinweis am rechten Rand schliesst rechts ab, statt abgeschnitten zu werden. */
+.ara-ebene__x [data-hinweis]::after,
+.ara-ebene__kopf [data-hinweis]::after,
+.ara-leiste__rechts [data-hinweis]:last-child::after,
+.ara-fenster__werkzeuge [data-hinweis]:last-child::after {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+
+/* Die Meldung mit Rueckgaengig ist eine Glaskapsel: Haken, Satz, runder Pfeil. */
+.ara-meldung[data-rueckgaengig='true'] {
+  gap: 12px;
+  padding: 4px 4px 4px 16px;
+  border-left-width: 1px;
+  border-radius: 999px;
+  min-height: 52px;
+  padding-bottom: 4px;
+}
+.ara-meldung[data-rueckgaengig='true'] > .ara-linie {
+  color: var(--ara-akzent);
 }

@@ -92,8 +92,10 @@
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
-  /* Die Flaeche einer App im Rahmen und die Karte: zwischen lg und xl. */
-  --radius-2xl: 14px;
+  /* Die Flaeche einer App im Rahmen und die Leiste: gross und weich. */
+  --radius-2xl: 18px;
+  /* Das Blatt: am Rechner rundum, am Handy oben. */
+  --radius-blatt: 20px;
 
   /* Fonts */
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -190,6 +192,8 @@
      Dialog, `rgb(0 0 0 / 0.5)` in der Bibliothek, und keiner der beiden folgte
      dem Thema. */
   --color-backdrop: var(--backdrop-color);
+  /* Der leichte Schleier hinter einem Blatt: man sieht, wo man herkam. */
+  --color-backdrop-leicht: var(--backdrop-leicht);
 
   /* Glas: die Fuellung schwebender Bedienflaechen (`bg-glas`). Sie ist
      halbdurchsichtig, nur wo der Browser Unschaerfe kann und der Mensch
@@ -222,13 +226,13 @@
      Karte, Panel und jeder Stufe des Verlaufs, jeweils mit Wisch, 4,5:1 haelt
      (gemessen von `scripts/test/marken.py`, Punkt 9; am Orin fiel die erste Stufe
      am 20.11.2026 auf dem Ende des Verlaufs auf 4,2:1). */
-  --background: #f6f3ed;
+  --background: #f7f5f1;
   --foreground: #1e1b16;
-  --card: #fbf8f2;
+  --card: #ffffff;
   --card-foreground: #1e1b16;
-  --popover: #fbf8f2;
+  --popover: #ffffff;
   --popover-foreground: #1e1b16;
-  --primary: #2559b1;
+  --primary: #2560b8;
   --primary-foreground: #ffffff;
   --secondary: #efe9df;
   --secondary-foreground: #1e1b16;
@@ -240,7 +244,7 @@
   --destructive-foreground: #ffffff;
   --border: #dfd6c4;
   --input: #c9bda3;
-  --ring: #2559b1;
+  --ring: #2868c4;
 
   /* Schriftgroessen-Skala. Sie ist keine Tailwind-Skala (die steht als
      `--text-ui-*` im `@theme` darueber), sondern die Reihe fuer handgeschrie-
@@ -265,12 +269,15 @@
 
   /* Der Schleier unter einem Dialog oder Menue: Tinte, nicht Schwarz. */
   --backdrop-color: rgba(30, 27, 22, 0.32);
+  --backdrop-leicht: rgba(23, 42, 82, 0.16);
+  /* Das Blatt schwebt hoeher als die Flaeche der Ansicht. */
+  --schatten-blatt: 0 0 0 1px rgba(30, 27, 22, 0.06), 0 24px 64px -16px rgba(23, 42, 82, 0.4);
 
   /* DER GRUND. Hinter Leiste und App liegt ein ruhiger Verlauf von Creme
      nach einem Hauch Blau (Creme zu 94 %, das Blau der Website zu 6 %). Kein
      Bild, keine Koernung. `--background` bleibt die Farbe darunter: wer eine
      Flaeche deckend braucht, nimmt sie. */
-  --verlauf-grund: linear-gradient(160deg, #f6f3ed 0%, #f4f3f0 45%, #f2f3f5 100%);
+  --verlauf-grund: linear-gradient(160deg, #f7f5f1 0%, #f4f3f0 45%, #f2f3f5 100%);
 
   /* DER GRUND DES RAHMENS. Hinter der schwebenden Leiste und der Flaeche der
      Ansicht liegt ein Verlauf, den man sieht: oben links Creme, unten rechts
@@ -278,10 +285,25 @@
      als `--verlauf-grund`, weil auf ihm kein Text steht, nur Glas
      (`.glas-grund`); `marken.py` (Punkt 9) misst Text auf diesem Glas ueber
      jeder Stufe. */
-  --rahmen-stufe-1: #ede8de;
-  --rahmen-stufe-2: #d9e1ee;
-  --rahmen-stufe-3: #b9cbea;
-  --rahmen-schein: #98b4e4;
+  /* Das Blau der Marke samt Verlauf: Mitte, tiefes und helles Ende. Der Verlauf
+     ist fuer grosse Schrift und Flaechen ohne Text (Schmuck, Fuellung der
+     Stufenleiste); eine Flaeche mit Text bleibt `--primary`, weil weisse
+     Schrift auf dem hellen Ende nur 3,9:1 haelt. */
+  /* `--blau` ist das Blau der Marke (#2868C4): die Flaeche der Hauptkapsel, mit
+     weisser Schrift 5,4:1. `--primary` ist dasselbe Blau eine Spur tiefer und
+     gilt als SCHRIFT: Text und Linie auf Wisch und Karte halten damit 4,5:1,
+     was #2868C4 auf dem eigenen Wisch mit 4,36:1 nicht schafft. */
+  --blau: #2868c4;
+  --blau-tief: #2454a0;
+  --blau-hell: #3482de;
+  --verlauf-blau: linear-gradient(135deg, #2454a0 0%, #3482de 100%);
+  /* Zart blau: der Squircle hinter einem App-Icon und die Wisch des Akzents. */
+  --blau-zart: #e6eefa;
+
+  --rahmen-stufe-1: #c9d8f2;
+  --rahmen-stufe-2: #a3bded;
+  --rahmen-stufe-3: #86a9e8;
+  --rahmen-schein: #7fa4e8;
 }
 
 /* -----------------------------------------------------------------------------
@@ -324,16 +346,20 @@
 
   /* Der Schleier ist im Dunkeln dichter. */
   --backdrop-color: rgba(4, 10, 20, 0.6);
+  --backdrop-leicht: rgba(4, 10, 20, 0.42);
+  --schatten-blatt: 0 0 0 1px rgba(246, 243, 237, 0.08), 0 24px 64px -16px rgba(0, 0, 0, 0.8);
 
   /* Der Grund: von Navy nach Anthrazit. */
   --verlauf-grund: linear-gradient(160deg, #0a1628 0%, #0f1a2b 50%, #17191d 100%);
 
   /* Der Grund des Rahmens: Tiefblau mit einem Schein oben links, nach
      Anthrazit unten rechts. */
-  --rahmen-stufe-1: #0d2349;
-  --rahmen-stufe-2: #121d33;
-  --rahmen-stufe-3: #22252c;
-  --rahmen-schein: #112a52;
+  --blau: #6a9ae6;
+  --blau-zart: #16305a;
+  --rahmen-stufe-1: #12336c;
+  --rahmen-stufe-2: #0e2550;
+  --rahmen-stufe-3: #2a2d34;
+  --rahmen-schein: #133672;
 }
 
 /* -----------------------------------------------------------------------------
@@ -378,10 +404,10 @@
   /* Glas ueber Inhalt (die Kapsel) mit kleiner Kante statt weitem Hof. */
   --glas-schatten-klein: 0 0 0 1px rgba(30, 27, 22, 0.08), 0 1px 3px rgba(30, 27, 22, 0.1);
   --glas-grund-basis: #ffffff;
-  --glas-anteil-grund: 62%;
+  --glas-anteil-grund: 66%;
   --glas-flaeche-grund: var(--popover);
   /* Die Flaeche der Ansicht schwebt mit einer Haarlinie und weichem Schatten. */
-  --schatten-flaeche: 0 1px 2px rgba(30, 27, 22, 0.06), 0 12px 32px -12px rgba(23, 42, 82, 0.2);
+  --schatten-flaeche: 0 1px 2px rgba(30, 27, 22, 0.06), 0 18px 44px -14px rgba(23, 42, 82, 0.34);
   --glas-filter: none;
   --glas-schleier-filter: none;
   --glas-kante: rgba(255, 255, 255, 0.7);
@@ -396,10 +422,10 @@
 [data-theme='dark'] {
   --glas-schatten-klein: 0 0 0 1px rgba(246, 243, 237, 0.1), 0 1px 3px rgba(0, 0, 0, 0.4);
   --glas-grund-basis: #f6f3ed;
-  --glas-anteil-grund: 6%;
+  --glas-anteil-grund: 3%;
   --schatten-flaeche: 0 0 0 1px rgba(246, 243, 237, 0.05), 0 16px 40px -12px rgba(0, 0, 0, 0.7);
   --verlauf-rahmen:
-    radial-gradient(90% 70% at 0% 0%, var(--rahmen-schein) 0%, transparent 65%),
+    radial-gradient(130% 100% at 0% 0%, var(--rahmen-schein) 0%, transparent 70%),
     linear-gradient(
       135deg,
       var(--rahmen-stufe-1) 0%,

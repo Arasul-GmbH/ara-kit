@@ -3,6 +3,7 @@ import { Checkbox as CheckboxPrimitive } from 'radix-ui';
 import { Check } from 'lucide-react';
 
 import { cn } from '../cn';
+import { TREFFER } from './treffer';
 
 /**
  * Ein Haekchen.
@@ -24,6 +25,7 @@ function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxP
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
+        TREFFER,
         'peer size-4 shrink-0 rounded-[5px] border border-input bg-background outline-none transition-colors',
         'data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground',
         'data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground',

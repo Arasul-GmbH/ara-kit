@@ -2995,8 +2995,13 @@ check("Kontrakt 9: das Feld marken heißt mit der Hauptzahl zur Laufzeit, mit dr
     mkdirSync(join(dir, "frontend", "src"), { recursive: true });
     writeFileSync(join(dir, "frontend", "src", "main.tsx"), "export {};\n");
     const mit = (marken) => standardFindings(dir, { manifest: { id: "x", frontend: { verzeichnis: "frontend" }, marken } });
-    assert(mit("5").length === 0, `die Hauptzahl ohne Kopie wird rot: ${mit("5").join(" | ")}`);
-    assert(mit("5.2.1").some((b) => /marken 5\.2\.1/.test(b)), "eine Kopie, die es nicht gibt, fällt nicht auf");
+    assert(mit("6").length === 0, `die Hauptzahl ohne Kopie wird rot: ${mit("6").join(" | ")}`);
+    assert(mit("6.0.0").some((b) => /marken 6\.0\.0/.test(b)), "eine Kopie, die es nicht gibt, fällt nicht auf");
+    // Bibliothek 5 weist das Kit ab, mit dem Weg zum Nachziehen (das Gerät liefert nur die 6 aus).
+    for (const alt of ["5", "5.9.3"]) {
+      const befund = mit(alt).find((b) => /Hauptzahl 5|major number 5/.test(b));
+      assert(befund && /marken\.mjs --sync/.test(befund) && /design-system-upgrade/.test(befund), `Bibliothek ${alt} wird nicht mit Anleitung abgewiesen: ${mit(alt).join(" | ")}`);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -4517,7 +4522,7 @@ check("Die Vorlage der App hält den Standard der Bibliothek", () => {
   return "keine eigene Farbe, keine Palettenklasse, kein eigenes Primitiv";
 });
 
-check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassung 5.9.3 oder neuer", () => {
+check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassung 6.0.0 oder neuer", () => {
   // Seit der gemeinsamen Seitenleiste (marken 5.5.1) steht der Name oben als
   // `titel`; `marke` ist nur für ein Zeichen daneben. Die Vorlage setzt keine
   // eigene Marke mehr, sonst zeigt jede neue App eine andere Leiste.
@@ -4528,7 +4533,7 @@ check("Die Vorlage setzt den App-Namen als titel der Leiste und trägt die Fassu
   const fassung = /FASSUNG = '(\d+)\.(\d+)\.(\d+)'/.exec(readFileSync(join(template, "marken", "fassung.ts"), "utf8"));
   assert(fassung, "die Fassung der Kopie ist nicht lesbar");
   const [haupt, neben, flick] = fassung.slice(1).map(Number);
-  assert(haupt > 5 || (haupt === 5 && (neben > 9 || (neben === 9 && flick >= 3))), `die Kopie steht auf ${fassung.slice(1).join(".")}, nicht auf 5.9.3, der Fassung des Geräts seit 20.11.2026`);
+  assert(haupt >= 6, `die Kopie steht auf ${fassung.slice(1).join(".")}, nicht auf 6.0.0 oder neuer: das Gerät liefert seit 27.11.2026 nur /marken/6/ aus`);
   assert(/\btitel\b/.test(readFileSync(join(template, "marken", "muster", "Seitenleiste.tsx"), "utf8")), "die Kopie der Seitenleiste kennt titel nicht");
   // Den Hauptknopf zeichnet die Bibliothek (seit 5.7.0 blau gefüllt ohne
   // Verlauf); eine eigene Umfärbung in stil.css bräche ihn im dunklen Thema.
@@ -14177,7 +14182,7 @@ await checkAsync("Jede neue App bringt die Suche mit: Vertrag, höchstens zehn, 
   const geraet = createServer((anfrage, antwort) => {
     const weg = anfrage.url.split("?")[0];
     antwort.writeHead(["/api/v1/external/contract", "/marken/marken.json"].includes(weg) ? 200 : 404, { "Content-Type": "application/json" });
-    antwort.end(JSON.stringify(weg === "/marken/marken.json" ? { haupt: 5, fassung: "5.9.3" } : { data: kontrakt }));
+    antwort.end(JSON.stringify(weg === "/marken/marken.json" ? { haupt: 6, fassung: "6.0.0" } : { data: kontrakt }));
   });
   await new Promise((bereit) => geraet.listen(0, "127.0.0.1", bereit));
   const base = `http://127.0.0.1:${geraet.address().port}`;
@@ -14188,7 +14193,7 @@ await checkAsync("Jede neue App bringt die Suche mit: Vertrag, höchstens zehn, 
     // Ohne Netz und ohne npm install: der Bau der Oberfläche legt nur eine Seite nach dist/.
     const paketDatei = join(appDir, "frontend", "package.json");
     const paket = JSON.parse(readFileSync(paketDatei, "utf8"));
-    paket.scripts.build = `node -e "require('fs').mkdirSync('dist',{recursive:true});require('fs').writeFileSync('dist/index.html','<p>Suchprobe</p>');require('fs').writeFileSync('dist/app.js','import(\\"/marken/5/marken.js\\");')"`;
+    paket.scripts.build = `node -e "require('fs').mkdirSync('dist',{recursive:true});require('fs').writeFileSync('dist/index.html','<p>Suchprobe</p>');require('fs').writeFileSync('dist/app.js','import(\\"/marken/6/marken.js\\");')"`;
     writeFileSync(paketDatei, JSON.stringify(paket, null, 2));
     mkdirSync(join(appDir, "frontend", "node_modules"), { recursive: true });
 

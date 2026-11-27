@@ -23,13 +23,15 @@ function DialogClose({ ...props }: React.ComponentProps<typeof DialogPrimitive.C
 
 function DialogOverlay({
   className,
+  schlicht = false,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+}: React.ComponentProps<typeof DialogPrimitive.Overlay> & { schlicht?: boolean }) {
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        'fixed inset-0 z-50 bg-backdrop glas-schleier data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        !schlicht && 'glas-schleier',
+        'fixed inset-0 z-50 bg-backdrop data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
         className
       )}
       {...props}
@@ -41,13 +43,20 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  schleier = 'glas',
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  /**
+   * Der Schleier darunter (5.10.0): `glas` verwischt leicht, `schlicht` nur
+   * abgedunkelt. Ist der Dialog selbst Glas (die Befehlspalette), bleibt der
+   * Schleier schlicht: hoechstens drei Glasflaechen je Ansicht.
+   */
+  schleier?: 'glas' | 'schlicht';
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
+      <DialogOverlay schlicht={schleier === 'schlicht'} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(

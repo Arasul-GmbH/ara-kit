@@ -42,7 +42,7 @@ selbst gestaltest, schreib dort mit Marken.
 
 ## Jede Seite beginnt gleich
 
-Wie im Gerät (Bibliothek 5.9): links Titel und ein Satz, rechts die **Werkzeugleiste**.
+Wie im Gerät (Bibliothek 6): links Titel und ein Satz, rechts die **Werkzeugleiste**.
 
 ```tsx
 <Kopf titel="Neuer Vorgang" beschreibung="Eingereicht als Anna Weber."
@@ -99,7 +99,7 @@ und der Wächter des Produkts prüft nur die Shell, darum hält das Kit `--build
 - **Das Feld `marken` in `app.json` fehlt oder ist veraltet.** Die Hauptzahl allein braucht keine
   passende Kopie, drei Zahlen müssen zur Kopie passen. `--new` schreibt es, `marken.mjs --sync`
   hält es. Gegen ein Gerät hält `--check` auch eine Hauptzahl an, die das Gerät nicht ausliefert,
-  und weist bei einer gealterten Kopie nur hin.
+  und weist bei einer gealterten Kopie nur hin. Eine App unter der Hauptzahl des Kits: `.ara/knowledge/design-system-upgrade.de.md`.
 
 **Ohne `symbol` in `app.json` hält `--build` vor alledem an.**
 

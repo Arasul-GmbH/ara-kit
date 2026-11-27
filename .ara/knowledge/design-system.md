@@ -40,7 +40,7 @@ classes come only from its `marken.css`: what you style yourself, write there wi
 
 ## Every page begins the same
 
-As on the device (library 5.9): title and one sentence on the left, the **toolbar** on the right.
+As on the device (library 6): title and one sentence on the left, the **toolbar** on the right.
 
 ```tsx
 <Kopf titel="Neuer Vorgang" beschreibung="Eingereicht als Anna Weber."
@@ -95,7 +95,7 @@ product's guard checks only the shell, so the kit stops `--build`, `--check`, `-
   carries `symbole.ts`.
 - **The field `marken` in `app.json` missing or stale.** The major number alone needs no copy to
   match; three numbers must match the copy. `--new` writes it, `marken.mjs --sync` keeps it.
-  `--check` against a device stops a major number it does not serve, and only hints at an aged copy.
+  `--check` against a device stops a major number it does not serve, and only hints at an aged copy. An app below the kit's major number: `.ara/knowledge/design-system-upgrade.md`.
 
 **Without `symbol` in `app.json` `--build` stops before all of this.**
 

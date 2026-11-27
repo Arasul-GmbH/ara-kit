@@ -39,15 +39,80 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
   );
 }
 
+/** Kleinbuchstaben ohne Akzente: „Ü“ und „u“ finden einander. */
+function grundform(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+/**
+ * Die scharfe Suche der Befehlspalette (5.11.0).
+ *
+ * `cmdk` sucht von sich aus unscharf: jeder Buchstabe der Eingabe irgendwo
+ * im Eintrag, in der richtigen Reihenfolge. Fuer eine Liste aus Namen ist
+ * das zu weit, „Ab“ fand auch Eintraege ohne ein Wort, das mit „Ab“
+ * beginnt. Hier gilt:
+ *
+ * - Jedes Wort der Eingabe muss der ANFANG eines Wortes im Eintrag sein
+ *   (Wert und `keywords`). „Ab“ findet „Abschluss“, nicht „Belege“.
+ * - Ab drei Zeichen genuegt auch ein Stueck mitten im Wort („kosten“ findet
+ *   „Reisekosten“), mit niedrigerem Rang.
+ * - Beginnt der Eintrag mit der ganzen Eingabe, steht er oben.
+ *
+ * Gross- und Kleinschreibung und Akzente zaehlen nicht.
+ */
+function wortanfangFilter(value: string, search: string, keywords?: string[]): number {
+  const suche = grundform(search).trim();
+  if (!suche) return 1;
+  const text = grundform([value, ...(keywords ?? [])].join(' '));
+  const woerter = text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const teile = suche.split(/\s+/);
+  let rang = text.startsWith(suche) ? 1 : 0.8;
+  for (const teil of teile) {
+    if (woerter.some(w => w.startsWith(teil))) continue;
+    if (teil.length >= 3 && woerter.some(w => w.includes(teil))) {
+      rang = Math.min(rang, 0.3);
+      continue;
+    }
+    return 0;
+  }
+  return rang;
+}
+
+/**
+ * Die Befehlspalette (5.10.0, `gestaltung.md`: „Eine Tastenkombination oeffnet
+ * ein Feld, das zu jeder App ... springt"). Sie schwebt, also ist sie Glas wie
+ * ein Menue: Fuellung, heller Rand und Schatten aus `--glas-*`, im oberen
+ * Drittel statt in der Mitte, damit die Liste nach unten Platz hat. Der
+ * Schleier darunter ist schlicht, ohne Unschaerfe: die Palette ist die eine
+ * Glasflaeche, die dazukommt. Die Liste selbst ist durchsichtig und liegt auf
+ * dem Glas; die Zeilen tragen die Auswahl als getoente Flaeche.
+ */
 function CommandDialog({
   titel = 'Suchen',
   beschreibung = 'Tippen, um zu suchen. Pfeile wählen, Enter nimmt.',
   children,
+  inhaltKennzeichen,
+  filter = wortanfangFilter,
   ...props
-}: React.ComponentProps<typeof Dialog> & { titel?: string; beschreibung?: string }) {
+}: React.ComponentProps<typeof Dialog> & {
+  titel?: string;
+  beschreibung?: string;
+  /** `data-testid` der schwebenden Flaeche. */
+  inhaltKennzeichen?: string;
+  /** Die Suche; Vorgabe ist die scharfe `wortanfangFilter` (5.11.0). */
+  filter?: React.ComponentProps<typeof CommandPrimitive>['filter'];
+}) {
   return (
     <Dialog {...props}>
-      <DialogContent className="overflow-hidden p-0" showCloseButton={false}>
+      <DialogContent
+        schleier="schlicht"
+        data-testid={inhaltKennzeichen}
+        className="glas top-[max(12px,14dvh)] max-w-[min(560px,calc(100%-16px))] translate-y-0 gap-0 overflow-hidden rounded-[12px] border-glas-kante bg-glas p-0 shadow-[var(--glas-schatten)] sm:max-w-[560px]"
+        showCloseButton={false}
+      >
         {/* Titel und Beschreibung stehen nur fuer den Screenreader da, und
             INNERHALB des Inhalts, nicht daneben: Radix sucht den Titel im
             Dialog und warnt in der Konsole, wenn er ihn dort nicht findet.
@@ -56,7 +121,10 @@ function CommandDialog({
           <DialogTitle>{titel}</DialogTitle>
           <DialogDescription>{beschreibung}</DialogDescription>
         </DialogHeader>
-        <Command className="[&_[data-slot=command-input-wrapper]]:h-12 [&_[data-slot=command-group]]:px-2 [&_[data-slot=command-item]]:px-2 [&_[data-slot=command-item]]:py-3">
+        <Command
+          filter={filter}
+          className="bg-transparent [&_[data-slot=command-group]]:px-1.5 [&_[data-slot=command-input-wrapper]]:h-11 [&_[data-slot=command-item]]:min-h-9 [&_[data-slot=command-item]]:rounded-md [&_[data-slot=command-item]]:px-2 [&_[data-slot=command-item][data-selected=true]]:bg-primary/14 [&_[data-slot=command-item][data-selected=true]]:text-foreground [&_[data-slot=command-list]]:max-h-[min(360px,60dvh)]"
+        >
           {children}
         </Command>
       </DialogContent>
@@ -77,7 +145,10 @@ function CommandInput({
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          'flex h-10 w-full rounded-md bg-transparent py-3 text-ui outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50',
+          // Kein eigener Fokusrahmen (5.10.0): das Feld IST die Zeile, und
+          // der Rahmen samt Schatten der Shell (`input:focus`) zeichnete am
+          // Orin einen zweiten Kasten in die Palette.
+          'flex h-10 w-full rounded-md border-0 bg-transparent py-3 text-ui shadow-none outline-none placeholder:text-muted-foreground focus:shadow-none focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50',
           className
         )}
         {...props}
@@ -175,4 +246,5 @@ export {
   CommandItem,
   CommandShortcut,
   CommandSeparator,
+  wortanfangFilter,
 };
